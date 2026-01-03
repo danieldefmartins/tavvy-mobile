@@ -1,48 +1,32 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { useState } from 'react';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  ScrollView, 
+  TouchableOpacity, 
+  Alert,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+} from 'react-native';
+import { useState, useEffect } from 'react';
 import SignalCard from '../components/SignalCard';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
-import { submitReview, ReviewSignal } from '../lib/reviews';
+import { submitReview, updateReview, fetchUserReview, ReviewSignalTap } from '../lib/reviews';
+import { 
+  REVIEW_TAGS, 
+  CATEGORY_COLORS, 
+  CATEGORY_LABELS, 
+  ReviewCategory 
+} from '../lib/reviewTags';
 
-type RootTabParamList = {
-  'Add Review': { placeId?: string; placeName?: string };
+type RootStackParamList = {
+  AddReview: { placeId?: string; placeName?: string };
 };
 
-type AddReviewRouteProp = RouteProp<RootTabParamList, 'Add Review'>;
-
-interface Signal {
-  id: string;
-  label: string;
-  icon: string;
-  category: 'bestFor' | 'vibe' | 'headsUp';
-}
-
-const SIGNALS: Signal[] = [
-  // Best For
-  { id: 'great-food', label: 'Great Food', icon: '🍽️', category: 'bestFor' },
-  { id: 'fast-service', label: 'Fast Service', icon: '⏱️', category: 'bestFor' },
-  { id: 'family-friendly', label: 'Family-Friendly', icon: '👨‍👩‍👧‍👦', category: 'bestFor' },
-  { id: 'good-prices', label: 'Good Prices', icon: '💰', category: 'bestFor' },
-  
-  // Vibe
-  { id: 'cozy', label: 'Cozy', icon: '🛋️', category: 'vibe' },
-  { id: 'loud-music', label: 'Loud Music', icon: '🔊', category: 'vibe' },
-  { id: 'lively', label: 'Lively', icon: '👥', category: 'vibe' },
-  { id: 'romantic', label: 'Romantic', icon: '💕', category: 'vibe' },
-  
-  // Heads Up
-  { id: 'limited-parking', label: 'Limited Parking', icon: '🚗', category: 'headsUp' },
-  { id: 'slow-service', label: 'Slow Service', icon: '⏰', category: 'headsUp' },
-  { id: 'expensive', label: 'Expensive', icon: '💸', category: 'headsUp' },
-  { id: 'noisy', label: 'Noisy', icon: '📢', category: 'headsUp' },
-];
-
-const CATEGORY_COLORS = {
-  bestFor: '#3B82F6',
-  vibe: '#6B7280',
-  headsUp: '#F59E0B',
-};
+type AddReviewRouteProp = RouteProp<RootStackParamList, 'AddReview'>;
 
 export default function AddReviewScreen() {
   const route = useRoute<AddReviewRouteProp>();
@@ -51,6 +35,49 @@ export default function AddReviewScreen() {
   const placeName = route.params?.placeName || 'this place';
 
   const [tapCounts, setTapCounts] = useState<{ [key: string]: number }>({});
+  const [publicNote, setPublicNote] = useState('');
+  const [privateNote, setPrivateNote] = useState('');
+  const [showNotes, setShowNotes] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [existingReviewId, setExistingReviewId] = useState<string | null>(null);
+
+  // Load existing review if user has one
+  useEffect(() => {
+    loadExistingReview();
+  }, [placeId]);
+
+  const loadExistingReview = async () => {
+    if (!placeId) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const { review, signals } = await fetchUserReview(placeId);
+      
+      if (review) {
+        setExistingReviewId(review.id);
+        setPublicNote(review.public_note || '');
+        setPrivateNote(review.private_note_owner || '');
+        
+        // Convert signals to tap counts
+        const counts: { [key: string]: number } = {};
+        signals.forEach(signal => {
+          counts[signal.signalId] = signal.intensity;
+        });
+        setTapCounts(counts);
+        
+        if (review.public_note || review.private_note_owner) {
+          setShowNotes(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading existing review:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleTap = (signalId: string) => {
     const currentCount = tapCounts[signalId] || 0;
@@ -64,40 +91,56 @@ export default function AddReviewScreen() {
     }
   };
 
-  const handleContinue = async () => {
-    // Get selected signals with their tap counts
-    const selectedSignals: ReviewSignal[] = Object.entries(tapCounts).map(([signalId, count]) => {
-      const signal = SIGNALS.find(s => s.id === signalId);
-      return {
-        signalId: signalId,
-        label: signal?.label || '',
-        tapCount: count,
-        category: signal?.category || 'bestFor',
-      };
-    });
+  const handleSubmit = async () => {
+    if (!placeId) {
+      Alert.alert('Error', 'No place selected for review');
+      return;
+    }
 
-    // Show loading state
-    Alert.alert(
-      'Submitting Review...',
-      'Please wait',
-      [],
-      { cancelable: false }
-    );
+    if (selectedCount === 0) {
+      Alert.alert('Select Signals', 'Please tap at least one signal to describe your experience');
+      return;
+    }
 
-    // Submit to Supabase
-    const result = await submitReview(placeId || 'unknown', selectedSignals);
+    setIsSubmitting(true);
+
+    // Convert tap counts to signal array
+    const signals: ReviewSignalTap[] = Object.entries(tapCounts).map(([signalId, intensity]) => ({
+      signalId,
+      intensity,
+    }));
+
+    let result;
+    
+    if (existingReviewId) {
+      // Update existing review
+      result = await updateReview(
+        existingReviewId,
+        placeId,
+        signals,
+        publicNote,
+        privateNote
+      );
+    } else {
+      // Submit new review
+      result = await submitReview(
+        placeId,
+        signals,
+        publicNote,
+        privateNote
+      );
+    }
+
+    setIsSubmitting(false);
 
     if (result.success) {
       Alert.alert(
-        'Review Submitted! 🎉',
-        `You reviewed ${placeName} with ${selectedCount} signals!\n\nYour review has been saved to the database.`,
+        existingReviewId ? 'Review Updated! 🎉' : 'Review Submitted! 🎉',
+        `You reviewed ${placeName} with ${selectedCount} signals!`,
         [
           {
             text: 'OK',
             onPress: () => {
-              // Clear the form
-              setTapCounts({});
-              // Navigate back
               navigation.goBack();
             }
           }
@@ -114,24 +157,26 @@ export default function AddReviewScreen() {
 
   const selectedCount = Object.keys(tapCounts).length;
 
-  const renderCategory = (category: 'bestFor' | 'vibe' | 'headsUp', label: string) => {
-    const categorySignals = SIGNALS.filter(s => s.category === category);
+  const renderCategory = (category: ReviewCategory) => {
+    const categoryTags = REVIEW_TAGS[category];
+    const colors = CATEGORY_COLORS[category];
+    const label = CATEGORY_LABELS[category];
     
     return (
       <View key={category} style={styles.categorySection}>
-        <View style={[styles.categoryLabel, { backgroundColor: CATEGORY_COLORS[category] }]}>
-          <Text style={styles.categoryLabelText}>{label}</Text>
+        <View style={[styles.categoryLabel, { backgroundColor: colors.bg }]}>
+          <Text style={[styles.categoryLabelText, { color: colors.text }]}>{label}</Text>
         </View>
         
         <View style={styles.grid}>
-          {categorySignals.map(signal => (
+          {categoryTags.map(tag => (
             <SignalCard
-              key={signal.id}
-              label={signal.label}
-              icon={signal.icon}
-              tapCount={tapCounts[signal.id] || 0}
-              onTap={() => handleTap(signal.id)}
-              color={CATEGORY_COLORS[category]}
+              key={tag.id}
+              label={tag.label}
+              icon={tag.icon}
+              tapCount={tapCounts[tag.id] || 0}
+              onTap={() => handleTap(tag.id)}
+              color={colors.bg}
             />
           ))}
         </View>
@@ -139,11 +184,24 @@ export default function AddReviewScreen() {
     );
   };
 
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3B9FD9" />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.placeTitle}>Review: {placeName}</Text>
         
@@ -158,21 +216,72 @@ export default function AddReviewScreen() {
           Tap to select • Tap again to make it stronger
         </Text>
 
-        {renderCategory('bestFor', 'Best For')}
-        {renderCategory('vibe', 'Vibe')}
-        {renderCategory('headsUp', 'Heads Up')}
+        {renderCategory('best_for')}
+        {renderCategory('vibe')}
+        {renderCategory('heads_up')}
 
-        {selectedCount > 0 && (
-          <TouchableOpacity 
-            style={styles.continueButton}
-            onPress={handleContinue}
-          >
-            <Text style={styles.continueButtonText}>Continue →</Text>
-          </TouchableOpacity>
-        )}
+        {/* Notes Section */}
+        <View style={styles.notesSection}>
+          {!showNotes ? (
+            <TouchableOpacity 
+              style={styles.addNoteButton}
+              onPress={() => setShowNotes(true)}
+            >
+              <Text style={styles.addNoteButtonText}>Add a note (optional)</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.notesContainer}>
+              <View style={styles.noteField}>
+                <Text style={styles.noteLabel}>Public Note (visible to everyone)</Text>
+                <TextInput
+                  style={styles.noteInput}
+                  value={publicNote}
+                  onChangeText={setPublicNote}
+                  placeholder="Share your experience..."
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+              </View>
+              
+              <View style={styles.noteField}>
+                <Text style={styles.noteLabel}>Private Note (only you can see)</Text>
+                <TextInput
+                  style={[styles.noteInput, styles.privateNoteInput]}
+                  value={privateNote}
+                  onChangeText={setPrivateNote}
+                  placeholder="Notes for yourself..."
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                  numberOfLines={2}
+                  textAlignVertical="top"
+                />
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Submit Button */}
+        <TouchableOpacity 
+          style={[
+            styles.submitButton,
+            (selectedCount === 0 || isSubmitting) && styles.submitButtonDisabled
+          ]}
+          onPress={handleSubmit}
+          disabled={selectedCount === 0 || isSubmitting}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.submitButtonText}>
+              {existingReviewId ? 'Update Review →' : 'Submit Review →'}
+            </Text>
+          )}
+        </TouchableOpacity>
       </ScrollView>
       <StatusBar style="dark" />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -180,6 +289,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
   },
   scrollContent: {
     padding: 20,
@@ -207,7 +327,7 @@ const styles = StyleSheet.create({
   selectedCount: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#3B82F6',
+    color: '#3B9FD9',
   },
   subtitle: {
     fontSize: 14,
@@ -227,21 +347,65 @@ const styles = StyleSheet.create({
   categoryLabelText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  continueButton: {
-    backgroundColor: '#3B82F6',
+  notesSection: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  addNoteButton: {
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  addNoteButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  notesContainer: {
+    gap: 16,
+  },
+  noteField: {
+    marginBottom: 12,
+  },
+  noteLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  noteInput: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+    color: '#111827',
+    minHeight: 80,
+  },
+  privateNoteInput: {
+    minHeight: 60,
+  },
+  submitButton: {
+    backgroundColor: '#3B9FD9',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 20,
   },
-  continueButtonText: {
+  submitButtonDisabled: {
+    backgroundColor: '#D1D5DB',
+  },
+  submitButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#FFFFFF',

@@ -28,8 +28,8 @@ export default function SignalCard({ label, icon, tapCount, onTap, color }: Sign
       activeOpacity={0.7}
     >
       {isSelected && (
-        <View style={styles.checkmark}>
-          <Text style={styles.checkmarkText}>✓</Text>
+        <View style={[styles.checkmark, { borderColor: color }]}>
+          <Text style={[styles.checkmarkText, { color: color }]}>✓</Text>
         </View>
       )}
       
@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     backgroundColor: '#F3F4F6',
     borderRadius: 16,
-    padding: 16,
+    padding: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -63,37 +63,39 @@ const styles = StyleSheet.create({
   },
   checkmark: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: 10,
+    right: 10,
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
   },
   checkmarkText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: '#10B981',
   },
   icon: {
-    fontSize: 48,
+    fontSize: 36,
     marginBottom: 8,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#6B7280',
     textAlign: 'center',
+    lineHeight: 18,
   },
   labelSelected: {
     color: '#FFFFFF',
   },
   fireEmojis: {
-    fontSize: 20,
-    marginTop: 8,
+    fontSize: 18,
+    marginTop: 6,
     position: 'absolute',
-    bottom: 12,
+    bottom: 10,
   },
 });
+ 
