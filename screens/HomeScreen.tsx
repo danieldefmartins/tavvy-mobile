@@ -161,6 +161,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('liberty');
   const [showStylePicker, setShowStylePicker] = useState(false);
+  const [showWeatherPopup, setShowWeatherPopup] = useState(false);
   const [weather, setWeather] = useState<Weather>({
     temp: 72,
     condition: 'Sunny',
@@ -170,7 +171,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
   const cameraRef = useRef<MapLibreGL.Camera>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
   
-  const snapPoints = useMemo(() => ['25%', '50%', '90%'], []);
+  const snapPoints = useMemo(() => ['8%', '50%', '90%'], []);
 
   const categories = ['All', 'Restaurants', 'Cafes', 'Bars', 'Shopping'];
 
@@ -671,12 +672,36 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+
       </View>
 
-      <View style={styles.weatherWidget}>
-        <Ionicons name="sunny" size={20} color="#fff" />
-        <Text style={styles.weatherTemp}>72°</Text>
-      </View>
+      {/* Weather Popup */}
+      {showWeatherPopup && (
+        <View style={styles.weatherPopup}>
+          <View style={styles.weatherHeader}>
+            <Text style={styles.weatherTitle}>Current Weather</Text>
+            <TouchableOpacity onPress={() => setShowWeatherPopup(false)}>
+              <Ionicons name="close-circle" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.weatherContent}>
+            <Ionicons name={weather.icon as any} size={48} color="#FF9500" />
+            <Text style={styles.weatherBigTemp}>{weather.temp}°</Text>
+            <Text style={styles.weatherCondition}>{weather.condition}</Text>
+          </View>
+          <View style={styles.weatherDetails}>
+            <View style={styles.weatherDetailItem}>
+              <Text style={styles.weatherDetailLabel}>Humidity</Text>
+              <Text style={styles.weatherDetailValue}>45%</Text>
+            </View>
+            <View style={styles.weatherDetailItem}>
+              <Text style={styles.weatherDetailLabel}>Wind</Text>
+              <Text style={styles.weatherDetailValue}>8 mph</Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       <View style={styles.bottomRightControls}>
         {showStylePicker && (
@@ -712,35 +737,29 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
         )}
 
         <View style={styles.combinedControlCard}>
-          <View style={styles.controlsTopRow}>
-            <TouchableOpacity
-              style={styles.compactControlButton}
-              onPress={() => setShowStylePicker(!showStylePicker)}
-            >
-              <Ionicons name="layers" size={18} color="#666" />
-              <Text style={styles.controlLabel}>Layers</Text>
-            </TouchableOpacity>
-            
-            <View style={styles.verticalDivider} />
-            
-            <TouchableOpacity
-              style={styles.compactControlButton}
-              onPress={handleMyLocation}
-            >
-              <Ionicons name="navigate" size={18} color="#666" />
-              <Text style={styles.controlLabel}>Location</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.iconOnlyButton}
+            onPress={handleMyLocation}
+          >
+            <Ionicons name="navigate" size={22} color="#000" />
+          </TouchableOpacity>
+
+          <View style={styles.horizontalDivider} />
+
+          <TouchableOpacity
+            style={styles.iconOnlyButton}
+            onPress={() => setShowStylePicker(!showStylePicker)}
+          >
+            <Ionicons name="layers" size={22} color="#000" />
+          </TouchableOpacity>
           
           <View style={styles.horizontalDivider} />
-          
+
           <TouchableOpacity
-            style={styles.weatherRow}
-            onPress={() => alert('Weather details - Coming soon!')}
-            activeOpacity={0.7}
+            style={styles.iconOnlyButton}
+            onPress={() => setShowWeatherPopup(!showWeatherPopup)}
           >
-            <Ionicons name={weather.icon as any} size={20} color="#FF9500" />
-            <Text style={styles.compactWeatherTemp}>{weather.temp}°</Text>
+            <Ionicons name={weather.icon as any} size={22} color="#FF9500" />
           </TouchableOpacity>
         </View>
       </View>
@@ -869,22 +888,64 @@ const styles = StyleSheet.create({
   categoryChipTextActive: {
     color: '#fff',
   },
-  weatherWidget: {
+  weatherPopup: {
     position: 'absolute',
-    top: 60,
+    bottom: 240,
     right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    width: 200,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 16,
-    display: 'none',
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  weatherTemp: {
-    color: '#fff',
-    marginLeft: 4,
+  weatherHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  weatherTitle: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#333',
+  },
+  weatherContent: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  weatherBigTemp: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#000',
+    marginVertical: 4,
+  },
+  weatherCondition: {
+    fontSize: 16,
+    color: '#666',
+  },
+  weatherDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+    paddingTop: 12,
+  },
+  weatherDetailItem: {
+    alignItems: 'center',
+  },
+  weatherDetailLabel: {
+    fontSize: 12,
+    color: '#999',
+    marginBottom: 2,
+  },
+  weatherDetailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
   },
   bottomRightControls: {
     position: 'absolute',
@@ -893,55 +954,27 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   combinedControlCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.88)',
-    borderRadius: 14,
-    padding: 10,
+    flexDirection: 'column',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)', // Apple-style frosted look
+    borderRadius: 12,
+    padding: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-    minWidth: 140,
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  controlsTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  compactControlButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+  iconOnlyButton: {
+    padding: 10,
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    gap: 4,
-  },
-  controlLabel: {
-    fontSize: 11,
-    color: '#666',
-    fontWeight: '500',
-  },
-  verticalDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    alignItems: 'center',
   },
   horizontalDivider: {
     height: 1,
+    width: 20,
     backgroundColor: 'rgba(0, 0, 0, 0.1)',
-    marginVertical: 6,
-  },
-  weatherRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
-    gap: 6,
-  },
-  compactWeatherTemp: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
+    marginVertical: 2,
   },
   stylePickerContainer: {
     marginBottom: 12,

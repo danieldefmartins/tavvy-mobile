@@ -23,6 +23,10 @@ import AddReviewScreen from './screens/AddReviewScreen';
 import AddPhotoScreen from './screens/AddPhotoScreen';
 import PlacePhotosScreen from './screens/PlacePhotosScreen';
 
+// ✅ NEW: Import Universe screens
+import UniverseDiscoveryScreen from './screens/UniverseDiscoveryScreen';
+import UniverseLandingScreen from './screens/UniverseLandingScreen';
+
 // Create QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,7 +42,7 @@ const queryClient = new QueryClient({
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-// Home Stack Navigator (includes PlaceDetails + AddReview + Photo screens)
+// Home Stack Navigator (includes PlaceDetails + AddReview + Photo screens + Universes)
 function HomeStack() {
   return (
     <Stack.Navigator>
@@ -71,6 +75,18 @@ function HomeStack() {
       <Stack.Screen 
         name="PlacePhotos" 
         component={PlacePhotosScreen}
+        options={{ headerShown: false }}
+      />
+
+      {/* ✅ NEW: Universe Screens */}
+      <Stack.Screen 
+        name="UniverseDiscovery" 
+        component={UniverseDiscoveryScreen}
+        options={{ title: 'Explore Universes' }}
+      />
+      <Stack.Screen 
+        name="UniverseLanding" 
+        component={UniverseLandingScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
@@ -128,7 +144,7 @@ function TabNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={HomeStack} />
-      <Tab.Screen name="Explore" component={ExploreScreen} />
+      <Tab.Screen name="Explore" component={UniverseDiscoveryScreen} />
       {/* ✅ CHANGED: Add button now opens AddPlaceScreen instead of AddReviewScreen */}
       <Tab.Screen 
         name="Add" 

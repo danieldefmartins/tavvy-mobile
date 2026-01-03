@@ -24,8 +24,9 @@ import {
   useTap,
   useHasUserTapped
 } from '../hooks/useTapSystem';
+import { useToggleFavorite, useIsPlaceFavorited } from '../hooks/useFavorite';
 
-const { width } = Dimensions.get('window');
+  const { width } = Dimensions.get('window');
 
 // Types matching GitHub implementation
 interface EntranceData {
@@ -212,8 +213,10 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   // These hooks must be called AFTER place state is declared but they handle null/undefined gracefully
   const { stats } = usePlaceTapStats(place?.id || '');
   const { gamification } = useUserGamification();
-  const { hasTapped, userSignals } = useHasUserTapped(place?.id || '');
+  const { hasTapped, userSignals } = useHasUserTapped(placeId);
   const { quickTap } = useTap();
+  const { data: isFavorited } = useIsPlaceFavorited(placeId);
+  const { toggle: toggleFavorite } = useToggleFavorite();
 
   // Fetch place data
   useEffect(() => {
@@ -655,8 +658,15 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           
           {/* Top Right Buttons */}
           <View style={styles.topRightButtons}>
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="heart-outline" size={22} color="#000" />
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => toggleFavorite(placeId)}
+            >
+              <Ionicons 
+                name={isFavorited ? "heart" : "heart-outline"} 
+                size={22} 
+                color={isFavorited ? "#EF4444" : "#000"} 
+              />
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
               <Ionicons name="share-outline" size={22} color="#000" />
