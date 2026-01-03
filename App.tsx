@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthProvider } from './contexts/AuthContext';
+import { Colors } from './constants/Colors';
 
 // Import screens
 import HomeScreen from './screens/HomeScreen';
@@ -23,10 +24,6 @@ import AddReviewScreen from './screens/AddReviewScreen';
 import AddPhotoScreen from './screens/AddPhotoScreen';
 import PlacePhotosScreen from './screens/PlacePhotosScreen';
 
-// ✅ NEW: Import Universe screens
-import UniverseDiscoveryScreen from './screens/UniverseDiscoveryScreen';
-import UniverseLandingScreen from './screens/UniverseLandingScreen';
-
 // Create QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,7 +39,7 @@ const queryClient = new QueryClient({
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-// Home Stack Navigator (includes PlaceDetails + AddReview + Photo screens + Universes)
+// Home Stack Navigator (includes PlaceDetails + AddReview + Photo screens)
 function HomeStack() {
   return (
     <Stack.Navigator>
@@ -75,18 +72,6 @@ function HomeStack() {
       <Stack.Screen 
         name="PlacePhotos" 
         component={PlacePhotosScreen}
-        options={{ headerShown: false }}
-      />
-
-      {/* ✅ NEW: Universe Screens */}
-      <Stack.Screen 
-        name="UniverseDiscovery" 
-        component={UniverseDiscoveryScreen}
-        options={{ title: 'Explore Universes' }}
-      />
-      <Stack.Screen 
-        name="UniverseLanding" 
-        component={UniverseLandingScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
@@ -138,13 +123,13 @@ function TabNavigator() {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#14b8a6',
-        tabBarInactiveTintColor: 'gray',
+        tabBarActiveTintColor: Colors.tabBarActive,
+        tabBarInactiveTintColor: Colors.tabBarInactive,
         headerShown: false,
       })}
     >
       <Tab.Screen name="Home" component={HomeStack} />
-      <Tab.Screen name="Explore" component={UniverseDiscoveryScreen} />
+      <Tab.Screen name="Explore" component={ExploreScreen} />
       {/* ✅ CHANGED: Add button now opens AddPlaceScreen instead of AddReviewScreen */}
       <Tab.Screen 
         name="Add" 

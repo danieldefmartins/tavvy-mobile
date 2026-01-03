@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { Colors } from '../constants/Colors';
 
 export default function ProfileScreen({ navigation }: any) {
   const { user, signOut } = useAuth();
@@ -172,7 +173,7 @@ export default function ProfileScreen({ navigation }: any) {
         disabled={loading}
       >
         {loading ? (
-          <ActivityIndicator color="#EF4444" />
+          <ActivityIndicator color={Colors.error} />
         ) : (
           <Text style={styles.signOutText}>Sign Out</Text>
         )}
@@ -186,7 +187,7 @@ export default function ProfileScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.surface,
   },
   scrollContent: {
     paddingBottom: 40,
@@ -206,11 +207,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 20,
-    backgroundColor: '#14b8a6',
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
-    shadowColor: '#14b8a6',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -219,18 +220,18 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#fff',
+    color: Colors.white,
   },
   guestTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#111827',
+    color: Colors.text,
     marginBottom: 12,
     textAlign: 'center',
   },
   guestSubtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
   },
@@ -238,55 +239,55 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   primaryButton: {
-    backgroundColor: '#14b8a6',
+    backgroundColor: Colors.primary,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#14b8a6',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
   },
   primaryButtonText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 16,
     fontWeight: '600',
   },
   secondaryButton: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Colors.border,
   },
   secondaryButtonText: {
-    color: '#374151',
+    color: Colors.text,
     fontSize: 16,
     fontWeight: '600',
   },
 
   // Logged In Styles
   profileHeader: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     alignItems: 'center',
     paddingTop: 60,
     paddingBottom: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: Colors.surface,
   },
   avatarContainer: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: '#E0F2FE', // Light blue background for avatar
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
     borderWidth: 4,
-    borderColor: '#fff',
-    shadowColor: '#000',
+    borderColor: Colors.white,
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -295,24 +296,24 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 40,
     fontWeight: 'bold',
-    color: '#0284C7',
+    color: Colors.primary,
   },
   userName: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
+    color: Colors.text,
     marginBottom: 4,
   },
   userEmail: {
     fontSize: 14,
-    color: '#6B7280',
+    color: Colors.textSecondary,
     marginBottom: 16,
   },
   editProfileButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.surface,
   },
   editProfileText: {
     fontSize: 14,
@@ -321,12 +322,12 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     marginTop: 12,
     paddingVertical: 16,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: Colors.surface,
   },
   statItem: {
     flex: 1,
@@ -335,37 +336,37 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#111827',
+    color: Colors.text,
   },
   statLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: Colors.textSecondary,
     marginTop: 4,
   },
   statDivider: {
     width: 1,
     height: '100%',
-    backgroundColor: '#E5E7EB',
+    backgroundColor: Colors.border,
   },
   menuContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     marginTop: 24,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: Colors.surface,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: Colors.surface,
   },
   menuIconContainer: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -386,14 +387,14 @@ const styles = StyleSheet.create({
     borderColor: '#FECACA',
   },
   signOutText: {
-    color: '#EF4444',
+    color: Colors.error,
     fontSize: 16,
     fontWeight: '600',
   },
   versionText: {
     textAlign: 'center',
     marginTop: 24,
-    color: '#9CA3AF',
+    color: Colors.textSecondary,
     fontSize: 12,
   },
 });

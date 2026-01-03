@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { Colors } from '../constants/Colors';
 
 export default function LoginScreen({ navigation }: any) {
   const { signIn } = useAuth();
@@ -149,7 +150,7 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 48,
     fontWeight: '700',
-    color: '#14b8a6',
+    color: Colors.primary,
     marginBottom: 8,
   },
   subtitle: {
@@ -189,7 +190,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   loginButton: {
-    backgroundColor: '#14b8a6',
+    backgroundColor: Colors.primary,
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -209,7 +210,7 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     fontSize: 14,
-    color: '#14b8a6',
+    color: Colors.primary,
     fontWeight: '600',
   },
   footer: {
@@ -225,7 +226,7 @@ const styles = StyleSheet.create({
   },
   signUpLink: {
     fontSize: 14,
-    color: '#14b8a6',
+    color: Colors.primary,
     fontWeight: '600',
   },
 });
