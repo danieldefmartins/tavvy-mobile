@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { Colors } from '../constants/Colors';
 
 const BUSINESS_CATEGORIES = [
   'restaurant',
@@ -388,7 +389,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   categoryChipActive: {
-    backgroundColor: '#14b8a6',
+    backgroundColor: Colors.primary,
   },
   categoryChipText: {
     fontSize: 12,
@@ -405,11 +406,11 @@ const styles = StyleSheet.create({
   },
   locationButtonText: {
     fontSize: 14,
-    color: '#14b8a6',
+    color: Colors.primary,
     fontWeight: '600',
   },
   submitButton: {
-    backgroundColor: '#14b8a6',
+    backgroundColor: Colors.primary,
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',

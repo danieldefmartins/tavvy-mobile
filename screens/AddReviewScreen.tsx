@@ -6,21 +6,21 @@ import {
   ScrollView, 
   TouchableOpacity, 
   Alert,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
+  SafeAreaView,
+  Platform,
+  Dimensions
 } from 'react-native';
 import { useState, useEffect } from 'react';
-import SignalCard from '../components/SignalCard';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+// import { LinearGradient } from 'expo-linear-gradient'; // Commented out to prevent crash
 import { submitReview, updateReview, fetchUserReview, ReviewSignalTap } from '../lib/reviews';
-import { 
-  REVIEW_TAGS, 
-  CATEGORY_COLORS, 
-  CATEGORY_LABELS, 
-  ReviewCategory 
-} from '../lib/reviewTags';
+import { REVIEW_TAGS, ReviewCategory } from '../lib/reviewTags';
+import PulseCard from '../components/PulseCard';
+import { Colors } from '../constants/Colors';
+import { Ionicons } from '@expo/vector-icons';
+
+const { width } = Dimensions.get('window');
 
 type RootStackParamList = {
   AddReview: { placeId?: string; placeName?: string };
@@ -28,21 +28,57 @@ type RootStackParamList = {
 
 type AddReviewRouteProp = RouteProp<RootStackParamList, 'AddReview'>;
 
+// Wizard Steps Configuration
+const STEPS = [
+  {
+    id: 'best_for',
+    title: 'What did you like?',
+    subtitle: 'Tap the highlights.',
+    theme: 'positive',
+    limit: 5,
+    gradient: ['#E0F2FE', '#FFFFFF'] as const, // Soft Blue to White
+    accent: '#00a7da',
+    solidColor: '#E0F2FE', // Fallback for no gradient
+  },
+  {
+    id: 'vibe',
+    title: 'How’s the vibe?',
+    subtitle: 'Set the scene.',
+    theme: 'vibe',
+    limit: 5,
+    gradient: ['#F3E8FF', '#FFFFFF'] as const, // Soft Purple to White
+    accent: '#8B5CF6',
+    solidColor: '#F3E8FF', // Fallback for no gradient
+  },
+  {
+    id: 'heads_up',
+    title: 'Any heads up?',
+    subtitle: 'Help others prepare.',
+    theme: 'negative',
+    limit: 2,
+    gradient: ['#FEE2E2', '#FFFFFF'] as const, // Soft Red to White
+    accent: '#EF4444',
+    solidColor: '#FEE2E2', // Fallback for no gradient
+  }
+] as const;
+
 export default function AddReviewScreen() {
   const route = useRoute<AddReviewRouteProp>();
   const navigation = useNavigation();
   const placeId = route.params?.placeId;
   const placeName = route.params?.placeName || 'this place';
 
+  // State
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [tapCounts, setTapCounts] = useState<{ [key: string]: number }>({});
-  const [publicNote, setPublicNote] = useState('');
-  const [privateNote, setPrivateNote] = useState('');
-  const [showNotes, setShowNotes] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [existingReviewId, setExistingReviewId] = useState<string | null>(null);
 
-  // Load existing review if user has one
+  const currentStep = STEPS[currentStepIndex];
+  const isLastStep = currentStepIndex === STEPS.length - 1;
+
+  // Load existing review
   useEffect(() => {
     loadExistingReview();
   }, [placeId]);
@@ -58,19 +94,11 @@ export default function AddReviewScreen() {
       
       if (review) {
         setExistingReviewId(review.id);
-        setPublicNote(review.public_note || '');
-        setPrivateNote(review.private_note_owner || '');
-        
-        // Convert signals to tap counts
         const counts: { [key: string]: number } = {};
         signals.forEach(signal => {
           counts[signal.signalId] = signal.intensity;
         });
         setTapCounts(counts);
-        
-        if (review.public_note || review.private_note_owner) {
-          setShowNotes(true);
-        }
       }
     } catch (error) {
       console.error('Error loading existing review:', error);
@@ -81,6 +109,21 @@ export default function AddReviewScreen() {
 
   const handleTap = (signalId: string) => {
     const currentCount = tapCounts[signalId] || 0;
+    
+    // Calculate how many items are currently selected in this category
+    const categoryTags = REVIEW_TAGS[currentStep.id as ReviewCategory].map(t => t.id);
+    const currentCategorySelectionCount = Object.keys(tapCounts).filter(
+      key => categoryTags.includes(key) && tapCounts[key] > 0
+    ).length;
+
+    // Logic:
+    // 1. If tapping a new item (currentCount === 0) AND we hit the limit -> Block it
+    if (currentCount === 0 && currentCategorySelectionCount >= currentStep.limit) {
+      Alert.alert('Limit Reached', `You can only select ${currentStep.limit} items for this section.`);
+      return;
+    }
+
+    // 2. Cycle: 0 -> 1 -> 2 -> 3 -> 0
     const newCount = currentCount < 3 ? currentCount + 1 : 0;
     
     if (newCount === 0) {
@@ -91,197 +134,162 @@ export default function AddReviewScreen() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!placeId) {
-      Alert.alert('Error', 'No place selected for review');
-      return;
+  const handleNext = () => {
+    if (isLastStep) {
+      handleSubmit();
+    } else {
+      setCurrentStepIndex(prev => prev + 1);
     }
+  };
 
+  const handleBack = () => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex(prev => prev - 1);
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!placeId) return;
+
+    const selectedCount = Object.keys(tapCounts).length;
     if (selectedCount === 0) {
-      Alert.alert('Select Signals', 'Please tap at least one signal to describe your experience');
+      Alert.alert('Empty Review', 'Please select at least one signal before submitting.');
       return;
     }
 
     setIsSubmitting(true);
 
-    // Convert tap counts to signal array
     const signals: ReviewSignalTap[] = Object.entries(tapCounts).map(([signalId, intensity]) => ({
       signalId,
       intensity,
     }));
 
     let result;
-    
     if (existingReviewId) {
-      // Update existing review
-      result = await updateReview(
-        existingReviewId,
-        placeId,
-        signals,
-        publicNote,
-        privateNote
-      );
+      result = await updateReview(existingReviewId, placeId, signals, '', '');
     } else {
-      // Submit new review
-      result = await submitReview(
-        placeId,
-        signals,
-        publicNote,
-        privateNote
-      );
+      result = await submitReview(placeId, placeName, signals, '', '');
     }
 
     setIsSubmitting(false);
 
     if (result.success) {
       Alert.alert(
-        existingReviewId ? 'Review Updated! 🎉' : 'Review Submitted! 🎉',
-        `You reviewed ${placeName} with ${selectedCount} signals!`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              navigation.goBack();
-            }
-          }
-        ]
+        'Success! 🎉',
+        `You reviewed ${placeName}!`,
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } else {
-      Alert.alert(
-        'Error',
-        'Failed to save review. Please try again.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Error', 'Failed to save review. Please try again.');
     }
-  };
-
-  const selectedCount = Object.keys(tapCounts).length;
-
-  const renderCategory = (category: ReviewCategory) => {
-    const categoryTags = REVIEW_TAGS[category];
-    const colors = CATEGORY_COLORS[category];
-    const label = CATEGORY_LABELS[category];
-    
-    return (
-      <View key={category} style={styles.categorySection}>
-        <View style={[styles.categoryLabel, { backgroundColor: colors.bg }]}>
-          <Text style={[styles.categoryLabelText, { color: colors.text }]}>{label}</Text>
-        </View>
-        
-        <View style={styles.grid}>
-          {categoryTags.map(tag => (
-            <SignalCard
-              key={tag.id}
-              label={tag.label}
-              icon={tag.icon}
-              tapCount={tapCounts[tag.id] || 0}
-              onTap={() => handleTap(tag.id)}
-              color={colors.bg}
-            />
-          ))}
-        </View>
-      </View>
-    );
   };
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B9FD9" />
-        <Text style={styles.loadingText}>Loading...</Text>
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
 
+  // Get tags for current step
+  const currentTags = REVIEW_TAGS[currentStep.id as ReviewCategory];
+
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Text style={styles.placeTitle}>Review: {placeName}</Text>
-        
+    <View style={styles.container}>
+      <StatusBar style="dark" />
+      
+      {/* Dynamic Background (Solid Color Fallback) */}
+      <View 
+        style={[
+          StyleSheet.absoluteFill, 
+          { backgroundColor: currentStep.solidColor }
+        ]} 
+      />
+
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>What Stood Out?</Text>
-          {selectedCount > 0 && (
-            <Text style={styles.selectedCount}>{selectedCount} selected</Text>
-          )}
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={28} color="#111827" />
+          </TouchableOpacity>
+          
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <View 
+                style={[
+                  styles.progressFill, 
+                  { 
+                    width: `${((currentStepIndex + 1) / STEPS.length) * 100}%`,
+                    backgroundColor: currentStep.accent 
+                  }
+                ]} 
+              />
+            </View>
+            <Text style={styles.stepIndicator}>
+              Step {currentStepIndex + 1} of {STEPS.length}
+            </Text>
+          </View>
+          
+          <View style={{ width: 40 }} /> 
         </View>
-        
-        <Text style={styles.subtitle}>
-          Tap to select • Tap again to make it stronger
-        </Text>
 
-        {renderCategory('best_for')}
-        {renderCategory('vibe')}
-        {renderCategory('heads_up')}
-
-        {/* Notes Section */}
-        <View style={styles.notesSection}>
-          {!showNotes ? (
-            <TouchableOpacity 
-              style={styles.addNoteButton}
-              onPress={() => setShowNotes(true)}
-            >
-              <Text style={styles.addNoteButtonText}>Add a note (optional)</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.notesContainer}>
-              <View style={styles.noteField}>
-                <Text style={styles.noteLabel}>Public Note (visible to everyone)</Text>
-                <TextInput
-                  style={styles.noteInput}
-                  value={publicNote}
-                  onChangeText={setPublicNote}
-                  placeholder="Share your experience..."
-                  placeholderTextColor="#9CA3AF"
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                />
-              </View>
-              
-              <View style={styles.noteField}>
-                <Text style={styles.noteLabel}>Private Note (only you can see)</Text>
-                <TextInput
-                  style={[styles.noteInput, styles.privateNoteInput]}
-                  value={privateNote}
-                  onChangeText={setPrivateNote}
-                  placeholder="Notes for yourself..."
-                  placeholderTextColor="#9CA3AF"
-                  multiline
-                  numberOfLines={2}
-                  textAlignVertical="top"
-                />
-              </View>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.titleContainer}>
+            <Text style={styles.stepTitle}>
+              {currentStep.title}
+            </Text>
+            <Text style={styles.stepSubtitle}>{currentStep.subtitle}</Text>
+          </View>
+          
+          {/* Warning Box for Negative Step */}
+          {currentStep.theme === 'negative' && (
+            <View style={styles.warningBox}>
+              <Ionicons name="alert-circle" size={24} color="#991B1B" />
+              <Text style={styles.warningText}>
+                Note: Selecting these will lower the place's Vibe Score.
+              </Text>
             </View>
           )}
-        </View>
 
-        {/* Submit Button */}
-        <TouchableOpacity 
-          style={[
-            styles.submitButton,
-            (selectedCount === 0 || isSubmitting) && styles.submitButtonDisabled
-          ]}
-          onPress={handleSubmit}
-          disabled={selectedCount === 0 || isSubmitting}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.submitButtonText}>
-              {existingReviewId ? 'Update Review →' : 'Submit Review →'}
-            </Text>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
-      <StatusBar style="dark" />
-    </KeyboardAvoidingView>
+          {/* White Card Surface */}
+          <View style={styles.cardSurface}>
+            <View style={styles.grid}>
+              {currentTags.map(tag => (
+                <PulseCard
+                  key={tag.id}
+                  label={tag.label}
+                  icon={tag.icon}
+                  intensity={tapCounts[tag.id] || 0}
+                  onTap={() => handleTap(tag.id)}
+                  theme={currentStep.theme as any}
+                  disabled={false}
+                />
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Floating Footer */}
+        <View style={styles.footer}>
+          <TouchableOpacity 
+            style={[styles.actionButton, { backgroundColor: currentStep.accent }]}
+            onPress={handleNext}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.actionButtonText}>
+                {isLastStep ? 'Submit Review' : 'Next'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -290,124 +298,133 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+  safeArea: {
+    flex: 1,
+  },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
     justifyContent: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  scrollContent: {
-    padding: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
-  },
-  placeTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 8,
-    textAlign: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+  },
+  progressContainer: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 20,
+  },
+  progressBar: {
+    height: 4,
+    width: '100%',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 2,
+    marginBottom: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  stepIndicator: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  content: {
+    paddingHorizontal: 20,
+    paddingBottom: 120,
+  },
+  titleContainer: {
+    marginTop: 20,
+    marginBottom: 24,
+  },
+  stepTitle: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: -0.5,
     marginBottom: 8,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000000',
-  },
-  selectedCount: {
+  stepSubtitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#3B9FD9',
-  },
-  subtitle: {
-    fontSize: 14,
     color: '#6B7280',
-    marginBottom: 24,
+    fontWeight: '500',
   },
-  categorySection: {
-    marginBottom: 24,
-  },
-  categoryLabel: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginBottom: 12,
-  },
-  categoryLabelText: {
-    fontSize: 14,
-    fontWeight: '600',
+  cardSurface: {
+    backgroundColor: 'white',
+    borderRadius: 24,
+    padding: 16,
+    // Soft Shadow
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 5,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  notesSection: {
-    marginTop: 8,
-    marginBottom: 16,
+  footer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
   },
-  addNoteButton: {
-    backgroundColor: '#F3F4F6',
-    paddingVertical: 14,
-    borderRadius: 12,
+  actionButton: {
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    justifyContent: 'center',
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  addNoteButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#6B7280',
+  warningBox: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF1F2', // Slightly stronger light red
+    borderColor: '#F43F5E', // Rose-500: Much stronger border color
+    borderWidth: 2, // Thicker border
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    alignItems: 'center',
+    shadowColor: "#F43F5E",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  notesContainer: {
-    gap: 16,
-  },
-  noteField: {
-    marginBottom: 12,
-  },
-  noteLabel: {
+  warningText: {
+    flex: 1,
+    marginLeft: 12,
+    color: '#991B1B', // Dark red text
     fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
+    fontWeight: '500',
+    lineHeight: 20,
   },
-  noteInput: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    color: '#111827',
-    minHeight: 80,
-  },
-  privateNoteInput: {
-    minHeight: 60,
-  },
-  submitButton: {
-    backgroundColor: '#3B9FD9',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  submitButtonDisabled: {
-    backgroundColor: '#D1D5DB',
-  },
-  submitButtonText: {
+  actionButtonText: {
+    color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
   },
 });

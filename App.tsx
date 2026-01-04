@@ -4,13 +4,18 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
+import { View } from 'react-native';
 import { AuthProvider } from './contexts/AuthContext';
 import { Colors } from './constants/Colors';
 
 // Import screens
 import HomeScreen from './screens/HomeScreen';
 import ExploreScreen from './screens/ExploreScreen';
+import UniverseDiscoveryScreen from './screens/UniverseDiscoveryScreen';
+import UniverseLandingScreen from './screens/UniverseLandingScreen';
 import AddPlaceScreen from './screens/AddPlaceScreen'; // ✅ NEW - Add places instead of reviews
+import RequestUniverseScreen from './screens/RequestUniverseScreen'; // ✅ NEW - Request Universe Wizard
+import ActionMenuScreen from './screens/ActionMenuScreen'; // ✅ NEW - Action Menu
 import SavedScreen from './screens/SavedScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import PlaceDetailsScreen from './screens/PlaceDetailsScreen'; // ✅ UPDATED - Now includes review functionality
@@ -74,6 +79,13 @@ function HomeStack() {
         component={PlacePhotosScreen}
         options={{ headerShown: false }}
       />
+      
+      {/* ✅ NEW: Request Universe Wizard */}
+      <Stack.Screen 
+        name="RequestUniverse" 
+        component={RequestUniverseScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }
@@ -101,18 +113,40 @@ function ProfileStack() {
   );
 }
 
+// Universe Stack Navigator
+function UniverseStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen 
+        name="UniverseDiscovery" 
+        component={UniverseDiscoveryScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="UniverseLanding" 
+        component={UniverseLandingScreen}
+        options={{ headerShown: false }}
+      />
+    </Stack.Navigator>
+  );
+}
+
 // Main Tab Navigator
 function TabNavigator() {
+  const [menuVisible, setMenuVisible] = React.useState(false);
+
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
+    <>
+      <ActionMenuScreen visible={menuVisible} onClose={() => setMenuVisible(false)} />
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
 
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Explore') {
-            iconName = focused ? 'search' : 'search-outline';
+            iconName = focused ? 'planet' : 'planet-outline';
           } else if (route.name === 'Add') {
             iconName = focused ? 'add-circle' : 'add-circle-outline';
           } else if (route.name === 'Saved') {
@@ -129,12 +163,18 @@ function TabNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={HomeStack} />
-      <Tab.Screen name="Explore" component={ExploreScreen} />
-      {/* ✅ CHANGED: Add button now opens AddPlaceScreen instead of AddReviewScreen */}
+      <Tab.Screen name="Explore" component={UniverseStack} />
+      {/* ✅ CHANGED: Add button now opens Action Menu */}
       <Tab.Screen 
         name="Add" 
-        component={AddPlaceScreen} 
-        options={{ title: 'Add Place' }} 
+        component={View} // Dummy component
+        listeners={() => ({
+          tabPress: (e) => {
+            e.preventDefault(); // Prevent navigation
+            setMenuVisible(true); // Open menu
+          },
+        })}
+        options={{ title: 'Create' }} 
       />
       <Tab.Screen name="Saved" component={SavedScreen} />
       {/* ✅ CHANGED: Profile now uses ProfileStack to include Login/SignUp */}

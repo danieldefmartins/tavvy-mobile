@@ -15,4 +15,21 @@ export const Colors = {
   tabBarActive: '#00a7da',
   tabBarInactive: 'gray',
   inputBorder: '#d1d5db',
+
+  // Review Semantic Themes
+  positive: {
+    primary: '#00a7da', // TavvY Blue
+    light: '#E0F2FE',   // Light Blue bg
+    text: '#0369A1',    // Dark Blue text
+  },
+  vibe: {
+    primary: '#8B5CF6', // Purple
+    light: '#F3E8FF',   // Light Purple bg
+    text: '#6D28D9',    // Dark Purple text
+  },
+  negative: {
+    primary: '#EF4444', // Red
+    light: '#FEE2E2',   // Light Red bg
+    text: '#B91C1C',    // Dark Red text
+  }
 };

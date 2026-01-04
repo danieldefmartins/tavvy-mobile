@@ -15,18 +15,20 @@ import {
   Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import QuickHelpCard from '../components/QuickHelpCard'; // ✅ NEW
 import { mapGoogleCategoryToBusinessType } from '../lib/businessTypeConfig';
 import { supabase } from '../lib/supabase';
+import { fetchPlaceSignals, getPlaceReviewCount, SignalAggregate } from '../lib/reviews';
+import { Colors } from '../constants/Colors';
 import AddYourTapCardEnhanced from '../components/AddYourTapCardEnhanced';
 import {
-  usePlaceTapStats,
+  // usePlaceTapStats,
   useUserGamification,
   useTap,
   useHasUserTapped
 } from '../hooks/useTapSystem';
-import { useToggleFavorite, useIsPlaceFavorited } from '../hooks/useFavorite';
 
-  const { width } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 // Types matching GitHub implementation
 interface EntranceData {
@@ -195,7 +197,12 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   // ===== STATE DECLARATIONS =====
   const { placeId } = route?.params || {};
   const [place, setPlace] = useState<Place | null>(null);
-  const [signals, setSignals] = useState<Signal[]>([]);
+  const [signals, setSignals] = useState<{
+    best_for: SignalAggregate[];
+    vibe: SignalAggregate[];
+    heads_up: SignalAggregate[];
+    medals: string[];
+  }>({ best_for: [], vibe: [], heads_up: [], medals: [] });
   const [photos, setPhotos] = useState<PlacePhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -211,12 +218,10 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
 
   // ===== ENHANCED TAP SYSTEM HOOKS =====
   // These hooks must be called AFTER place state is declared but they handle null/undefined gracefully
-  const { stats } = usePlaceTapStats(place?.id || '');
+   // const stats = usePlaceTapStats(place?.id);d || '');
   const { gamification } = useUserGamification();
-  const { hasTapped, userSignals } = useHasUserTapped(placeId);
+  const { hasTapped, userSignals } = useHasUserTapped(place?.id || '');
   const { quickTap } = useTap();
-  const { data: isFavorited } = useIsPlaceFavorited(placeId);
-  const { toggle: toggleFavorite } = useToggleFavorite();
 
   // Fetch place data
   useEffect(() => {
@@ -274,14 +279,20 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
             { id: '3', url: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800' },
           ]);
           
-          // Mock signals
-          setSignals([
-            { stamp_id: '1', dimension: 'Great Food', polarity: 'positive', total_votes: 89 },
-            { stamp_id: '2', dimension: 'Fast Service', polarity: 'positive', total_votes: 67 },
-            { stamp_id: '3', dimension: 'Cozy', polarity: 'neutral', total_votes: 87 },
-            { stamp_id: '4', dimension: 'Romantic', polarity: 'neutral', total_votes: 45 },
-            { stamp_id: '5', dimension: 'Pricey', polarity: 'improvement', total_votes: 12 },
-          ]);
+          // Mock signals (Updated structure)
+          setSignals({
+            best_for: [
+              { place_id: '1', signal_id: '1', tap_total: 89, current_score: 85.5, review_count: 80, last_tap_at: null, is_ghost: false, label: 'Great Food', icon: '🍽️', category: 'best_for' },
+              { place_id: '1', signal_id: '2', tap_total: 67, current_score: 60.2, review_count: 60, last_tap_at: null, is_ghost: false, label: 'Fast Service', icon: '⚡', category: 'best_for' }
+            ],
+            vibe: [
+              { place_id: '1', signal_id: '3', tap_total: 87, current_score: 82.1, review_count: 80, last_tap_at: null, is_ghost: false, label: 'Cozy', icon: '🛋️', category: 'vibe' }
+            ],
+            heads_up: [
+              { place_id: '1', signal_id: '5', tap_total: 12, current_score: 0.8, review_count: 10, last_tap_at: null, is_ghost: true, label: 'Pricey', icon: '💰', category: 'heads_up' }
+            ],
+            medals: ['vibe_check', 'speed_demon']
+          });
           
           setLoading(false);
           return;
@@ -360,16 +371,9 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           })));
         }
 
-        // Fetch signals
-        const { data: signalsData } = await supabase
-          .from('place_signals')
-          .select('*')
-          .eq('place_id', placeId)
-          .order('total_votes', { ascending: false });
-
-        if (signalsData) {
-          setSignals(signalsData);
-        }
+        // Fetch signals with Living Score Logic
+        const signalData = await fetchPlaceSignals(placeId);
+        setSignals(signalData);
 
         setLoading(false);
       } catch (err: any) {
@@ -415,13 +419,73 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
     return entrances.sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0));
   };
 
-  // Categorize signals by polarity
-  const categorizeSignals = (signals: Signal[]) => {
-    return {
-      positive: signals.filter(s => s.polarity === 'positive'),
-      neutral: signals.filter(s => s.polarity === 'neutral'),
-      negative: signals.filter(s => s.polarity === 'improvement'),
-    };
+  // Helper to render Medals
+  const renderMedal = (medalId: string) => {
+    let icon = 'trophy';
+    let label = 'Top Rated';
+    let color = '#FFD700'; // Gold
+
+    switch (medalId) {
+      case 'vibe_check':
+        icon = 'heart';
+        label = 'Vibe Check Passed';
+        color = '#EC4899'; // Pink
+        break;
+      case 'speed_demon':
+        icon = 'flash';
+        label = 'Speed Demon';
+        color = '#F59E0B'; // Amber
+        break;
+      case 'hidden_gem':
+        icon = 'diamond';
+        label = 'Hidden Gem';
+        color = '#3B82F6'; // Blue
+        break;
+      case 'comeback_king':
+        icon = 'shield-checkmark';
+        label = 'Comeback King';
+        color = '#10B981'; // Green
+        break;
+    }
+
+    return (
+      <View key={medalId} style={[styles.medalBadge, { backgroundColor: color + '20', borderColor: color }]}>
+        <Ionicons name={icon as any} size={16} color={color} />
+        <Text style={[styles.medalText, { color: color }]}>{label}</Text>
+      </View>
+    );
+  };
+
+  // Helper to render Signal Bars
+  const renderSignalBar = (item: SignalAggregate, color: string) => {
+    const widthPercent = Math.min((item.current_score / 10) * 100, 100); 
+    
+    return (
+      <View key={item.signal_id} style={[styles.signalRow, item.is_ghost && styles.ghostRow]}>
+        <Text style={styles.signalIcon}>{item.icon}</Text>
+        <View style={styles.signalContent}>
+          <View style={styles.signalHeader}>
+            <Text style={[styles.signalLabel, item.is_ghost && styles.ghostText]}>
+              {item.label}
+            </Text>
+            <Text style={[styles.signalScore, { color: item.is_ghost ? '#9CA3AF' : color }]}>
+              {item.current_score.toFixed(1)}
+            </Text>
+          </View>
+          <View style={styles.progressBarBg}>
+            <View 
+              style={[
+                styles.progressBarFill, 
+                { width: `${widthPercent}%`, backgroundColor: item.is_ghost ? '#D1D5DB' : color }
+              ]} 
+            />
+          </View>
+          {item.is_ghost && (
+            <Text style={styles.ghostNote}>Fading out... (Old report)</Text>
+          )}
+        </View>
+      </View>
+    );
   };
 
   // Toggle expanded section
@@ -491,49 +555,97 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   };
 
   const renderSignalLine = (
-    type: 'positive' | 'neutral' | 'improvement',
-    icon: string,
-    signals: Signal[],
-    bgColor: string,
-    textColor: string
+    type: 'best_for' | 'vibe' | 'heads_up',
+    categoryTitle: string,
+    signalsList: SignalAggregate[],
+    colors: { primary: string; light: string; text: string }
   ) => {
-    if (signals.length === 0) return null;
+    if (!signalsList || signalsList.length === 0) return null;
 
-    const topSignal = signals[0];
+    const topSignal = signalsList[0];
     const isExpanded = expandedSection === type;
-    const hasMore = signals.length > 1;
+    const hasMore = signalsList.length > 1;
+
+    // Use PRIMARY color for background (Solid Bar) and WHITE for text
+    const bgColor = colors.primary;
+    const textColor = '#FFFFFF';
 
     return (
-      <View style={styles.signalLineContainer}>
-        <View style={[styles.signalLine, { backgroundColor: bgColor }]}>
-          <View style={styles.signalLineContent}>
-            <Ionicons name={icon as any} size={16} color={textColor} />
-            <Text style={[styles.signalText, { color: textColor }]}>
-              {topSignal.dimension} ×{topSignal.total_votes}
-            </Text>
-          </View>
-          {hasMore && (
-            <TouchableOpacity onPress={() => toggleSection(type)}>
+      <View style={styles.section}>
+        {/* Removed Section Title to match the cleaner look, or keep it if preferred. 
+            User asked for "The Good", "The Vibe", "Heads Up" text, so we keep it but style it better. */}
+        <Text style={[styles.sectionTitle, { color: '#1F2937', marginBottom: 6, fontSize: 17, fontWeight: '700', marginLeft: 4 }]}>{categoryTitle}</Text>
+        
+        <View style={styles.signalLineContainer}>
+          <TouchableOpacity 
+            activeOpacity={0.9}
+            onPress={() => hasMore && toggleSection(type)}
+            style={[styles.signalLine, { 
+              backgroundColor: bgColor, 
+              borderRadius: 10, // Slightly tighter radius for compact look
+              paddingVertical: 12, // Reduced padding for compact look
+              paddingHorizontal: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.08,
+              shadowRadius: 3,
+              elevation: 2,
+            }]}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <Text style={{ fontSize: 16, marginRight: 8 }}>{topSignal.icon}</Text>
+              <Text style={{ color: textColor, fontSize: 15, fontWeight: '700', marginRight: 6 }}>
+                {topSignal.label}
+              </Text>
+              <Text style={{ color: textColor, fontSize: 15, fontWeight: '500', opacity: 0.9 }}>
+                 ×{topSignal.tap_total}
+              </Text>
+            </View>
+            
+            {hasMore && (
               <Ionicons 
                 name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-                size={16} 
+                size={20} 
                 color={textColor} 
               />
-            </TouchableOpacity>
+            )}
+          </TouchableOpacity>
+          
+          {isExpanded && hasMore && (
+            <View style={{ 
+              marginTop: 4, 
+              backgroundColor: bgColor, 
+              borderRadius: 12, 
+              overflow: 'hidden',
+              opacity: 0.95 
+            }}>
+              {signalsList.slice(1).map((signal, idx) => (
+                <View key={idx} style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  borderTopWidth: 1,
+                  borderTopColor: 'rgba(255,255,255,0.2)'
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 16, marginRight: 10 }}>{signal.icon}</Text>
+                    <Text style={{ color: textColor, fontSize: 15, fontWeight: '600' }}>
+                      {signal.label}
+                    </Text>
+                  </View>
+                  <Text style={{ color: textColor, fontSize: 15, fontWeight: '500', opacity: 0.9 }}>
+                     ×{signal.tap_total}
+                  </Text>
+                </View>
+              ))}
+            </View>
           )}
         </View>
-        
-        {isExpanded && hasMore && (
-          <View style={styles.expandedSignals}>
-            {signals.slice(1).map((signal, idx) => (
-              <View key={idx} style={[styles.expandedSignalItem, { backgroundColor: bgColor }]}>
-                <Text style={[styles.signalText, { color: textColor }]}>
-                  {signal.dimension} ×{signal.total_votes}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
       </View>
     );
   };
@@ -617,12 +729,16 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   }
 
   const entrances = extractEntrances(place);
-  const categorizedSignals = categorizeSignals(signals);
+  // const categorizedSignals = categorizeSignals(signals); // REMOVED: Data comes pre-categorized
   const fullAddress = [place.addressLine1, place.city, place.state, place.zipCode]
     .filter(Boolean)
     .join(', ');
   const isOpen = place.currentStatus === 'open_accessible';
-  const totalSignals = signals.reduce((sum, s) => sum + s.total_votes, 0);
+  
+  // Calculate total signals from the new structure
+  const totalSignals = (signals.best_for?.length || 0) + 
+                       (signals.vibe?.length || 0) + 
+                       (signals.heads_up?.length || 0);
   const priceDisplay = getPriceDisplay(place);
   const driveTime = getDriveTime(place.distance);
   const categoryEmoji = getCategoryEmoji(place.primaryCategory);
@@ -658,15 +774,8 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           
           {/* Top Right Buttons */}
           <View style={styles.topRightButtons}>
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => toggleFavorite(placeId)}
-            >
-              <Ionicons 
-                name={isFavorited ? "heart" : "heart-outline"} 
-                size={22} 
-                color={isFavorited ? "#EF4444" : "#000"} 
-              />
+            <TouchableOpacity style={styles.actionButton}>
+              <Ionicons name="heart-outline" size={22} color="#000" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
               <Ionicons name="share-outline" size={22} color="#000" />
@@ -765,55 +874,60 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
 
         {/* ===== TAB CONTENT ===== */}
         <View style={styles.content}>
-          {/* Signals Tab */}
+          {/* Signals Tab (UPDATED) */}
           {activeTab === 'signals' && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Community Reviews</Text>
-              
-              {signals.length > 0 ? (
-                <View style={styles.signalsContainer}>
-                  {renderSignalLine(
-                    'positive',
-                    'thumbs-up',
-                    categorizedSignals.positive,
-                    '#008fc0',
-                    '#fff'
-                  )}
-                  {renderSignalLine(
-                    'neutral',
-                    'sparkles',
-                    categorizedSignals.neutral,
-                    '#6b7280',
-                    '#fff'
-                  )}
-                  {renderSignalLine(
-                    'improvement',
-                    'warning',
-                    categorizedSignals.negative,
-                    '#f97316',
-                    '#fff'
-                  )}
+            <View style={styles.tabContent}>
+              {/* ✅ NEW: Quick Help Section */}
+              <QuickHelpCard 
+                question="Does this place have outdoor seating?" 
+                onAnswer={(ans) => console.log('User answered:', ans)} 
+              />
+
+              {/* Medals Section */}
+              {signals.medals && signals.medals.length > 0 && (
+                <View style={styles.medalsContainer}>
+                  {signals.medals.map(renderMedal)}
                 </View>
-              ) : (
-                <Text style={styles.noReviewsText}>No reviews yet. Be the first to tap!</Text>
               )}
 
-              {/* ===== ENHANCED ADD YOUR TAP CARD ===== */}
-              <AddYourTapCardEnhanced
-                placeName={place.name}
-                placeId={place.id}
-                placeCategory={place.primaryCategory || 'default'}
-                onPress={() => navigation.navigate('AddReview', { placeId: place.id })}
-                onQuickTap={(signalId, signalName) => quickTap(place.id, signalId, signalName)}
-                hasUserReviewed={hasTapped}
-                userSignalsCount={userSignals.length}
-                todayTapCount={stats.todayTapCount}
-                lastTapTime={stats.lastTapTime}
-                totalTapCount={stats.totalTapCount}
-                userStreak={gamification.currentStreak}
-                userBadges={gamification.badges}
-                userImpactCount={gamification.impactCount}
-              />
+              {/* The Good */}
+              {renderSignalLine('best_for', 'The Good', signals.best_for, Colors.positive)}
+
+              {/* The Vibe */}
+              {renderSignalLine('vibe', 'The Vibe', signals.vibe, Colors.vibe)}
+
+              {/* The Bad (Heads Up) */}
+              {renderSignalLine('heads_up', 'Heads Up', signals.heads_up, Colors.negative)}
+
+              {/* Add Your Tap Card (Moved to Bottom) */}
+              <View style={{ marginTop: 24 }}>
+                {/* ✅ NEW: Claim Button */}
+                <TouchableOpacity 
+                  style={styles.claimButton}
+                  onPress={() => alert('Claim flow coming soon!')}
+                >
+                  <Text style={styles.claimText}>Own this business? Claim it</Text>
+                </TouchableOpacity>
+                <AddYourTapCardEnhanced 
+                  placeId={place.id} 
+                  placeName={place.name}
+                  placeCategory={place.primaryCategory || 'default'}
+                  onPress={() => navigation.navigate('AddReview', { placeId: place.id })}
+                  onQuickTap={(signalId, signalName) => quickTap(place.id, signalId, signalName)}
+                  hasUserReviewed={hasTapped}
+                  userSignalsCount={userSignals.length}
+                  todayTapCount={0}
+                  lastTapTime={null}
+                  totalTapCount={0}
+                  userStreak={gamification.currentStreak}
+                  userBadges={gamification.badges}
+                  userImpactCount={gamification.impactCount}
+                />
+              </View>
+
+              {(!signals.best_for?.length && !signals.vibe?.length && !signals.heads_up?.length) && (
+                <Text style={styles.emptyText}>No signals yet. Be the first to tap!</Text>
+              )}
             </View>
           )}
 
@@ -1197,39 +1311,75 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   
-  // ===== SIGNALS =====
-  signalsContainer: {
+  // ===== SIGNALS & MEDALS =====
+  medalsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 20,
     gap: 8,
-    marginBottom: 16,
+    paddingHorizontal: 20,
   },
-  signalLineContainer: {
-    gap: 6,
-  },
-  signalLine: {
+  medalBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  medalText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 6,
+  },
+  signalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  ghostRow: {
+    opacity: 0.6,
+  },
+  signalIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  signalContent: {
+    flex: 1,
+  },
+  signalHeader: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
+    marginBottom: 4,
   },
-  signalLineContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  signalLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#374151',
   },
-  signalText: {
+  ghostText: {
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+  },
+  signalScore: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
-  expandedSignals: {
-    gap: 6,
-    paddingLeft: 8,
+  progressBarBg: {
+    height: 6,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 3,
+    overflow: 'hidden',
   },
-  expandedSignalItem: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  ghostNote: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    marginTop: 2,
+    fontStyle: 'italic',
   },
   noReviewsText: {
     fontSize: 14,
@@ -1421,5 +1571,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
+  },
+  claimButton: {
+    alignSelf: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+    padding: 8,
+  },
+  claimText: {
+    color: '#6B7280',
+    fontSize: 12,
+    textDecorationLine: 'underline',
   },
 });

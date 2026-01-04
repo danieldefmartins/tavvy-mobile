@@ -22,18 +22,59 @@ export interface PlaceReview {
 export interface SignalAggregate {
   place_id: string;
   signal_id: string;
-  tap_total: number;
+  tap_total: number; // Raw total (historical)
+  current_score: number; // Time-decayed score (Living Score)
   review_count: number;
   last_tap_at: string | null;
+  is_ghost: boolean; // True if score is low but > 0 (fading warning)
   // Joined from review_items
   label?: string;
   icon?: string;
   category?: ReviewCategory;
 }
 
+// Helper: Get or Create Place to ensure we have a valid UUID
+async function getOrCreatePlace(googlePlaceId: string, placeName: string): Promise<string | null> {
+  try {
+    // 1. Check if place exists by google_place_id
+    const { data: existingPlace, error: fetchError } = await supabase
+      .from('places')
+      .select('id')
+      .eq('google_place_id', googlePlaceId)
+      .maybeSingle();
+
+    if (existingPlace) {
+      return existingPlace.id;
+    }
+
+    // 2. If not, create it
+    console.log('Place not found, creating new place for:', googlePlaceId);
+    const { data: newPlace, error: createError } = await supabase
+      .from('places')
+      .insert({
+        google_place_id: googlePlaceId,
+        name: placeName,
+        // Add other default fields if necessary
+      })
+      .select('id')
+      .single();
+
+    if (createError) {
+      console.error('Error creating place:', createError);
+      return null;
+    }
+
+    return newPlace.id;
+  } catch (error) {
+    console.error('Error in getOrCreatePlace:', error);
+    return null;
+  }
+}
+
 // Submit a new review with signal taps
 export async function submitReview(
-  placeId: string,
+  googlePlaceId: string, // This might be a Google ID or a UUID
+  placeName: string,
   signals: ReviewSignalTap[],
   publicNote?: string,
   privateNote?: string
@@ -44,17 +85,28 @@ export async function submitReview(
     
     if (userError || !user) {
       console.log('No authenticated user, submitting as anonymous');
-      // For now, we'll allow anonymous reviews but log it
-      // In production, you might want to require authentication
     }
 
     const userId = user?.id || null;
+
+    // RESOLVE PLACE ID (Fix for 22P02)
+    // We assume the input might be a Google Place ID. We need a UUID.
+    let targetPlaceId = googlePlaceId;
+    
+    // Simple check: If it doesn't look like a UUID (length 36), treat as Google ID
+    if (googlePlaceId.length !== 36) {
+      const resolvedId = await getOrCreatePlace(googlePlaceId, placeName);
+      if (!resolvedId) {
+        return { success: false, error: 'Failed to resolve Place UUID' };
+      }
+      targetPlaceId = resolvedId;
+    }
 
     // Step 1: Create the review in place_reviews table
     const { data: review, error: reviewError } = await supabase
       .from('place_reviews')
       .insert({
-        place_id: placeId,
+        place_id: targetPlaceId,
         user_id: userId,
         public_note: publicNote || null,
         private_note_owner: privateNote || null,
@@ -73,7 +125,7 @@ export async function submitReview(
     if (signals.length > 0) {
       const signalTaps = signals.map(signal => ({
         review_id: review.id,
-        place_id: placeId,
+        place_id: targetPlaceId,
         signal_id: signal.signalId,
         intensity: signal.intensity,
       }));
@@ -84,7 +136,6 @@ export async function submitReview(
 
       if (tapsError) {
         console.error('Error saving signal taps:', tapsError);
-        // Review was created but taps failed - we should handle this
         return { success: false, error: tapsError };
       }
     }
@@ -98,33 +149,78 @@ export async function submitReview(
   }
 }
 
-// Fetch aggregated signals for a place
+// THE TAVVY ENGINE: Time Decay Calculation
+function calculateDecayedScore(intensity: number, createdAt: string): number {
+  const now = new Date();
+  const created = new Date(createdAt);
+  const diffTime = Math.abs(now.getTime() - created.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  const MAX_AGE_DAYS = 180; // 6 Months
+
+  if (diffDays >= MAX_AGE_DAYS) {
+    return 0; // The Zombie is Dead ⚰️
+  }
+
+  // Linear Decay Formula: Value = Intensity * (1 - (Age / 180))
+  const decayFactor = 1 - (diffDays / MAX_AGE_DAYS);
+  return intensity * decayFactor;
+}
+
+// Fetch aggregated signals for a place with LIVING SCORE logic
 export async function fetchPlaceSignals(placeId: string): Promise<{
   best_for: SignalAggregate[];
   vibe: SignalAggregate[];
   heads_up: SignalAggregate[];
+  medals: string[]; // List of earned medal IDs
 }> {
   try {
-    // Query the place_review_signal_taps table and aggregate
+    // Query the place_review_signal_taps table and JOIN with place_reviews to get created_at
     const { data: taps, error } = await supabase
       .from('place_review_signal_taps')
-      .select('signal_id, intensity')
+      .select(`
+        signal_id,
+        intensity,
+        place_reviews (
+          created_at
+        )
+      `)
       .eq('place_id', placeId);
 
     if (error) {
       console.error('Error fetching signal taps:', error);
-      return { best_for: [], vibe: [], heads_up: [] };
+      return { best_for: [], vibe: [], heads_up: [], medals: [] };
     }
 
     // Aggregate the taps by signal_id
-    const aggregated: Record<string, { tap_total: number; review_count: number }> = {};
+    const aggregated: Record<string, { 
+      tap_total: number; 
+      current_score: number;
+      review_count: number;
+      last_tap_at: string | null 
+    }> = {};
     
-    (taps || []).forEach(tap => {
+    (taps || []).forEach((tap: any) => {
       if (!aggregated[tap.signal_id]) {
-        aggregated[tap.signal_id] = { tap_total: 0, review_count: 0 };
+        aggregated[tap.signal_id] = { 
+          tap_total: 0, 
+          current_score: 0,
+          review_count: 0,
+          last_tap_at: null 
+        };
       }
+
+      const createdAt = tap.place_reviews?.created_at || new Date().toISOString();
+      const decayedValue = calculateDecayedScore(tap.intensity, createdAt);
+
       aggregated[tap.signal_id].tap_total += tap.intensity;
+      aggregated[tap.signal_id].current_score += decayedValue;
       aggregated[tap.signal_id].review_count += 1;
+      
+      // Track last tap time
+      if (!aggregated[tap.signal_id].last_tap_at || new Date(createdAt) > new Date(aggregated[tap.signal_id].last_tap_at!)) {
+        aggregated[tap.signal_id].last_tap_at = createdAt;
+      }
     });
 
     // Organize by category
@@ -132,42 +228,85 @@ export async function fetchPlaceSignals(placeId: string): Promise<{
       best_for: SignalAggregate[];
       vibe: SignalAggregate[];
       heads_up: SignalAggregate[];
+      medals: string[];
     } = {
       best_for: [],
       vibe: [],
       heads_up: [],
+      medals: [],
     };
+
+    let totalPositiveScore = 0;
+    let totalNegativeScore = 0;
+    let fastServiceScore = 0;
+    let slowServiceScore = 0;
 
     for (const [signalId, data] of Object.entries(aggregated)) {
       const tag = getTagById(signalId);
       const category = getCategoryFromTag(signalId);
       
       if (tag && category) {
-        const aggregate: SignalAggregate = {
-          place_id: placeId,
-          signal_id: signalId,
-          tap_total: data.tap_total,
-          review_count: data.review_count,
-          last_tap_at: null,
-          label: tag.label,
-          icon: tag.icon,
-          category: category,
-        };
-        
-        result[category].push(aggregate);
+        // Ghost Logic: If score is low (< 1.0) but not zero, mark as ghost
+        const isGhost = data.current_score > 0 && data.current_score < 1.0;
+
+        // Only include if score > 0 (Dead zombies are filtered out)
+        if (data.current_score > 0) {
+          const aggregate: SignalAggregate = {
+            place_id: placeId,
+            signal_id: signalId,
+            tap_total: data.tap_total,
+            current_score: parseFloat(data.current_score.toFixed(2)),
+            review_count: data.review_count,
+            last_tap_at: data.last_tap_at,
+            is_ghost: isGhost,
+            label: tag.label,
+            icon: tag.icon,
+            category: category,
+          };
+          
+          result[category].push(aggregate);
+
+          // Track scores for Medals
+          if (category === 'best_for' || category === 'vibe') {
+            totalPositiveScore += data.current_score;
+          } else if (category === 'heads_up') {
+            totalNegativeScore += data.current_score;
+          }
+
+          if (tag.label === 'Fast Service') fastServiceScore += data.current_score;
+          if (tag.label === 'Slow Service') slowServiceScore += data.current_score;
+        }
       }
     }
 
-    // Sort each category by tap_total descending
-    result.best_for.sort((a, b) => b.tap_total - a.tap_total);
-    result.vibe.sort((a, b) => b.tap_total - a.tap_total);
-    result.heads_up.sort((a, b) => b.tap_total - a.tap_total);
+    // Sort each category by current_score descending (Living Score)
+    result.best_for.sort((a, b) => b.current_score - a.current_score);
+    result.vibe.sort((a, b) => b.current_score - a.current_score);
+    result.heads_up.sort((a, b) => b.current_score - a.current_score);
+
+    // --- MEDAL LOGIC ---
+    const totalScore = totalPositiveScore + totalNegativeScore;
+
+    // 🏆 Vibe Check: >90% Positive
+    if (totalScore > 10 && (totalPositiveScore / totalScore) > 0.9) {
+      result.medals.push('vibe_check');
+    }
+
+    // ⚡ Speed Demon: Fast > 2x Slow
+    if (fastServiceScore > 5 && fastServiceScore > (slowServiceScore * 2)) {
+      result.medals.push('speed_demon');
+    }
+
+    // 💎 Hidden Gem: High Positive, Low Volume
+    if (totalPositiveScore > 10 && totalScore < 50 && (totalPositiveScore / totalScore) > 0.95) {
+      result.medals.push('hidden_gem');
+    }
 
     return result;
 
   } catch (error) {
     console.error('Error fetching place signals:', error);
-    return { best_for: [], vibe: [], heads_up: [] };
+    return { best_for: [], vibe: [], heads_up: [], medals: [] };
   }
 }
 
@@ -177,11 +316,14 @@ export async function fetchUserReview(placeId: string): Promise<{
   signals: ReviewSignalTap[];
 }> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
     
-    if (!user) {
+    if (authError || !authData?.user) {
+      // Not logged in or auth error - just return null, don't throw
       return { review: null, signals: [] };
     }
+
+    const user = authData.user;
 
     // Get the user's review
     const { data: review, error: reviewError } = await supabase
