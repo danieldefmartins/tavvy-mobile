@@ -17,7 +17,7 @@ export interface Place {
 export function useNearbyPlaces(
   latitude?: number,
   longitude?: number,
-  radiusMiles: number = 50,
+  radiusMiles: number = 5000,
   options?: { categories?: string[] }
 ) {
   return useQuery({
@@ -25,11 +25,10 @@ export function useNearbyPlaces(
     queryFn: async () => {
       if (!latitude || !longitude) return [];
 
+      // UPDATED: Removed strict .not() filters to allow fallback to lat/lng columns
       let query = supabase
         .from('places')
-        .select('*')
-        .not('latitude', 'is', null)
-        .not('longitude', 'is', null);
+        .select('*');
 
       // Filter by categories if provided
       if (options?.categories && options.categories.length > 0) {
@@ -41,18 +40,28 @@ export function useNearbyPlaces(
       if (error) throw error;
 
       // Calculate distance and filter by radius
-      const placesWithDistance = (data || []).map((place: any) => ({
-        ...place,
-        distance: calculateDistance(
-          latitude,
-          longitude,
-          place.latitude,
-          place.longitude
-        ),
-      }));
+      const placesWithDistance = (data || [])
+        .filter((place: any) => (place.latitude || place.lat) && (place.longitude || place.lng))
+        .map((place: any) => {
+          // Fallback to lat/lng if latitude/longitude are missing
+          const placeLat = place.latitude || place.lat;
+          const placeLng = place.longitude || place.lng;
+          
+          return {
+            ...place,
+            latitude: placeLat, // Ensure standardized keys
+            longitude: placeLng,
+            distance: calculateDistance(
+              latitude,
+              longitude,
+              placeLat,
+              placeLng
+            ),
+          };
+        });
 
+      // NUCLEAR OPTION: Return ALL places, sorted by distance
       return placesWithDistance
-        .filter((place) => place.distance <= radiusMiles)
         .sort((a, b) => a.distance - b.distance);
     },
     enabled: !!latitude && !!longitude,

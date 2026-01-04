@@ -1051,6 +1051,17 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
                   </View>
                 </View>
               )}
+
+              {/* Claim Business Button */}
+              <View style={styles.claimContainer}>
+                <TouchableOpacity 
+                  style={styles.claimButton}
+                  onPress={() => navigation.navigate('ClaimBusiness', { placeId: place.id, placeName: place.name })}
+                >
+                  <Ionicons name="business-outline" size={20} color="#6B7280" />
+                  <Text style={styles.claimText}>Claim This Business</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
@@ -1512,6 +1523,27 @@ const styles = StyleSheet.create({
     color: '#007AFF',
   },
   
+  // ===== CLAIM BUSINESS =====
+  claimContainer: {
+    marginTop: 24,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  claimButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+  claimText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+
   // ===== CONTACT =====
   contactItem: {
     flexDirection: 'row',

@@ -162,6 +162,8 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
   const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('liberty');
   const [showStylePicker, setShowStylePicker] = useState(false);
   const [showWeatherPopup, setShowWeatherPopup] = useState(false);
+  const [showSearchAreaBtn, setShowSearchAreaBtn] = useState(false);
+  const [mapRegion, setMapRegion] = useState<any>(null);
   const [weather, setWeather] = useState<Weather>({
     temp: 72,
     condition: 'Sunny',
@@ -192,11 +194,11 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
         const location = await Location.getCurrentPositionAsync({});
         setUserLocation([location.coords.longitude, location.coords.latitude]);
       } else {
-        setUserLocation([-122.4194, 37.7749]);
+        setUserLocation([-97.7431, 30.2672]); // Default to Austin, TX
       }
     } catch (error) {
       console.error('Error getting location:', error);
-      setUserLocation([-122.4194, 37.7749]);
+      setUserLocation([-97.7431, 30.2672]); // Default to Austin, TX
     }
   };
 
@@ -209,12 +211,11 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
       const { data: placesData, error: placesError } = await supabase
         .from('places')
         .select('*')
-        .not('latitude', 'is', null)
-        .not('longitude', 'is', null)
         .order('name');
 
       if (placesError) {
         console.warn('Supabase error, using mock data:', placesError);
+        alert(`Database Error: ${placesError.message}`); // ADDED ALERT
         setPlaces(MOCK_PLACES);
         setFilteredPlaces(MOCK_PLACES);
         return;
@@ -251,8 +252,14 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
         });
 
         // Attach signals to places
-        const placesWithSignals = placesData.map(place => {
-          const placeSignals = signalsByPlace[place.id] || {};
+        const placesWithSignals = placesData
+          .filter(place => (place.latitude || place.lat) && (place.longitude || place.lng))
+          .map(place => {
+            // Ensure latitude/longitude are set (fallback to lat/lng)
+            if (!place.latitude && place.lat) place.latitude = place.lat;
+            if (!place.longitude && place.lng) place.longitude = place.lng;
+
+            const placeSignals = signalsByPlace[place.id] || {};
           const signals: Signal[] = Object.entries(placeSignals)
             .map(([signalId, tapTotal]) => {
               const item = itemsMap.get(signalId);
@@ -275,8 +282,9 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
         setPlaces(MOCK_PLACES);
         setFilteredPlaces(MOCK_PLACES);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching places:', err);
+      alert(`Unexpected Error: ${err.message || JSON.stringify(err)}`); // ADDED ALERT
       setPlaces(MOCK_PLACES);
       setFilteredPlaces(MOCK_PLACES);
     } finally {
@@ -317,6 +325,20 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
       zoomLevel: 15,
       animationDuration: 1000,
     });
+  };
+
+  const handleRegionChange = async (feature: any) => {
+    setMapRegion(feature);
+    setShowSearchAreaBtn(true);
+  };
+
+  const handleSearchArea = () => {
+    setShowSearchAreaBtn(false);
+    if (mapRegion) {
+      // In a real implementation, we would pass the bounds to fetchPlaces
+      // For now, we just re-fetch everything which includes the new seeded place
+      fetchPlaces();
+    }
   };
 
   const handleMyLocation = () => {
@@ -560,16 +582,16 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
   return (
     <View style={styles.container}>
       <MapLibreGL.MapView
-        key={mapStyle}
         style={styles.map}
         styleURL={MAP_STYLES[mapStyle].url}
         logoEnabled={false}
         attributionEnabled={false}
+        onRegionDidChange={handleRegionChange}
       >
         <MapLibreGL.Camera
           ref={cameraRef}
           zoomLevel={14}
-          centerCoordinate={userLocation || [-122.4194, 37.7749]}
+          centerCoordinate={userLocation || [-97.7431, 30.2672]} // Default to Austin, TX
           animationMode="flyTo"
           animationDuration={2000}
         />
@@ -675,6 +697,13 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
 
 
       </View>
+
+      {/* Search This Area Button */}
+      {showSearchAreaBtn && (
+        <TouchableOpacity style={styles.searchAreaBtn} onPress={handleSearchArea}>
+          <Text style={styles.searchAreaText}>Search this area</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Weather Popup */}
       {showWeatherPopup && (
@@ -785,6 +814,25 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
 }
 
 const styles = StyleSheet.create({
+  searchAreaBtn: {
+    position: 'absolute',
+    top: 110,
+    alignSelf: 'center',
+    backgroundColor: 'white',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 10,
+  },
+  searchAreaText: {
+    fontWeight: '600',
+    color: '#000',
+  },
   container: {
     flex: 1,
   },

@@ -28,6 +28,7 @@ import SignUpScreen from './screens/SignUpScreen';
 import AddReviewScreen from './screens/AddReviewScreen';
 import AddPhotoScreen from './screens/AddPhotoScreen';
 import PlacePhotosScreen from './screens/PlacePhotosScreen';
+import ClaimBusinessScreen from './screens/ClaimBusinessScreen';
 
 // Create QueryClient instance
 const queryClient = new QueryClient({
@@ -86,6 +87,11 @@ function HomeStack() {
       <Stack.Screen 
         name="RateCity" 
         component={RateCityScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="ClaimBusiness" 
+        component={ClaimBusinessScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

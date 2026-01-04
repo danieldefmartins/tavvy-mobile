@@ -45,9 +45,15 @@ export default function ProfileScreen({ navigation }: any) {
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id);
 
+      // Fetch reviews count
+      const { count: reviewsCount } = await supabase
+        .from('reviews')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
       setStats({
         taps: tapsCount || 0,
-        reviews: 0, // Placeholder if you have a separate reviews table
+        reviews: reviewsCount || 0,
         savedPlaces: savedCount || 0,
       });
     } catch (error) {
@@ -134,8 +140,8 @@ export default function ProfileScreen({ navigation }: any) {
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>0</Text>
-          <Text style={styles.statLabel}>Followers</Text>
+          <Text style={styles.statValue}>{stats.reviews}</Text>
+          <Text style={styles.statLabel}>Reviews</Text>
         </View>
       </View>
 
