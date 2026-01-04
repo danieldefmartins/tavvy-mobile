@@ -13,8 +13,10 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Share,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import MapLibreGL from '@maplibre/maplibre-react-native';
 import { mapGoogleCategoryToBusinessType } from '../lib/businessTypeConfig';
 import { supabase } from '../lib/supabase';
 import { fetchPlaceSignals, getPlaceReviewCount, SignalAggregate } from '../lib/reviews';
@@ -91,6 +93,11 @@ interface Place {
   totalSites?: number; // For RV parks
   starRating?: number; // For hotels
   closingTime?: string; // Operating hours
+  opening_hours?: any; // JSON object or array for business hours
+  is_insured?: boolean;
+  is_licensed?: boolean;
+  established_date?: string;
+  socials?: Record<string, string>;
   // Entrance fields (up to 6 entrances)
   entrance_1_name?: string;
   entrance_1_latitude?: number;
@@ -207,6 +214,10 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   const [error, setError] = useState<string | null>(null);
   const [expandedSection, setExpandedSection] = useState<'positive' | 'neutral' | 'improvement' | null>(null);
   const [activeTab, setActiveTab] = useState<'signals' | 'info' | 'photos' | 'entrances'>('signals');
+  const [showHoursModal, setShowHoursModal] = useState(false);
+  const [showNavModal, setShowNavModal] = useState(false);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [navDestination, setNavDestination] = useState<{lat: number, lng: number, name: string} | null>(null);
   
   // NEW: Photo carousel state
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
@@ -303,7 +314,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
             features: ['Family Friendly', 'Reservations', 'Outdoor Seating'],
             openYearRound: true,
             coverImageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
-            currentStatus: 'open_accessible',
+            currentStatus: 'Open & Accessible',
             is24_7: false,
             addressLine1: '123 Main Street',
             city: 'Orlando',
@@ -370,7 +381,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
 
         if (placeError) throw placeError;
 
-        // Map database fields to Place interface
+          // Map database fields to Place interface
         const mappedPlace: Place = {
           id: placeData.id,
           name: placeData.name,
@@ -396,6 +407,11 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           totalSites: placeData.total_sites,
           starRating: placeData.star_rating,
           closingTime: placeData.closing_time,
+          opening_hours: placeData.opening_hours,
+          is_insured: placeData.is_insured,
+          is_licensed: placeData.is_licensed,
+          established_date: placeData.established_date,
+          socials: placeData.socials,
           // Map entrance fields
           entrance_1_name: placeData.entrance_1_name,
           entrance_1_latitude: placeData.entrance_1_latitude,
@@ -558,11 +574,27 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
 
   // Handle navigation to entrance
   const handleNavigate = (lat: number, lng: number, name: string) => {
-    const url = `maps://?daddr=${lat},${lng}&dirflg=d`;
+    setNavDestination({ lat, lng, name });
+    setShowNavModal(true);
+  };
+
+  const openMapsApp = (app: 'apple' | 'google' | 'waze') => {
+    if (!navDestination) return;
+    const { lat, lng, name } = navDestination;
+    
+    let url = '';
+    if (app === 'apple') {
+      url = `maps://?daddr=${lat},${lng}&dirflg=d&q=${encodeURIComponent(name)}`;
+    } else if (app === 'google') {
+      url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&destination_place_id=${encodeURIComponent(name)}`;
+    } else if (app === 'waze') {
+      url = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+    }
+
     Linking.openURL(url).catch(() => {
-      // Fallback to Google Maps
-      Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`);
+      alert(`Could not open ${app === 'apple' ? 'Apple Maps' : app === 'google' ? 'Google Maps' : 'Waze'}.`);
     });
+    setShowNavModal(false);
   };
 
   // Handle phone call
@@ -796,7 +828,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   const fullAddress = [place.addressLine1, place.city, place.state, place.zipCode]
     .filter(Boolean)
     .join(', ');
-  const isOpen = place.currentStatus === 'open_accessible';
+  const isOpen = place.currentStatus === 'open_accessible' || place.currentStatus === 'Open & Accessible';
   
   // Calculate total signals from the new structure
   const totalSignals = (signals.best_for?.length || 0) + 
@@ -892,7 +924,10 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
 
         {/* ===== QUICK INFO BAR ===== */}
         <View style={styles.quickInfoBar}>
-          <View style={styles.quickInfoItem}>
+          <TouchableOpacity 
+            style={styles.quickInfoItem}
+            onPress={() => setShowHoursModal(true)}
+          >
             <Text style={styles.quickInfoIcon}>🕐</Text>
             <Text style={[styles.quickInfoLabel, isOpen && styles.quickInfoLabelOpen]}>
               {isOpen ? 'Open' : 'Closed'}
@@ -900,31 +935,40 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
             <Text style={styles.quickInfoSub}>
               {place.closingTime ? `Until ${place.closingTime}` : (place.is24_7 ? '24/7' : '')}
             </Text>
-          </View>
+          </TouchableOpacity>
           
           <View style={styles.quickInfoDivider} />
           
-          <View style={styles.quickInfoItem}>
-            <Text style={styles.quickInfoIcon}>⭐</Text>
-            <Text style={styles.quickInfoValue}>{totalSignals}</Text>
-            <Text style={styles.quickInfoSub}>Signals</Text>
-          </View>
+          <TouchableOpacity 
+            style={styles.quickInfoItem}
+            onPress={() => handleCall(place.phone || '')}
+          >
+            <Text style={styles.quickInfoIcon}>📞</Text>
+            <Text style={styles.quickInfoValue}>Call</Text>
+            <Text style={styles.quickInfoSub}>Business</Text>
+          </TouchableOpacity>
           
           <View style={styles.quickInfoDivider} />
           
-          <View style={styles.quickInfoItem}>
+          <TouchableOpacity 
+            style={styles.quickInfoItem}
+            onPress={() => setActiveTab('photos')}
+          >
             <Text style={styles.quickInfoIcon}>📷</Text>
             <Text style={styles.quickInfoValue}>{photos.length}</Text>
             <Text style={styles.quickInfoSub}>Photos</Text>
-          </View>
+          </TouchableOpacity>
           
           <View style={styles.quickInfoDivider} />
           
-          <View style={styles.quickInfoItem}>
+          <TouchableOpacity 
+            style={styles.quickInfoItem}
+            onPress={() => handleNavigate(place.latitude, place.longitude, place.name)}
+          >
             <Text style={styles.quickInfoIcon}>🚗</Text>
             <Text style={styles.quickInfoValue}>{driveTime}</Text>
             <Text style={styles.quickInfoSub}>Drive</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* ===== TAB NAVIGATION ===== */}
@@ -1010,10 +1054,13 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
 	              <Text style={styles.sectionTitle}>Location & Contact</Text>
               
               {fullAddress && (
-                <View style={styles.contactItem}>
+                <TouchableOpacity 
+                  style={styles.contactItem}
+                  onPress={() => setShowAddressModal(true)}
+                >
                   <Ionicons name="location" size={20} color="#007AFF" />
-                  <Text style={styles.contactText}>{fullAddress}</Text>
-                </View>
+                  <Text style={[styles.contactText, styles.contactLink]}>{fullAddress}</Text>
+                </TouchableOpacity>
               )}
               
               {place.phone && (
@@ -1133,6 +1180,223 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           )}
         </View>
       </ScrollView>
+
+      {/* Hours Modal */}
+      <Modal
+        visible={showHoursModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowHoursModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowHoursModal(false)}
+        >
+          <View style={[styles.modalContent, { padding: 0, overflow: 'hidden' }]}>
+            {/* Header */}
+            <View style={{ 
+              backgroundColor: '#f8f9fa', 
+              padding: 20, 
+              borderBottomWidth: 1, 
+              borderBottomColor: '#eee',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Ionicons name="time-outline" size={24} color="#333" style={{ marginRight: 8 }} />
+              <Text style={{ fontSize: 20, fontWeight: '700', color: '#333' }}>Business Hours</Text>
+            </View>
+
+            {/* Content */}
+            <View style={{ padding: 24 }}>
+              {place?.opening_hours ? (
+                Array.isArray(place.opening_hours) ? (
+                  place.opening_hours.map((item: any, index: number) => (
+                    <View key={index} style={styles.hoursBlock}>
+                      <Text style={styles.dayText}>{item.days || item.day}</Text>
+                      <Text style={styles.timeText}>{item.hours || item.time}</Text>
+                    </View>
+                  ))
+                ) : (
+                  // Fallback for object format or other structures
+                  Object.entries(place.opening_hours).map(([day, hours]: [string, any], index) => (
+                    <View key={index} style={styles.hoursBlock}>
+                      <Text style={[styles.dayText, { textTransform: 'capitalize' }]}>{day.replace(/_/g, ' ')}</Text>
+                      <Text style={styles.timeText}>{String(hours)}</Text>
+                    </View>
+                  ))
+                )
+              ) : (
+                <View style={styles.hoursBlock}>
+                  <Text style={styles.dayText}>Hours not available</Text>
+                  <Text style={styles.timeText}>Check with business</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Footer */}
+            <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: '#eee' }}>
+              <TouchableOpacity 
+                style={{
+                  backgroundColor: '#007AFF',
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                }}
+                onPress={() => setShowHoursModal(false)}
+              >
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Navigation App Selection Modal */}
+      <Modal
+        visible={showNavModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowNavModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowNavModal(false)}
+        >
+          <View style={[styles.modalContent, { paddingBottom: 30 }]}>
+            <Text style={styles.modalTitle}>Navigate with...</Text>
+            
+            <TouchableOpacity 
+              style={styles.navOptionButton}
+              onPress={() => openMapsApp('apple')}
+            >
+              <Ionicons name="map" size={24} color="#007AFF" />
+              <Text style={styles.navOptionText}>Apple Maps</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.navOptionButton}
+              onPress={() => openMapsApp('google')}
+            >
+              <Ionicons name="logo-google" size={24} color="#DB4437" />
+              <Text style={styles.navOptionText}>Google Maps</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.navOptionButton}
+              onPress={() => openMapsApp('waze')}
+            >
+              <Ionicons name="car" size={24} color="#33CCFF" />
+              <Text style={styles.navOptionText}>Waze</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.closeButton, { marginTop: 16 }]}
+              onPress={() => setShowNavModal(false)}
+            >
+              <Text style={styles.closeButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Address Map Popup Modal */}
+      <Modal
+        visible={showAddressModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowAddressModal(false)}
+      >
+        <View style={styles.fullScreenModalOverlay}>
+          <View style={styles.fullScreenModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Location</Text>
+              <TouchableOpacity onPress={() => setShowAddressModal(false)}>
+                <Ionicons name="close" size={28} color="#000" />
+              </TouchableOpacity>
+            </View>
+            
+            {place && (
+              <View style={styles.popupMapContainer}>
+                <MapLibreGL.MapView
+                  style={styles.popupMap}
+                  styleURL="https://tiles.openfreemap.org/styles/liberty"
+                  logoEnabled={false}
+                  attributionEnabled={false}
+                >
+                  <MapLibreGL.Camera
+                    zoomLevel={15}
+                    centerCoordinate={[place.longitude, place.latitude]}
+                    animationMode="none"
+                  />
+                  <MapLibreGL.PointAnnotation
+                    id="popup-marker"
+                    coordinate={[place.longitude, place.latitude]}
+                  >
+                    <View style={styles.markerContainer}>
+                      <View style={[styles.marker, { backgroundColor: Colors.primary }]}>
+                        <Ionicons name="location" size={24} color="#fff" />
+                      </View>
+                    </View>
+                  </MapLibreGL.PointAnnotation>
+                </MapLibreGL.MapView>
+              </View>
+            )}
+
+            <View style={styles.addressPopupContent}>
+              <Text style={styles.addressPopupText}>{fullAddress}</Text>
+              
+              <Text style={styles.navigateLabel}>Navigate with:</Text>
+              
+              <View style={styles.navButtonsRow}>
+                <TouchableOpacity 
+                  style={styles.navCircleButton}
+                  onPress={() => {
+                    setNavDestination({ lat: place?.latitude || 0, lng: place?.longitude || 0, name: place?.name || '' });
+                    openMapsApp('apple');
+                    setShowAddressModal(false);
+                  }}
+                >
+                  <View style={[styles.navCircleIcon, { backgroundColor: '#007AFF' }]}>
+                    <Ionicons name="map" size={24} color="#fff" />
+                  </View>
+                  <Text style={styles.navCircleText}>Apple Maps</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.navCircleButton}
+                  onPress={() => {
+                    setNavDestination({ lat: place?.latitude || 0, lng: place?.longitude || 0, name: place?.name || '' });
+                    openMapsApp('google');
+                    setShowAddressModal(false);
+                  }}
+                >
+                  <View style={[styles.navCircleIcon, { backgroundColor: '#DB4437' }]}>
+                    <Ionicons name="logo-google" size={24} color="#fff" />
+                  </View>
+                  <Text style={styles.navCircleText}>Google Maps</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.navCircleButton}
+                  onPress={() => {
+                    setNavDestination({ lat: place?.latitude || 0, lng: place?.longitude || 0, name: place?.name || '' });
+                    openMapsApp('waze');
+                    setShowAddressModal(false);
+                  }}
+                >
+                  <View style={[styles.navCircleIcon, { backgroundColor: '#33CCFF' }]}>
+                    <Ionicons name="car" size={24} color="#fff" />
+                  </View>
+                  <Text style={styles.navCircleText}>Waze</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1712,5 +1976,135 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  hoursBlock: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  dayText: {
+    fontSize: 18,
+    color: '#333',
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  timeText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  closeButton: {
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    backgroundColor: '#007AFF',
+    borderRadius: 24,
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  navOptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    width: '100%',
+  },
+  navOptionText: {
+    fontSize: 18,
+    color: '#333',
+    marginLeft: 16,
+    fontWeight: '500',
+  },
+  fullScreenModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  fullScreenModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '80%',
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  popupMapContainer: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  popupMap: {
+    flex: 1,
+  },
+  addressPopupContent: {
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  addressPopupText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  navigateLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  navButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+  },
+  navCircleButton: {
+    alignItems: 'center',
+  },
+  navCircleIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  navCircleText: {
+    fontSize: 12,
+    color: '#333',
+    fontWeight: '500',
   },
 });

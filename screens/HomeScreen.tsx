@@ -20,23 +20,33 @@ import { supabase } from '../lib/supabase';
 
 const { width, height } = Dimensions.get('window');
 
-// OpenFreeMap styles - optimized for Tavvy
+// Map Styles Configuration
 const MAP_STYLES = {
-  liberty: {
+  osm: {
     name: 'Standard',
-    url: 'https://tiles.openfreemap.org/styles/liberty',
+    type: 'raster',
+    tileUrl: 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
     icon: 'map',
   },
-  bright: {
-    name: 'Bright',
-    url: 'https://tiles.openfreemap.org/styles/bright',
-    icon: 'sunny',
+  satellite: {
+    name: 'Satellite',
+    type: 'raster',
+    tileUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    icon: 'image',
   },
-  positron: {
-    name: 'Minimal',
-    url: 'https://tiles.openfreemap.org/styles/positron',
-    icon: 'contrast',
+  liberty: {
+    name: 'Vector',
+    type: 'vector',
+    url: 'https://tiles.openfreemap.org/styles/liberty',
+    icon: 'layers',
   },
+};
+
+// Empty style for when we use RasterSource manually
+const EMPTY_STYLE = {
+  version: 8,
+  sources: {},
+  layers: []
 };
 
 // Mock data for testing
@@ -61,7 +71,7 @@ const MOCK_PLACES = [
       { bucket: 'Pricey', tap_total: 12 },
     ],
     photos: [
-      'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+      'https://files.manuscdn.com/user_upload_by_module/session_file/310419663028619995/IRXMawMDZaKxKEjn.jpg',
       'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800',
       'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800',
     ],
@@ -86,7 +96,7 @@ const MOCK_PLACES = [
       { bucket: 'Pricey', tap_total: 45 },
     ],
     photos: [
-      'https://images.unsplash.com/photo-1511920170033-f8396924c348?w=800',
+      'https://files.manuscdn.com/user_upload_by_module/session_file/310419663028619995/PoMlhyPSeUqgARcp.jpg',
       'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800',
       'https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=800',
     ],
@@ -111,7 +121,7 @@ const MOCK_PLACES = [
       { bucket: 'Loud', tap_total: 34 },
     ],
     photos: [
-      'https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=800',
+      'https://files.manuscdn.com/user_upload_by_module/session_file/310419663028619995/iNNTqGkcrbgTHDWE.jpg',
       'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=800',
       'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=800',
     ],
@@ -148,6 +158,11 @@ interface Weather {
   temp: number;
   condition: string;
   icon: string;
+  feelsLike: number;
+  high: number;
+  low: number;
+  uvIndex: number;
+  visibility: string;
 }
 
 export default function HomeScreen({ navigation }: { navigation: any } ) {
@@ -159,7 +174,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
-  const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('liberty');
+  const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('osm');
   const [showStylePicker, setShowStylePicker] = useState(false);
   const [showWeatherPopup, setShowWeatherPopup] = useState(false);
   const [showSearchAreaBtn, setShowSearchAreaBtn] = useState(false);
@@ -168,6 +183,11 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
     temp: 72,
     condition: 'Sunny',
     icon: 'sunny',
+    feelsLike: 75,
+    high: 78,
+    low: 65,
+    uvIndex: 6,
+    visibility: '10 mi',
   });
   
   const cameraRef = useRef<MapLibreGL.Camera>(null);
@@ -191,8 +211,19 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
-        const location = await Location.getCurrentPositionAsync({});
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
         setUserLocation([location.coords.longitude, location.coords.latitude]);
+        
+        // Center map on user location initially
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [location.coords.longitude, location.coords.latitude],
+            zoomLevel: 14,
+            animationDuration: 2000,
+          });
+        }
       } else {
         setUserLocation([-97.7431, 30.2672]); // Default to Austin, TX
       }
@@ -200,6 +231,21 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
       console.error('Error getting location:', error);
       setUserLocation([-97.7431, 30.2672]); // Default to Austin, TX
     }
+  };
+
+  // Helper to calculate distance in miles
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 3958.8; // Radius of Earth in miles
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   };
 
   // UPDATED: fetchPlaces now uses place_review_signal_taps table
@@ -239,6 +285,24 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
           (reviewItems || []).map(item => [item.id, { label: item.label, type: item.signal_type }])
         );
 
+        // Fetch photos for these places
+        const { data: photosData } = await supabase
+          .from('place_photos')
+          .select('place_id, url')
+          .in('place_id', placeIds)
+          .order('is_cover', { ascending: false });
+
+        const photosByPlace: Record<string, string[]> = {};
+        (photosData || []).forEach(photo => {
+          if (!photosByPlace[photo.place_id]) {
+            photosByPlace[photo.place_id] = [];
+          }
+          // Limit to 3 photos per place for the list view
+          if (photosByPlace[photo.place_id].length < 3) {
+            photosByPlace[photo.place_id].push(photo.url);
+          }
+        });
+
         // Aggregate signals per place
         const signalsByPlace: Record<string, Record<string, number>> = {};
         (signalTaps || []).forEach(tap => {
@@ -260,21 +324,34 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
             if (!place.longitude && place.lng) place.longitude = place.lng;
 
             const placeSignals = signalsByPlace[place.id] || {};
-          const signals: Signal[] = Object.entries(placeSignals)
-            .map(([signalId, tapTotal]) => {
-              const item = itemsMap.get(signalId);
-              return {
-                bucket: item?.label || 'Unknown',
-                tap_total: tapTotal,
-              };
-            })
-            .sort((a, b) => b.tap_total - a.tap_total);
+            const signals: Signal[] = Object.entries(placeSignals)
+              .map(([signalId, tapTotal]) => {
+                const item = itemsMap.get(signalId);
+                return {
+                  bucket: item?.label || 'Unknown',
+                  tap_total: tapTotal,
+                };
+              })
+              .sort((a, b) => b.tap_total - a.tap_total);
 
-          return {
-            ...place,
-            signals,
-          };
-        });
+            // Calculate distance if user location is available
+            let distance = 0;
+            if (userLocation && place.latitude && place.longitude) {
+              distance = calculateDistance(
+                userLocation[1],
+                userLocation[0],
+                place.latitude,
+                place.longitude
+              );
+            }
+
+            return {
+              ...place,
+              signals,
+              photos: photosByPlace[place.id] || [],
+              distance: parseFloat(distance.toFixed(1)),
+            };
+          });
 
         setPlaces(placesWithSignals);
         setFilteredPlaces(placesWithSignals);
@@ -307,9 +384,9 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (place) =>
-          place.name.toLowerCase().includes(query) ||
-          place.city?.toLowerCase().includes(query) ||
-          place.category?.toLowerCase().includes(query)
+          (place.name && place.name.toLowerCase().includes(query)) ||
+          (place.city && place.city.toLowerCase().includes(query)) ||
+          (place.category && place.category.toLowerCase().includes(query))
       );
     }
 
@@ -377,7 +454,9 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
     }
   };
 
-  const getMarkerColor = (category: string) => {
+  const getMarkerColor = (category?: string) => {
+    if (!category) return '#007AFF'; // Default blue for missing category
+    
     const colors: Record<string, string> = {
       restaurants: '#FF6B6B',
       cafes: '#4ECDC4',
@@ -515,7 +594,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
             <Text style={styles.metaText}>{place.category}</Text>
             <Text style={styles.metaDot}> • </Text>
             <Text style={styles.metaText}>$$</Text>
-            {place.distance && (
+            {!!place.distance && (
               <>
                 <Text style={styles.metaDot}> • </Text>
                 <Text style={styles.metaText}>
@@ -527,7 +606,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
               <>
                 <Text style={styles.metaDot}> • </Text>
                 <Text style={[styles.metaText, styles.statusOpen]}>
-                  {place.current_status}
+                  {place.current_status === 'open_accessible' ? 'Open & Accessible' : place.current_status === 'unknown' ? 'No Vibe Yet' : place.current_status}
                 </Text>
               </>
             )}
@@ -582,8 +661,10 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
   return (
     <View style={styles.container}>
       <MapLibreGL.MapView
+        key={mapStyle}
         style={styles.map}
-        styleURL={MAP_STYLES[mapStyle].url}
+        styleURL={MAP_STYLES[mapStyle].type === 'vector' ? MAP_STYLES[mapStyle].url : undefined}
+        styleJSON={MAP_STYLES[mapStyle].type === 'raster' ? JSON.stringify(EMPTY_STYLE) : undefined}
         logoEnabled={false}
         attributionEnabled={false}
         onRegionDidChange={handleRegionChange}
@@ -595,6 +676,21 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
           animationMode="flyTo"
           animationDuration={2000}
         />
+
+        {/* Render Raster Source for OSM/Satellite */}
+        {MAP_STYLES[mapStyle].type === 'raster' && (
+          <MapLibreGL.RasterSource
+            id="raster-source"
+            tileUrlTemplates={[MAP_STYLES[mapStyle].tileUrl!]}
+            tileSize={256}
+          >
+            <MapLibreGL.RasterLayer
+              id="raster-layer"
+              sourceID="raster-source"
+              style={{ rasterOpacity: 1 }}
+            />
+          </MapLibreGL.RasterSource>
+        )}
 
         {userLocation && (
           <MapLibreGL.PointAnnotation
@@ -623,11 +719,11 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
               >
                 <Ionicons
                   name={
-                    place.category.toLowerCase() === 'restaurants'
+                    place.category?.toLowerCase() === 'restaurants'
                       ? 'restaurant'
-                      : place.category.toLowerCase() === 'cafes'
+                      : place.category?.toLowerCase() === 'cafes'
                       ? 'cafe'
-                      : place.category.toLowerCase() === 'bars'
+                      : place.category?.toLowerCase() === 'bars'
                       ? 'beer'
                       : 'location'
                   }
@@ -694,8 +790,6 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
             </TouchableOpacity>
           ))}
         </ScrollView>
-
-
       </View>
 
       {/* Search This Area Button */}
@@ -709,26 +803,67 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
       {showWeatherPopup && (
         <View style={styles.weatherPopup}>
           <View style={styles.weatherHeader}>
-            <Text style={styles.weatherTitle}>Current Weather</Text>
+            <Text style={styles.weatherTitle}>Weather in the area</Text>
             <TouchableOpacity onPress={() => setShowWeatherPopup(false)}>
-              <Ionicons name="close-circle" size={24} color="#666" />
+              <Ionicons name="close" size={24} color="#666" />
             </TouchableOpacity>
           </View>
-          <View style={styles.weatherContent}>
-            <Ionicons name={weather.icon as any} size={48} color="#FF9500" />
-            <Text style={styles.weatherBigTemp}>{weather.temp}°</Text>
-            <Text style={styles.weatherCondition}>{weather.condition}</Text>
-          </View>
-          <View style={styles.weatherDetails}>
-            <View style={styles.weatherDetailItem}>
-              <Text style={styles.weatherDetailLabel}>Humidity</Text>
-              <Text style={styles.weatherDetailValue}>45%</Text>
+
+          <View style={styles.weatherMainContainer}>
+            <View style={styles.weatherCurrentRow}>
+              <Text style={styles.weatherBigTemp}>{weather.temp}°</Text>
+              <Ionicons name={weather.icon as any} size={48} color="#FF9500" />
             </View>
-            <View style={styles.weatherDetailItem}>
-              <Text style={styles.weatherDetailLabel}>Wind</Text>
-              <Text style={styles.weatherDetailValue}>8 mph</Text>
+            <Text style={styles.weatherSubtitle}>
+              {weather.condition} • Feels like: {weather.feelsLike}°
+            </Text>
+            <Text style={styles.weatherRange}>H: {weather.high}° L: {weather.low}°</Text>
+          </View>
+
+          {/* Hourly Forecast Row */}
+          <View style={styles.hourlyForecastContainer}>
+            <View style={styles.hourlyItem}>
+              <Text style={styles.hourlyTemp}>{weather.temp}°</Text>
+              <Ionicons name="sunny" size={20} color="#FF9500" style={styles.hourlyIcon} />
+              <Text style={styles.hourlyTime}>Now</Text>
+            </View>
+            <View style={styles.hourlyItem}>
+              <Text style={styles.hourlyTemp}>{weather.temp - 1}°</Text>
+              <Ionicons name="sunny" size={20} color="#FF9500" style={styles.hourlyIcon} />
+              <Text style={styles.hourlyTime}>2 PM</Text>
+            </View>
+            <View style={styles.hourlyItem}>
+              <Text style={styles.hourlyTemp}>{weather.temp}°</Text>
+              <Ionicons name="sunny" size={20} color="#FF9500" style={styles.hourlyIcon} />
+              <Text style={styles.hourlyTime}>3 PM</Text>
+            </View>
+            <View style={styles.hourlyItem}>
+              <Text style={styles.hourlyTemp}>{weather.temp - 1}°</Text>
+              <Ionicons name="sunny" size={20} color="#FF9500" style={styles.hourlyIcon} />
+              <Text style={styles.hourlyTime}>4 PM</Text>
             </View>
           </View>
+
+          {/* Air Quality Row */}
+          <View style={styles.airQualityContainer}>
+            <View style={styles.airQualityHeader}>
+              <Text style={styles.airQualityLabel}>Air quality</Text>
+              <Ionicons name="chevron-forward" size={16} color="#666" />
+            </View>
+            <View style={styles.airQualityValueRow}>
+              <View style={styles.airQualityDot} />
+              <Text style={styles.airQualityValue}>Good • 50 AQI</Text>
+            </View>
+          </View>
+
+          <Text style={styles.weatherFooterLink}>About air quality, Google Weather</Text>
+
+          <TouchableOpacity 
+            style={styles.weatherCloseButton}
+            onPress={() => setShowWeatherPopup(false)}
+          >
+            <Text style={styles.weatherCloseButtonText}>Close</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -816,7 +951,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
 const styles = StyleSheet.create({
   searchAreaBtn: {
     position: 'absolute',
-    top: 110,
+    top: 170, // Moved further down to completely clear filters
     alignSelf: 'center',
     backgroundColor: 'white',
     paddingHorizontal: 16,
@@ -863,20 +998,25 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   userLocationMarker: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0, 122, 255, 0.2)',
+    width: 36, // Larger touch target/halo
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 122, 255, 0.25)', // Slightly stronger halo
     justifyContent: 'center',
     alignItems: 'center',
   },
   userLocationDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#007AFF',
-    borderWidth: 2,
+    width: 22, // Much larger dot (Google style)
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#4285F4', // Google Blue
+    borderWidth: 3, // Thicker white border
     borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 4,
   },
   searchOverlay: {
     zIndex: 10,
@@ -938,62 +1078,127 @@ const styles = StyleSheet.create({
   },
   weatherPopup: {
     position: 'absolute',
-    bottom: 240,
-    right: 16,
-    width: 200,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 16,
-    padding: 16,
+    top: 180,
+    alignSelf: 'center',
+    width: width - 80, // More compact width
+    backgroundColor: '#fff',
+    borderRadius: 28, // Slightly rounder
+    padding: 16, // Reduced padding
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+    zIndex: 100,
   },
   weatherHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  weatherTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  weatherContent: {
-    alignItems: 'center',
     marginBottom: 16,
   },
+  weatherTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#202124',
+  },
+  weatherMainContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  weatherCurrentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
   weatherBigTemp: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#000',
-    marginVertical: 4,
+    fontSize: 56, // Slightly smaller
+    fontWeight: '500', // Slightly bolder
+    color: '#202124',
+    letterSpacing: -1,
   },
-  weatherCondition: {
+  weatherSubtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#5F6368',
+    marginTop: 4,
   },
-  weatherDetails: {
+  weatherRange: {
+    fontSize: 16,
+    color: '#5F6368',
+    marginTop: 4,
+  },
+  hourlyForecastContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
-    paddingTop: 12,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
   },
-  weatherDetailItem: {
+  hourlyItem: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  hourlyTemp: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#202124',
+  },
+  hourlyIcon: {
+    marginVertical: 4,
+  },
+  hourlyTime: {
+    fontSize: 14,
+    color: '#5F6368',
+  },
+  airQualityContainer: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  airQualityHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  airQualityLabel: {
+    fontSize: 14,
+    color: '#5F6368',
+  },
+  airQualityValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  airQualityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#1E8E3E', // Green for Good
+  },
+  airQualityValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#202124',
+  },
+  weatherFooterLink: {
+    fontSize: 14,
+    color: '#00796B', // Teal link color
+    marginBottom: 20,
+  },
+  weatherCloseButton: {
+    backgroundColor: '#E8F0FE', // Light blue button
+    borderRadius: 24,
+    paddingVertical: 12,
     alignItems: 'center',
   },
-  weatherDetailLabel: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 2,
-  },
-  weatherDetailValue: {
-    fontSize: 14,
+  weatherCloseButtonText: {
+    fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#006064', // Darker teal text
   },
   bottomRightControls: {
     position: 'absolute',
