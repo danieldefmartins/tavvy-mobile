@@ -18,13 +18,10 @@ export default function ActionMenuScreen({ visible, onClose }: { visible: boolea
         navigation.navigate('AddPlace' as never); // Existing screen
         break;
       case 'city':
-        // Placeholder for now
-        alert('City creation coming soon!');
+        navigation.navigate('RateCity' as never);
         break;
       case 'review':
-        // Navigate to a place picker or the review flow
-        // For now, let's assume we go to Explore to find a place to review
-        navigation.navigate('Explore' as never); 
+        navigation.navigate('AddReview' as never);
         break;
     }
   };

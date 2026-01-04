@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../constants/Colors';
-import * as ImagePicker from 'expo-image-picker';
+// import * as ImagePicker from 'expo-image-picker'; // Disabled for now
 
 // Wizard Steps
 const STEPS = [
@@ -44,6 +44,9 @@ export default function RequestUniverseScreen() {
   };
 
   const pickImage = async () => {
+    Alert.alert("Coming Soon", "Photo upload will be available in the next update!");
+    /* 
+    // Disabled until native build is fixed
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
@@ -54,6 +57,7 @@ export default function RequestUniverseScreen() {
       const newPhotos = result.assets.map(asset => asset.uri);
       setData(prev => ({ ...prev, photos: [...prev.photos, ...newPhotos] }));
     }
+    */
   };
 
   const handleSubmit = () => {
@@ -87,7 +91,7 @@ export default function RequestUniverseScreen() {
           <View>
             <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
               <Ionicons name="images-outline" size={32} color={Colors.primary} />
-              <Text style={styles.uploadText}>Pick Photos</Text>
+              <Text style={styles.uploadText}>Pick Photos (Coming Soon)</Text>
             </TouchableOpacity>
             <View style={styles.photoGrid}>
               {data.photos.map((uri, index) => (

@@ -13,19 +13,19 @@ import HomeScreen from './screens/HomeScreen';
 import ExploreScreen from './screens/ExploreScreen';
 import UniverseDiscoveryScreen from './screens/UniverseDiscoveryScreen';
 import UniverseLandingScreen from './screens/UniverseLandingScreen';
-import AddPlaceScreen from './screens/AddPlaceScreen'; // ✅ NEW - Add places instead of reviews
-import RequestUniverseScreen from './screens/RequestUniverseScreen'; // ✅ NEW - Request Universe Wizard
-import ActionMenuScreen from './screens/ActionMenuScreen'; // ✅ NEW - Action Menu
+import AddPlaceScreen from './screens/AddPlaceScreen';
+import RequestUniverseScreen from './screens/RequestUniverseScreen';
+import CityDetailsScreen from './screens/CityDetailsScreen'; // ✅ Preserved
+import RateCityScreen from './screens/RateCityScreen'; // ✅ Preserved
+import UniversalAddScreen from './screens/UniversalAddScreen';
 import SavedScreen from './screens/SavedScreen';
 import ProfileScreen from './screens/ProfileScreen';
-import PlaceDetailsScreen from './screens/PlaceDetailsScreen'; // ✅ UPDATED - Now includes review functionality
-import LoginScreen from './screens/LoginScreen'; // ✅ NEW - User login
-import SignUpScreen from './screens/SignUpScreen'; // ✅ NEW - User registration
+import PlaceDetailsScreen from './screens/PlaceDetailsScreen';
+import LoginScreen from './screens/LoginScreen';
+import SignUpScreen from './screens/SignUpScreen';
 
-// ✅ ADDED (needed for AddReview stack screen)
+// Additional screens
 import AddReviewScreen from './screens/AddReviewScreen';
-
-// ✅ NEW: Import photo-related screens
 import AddPhotoScreen from './screens/AddPhotoScreen';
 import PlacePhotosScreen from './screens/PlacePhotosScreen';
 
@@ -44,7 +44,7 @@ const queryClient = new QueryClient({
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-// Home Stack Navigator (includes PlaceDetails + AddReview + Photo screens)
+// Home Stack Navigator
 function HomeStack() {
   return (
     <Stack.Navigator>
@@ -56,41 +56,43 @@ function HomeStack() {
       <Stack.Screen 
         name="PlaceDetails" 
         component={PlaceDetailsScreen}
-        options={{ headerShown: false }} // ✅ CHANGED - Screen has its own header
+        options={{ headerShown: false }}
       />
-
-      {/* ✅ ADDED: AddReview screen (combined) */}
       <Stack.Screen 
         name="AddReview" 
         component={AddReviewScreen}
         options={{ headerShown: false }}
       />
-
-      {/* ✅ NEW: AddPhoto screen - for users to upload photos to a place */}
       <Stack.Screen 
         name="AddPhoto" 
         component={AddPhotoScreen}
         options={{ headerShown: false }}
       />
-
-      {/* ✅ NEW: PlacePhotos screen - full gallery view of all photos for a place */}
       <Stack.Screen 
         name="PlacePhotos" 
         component={PlacePhotosScreen}
         options={{ headerShown: false }}
       />
-      
-      {/* ✅ NEW: Request Universe Wizard */}
       <Stack.Screen 
         name="RequestUniverse" 
         component={RequestUniverseScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="CityDetails" 
+        component={CityDetailsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="RateCity" 
+        component={RateCityScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
 }
 
-// Profile Stack Navigator (includes Login/SignUp)
+// Profile Stack Navigator
 function ProfileStack() {
   return (
     <Stack.Navigator>
@@ -137,49 +139,45 @@ function TabNavigator() {
 
   return (
     <>
-      <ActionMenuScreen visible={menuVisible} onClose={() => setMenuVisible(false)} />
+      {/* ActionMenuScreen removed in favor of UniversalAddScreen */}
       <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap = 'home';
+            let iconName: keyof typeof Ionicons.glyphMap = 'home';
 
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Explore') {
-            iconName = focused ? 'planet' : 'planet-outline';
-          } else if (route.name === 'Add') {
-            iconName = focused ? 'add-circle' : 'add-circle-outline';
-          } else if (route.name === 'Saved') {
-            iconName = focused ? 'bookmark' : 'bookmark-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
-          }
+            if (route.name === 'Home') {
+              iconName = focused ? 'home' : 'home-outline';
+            } else if (route.name === 'Explore') {
+              iconName = focused ? 'planet' : 'planet-outline';
+            } else if (route.name === 'Add') {
+              iconName = focused ? 'add-circle' : 'add-circle-outline';
+            } else if (route.name === 'Saved') {
+              iconName = focused ? 'bookmark' : 'bookmark-outline';
+            } else if (route.name === 'Profile') {
+              iconName = focused ? 'person' : 'person-outline';
+            }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: Colors.tabBarActive,
-        tabBarInactiveTintColor: Colors.tabBarInactive,
-        headerShown: false,
-      })}
-    >
-      <Tab.Screen name="Home" component={HomeStack} />
-      <Tab.Screen name="Explore" component={UniverseStack} />
-      {/* ✅ CHANGED: Add button now opens Action Menu */}
-      <Tab.Screen 
-        name="Add" 
-        component={View} // Dummy component
-        listeners={() => ({
-          tabPress: (e) => {
-            e.preventDefault(); // Prevent navigation
-            setMenuVisible(true); // Open menu
+            return <Ionicons name={iconName} size={size} color={color} />;
           },
+          tabBarActiveTintColor: Colors.tabBarActive,
+          tabBarInactiveTintColor: Colors.tabBarInactive,
+          headerShown: false,
         })}
-        options={{ title: 'Create' }} 
-      />
-      <Tab.Screen name="Saved" component={SavedScreen} />
-      {/* ✅ CHANGED: Profile now uses ProfileStack to include Login/SignUp */}
-      <Tab.Screen name="Profile" component={ProfileStack} />
-    </Tab.Navigator>
+      >
+        <Tab.Screen name="Home" component={HomeStack} />
+        <Tab.Screen name="Explore" component={UniverseStack} />
+        <Tab.Screen 
+          name="Add" 
+          component={UniversalAddScreen}
+          options={{ 
+            title: 'Create',
+            tabBarStyle: { display: 'none' } // Hide tab bar when in the Add flow
+          }} 
+        />
+        <Tab.Screen name="Saved" component={SavedScreen} />
+        <Tab.Screen name="Profile" component={ProfileStack} />
+      </Tab.Navigator>
+    </>
   );
 }
 

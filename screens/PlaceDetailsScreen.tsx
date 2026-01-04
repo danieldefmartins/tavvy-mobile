@@ -15,7 +15,6 @@ import {
   Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import QuickHelpCard from '../components/QuickHelpCard'; // ✅ NEW
 import { mapGoogleCategoryToBusinessType } from '../lib/businessTypeConfig';
 import { supabase } from '../lib/supabase';
 import { fetchPlaceSignals, getPlaceReviewCount, SignalAggregate } from '../lib/reviews';
@@ -216,6 +215,60 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   // Determine business type from place data
   const businessType = place ? mapGoogleCategoryToBusinessType(place.primaryCategory || 'default') : 'default';
 
+  // Helper to render Trust Badges
+  const renderTrustBadges = () => {
+    if (!place) return null;
+    return (
+      <View style={styles.trustContainer}>
+        {place.is_insured && (
+          <View style={styles.trustBadge}>
+            <Ionicons name="shield-checkmark" size={16} color="#059669" />
+            <Text style={styles.trustText}>Insured</Text>
+          </View>
+        )}
+        {place.is_licensed && (
+          <View style={styles.trustBadge}>
+            <Ionicons name="ribbon" size={16} color="#059669" />
+            <Text style={styles.trustText}>Licensed</Text>
+          </View>
+        )}
+        {place.established_date && (
+          <View style={styles.trustBadge}>
+            <Ionicons name="time" size={16} color="#4B5563" />
+            <Text style={styles.trustText}>Est. {new Date(place.established_date).getFullYear()}</Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  // Helper to render Social Icons
+  const renderSocials = () => {
+    if (!place?.socials) return null;
+    const platforms = [
+      { key: 'Instagram', icon: 'logo-instagram', color: '#E1306C' },
+      { key: 'Facebook', icon: 'logo-facebook', color: '#1877F2' },
+      { key: 'TikTok', icon: 'musical-notes', color: '#000000' },
+      { key: 'WhatsApp', icon: 'logo-whatsapp', color: '#25D366' },
+      { key: 'LinkedIn', icon: 'logo-linkedin', color: '#0077B5' },
+      { key: 'X (Twitter)', icon: 'logo-twitter', color: '#000000' },
+    ];
+
+    return (
+      <View style={styles.socialsContainer}>
+        {platforms.map((p) => {
+          const url = place.socials?.[p.key];
+          if (!url) return null;
+          return (
+            <TouchableOpacity key={p.key} onPress={() => Linking.openURL(url)} style={styles.socialIcon}>
+              <Ionicons name={p.icon as any} size={24} color={p.color} />
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  };
+
   // ===== ENHANCED TAP SYSTEM HOOKS =====
   // These hooks must be called AFTER place state is declared but they handle null/undefined gracefully
    // const stats = usePlaceTapStats(place?.id);d || '');
@@ -269,6 +322,16 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
             entrance_2_latitude: 28.4176,
             entrance_2_longitude: -81.5813,
             entrance_2_is_primary: false,
+            // NEW: Mock Data for Trust & Socials
+            is_insured: true,
+            is_licensed: true,
+            established_date: '1989-05-01',
+            logo_url: 'https://ui-avatars.com/api/?name=Tonys+Town&background=random&size=200',
+            socials: {
+              Instagram: 'https://instagram.com/tonystownsquare',
+              Facebook: 'https://facebook.com/tonystownsquare',
+              WhatsApp: 'https://wa.me/14075551234'
+            }
           };
           setPlace(mockPlace);
           
@@ -805,20 +868,27 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
             </View>
           )}
           
-          {/* Hero Text Overlay */}
-          <View style={styles.heroTextContainer}>
-            <Text style={styles.placeName}>{place.name}</Text>
-            <View style={styles.heroSubtitle}>
-              <Text style={styles.heroSubtitleText}>
-                {categoryEmoji} {place.primaryCategory}
-              </Text>
-              {priceDisplay && (
-                <Text style={styles.heroSubtitleText}>{priceDisplay}</Text>
-              )}
-              <Text style={styles.heroSubtitleText}>📍 {place.distance} mi</Text>
-            </View>
-          </View>
-        </View>
+	          {/* Hero Text Overlay */}
+	          <View style={styles.heroTextContainer}>
+                <View style={{flexDirection: 'row', alignItems: 'center', gap: 12}}>
+                  {place.logo_url && (
+                    <Image source={{ uri: place.logo_url }} style={styles.logoImage} />
+                  )}
+                  <View style={{flex: 1}}>
+                    <Text style={styles.placeName}>{place.name}</Text>
+                    <View style={styles.heroSubtitle}>
+                      <Text style={styles.heroSubtitleText}>
+                        {categoryEmoji} {place.primaryCategory}
+                      </Text>
+                      {priceDisplay && (
+                        <Text style={styles.heroSubtitleText}>{priceDisplay}</Text>
+                      )}
+                      <Text style={styles.heroSubtitleText}>📍 {place.distance} mi</Text>
+                    </View>
+                  </View>
+                </View>
+	          </View>
+	        </View>
 
         {/* ===== QUICK INFO BAR ===== */}
         <View style={styles.quickInfoBar}>
@@ -877,12 +947,6 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           {/* Signals Tab (UPDATED) */}
           {activeTab === 'signals' && (
             <View style={styles.tabContent}>
-              {/* ✅ NEW: Quick Help Section */}
-              <QuickHelpCard 
-                question="Does this place have outdoor seating?" 
-                onAnswer={(ans) => console.log('User answered:', ans)} 
-              />
-
               {/* Medals Section */}
               {signals.medals && signals.medals.length > 0 && (
                 <View style={styles.medalsContainer}>
@@ -901,13 +965,6 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
 
               {/* Add Your Tap Card (Moved to Bottom) */}
               <View style={{ marginTop: 24 }}>
-                {/* ✅ NEW: Claim Button */}
-                <TouchableOpacity 
-                  style={styles.claimButton}
-                  onPress={() => alert('Claim flow coming soon!')}
-                >
-                  <Text style={styles.claimText}>Own this business? Claim it</Text>
-                </TouchableOpacity>
                 <AddYourTapCardEnhanced 
                   placeId={place.id} 
                   placeName={place.name}
@@ -931,10 +988,26 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
             </View>
           )}
 
-          {/* Info Tab */}
-          {activeTab === 'info' && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Location & Contact</Text>
+	          {/* Info Tab */}
+	          {activeTab === 'info' && (
+	            <View style={styles.section}>
+                  {/* Trust Badges Section */}
+                  {(place.is_insured || place.is_licensed || place.established_date) && (
+                    <View style={{marginBottom: 20}}>
+                      <Text style={styles.sectionTitle}>Trust & Verification</Text>
+                      {renderTrustBadges()}
+                    </View>
+                  )}
+
+                  {/* Social Media Section */}
+                  {place.socials && Object.keys(place.socials).length > 0 && (
+                    <View style={{marginBottom: 20}}>
+                      <Text style={styles.sectionTitle}>Connect</Text>
+                      {renderSocials()}
+                    </View>
+                  )}
+
+	              <Text style={styles.sectionTitle}>Location & Contact</Text>
               
               {fullAddress && (
                 <View style={styles.contactItem}>
@@ -1187,6 +1260,13 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
   },
+  logoImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
   placeName: {
     fontSize: 26,
     fontWeight: 'bold',
@@ -1195,6 +1275,35 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
     marginBottom: 6,
+  },
+  trustContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  trustBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  trustText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#065F46',
+  },
+  socialsContainer: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+  },
+  socialIcon: {
+    padding: 4,
   },
   heroSubtitle: {
     flexDirection: 'row',
@@ -1571,16 +1680,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
-  },
-  claimButton: {
-    alignSelf: 'center',
-    marginTop: 16,
-    marginBottom: 8,
-    padding: 8,
-  },
-  claimText: {
-    color: '#6B7280',
-    fontSize: 12,
-    textDecorationLine: 'underline',
   },
 });
