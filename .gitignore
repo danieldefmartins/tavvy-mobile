@@ -30,6 +30,7 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
 
 # typescript
@@ -38,5 +39,3 @@ yarn-error.*
 # generated native folders
 /ios
 /android
-
-.env
