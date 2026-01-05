@@ -6,7 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthProvider } from './contexts/AuthContext';
-import { Colors } from './constants/Colors';
+import { Colors } from './Constants/Colors';
 
 // Import screens
 import HomeScreen from './screens/HomeScreen';

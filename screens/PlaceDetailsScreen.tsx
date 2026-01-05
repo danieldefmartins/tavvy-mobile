@@ -20,7 +20,7 @@ import MapLibreGL from '@maplibre/maplibre-react-native';
 import { mapGoogleCategoryToBusinessType } from '../lib/businessTypeConfig';
 import { supabase } from '../lib/supabase';
 import { fetchPlaceSignals, getPlaceReviewCount, SignalAggregate } from '../lib/reviews';
-import { Colors } from '../constants/Colors';
+import { Colors } from '../Constants/Colors';
 import AddYourTapCardEnhanced from '../components/AddYourTapCardEnhanced';
 import {
   // usePlaceTapStats,

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors } from '../constants/Colors';
+import { Colors } from '../Constants/Colors';
 import { useNavigation } from '@react-navigation/native';
 
 export interface FormStep {

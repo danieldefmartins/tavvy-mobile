@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 // Haptics removed temporarily to prevent crash
 // import * as Haptics from 'expo-haptics';
-import { Colors } from '../constants/Colors';
+import { Colors } from '../Constants/Colors';
 
 interface PulseCardProps {
   label: string;

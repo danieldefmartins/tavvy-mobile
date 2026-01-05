@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../constants/Colors';
+import { Colors } from '../Constants/Colors';
 
 // Start Date: Jan 1, 2024 (Arbitrary anchor)
 const START_DATE = new Date('2024-01-01T00:00:00').getTime();

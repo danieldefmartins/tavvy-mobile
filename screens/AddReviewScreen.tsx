@@ -17,7 +17,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { submitReview, updateReview, fetchUserReview, ReviewSignalTap } from '../lib/reviews';
 import { REVIEW_TAGS, ReviewCategory } from '../lib/reviewTags';
 import PulseCard from '../components/PulseCard';
-import { Colors } from '../constants/Colors';
+import { Colors } from '../Constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');

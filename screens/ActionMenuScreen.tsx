@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, TouchableWithoutFeedback } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { Colors } from '../constants/Colors';
+import { Colors } from '../Constants/Colors';
 import { BlurView } from 'expo-blur'; // Optional: for glass effect if available, otherwise fallback to view
 
 export default function ActionMenuScreen({ visible, onClose }: { visible: boolean; onClose: () => void }) {

@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { Colors } from '../constants/Colors';
+import { Colors } from '../Constants/Colors';
 // import * as ImagePicker from 'expo-image-picker'; // Disabled for now
 
 // Wizard Steps

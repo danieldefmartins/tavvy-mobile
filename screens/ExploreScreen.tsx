@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, FlatList }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { Colors } from '../constants/Colors';
+import { Colors } from '../Constants/Colors';
 
 const FILTERS = [
   { id: 'all', label: 'All' },
