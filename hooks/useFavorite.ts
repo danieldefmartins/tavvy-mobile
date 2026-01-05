@@ -1,6 +1,6 @@
 /**
- * useFavorites Hook - Favorites/Bookmarks functionality
- * 
+ * useFavorite Hook - Favorites/Bookmarks functionality
+ *
  * Allows users to save places to custom lists like "Favorites",
  * "Want to Visit", "RV Trip 2026", etc.
  */
@@ -53,9 +53,9 @@ export function useUserFavoriteLists() {
 
       if (error) throw error;
 
-      return (data || []).map(row => ({
+      return (data || []).map((row: any) => ({
         listName: row.list_name,
-        count: parseInt(row.count),
+        count: Number(row.count) || 0,
       }));
     },
     enabled: !!user,
@@ -79,21 +79,19 @@ export function useUserFavorites(listName?: string) {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (listName) {
-        query = query.eq('list_name', listName);
-      }
+      if (listName) query = query.eq('list_name', listName);
 
       const { data, error } = await query;
-
       if (error) throw error;
 
-      return (data || []).map(row => ({
+      return (data || []).map((row: any) => ({
         id: row.id,
         userId: row.user_id,
         placeId: row.place_id,
         listName: row.list_name,
         notes: row.notes,
         createdAt: new Date(row.created_at),
+
         placeName: row.place_name,
         address: row.address,
         city: row.city,
@@ -112,14 +110,15 @@ export function useUserFavorites(listName?: string) {
 
 /**
  * Check if a place is favorited by current user
+ * (This is the name your FavoriteButton should use: useIsFavorite)
  */
-export function useIsPlaceFavorited(placeId: string) {
+export function useIsFavorite(placeId: string) {
   const { user } = useAuth();
 
   return useQuery({
     queryKey: ['is-favorited', user?.id, placeId],
     queryFn: async (): Promise<boolean> => {
-      if (!user) return false;
+      if (!user || !placeId) return false;
 
       const { data, error } = await supabase.rpc('is_place_favorited', {
         p_user_id: user.id,
@@ -131,7 +130,7 @@ export function useIsPlaceFavorited(placeId: string) {
         return false;
       }
 
-      return data || false;
+      return Boolean(data);
     },
     enabled: !!user && !!placeId,
   });
@@ -153,14 +152,14 @@ export function usePlaceFavoriteCount(placeId: string) {
         return 0;
       }
 
-      return data || 0;
+      return Number(data) || 0;
     },
     enabled: !!placeId,
   });
 }
 
 /**
- * Get user's favorite for a specific place (to check which list it's in)
+ * Get user's favorites for a specific place (which lists it's in)
  */
 export function useUserFavoriteForPlace(placeId: string) {
   const { user } = useAuth();
@@ -168,7 +167,7 @@ export function useUserFavoriteForPlace(placeId: string) {
   return useQuery({
     queryKey: ['user-favorite-for-place', user?.id, placeId],
     queryFn: async (): Promise<Favorite[]> => {
-      if (!user) return [];
+      if (!user || !placeId) return [];
 
       const { data, error } = await supabase
         .from('user_favorites')
@@ -178,7 +177,7 @@ export function useUserFavoriteForPlace(placeId: string) {
 
       if (error) throw error;
 
-      return (data || []).map(row => ({
+      return (data || []).map((row: any) => ({
         id: row.id,
         userId: row.user_id,
         placeId: row.place_id,
@@ -222,7 +221,6 @@ export function useAddFavorite() {
         .single();
 
       if (error) throw error;
-
       return data;
     },
     onSuccess: (_, variables) => {
@@ -236,37 +234,7 @@ export function useAddFavorite() {
 }
 
 /**
- * Remove a place from favorites
- */
-export function useRemoveFavorite() {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-
-  return useMutation({
-    mutationFn: async ({ favoriteId, placeId }: { favoriteId: string; placeId: string }) => {
-      if (!user) throw new Error('Must be logged in to remove favorite');
-
-      const { error } = await supabase
-        .from('user_favorites')
-        .delete()
-        .eq('id', favoriteId);
-
-      if (error) throw error;
-
-      return { placeId };
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['user-favorites', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['favorite-lists', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['is-favorited', user?.id, data.placeId] });
-      queryClient.invalidateQueries({ queryKey: ['user-favorite-for-place', user?.id, data.placeId] });
-      queryClient.invalidateQueries({ queryKey: ['place-favorite-count', data.placeId] });
-    },
-  });
-}
-
-/**
- * Remove all favorites for a place (from all lists)
+ * Remove ALL favorites for a place (from all lists)
  */
 export function useRemoveAllFavoritesForPlace() {
   const queryClient = useQueryClient();
@@ -283,7 +251,6 @@ export function useRemoveAllFavoritesForPlace() {
         .eq('place_id', placeId);
 
       if (error) throw error;
-
       return { placeId };
     },
     onSuccess: (data) => {
@@ -297,7 +264,7 @@ export function useRemoveAllFavoritesForPlace() {
 }
 
 /**
- * Update favorite notes
+ * Update favorite notes / list
  */
 export function useUpdateFavorite() {
   const queryClient = useQueryClient();
@@ -315,7 +282,7 @@ export function useUpdateFavorite() {
     }) => {
       if (!user) throw new Error('Must be logged in to update favorite');
 
-      const updateData: any = {};
+      const updateData: Record<string, any> = {};
       if (notes !== undefined) updateData.notes = notes;
       if (listName !== undefined) updateData.list_name = listName;
 
@@ -327,10 +294,9 @@ export function useUpdateFavorite() {
         .single();
 
       if (error) throw error;
-
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['user-favorites', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['favorite-lists', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['user-favorite-for-place', user?.id, data.place_id] });
@@ -340,32 +306,56 @@ export function useUpdateFavorite() {
 
 /**
  * Toggle favorite (add if not favorited, remove if favorited)
+ * (This is the name your FavoriteButton should use: useToggleFavorite)
  */
 export function useToggleFavorite() {
-  const addFavorite = useAddFavorite();
-  const removeFavorite = useRemoveAllFavoritesForPlace();
-  const { data: userFavorites } = useUserFavoriteForPlace;
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
 
-  return {
-    toggle: async (placeId: string, listName: string = 'Favorites') => {
-      // Check if already favorited
-      const { user } = useAuth();
+  return useMutation({
+    mutationFn: async ({ placeId, listName = 'Favorites' }: { placeId: string; listName?: string }) => {
       if (!user) throw new Error('Must be logged in');
+      if (!placeId) throw new Error('placeId is required');
 
-      const { data: favorites } = await supabase
+      // Check if already favorited
+      const { data: existing, error: checkError } = await supabase
         .from('user_favorites')
         .select('id')
         .eq('user_id', user.id)
-        .eq('place_id', placeId);
+        .eq('place_id', placeId)
+        .limit(1);
 
-      if (favorites && favorites.length > 0) {
-        // Already favorited, remove it
-        await removeFavorite.mutateAsync(placeId);
-      } else {
-        // Not favorited, add it
-        await addFavorite.mutateAsync({ placeId, listName });
+      if (checkError) throw checkError;
+
+      if (existing && existing.length > 0) {
+        // Remove all favorites for that place
+        const { error: delError } = await supabase
+          .from('user_favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('place_id', placeId);
+
+        if (delError) throw delError;
+        return { action: 'removed' as const, placeId };
       }
+
+      // Add favorite
+      const { error: addError } = await supabase.from('user_favorites').insert({
+        user_id: user.id,
+        place_id: placeId,
+        list_name: listName,
+      });
+
+      if (addError) throw addError;
+      return { action: 'added' as const, placeId };
     },
-    isLoading: addFavorite.isLoading || removeFavorite.isLoading,
-  };
+
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['user-favorites', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['favorite-lists', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['is-favorited', user?.id, result.placeId] });
+      queryClient.invalidateQueries({ queryKey: ['user-favorite-for-place', user?.id, result.placeId] });
+      queryClient.invalidateQueries({ queryKey: ['place-favorite-count', result.placeId] });
+    },
+  });
 }
