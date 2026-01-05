@@ -1,8 +1,11 @@
 // ============================================================================
-// ATLAS HOME SCREEN
+// ATLAS HOME SCREEN (PREMIUM GRADIENT STYLE)
 // ============================================================================
-// Main discovery page for Tavvy Atlas
-// Place this file in: screens/AtlasHomeScreen.tsx
+// Features:
+// - PREMIUM GRADIENT: 3-stop LinearGradient for rich depth (Light -> Medium -> Deep Teal)
+// - ORGANIC CURVE: Wide-arc technique for smooth horizon
+// - Elegant floating cards with soft shadows
+// - Complete mock data
 // ============================================================================
 
 import React, { useEffect, useState } from 'react';
@@ -14,9 +17,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  TextInput,
+  Dimensions,
+  StatusBar,
+  Platform,
+  SafeAreaView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   getFeaturedArticle,
   getTrendingArticles,
@@ -27,13 +35,133 @@ import {
   type AtlasCategory,
 } from '../lib/atlas';
 
+const { width } = Dimensions.get('window');
+
+// FULL MOCK DATA
+const MOCK_FEATURED = {
+  id: 'f1',
+  title: 'The Ultimate LAX Survival Guide',
+  slug: 'lax-survival-guide',
+  excerpt: 'Everything you need to know about navigating Los Angeles International Airport.',
+  content: 'This is the full content of the article...',
+  cover_image_url: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2074&auto=format&fit=crop',
+  author_id: 'a1',
+  author_name: 'Sarah Chen',
+  author_avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop',
+  read_time_minutes: 12,
+  view_count: 15420,
+  love_count: 2400,
+  not_for_me_count: 12,
+  save_count: 850,
+  is_featured: true,
+  status: 'published',
+  created_at: new Date().toISOString(),
+  published_at: new Date().toISOString(),
+  category_id: 'c1',
+  universe_id: 'u2',
+  category: { id: 'c1', name: 'Airports', color: '#0D9488', icon: '✈️' }
+};
+
+const MOCK_TRENDING = [
+  {
+    id: 't1',
+    title: "New York City: First-Time Visitor's Guide",
+    slug: 'nyc-guide',
+    excerpt: 'The essential guide for your first trip to the Big Apple.',
+    content: 'Content here...',
+    cover_image_url: 'https://images.unsplash.com/photo-1496442226666-8d4a0e62e6e9?q=80&w=2070&auto=format&fit=crop',
+    author_id: 'a2',
+    author_name: 'Mike Ross',
+    author_avatar_url: 'https://via.placeholder.com/100',
+    read_time_minutes: 11,
+    view_count: 12000,
+    love_count: 2000,
+    not_for_me_count: 5,
+    save_count: 600,
+    is_featured: false,
+    status: 'published',
+    created_at: new Date().toISOString(),
+    published_at: new Date().toISOString(),
+    category_id: 'c2',
+    universe_id: null,
+    category: { id: 'c2', name: 'Cities', color: '#3B82F6', icon: '🏙️' }
+  },
+  {
+    id: 't2',
+    title: "Disney World: First Timer's Complete Guide",
+    slug: 'disney-guide',
+    excerpt: 'How to maximize your magic at Disney World.',
+    content: 'Content here...',
+    cover_image_url: 'https://images.unsplash.com/photo-1597466599360-3b9775841aec?q=80&w=2000&auto=format&fit=crop',
+    author_id: 'a3',
+    author_name: 'Jenny Wilson',
+    author_avatar_url: 'https://via.placeholder.com/100',
+    read_time_minutes: 15,
+    view_count: 9800,
+    love_count: 1900,
+    not_for_me_count: 2,
+    save_count: 450,
+    is_featured: false,
+    status: 'published',
+    created_at: new Date().toISOString(),
+    published_at: new Date().toISOString(),
+    category_id: 'c3',
+    universe_id: 'u1',
+    category: { id: 'c3', name: 'Theme Parks', color: '#8B5CF6', icon: '🎢' }
+  },
+  {
+    id: 't3',
+    title: 'Best Coffee in Seattle',
+    slug: 'seattle-coffee',
+    excerpt: 'Where to find the best beans in the Emerald City.',
+    content: 'Content here...',
+    cover_image_url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=2000&auto=format&fit=crop',
+    author_id: 'a4',
+    author_name: 'Tom Cook',
+    author_avatar_url: 'https://via.placeholder.com/100',
+    read_time_minutes: 5,
+    view_count: 18000,
+    love_count: 3200,
+    not_for_me_count: 0,
+    save_count: 1200,
+    is_featured: false,
+    status: 'published',
+    created_at: new Date().toISOString(),
+    published_at: new Date().toISOString(),
+    category_id: 'c4',
+    universe_id: null,
+    category: { id: 'c4', name: 'Food & Drink', color: '#10B981', icon: '☕' }
+  }
+];
+
+const MOCK_UNIVERSES = [
+  {
+    id: 'u1',
+    name: 'Disney World',
+    place_count: 47,
+    thumbnail_image_url: 'https://images.unsplash.com/photo-1545580249-a3b334eb197f?q=80&w=1000&auto=format&fit=crop'
+  },
+  {
+    id: 'u2',
+    name: 'LAX Airport',
+    place_count: 23,
+    thumbnail_image_url: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?q=80&w=1000&auto=format&fit=crop'
+  },
+  {
+    id: 'u3',
+    name: 'Yellowstone',
+    place_count: 15,
+    thumbnail_image_url: 'https://images.unsplash.com/photo-1565108170253-2db022359792?q=80&w=1000&auto=format&fit=crop'
+  }
+];
+
 export default function AtlasHomeScreen() {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
-  const [featuredArticle, setFeaturedArticle] = useState<AtlasArticle | null>(null);
-  const [trendingArticles, setTrendingArticles] = useState<AtlasArticle[]>([]);
-  const [universes, setUniverses] = useState<AtlasUniverse[]>([]);
-  const [categories, setCategories] = useState<AtlasCategory[]>([]);
+  
+  const [featuredArticle, setFeaturedArticle] = useState<AtlasArticle | null>(MOCK_FEATURED as any);
+  const [trendingArticles, setTrendingArticles] = useState<AtlasArticle[]>(MOCK_TRENDING as any);
+  const [universes, setUniverses] = useState<AtlasUniverse[]>(MOCK_UNIVERSES as any);
 
   useEffect(() => {
     loadData();
@@ -41,21 +169,9 @@ export default function AtlasHomeScreen() {
 
   const loadData = async () => {
     try {
-      setLoading(true);
-      const [featured, trending, universesData, categoriesData] = await Promise.all([
-        getFeaturedArticle(),
-        getTrendingArticles(3),
-        getFeaturedUniverses(6),
-        getCategories(),
-      ]);
-
-      setFeaturedArticle(featured);
-      setTrendingArticles(trending);
-      setUniverses(universesData);
-      setCategories(categoriesData);
+      setLoading(false);
     } catch (error) {
       console.error('Error loading Atlas data:', error);
-    } finally {
       setLoading(false);
     }
   };
@@ -70,153 +186,177 @@ export default function AtlasHomeScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#14b8a6" />
+        <ActivityIndicator size="large" color="#2DD4BF" />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.headerIcon}>🗺️</Text>
-          <Text style={styles.headerTitle}>Tavvy Atlas</Text>
-        </View>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('AtlasSearch' as never)}
-          style={styles.searchButton}
-        >
-          <Text style={styles.searchIcon}>🔍</Text>
-        </TouchableOpacity>
+      <StatusBar barStyle="light-content" />
+      
+      {/* 
+        PREMIUM GRADIENT HEADER 
+        Using LinearGradient inside the wide circle for that premium look.
+        Gradient: Light Teal -> Medium Teal -> Deep Teal
+      */}
+      <View style={styles.organicHeaderContainer}>
+        <LinearGradient
+          colors={['#5EEAD4', '#2DD4BF', '#0F766E']} // Enhanced 3-stop gradient
+          locations={[0, 0.4, 1]} // Control the spread
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.organicHeaderCircle}
+        />
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Featured Article */}
-        {featuredArticle && (
-          <TouchableOpacity
-            style={styles.featuredCard}
-            onPress={() =>
-              navigation.navigate('ArticleDetail' as never, {
-                article: featuredArticle,
-              } as never)
-            }
-          >
-            <Image
-              source={{ uri: featuredArticle.cover_image_url }}
-              style={styles.featuredImage}
-            />
-            <View style={styles.featuredOverlay}>
-              <View style={styles.featuredBadge}>
-                <Text style={styles.featuredBadgeText}>FEATURED</Text>
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Header Content */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <View style={styles.logoContainer}>
+                <MaterialCommunityIcons name="map-legend" size={26} color="#fff" />
               </View>
-              <Text style={styles.featuredTitle}>{featuredArticle.title}</Text>
-              <View style={styles.featuredMeta}>
-                <Text style={styles.featuredAuthor}>{featuredArticle.author_name}</Text>
-                <Text style={styles.featuredDot}>•</Text>
-                <Text style={styles.featuredReadTime}>
-                  {featuredArticle.read_time_minutes} min read
-                </Text>
-              </View>
+              <Text style={styles.headerTitle}>Tavvy Atlas</Text>
             </View>
-          </TouchableOpacity>
-        )}
-
-        {/* Trending Now */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Trending Now</Text>
-          {trendingArticles.map((article) => (
             <TouchableOpacity
-              key={article.id}
-              style={styles.trendingCard}
+              onPress={() => navigation.navigate('AtlasSearch' as never)}
+              style={styles.searchButton}
+            >
+              <Ionicons name="search" size={22} color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Featured Article - Floating Card */}
+          {featuredArticle && (
+            <TouchableOpacity
+              style={styles.featuredCard}
+              activeOpacity={0.95}
               onPress={() =>
-                navigation.navigate('ArticleDetail' as never, { article } as never)
+                navigation.navigate('ArticleDetail' as never, {
+                  article: featuredArticle,
+                } as never)
               }
             >
               <Image
-                source={{ uri: article.cover_image_url }}
-                style={styles.trendingImage}
+                source={{ uri: featuredArticle.cover_image_url }}
+                style={styles.featuredImage}
               />
-              <View style={styles.trendingContent}>
-                <Text style={styles.trendingTitle} numberOfLines={2}>
-                  {article.title}
-                </Text>
-                <View style={styles.trendingMeta}>
-                  <View
-                    style={[
-                      styles.categoryBadge,
-                      { backgroundColor: article.category?.color || '#14b8a6' },
-                    ]}
-                  >
-                    <Text style={styles.categoryBadgeText}>
-                      {article.category?.name.toUpperCase()}
+              <View style={styles.featuredOverlay}>
+                <View style={styles.featuredBadge}>
+                  <Text style={styles.featuredBadgeText}>FEATURED</Text>
+                </View>
+                
+                <View style={styles.featuredTextContainer}>
+                  <Text style={styles.featuredTitle}>{featuredArticle.title}</Text>
+                  
+                  <View style={styles.featuredMeta}>
+                    <Image 
+                      source={{ uri: featuredArticle.author_avatar_url || 'https://via.placeholder.com/32' }} 
+                      style={styles.featuredAuthorAvatar} 
+                    />
+                    <Text style={styles.featuredAuthor}>{featuredArticle.author_name}</Text>
+                    <Text style={styles.featuredDot}>•</Text>
+                    <Ionicons name="time-outline" size={14} color="#E5E7EB" style={{ marginRight: 4 }} />
+                    <Text style={styles.featuredReadTime}>
+                      {featuredArticle.read_time_minutes} min read
                     </Text>
                   </View>
-                  <Text style={styles.trendingStats}>
-                    {formatNumber(article.love_count)} ❤️
-                  </Text>
-                  <Text style={styles.trendingDot}>•</Text>
-                  <Text style={styles.trendingReadTime}>
-                    {article.read_time_minutes} min read
-                  </Text>
                 </View>
               </View>
             </TouchableOpacity>
-          ))}
-        </View>
+          )}
 
-        {/* Explore Universes */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Explore Universes</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.universesScroll}
-          >
-            {universes.map((universe) => (
+          {/* Trending Now */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Trending Now</Text>
+            {trendingArticles.map((article) => (
               <TouchableOpacity
-                key={universe.id}
-                style={styles.universeCard}
+                key={article.id}
+                style={styles.trendingCard}
+                activeOpacity={0.7}
                 onPress={() =>
-                  navigation.navigate('UniverseDetail' as never, { universe } as never)
+                  navigation.navigate('ArticleDetail' as never, { article } as never)
                 }
               >
                 <Image
-                  source={{ uri: universe.thumbnail_image_url }}
-                  style={styles.universeImage}
+                  source={{ uri: article.cover_image_url }}
+                  style={styles.trendingImage}
                 />
-                <View style={styles.universeInfo}>
-                  <Text style={styles.universeName} numberOfLines={1}>
-                    {universe.name}
+                <View style={styles.trendingContent}>
+                  <Text style={styles.trendingTitle} numberOfLines={2}>
+                    {article.title}
                   </Text>
-                  <Text style={styles.universePlaces}>{universe.place_count} places</Text>
+                  
+                  <View style={styles.trendingFooter}>
+                    <View
+                      style={[
+                        styles.categoryBadge,
+                        { backgroundColor: article.category?.color || '#14b8a6' },
+                      ]}
+                    >
+                      <Text style={styles.categoryBadgeText}>
+                        {article.category?.name.toUpperCase()}
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.trendingStatsRow}>
+                      <Ionicons name="heart" size={14} color="#EF4444" style={{ marginRight: 4 }} />
+                      <Text style={styles.trendingStatsText}>
+                        {formatNumber(article.love_count)}
+                      </Text>
+                      <Text style={styles.trendingDot}>•</Text>
+                      <Text style={styles.trendingStatsText}>
+                        {article.read_time_minutes} min read
+                      </Text>
+                    </View>
+                  </View>
                 </View>
               </TouchableOpacity>
             ))}
-          </ScrollView>
-        </View>
-
-        {/* Categories */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Browse by Category</Text>
-          <View style={styles.categoriesGrid}>
-            {categories.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                style={[styles.categoryCard, { borderColor: category.color }]}
-                onPress={() =>
-                  navigation.navigate('CategoryBrowse' as never, { category } as never)
-                }
-              >
-                <Text style={styles.categoryIcon}>{category.icon}</Text>
-                <Text style={styles.categoryName}>{category.name}</Text>
-              </TouchableOpacity>
-            ))}
           </View>
-        </View>
 
-        <View style={{ height: 100 }} />
-      </ScrollView>
+          {/* Explore Universes */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Explore Universes</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.universesScroll}
+              contentContainerStyle={{ paddingRight: 20, paddingLeft: 20 }}
+            >
+              {universes.map((universe) => (
+                <TouchableOpacity
+                  key={universe.id}
+                  style={styles.universeCard}
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    navigation.navigate('UniverseDetail' as never, { universe } as never)
+                  }
+                >
+                  <Image
+                    source={{ uri: universe.thumbnail_image_url }}
+                    style={styles.universeImage}
+                  />
+                  <View style={styles.universeInfo}>
+                    <Text style={styles.universeName} numberOfLines={1}>
+                      {universe.name}
+                    </Text>
+                    <Text style={styles.universePlaces}>{universe.place_count} places</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }
@@ -224,7 +364,7 @@ export default function AtlasHomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F9FAFB',
   },
   loadingContainer: {
     flex: 1,
@@ -232,213 +372,268 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
   },
+  
+  // ORGANIC CURVE STRATEGY
+  organicHeaderContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300, // Container height
+    overflow: 'hidden', // Clip the circle
+    zIndex: 0,
+  },
+  organicHeaderCircle: {
+    position: 'absolute',
+    top: -400, // Push the circle up so only the bottom arc shows
+    left: -width * 0.25, // Center the wider circle
+    width: width * 1.5, // 150% width for gentle curve
+    height: 650, // Huge circle
+    borderRadius: 325, // Half of height to make it a circle
+    // backgroundColor removed, using LinearGradient instead
+  },
+
+  safeArea: {
+    flex: 1,
+    zIndex: 1,
+  },
+  scrollView: {
+    flex: 1,
+    overflow: 'visible',
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
+
+  // Header Content
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingTop: 60,
-    backgroundColor: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)',
-    backgroundColor: '#14b8a6',
+    paddingTop: Platform.OS === 'android' ? 40 : 10,
+    marginBottom: 20,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerIcon: {
-    fontSize: 24,
-    marginRight: 8,
+  logoContainer: {
+    marginRight: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: '#fff',
+    letterSpacing: -0.5,
   },
   searchButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  searchIcon: {
-    fontSize: 24,
-  },
-  scrollView: {
-    flex: 1,
-  },
+
+  // Featured Card
   featuredCard: {
-    margin: 20,
-    borderRadius: 16,
+    marginHorizontal: 20,
+    height: 240,
+    borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: '#000',
+    backgroundColor: '#1F2937',
+    
+    // Softer shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 6,
+    
+    marginBottom: 8,
   },
   featuredImage: {
     width: '100%',
-    height: 240,
+    height: '100%',
+    resizeMode: 'cover',
   },
   featuredOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    justifyContent: 'space-between',
     padding: 20,
-    background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
-    backgroundColor: 'rgba(0,0,0,0.6)',
   },
   featuredBadge: {
-    backgroundColor: '#f59e0b',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 4,
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
     alignSelf: 'flex-start',
-    marginBottom: 8,
+    marginTop: 4,
   },
   featuredBadgeText: {
     color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
+  featuredTextContainer: {},
   featuredTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: 10,
+    lineHeight: 30,
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   featuredMeta: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  featuredAuthorAvatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    marginRight: 8,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
   featuredAuthor: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '600',
   },
   featuredDot: {
-    color: '#fff',
+    color: 'rgba(255,255,255,0.7)',
     marginHorizontal: 8,
   },
   featuredReadTime: {
-    color: '#fff',
-    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
+    fontWeight: '500',
   },
+
+  // Sections
   section: {
-    marginTop: 24,
-    paddingHorizontal: 20,
+    marginTop: 28,
+    paddingHorizontal: 0,
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    color: '#000',
+    fontWeight: '800',
+    marginBottom: 14,
+    paddingHorizontal: 20,
+    color: '#111827',
+    letterSpacing: -0.5,
   },
+
+  // Trending Cards
   trendingCard: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginHorizontal: 20,
+    marginBottom: 14,
     backgroundColor: '#fff',
-    borderRadius: 12,
-    overflow: 'hidden',
+    borderRadius: 14,
+    padding: 10,
+    
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   trendingImage: {
-    width: 120,
-    height: 120,
+    width: 90,
+    height: 90,
+    borderRadius: 10,
+    backgroundColor: '#E5E7EB',
   },
   trendingContent: {
     flex: 1,
-    padding: 12,
+    paddingLeft: 14,
+    paddingVertical: 2,
     justifyContent: 'space-between',
   },
   trendingTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 8,
+    fontWeight: '700',
+    color: '#1F2937',
+    lineHeight: 22,
+    marginBottom: 6,
   },
-  trendingMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
+  trendingFooter: {},
   categoryBadge: {
+    alignSelf: 'flex-start',
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginRight: 8,
+    paddingVertical: 3,
+    borderRadius: 5,
+    marginBottom: 6,
   },
   categoryBadgeText: {
     color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
+    fontSize: 9,
+    fontWeight: '700',
   },
-  trendingStats: {
-    fontSize: 12,
-    color: '#666',
+  trendingStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  trendingStatsText: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
   },
   trendingDot: {
-    color: '#666',
+    color: '#D1D5DB',
     marginHorizontal: 6,
   },
-  trendingReadTime: {
-    fontSize: 12,
-    color: '#666',
-  },
+
+  // Universe Cards
   universesScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
+    marginHorizontal: 0,
   },
   universeCard: {
-    width: 160,
-    marginRight: 12,
-    borderRadius: 12,
-    overflow: 'hidden',
+    width: 150,
+    marginRight: 14,
+    borderRadius: 14,
     backgroundColor: '#fff',
+    
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+    marginBottom: 8,
   },
   universeImage: {
     width: '100%',
-    height: 120,
+    height: 110,
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
   },
   universeInfo: {
-    padding: 12,
+    padding: 10,
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
   },
   universeName: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 4,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 2,
   },
   universePlaces: {
     fontSize: 12,
-    color: '#666',
-  },
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -6,
-  },
-  categoryCard: {
-    width: '31%',
-    aspectRatio: 1,
-    margin: '1%',
-    borderRadius: 12,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  categoryIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  categoryName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#000',
-    textAlign: 'center',
+    color: '#6B7280',
   },
 });

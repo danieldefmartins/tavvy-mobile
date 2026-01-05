@@ -2,9 +2,9 @@ import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
-import { View } from 'react-native';
 import { AuthProvider } from './contexts/AuthContext';
 import { Colors } from './constants/Colors';
 
@@ -51,57 +51,21 @@ const queryClient = new QueryClient({
 });
 
 const Tab = createBottomTabNavigator();
-const Stack = createStackNavigator();
+const Stack = createNativeStackNavigator();
 
 // Home Stack Navigator
 function HomeStack() {
   return (
-    <Stack.Navigator>
-      <Stack.Screen 
-        name="HomeMain" 
-        component={HomeScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="PlaceDetails" 
-        component={PlaceDetailsScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="AddReview" 
-        component={AddReviewScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="AddPhoto" 
-        component={AddPhotoScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="PlacePhotos" 
-        component={PlacePhotosScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="RequestUniverse" 
-        component={RequestUniverseScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="CityDetails" 
-        component={CityDetailsScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="RateCity" 
-        component={RateCityScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="ClaimBusiness" 
-        component={ClaimBusinessScreen}
-        options={{ headerShown: false }}
-      />
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="HomeMain" component={HomeScreen} />
+      <Stack.Screen name="PlaceDetails" component={PlaceDetailsScreen} />
+      <Stack.Screen name="AddReview" component={AddReviewScreen} />
+      <Stack.Screen name="AddPhoto" component={AddPhotoScreen} />
+      <Stack.Screen name="PlacePhotos" component={PlacePhotosScreen} />
+      <Stack.Screen name="RequestUniverse" component={RequestUniverseScreen} />
+      <Stack.Screen name="CityDetails" component={CityDetailsScreen} />
+      <Stack.Screen name="RateCity" component={RateCityScreen} />
+      <Stack.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
     </Stack.Navigator>
   );
 }
@@ -109,32 +73,12 @@ function HomeStack() {
 // Atlas Stack Navigator
 function AtlasStack() {
   return (
-    <Stack.Navigator>
-      <Stack.Screen 
-        name="AtlasMain" 
-        component={AtlasHomeScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="ArticleDetail" 
-        component={ArticleDetailScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="UniverseDetail" 
-        component={UniverseDetailScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="CategoryBrowse" 
-        component={CategoryBrowseScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="AtlasSearch" 
-        component={AtlasSearchScreen}
-        options={{ headerShown: false }}
-      />
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="AtlasMain" component={AtlasHomeScreen} />
+      <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
+      <Stack.Screen name="UniverseDetail" component={UniverseDetailScreen} />
+      <Stack.Screen name="CategoryBrowse" component={CategoryBrowseScreen} />
+      <Stack.Screen name="AtlasSearch" component={AtlasSearchScreen} />
     </Stack.Navigator>
   );
 }
@@ -142,32 +86,13 @@ function AtlasStack() {
 // Menu Stack Navigator
 function MenuStack() {
   return (
-    <Stack.Navigator>
-      <Stack.Screen 
-        name="MenuMain" 
-        component={MenuScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="ProfileMain" 
-        component={ProfileScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="SavedMain" 
-        component={SavedScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="Login" 
-        component={LoginScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="SignUp" 
-        component={SignUpScreen}
-        options={{ headerShown: false }}
-      />
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MenuMain" component={MenuScreen} />
+      <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="SavedMain" component={SavedScreen} />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="RateCity" component={RateCityScreen} />
+      <Stack.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
     </Stack.Navigator>
   );
 }
@@ -175,17 +100,9 @@ function MenuStack() {
 // Universe Stack Navigator
 function UniverseStack() {
   return (
-    <Stack.Navigator>
-      <Stack.Screen 
-        name="UniverseDiscovery" 
-        component={UniverseDiscoveryScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="UniverseLanding" 
-        component={UniverseLandingScreen}
-        options={{ headerShown: false }}
-      />
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="UniverseDiscovery" component={UniverseDiscoveryScreen} />
+      <Stack.Screen name="UniverseLanding" component={UniverseLandingScreen} />
     </Stack.Navigator>
   );
 }
@@ -217,26 +134,18 @@ function TabNavigator() {
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Home" component={HomeStack} />
-      <Tab.Screen name="Explore" component={UniverseStack} />
-      <Tab.Screen 
-        name="Add" 
+      <Tab.Screen name="Home" component={HomeStack} options={{ tabBarLabel: 'Home' }} />
+      <Tab.Screen name="Explore" component={UniverseStack} options={{ tabBarLabel: 'Explore' }} />
+      <Tab.Screen
+        name="Add"
         component={UniversalAddScreen}
-        options={{ 
-          title: 'Create',
-          tabBarStyle: { display: 'none' } // Hide tab bar when in the Add flow
-        }} 
+        options={{
+          tabBarLabel: 'Create',
+          tabBarStyle: { display: 'none' }, // Hide tab bar when in the Add flow
+        }}
       />
-      <Tab.Screen 
-        name="Atlas" 
-        component={AtlasStack}
-        options={{ title: 'Atlas' }}
-      />
-      <Tab.Screen 
-        name="Menu" 
-        component={MenuStack}
-        options={{ title: 'Menu' }}
-      />
+      <Tab.Screen name="Atlas" component={AtlasStack} options={{ tabBarLabel: 'Atlas' }} />
+      <Tab.Screen name="Menu" component={MenuStack} options={{ tabBarLabel: 'Menu' }} />
     </Tab.Navigator>
   );
 }
@@ -244,12 +153,14 @@ function TabNavigator() {
 // Main App Component
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <NavigationContainer>
-          <TabNavigator />
-        </NavigationContainer>
-      </AuthProvider>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <NavigationContainer>
+            <TabNavigator />
+          </NavigationContainer>
+        </AuthProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

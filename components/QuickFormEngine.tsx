@@ -23,8 +23,10 @@ interface QuickFormEngineProps {
   formId: string;
   title: string;
   steps: FormStep[];
+  initialData?: any; // Added support for pre-filling
   onComplete: (data: any) => void;
   onCancel: () => void;
+  onStepChange?: (stepId: string) => void; // Notify parent of step change
 }
 
 // --- SUB-COMPONENTS ---
@@ -205,18 +207,27 @@ const AddressInput = ({ value, onChange, placeholder }: { value: string, onChang
 
 // --- MAIN COMPONENT ---
 
-export default function QuickFormEngine({ formId, title, steps, onComplete, onCancel }: QuickFormEngineProps) {
+export default function QuickFormEngine({ formId, title, steps, initialData, onComplete, onCancel, onStepChange }: QuickFormEngineProps) {
   const navigation = useNavigation();
   
   // STATE
   const [currentStepId, setCurrentStepId] = useState<string>(steps[0].id);
+  
+  // Notify parent on mount/change
+  useEffect(() => {
+    if (onStepChange) onStepChange(currentStepId);
+  }, [currentStepId]);
   const [historyStack, setHistoryStack] = useState<string[]>([]); // Tracks path for "Back" button
-  const [formData, setFormData] = useState<any>({});
+  const [formData, setFormData] = useState<any>(initialData || {});
   
   // Load draft on mount
   useEffect(() => {
-    checkDraft();
-  }, []);
+    if (initialData) {
+      setFormData(prev => ({ ...prev, ...initialData }));
+    } else {
+      checkDraft();
+    }
+  }, [initialData]);
 
   const checkDraft = async () => {
     try {

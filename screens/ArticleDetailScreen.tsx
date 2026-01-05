@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import {
@@ -209,52 +210,43 @@ export default function ArticleDetailScreen() {
             <View style={styles.authorInfo}>
               <Text style={styles.authorName}>By {article.author_name}</Text>
               <Text style={styles.authorMeta}>
-                {article.read_time_minutes} min read • {' '}
-                {new Date(article.published_at).toLocaleDateString()}
+                {article.read_time_minutes} min read • {new Date(article.published_at).toLocaleDateString()}
               </Text>
             </View>
           </View>
 
-          {/* Stats */}
+          {/* Stats Bar - Clean Line Design */}
           <View style={styles.statsBar}>
-            <View style={styles.stat}>
-              <Text style={styles.statIcon}>👁️</Text>
+            <View style={styles.statItem}>
+              <Ionicons name="eye-outline" size={18} color="#666" />
               <Text style={styles.statText}>{formatNumber(article.view_count)} reads</Text>
             </View>
-            <View style={styles.stat}>
-              <Text style={styles.statIcon}>❤️</Text>
+            <View style={styles.statItem}>
+              <Ionicons name="heart" size={18} color="#EF4444" />
               <Text style={styles.statText}>{formatNumber(article.love_count)}</Text>
             </View>
-            <View style={styles.stat}>
-              <Text style={styles.statIcon}>🔖</Text>
+            <View style={styles.statItem}>
+              <Ionicons name="bookmark" size={18} color="#9CA3AF" />
               <Text style={styles.statText}>{formatNumber(article.save_count)} saves</Text>
             </View>
           </View>
 
-          {/* Reaction Buttons */}
+          {/* Reaction Buttons - Colorful & Rounded */}
           <View style={styles.reactionButtons}>
             <TouchableOpacity
-              style={[
-                styles.reactionButton,
-                styles.loveButton,
-                userReaction?.reaction_type === 'love' && styles.reactionActive,
-              ]}
+              style={[styles.reactionButton, styles.loveButton]}
               onPress={() => handleReaction('love')}
               disabled={loading}
             >
-              <Text style={styles.reactionText}>Love it ❤️</Text>
+              <Text style={styles.loveButtonText}>Love it ❤️</Text>
             </TouchableOpacity>
+            
             <TouchableOpacity
-              style={[
-                styles.reactionButton,
-                styles.notForMeButton,
-                userReaction?.reaction_type === 'not_for_me' &&
-                  styles.reactionActive,
-              ]}
+              style={[styles.reactionButton, styles.notForMeButton]}
               onPress={() => handleReaction('not_for_me')}
               disabled={loading}
             >
-              <Text style={styles.reactionText}>Not for me 💔</Text>
+              <Text style={styles.notForMeButtonText}>Not for me 💔</Text>
             </TouchableOpacity>
           </View>
 
@@ -360,57 +352,57 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 16,
-    lineHeight: 36,
   },
   authorSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
   authorAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    marginRight: 12,
+    marginRight: 14,
   },
   authorInfo: {
-    flex: 1,
+    justifyContent: 'center',
   },
   authorName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111',
+    marginBottom: 2,
   },
   authorMeta: {
     fontSize: 14,
     color: '#666',
+    fontWeight: '500',
   },
   statsBar: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 24,
     paddingVertical: 16,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#e5e5e5',
-    marginBottom: 16,
+    borderColor: '#F3F4F6',
+    marginBottom: 24,
   },
-  stat: {
+  statItem: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  statIcon: {
-    fontSize: 16,
-    marginRight: 6,
+    gap: 6,
   },
   statText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 15,
+    color: '#4B5563',
+    fontWeight: '500',
   },
   reactionButtons: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
+    gap: 16,
+    marginBottom: 32,
   },
   reactionButton: {
     flex: 1,
@@ -418,22 +410,27 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   loveButton: {
-    backgroundColor: '#14b8a6',
+    backgroundColor: '#4DB6AC', // Teal color from mockup
   },
   notForMeButton: {
-    backgroundColor: '#e5e5e5',
+    backgroundColor: '#E5E7EB', // Light gray
   },
-  reactionActive: {
-    opacity: 0.7,
-    borderWidth: 2,
-    borderColor: '#000',
-  },
-  reactionText: {
-    color: '#fff',
+  loveButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#fff',
+  },
+  notForMeButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#9CA3AF', // Gray text
   },
   body: {
     fontSize: 17,
