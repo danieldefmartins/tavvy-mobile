@@ -69,9 +69,9 @@ export default function AddPlaceScreen() {
   };
 
   const startScan = () => {
-    navigation.navigate('BusinessCardScanner' as never, {
+    navigation.navigate('BusinessCardScanner', {
       onScanComplete: handleScanComplete
-    } as never);
+    });
   };
 
   return (
