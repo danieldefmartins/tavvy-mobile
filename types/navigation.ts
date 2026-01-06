@@ -1,6 +1,4 @@
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { CompositeNavigationProp } from '@react-navigation/native';
 
 // Define all your route params
 export type RootStackParamList = {
@@ -13,7 +11,7 @@ export type RootStackParamList = {
   PlaceDetails: { placeId: string };
   CityDetails: { cityId: string };
   UniverseLanding: { universeId: string };
-  UniverseDetail: { universeId: string };
+  UniverseDetail: { universeId: string; universe?: any };
   UniverseDiscovery: undefined;
   CategoryBrowse: { category: string };
   AtlasHome: undefined;
@@ -26,6 +24,7 @@ export type RootStackParamList = {
   RateCity: { cityId: string };
   RequestUniverse: undefined;
   PlacePhotos: { placeId: string; placeName: string };
+  ArticleDetail: { article: any; articleId?: string };
   
   // Auth screens
   Login: undefined;

@@ -263,7 +263,7 @@ export default function ArticleDetailScreen() {
                     key={related.id}
                     style={styles.relatedCard}
                     onPress={() =>
-                      navigation.push('ArticleDetail' as never, {
+                      navigation.navigate('ArticleDetail' as never, {
                         article: related,
                       } as never)
                     }

@@ -183,9 +183,9 @@ export default function CategoryBrowseScreen() {
             <TouchableOpacity
               style={styles.featuredCard}
               onPress={() =>
-                navigation.navigate('ArticleDetail' as never, {
+                navigation.navigate('ArticleDetail', {
                   article: articles[0],
-                } as never)
+                })
               }
             >
               <Image
@@ -217,9 +217,9 @@ export default function CategoryBrowseScreen() {
                 key={article.id}
                 style={styles.articleCard}
                 onPress={() =>
-                  navigation.navigate('ArticleDetail' as never, {
+                  navigation.navigate('ArticleDetail', {
                     article,
-                  } as never)
+                  })
                 }
               >
                 <Image

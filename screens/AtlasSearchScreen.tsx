@@ -111,9 +111,9 @@ export default function AtlasSearchScreen() {
                     key={article.id}
                     style={styles.resultCard}
                     onPress={() =>
-                      navigation.navigate('ArticleDetail' as never, {
+                      navigation.navigate('ArticleDetail', {
                         article,
-                      } as never)
+                      })
                     }
                   >
                     <Image

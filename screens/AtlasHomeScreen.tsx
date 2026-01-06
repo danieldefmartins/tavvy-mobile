@@ -225,7 +225,7 @@ export default function AtlasHomeScreen() {
               <Text style={styles.headerTitle}>Tavvy Atlas</Text>
             </View>
             <TouchableOpacity
-              onPress={() => navigation.navigate('AtlasSearch' as never)}
+              onPress={() => navigation.navigate('AtlasSearch')}
               style={styles.searchButton}
             >
               <Ionicons name="search" size={22} color="#fff" />
@@ -238,9 +238,9 @@ export default function AtlasHomeScreen() {
               style={styles.featuredCard}
               activeOpacity={0.95}
               onPress={() =>
-                navigation.navigate('ArticleDetail' as never, {
+                navigation.navigate('ArticleDetail', {
                   article: featuredArticle,
-                } as never)
+                })
               }
             >
               <Image
@@ -281,7 +281,7 @@ export default function AtlasHomeScreen() {
                 style={styles.trendingCard}
                 activeOpacity={0.7}
                 onPress={() =>
-                  navigation.navigate('ArticleDetail' as never, { article } as never)
+                  navigation.navigate('ArticleDetail', { article })
                 }
               >
                 <Image
@@ -336,7 +336,7 @@ export default function AtlasHomeScreen() {
                   style={styles.universeCard}
                   activeOpacity={0.8}
                   onPress={() =>
-                    navigation.navigate('UniverseDetail' as never, { universe } as never)
+                    navigation.navigate('UniverseDetail', { universe })
                   }
                 >
                   <Image

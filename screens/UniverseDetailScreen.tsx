@@ -184,9 +184,9 @@ export default function UniverseDetailScreen() {
                       key={article.id}
                       style={styles.guideCard}
                       onPress={() =>
-                        navigation.navigate('ArticleDetail' as never, {
+                        navigation.navigate('ArticleDetail', {
                           article,
-                        } as never)
+                        })
                       }
                     >
                       <Image
@@ -222,9 +222,9 @@ export default function UniverseDetailScreen() {
                         key={place.id}
                         style={styles.placeCard}
                         onPress={() =>
-                          navigation.navigate('PlaceDetails' as never, {
+                          navigation.navigate('PlaceDetails', {
                             place,
-                          } as never)
+                          })
                         }
                       >
                         {place.photos && place.photos[0] && (
@@ -263,9 +263,9 @@ export default function UniverseDetailScreen() {
                         key={subUniverse.id}
                         style={styles.subUniverseCard}
                         onPress={() =>
-                          navigation.push('UniverseDetail' as never, {
+                          navigation.navigate('UniverseDetail', {
                             universe: subUniverse,
-                          } as never)
+                          })
                         }
                       >
                         <Image
