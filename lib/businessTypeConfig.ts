@@ -711,16 +711,54 @@ export function shouldShowRVEntranceDetails(businessType: BusinessType): boolean
 
 /**
  * Determines if a business type should show multiple entrances.
- * Updated to include more categories that typically have multiple entrances.
+ * 
+ * Only includes categories that CLEARLY have multiple distinct entrances:
+ * - Hospitals: Emergency, Main, Outpatient, Delivery
+ * - Airports: Different terminals, Arrivals/Departures
+ * - National/State Parks: East/West/North/South entrances
+ * - Theme Parks: Main gate, VIP, Hotel guest entrances
+ * - Shopping Malls: Multiple anchor store entrances
+ * - Stadiums/Arenas: Multiple gates (North, South, East, West)
+ * - Universities: Multiple campus gates
+ * - Convention Centers: Multiple halls
+ * - Large Hotels/Resorts: Lobby, Valet, Pool, Conference
+ * - RV Parks/Campgrounds: Main office, RV entrance, Tent area
+ * - Zoos/Aquariums: Main, Member, Group entrances
+ * - Large Museums: Multiple wings
+ * - Warehouses/Distribution Centers: Office, Shipping, Receiving
+ * - Truck Stops: Car entrance, Truck entrance, RV entrance
+ * 
+ * NOT included: Restaurants, cafes, bars, retail stores, salons, etc.
+ * (These typically have a single customer entrance)
  */
 export function shouldShowMultipleEntrances(businessType: BusinessType): boolean {
   const multiEntranceTypes: BusinessType[] = [
-    'airport',
+    // TIER 1: Critical - Always have multiple entrances
     'hospital',
-    'theme_park',
+    'airport',
     'national_park',
+    'state_park',
+    'theme_park',
+    'shopping_mall',
+    
+    // TIER 2: Common - Frequently have multiple entrances  
+    'stadium',
+    'arena',
+    'university',
+    'convention_center',
+    'resort',
+    
+    // TIER 3: Specialized - Often have multiple entrances
     'rv_park',
     'campground',
+    'zoo',
+    'aquarium',
+    'museum',
+    'warehouse',
+    'distribution_center',
+    'truck_stop',
+    'marina',
+    'botanical_garden',
   ];
   
   return multiEntranceTypes.includes(businessType);

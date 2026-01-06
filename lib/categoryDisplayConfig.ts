@@ -9,7 +9,7 @@
  */
 
 import { Ionicons } from '@expo/vector-icons';
-import { getPrimaryCategory, getSubcategory, PRIMARY_CATEGORIES } from './categoryConfig';
+import { getPrimaryCategory, getSubcategory, PRIMARY_CATEGORIES, shouldShowMultipleEntrances, ContentType } from './categoryConfig';
 import { mapCategoryToBusinessType, BusinessType } from './businessTypeConfig';
 
 // ============================================
@@ -474,31 +474,27 @@ export function getCategoryDisplayFields(categorySlug: string): DisplayField[] {
 
 /**
  * Determine if entrances tab should be shown based on category
+ * 
+ * This function delegates to the canonical shouldShowMultipleEntrances
+ * function in categoryConfig.ts to maintain a single source of truth.
+ * 
+ * For display purposes, we show the entrances tab if the category
+ * has 'always' or 'optional' multi-entrance requirement.
  */
-export function shouldShowEntrancesTab(categorySlug: string): boolean {
-  const slug = categorySlug.toLowerCase();
+export function shouldShowEntrancesTab(
+  categorySlug: string,
+  contentType: ContentType = 'place'
+): boolean {
+  // Parse the category slug to extract primary and subcategory
+  const parts = categorySlug.toLowerCase().split('/');
+  const primarySlug = parts[0] || categorySlug;
+  const subcategorySlug = parts[1];
   
-  // Categories that typically have multiple entrances
-  const multiEntranceCategories = [
-    'airport',
-    'hospital',
-    'theme_park',
-    'national_park',
-    'state_park',
-    'shopping_mall',
-    'stadium',
-    'arena',
-    'university',
-    'rv_park',
-    'campground',
-    'resort',
-    'convention_center',
-    'zoo',
-    'aquarium',
-    'museum',
-  ];
+  // Use the canonical function from categoryConfig.ts
+  const requirement = shouldShowMultipleEntrances(contentType, primarySlug, subcategorySlug);
   
-  return multiEntranceCategories.some(cat => slug.includes(cat));
+  // Show entrances tab for 'always' or 'optional' requirements
+  return requirement !== 'never';
 }
 
 // ============================================

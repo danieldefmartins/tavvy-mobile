@@ -1,4 +1,4 @@
-/**
+ /**
  * TavvY Category Configuration System
  * 
  * This file defines the complete category taxonomy for the TavvY app.
