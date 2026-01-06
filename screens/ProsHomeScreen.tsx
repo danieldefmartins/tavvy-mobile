@@ -24,7 +24,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { ProsColors, PROS_CATEGORIES, SAMPLE_PROS } from '../constants/ProsConfig';
+import { 
+  ProsColors, 
+  PROS_CATEGORIES, 
+  SAMPLE_PROS,
+  EARLY_ADOPTER_PRICE,
+  STANDARD_PRICE,
+  EARLY_ADOPTER_SPOTS_LEFT,
+  EARLY_ADOPTER_SAVINGS,
+} from '../constants/ProsConfig';
 import { ProsCategoryCard } from '../components/ProsCategoryCard';
 import { ProsProviderCard } from '../components/ProsProviderCard';
 import { ProsSubscriptionBanner } from '../components/ProsSubscriptionBanner';
@@ -42,7 +50,6 @@ export default function ProsHomeScreen() {
 
   // Use sample data for now
   const featuredPros = SAMPLE_PROS.slice(0, 6);
-  const earlyAdopterCount = 247; // Sample count
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -74,7 +81,7 @@ export default function ProsHomeScreen() {
     navigation.navigate('ProsDashboard');
   };
 
-  const remainingSpots = Math.max(0, 1000 - earlyAdopterCount);
+  const remainingSpots = EARLY_ADOPTER_SPOTS_LEFT;
 
   // If user switches to Pro mode, show Pro options
   if (viewMode === 'pro') {
@@ -163,15 +170,24 @@ export default function ProsHomeScreen() {
 
             {/* Not registered yet? */}
             <View style={styles.notRegisteredSection}>
-              <Text style={styles.notRegisteredTitle}>Not registered yet?</Text>
+              <View style={styles.savingsBadge}>
+                <Ionicons name="sparkles" size={16} color="#fff" />
+                <Text style={styles.savingsBadgeText}>SAVE ${EARLY_ADOPTER_SAVINGS}</Text>
+              </View>
+              <Text style={styles.notRegisteredTitle}>Join as an Early Adopter</Text>
               <Text style={styles.notRegisteredSubtitle}>
-                Join {remainingSpots} other pros and get discovered by local customers
+                The first 1,000 pros pay just a fraction of the regular price.
+                Only {remainingSpots} spots remaining!
               </Text>
+              <View style={styles.pricingComparison}>
+                <Text style={styles.originalPrice}>${STANDARD_PRICE}/year</Text>
+                <Text style={styles.discountedPrice}>${EARLY_ADOPTER_PRICE}/year</Text>
+              </View>
               <TouchableOpacity style={styles.registerButton} onPress={handleProSignup}>
-                <Text style={styles.registerButtonText}>Register as a Pro - $99/year</Text>
+                <Text style={styles.registerButtonText}>Claim Your Spot - ${EARLY_ADOPTER_PRICE}/year</Text>
               </TouchableOpacity>
               <Text style={styles.earlyAdopterNote}>
-                🎉 Early adopter pricing! Regular price $499/year
+                ✓ No per-lead fees  ✓ Unlimited leads  ✓ Verified badge
               </Text>
             </View>
           </View>
@@ -225,7 +241,7 @@ export default function ProsHomeScreen() {
             <TouchableOpacity style={styles.earlyAdopterBadge} onPress={handleProSignup}>
               <Ionicons name="sparkles" size={14} color={ProsColors.primary} />
               <Text style={styles.earlyAdopterText}>
-                {remainingSpots} early adopter spots left
+                Are you a Pro? Save ${EARLY_ADOPTER_SAVINGS} · Only {remainingSpots} spots left!
               </Text>
             </TouchableOpacity>
           )}
@@ -700,7 +716,39 @@ const styles = StyleSheet.create({
   },
   earlyAdopterNote: {
     fontSize: 12,
-    color: ProsColors.success,
+    color: ProsColors.textSecondary,
     fontWeight: '500',
+    textAlign: 'center',
+  },
+  savingsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: ProsColors.secondary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 12,
+    gap: 6,
+  },
+  savingsBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  pricingComparison: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  originalPrice: {
+    fontSize: 18,
+    color: ProsColors.textMuted,
+    textDecorationLine: 'line-through',
+  },
+  discountedPrice: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: ProsColors.primary,
   },
 });

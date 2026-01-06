@@ -53,11 +53,16 @@ export const ProsColors = {
 };
 
 // Subscription pricing
+export const EARLY_ADOPTER_PRICE = 99;
+export const STANDARD_PRICE = 499;
+export const EARLY_ADOPTER_SPOTS_LEFT = 487; // Less than 500 remaining
+export const EARLY_ADOPTER_SAVINGS = STANDARD_PRICE - EARLY_ADOPTER_PRICE; // $400 savings
+
 export const PROS_SUBSCRIPTION_TIERS = {
   earlyAdopter: {
-    price: 99,
+    price: EARLY_ADOPTER_PRICE,
     label: 'Early Adopter',
-    description: 'First 1,000 pros only',
+    description: `Only ${EARLY_ADOPTER_SPOTS_LEFT} spots left!`,
     features: [
       'Professional profile page',
       'Unlimited lead requests',
