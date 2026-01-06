@@ -658,14 +658,14 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
     );
   }
 
-  return (
+    return (
     <View style={styles.container}>
+      {/* @ts-ignore */}
       <MapLibreGL.MapView
         key={mapStyle}
         style={styles.map}
-      {/* @ts-ignore - MapLibre type mismatch */}
-        styleURL={MAP_STYLES[mapStyle].type === 'vector' ? MAP_STYLES[mapStyle].url : undefined}
-        styleJSON={MAP_STYLES[mapStyle].type === 'raster' ? JSON.stringify(EMPTY_STYLE) : undefined}
+        styleURL={MAP_STYLES[mapStyle].type === 'vector' ? (MAP_STYLES[mapStyle] as any).url : undefined}
+
         logoEnabled={false}
         attributionEnabled={false}
         onRegionDidChange={handleRegionChange}
