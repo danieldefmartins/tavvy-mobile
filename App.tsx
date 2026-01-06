@@ -221,7 +221,7 @@ function TabNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={HomeStack} options={{ tabBarLabel: 'Home' }} />
-      <Tab.Screen name="Explore" component={UniverseStack} options={{ tabBarLabel: 'Explore' }} />
+      <Tab.Screen name="Explore" component={UniverseStack} options={{ tabBarLabel: 'Universes' }} />
 
       {/* CHANGED: Replaced Add tab with Pros tab */}
       <Tab.Screen

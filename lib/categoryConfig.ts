@@ -1,4 +1,4 @@
- /**
+/**
  * TavvY Category Configuration System
  * 
  * This file defines the complete category taxonomy for the TavvY app.
@@ -481,7 +481,7 @@ export const PRIMARY_CATEGORIES: PrimaryCategory[] = [
   // ----------------------------------------
   {
     slug: 'home_services',
-    name: 'Home Services',
+    name: 'Home Services and Construction',
     iconKey: 'home',
     sortOrder: 10,
     multiEntrance: 'never', // Service businesses don't have entrances
