@@ -12,6 +12,8 @@
  * Path: screens/UniversalAddScreenV2.tsx
  */
 
+console.log('🔍 UniversalAddScreen rendered');
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
