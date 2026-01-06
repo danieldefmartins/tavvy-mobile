@@ -223,8 +223,8 @@ export default function UniverseDetailScreen() {
                         style={styles.placeCard}
                         onPress={() =>
                           navigation.navigate('PlaceDetails', {
-                            place,
-                          })
+  placeId: place.id,
+})
                         }
                       >
                         {place.photos && place.photos[0] && (
