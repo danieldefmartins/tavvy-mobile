@@ -1320,9 +1320,9 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
             
             {place && (
               <View style={styles.popupMapContainer}>
+                {/* @ts-ignore */}
                 <MapLibreGL.MapView
                   style={styles.popupMap}
-        {/* @ts-ignore - MapLibre type mismatch */}
                   styleURL="https://tiles.openfreemap.org/styles/liberty"
                   logoEnabled={false}
                   attributionEnabled={false}
