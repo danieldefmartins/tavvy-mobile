@@ -14,7 +14,10 @@ import {
   Animated,
   Keyboard,
   TouchableWithoutFeedback,
+  Platform,
+  Alert,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import MapLibreGL from '@maplibre/maplibre-react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -75,6 +78,8 @@ const STORAGE_KEYS = {
   RECENT_SEARCHES: '@tavvy_recent_searches',
   CATEGORY_VIEWS: '@tavvy_category_views',
   PLACE_VIEWS: '@tavvy_place_views',
+  PARKING_LOCATION: '@tavvy_parking_location',
+  SAVED_LOCATIONS: '@tavvy_saved_locations',
 };
 
 // ============================================
@@ -118,6 +123,33 @@ interface SearchSuggestion {
   data?: any;
 }
 
+interface AddressInfo {
+  displayName: string;
+  shortName: string;
+  coordinates: [number, number];
+  road?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postcode?: string;
+}
+
+interface ParkingLocation {
+  coordinates: [number, number];
+  address?: string;
+  savedAt: number; // timestamp
+  note?: string;
+}
+
+interface SavedLocation {
+  id: string;
+  name: string; // e.g., "Home", "Work", "Gym"
+  coordinates: [number, number];
+  address: string;
+  icon: string;
+  createdAt: number;
+}
+
 interface GeocodingResult {
   display_name: string;
   lat: string;
@@ -128,6 +160,7 @@ interface GeocodingResult {
     city?: string;
     state?: string;
     country?: string;
+    postcode?: string;
   };
 }
 
@@ -206,6 +239,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [targetLocation, setTargetLocation] = useState<[number, number] | null>(null);
   const [searchedAddressName, setSearchedAddressName] = useState<string>('');
+  const [searchedAddress, setSearchedAddress] = useState<AddressInfo | null>(null);
   
   // Location states
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
@@ -216,6 +250,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   
   // Personalization states
   const [greeting, setGreeting] = useState('');
+  
+  // Parking and saved locations
+  const [parkingLocation, setParkingLocation] = useState<ParkingLocation | null>(null);
+  const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   
   // Refs
@@ -249,6 +287,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const initializeApp = async () => {
     updateGreeting();
     loadRecentSearches();
+    loadParkingLocation();
+    loadSavedLocations();
     requestLocationPermission();
     fetchPlaces();
   };
@@ -284,6 +324,125 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       await AsyncStorage.setItem(STORAGE_KEYS.RECENT_SEARCHES, JSON.stringify(updated));
     } catch (error) {
       console.log('Error saving recent search:', error);
+    }
+  };
+
+  // ============================================
+  // PARKING LOCATION
+  // ============================================
+
+  const loadParkingLocation = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(STORAGE_KEYS.PARKING_LOCATION);
+      if (stored) {
+        setParkingLocation(JSON.parse(stored));
+      }
+    } catch (error) {
+      console.log('Error loading parking location:', error);
+    }
+  };
+
+  const saveParkingLocation = async (location?: [number, number], address?: string) => {
+    try {
+      const coords = location || userLocation;
+      if (!coords) {
+        Alert.alert('Location Required', 'Unable to get your current location. Please try again.');
+        return;
+      }
+      
+      const parking: ParkingLocation = {
+        coordinates: coords,
+        address: address || 'Current Location',
+        savedAt: Date.now(),
+      };
+      
+      setParkingLocation(parking);
+      await AsyncStorage.setItem(STORAGE_KEYS.PARKING_LOCATION, JSON.stringify(parking));
+      Alert.alert('Parking Saved!', 'Your parking location has been saved. Tap the car icon on the map to navigate back.');
+    } catch (error) {
+      console.log('Error saving parking location:', error);
+    }
+  };
+
+  const clearParkingLocation = async () => {
+    try {
+      setParkingLocation(null);
+      await AsyncStorage.removeItem(STORAGE_KEYS.PARKING_LOCATION);
+    } catch (error) {
+      console.log('Error clearing parking location:', error);
+    }
+  };
+
+  const navigateToParking = () => {
+    if (!parkingLocation) return;
+    
+    const [lon, lat] = parkingLocation.coordinates;
+    const url = Platform.select({
+      ios: `maps://app?daddr=${lat},${lon}`,
+      android: `google.navigation:q=${lat},${lon}`,
+    });
+    
+    if (url) {
+      Linking.openURL(url).catch(() => {
+        // Fallback to Google Maps web
+        Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`);
+      });
+    }
+  };
+
+  const getParkingDuration = (): string => {
+    if (!parkingLocation) return '';
+    
+    const minutes = Math.floor((Date.now() - parkingLocation.savedAt) / 60000);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ${minutes % 60}m ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+  // ============================================
+  // SAVED LOCATIONS
+  // ============================================
+
+  const loadSavedLocations = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(STORAGE_KEYS.SAVED_LOCATIONS);
+      if (stored) {
+        setSavedLocations(JSON.parse(stored));
+      }
+    } catch (error) {
+      console.log('Error loading saved locations:', error);
+    }
+  };
+
+  const saveLocation = async (name: string, coordinates: [number, number], address: string, icon: string = 'bookmark') => {
+    try {
+      const newLocation: SavedLocation = {
+        id: Date.now().toString(),
+        name,
+        coordinates,
+        address,
+        icon,
+        createdAt: Date.now(),
+      };
+      
+      const updated = [...savedLocations, newLocation];
+      setSavedLocations(updated);
+      await AsyncStorage.setItem(STORAGE_KEYS.SAVED_LOCATIONS, JSON.stringify(updated));
+      Alert.alert('Location Saved!', `"${name}" has been added to your saved locations.`);
+    } catch (error) {
+      console.log('Error saving location:', error);
+    }
+  };
+
+  const removeSavedLocation = async (id: string) => {
+    try {
+      const updated = savedLocations.filter(loc => loc.id !== id);
+      setSavedLocations(updated);
+      await AsyncStorage.setItem(STORAGE_KEYS.SAVED_LOCATIONS, JSON.stringify(updated));
+    } catch (error) {
+      console.log('Error removing saved location:', error);
     }
   };
 
@@ -615,10 +774,23 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         // Save to recent searches
         saveRecentSearch(addressName);
         
+        // Create full address info object
+        const addressInfo: AddressInfo = {
+          displayName: suggestion.data.displayName || addressName,
+          shortName: addressName,
+          coordinates: addressCoords,
+          road: suggestion.data.road,
+          city: suggestion.data.city,
+          state: suggestion.data.state,
+          country: suggestion.data.country,
+          postcode: suggestion.data.postcode,
+        };
+        
         // Set all states before switching view mode
         setSearchedAddressName(addressName);
         setSearchQuery(addressName);
         setTargetLocation(addressCoords);
+        setSearchedAddress(addressInfo);
         
         // Switch to map mode
         setViewMode('map');
@@ -711,6 +883,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     setIsSearchFocused(false);
     setTargetLocation(null);
     setSearchedAddressName('');
+    setSearchedAddress(null);
   };
 
   // ============================================
@@ -890,6 +1063,199 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <Ionicons name="arrow-forward" size={16} color="#C7C7CC" />
           </TouchableOpacity>
         )}
+      </View>
+    );
+  };
+
+  // ============================================
+  // RENDER: ADDRESS INFO CARD
+  // ============================================
+
+  const renderAddressInfoCard = () => {
+    if (!searchedAddress) return null;
+
+    const handleShare = async () => {
+      try {
+        const [lon, lat] = searchedAddress.coordinates;
+        const message = `Check out this location: ${searchedAddress.displayName}\n\nOpen in Maps: https://www.google.com/maps?q=${lat},${lon}`;
+        
+        await Share.share({
+          message,
+          title: 'Share Location',
+        });
+      } catch (error) {
+        console.log('Error sharing:', error);
+      }
+    };
+
+    const handleDirections = () => {
+      const [lon, lat] = searchedAddress.coordinates;
+      const url = Platform.select({
+        ios: `maps://app?daddr=${lat},${lon}`,
+        android: `google.navigation:q=${lat},${lon}`,
+      });
+      
+      if (url) {
+        Linking.openURL(url).catch(() => {
+          Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`);
+        });
+      }
+    };
+
+    const handleCopyAddress = async () => {
+      await Clipboard.setStringAsync(searchedAddress.displayName);
+      Alert.alert('Copied!', 'Address copied to clipboard.');
+    };
+
+    const handleSaveParking = () => {
+      saveParkingLocation(searchedAddress.coordinates, searchedAddress.shortName);
+    };
+
+    const handleSaveLocation = () => {
+      Alert.prompt(
+        'Save Location',
+        'Give this location a name (e.g., Home, Work, Gym)',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Save',
+            onPress: (name) => {
+              if (name && name.trim()) {
+                saveLocation(name.trim(), searchedAddress.coordinates, searchedAddress.displayName);
+              }
+            },
+          },
+        ],
+        'plain-text',
+        '',
+        'default'
+      );
+    };
+
+    // Calculate distance from user location
+    const getDistance = (): string => {
+      if (!userLocation) return '';
+      const [lon1, lat1] = userLocation;
+      const [lon2, lat2] = searchedAddress.coordinates;
+      
+      const R = 3959; // Earth's radius in miles
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c;
+      
+      if (distance < 0.1) return 'Nearby';
+      if (distance < 1) return `${(distance * 5280).toFixed(0)} ft away`;
+      return `${distance.toFixed(1)} mi away`;
+    };
+
+    // Get nearby places from our database
+    const nearbyPlaces = places.filter(place => {
+      const [lon, lat] = searchedAddress.coordinates;
+      const placeLat = place.latitude || place.lat || 0;
+      const placeLon = place.longitude || place.lng || 0;
+      const distance = Math.sqrt(Math.pow(placeLat - lat, 2) + Math.pow(placeLon - lon, 2));
+      return distance < 0.01; // Roughly within 1km
+    }).slice(0, 3);
+
+    return (
+      <View style={styles.addressCardContainer}>
+        {/* Address Header */}
+        <View style={styles.addressCardHeader}>
+          <View style={styles.addressIconContainer}>
+            <Ionicons name="location" size={28} color="#AF52DE" />
+          </View>
+          <View style={styles.addressTextContainer}>
+            <Text style={styles.addressCardTitle} numberOfLines={2}>
+              {searchedAddress.shortName}
+            </Text>
+            {searchedAddress.city && (
+              <Text style={styles.addressCardSubtitle}>
+                {searchedAddress.city}{searchedAddress.state ? `, ${searchedAddress.state}` : ''}
+              </Text>
+            )}
+            {userLocation && (
+              <Text style={styles.addressDistance}>{getDistance()}</Text>
+            )}
+          </View>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.addressActionsRow}>
+          <TouchableOpacity style={styles.addressActionButton} onPress={handleDirections}>
+            <View style={[styles.addressActionIcon, { backgroundColor: '#007AFF' }]}>
+              <Ionicons name="navigate" size={20} color="#fff" />
+            </View>
+            <Text style={styles.addressActionText}>Directions</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.addressActionButton} onPress={handleShare}>
+            <View style={[styles.addressActionIcon, { backgroundColor: '#34C759' }]}>
+              <Ionicons name="share-outline" size={20} color="#fff" />
+            </View>
+            <Text style={styles.addressActionText}>Share</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.addressActionButton} onPress={handleSaveParking}>
+            <View style={[styles.addressActionIcon, { backgroundColor: '#FF9500' }]}>
+              <Ionicons name="car" size={20} color="#fff" />
+            </View>
+            <Text style={styles.addressActionText}>Park Here</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.addressActionButton} onPress={handleCopyAddress}>
+            <View style={[styles.addressActionIcon, { backgroundColor: '#8E8E93' }]}>
+              <Ionicons name="copy-outline" size={20} color="#fff" />
+            </View>
+            <Text style={styles.addressActionText}>Copy</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Save Location Button */}
+        <TouchableOpacity style={styles.saveLocationButton} onPress={handleSaveLocation}>
+          <Ionicons name="bookmark-outline" size={20} color="#007AFF" />
+          <Text style={styles.saveLocationText}>Save to My Places</Text>
+        </TouchableOpacity>
+
+        {/* Nearby TavvY Places */}
+        {nearbyPlaces.length > 0 && (
+          <View style={styles.nearbySection}>
+            <Text style={styles.nearbySectionTitle}>Nearby on TavvY</Text>
+            {nearbyPlaces.map((place) => (
+              <TouchableOpacity
+                key={place.id}
+                style={styles.nearbyPlaceItem}
+                onPress={() => handlePlacePress(place)}
+              >
+                <View style={styles.nearbyPlaceIcon}>
+                  <Ionicons
+                    name={
+                      place.category === 'Restaurants' ? 'restaurant' :
+                      place.category === 'Cafes' ? 'cafe' :
+                      place.category === 'Bars' ? 'beer' : 'storefront'
+                    }
+                    size={16}
+                    color="#666"
+                  />
+                </View>
+                <View style={styles.nearbyPlaceInfo}>
+                  <Text style={styles.nearbyPlaceName}>{place.name}</Text>
+                  <Text style={styles.nearbyPlaceCategory}>{place.category}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Full Address */}
+        <View style={styles.fullAddressSection}>
+          <Text style={styles.fullAddressLabel}>Full Address</Text>
+          <Text style={styles.fullAddressText}>{searchedAddress.displayName}</Text>
+        </View>
       </View>
     );
   };
@@ -1340,6 +1706,32 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </MapLibreGL.PointAnnotation>
         )}
 
+        {/* Parking Location Marker */}
+        {parkingLocation && (
+          <MapLibreGL.PointAnnotation
+            id="parking-location"
+            coordinate={parkingLocation.coordinates}
+            onSelected={() => {
+              Alert.alert(
+                'Your Parked Car',
+                `Parked ${getParkingDuration()}\n${parkingLocation.address || 'Current Location'}`,
+                [
+                  { text: 'Navigate', onPress: navigateToParking },
+                  { text: 'Clear', onPress: clearParkingLocation, style: 'destructive' },
+                  { text: 'OK', style: 'cancel' },
+                ]
+              );
+            }}
+          >
+            <View style={styles.parkingMarker}>
+              <View style={styles.parkingMarkerInner}>
+                <Ionicons name="car" size={20} color="#fff" />
+              </View>
+              <Text style={styles.parkingMarkerTime}>{getParkingDuration()}</Text>
+            </View>
+          </MapLibreGL.PointAnnotation>
+        )}
+
         {MAP_STYLES[mapStyle].type === 'raster' && (
           <MapLibreGL.RasterSource
             id="raster-source"
@@ -1477,21 +1869,32 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         </ScrollView>
       </View>
 
-      {/* Bottom Sheet with Place Cards */}
+      {/* Bottom Sheet with Place Cards or Address Card */}
       <BottomSheet
         ref={bottomSheetRef}
         index={1}
-        snapPoints={['15%', '50%', '90%']}
+        snapPoints={searchedAddress ? ['25%', '55%', '90%'] : ['15%', '50%', '90%']}
         backgroundStyle={styles.bottomSheetBackground}
         handleIndicatorStyle={styles.bottomSheetHandle}
       >
-        <BottomSheetFlatList
-          data={filteredPlaces}
-          keyExtractor={(item) => item.id}
-          renderItem={renderPlaceCard}
-          contentContainerStyle={styles.bottomSheetContent}
-          showsVerticalScrollIndicator={false}
-        />
+        {searchedAddress ? (
+          // Show Address Info Card when viewing a searched address
+          <ScrollView 
+            style={styles.addressCardScrollView}
+            showsVerticalScrollIndicator={false}
+          >
+            {renderAddressInfoCard()}
+          </ScrollView>
+        ) : (
+          // Show place cards for normal browsing
+          <BottomSheetFlatList
+            data={filteredPlaces}
+            keyExtractor={(item) => item.id}
+            renderItem={renderPlaceCard}
+            contentContainerStyle={styles.bottomSheetContent}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
       </BottomSheet>
     </View>
   );
@@ -2107,5 +2510,166 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 4,
+  },
+  
+  // Address Card Styles
+  addressCardScrollView: {
+    flex: 1,
+  },
+  addressCardContainer: {
+    padding: 20,
+  },
+  addressCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  addressIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#F3E8FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  addressTextContainer: {
+    flex: 1,
+  },
+  addressCardTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 4,
+  },
+  addressCardSubtitle: {
+    fontSize: 15,
+    color: '#666',
+    marginBottom: 2,
+  },
+  addressDistance: {
+    fontSize: 14,
+    color: '#0A84FF',
+    fontWeight: '500',
+  },
+  addressActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  addressActionButton: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  addressActionIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  addressActionText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  saveLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F2F2F7',
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  saveLocationText: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  nearbySection: {
+    marginBottom: 20,
+  },
+  nearbySectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 12,
+  },
+  nearbyPlaceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+  },
+  nearbyPlaceIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F2F2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  nearbyPlaceInfo: {
+    flex: 1,
+  },
+  nearbyPlaceName: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#000',
+  },
+  nearbyPlaceCategory: {
+    fontSize: 13,
+    color: '#666',
+  },
+  fullAddressSection: {
+    backgroundColor: '#F9F9F9',
+    padding: 14,
+    borderRadius: 12,
+  },
+  fullAddressLabel: {
+    fontSize: 12,
+    color: '#8E8E93',
+    fontWeight: '500',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  fullAddressText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+  },
+  
+  // Parking Marker Styles
+  parkingMarker: {
+    alignItems: 'center',
+  },
+  parkingMarkerInner: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FF9500',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  parkingMarkerTime: {
+    fontSize: 10,
+    color: '#FF9500',
+    fontWeight: '700',
+    marginTop: 2,
+    backgroundColor: '#fff',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
 });

@@ -136,7 +136,9 @@ export interface SamplePro {
   photos: string[];
 }
 
-export const SAMPLE_PROS: SamplePro[] = [
+export const SAMPLE_PROS: SamplePro[] = []; /* Empty - real data from Supabase */
+
+const _SAMPLE_PROS_REMOVED = [
   {
     id: 1,
     slug: 'ace-electric-miami',
@@ -338,7 +340,7 @@ export const SAMPLE_PROS: SamplePro[] = [
       'https://images.unsplash.com/photo-1632759145351-1d592919f522?w=800',
     ],
   },
-];
+]; // End of _SAMPLE_PROS_REMOVED (kept for reference but not exported)
 
 // Sample leads for Pro Dashboard testing
 export interface SampleLead {
@@ -354,7 +356,9 @@ export interface SampleLead {
   zipCode: string;
 }
 
-export const SAMPLE_LEADS: SampleLead[] = [
+export const SAMPLE_LEADS: SampleLead[] = []; /* Empty - real data from Supabase */
+
+const _SAMPLE_LEADS_REMOVED = [
   {
     id: 1,
     customerName: 'Jennifer Smith',
@@ -415,7 +419,7 @@ export const SAMPLE_LEADS: SampleLead[] = [
     city: 'Boca Raton',
     zipCode: '33432',
   },
-];
+]; // End of _SAMPLE_LEADS_REMOVED
 
 // Sample messages for testing
 export interface SampleMessage {
@@ -429,7 +433,9 @@ export interface SampleMessage {
   isRead: boolean;
 }
 
-export const SAMPLE_CONVERSATIONS = [
+export const SAMPLE_CONVERSATIONS: any[] = []; /* Empty - real data from Supabase */
+
+const _SAMPLE_CONVERSATIONS_REMOVED = [
   {
     id: 1,
     otherPartyName: 'Jennifer Smith',
@@ -454,9 +460,11 @@ export const SAMPLE_CONVERSATIONS = [
     lastMessageAt: '2026-01-03T12:00:00Z',
     unreadCount: 2,
   },
-];
+]; // End of _SAMPLE_CONVERSATIONS_REMOVED
 
-export const SAMPLE_MESSAGES: SampleMessage[] = [
+export const SAMPLE_MESSAGES: SampleMessage[] = []; /* Empty - real data from Supabase */
+
+const _SAMPLE_MESSAGES_REMOVED: SampleMessage[] = [
   {
     id: 1,
     conversationId: 1,
@@ -507,7 +515,7 @@ export const SAMPLE_MESSAGES: SampleMessage[] = [
     createdAt: '2026-01-05T15:30:00Z',
     isRead: false,
   },
-];
+]; // End of _SAMPLE_MESSAGES_REMOVED
 
 // Sample reviews for testing
 export interface SampleReview {
@@ -521,7 +529,9 @@ export interface SampleReview {
   serviceType: string;
 }
 
-export const SAMPLE_REVIEWS: SampleReview[] = [
+export const SAMPLE_REVIEWS: SampleReview[] = []; /* Empty - real data from Supabase */
+
+const _SAMPLE_REVIEWS_REMOVED: SampleReview[] = [
   {
     id: 1,
     proId: 1,
@@ -572,4 +582,4 @@ export const SAMPLE_REVIEWS: SampleReview[] = [
     createdAt: '2025-12-25T16:00:00Z',
     serviceType: 'Leak Repair',
   },
-];
+]; // End of _SAMPLE_REVIEWS_REMOVED

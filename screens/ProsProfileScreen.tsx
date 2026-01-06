@@ -34,37 +34,11 @@ type RouteParams = {
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
-// Sample reviews for testing
-const SAMPLE_REVIEWS = [
-  {
-    id: 1,
-    userName: 'Sarah M.',
-    rating: 5,
-    date: '2025-12-15',
-    content: 'Excellent work! Very professional and completed the job on time. Would highly recommend.',
-  },
-  {
-    id: 2,
-    userName: 'John D.',
-    rating: 5,
-    date: '2025-12-10',
-    content: 'Great service, fair pricing, and very knowledgeable. Will definitely use again.',
-  },
-  {
-    id: 3,
-    userName: 'Maria L.',
-    rating: 4,
-    date: '2025-11-28',
-    content: 'Good work overall. Showed up on time and did a thorough job.',
-  },
-];
+// Sample reviews - empty, real data from Supabase
+const SAMPLE_REVIEWS: any[] = [];
 
-// Sample photos for testing
-const SAMPLE_PHOTOS = [
-  'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400',
-  'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400',
-  'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400',
-];
+// Sample photos - empty, real data from Supabase
+const SAMPLE_PHOTOS: string[] = [];
 
 export default function ProsProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
