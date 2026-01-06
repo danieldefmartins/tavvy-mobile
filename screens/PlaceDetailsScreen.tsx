@@ -212,7 +212,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   const [photos, setPhotos] = useState<PlacePhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedSection, setExpandedSection] = useState<'positive' | 'neutral' | 'improvement' | null>(null);
+  const [expandedSection, setExpandedSection] = useState<'best_for' | 'vibe' | 'heads_up' | null>(null);
   const [activeTab, setActiveTab] = useState<'signals' | 'info' | 'photos' | 'entrances'>('signals');
   const [showHoursModal, setShowHoursModal] = useState(false);
   const [showNavModal, setShowNavModal] = useState(false);
@@ -568,7 +568,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   };
 
   // Toggle expanded section
-  const toggleSection = (section: 'positive' | 'neutral' | 'improvement') => {
+  const toggleSection = (section: 'best_for' | 'vibe' | 'heads_up') => {
     setExpandedSection(expandedSection === section ? null : section);
   };
 
