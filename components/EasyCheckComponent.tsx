@@ -9,7 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getCheckInTypes } from '../lib/businessTypeConfig';
+import { getCheckInTypes, BusinessType } from '../lib/businessTypeConfig';
 
 interface CheckIn {
   id: string;

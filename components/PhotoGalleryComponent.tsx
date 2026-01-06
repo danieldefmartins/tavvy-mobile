@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getPhotoCategories, getCategoryName, getCategoryIcon } from '../lib/photoCategoryUtils';
+import { BusinessType } from '../lib/businessTypeConfig';
 import { getPhotoCategories, getCategoryName, getCategoryIcon, BusinessType } from '../lib/photoCategoryUtils';
 
 const { width, height } = Dimensions.get('window');
@@ -30,7 +31,7 @@ export interface PlacePhoto {
 
 interface PhotoGalleryProps {
   placeId: string;
-  businessType: string; // NEW: Business type for dynamic categories
+  businessType: BusinessType; // NEW: Business type for dynamic categories
   photos: PlacePhoto[];
   isLoading: boolean;
   onAddPhoto: () => void;
