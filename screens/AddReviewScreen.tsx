@@ -13,9 +13,14 @@ import {
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
-// import { LinearGradient } from 'expo-linear-gradient'; // Commented out to prevent crash
 import { submitReview, updateReview, fetchUserReview, ReviewSignalTap } from '../lib/reviews';
-import { REVIEW_TAGS, ReviewCategory } from '../lib/reviewTags';
+import { 
+  fetchSignalsForPlace, 
+  SignalsByCategory, 
+  Signal,
+  SIGNAL_COLORS,
+  SIGNAL_LABELS 
+} from '../lib/signalService';
 import PulseCard from '../components/PulseCard';
 import { Colors } from '../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,36 +36,38 @@ type AddReviewRouteProp = RouteProp<RootStackParamList, 'AddReview'>;
 // Wizard Steps Configuration
 const STEPS = [
   {
-    id: 'best_for',
+    id: 'best_for' as const,
     title: 'What did you like?',
     subtitle: 'Tap the highlights.',
     theme: 'positive',
     limit: 5,
-    gradient: ['#E0F2FE', '#FFFFFF'] as const, // Soft Blue to White
-    accent: '#00a7da',
-    solidColor: '#E0F2FE', // Fallback for no gradient
+    gradient: ['#E0F2FE', '#FFFFFF'] as const,
+    accent: '#0A84FF', // Apple Blue
+    solidColor: '#E0F2FE',
   },
   {
-    id: 'vibe',
-    title: 'How’s the vibe?',
+    id: 'vibe' as const,
+    title: 'How's the vibe?',
     subtitle: 'Set the scene.',
     theme: 'vibe',
     limit: 5,
-    gradient: ['#F3E8FF', '#FFFFFF'] as const, // Soft Purple to White
-    accent: '#8B5CF6',
-    solidColor: '#F3E8FF', // Fallback for no gradient
+    gradient: ['#F3E8FF', '#FFFFFF'] as const,
+    accent: '#8E8E93', // Gray
+    solidColor: '#F3E8FF',
   },
   {
-    id: 'heads_up',
+    id: 'heads_up' as const,
     title: 'Any heads up?',
     subtitle: 'Help others prepare.',
     theme: 'negative',
     limit: 2,
-    gradient: ['#FEE2E2', '#FFFFFF'] as const, // Soft Red to White
-    accent: '#EF4444',
-    solidColor: '#FEE2E2', // Fallback for no gradient
+    gradient: ['#FEE2E2', '#FFFFFF'] as const,
+    accent: '#FF9500', // Orange
+    solidColor: '#FEE2E2',
   }
 ] as const;
+
+type StepId = typeof STEPS[number]['id'];
 
 export default function AddReviewScreen() {
   const route = useRoute<AddReviewRouteProp>();
@@ -74,34 +81,46 @@ export default function AddReviewScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [existingReviewId, setExistingReviewId] = useState<string | null>(null);
+  
+  // Dynamic signals from database
+  const [signals, setSignals] = useState<SignalsByCategory>({
+    best_for: [],
+    vibe: [],
+    heads_up: [],
+  });
 
   const currentStep = STEPS[currentStepIndex];
   const isLastStep = currentStepIndex === STEPS.length - 1;
 
-  // Load existing review
+  // Load signals and existing review
   useEffect(() => {
-    loadExistingReview();
+    loadData();
   }, [placeId]);
 
-  const loadExistingReview = async () => {
+  const loadData = async () => {
     if (!placeId) {
       setIsLoading(false);
       return;
     }
 
     try {
-      const { review, signals } = await fetchUserReview(placeId);
+      // Load signals for this place (based on its category)
+      const placeSignals = await fetchSignalsForPlace(placeId);
+      setSignals(placeSignals);
+
+      // Load existing review if any
+      const { review, signals: existingSignals } = await fetchUserReview(placeId);
       
       if (review) {
         setExistingReviewId(review.id);
         const counts: { [key: string]: number } = {};
-        signals.forEach(signal => {
+        existingSignals.forEach(signal => {
           counts[signal.signalId] = signal.intensity;
         });
         setTapCounts(counts);
       }
     } catch (error) {
-      console.error('Error loading existing review:', error);
+      console.error('Error loading data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -110,10 +129,13 @@ export default function AddReviewScreen() {
   const handleTap = (signalId: string) => {
     const currentCount = tapCounts[signalId] || 0;
     
+    // Get current step's signals
+    const currentSignals = signals[currentStep.id];
+    const currentSignalIds = currentSignals.map(s => s.id);
+    
     // Calculate how many items are currently selected in this category
-    const categoryTags = (REVIEW_TAGS as any)[currentStep.id].map((t: any) => t.id);
     const currentCategorySelectionCount = Object.keys(tapCounts).filter(
-      key => categoryTags.includes(key) && tapCounts[key] > 0
+      key => currentSignalIds.includes(key) && tapCounts[key] > 0
     ).length;
 
     // Logic:
@@ -161,16 +183,16 @@ export default function AddReviewScreen() {
 
     setIsSubmitting(true);
 
-    const signals: ReviewSignalTap[] = Object.entries(tapCounts).map(([signalId, intensity]) => ({
+    const reviewSignals: ReviewSignalTap[] = Object.entries(tapCounts).map(([signalId, intensity]) => ({
       signalId,
       intensity,
     }));
 
     let result;
     if (existingReviewId) {
-      result = await updateReview(existingReviewId, placeId, signals, '', '');
+      result = await updateReview(existingReviewId, placeId, reviewSignals, '', '');
     } else {
-      result = await submitReview(placeId, placeName, signals, '', '');
+      result = await submitReview(placeId, placeName, reviewSignals, '', '');
     }
 
     setIsSubmitting(false);
@@ -190,12 +212,16 @@ export default function AddReviewScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loadingText}>Loading signals...</Text>
       </View>
     );
   }
 
-  // Get tags for current step
-  const currentTags = REVIEW_TAGS[currentStep.id as ReviewCategory];
+  // Get signals for current step
+  const currentSignals: Signal[] = signals[currentStep.id] || [];
+
+  // Check if there are any signals to show
+  const hasSignals = currentSignals.length > 0;
 
   return (
     <View style={styles.container}>
@@ -256,19 +282,31 @@ export default function AddReviewScreen() {
 
           {/* White Card Surface */}
           <View style={styles.cardSurface}>
-            <View style={styles.grid}>
-              {currentTags.map(tag => (
-                <PulseCard
-                  key={tag.id}
-                  label={tag.label}
-                  icon={tag.icon}
-                  intensity={tapCounts[tag.id] || 0}
-                  onTap={() => handleTap(tag.id)}
-                  theme={currentStep.theme as any}
-                  disabled={false}
-                />
-              ))}
-            </View>
+            {hasSignals ? (
+              <View style={styles.grid}>
+                {currentSignals.map(signal => (
+                  <PulseCard
+                    key={signal.id}
+                    label={signal.label}
+                    icon={signal.icon_emoji}
+                    intensity={tapCounts[signal.id] || 0}
+                    onTap={() => handleTap(signal.id)}
+                    theme={currentStep.theme as any}
+                    disabled={false}
+                  />
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="information-circle-outline" size={48} color="#9CA3AF" />
+                <Text style={styles.emptyStateText}>
+                  No signals available for this category yet.
+                </Text>
+                <Text style={styles.emptyStateSubtext}>
+                  Tap "Next" to continue.
+                </Text>
+              </View>
+            )}
           </View>
         </ScrollView>
 
@@ -305,6 +343,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
   },
   header: {
     flexDirection: 'row',
@@ -364,6 +408,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 24,
     padding: 16,
+    minHeight: 200,
     // Soft Shadow
     shadowColor: "#000",
     shadowOffset: {
@@ -378,6 +423,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyStateText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  emptyStateSubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
   },
   footer: {
     position: 'absolute',
@@ -401,9 +464,9 @@ const styles = StyleSheet.create({
   },
   warningBox: {
     flexDirection: 'row',
-    backgroundColor: '#FFF1F2', // Slightly stronger light red
-    borderColor: '#F43F5E', // Rose-500: Much stronger border color
-    borderWidth: 2, // Thicker border
+    backgroundColor: '#FFF1F2',
+    borderColor: '#F43F5E',
+    borderWidth: 2,
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
@@ -417,7 +480,7 @@ const styles = StyleSheet.create({
   warningText: {
     flex: 1,
     marginLeft: 12,
-    color: '#991B1B', // Dark red text
+    color: '#991B1B',
     fontSize: 14,
     fontWeight: '500',
     lineHeight: 20,

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -8,6 +8,10 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { AuthProvider } from './contexts/AuthContext';
 import { Colors } from './constants/Colors';
+
+// Signal System - Preload cache on app start
+import { preloadSignalLabels } from './hooks/useSignalLabels';
+import { preloadSignalCache } from './lib/reviews';
 
 // Screens
 import HomeScreen from './screens/HomeScreen';
@@ -238,6 +242,24 @@ function TabNavigator() {
 // App Root
 // --------------------
 export default function App() {
+  // Preload signal caches on app start for faster signal lookups
+  useEffect(() => {
+    const initializeSignalSystem = async () => {
+      try {
+        // Preload both caches in parallel
+        await Promise.all([
+          preloadSignalLabels(),
+          preloadSignalCache(),
+        ]);
+        console.log('✅ Signal system initialized');
+      } catch (error) {
+        console.error('Error initializing signal system:', error);
+      }
+    };
+
+    initializeSignalSystem();
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
