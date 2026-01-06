@@ -346,7 +346,6 @@ export default function ProsHomeScreen() {
 
         {/* Pro CTA */}
         <ProsSubscriptionBanner
-          earlyAdopterCount={earlyAdopterCount}
           onPress={handleProSignup}
         />
 
