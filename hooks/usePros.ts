@@ -17,7 +17,7 @@ import {
   ProSubscription,
   ProRegistrationForm,
   ProProfileUpdateForm,
-} from '../lib/ProsTypes';
+} from '../types/pros';
 
 // Helper for tRPC-style API calls
 async function trpcCall<T>(

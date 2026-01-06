@@ -37,6 +37,16 @@ import SavedScreen from './screens/SavedScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
 
+// ========== PROS SCREENS (NEW) ==========
+import ProsHomeScreen from './screens/ProsHomeScreen';
+import ProsBrowseScreen from './screens/ProsBrowseScreen';
+import ProsProfileScreen from './screens/ProsProfileScreen';
+import ProsDashboardScreen from './screens/ProsDashboardScreen';
+import ProsRegistrationScreen from './screens/ProsRegistrationScreen';
+import ProsMessagesScreen from './screens/ProsMessagesScreen';
+import ProsRequestQuoteScreen from './screens/ProsRequestQuoteScreen';
+import ProsLeadsScreen from './screens/ProsLeadsScreen';
+
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,6 +66,7 @@ const HomeStackNav = createNativeStackNavigator();
 const AtlasStackNav = createNativeStackNavigator();
 const MenuStackNav = createNativeStackNavigator();
 const UniverseStackNav = createNativeStackNavigator();
+const ProsStackNav = createNativeStackNavigator(); // NEW: Pros Stack
 
 // --------------------
 // Home Stack
@@ -108,6 +119,9 @@ function MenuStack() {
       {/* Shared screens accessible from menu */}
       <MenuStackNav.Screen name="RateCity" component={RateCityScreen} />
       <MenuStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
+      
+      {/* Create functionality moved to Menu */}
+      <MenuStackNav.Screen name="UniversalAdd" component={UniversalAddScreen} />
     </MenuStackNav.Navigator>
   );
 }
@@ -121,6 +135,28 @@ function UniverseStack() {
       <UniverseStackNav.Screen name="UniverseDiscovery" component={UniverseDiscoveryScreen} />
       <UniverseStackNav.Screen name="UniverseLanding" component={UniverseLandingScreen} />
     </UniverseStackNav.Navigator>
+  );
+}
+
+// --------------------
+// Pros Stack (NEW)
+// --------------------
+function ProsStack() {
+  return (
+    <ProsStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <ProsStackNav.Screen name="ProsHome" component={ProsHomeScreen} />
+      <ProsStackNav.Screen name="ProsBrowse" component={ProsBrowseScreen} />
+      <ProsStackNav.Screen name="ProsProfile" component={ProsProfileScreen} />
+      <ProsStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
+      <ProsStackNav.Screen name="ProsRegistration" component={ProsRegistrationScreen} />
+      <ProsStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
+      <ProsStackNav.Screen 
+        name="ProsRequestQuote" 
+        component={ProsRequestQuoteScreen}
+        options={{ presentation: 'modal' }}
+      />
+      <ProsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
+    </ProsStackNav.Navigator>
   );
 }
 
@@ -144,8 +180,8 @@ function TabNavigator() {
             case 'Explore':
               iconName = focused ? 'planet' : 'planet-outline';
               break;
-            case 'Add':
-              iconName = focused ? 'add-circle' : 'add-circle-outline';
+            case 'Pros':
+              iconName = focused ? 'construct' : 'construct-outline';
               break;
             case 'Atlas':
               iconName = focused ? 'map' : 'map-outline';
@@ -162,12 +198,12 @@ function TabNavigator() {
       <Tab.Screen name="Home" component={HomeStack} options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen name="Explore" component={UniverseStack} options={{ tabBarLabel: 'Explore' }} />
 
+      {/* CHANGED: Replaced Add tab with Pros tab */}
       <Tab.Screen
-        name="Add"
-        component={UniversalAddScreen}
+        name="Pros"
+        component={ProsStack}
         options={{
-          tabBarLabel: 'Create',
-          tabBarStyle: { display: 'none' }, // hide tab bar while in Add flow
+          tabBarLabel: 'Pros',
         }}
       />
 
