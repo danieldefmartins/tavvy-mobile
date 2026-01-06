@@ -48,6 +48,7 @@ export default function AddPlaceScreen() {
   const navigation = useNavigation();
   const [initialData, setInitialData] = useState<any>(null);
   const [currentStepId, setCurrentStepId] = useState<string>('category');
+  const [previousStepId, setPreviousStepId] = useState<string | null>(null); // Track previous step for transition detection
   const [showScanOption, setShowScanOption] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -83,15 +84,15 @@ export default function AddPlaceScreen() {
   };
 
   const handleStepChange = (stepId: string) => {
-    setCurrentStepId(stepId);
-    
-    // Show scan option when moving from category to name step
+    // Show scan option ONLY when transitioning FROM 'category' TO 'name'
     // and no data has been scanned yet
-    if (stepId === 'name' && !initialData) {
+    if (previousStepId === 'category' && stepId === 'name' && !initialData) {
       setShowScanOption(true);
-    } else {
-      setShowScanOption(false);
     }
+    
+    // Update step tracking
+    setPreviousStepId(currentStepId);
+    setCurrentStepId(stepId);
   };
 
   // Track category when step changes - the form will have the category value
