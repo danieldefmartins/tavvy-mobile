@@ -1322,7 +1322,8 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
               <View style={styles.popupMapContainer}>
                 <MapLibreGL.MapView
                   style={styles.popupMap}
-        {/* @ts-ignore - MapLibre type mismatch */}                  styleURL="https://tiles.openfreemap.org/styles/liberty"
+        {/* @ts-ignore - MapLibre type mismatch */}
+                  styleURL="https://tiles.openfreemap.org/styles/liberty"
                   logoEnabled={false}
                   attributionEnabled={false}
                 >
