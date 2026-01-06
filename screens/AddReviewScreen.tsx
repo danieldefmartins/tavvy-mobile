@@ -111,7 +111,7 @@ export default function AddReviewScreen() {
     const currentCount = tapCounts[signalId] || 0;
     
     // Calculate how many items are currently selected in this category
-    const categoryTags = REVIEW_TAGS[currentStep.id as ReviewCategory].map(t => t.id);
+    const categoryTags = (REVIEW_TAGS as any)[currentStep.id].map((t: any) => t.id);
     const currentCategorySelectionCount = Object.keys(tapCounts).filter(
       key => categoryTags.includes(key) && tapCounts[key] > 0
     ).length;

@@ -66,8 +66,8 @@ function HomeStack() {
       <HomeStackNav.Screen name="HomeMain" component={HomeScreen} />
       <HomeStackNav.Screen name="PlaceDetails" component={PlaceDetailsScreen} />
       <HomeStackNav.Screen name="AddReview" component={AddReviewScreen} />
-      <HomeStackNav.Screen name="AddPhoto" component={AddPhotoScreen} />
-      <HomeStackNav.Screen name="PlacePhotos" component={PlacePhotosScreen} />
+      <HomeStackNav.Screen name="AddPhoto" component={AddPhotoScreen as any} />
+      <HomeStackNav.Screen name="PlacePhotos" component={PlacePhotosScreen as any} />
       <HomeStackNav.Screen name="RequestUniverse" component={RequestUniverseScreen} />
       <HomeStackNav.Screen name="CityDetails" component={CityDetailsScreen} />
       <HomeStackNav.Screen name="RateCity" component={RateCityScreen} />
