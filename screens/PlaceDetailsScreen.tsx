@@ -1001,13 +1001,6 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           {/* Signals Tab (UPDATED) */}
           {activeTab === 'signals' && (
             <View style={styles.tabContent}>
-              {/* Medals Section */}
-              {signals.medals && signals.medals.length > 0 && (
-                <View style={styles.medalsContainer}>
-                  {signals.medals.map(renderMedal)}
-                </View>
-              )}
-
               {/* The Good */}
               {renderSignalLine('best_for', 'The Good', signals.best_for, Colors.positive)}
 
