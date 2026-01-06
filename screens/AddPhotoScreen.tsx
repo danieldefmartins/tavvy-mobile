@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
-import { Camera, CameraType } from 'expo-camera';
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -16,27 +16,22 @@ interface AddPhotoScreenProps {
 
 export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProps) {
   const { placeName } = route?.params || {};
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [type, setType] = useState(CameraType.back);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [facing, setFacing] = useState<CameraType>('back');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
-  const cameraRef = useRef<Camera>(null);
-
-  useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
-  }, []);
+  const cameraRef = useRef<CameraView>(null);
 
   const takePicture = async () => {
     if (cameraRef.current && isCameraReady) {
       try {
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.8,
-          skipProcessing: true, // Faster capture
+          skipProcessing: true,
         });
-        setCapturedImage(photo.uri);
+        if (photo) {
+          setCapturedImage(photo.uri);
+        }
       } catch (error) {
         Alert.alert('Error', 'Failed to take picture');
       }
@@ -57,7 +52,6 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
   };
 
   const handleSave = () => {
-    // Here you would typically upload the image to your backend/storage
     Alert.alert('Success', 'Photo added successfully!', [
       { text: 'OK', onPress: () => navigation.goBack() }
     ]);
@@ -67,15 +61,18 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
     setCapturedImage(null);
   };
 
-  if (hasPermission === null) {
+  if (!permission) {
     return <View style={styles.container}><ActivityIndicator size="large" color="#2DD4BF" /></View>;
   }
 
-  if (hasPermission === false) {
+  if (!permission.granted) {
     return (
       <View style={styles.container}>
         <Text style={styles.message}>No access to camera</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonLarge}>
+        <TouchableOpacity onPress={requestPermission} style={styles.backButtonLarge}>
+          <Text style={styles.backButtonText}>Grant Permission</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButtonLarge, { marginTop: 12, backgroundColor: '#666' }]}>
           <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -85,7 +82,6 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
   return (
     <View style={styles.container}>
       {capturedImage ? (
-        // Preview Mode
         <View style={styles.previewContainer}>
           <Image source={{ uri: capturedImage }} style={styles.previewImage} />
           <View style={styles.previewOverlay}>
@@ -105,31 +101,26 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
           </View>
         </View>
       ) : (
-        // Camera Mode
-        <Camera 
+        <CameraView 
           style={styles.camera} 
-          type={type}
+          facing={facing}
           ref={cameraRef}
           onCameraReady={() => setIsCameraReady(true)}
         >
           <View style={styles.cameraOverlay}>
-            {/* Header */}
             <View style={styles.cameraHeader}>
               <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
                 <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
               <Text style={styles.cameraTitle}>{placeName || 'Add Photo'}</Text>
               <TouchableOpacity 
-                onPress={() => {
-                  setType(type === CameraType.back ? CameraType.front : CameraType.back);
-                }} 
+                onPress={() => setFacing(facing === 'back' ? 'front' : 'back')} 
                 style={styles.iconButton}
               >
                 <Ionicons name="camera-reverse-outline" size={28} color="#fff" />
               </TouchableOpacity>
             </View>
 
-            {/* Footer Controls */}
             <View style={styles.cameraFooter}>
               <TouchableOpacity onPress={pickImage} style={styles.galleryButton}>
                 <Ionicons name="images-outline" size={24} color="#fff" />
@@ -142,7 +133,7 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
               <View style={styles.placeholderButton} /> 
             </View>
           </View>
-        </Camera>
+        </CameraView>
       )}
     </View>
   );
@@ -152,6 +143,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   message: {
     color: '#fff',
@@ -160,6 +153,7 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
+    width: '100%',
   },
   cameraOverlay: {
     flex: 1,
@@ -222,8 +216,6 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
   },
-  
-  // Preview Styles
   previewContainer: {
     flex: 1,
     backgroundColor: '#000',
@@ -262,7 +254,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 32,
     borderRadius: 24,
-    backgroundColor: '#2DD4BF', // Brand Teal
+    backgroundColor: '#2DD4BF',
   },
   primaryButtonText: {
     color: '#fff',

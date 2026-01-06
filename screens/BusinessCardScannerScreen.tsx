@@ -1,10 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
-import { Camera, CameraType } from 'expo-camera';
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 
-const { width, height } = Dimensions.get('window');
-const CARD_ASPECT_RATIO = 1.586; // Standard business card ratio
+const { width } = Dimensions.get('window');
+const CARD_ASPECT_RATIO = 1.586;
 const SCAN_AREA_WIDTH = width * 0.85;
 const SCAN_AREA_HEIGHT = SCAN_AREA_WIDTH / CARD_ASPECT_RATIO;
 
@@ -25,29 +25,20 @@ export interface ScannedBusinessCard {
 }
 
 export default function BusinessCardScannerScreen({ navigation, route }: BusinessCardScannerScreenProps) {
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
-  const cameraRef = useRef<Camera>(null);
-
-  useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
-  }, []);
+  const cameraRef = useRef<CameraView>(null);
 
   const handleScan = async () => {
     if (cameraRef.current && !isScanning) {
       setIsScanning(true);
       try {
-        // 1. Capture the image
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.8,
           skipProcessing: true,
         });
 
-        // 2. Simulate OCR Processing (Wait 2 seconds)
-        // In a real app, you would send photo.base64 to Google Cloud Vision API here
+        // Simulate OCR Processing (In production, send to Google Cloud Vision API)
         setTimeout(() => {
           const mockData: ScannedBusinessCard = {
             name: "The Coffee House",
@@ -58,7 +49,6 @@ export default function BusinessCardScannerScreen({ navigation, route }: Busines
 
           setIsScanning(false);
           
-          // 3. Return data to previous screen
           if (route.params?.onScanComplete) {
             route.params.onScanComplete(mockData);
             navigation.goBack();
@@ -74,15 +64,18 @@ export default function BusinessCardScannerScreen({ navigation, route }: Busines
     }
   };
 
-  if (hasPermission === null) {
+  if (!permission) {
     return <View style={styles.container}><ActivityIndicator size="large" color="#2DD4BF" /></View>;
   }
 
-  if (hasPermission === false) {
+  if (!permission.granted) {
     return (
       <View style={styles.container}>
         <Text style={styles.message}>No access to camera</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
+        <TouchableOpacity onPress={requestPermission} style={styles.closeButton}>
+          <Text style={styles.closeButtonText}>Grant Permission</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.closeButton, { marginTop: 12, backgroundColor: '#666' }]}>
           <Text style={styles.closeButtonText}>Close</Text>
         </TouchableOpacity>
       </View>
@@ -91,13 +84,12 @@ export default function BusinessCardScannerScreen({ navigation, route }: Busines
 
   return (
     <View style={styles.container}>
-      <Camera 
+      <CameraView 
         style={styles.camera} 
-        type={CameraType.back}
+        facing="back"
         ref={cameraRef}
       >
         <View style={styles.overlay}>
-          {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
               <Ionicons name="close" size={28} color="#fff" />
@@ -106,7 +98,6 @@ export default function BusinessCardScannerScreen({ navigation, route }: Busines
             <View style={{ width: 44 }} />
           </View>
 
-          {/* Scan Area Guide */}
           <View style={styles.scanAreaContainer}>
             <View style={styles.scanArea}>
               <View style={[styles.corner, styles.topLeft]} />
@@ -126,7 +117,6 @@ export default function BusinessCardScannerScreen({ navigation, route }: Busines
             </Text>
           </View>
 
-          {/* Footer */}
           <View style={styles.footer}>
             <TouchableOpacity 
               onPress={handleScan} 
@@ -137,7 +127,7 @@ export default function BusinessCardScannerScreen({ navigation, route }: Busines
             </TouchableOpacity>
           </View>
         </View>
-      </Camera>
+      </CameraView>
     </View>
   );
 }
@@ -146,6 +136,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   message: {
     color: '#fff',
@@ -154,6 +146,7 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
+    width: '100%',
   },
   overlay: {
     flex: 1,
@@ -180,8 +173,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
-  // Scan Area
   scanAreaContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -204,7 +195,6 @@ const styles = StyleSheet.create({
   topRight: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0, borderTopRightRadius: 12 },
   bottomLeft: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0, borderBottomLeftRadius: 12 },
   bottomRight: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0, borderBottomRightRadius: 12 },
-  
   scanningOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -223,7 +213,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.8,
   },
-
   footer: {
     paddingBottom: 50,
     alignItems: 'center',
