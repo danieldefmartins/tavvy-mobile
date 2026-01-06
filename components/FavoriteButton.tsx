@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 // ✅ correct file name (no "s")
 import {
-  useIsPlaceFavorited,
+  useIsFavorite,
   useAddFavorite,
   useRemoveAllFavoritesForPlace,
 } from '../hooks/useFavorite';
