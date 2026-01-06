@@ -190,7 +190,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
     visibility: '10 mi',
   });
   
-  const cameraRef = useRef<MapLibreGL.Camera>(null);
+  const cameraRef = useRef<typeof MapLibreGL.Camera>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
   
   const snapPoints = useMemo(() => ['8%', '50%', '90%'], []);

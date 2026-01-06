@@ -189,6 +189,7 @@ export default function UniverseDiscoveryScreen() {
 }
 
 const styles = StyleSheet.create({
+}) as any;
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
