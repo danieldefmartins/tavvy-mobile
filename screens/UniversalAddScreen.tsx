@@ -283,7 +283,6 @@ export default function UniversalAddScreen() {
   // State for business card scanner integration
   const [initialData, setInitialData] = useState<any>(null);
   const [currentStepId, setCurrentStepId] = useState<string>('type');
-  const [previousStepId, setPreviousStepId] = useState<string | null>(null);
   const [showScanOption, setShowScanOption] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
@@ -335,26 +334,28 @@ export default function UniversalAddScreen() {
   };
 
   const handleStepChange = (stepId: string) => {
-    // Track the selected type and category for later use
-    if (stepId === 'place_category' || stepId === 'service_category') {
-      // User just selected Place or Service Business
-      setSelectedType(previousStepId === 'type' ? 
-        (stepId === 'place_category' ? 'Place' : 'Service Business') : selectedType);
+    // IMPORTANT: When onStepChange fires, currentStepId still holds the PREVIOUS step
+    // because React state hasn't updated yet. So currentStepId IS the previous step.
+    
+    // Track the selected type when moving to category selection
+    if (stepId === 'place_category') {
+      setSelectedType('Place');
+    } else if (stepId === 'service_category') {
+      setSelectedType('Service Business');
     }
     
     // Show scan option ONLY when transitioning FROM category TO name step
-    // Works for both Place and Service Business flows
-    const isPlaceFlow = previousStepId === 'place_category' && stepId === 'place_name';
-    const isServiceFlow = previousStepId === 'service_category' && stepId === 'service_name';
+    // currentStepId is the previous step (before this change)
+    const isPlaceFlow = currentStepId === 'place_category' && stepId === 'place_name';
+    const isServiceFlow = currentStepId === 'service_category' && stepId === 'service_name';
     
     if ((isPlaceFlow || isServiceFlow) && !initialData) {
-      // Store the category before showing scan option
-      setSelectedCategory(previousStepId === 'place_category' ? 'place' : 'service');
+      // Store which flow we're in
+      setSelectedCategory(currentStepId === 'place_category' ? 'place' : 'service');
       setShowScanOption(true);
     }
     
-    // Update step tracking
-    setPreviousStepId(currentStepId);
+    // Update current step
     setCurrentStepId(stepId);
   };
 
