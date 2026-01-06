@@ -1,7 +1,7 @@
 // ============================================================================
 // MENU SCREEN
 // ============================================================================
-// Menu screen with Profile and Saved options
+// Menu screen with Profile, Saved, Add New, and Pro Dashboard options
 // Place this file in: screens/MenuScreen.tsx
 // ============================================================================
 
@@ -39,6 +39,24 @@ export default function MenuScreen() {
       icon: 'bookmark',
       screen: 'SavedMain',
       color: '#f59e0b',
+    },
+    // ========== NEW: Add New (Create) option ==========
+    {
+      id: 'add',
+      title: 'Add New',
+      subtitle: 'Add a place, business, city, or universe',
+      icon: 'add-circle',
+      screen: 'UniversalAdd',
+      color: '#10b981',
+    },
+    // ========== NEW: Pro Dashboard option ==========
+    {
+      id: 'proDashboard',
+      title: 'Pro Dashboard',
+      subtitle: 'Manage your service business',
+      icon: 'construct',
+      screen: 'ProsDashboard',
+      color: '#3b82f6',
     },
     {
       id: 'settings',
@@ -202,14 +220,14 @@ const styles = StyleSheet.create({
   },
   menuSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: 'rgba(255,255,255,0.8)',
   },
   appInfo: {
     alignItems: 'center',
     paddingVertical: 32,
   },
   appInfoText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#9ca3af',
     marginBottom: 4,
   },

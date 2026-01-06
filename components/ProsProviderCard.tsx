@@ -1,6 +1,8 @@
 /**
  * Pros Provider Card Component
  * Install path: components/ProsProviderCard.tsx
+ * 
+ * Works with both API data (Pro type) and sample data (SamplePro type)
  */
 
 import React from 'react';
@@ -10,33 +12,64 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ProsColors } from '../constants/ProsConfig';
-import { Pro } from '../lib/ProsTypes';
+import { ProsColors, SamplePro } from '../constants/ProsConfig';
 
-interface ProsProviderCardProps {
-  pro: Pro;
-  onPress: (slug: string) => void;
-  onMessagePress?: (proId: number) => void;
+// Unified provider type that works with both API and sample data
+interface ProviderData {
+  id: number;
+  slug: string;
+  businessName: string;
+  city: string;
+  state: string;
+  rating?: number;
+  averageRating?: string;
+  reviewCount?: number;
+  totalReviews?: number;
+  isVerified?: boolean;
+  isFeatured?: boolean;
+  isInsured?: boolean;
+  isLicensed?: boolean;
+  profileImage?: string;
+  logoUrl?: string;
+  coverImageUrl?: string;
+  shortDescription?: string;
+  description?: string;
+  categoryName?: string;
+  yearsInBusiness?: number;
 }
 
-export const ProsProviderCard: React.FC<ProsProviderCardProps> = ({
-  pro,
-  onPress,
-  onMessagePress,
-}) => {
-  const rating = parseFloat(pro.averageRating) || 0;
+interface ProsProviderCardProps {
+  provider: ProviderData | SamplePro;
+  onPress: () => void;
+  onMessagePress?: () => void;
+  style?: ViewStyle;
+}
+
+export function ProsProviderCard({ provider, onPress, onMessagePress, style }: ProsProviderCardProps) {
+  // Guard against undefined provider
+  if (!provider) {
+    return null;
+  }
+  
+  // Normalize data from different sources
+  const pro = provider as any;
+  const rating = pro.rating ?? (pro.averageRating ? parseFloat(pro.averageRating) : 0);
+  const reviewCount = pro.reviewCount ?? pro.totalReviews ?? 0;
+  const imageUrl = pro.profileImage ?? pro.logoUrl;
+  const description = pro.description ?? pro.shortDescription;
   
   return (
     <TouchableOpacity
-      style={styles.card}
-      onPress={() => onPress(pro.slug)}
+      style={[styles.card, style]}
+      onPress={onPress}
       activeOpacity={0.7}
     >
       <View style={styles.header}>
-        {pro.logoUrl ? (
-          <Image source={{ uri: pro.logoUrl }} style={styles.logo} />
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.logo} />
         ) : (
           <View style={styles.logoPlaceholder}>
             <Ionicons name="business" size={24} color={ProsColors.textMuted} />
@@ -45,9 +78,9 @@ export const ProsProviderCard: React.FC<ProsProviderCardProps> = ({
         <View style={styles.headerInfo}>
           <View style={styles.nameRow}>
             <Text style={styles.businessName} numberOfLines={1}>
-              {pro.businessName}
+              {provider.businessName}
             </Text>
-            {pro.isVerified && (
+            {provider.isVerified && (
               <Ionicons
                 name="checkmark-circle"
                 size={16}
@@ -56,18 +89,21 @@ export const ProsProviderCard: React.FC<ProsProviderCardProps> = ({
               />
             )}
           </View>
+          {(provider as any).categoryName && (
+            <Text style={styles.category}>{(provider as any).categoryName}</Text>
+          )}
           <View style={styles.locationRow}>
             <Ionicons name="location-outline" size={14} color={ProsColors.textSecondary} />
             <Text style={styles.location}>
-              {pro.city}, {pro.state}
+              {provider.city}, {provider.state}
             </Text>
           </View>
         </View>
       </View>
 
-      {pro.shortDescription && (
+      {description && (
         <Text style={styles.description} numberOfLines={2}>
-          {pro.shortDescription}
+          {description}
         </Text>
       )}
 
@@ -77,24 +113,24 @@ export const ProsProviderCard: React.FC<ProsProviderCardProps> = ({
           <Text style={styles.rating}>
             {rating > 0 ? rating.toFixed(1) : 'New'}
           </Text>
-          {pro.totalReviews > 0 && (
+          {reviewCount > 0 && (
             <Text style={styles.reviewCount}>
-              ({pro.totalReviews} {pro.totalReviews === 1 ? 'review' : 'reviews'})
+              ({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})
             </Text>
           )}
         </View>
 
         <View style={styles.badges}>
-          {pro.isInsured && (
+          {(provider as any).yearsInBusiness && (
+            <View style={styles.badge}>
+              <Ionicons name="time-outline" size={12} color={ProsColors.primary} />
+              <Text style={styles.badgeText}>{(provider as any).yearsInBusiness}+ yrs</Text>
+            </View>
+          )}
+          {provider.isInsured && (
             <View style={styles.badge}>
               <Ionicons name="shield-checkmark" size={12} color={ProsColors.primary} />
               <Text style={styles.badgeText}>Insured</Text>
-            </View>
-          )}
-          {pro.isLicensed && (
-            <View style={styles.badge}>
-              <Ionicons name="document-text" size={12} color={ProsColors.primary} />
-              <Text style={styles.badgeText}>Licensed</Text>
             </View>
           )}
         </View>
@@ -103,14 +139,14 @@ export const ProsProviderCard: React.FC<ProsProviderCardProps> = ({
       <View style={styles.actions}>
         <TouchableOpacity
           style={styles.viewButton}
-          onPress={() => onPress(pro.slug)}
+          onPress={onPress}
         >
           <Text style={styles.viewButtonText}>View Profile</Text>
         </TouchableOpacity>
         {onMessagePress && (
           <TouchableOpacity
             style={styles.messageButton}
-            onPress={() => onMessagePress(pro.id)}
+            onPress={onMessagePress}
           >
             <Ionicons name="chatbubble-outline" size={18} color={ProsColors.primary} />
           </TouchableOpacity>
@@ -118,82 +154,13 @@ export const ProsProviderCard: React.FC<ProsProviderCardProps> = ({
       </View>
     </TouchableOpacity>
   );
-};
-
-// Featured pro card with larger display
-export const ProsFeaturedCard: React.FC<ProsProviderCardProps> = ({
-  pro,
-  onPress,
-}) => {
-  const rating = parseFloat(pro.averageRating) || 0;
-
-  return (
-    <TouchableOpacity
-      style={styles.featuredCard}
-      onPress={() => onPress(pro.slug)}
-      activeOpacity={0.7}
-    >
-      {pro.coverImageUrl ? (
-        <Image source={{ uri: pro.coverImageUrl }} style={styles.coverImage} />
-      ) : (
-        <View style={styles.coverPlaceholder}>
-          <Ionicons name="image-outline" size={32} color={ProsColors.textMuted} />
-        </View>
-      )}
-      
-      <View style={styles.featuredContent}>
-        <View style={styles.featuredHeader}>
-          {pro.logoUrl ? (
-            <Image source={{ uri: pro.logoUrl }} style={styles.featuredLogo} />
-          ) : (
-            <View style={styles.featuredLogoPlaceholder}>
-              <Ionicons name="business" size={20} color={ProsColors.textMuted} />
-            </View>
-          )}
-          <View style={styles.featuredInfo}>
-            <View style={styles.nameRow}>
-              <Text style={styles.featuredName} numberOfLines={1}>
-                {pro.businessName}
-              </Text>
-              {pro.isVerified && (
-                <Ionicons
-                  name="checkmark-circle"
-                  size={14}
-                  color={ProsColors.primary}
-                />
-              )}
-            </View>
-            <Text style={styles.featuredLocation}>
-              {pro.city}, {pro.state}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.featuredFooter}>
-          <View style={styles.ratingContainer}>
-            <Ionicons name="star" size={14} color="#F59E0B" />
-            <Text style={styles.rating}>
-              {rating > 0 ? rating.toFixed(1) : 'New'}
-            </Text>
-          </View>
-          {pro.isFeatured && (
-            <View style={styles.featuredBadge}>
-              <Ionicons name="sparkles" size={12} color={ProsColors.secondary} />
-              <Text style={styles.featuredBadgeText}>Featured</Text>
-            </View>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-};
+}
 
 const styles = StyleSheet.create({
   card: {
     backgroundColor: ProsColors.cardBg,
     borderRadius: 12,
     padding: 16,
-    marginHorizontal: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -238,6 +205,12 @@ const styles = StyleSheet.create({
   },
   verifiedIcon: {
     marginLeft: 4,
+  },
+  category: {
+    fontSize: 13,
+    color: ProsColors.primary,
+    fontWeight: '500',
+    marginTop: 2,
   },
   locationRow: {
     flexDirection: 'row',
@@ -318,87 +291,6 @@ const styles = StyleSheet.create({
     borderColor: ProsColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  // Featured card styles
-  featuredCard: {
-    width: 260,
-    backgroundColor: ProsColors.cardBg,
-    borderRadius: 12,
-    marginRight: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    overflow: 'hidden',
-  },
-  coverImage: {
-    width: '100%',
-    height: 120,
-    backgroundColor: ProsColors.sectionBg,
-  },
-  coverPlaceholder: {
-    width: '100%',
-    height: 120,
-    backgroundColor: ProsColors.sectionBg,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  featuredContent: {
-    padding: 12,
-  },
-  featuredHeader: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  featuredLogo: {
-    width: 40,
-    height: 40,
-    borderRadius: 6,
-    backgroundColor: ProsColors.sectionBg,
-  },
-  featuredLogoPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 6,
-    backgroundColor: ProsColors.sectionBg,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  featuredInfo: {
-    flex: 1,
-    marginLeft: 10,
-    justifyContent: 'center',
-  },
-  featuredName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-    flex: 1,
-  },
-  featuredLocation: {
-    fontSize: 12,
-    color: ProsColors.textSecondary,
-    marginTop: 2,
-  },
-  featuredFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  featuredBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${ProsColors.secondary}15`,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  featuredBadgeText: {
-    fontSize: 11,
-    color: ProsColors.secondary,
-    marginLeft: 4,
-    fontWeight: '500',
   },
 });
 

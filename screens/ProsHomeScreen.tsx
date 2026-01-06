@@ -3,7 +3,7 @@
  * Install path: screens/ProsHomeScreen.tsx
  * 
  * This is the main entry point for the Pros feature.
- * Add navigation to this screen from your main navigation.
+ * Users can browse services or switch to Pro mode.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -24,11 +24,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { ProsColors, PROS_CATEGORIES } from '../constants/ProsConfig';
+import { ProsColors, PROS_CATEGORIES, SAMPLE_PROS } from '../constants/ProsConfig';
 import { ProsCategoryCard } from '../components/ProsCategoryCard';
-import { ProsFeaturedCard } from '../components/ProsProviderCard';
+import { ProsProviderCard } from '../components/ProsProviderCard';
 import { ProsSubscriptionBanner } from '../components/ProsSubscriptionBanner';
-import { useFeaturedPros, useProsSubscription } from '../hooks/usePros';
 
 const { width } = Dimensions.get('window');
 
@@ -39,50 +38,183 @@ export default function ProsHomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [location, setLocation] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<'user' | 'pro'>('user');
 
-  const { pros: featuredPros, loading: featuredLoading, fetchFeatured } = useFeaturedPros();
-  const { earlyAdopterCount, fetchEarlyAdopterCount } = useProsSubscription();
-
-  useEffect(() => {
-    fetchFeatured(6);
-    fetchEarlyAdopterCount();
-  }, []);
+  // Use sample data for now
+  const featuredPros = SAMPLE_PROS.slice(0, 6);
+  const earlyAdopterCount = 247; // Sample count
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchFeatured(6), fetchEarlyAdopterCount()]);
+    // Simulate refresh
+    await new Promise(resolve => setTimeout(resolve, 1000));
     setRefreshing(false);
   };
 
   const handleSearch = () => {
-    navigation.navigate('ProsBrowseScreen', {
-      query: searchQuery,
+    navigation.navigate('ProsBrowse', {
+      searchQuery,
       location,
     });
   };
 
-  const handleCategoryPress = (slug: string) => {
-    navigation.navigate('ProsBrowseScreen', { categorySlug: slug });
+  const handleCategoryPress = (categoryId: number, categoryName: string) => {
+    navigation.navigate('ProsBrowse', { categoryId, categoryName });
   };
 
   const handleProPress = (slug: string) => {
-    navigation.navigate('ProsProfileScreen', { slug });
+    navigation.navigate('ProsProfile', { slug });
   };
 
   const handleProSignup = () => {
-    navigation.navigate('ProsRegistrationScreen');
+    navigation.navigate('ProsRegistration');
+  };
+
+  const handleProDashboard = () => {
+    navigation.navigate('ProsDashboard');
   };
 
   const remainingSpots = Math.max(0, 1000 - earlyAdopterCount);
 
+  // If user switches to Pro mode, show Pro options
+  if (viewMode === 'pro') {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Mode Toggle */}
+          <View style={styles.modeToggleContainer}>
+            <TouchableOpacity
+              style={[styles.modeToggle, viewMode === 'user' && styles.modeToggleActive]}
+              onPress={() => setViewMode('user')}
+            >
+              <Ionicons name="search" size={18} color={viewMode === 'user' ? '#fff' : ProsColors.textSecondary} />
+              <Text style={[styles.modeToggleText, viewMode === 'user' && styles.modeToggleTextActive]}>
+                Find Pros
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modeToggle, viewMode === 'pro' && styles.modeToggleActive]}
+              onPress={() => setViewMode('pro')}
+            >
+              <Ionicons name="construct" size={18} color={viewMode === 'pro' ? '#fff' : ProsColors.textSecondary} />
+              <Text style={[styles.modeToggleText, viewMode === 'pro' && styles.modeToggleTextActive]}>
+                I'm a Pro
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Pro Mode Content */}
+          <View style={styles.proModeContainer}>
+            <View style={styles.proModeHeader}>
+              <Ionicons name="construct" size={48} color={ProsColors.primary} />
+              <Text style={styles.proModeTitle}>Welcome, Pro!</Text>
+              <Text style={styles.proModeSubtitle}>
+                Manage your business and connect with customers
+              </Text>
+            </View>
+
+            {/* Pro Actions */}
+            <View style={styles.proActionsGrid}>
+              <TouchableOpacity style={styles.proActionCard} onPress={handleProDashboard}>
+                <View style={[styles.proActionIcon, { backgroundColor: `${ProsColors.primary}15` }]}>
+                  <Ionicons name="grid" size={28} color={ProsColors.primary} />
+                </View>
+                <Text style={styles.proActionTitle}>Dashboard</Text>
+                <Text style={styles.proActionSubtitle}>View stats & leads</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.proActionCard} 
+                onPress={() => navigation.navigate('ProsLeads')}
+              >
+                <View style={[styles.proActionIcon, { backgroundColor: `${ProsColors.success}15` }]}>
+                  <Ionicons name="mail" size={28} color={ProsColors.success} />
+                </View>
+                <Text style={styles.proActionTitle}>Leads</Text>
+                <Text style={styles.proActionSubtitle}>Manage requests</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.proActionCard}
+                onPress={() => navigation.navigate('ProsMessages')}
+              >
+                <View style={[styles.proActionIcon, { backgroundColor: `${ProsColors.secondary}15` }]}>
+                  <Ionicons name="chatbubbles" size={28} color={ProsColors.secondary} />
+                </View>
+                <Text style={styles.proActionTitle}>Messages</Text>
+                <Text style={styles.proActionSubtitle}>Chat with clients</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.proActionCard}
+                onPress={() => navigation.navigate('ProsProfile', { slug: 'my-profile' })}
+              >
+                <View style={[styles.proActionIcon, { backgroundColor: `${ProsColors.warning}15` }]}>
+                  <Ionicons name="person" size={28} color={ProsColors.warning} />
+                </View>
+                <Text style={styles.proActionTitle}>My Profile</Text>
+                <Text style={styles.proActionSubtitle}>Edit your listing</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Not registered yet? */}
+            <View style={styles.notRegisteredSection}>
+              <Text style={styles.notRegisteredTitle}>Not registered yet?</Text>
+              <Text style={styles.notRegisteredSubtitle}>
+                Join {remainingSpots} other pros and get discovered by local customers
+              </Text>
+              <TouchableOpacity style={styles.registerButton} onPress={handleProSignup}>
+                <Text style={styles.registerButtonText}>Register as a Pro - $99/year</Text>
+              </TouchableOpacity>
+              <Text style={styles.earlyAdopterNote}>
+                🎉 Early adopter pricing! Regular price $499/year
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // User Mode (default) - Find Pros
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
+        {/* Mode Toggle */}
+        <View style={styles.modeToggleContainer}>
+          <TouchableOpacity
+            style={[styles.modeToggle, viewMode === 'user' && styles.modeToggleActive]}
+            onPress={() => setViewMode('user')}
+          >
+            <Ionicons name="search" size={18} color={viewMode === 'user' ? '#fff' : ProsColors.textSecondary} />
+            <Text style={[styles.modeToggleText, viewMode === 'user' && styles.modeToggleTextActive]}>
+              Find Pros
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeToggle, viewMode === 'pro' && styles.modeToggleActive]}
+            onPress={() => setViewMode('pro')}
+          >
+            <Ionicons name="construct" size={18} color={viewMode === 'pro' ? '#fff' : ProsColors.textSecondary} />
+            <Text style={[styles.modeToggleText, viewMode === 'pro' && styles.modeToggleTextActive]}>
+              I'm a Pro
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Hero Section */}
         <LinearGradient
           colors={[ProsColors.heroBg, '#FFFFFF']}
@@ -155,7 +287,7 @@ export default function ProsHomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Browse by Service</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('ProsBrowseScreen')}>
+            <TouchableOpacity onPress={() => navigation.navigate('ProsBrowse')}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -163,8 +295,8 @@ export default function ProsHomeScreen() {
             {PROS_CATEGORIES.slice(0, 8).map((category) => (
               <ProsCategoryCard
                 key={category.id}
-                {...category}
-                onPress={handleCategoryPress}
+                category={category}
+                onPress={() => handleCategoryPress(category.id, category.name)}
               />
             ))}
           </View>
@@ -175,7 +307,7 @@ export default function ProsHomeScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Featured Pros</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('ProsBrowseScreen')}>
+              <TouchableOpacity onPress={() => navigation.navigate('ProsBrowse')}>
                 <Text style={styles.viewAllText}>View All</Text>
               </TouchableOpacity>
             </View>
@@ -184,9 +316,10 @@ export default function ProsHomeScreen() {
               data={featuredPros}
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => (
-                <ProsFeaturedCard
-                  pro={item}
-                  onPress={handleProPress}
+                <ProsProviderCard
+                  provider={item}
+                  onPress={() => handleProPress(item.slug)}
+                  style={{ width: width * 0.7, marginRight: 12 }}
                 />
               )}
               showsHorizontalScrollIndicator={false}
@@ -203,7 +336,7 @@ export default function ProsHomeScreen() {
 
         {/* How It Works */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>How It Works</Text>
+          <Text style={[styles.sectionTitle, { paddingHorizontal: 16 }]}>How It Works</Text>
           <View style={styles.stepsContainer}>
             <View style={styles.step}>
               <View style={[styles.stepIcon, { backgroundColor: `${ProsColors.primary}15` }]}>
@@ -235,8 +368,16 @@ export default function ProsHomeScreen() {
           </View>
         </View>
 
-        {/* Bottom Spacing */}
-        <View style={{ height: 32 }} />
+        {/* Are you a Pro? Link */}
+        <View style={styles.proLinkSection}>
+          <Text style={styles.proLinkText}>Are you a home service professional?</Text>
+          <TouchableOpacity onPress={() => setViewMode('pro')}>
+            <Text style={styles.proLinkButton}>Join TavvY Pros →</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Bottom Spacing for tab bar */}
+        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -247,6 +388,43 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  // Mode Toggle
+  modeToggleContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 4,
+  },
+  modeToggle: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 6,
+  },
+  modeToggleActive: {
+    backgroundColor: ProsColors.primary,
+  },
+  modeToggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: ProsColors.textSecondary,
+  },
+  modeToggleTextActive: {
+    color: '#FFFFFF',
+  },
+  // Hero Section
   heroSection: {
     paddingHorizontal: 16,
     paddingTop: 16,
@@ -384,7 +562,7 @@ const styles = StyleSheet.create({
   stepsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    marginTop: 8,
+    marginTop: 16,
   },
   step: {
     flex: 1,
@@ -410,5 +588,119 @@ const styles = StyleSheet.create({
     color: ProsColors.textSecondary,
     textAlign: 'center',
     lineHeight: 16,
+  },
+  // Pro Link Section
+  proLinkSection: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    marginTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    marginHorizontal: 16,
+  },
+  proLinkText: {
+    fontSize: 14,
+    color: ProsColors.textSecondary,
+    marginBottom: 8,
+  },
+  proLinkButton: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: ProsColors.primary,
+  },
+  // Pro Mode Styles
+  proModeContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  proModeHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  proModeTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: ProsColors.textPrimary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  proModeSubtitle: {
+    fontSize: 15,
+    color: ProsColors.textSecondary,
+    textAlign: 'center',
+  },
+  proActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 32,
+  },
+  proActionCard: {
+    width: '48%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  proActionIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  proActionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: ProsColors.textPrimary,
+    marginBottom: 4,
+  },
+  proActionSubtitle: {
+    fontSize: 12,
+    color: ProsColors.textSecondary,
+  },
+  notRegisteredSection: {
+    backgroundColor: ProsColors.heroBg,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+  },
+  notRegisteredTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: ProsColors.textPrimary,
+    marginBottom: 8,
+  },
+  notRegisteredSubtitle: {
+    fontSize: 14,
+    color: ProsColors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  registerButton: {
+    backgroundColor: ProsColors.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    marginBottom: 12,
+  },
+  registerButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  earlyAdopterNote: {
+    fontSize: 12,
+    color: ProsColors.success,
+    fontWeight: '500',
   },
 });

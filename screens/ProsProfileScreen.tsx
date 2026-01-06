@@ -3,9 +3,10 @@
  * Install path: screens/ProsProfileScreen.tsx
  * 
  * Individual pro profile with details, photos, reviews.
+ * Uses sample data for testing.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,9 +14,7 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
-  ActivityIndicator,
   Linking,
-  FlatList,
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,30 +22,60 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { ProsColors, DAYS_OF_WEEK } from '../constants/ProsConfig';
-import { useProProfile } from '../hooks/usePros';
-import { ProReview, ProPhoto } from '../lib/ProsTypes';
+import { ProsColors, SAMPLE_PROS, DAYS_OF_WEEK, SamplePro } from '../constants/ProsConfig';
 
 const { width } = Dimensions.get('window');
 
 type RouteParams = {
-  ProsProfileScreen: {
+  ProsProfile: {
     slug: string;
   };
 };
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
+// Sample reviews for testing
+const SAMPLE_REVIEWS = [
+  {
+    id: 1,
+    userName: 'Sarah M.',
+    rating: 5,
+    date: '2025-12-15',
+    content: 'Excellent work! Very professional and completed the job on time. Would highly recommend.',
+  },
+  {
+    id: 2,
+    userName: 'John D.',
+    rating: 5,
+    date: '2025-12-10',
+    content: 'Great service, fair pricing, and very knowledgeable. Will definitely use again.',
+  },
+  {
+    id: 3,
+    userName: 'Maria L.',
+    rating: 4,
+    date: '2025-11-28',
+    content: 'Good work overall. Showed up on time and did a thorough job.',
+  },
+];
+
+// Sample photos for testing
+const SAMPLE_PHOTOS = [
+  'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400',
+  'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400',
+  'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400',
+];
+
 export default function ProsProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<RouteProp<RouteParams, 'ProsProfileScreen'>>();
+  const route = useRoute<RouteProp<RouteParams, 'ProsProfile'>>();
   const { slug } = route.params;
 
-  const { pro, loading, error, fetchPro } = useProProfile();
   const [activeTab, setActiveTab] = useState<'about' | 'photos' | 'reviews'>('about');
 
-  useEffect(() => {
-    fetchPro(slug);
+  // Find pro from sample data
+  const pro = useMemo(() => {
+    return SAMPLE_PROS.find(p => p.slug === slug);
   }, [slug]);
 
   const handleCall = () => {
@@ -56,30 +85,20 @@ export default function ProsProfileScreen() {
   };
 
   const handleMessage = () => {
-    navigation.navigate('ProsMessagesScreen', { proId: pro?.id });
+    navigation.navigate('ProsMessages', { 
+      recipientId: pro?.id,
+      recipientName: pro?.businessName 
+    });
   };
 
   const handleRequestQuote = () => {
-    navigation.navigate('ProsRequestQuoteScreen', { proId: pro?.id, proName: pro?.businessName });
+    navigation.navigate('ProsRequestQuote', { 
+      proId: pro?.id, 
+      proName: pro?.businessName 
+    });
   };
 
-  const handleWebsite = () => {
-    if (pro?.website) {
-      Linking.openURL(pro.website.startsWith('http') ? pro.website : `https://${pro.website}`);
-    }
-  };
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={ProsColors.primary} />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (error || !pro) {
+  if (!pro) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -90,56 +109,17 @@ export default function ProsProfileScreen() {
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={ProsColors.error} />
           <Text style={styles.errorTitle}>Pro not found</Text>
-          <Text style={styles.errorText}>{error || 'Unable to load this profile'}</Text>
+          <Text style={styles.errorText}>Unable to load this profile</Text>
+          <TouchableOpacity 
+            style={styles.backHomeButton}
+            onPress={() => navigation.navigate('ProsHome')}
+          >
+            <Text style={styles.backHomeButtonText}>Back to Home</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
-
-  const rating = parseFloat(pro.averageRating) || 0;
-
-  const renderReview = ({ item }: { item: ProReview }) => (
-    <View style={styles.reviewCard}>
-      <View style={styles.reviewHeader}>
-        <View style={styles.reviewUser}>
-          {item.user?.avatarUrl ? (
-            <Image source={{ uri: item.user.avatarUrl }} style={styles.reviewAvatar} />
-          ) : (
-            <View style={styles.reviewAvatarPlaceholder}>
-              <Ionicons name="person" size={16} color={ProsColors.textMuted} />
-            </View>
-          )}
-          <View>
-            <Text style={styles.reviewUserName}>{item.user?.name || 'Anonymous'}</Text>
-            <Text style={styles.reviewDate}>
-              {new Date(item.createdAt).toLocaleDateString()}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.reviewRating}>
-          {[1, 2, 3, 4, 5].map((star) => (
-            <Ionicons
-              key={star}
-              name={star <= item.rating ? 'star' : 'star-outline'}
-              size={14}
-              color="#F59E0B"
-            />
-          ))}
-        </View>
-      </View>
-      {item.title && <Text style={styles.reviewTitle}>{item.title}</Text>}
-      {item.content && <Text style={styles.reviewContent}>{item.content}</Text>}
-    </View>
-  );
-
-  const renderPhoto = ({ item }: { item: ProPhoto }) => (
-    <TouchableOpacity style={styles.photoItem}>
-      <Image source={{ uri: item.imageUrl }} style={styles.photoImage} />
-      {item.caption && (
-        <Text style={styles.photoCaption} numberOfLines={1}>{item.caption}</Text>
-      )}
-    </TouchableOpacity>
-  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -155,50 +135,35 @@ export default function ProsProfileScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Cover Image */}
-        {pro.coverImageUrl ? (
-          <Image source={{ uri: pro.coverImageUrl }} style={styles.coverImage} />
-        ) : (
-          <View style={styles.coverPlaceholder}>
-            <Ionicons name="image-outline" size={48} color={ProsColors.textMuted} />
-          </View>
-        )}
+        <Image 
+          source={{ uri: pro.profileImage }} 
+          style={styles.coverImage}
+          resizeMode="cover"
+        />
 
         {/* Profile Info */}
         <View style={styles.profileSection}>
-          <View style={styles.logoContainer}>
-            {pro.logoUrl ? (
-              <Image source={{ uri: pro.logoUrl }} style={styles.logo} />
-            ) : (
-              <View style={styles.logoPlaceholder}>
-                <Ionicons name="business" size={32} color={ProsColors.textMuted} />
-              </View>
-            )}
-          </View>
-
-          <View style={styles.profileInfo}>
+          <View style={styles.profileHeader}>
             <View style={styles.nameRow}>
               <Text style={styles.businessName}>{pro.businessName}</Text>
               {pro.isVerified && (
                 <Ionicons name="checkmark-circle" size={20} color={ProsColors.primary} />
               )}
             </View>
+            <Text style={styles.categoryName}>{pro.categoryName}</Text>
 
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={18} color="#F59E0B" />
-              <Text style={styles.ratingText}>
-                {rating > 0 ? rating.toFixed(1) : 'New'}
+              <Text style={styles.ratingText}>{pro.rating.toFixed(1)}</Text>
+              <Text style={styles.reviewCount}>
+                ({pro.reviewCount} {pro.reviewCount === 1 ? 'review' : 'reviews'})
               </Text>
-              {pro.totalReviews > 0 && (
-                <Text style={styles.reviewCount}>
-                  ({pro.totalReviews} {pro.totalReviews === 1 ? 'review' : 'reviews'})
-                </Text>
-              )}
             </View>
 
             <View style={styles.locationRow}>
               <Ionicons name="location-outline" size={16} color={ProsColors.textSecondary} />
               <Text style={styles.locationText}>
-                {pro.city}, {pro.state} • {pro.serviceRadius} mi radius
+                {pro.city}, {pro.state} • Serves {pro.serviceRadius} mi radius
               </Text>
             </View>
 
@@ -252,8 +217,8 @@ export default function ProsProfileScreen() {
             >
               <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                {tab === 'photos' && pro.photos && ` (${pro.photos.length})`}
-                {tab === 'reviews' && ` (${pro.totalReviews})`}
+                {tab === 'photos' && ` (${SAMPLE_PHOTOS.length})`}
+                {tab === 'reviews' && ` (${pro.reviewCount})`}
               </Text>
             </TouchableOpacity>
           ))}
@@ -262,94 +227,67 @@ export default function ProsProfileScreen() {
         {/* Tab Content */}
         {activeTab === 'about' && (
           <View style={styles.tabContent}>
-            {pro.description && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>About</Text>
-                <Text style={styles.description}>{pro.description}</Text>
-              </View>
-            )}
+            {/* About */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>About</Text>
+              <Text style={styles.description}>{pro.description}</Text>
+            </View>
 
             {/* Services */}
-            {pro.categories && pro.categories.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Services</Text>
-                <View style={styles.servicesList}>
-                  {pro.categories.map((cat) => (
-                    <View key={cat.id} style={styles.serviceTag}>
-                      <Text style={styles.serviceTagText}>
-                        {cat.category?.name || 'Service'}
-                      </Text>
-                      {cat.isPrimary && (
-                        <View style={styles.primaryTag}>
-                          <Text style={styles.primaryTagText}>Primary</Text>
-                        </View>
-                      )}
-                    </View>
-                  ))}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Services</Text>
+              <View style={styles.servicesList}>
+                <View style={styles.serviceTag}>
+                  <Text style={styles.serviceTagText}>{pro.categoryName}</Text>
                 </View>
               </View>
-            )}
+            </View>
 
             {/* Contact Info */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Contact</Text>
-              {pro.email && (
-                <TouchableOpacity style={styles.contactRow}>
-                  <Ionicons name="mail-outline" size={18} color={ProsColors.textSecondary} />
-                  <Text style={styles.contactText}>{pro.email}</Text>
-                </TouchableOpacity>
-              )}
               {pro.phone && (
                 <TouchableOpacity style={styles.contactRow} onPress={handleCall}>
-                  <Ionicons name="call-outline" size={18} color={ProsColors.textSecondary} />
+                  <Ionicons name="call-outline" size={18} color={ProsColors.primary} />
                   <Text style={styles.contactText}>{pro.phone}</Text>
                 </TouchableOpacity>
               )}
-              {pro.website && (
-                <TouchableOpacity style={styles.contactRow} onPress={handleWebsite}>
-                  <Ionicons name="globe-outline" size={18} color={ProsColors.textSecondary} />
-                  <Text style={[styles.contactText, styles.linkText]}>{pro.website}</Text>
+              {pro.email && (
+                <TouchableOpacity 
+                  style={styles.contactRow}
+                  onPress={() => Linking.openURL(`mailto:${pro.email}`)}
+                >
+                  <Ionicons name="mail-outline" size={18} color={ProsColors.primary} />
+                  <Text style={styles.contactText}>{pro.email}</Text>
                 </TouchableOpacity>
               )}
             </View>
 
-            {/* Availability */}
-            {pro.availability && pro.availability.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Availability</Text>
-                {DAYS_OF_WEEK.map((day) => {
-                  const avail = pro.availability?.find((a) => a.dayOfWeek === day.value);
-                  return (
-                    <View key={day.value} style={styles.availabilityRow}>
-                      <Text style={styles.dayText}>{day.short}</Text>
-                      <Text style={[
-                        styles.availabilityText,
-                        !avail?.isAvailable && styles.unavailableText
-                      ]}>
-                        {avail?.isAvailable
-                          ? `${avail.startTime} - ${avail.endTime}`
-                          : 'Unavailable'}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
+            {/* Business Hours */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Business Hours</Text>
+              {DAYS_OF_WEEK.map((day) => (
+                <View key={day} style={styles.hoursRow}>
+                  <Text style={styles.dayText}>{day}</Text>
+                  <Text style={styles.hoursText}>
+                    {day === 'Sunday' ? 'Closed' : '8:00 AM - 6:00 PM'}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
         )}
 
         {activeTab === 'photos' && (
           <View style={styles.tabContent}>
-            {pro.photos && pro.photos.length > 0 ? (
-              <FlatList
-                data={pro.photos}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={renderPhoto}
-                numColumns={2}
-                scrollEnabled={false}
-                columnWrapperStyle={styles.photoRow}
-              />
-            ) : (
+            <View style={styles.photosGrid}>
+              {SAMPLE_PHOTOS.map((photo, index) => (
+                <TouchableOpacity key={index} style={styles.photoItem}>
+                  <Image source={{ uri: photo }} style={styles.photoImage} />
+                </TouchableOpacity>
+              ))}
+            </View>
+            {SAMPLE_PHOTOS.length === 0 && (
               <View style={styles.emptyState}>
                 <Ionicons name="images-outline" size={48} color={ProsColors.textMuted} />
                 <Text style={styles.emptyStateText}>No photos yet</Text>
@@ -360,22 +298,58 @@ export default function ProsProfileScreen() {
 
         {activeTab === 'reviews' && (
           <View style={styles.tabContent}>
-            {pro.reviews && pro.reviews.length > 0 ? (
-              pro.reviews.map((review) => (
-                <View key={review.id}>
-                  {renderReview({ item: review })}
-                </View>
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="chatbubbles-outline" size={48} color={ProsColors.textMuted} />
-                <Text style={styles.emptyStateText}>No reviews yet</Text>
+            {/* Rating Summary */}
+            <View style={styles.ratingSummary}>
+              <Text style={styles.ratingBig}>{pro.rating.toFixed(1)}</Text>
+              <View style={styles.starsRow}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Ionicons
+                    key={star}
+                    name={star <= Math.round(pro.rating) ? 'star' : 'star-outline'}
+                    size={20}
+                    color="#F59E0B"
+                  />
+                ))}
               </View>
-            )}
+              <Text style={styles.totalReviews}>
+                Based on {pro.reviewCount} reviews
+              </Text>
+            </View>
+
+            {/* Reviews List */}
+            {SAMPLE_REVIEWS.map((review) => (
+              <View key={review.id} style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                  <View style={styles.reviewUser}>
+                    <View style={styles.reviewAvatarPlaceholder}>
+                      <Ionicons name="person" size={16} color={ProsColors.textMuted} />
+                    </View>
+                    <View>
+                      <Text style={styles.reviewUserName}>{review.userName}</Text>
+                      <Text style={styles.reviewDate}>
+                        {new Date(review.date).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.reviewRating}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Ionicons
+                        key={star}
+                        name={star <= review.rating ? 'star' : 'star-outline'}
+                        size={14}
+                        color="#F59E0B"
+                      />
+                    ))}
+                  </View>
+                </View>
+                <Text style={styles.reviewContent}>{review.content}</Text>
+              </View>
+            ))}
           </View>
         )}
 
-        <View style={{ height: 32 }} />
+        {/* Bottom Spacing */}
+        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -385,29 +359,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  errorTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-    marginTop: 16,
-  },
-  errorText: {
-    fontSize: 14,
-    color: ProsColors.textSecondary,
-    marginTop: 8,
-    textAlign: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -425,7 +376,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255,255,255,0.9)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -433,64 +384,46 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255,255,255,0.9)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   coverImage: {
     width: '100%',
-    height: 200,
+    height: 250,
     backgroundColor: ProsColors.sectionBg,
-  },
-  coverPlaceholder: {
-    width: '100%',
-    height: 200,
-    backgroundColor: ProsColors.sectionBg,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   profileSection: {
-    paddingHorizontal: 16,
-    marginTop: -40,
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    marginTop: -20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
-  logoContainer: {
-    marginBottom: 12,
-  },
-  logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    backgroundColor: ProsColors.sectionBg,
-  },
-  logoPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    backgroundColor: ProsColors.sectionBg,
-    justifyContent: 'center',
+  profileHeader: {
     alignItems: 'center',
-  },
-  profileInfo: {
-    marginTop: 8,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: 4,
   },
   businessName: {
     fontSize: 24,
     fontWeight: '700',
     color: ProsColors.textPrimary,
   },
+  categoryName: {
+    fontSize: 14,
+    color: ProsColors.primary,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    marginBottom: 8,
   },
   ratingText: {
     fontSize: 16,
@@ -506,7 +439,7 @@ const styles = StyleSheet.create({
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    marginBottom: 12,
   },
   locationText: {
     fontSize: 14,
@@ -516,8 +449,8 @@ const styles = StyleSheet.create({
   badges: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 8,
-    marginTop: 12,
   },
   badge: {
     flexDirection: 'row',
@@ -530,13 +463,13 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 12,
     color: ProsColors.primary,
-    fontWeight: '500',
     marginLeft: 4,
+    fontWeight: '500',
   },
   actionButtons: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingBottom: 16,
     gap: 8,
   },
   primaryButton: {
@@ -545,14 +478,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: ProsColors.primary,
-    paddingVertical: 14,
     borderRadius: 10,
+    paddingVertical: 14,
     gap: 8,
   },
   primaryButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
   secondaryButton: {
     width: 50,
@@ -584,10 +517,10 @@ const styles = StyleSheet.create({
   },
   tabTextActive: {
     color: ProsColors.primary,
+    fontWeight: '600',
   },
   tabContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    padding: 16,
   },
   section: {
     marginBottom: 24,
@@ -609,137 +542,57 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   serviceTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: ProsColors.sectionBg,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
-    gap: 6,
+    borderRadius: 6,
   },
   serviceTagText: {
-    fontSize: 14,
+    fontSize: 13,
     color: ProsColors.textPrimary,
-  },
-  primaryTag: {
-    backgroundColor: ProsColors.primary,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  primaryTagText: {
-    fontSize: 10,
-    color: '#FFFFFF',
-    fontWeight: '600',
+    fontWeight: '500',
   },
   contactRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-  },
-  contactText: {
-    fontSize: 14,
-    color: ProsColors.textPrimary,
-    marginLeft: 12,
-  },
-  linkText: {
-    color: ProsColors.primary,
-  },
-  availabilityRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: ProsColors.borderLight,
   },
+  contactText: {
+    fontSize: 15,
+    color: ProsColors.primary,
+    marginLeft: 12,
+  },
+  hoursRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
   dayText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: ProsColors.textPrimary,
-    width: 40,
+    color: ProsColors.textSecondary,
   },
-  availabilityText: {
+  hoursText: {
     fontSize: 14,
     color: ProsColors.textPrimary,
+    fontWeight: '500',
   },
-  unavailableText: {
-    color: ProsColors.textMuted,
-  },
-  photoRow: {
-    justifyContent: 'space-between',
-    marginBottom: 8,
+  photosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   photoItem: {
-    width: (width - 40) / 2,
-    marginBottom: 8,
+    width: (width - 48) / 3,
+    height: (width - 48) / 3,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   photoImage: {
     width: '100%',
-    height: 120,
-    borderRadius: 8,
+    height: '100%',
     backgroundColor: ProsColors.sectionBg,
-  },
-  photoCaption: {
-    fontSize: 12,
-    color: ProsColors.textSecondary,
-    marginTop: 4,
-  },
-  reviewCard: {
-    backgroundColor: ProsColors.sectionBg,
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 12,
-  },
-  reviewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
-  },
-  reviewUser: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  reviewAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: ProsColors.border,
-    marginRight: 10,
-  },
-  reviewAvatarPlaceholder: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: ProsColors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  reviewUserName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-  },
-  reviewDate: {
-    fontSize: 12,
-    color: ProsColors.textSecondary,
-    marginTop: 2,
-  },
-  reviewRating: {
-    flexDirection: 'row',
-    gap: 2,
-  },
-  reviewTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-    marginBottom: 6,
-  },
-  reviewContent: {
-    fontSize: 14,
-    color: ProsColors.textSecondary,
-    lineHeight: 20,
   },
   emptyState: {
     alignItems: 'center',
@@ -749,5 +602,98 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: ProsColors.textMuted,
     marginTop: 12,
+  },
+  ratingSummary: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: ProsColors.borderLight,
+    marginBottom: 16,
+  },
+  ratingBig: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: ProsColors.textPrimary,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    marginVertical: 8,
+  },
+  totalReviews: {
+    fontSize: 14,
+    color: ProsColors.textSecondary,
+  },
+  reviewCard: {
+    backgroundColor: ProsColors.sectionBg,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  reviewUser: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reviewAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  reviewUserName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: ProsColors.textPrimary,
+  },
+  reviewDate: {
+    fontSize: 12,
+    color: ProsColors.textMuted,
+    marginTop: 2,
+  },
+  reviewRating: {
+    flexDirection: 'row',
+  },
+  reviewContent: {
+    fontSize: 14,
+    color: ProsColors.textSecondary,
+    lineHeight: 20,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: ProsColors.textPrimary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    color: ProsColors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  backHomeButton: {
+    backgroundColor: ProsColors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  backHomeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
