@@ -111,11 +111,24 @@ interface Place {
 
 interface SearchSuggestion {
   id: string;
-  type: 'place' | 'category' | 'location' | 'recent';
+  type: 'place' | 'category' | 'location' | 'recent' | 'address';
   title: string;
   subtitle?: string;
   icon: string;
   data?: any;
+}
+
+interface GeocodingResult {
+  display_name: string;
+  lat: string;
+  lon: string;
+  type: string;
+  address?: {
+    road?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+  };
 }
 
 // ============================================
@@ -188,8 +201,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [targetLocation, setTargetLocation] = useState<[number, number] | null>(null);
+  const [searchedAddressName, setSearchedAddressName] = useState<string>('');
   
   // Location states
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
@@ -378,21 +394,69 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // SMART SEARCH & AUTOCOMPLETE
   // ============================================
 
+  // Debounce timer for geocoding
+  const geocodeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     if (searchQuery.trim().length > 0) {
       generateSearchSuggestions(searchQuery);
     } else {
       setSearchSuggestions([]);
+      setIsSearchingAddress(false);
     }
   }, [searchQuery, places, recentSearches]);
 
-  const generateSearchSuggestions = (query: string) => {
+  // Geocode address using Nominatim (OpenStreetMap)
+  const geocodeAddress = async (query: string): Promise<SearchSuggestion[]> => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=3&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'TavvY-App/1.0',
+          },
+        }
+      );
+      
+      if (!response.ok) return [];
+      
+      const results: GeocodingResult[] = await response.json();
+      
+      return results.map((result, index) => {
+        // Format a nice display name
+        const parts = result.display_name.split(', ');
+        const shortName = parts.slice(0, 3).join(', ');
+        
+        return {
+          id: `address-${index}-${result.lat}`,
+          type: 'address' as const,
+          title: shortName,
+          subtitle: result.type === 'house' ? 'Address' : 
+                   result.type === 'city' ? 'City' :
+                   result.type === 'state' ? 'State' : 'Location',
+          icon: 'map',
+          data: {
+            lat: parseFloat(result.lat),
+            lon: parseFloat(result.lon),
+            displayName: result.display_name,
+          },
+        };
+      });
+    } catch (error) {
+      console.log('Geocoding error:', error);
+      return [];
+    }
+  };
+
+  const generateSearchSuggestions = async (query: string) => {
     const suggestions: SearchSuggestion[] = [];
     const queryLower = query.toLowerCase();
 
-    // 1. Match places by name
+    // 1. Match places by name AND address
     const matchingPlaces = places.filter(place =>
-      place.name.toLowerCase().includes(queryLower)
+      place.name.toLowerCase().includes(queryLower) ||
+      (place.address_line1 && place.address_line1.toLowerCase().includes(queryLower)) ||
+      (place.city && place.city.toLowerCase().includes(queryLower))
     ).slice(0, 5);
 
     matchingPlaces.forEach(place => {
@@ -433,7 +497,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         id: `location-${city}`,
         type: 'location',
         title: city!,
-        subtitle: 'Location',
+        subtitle: 'City',
         icon: 'navigate',
         data: { city },
       });
@@ -455,7 +519,32 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       });
     });
 
+    // Set initial suggestions immediately
     setSearchSuggestions(suggestions);
+
+    // 5. Geocode address if query looks like an address (3+ chars, no exact place match)
+    if (query.length >= 3 && matchingPlaces.length < 3) {
+      // Clear previous timer
+      if (geocodeTimerRef.current) {
+        clearTimeout(geocodeTimerRef.current);
+      }
+      
+      // Debounce geocoding to avoid too many API calls
+      geocodeTimerRef.current = setTimeout(async () => {
+        setIsSearchingAddress(true);
+        const addressSuggestions = await geocodeAddress(query);
+        setIsSearchingAddress(false);
+        
+        if (addressSuggestions.length > 0) {
+          // Add address suggestions to existing ones
+          setSearchSuggestions(prev => {
+            // Filter out old address suggestions
+            const nonAddressSuggestions = prev.filter(s => s.type !== 'address');
+            return [...nonAddressSuggestions, ...addressSuggestions];
+          });
+        }
+      }, 500); // 500ms debounce
+    }
   };
 
   const handleSearchInputChange = (text: string) => {
@@ -500,6 +589,23 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         saveRecentSearch(suggestion.title);
         setSearchQuery(suggestion.title);
         setViewMode('map');
+        break;
+        
+      case 'address':
+        // Go to map mode centered on geocoded address
+        saveRecentSearch(suggestion.title);
+        setTargetLocation([suggestion.data.lon, suggestion.data.lat]);
+        setSearchedAddressName(suggestion.title); // Keep address name for display
+        setSearchQuery(suggestion.title); // Show address in search bar
+        setViewMode('map');
+        // Fly camera to the address location with high zoom (16 = street level)
+        setTimeout(() => {
+          cameraRef.current?.setCamera({
+            centerCoordinate: [suggestion.data.lon, suggestion.data.lat],
+            zoomLevel: 16,
+            animationDuration: 1500,
+          });
+        }, 100);
         break;
         
       case 'recent':
@@ -585,6 +691,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     setViewMode('content');
     setSearchQuery('');
     setIsSearchFocused(false);
+    setTargetLocation(null);
+    setSearchedAddressName('');
   };
 
   // ============================================
@@ -684,7 +792,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // ============================================
 
   const renderSearchSuggestions = () => {
-    if (!isSearchFocused || searchSuggestions.length === 0) {
+    // Show suggestions when focused, even if empty (to show "Search for..." option)
+    if (!isSearchFocused) {
+      return null;
+    }
+
+    // If no suggestions and no query, don't show anything
+    if (searchSuggestions.length === 0 && searchQuery.trim().length === 0) {
       return null;
     }
 
@@ -701,6 +815,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               suggestion.type === 'place' && styles.suggestionIconPlace,
               suggestion.type === 'category' && styles.suggestionIconCategory,
               suggestion.type === 'location' && styles.suggestionIconLocation,
+              suggestion.type === 'address' && styles.suggestionIconAddress,
               suggestion.type === 'recent' && styles.suggestionIconRecent,
             ]}>
               <Ionicons
@@ -709,7 +824,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 color={
                   suggestion.type === 'place' ? '#0A84FF' :
                   suggestion.type === 'category' ? '#34C759' :
-                  suggestion.type === 'location' ? '#FF9500' : '#8E8E93'
+                  suggestion.type === 'location' ? '#FF9500' :
+                  suggestion.type === 'address' ? '#AF52DE' : '#8E8E93'
                 }
               />
             </View>
@@ -726,6 +842,19 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             />
           </TouchableOpacity>
         ))}
+        
+        {/* Loading indicator for address search */}
+        {isSearchingAddress && (
+          <View style={styles.suggestionItem}>
+            <View style={[styles.suggestionIconContainer, styles.suggestionIconAddress]}>
+              <ActivityIndicator size="small" color="#AF52DE" />
+            </View>
+            <View style={styles.suggestionTextContainer}>
+              <Text style={styles.suggestionTitle}>Searching addresses...</Text>
+              <Text style={styles.suggestionSubtitle}>Looking up location</Text>
+            </View>
+          </View>
+        )}
         
         {/* Show "Search for..." option */}
         {searchQuery.trim().length > 0 && (
@@ -1171,11 +1300,23 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       >
         <MapLibreGL.Camera
           ref={cameraRef}
-          zoomLevel={14}
-          centerCoordinate={userLocation || [-97.7431, 30.2672]}
+          zoomLevel={targetLocation ? 16 : 14}
+          centerCoordinate={targetLocation || userLocation || [-97.7431, 30.2672]}
           animationMode="flyTo"
-          animationDuration={2000}
+          animationDuration={1500}
         />
+        
+        {/* Target location marker (for address searches) */}
+        {targetLocation && (
+          <MapLibreGL.PointAnnotation
+            id="target-location"
+            coordinate={targetLocation}
+          >
+            <View style={styles.targetLocationMarker}>
+              <Ionicons name="location" size={32} color="#AF52DE" />
+            </View>
+          </MapLibreGL.PointAnnotation>
+        )}
 
         {MAP_STYLES[mapStyle].type === 'raster' && (
           <MapLibreGL.RasterSource
@@ -1242,17 +1383,32 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         </TouchableOpacity>
         
         {/* Search Bar */}
-        <View style={styles.mapSearchBar}>
-          <Ionicons name="search" size={20} color="#999" />
+        <View style={[styles.mapSearchBar, targetLocation && styles.mapSearchBarWithAddress]}>
+          {targetLocation ? (
+            <Ionicons name="location" size={20} color="#AF52DE" />
+          ) : (
+            <Ionicons name="search" size={20} color="#999" />
+          )}
           <TextInput
             style={styles.mapSearchInput}
             placeholder="Search places or locations"
             placeholderTextColor="#999"
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              // Clear target location if user starts typing something new
+              if (targetLocation && text !== searchedAddressName) {
+                setTargetLocation(null);
+                setSearchedAddressName('');
+              }
+            }}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity onPress={() => {
+              setSearchQuery('');
+              setTargetLocation(null);
+              setSearchedAddressName('');
+            }}>
               <Ionicons name="close-circle" size={20} color="#999" />
             </TouchableOpacity>
           )}
@@ -1483,6 +1639,9 @@ const styles = StyleSheet.create({
   suggestionIconLocation: {
     backgroundColor: '#FFF5E8',
   },
+  suggestionIconAddress: {
+    backgroundColor: '#F5E8FF',
+  },
   suggestionIconRecent: {
     backgroundColor: '#F2F2F7',
   },
@@ -1506,18 +1665,22 @@ const styles = StyleSheet.create({
   // Categories
   categoryScrollView: {
     marginBottom: 16,
+    maxHeight: 50,
   },
   categoryScrollContent: {
     paddingHorizontal: 20,
+    alignItems: 'center',
   },
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#F2F2F7',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
     marginRight: 8,
+    height: 36,
   },
   categoryChipActive: {
     backgroundColor: '#0A84FF',
@@ -1704,6 +1867,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
+  mapSearchBarWithAddress: {
+    borderWidth: 2,
+    borderColor: '#AF52DE',
+  },
   mapSearchInput: {
     flex: 1,
     marginLeft: 8,
@@ -1783,6 +1950,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3,
     elevation: 4,
+  },
+  targetLocationMarker: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   
   // Bottom Sheet

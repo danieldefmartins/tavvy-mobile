@@ -18,6 +18,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import MapLibreGL from '@maplibre/maplibre-react-native';
 import { mapGoogleCategoryToBusinessType } from '../lib/businessTypeConfig';
+import {
+  getCategoryEmoji as getCategoryEmojiFromConfig,
+  shouldShowEntrancesTab,
+  getQuickInfoPills,
+  QuickInfoPill,
+} from '../lib/categories';
 import { supabase } from '../lib/supabaseClient';
 import { fetchPlaceSignals, getPlaceReviewCount, SignalAggregate } from '../lib/reviews';
 import { Colors } from '../constants/Colors';
@@ -117,8 +123,15 @@ interface Place {
   [key: string]: any; // For dynamic entrance field access
 }
 
-// Category emoji mapping
+// Category emoji mapping - Enhanced with new category config
 const getCategoryEmoji = (category: string): string => {
+  // First try the new comprehensive category config
+  const configEmoji = getCategoryEmojiFromConfig(category);
+  if (configEmoji && configEmoji !== '📍') {
+    return configEmoji;
+  }
+  
+  // Fallback to existing local mapping for backward compatibility
   const emojiMap: Record<string, string> = {
     'restaurant': '🍽️',
     'italian restaurant': '🍝',
@@ -225,6 +238,12 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
 
   // Determine business type from place data
   const businessType = place ? mapGoogleCategoryToBusinessType(place.primaryCategory || 'default') : 'default';
+
+  // NEW: Compute quick info pills based on category
+  const quickInfoPills: QuickInfoPill[] = place ? getQuickInfoPills(place, place.primaryCategory || 'default') : [];
+
+  // NEW: Determine if entrances tab should be shown based on category
+  const showEntrancesTabForCategory = place ? shouldShowEntrancesTab(place.primaryCategory || 'default') : false;
 
   // Helper to render Trust Badges
   const renderTrustBadges = () => {
@@ -981,6 +1000,18 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           </TouchableOpacity>
         </View>
 
+        {/* ===== QUICK INFO PILLS (NEW - Category-based) ===== */}
+        {quickInfoPills.length > 0 && (
+          <View style={styles.quickInfoPillsContainer}>
+            {quickInfoPills.map((pill, index) => (
+              <View key={index} style={[styles.quickInfoPill, { backgroundColor: pill.color + '20' }]}>
+                <Ionicons name={pill.icon} size={14} color={pill.color} />
+                <Text style={[styles.quickInfoPillText, { color: pill.color }]}>{pill.label}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* ===== TAB NAVIGATION ===== */}
         <View style={styles.tabContainer}>
           {(['signals', 'info', 'photos', 'entrances'] as const).map((tab) => {
@@ -991,6 +1022,12 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
               photos: 'Photos',
               entrances: 'Entrances',
             };
+            
+            // NEW: Conditionally show entrances tab based on category or if entrances exist
+            if (tab === 'entrances' && !showEntrancesTabForCategory && entrances.length === 0) {
+              return null;
+            }
+            
             return (
               <TouchableOpacity
                 key={tab}
@@ -1646,6 +1683,30 @@ const styles = StyleSheet.create({
     width: 1,
     height: 36,
     backgroundColor: '#e5e5e5',
+  },
+  
+  // ===== QUICK INFO PILLS (NEW) =====
+  quickInfoPillsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
+    gap: 8,
+  },
+  quickInfoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  quickInfoPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 6,
   },
   
   // ===== TAB NAVIGATION =====
