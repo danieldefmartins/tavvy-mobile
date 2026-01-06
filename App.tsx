@@ -24,6 +24,8 @@ import UniverseDiscoveryScreen from './screens/UniverseDiscoveryScreen';
 import UniverseLandingScreen from './screens/UniverseLandingScreen';
 
 import UniversalAddScreen from './screens/UniversalAddScreen';
+import AddPlaceScreen from './screens/AddPlaceScreen';
+import BusinessCardScannerScreen from './screens/BusinessCardScannerScreen';
 
 import AtlasHomeScreen from './screens/AtlasHomeScreen';
 import ArticleDetailScreen from './screens/ArticleDetailScreen';
@@ -83,6 +85,12 @@ function HomeStack() {
       <HomeStackNav.Screen name="CityDetails" component={CityDetailsScreen} />
       <HomeStackNav.Screen name="RateCity" component={RateCityScreen} />
       <HomeStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
+      {/* Business Card Scanner - accessible from AddPlaceScreen */}
+      <HomeStackNav.Screen 
+        name="BusinessCardScanner" 
+        component={BusinessCardScannerScreen}
+        options={{ presentation: 'modal' }}
+      />
     </HomeStackNav.Navigator>
   );
 }
@@ -122,6 +130,19 @@ function MenuStack() {
       
       {/* Create functionality moved to Menu */}
       <MenuStackNav.Screen name="UniversalAdd" component={UniversalAddScreen} />
+      <MenuStackNav.Screen name="AddPlace" component={AddPlaceScreen} />
+      
+      {/* Business Card Scanner - accessible from AddPlaceScreen */}
+      <MenuStackNav.Screen 
+        name="BusinessCardScanner" 
+        component={BusinessCardScannerScreen}
+        options={{ presentation: 'modal' }}
+      />
+      
+      {/* Pro Dashboard accessible from Menu */}
+      <MenuStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
+      <MenuStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
+      <MenuStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
     </MenuStackNav.Navigator>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { Alert, View, TouchableOpacity, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import QuickFormEngine, { FormStep } from '../components/QuickFormEngine';
 import { useNavigation } from '@react-navigation/native';
@@ -48,6 +48,8 @@ export default function AddPlaceScreen() {
   const navigation = useNavigation();
   const [initialData, setInitialData] = useState<any>(null);
   const [currentStepId, setCurrentStepId] = useState<string>('category');
+  const [showScanOption, setShowScanOption] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const handleComplete = (data: any) => {
     console.log('Place Data:', data);
@@ -59,33 +61,125 @@ export default function AddPlaceScreen() {
   const handleScanComplete = (data: ScannedBusinessCard) => {
     // Map scanned data to form fields
     const mappedData = {
+      category: selectedCategory, // Keep the selected category
       name: data.name,
       location: data.address, 
-      description: `Phone: ${data.phone}\nWebsite: ${data.website || ''}`,
+      description: `Phone: ${data.phone}${data.website ? `\nWebsite: ${data.website}` : ''}`,
     };
     
     setInitialData(mappedData);
-    Alert.alert("Card Scanned!", "Form has been pre-filled with business card details.");
+    setShowScanOption(false);
+    Alert.alert(
+      "Card Scanned!", 
+      "Form has been pre-filled with business card details. Review and edit as needed.",
+      [{ text: "OK" }]
+    );
   };
 
   const startScan = () => {
-    navigation.navigate('BusinessCardScanner', {
+    navigation.navigate('BusinessCardScanner' as never, {
       onScanComplete: handleScanComplete
-    });
+    } as never);
   };
+
+  const handleStepChange = (stepId: string) => {
+    setCurrentStepId(stepId);
+    
+    // Show scan option when moving from category to name step
+    // and no data has been scanned yet
+    if (stepId === 'name' && !initialData) {
+      setShowScanOption(true);
+    } else {
+      setShowScanOption(false);
+    }
+  };
+
+  // Track category when step changes - the form will have the category value
+  // before moving to the name step
+
+  const skipScan = () => {
+    setShowScanOption(false);
+  };
+
+  // Show the scan option screen between category and name
+  if (showScanOption) {
+    return (
+      <SafeAreaView style={styles.scanOptionContainer}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#333" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Add Place</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        {/* Progress indicator */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: '20%' }]} />
+          </View>
+        </View>
+
+        {/* Content */}
+        <View style={styles.content}>
+          <Text style={styles.stepLabel}>QUICK ADD</Text>
+          <Text style={styles.title}>Have a business card?</Text>
+          <Text style={styles.subtitle}>
+            Scan it to auto-fill the form with name, address, phone, and website.
+          </Text>
+
+          {/* Scan Card Option */}
+          <TouchableOpacity style={styles.scanCard} onPress={startScan}>
+            <View style={styles.scanIconContainer}>
+              <Ionicons name="camera" size={32} color="#fff" />
+            </View>
+            <View style={styles.scanCardContent}>
+              <Text style={styles.scanCardTitle}>Scan Business Card</Text>
+              <Text style={styles.scanCardDescription}>
+                Take a photo and we'll extract the details
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#2DD4BF" />
+          </TouchableOpacity>
+
+          {/* Manual Entry Option */}
+          <TouchableOpacity style={styles.manualCard} onPress={skipScan}>
+            <View style={styles.manualIconContainer}>
+              <Ionicons name="create-outline" size={28} color="#666" />
+            </View>
+            <View style={styles.scanCardContent}>
+              <Text style={styles.manualCardTitle}>Enter Manually</Text>
+              <Text style={styles.scanCardDescription}>
+                Type in the place details yourself
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#999" />
+          </TouchableOpacity>
+
+          {/* Tips */}
+          <View style={styles.tipsContainer}>
+            <Text style={styles.tipsTitle}>Tips for scanning:</Text>
+            <View style={styles.tipRow}>
+              <Ionicons name="checkmark-circle" size={16} color="#2DD4BF" />
+              <Text style={styles.tipText}>Good lighting helps accuracy</Text>
+            </View>
+            <View style={styles.tipRow}>
+              <Ionicons name="checkmark-circle" size={16} color="#2DD4BF" />
+              <Text style={styles.tipText}>Hold the card flat and steady</Text>
+            </View>
+            <View style={styles.tipRow}>
+              <Ionicons name="checkmark-circle" size={16} color="#2DD4BF" />
+              <Text style={styles.tipText}>Make sure text is readable</Text>
+            </View>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Scan Button Overlay - Only visible on 'name' step and if no data yet */}
-      {currentStepId === 'name' && !initialData && (
-        <View style={styles.scanHeader}>
-          <TouchableOpacity style={styles.scanButton} onPress={startScan}>
-            <Ionicons name="scan-outline" size={20} color="#fff" />
-            <Text style={styles.scanButtonText}>Scan Business Card</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       <QuickFormEngine
         formId="draft_add_place"
         title="New Place"
@@ -93,36 +187,149 @@ export default function AddPlaceScreen() {
         initialData={initialData}
         onComplete={handleComplete}
         onCancel={() => navigation.goBack()}
-        onStepChange={setCurrentStepId}
+        onStepChange={handleStepChange} 
+
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scanHeader: {
-    position: 'absolute',
-    top: 60, // Adjust based on safe area
-    right: 20,
-    zIndex: 100,
+  scanOptionContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
   },
-  scanButton: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2DD4BF',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  scanButtonText: {
-    color: '#fff',
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 17,
     fontWeight: '600',
+    color: '#333',
+  },
+  progressContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 2,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#2DD4BF',
+    borderRadius: 2,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+  },
+  stepLabel: {
     fontSize: 12,
-    marginLeft: 6,
+    fontWeight: '600',
+    color: '#2DD4BF',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  scanCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fffe',
+    borderWidth: 2,
+    borderColor: '#2DD4BF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  scanIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#2DD4BF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  scanCardContent: {
+    flex: 1,
+  },
+  scanCardTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  scanCardDescription: {
+    fontSize: 14,
+    color: '#666',
+  },
+  manualCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f9f9f9',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 32,
+  },
+  manualIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  manualCardTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 4,
+  },
+  tipsContainer: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    padding: 16,
+  },
+  tipsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  tipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  tipText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
   },
 });
