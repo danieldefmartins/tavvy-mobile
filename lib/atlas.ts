@@ -5,7 +5,7 @@
 // Place this file in: lib/atlas.ts
 // ============================================================================
 
-import { supabase } from './supabase';
+import { supabase } from './supabaseClient';
 
 // ============================================================================
 // TYPES

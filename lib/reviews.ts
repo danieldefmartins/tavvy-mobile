@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabaseClient';
 import { getTagById, getCategoryFromTag, CATEGORY_COLORS, ReviewCategory } from './reviewTags';
 
 // Types matching the database schema

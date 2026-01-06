@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseClient';
 
 const { width, height } = Dimensions.get('window');
 const COLUMN_COUNT = 3;
