@@ -13,7 +13,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { getPhotoCategories, getCategoryName, getCategoryIcon } from '../lib/photoCategoryUtils';
 import { BusinessType } from '../lib/businessTypeConfig';
-import { getPhotoCategories, getCategoryName, getCategoryIcon, BusinessType } from '../lib/photoCategoryUtils';
 
 const { width, height } = Dimensions.get('window');
 
