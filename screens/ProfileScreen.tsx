@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import { Colors } from '../Constants/Colors';
+import { Colors } from '../constants/Colors';
 
 export default function ProfileScreen({ navigation }: any) {
   const { user, signOut } = useAuth();

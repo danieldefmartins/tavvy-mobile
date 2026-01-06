@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { Colors } from '../Constants/Colors';
+import { Colors } from '../constants/Colors';
 
 export default function ClaimBusinessScreen() {
   const navigation = useNavigation();

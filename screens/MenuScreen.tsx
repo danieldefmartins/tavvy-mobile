@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../Constants/Colors';
+import { Colors } from '../constants/Colors';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function MenuScreen() {

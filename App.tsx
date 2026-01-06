@@ -7,7 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 
 import { AuthProvider } from './contexts/AuthContext';
-import { Colors } from './Constants/Colors';
+import { Colors } from './constants/Colors';
 
 // Screens
 import HomeScreen from './screens/HomeScreen';
