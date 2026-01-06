@@ -385,9 +385,20 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (place) =>
+          // Search by name
           (place.name && place.name.toLowerCase().includes(query)) ||
+          // Search by city
           (place.city && place.city.toLowerCase().includes(query)) ||
-          (place.category && place.category.toLowerCase().includes(query))
+          // Search by category (e.g., "coffee shop", "restaurant")
+          (place.category && place.category.toLowerCase().includes(query)) ||
+          // Search by primary category
+          (place.primary_category && place.primary_category.toLowerCase().includes(query)) ||
+          // Search by address
+          (place.address_line1 && place.address_line1.toLowerCase().includes(query)) ||
+          // Search by state/region
+          (place.state_region && place.state_region.toLowerCase().includes(query)) ||
+          // Search by description
+          (place.description && place.description.toLowerCase().includes(query))
       );
     }
 
