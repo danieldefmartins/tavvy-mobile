@@ -983,17 +983,26 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
 
         {/* ===== TAB NAVIGATION ===== */}
         <View style={styles.tabContainer}>
-          {(['signals', 'info', 'photos', 'entrances'] as const).map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tab, activeTab === tab && styles.tabActive]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {(['signals', 'info', 'photos', 'entrances'] as const).map((tab) => {
+            // Map internal tab names to display labels
+            const tabLabels: Record<string, string> = {
+              signals: 'Reviews',
+              info: 'Info',
+              photos: 'Photos',
+              entrances: 'Entrances',
+            };
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tab, activeTab === tab && styles.tabActive]}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                  {tabLabels[tab]}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* ===== TAB CONTENT ===== */}
