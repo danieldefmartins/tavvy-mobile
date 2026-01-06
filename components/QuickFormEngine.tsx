@@ -27,6 +27,8 @@ interface QuickFormEngineProps {
   onComplete: (data: any) => void;
   onCancel: () => void;
   onStepChange?: (stepId: string) => void; // Notify parent of step change
+  onScanCard?: () => void; // Callback when scan card button is pressed
+  scanStepIds?: string[]; // Step IDs that should show the scan card button
 }
 
 // --- SUB-COMPONENTS ---
@@ -207,7 +209,7 @@ const AddressInput = ({ value, onChange, placeholder }: { value: string, onChang
 
 // --- MAIN COMPONENT ---
 
-export default function QuickFormEngine({ formId, title, steps, initialData, onComplete, onCancel, onStepChange }: QuickFormEngineProps) {
+export default function QuickFormEngine({ formId, title, steps, initialData, onComplete, onCancel, onStepChange, onScanCard, scanStepIds }: QuickFormEngineProps) {
   const navigation = useNavigation();
   
   // STATE
@@ -347,6 +349,7 @@ export default function QuickFormEngine({ formId, title, steps, initialData, onC
   const renderInput = () => {
     switch (currentStep.type) {
       case 'text':
+        const showScanButton = onScanCard && scanStepIds?.includes(currentStep.id);
         return (
           <View>
             <TextInput
@@ -357,6 +360,16 @@ export default function QuickFormEngine({ formId, title, steps, initialData, onC
               autoFocus
               autoCapitalize="sentences"
             />
+            {showScanButton && (
+              <TouchableOpacity 
+                style={styles.scanCardButton} 
+                onPress={onScanCard}
+              >
+                <Ionicons name="camera" size={20} color={Colors.primary} />
+                <Text style={styles.scanCardButtonText}>Scan Business Card</Text>
+                <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
+              </TouchableOpacity>
+            )}
           </View>
         );
 
@@ -596,4 +609,23 @@ const styles = StyleSheet.create({
   footer: { padding: 24, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
   nextButton: { backgroundColor: Colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 18, borderRadius: 16, gap: 8, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
   nextButtonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+  scanCardButton: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    marginTop: 24, 
+    padding: 16, 
+    backgroundColor: '#F0F9FF', 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: Colors.primary,
+    borderStyle: 'dashed',
+    gap: 8 
+  },
+  scanCardButtonText: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: Colors.primary,
+    flex: 1,
+  },
 });
