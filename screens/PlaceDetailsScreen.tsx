@@ -649,6 +649,12 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
     }
   };
 
+  // Calculate max tap count for consistent bar widths
+  const getMaxTapCount = (signalsList: SignalAggregate[]) => {
+    if (!signalsList || signalsList.length === 0) return 1;
+    return Math.max(...signalsList.map(s => s.tap_total), 1);
+  };
+
   const renderSignalLine = (
     type: 'best_for' | 'vibe' | 'heads_up',
     categoryTitle: string,
@@ -657,90 +663,137 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   ) => {
     if (!signalsList || signalsList.length === 0) return null;
 
-    const topSignal = signalsList[0];
     const isExpanded = expandedSection === type;
-    const hasMore = signalsList.length > 1;
+    const maxTapCount = getMaxTapCount(signalsList);
 
-    // Use PRIMARY color for background (Solid Bar) and WHITE for text
+    // Use PRIMARY color for the category
     const bgColor = colors.primary;
-    const textColor = '#FFFFFF';
+    const lightBgColor = colors.light;
+
+    // Render a single signal row with progress bar
+    const renderSignalRow = (signal: SignalAggregate, index: number, isFirst: boolean = false) => {
+      const barWidthPercent = Math.max((signal.tap_total / maxTapCount) * 100, 8); // Min 8% width
+      
+      return (
+        <View 
+          key={signal.signal_id || index} 
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: 10,
+            paddingHorizontal: 4,
+            borderTopWidth: isFirst ? 0 : 1,
+            borderTopColor: '#F3F4F6',
+          }}
+        >
+          {/* Icon */}
+          <Text style={{ fontSize: 18, width: 28 }}>{signal.icon}</Text>
+          
+          {/* Label and Bar Container */}
+          <View style={{ flex: 1, marginLeft: 8 }}>
+            {/* Label */}
+            <Text style={{ 
+              fontSize: 14, 
+              fontWeight: '600', 
+              color: '#374151',
+              marginBottom: 4,
+            }}>
+              {signal.label}
+            </Text>
+            
+            {/* Progress Bar */}
+            <View style={{
+              height: 8,
+              backgroundColor: '#E5E7EB',
+              borderRadius: 4,
+              overflow: 'hidden',
+            }}>
+              <View style={{
+                height: '100%',
+                width: `${barWidthPercent}%`,
+                backgroundColor: bgColor,
+                borderRadius: 4,
+              }} />
+            </View>
+          </View>
+          
+          {/* Tap Count */}
+          <Text style={{ 
+            fontSize: 14, 
+            fontWeight: '700', 
+            color: bgColor,
+            marginLeft: 12,
+            minWidth: 40,
+            textAlign: 'right',
+          }}>
+            ×{signal.tap_total}
+          </Text>
+        </View>
+      );
+    };
 
     return (
-      <View style={styles.section}>
-        {/* Removed Section Title to match the cleaner look, or keep it if preferred. 
-            User asked for "The Good", "The Vibe", "Heads Up" text, so we keep it but style it better. */}
-        <Text style={[styles.sectionTitle, { color: '#1F2937', marginBottom: 6, fontSize: 17, fontWeight: '700', marginLeft: 4 }]}>{categoryTitle}</Text>
-        
-        <View style={styles.signalLineContainer}>
-          <TouchableOpacity 
-            activeOpacity={0.9}
-            onPress={() => hasMore && toggleSection(type)}
-            style={[styles.signalLine, { 
-              backgroundColor: bgColor, 
-              borderRadius: 10, // Slightly tighter radius for compact look
-              paddingVertical: 12, // Reduced padding for compact look
-              paddingHorizontal: 16,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.08,
-              shadowRadius: 3,
-              elevation: 2,
-            }]}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-              <Text style={{ fontSize: 16, marginRight: 8 }}>{topSignal.icon}</Text>
-              <Text style={{ color: textColor, fontSize: 15, fontWeight: '700', marginRight: 6 }}>
-                {topSignal.label}
-              </Text>
-              <Text style={{ color: textColor, fontSize: 15, fontWeight: '500', opacity: 0.9 }}>
-                 ×{topSignal.tap_total}
-              </Text>
-            </View>
-            
-            {hasMore && (
-              <Ionicons 
-                name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-                size={20} 
-                color={textColor} 
-              />
-            )}
-          </TouchableOpacity>
+      <View style={{
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 2,
+        overflow: 'hidden',
+      }}>
+        {/* Category Header - Tappable to expand/collapse */}
+        <TouchableOpacity 
+          activeOpacity={0.7}
+          onPress={() => toggleSection(type)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            backgroundColor: lightBgColor,
+          }}
+        >
+          <Text style={{ 
+            fontSize: 16, 
+            fontWeight: '700', 
+            color: '#1F2937',
+          }}>
+            {categoryTitle}
+          </Text>
           
-          {isExpanded && hasMore && (
-            <View style={{ 
-              marginTop: 4, 
-              backgroundColor: bgColor, 
-              borderRadius: 12, 
-              overflow: 'hidden',
-              opacity: 0.95 
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ 
+              fontSize: 13, 
+              color: '#6B7280',
+              marginRight: 8,
             }}>
-              {signalsList.slice(1).map((signal, idx) => (
-                <View key={idx} style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                  borderTopWidth: 1,
-                  borderTopColor: 'rgba(255,255,255,0.2)'
-                }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 16, marginRight: 10 }}>{signal.icon}</Text>
-                    <Text style={{ color: textColor, fontSize: 15, fontWeight: '600' }}>
-                      {signal.label}
-                    </Text>
-                  </View>
-                  <Text style={{ color: textColor, fontSize: 15, fontWeight: '500', opacity: 0.9 }}>
-                     ×{signal.tap_total}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
+              {signalsList.length} signal{signalsList.length !== 1 ? 's' : ''}
+            </Text>
+            <Ionicons 
+              name={isExpanded ? 'chevron-up' : 'chevron-down'} 
+              size={20} 
+              color="#6B7280" 
+            />
+          </View>
+        </TouchableOpacity>
+        
+        {/* Top Signal (Always Visible) */}
+        <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: isExpanded ? 0 : 12 }}>
+          {renderSignalRow(signalsList[0], 0, true)}
         </View>
+        
+        {/* Expanded Signals List */}
+        {isExpanded && signalsList.length > 1 && (
+          <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+            {signalsList.slice(1).map((signal, idx) => 
+              renderSignalRow(signal, idx + 1, false)
+            )}
+          </View>
+        )}
       </View>
     );
   };
@@ -2127,6 +2180,7 @@ const styles = StyleSheet.create({
   tabContent: {
     flex: 1,
     padding: 16,
+    paddingBottom: 40, // Extra padding at bottom for scrolling
   },
   emptyText: {
     fontSize: 16,
