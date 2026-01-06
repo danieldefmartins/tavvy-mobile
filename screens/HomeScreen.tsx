@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,9 @@ import {
   ScrollView,
   Linking,
   Share,
+  Animated,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import MapLibreGL from '@maplibre/maplibre-react-native';
@@ -18,8 +21,15 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { supabase } from '../lib/supabaseClient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
+
+// ============================================
+// CONSTANTS
+// ============================================
+
+const MAP_PEEK_HEIGHT = height * 0.22; // 22% of screen for map peek
 
 // Map Styles Configuration
 const MAP_STYLES = {
@@ -43,15 +53,76 @@ const MAP_STYLES = {
   },
 };
 
-// Empty style for when we use RasterSource manually
-const EMPTY_STYLE = {
-  version: 8,
-  sources: {},
-  layers: []
+// Categories for filtering
+const categories = ['All', 'Restaurants', 'Cafes', 'Bars', 'Shopping'];
+
+// Searchable categories for autocomplete
+const SEARCHABLE_CATEGORIES = [
+  { name: 'Restaurants', icon: 'restaurant', type: 'category' },
+  { name: 'Cafes', icon: 'cafe', type: 'category' },
+  { name: 'Coffee Shops', icon: 'cafe', type: 'category' },
+  { name: 'Bars', icon: 'beer', type: 'category' },
+  { name: 'Nightlife', icon: 'moon', type: 'category' },
+  { name: 'Shopping', icon: 'cart', type: 'category' },
+  { name: 'Entertainment', icon: 'film', type: 'category' },
+  { name: 'Services', icon: 'briefcase', type: 'category' },
+  { name: 'Health', icon: 'fitness', type: 'category' },
+  { name: 'Beauty', icon: 'sparkles', type: 'category' },
+];
+
+// Storage keys for user preferences
+const STORAGE_KEYS = {
+  RECENT_SEARCHES: '@tavvy_recent_searches',
+  CATEGORY_VIEWS: '@tavvy_category_views',
+  PLACE_VIEWS: '@tavvy_place_views',
 };
 
-// Mock data for testing
-const MOCK_PLACES = [
+// ============================================
+// TYPE DEFINITIONS
+// ============================================
+
+interface Signal {
+  bucket: string;
+  tap_total: number;
+}
+
+interface Place {
+  id: string;
+  name: string;
+  address_line1: string;
+  city?: string;
+  state_region?: string;
+  category: string;
+  primary_category?: string;
+  latitude: number;
+  longitude: number;
+  lat?: number;
+  lng?: number;
+  distance?: number;
+  current_status?: string;
+  cover_image_url?: string;
+  phone?: string;
+  website?: string;
+  instagram_url?: string;
+  description?: string;
+  signals?: Signal[];
+  photos?: string[];
+}
+
+interface SearchSuggestion {
+  id: string;
+  type: 'place' | 'category' | 'location' | 'recent';
+  title: string;
+  subtitle?: string;
+  icon: string;
+  data?: any;
+}
+
+// ============================================
+// MOCK DATA (for testing)
+// ============================================
+
+const MOCK_PLACES: Place[] = [
   {
     id: '1',
     name: 'Ocean House',
@@ -72,9 +143,7 @@ const MOCK_PLACES = [
       { bucket: 'Pricey', tap_total: 12 },
     ],
     photos: [
-      'https://files.manuscdn.com/user_upload_by_module/session_file/310419663028619995/IRXMawMDZaKxKEjn.jpg',
-      'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800',
-      'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800',
+      'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
     ],
   },
   {
@@ -97,163 +166,129 @@ const MOCK_PLACES = [
       { bucket: 'Pricey', tap_total: 45 },
     ],
     photos: [
-      'https://files.manuscdn.com/user_upload_by_module/session_file/310419663028619995/PoMlhyPSeUqgARcp.jpg',
-      'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800',
-      'https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=800',
-    ],
-  },
-  {
-    id: '3',
-    name: 'The Tipsy Pig',
-    address_line1: '2231 Chestnut St',
-    city: 'San Francisco',
-    state_region: 'CA',
-    category: 'Bars',
-    primary_category: 'Gastropub',
-    latitude: 37.7949,
-    longitude: -122.4294,
-    current_status: 'Open',
-    phone: '415-555-0125',
-    website: 'https://tipsypig.com',
-    signals: [
-      { bucket: 'Great Drinks', tap_total: 156 },
-      { bucket: 'Affordable', tap_total: 67 },
-      { bucket: 'Lively', tap_total: 92 },
-      { bucket: 'Loud', tap_total: 34 },
-    ],
-    photos: [
-      'https://files.manuscdn.com/user_upload_by_module/session_file/310419663028619995/iNNTqGkcrbgTHDWE.jpg',
-      'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=800',
-      'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=800',
+      'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800',
     ],
   },
 ];
 
-interface Signal {
-  bucket: string;
-  tap_total: number;
-}
+// ============================================
+// MAIN COMPONENT
+// ============================================
 
-interface Place {
-  id: string;
-  name: string;
-  address_line1: string;
-  city?: string;
-  state_region?: string;
-  category: string;
-  primary_category?: string;
-  latitude: number;
-  longitude: number;
-  distance?: number;
-  current_status?: string;
-  cover_image_url?: string;
-  phone?: string;
-  website?: string;
-  instagram_url?: string;
-  description?: string;
-  signals?: Signal[];
-  photos?: string[];
-}
-
-interface Weather {
-  temp: number;
-  condition: string;
-  icon: string;
-  feelsLike: number;
-  high: number;
-  low: number;
-  uvIndex: number;
-  visibility: string;
-}
-
-export default function HomeScreen({ navigation }: { navigation: any } ) {
+export default function HomeScreen({ navigation }: { navigation: any }) {
+  // View mode: 'content' (default) or 'map' (search/swipe triggered)
+  const [viewMode, setViewMode] = useState<'content' | 'map'>('content');
+  
+  // Data states
   const [places, setPlaces] = useState<Place[]>(MOCK_PLACES);
   const [filteredPlaces, setFilteredPlaces] = useState<Place[]>(MOCK_PLACES);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Search states
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  
+  // Location states
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [locationName, setLocationName] = useState<string>('');
+  
+  // Map states
   const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('osm');
-  const [showStylePicker, setShowStylePicker] = useState(false);
-  const [showWeatherPopup, setShowWeatherPopup] = useState(false);
-  const [showSearchAreaBtn, setShowSearchAreaBtn] = useState(false);
-  const [mapRegion, setMapRegion] = useState<any>(null);
-  const [weather, setWeather] = useState<Weather>({
-    temp: 72,
-    condition: 'Sunny',
-    icon: 'sunny',
-    feelsLike: 75,
-    high: 78,
-    low: 65,
-    uvIndex: 6,
-    visibility: '10 mi',
-  });
   
-  const cameraRef = useRef<any>(null);
+  // Personalization states
+  const [greeting, setGreeting] = useState('');
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  
+  // Refs
+  const cameraRef = useRef<MapLibreGL.Camera>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
-  
-  const snapPoints = useMemo(() => ['8%', '50%', '90%'], []);
+  const searchInputRef = useRef<TextInput>(null);
 
-  const categories = ['All', 'Restaurants', 'Cafes', 'Bars', 'Shopping'];
+  // ============================================
+  // INITIALIZATION
+  // ============================================
 
   useEffect(() => {
-    MapLibreGL.setAccessToken(null);
-    requestLocationPermission();
-    fetchPlaces();
+    initializeApp();
   }, []);
 
-  useEffect(() => {
-    filterPlaces();
-  }, [searchQuery, selectedCategory, places]);
+  const initializeApp = async () => {
+    updateGreeting();
+    loadRecentSearches();
+    requestLocationPermission();
+    fetchPlaces();
+  };
+
+  const updateGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      setGreeting('Good morning');
+    } else if (hour >= 12 && hour < 17) {
+      setGreeting('Good afternoon');
+    } else if (hour >= 17 && hour < 21) {
+      setGreeting('Good evening');
+    } else {
+      setGreeting('Good night');
+    }
+  };
+
+  const loadRecentSearches = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(STORAGE_KEYS.RECENT_SEARCHES);
+      if (stored) {
+        setRecentSearches(JSON.parse(stored));
+      }
+    } catch (error) {
+      console.log('Error loading recent searches:', error);
+    }
+  };
+
+  const saveRecentSearch = async (query: string) => {
+    try {
+      const updated = [query, ...recentSearches.filter(s => s.toLowerCase() !== query.toLowerCase())].slice(0, 10);
+      setRecentSearches(updated);
+      await AsyncStorage.setItem(STORAGE_KEYS.RECENT_SEARCHES, JSON.stringify(updated));
+    } catch (error) {
+      console.log('Error saving recent search:', error);
+    }
+  };
+
+  // ============================================
+  // LOCATION HANDLING
+  // ============================================
 
   const requestLocationPermission = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-        });
-        setUserLocation([location.coords.longitude, location.coords.latitude]);
+        const location = await Location.getCurrentPositionAsync({});
+        const coords: [number, number] = [location.coords.longitude, location.coords.latitude];
+        setUserLocation(coords);
         
-        // Center map on user location initially
-        if (cameraRef.current) {
-          cameraRef.current.setCamera({
-            centerCoordinate: [location.coords.longitude, location.coords.latitude],
-            zoomLevel: 14,
-            animationDuration: 2000,
-          });
+        // Get location name
+        const [address] = await Location.reverseGeocodeAsync({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+        if (address) {
+          setLocationName(`${address.city || ''}, ${address.region || ''}`);
         }
-      } else {
-        setUserLocation([-97.7431, 30.2672]); // Default to Austin, TX
       }
     } catch (error) {
-      console.error('Error getting location:', error);
-      setUserLocation([-97.7431, 30.2672]); // Default to Austin, TX
+      console.log('Error getting location:', error);
     }
   };
 
-  // Helper to calculate distance in miles
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 3958.8; // Radius of Earth in miles
-    const dLat = (lat2 - lat1) * (Math.PI / 180);
-    const dLon = (lon2 - lon1) * (Math.PI / 180);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
+  // ============================================
+  // DATA FETCHING
+  // ============================================
 
-  // UPDATED: fetchPlaces now uses place_review_signal_taps table
   const fetchPlaces = async () => {
     try {
       setLoading(true);
-      setError(null);
 
       const { data: placesData, error: placesError } = await supabase
         .from('places')
@@ -262,14 +297,13 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
 
       if (placesError) {
         console.warn('Supabase error, using mock data:', placesError);
-        alert(`Database Error: ${placesError.message}`);
         setPlaces(MOCK_PLACES);
         setFilteredPlaces(MOCK_PLACES);
         return;
       }
 
       if (placesData && placesData.length > 0) {
-        // Fetch all signal taps for these places
+        // Fetch signals for places
         const placeIds = placesData.map(p => p.id);
         
         const { data: signalTaps } = await supabase
@@ -277,7 +311,6 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
           .select('place_id, signal_id, intensity')
           .in('place_id', placeIds);
 
-        // Fetch review_items to get labels
         const { data: reviewItems } = await supabase
           .from('review_items')
           .select('id, label, signal_type');
@@ -286,7 +319,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
           (reviewItems || []).map(item => [item.id, { label: item.label, type: item.signal_type }])
         );
 
-        // Fetch photos for these places
+        // Fetch photos
         const { data: photosData } = await supabase
           .from('place_photos')
           .select('place_id, url')
@@ -298,61 +331,33 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
           if (!photosByPlace[photo.place_id]) {
             photosByPlace[photo.place_id] = [];
           }
-          // Limit to 3 photos per place for the list view
-          if (photosByPlace[photo.place_id].length < 3) {
-            photosByPlace[photo.place_id].push(photo.url);
-          }
+          photosByPlace[photo.place_id].push(photo.url);
         });
 
-        // Aggregate signals per place
-        const signalsByPlace: Record<string, Record<string, number>> = {};
-        (signalTaps || []).forEach(tap => {
-          if (!signalsByPlace[tap.place_id]) {
-            signalsByPlace[tap.place_id] = {};
-          }
-          if (!signalsByPlace[tap.place_id][tap.signal_id]) {
-            signalsByPlace[tap.place_id][tap.signal_id] = 0;
-          }
-          signalsByPlace[tap.place_id][tap.signal_id] += tap.intensity;
+        // Process places with signals
+        const placesWithSignals = placesData.map(place => {
+          const placeSignals = (signalTaps || [])
+            .filter(tap => tap.place_id === place.id)
+            .reduce((acc: Record<string, number>, tap) => {
+              const item = itemsMap.get(tap.signal_id);
+              if (item) {
+                const key = item.label;
+                acc[key] = (acc[key] || 0) + tap.intensity;
+              }
+              return acc;
+            }, {});
+
+          const signals = Object.entries(placeSignals).map(([bucket, tap_total]) => ({
+            bucket,
+            tap_total,
+          }));
+
+          return {
+            ...place,
+            signals,
+            photos: photosByPlace[place.id] || [],
+          };
         });
-
-        // Attach signals to places
-        const placesWithSignals = placesData
-          .filter(place => (place.latitude || place.lat) && (place.longitude || place.lng))
-          .map(place => {
-            // Ensure latitude/longitude are set (fallback to lat/lng)
-            if (!place.latitude && place.lat) place.latitude = place.lat;
-            if (!place.longitude && place.lng) place.longitude = place.lng;
-
-            const placeSignals = signalsByPlace[place.id] || {};
-            const signals: Signal[] = Object.entries(placeSignals)
-              .map(([signalId, tapTotal]) => {
-                const item = itemsMap.get(signalId);
-                return {
-                  bucket: item?.label || 'Unknown',
-                  tap_total: tapTotal,
-                };
-              })
-              .sort((a, b) => b.tap_total - a.tap_total);
-
-            // Calculate distance if user location is available
-            let distance = 0;
-            if (userLocation && place.latitude && place.longitude) {
-              distance = calculateDistance(
-                userLocation[1],
-                userLocation[0],
-                place.latitude,
-                place.longitude
-              );
-            }
-
-            return {
-              ...place,
-              signals,
-              photos: photosByPlace[place.id] || [],
-              distance: parseFloat(distance.toFixed(1)),
-            };
-          });
 
         setPlaces(placesWithSignals);
         setFilteredPlaces(placesWithSignals);
@@ -360,15 +365,174 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
         setPlaces(MOCK_PLACES);
         setFilteredPlaces(MOCK_PLACES);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching places:', err);
-      alert(`Unexpected Error: ${err.message || JSON.stringify(err)}`);
       setPlaces(MOCK_PLACES);
       setFilteredPlaces(MOCK_PLACES);
     } finally {
       setLoading(false);
     }
   };
+
+  // ============================================
+  // SMART SEARCH & AUTOCOMPLETE
+  // ============================================
+
+  useEffect(() => {
+    if (searchQuery.trim().length > 0) {
+      generateSearchSuggestions(searchQuery);
+    } else {
+      setSearchSuggestions([]);
+    }
+  }, [searchQuery, places, recentSearches]);
+
+  const generateSearchSuggestions = (query: string) => {
+    const suggestions: SearchSuggestion[] = [];
+    const queryLower = query.toLowerCase();
+
+    // 1. Match places by name
+    const matchingPlaces = places.filter(place =>
+      place.name.toLowerCase().includes(queryLower)
+    ).slice(0, 5);
+
+    matchingPlaces.forEach(place => {
+      suggestions.push({
+        id: `place-${place.id}`,
+        type: 'place',
+        title: place.name,
+        subtitle: `${place.category} • ${place.city || ''}`,
+        icon: 'location',
+        data: place,
+      });
+    });
+
+    // 2. Match categories
+    const matchingCategories = SEARCHABLE_CATEGORIES.filter(cat =>
+      cat.name.toLowerCase().includes(queryLower)
+    ).slice(0, 3);
+
+    matchingCategories.forEach(cat => {
+      suggestions.push({
+        id: `category-${cat.name}`,
+        type: 'category',
+        title: cat.name,
+        subtitle: 'Category',
+        icon: cat.icon,
+        data: cat,
+      });
+    });
+
+    // 3. Match locations (cities from places)
+    const cities = [...new Set(places.map(p => p.city).filter(Boolean))];
+    const matchingCities = cities.filter(city =>
+      city!.toLowerCase().includes(queryLower)
+    ).slice(0, 2);
+
+    matchingCities.forEach(city => {
+      suggestions.push({
+        id: `location-${city}`,
+        type: 'location',
+        title: city!,
+        subtitle: 'Location',
+        icon: 'navigate',
+        data: { city },
+      });
+    });
+
+    // 4. Add matching recent searches
+    const matchingRecent = recentSearches.filter(search =>
+      search.toLowerCase().includes(queryLower) && search.toLowerCase() !== queryLower
+    ).slice(0, 2);
+
+    matchingRecent.forEach(search => {
+      suggestions.push({
+        id: `recent-${search}`,
+        type: 'recent',
+        title: search,
+        subtitle: 'Recent search',
+        icon: 'time',
+        data: { query: search },
+      });
+    });
+
+    setSearchSuggestions(suggestions);
+  };
+
+  const handleSearchInputChange = (text: string) => {
+    setSearchQuery(text);
+    // Don't switch to map mode - stay on content mode while typing
+  };
+
+  const handleSearchFocus = () => {
+    setIsSearchFocused(true);
+    // Don't switch to map mode - stay on content mode
+  };
+
+  const handleSearchBlur = () => {
+    // Delay to allow suggestion tap to register
+    setTimeout(() => {
+      setIsSearchFocused(false);
+    }, 200);
+  };
+
+  const handleSuggestionSelect = (suggestion: SearchSuggestion) => {
+    Keyboard.dismiss();
+    setIsSearchFocused(false);
+    
+    switch (suggestion.type) {
+      case 'place':
+        // Navigate directly to place details
+        saveRecentSearch(suggestion.title);
+        setSearchQuery('');
+        navigation.navigate('PlaceDetails', { placeId: suggestion.data.id });
+        break;
+        
+      case 'category':
+        // Go to map mode filtered by category
+        saveRecentSearch(suggestion.title);
+        setSelectedCategory(suggestion.title);
+        setSearchQuery('');
+        setViewMode('map');
+        break;
+        
+      case 'location':
+        // Go to map mode centered on location
+        saveRecentSearch(suggestion.title);
+        setSearchQuery(suggestion.title);
+        setViewMode('map');
+        break;
+        
+      case 'recent':
+        // Re-run the recent search
+        setSearchQuery(suggestion.data.query);
+        handleSearchSubmit(suggestion.data.query);
+        break;
+    }
+  };
+
+  const handleSearchSubmit = (query?: string) => {
+    const searchTerm = query || searchQuery;
+    if (searchTerm.trim()) {
+      Keyboard.dismiss();
+      setIsSearchFocused(false);
+      saveRecentSearch(searchTerm.trim());
+      setViewMode('map');
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchSuggestions([]);
+    searchInputRef.current?.focus();
+  };
+
+  // ============================================
+  // FILTER PLACES (for map mode)
+  // ============================================
+
+  useEffect(() => {
+    filterPlaces();
+  }, [searchQuery, selectedCategory, places, viewMode]);
 
   const filterPlaces = () => {
     let filtered = places;
@@ -381,23 +545,16 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
       );
     }
 
-    if (searchQuery.trim()) {
+    if (searchQuery.trim() && viewMode === 'map') {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (place) =>
-          // Search by name
           (place.name && place.name.toLowerCase().includes(query)) ||
-          // Search by city
           (place.city && place.city.toLowerCase().includes(query)) ||
-          // Search by category (e.g., "coffee shop", "restaurant")
           (place.category && place.category.toLowerCase().includes(query)) ||
-          // Search by primary category
           (place.primary_category && place.primary_category.toLowerCase().includes(query)) ||
-          // Search by address
           (place.address_line1 && place.address_line1.toLowerCase().includes(query)) ||
-          // Search by state/region
           (place.state_region && place.state_region.toLowerCase().includes(query)) ||
-          // Search by description
           (place.description && place.description.toLowerCase().includes(query))
       );
     }
@@ -405,82 +562,73 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
     setFilteredPlaces(filtered);
   };
 
+  const handleSearchFromRecent = (query: string) => {
+    setSearchQuery(query);
+    setViewMode('map');
+  };
+
+  const handleCategorySelect = (category: string) => {
+    setSelectedCategory(category);
+  };
+
+  // ============================================
+  // VIEW MODE TRANSITIONS
+  // ============================================
+
+  const switchToMapMode = () => {
+    Keyboard.dismiss();
+    setIsSearchFocused(false);
+    setViewMode('map');
+  };
+
+  const switchToContentMode = () => {
+    setViewMode('content');
+    setSearchQuery('');
+    setIsSearchFocused(false);
+  };
+
+  // ============================================
+  // PLACE CARD HANDLERS
+  // ============================================
+
   const handleMarkerPress = (place: Place) => {
     setSelectedPlace(place);
     bottomSheetRef.current?.snapToIndex(1);
-    
-    cameraRef.current?.setCamera({
-      centerCoordinate: [place.longitude, place.latitude],
-      zoomLevel: 15,
-      animationDuration: 1000,
-    });
   };
 
-  const handleRegionChange = async (feature: any) => {
-    setMapRegion(feature);
-    setShowSearchAreaBtn(true);
+  const handlePlacePress = async (place: Place) => {
+    navigation.navigate('PlaceDetails', { placeId: place.id });
   };
 
-  const handleSearchArea = () => {
-    setShowSearchAreaBtn(false);
-    if (mapRegion) {
-      fetchPlaces();
+  const handleCall = (place: Place) => {
+    if (place.phone) {
+      Linking.openURL(`tel:${place.phone}`);
     }
   };
 
-  const handleMyLocation = () => {
-    if (userLocation) {
-      cameraRef.current?.setCamera({
-        centerCoordinate: userLocation,
-        zoomLevel: 14,
-        animationDuration: 1000,
-      });
+  const handleWebsite = (place: Place) => {
+    if (place.website) {
+      Linking.openURL(place.website);
     }
-  };
-
-  const handleCall = (phone?: string) => {
-    if (phone) {
-      Linking.openURL(`tel:${phone}`);
-    }
-  };
-
-  const handleWebsite = (website?: string) => {
-    if (website) {
-      Linking.openURL(website);
-    }
-  };
-
-  const handlePhotos = (place: Place) => {
-    console.log('Open photos for:', place.name);
   };
 
   const handleShare = async (place: Place) => {
     try {
       await Share.share({
-        message: `Check out ${place.name} on Tavvy!`,
+        message: `Check out ${place.name} on TavvY!`,
       });
     } catch (error) {
       console.error('Error sharing:', error);
     }
   };
 
-  const getMarkerColor = (category?: string) => {
-    if (!category) return '#007AFF';
-    
-    const colors: Record<string, string> = {
-      restaurants: '#FF6B6B',
-      cafes: '#4ECDC4',
-      bars: '#FFD93D',
-      shopping: '#95E1D3',
-    };
-    return colors[category.toLowerCase()] || '#007AFF';
-  };
+  // ============================================
+  // SIGNAL HELPERS
+  // ============================================
 
-  // Signal type detection
   const getSignalType = (bucket: string): 'positive' | 'neutral' | 'negative' => {
     const bucketLower = bucket.toLowerCase();
     
-    // Positive signals
     if (bucketLower.includes('great') || bucketLower.includes('excellent') || 
         bucketLower.includes('amazing') || bucketLower.includes('affordable') ||
         bucketLower.includes('good') || bucketLower.includes('friendly') ||
@@ -489,7 +637,6 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
       return 'positive';
     }
     
-    // Negative signals (Watch Out)
     if (bucketLower.includes('pricey') || bucketLower.includes('expensive') || 
         bucketLower.includes('crowded') || bucketLower.includes('loud') ||
         bucketLower.includes('slow') || bucketLower.includes('dirty') ||
@@ -501,41 +648,112 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
     return 'neutral';
   };
 
-  // Updated signal colors - Apple-inspired
   const getSignalColor = (bucket: string) => {
     const type = getSignalType(bucket);
-    
-    if (type === 'positive') return '#0A84FF'; // Apple Blue
-    if (type === 'negative') return '#FF9500'; // Orange
-    return '#8E8E93'; // Gray
+    if (type === 'positive') return '#0A84FF';
+    if (type === 'negative') return '#FF9500';
+    return '#8E8E93';
   };
 
-  // Sort signals: 2 positive first, then 1 neutral, then 1 negative
   const sortSignalsForDisplay = (signals: Signal[]): Signal[] => {
     const positive = signals.filter(s => getSignalType(s.bucket) === 'positive');
     const neutral = signals.filter(s => getSignalType(s.bucket) === 'neutral');
     const negative = signals.filter(s => getSignalType(s.bucket) === 'negative');
     
     const result: Signal[] = [];
-    
-    // First row: 2 positive (blue)
     result.push(...positive.slice(0, 2));
-    
-    // Second row: 1 neutral (gray) + 1 negative (orange)
-    if (neutral.length > 0) {
-      result.push(neutral[0]);
-    }
-    if (negative.length > 0) {
-      result.push(negative[0]);
-    }
+    if (neutral.length > 0) result.push(neutral[0]);
+    if (negative.length > 0) result.push(negative[0]);
     
     return result;
   };
 
-  // Updated PhotoCarousel with gradient overlay for name/address
+  const getMarkerColor = (category?: string) => {
+    if (!category) return '#007AFF';
+    const colors: Record<string, string> = {
+      restaurants: '#FF6B6B',
+      cafes: '#4ECDC4',
+      bars: '#FFD93D',
+      shopping: '#95E1D3',
+    };
+    return colors[category.toLowerCase()] || '#007AFF';
+  };
+
+  // ============================================
+  // RENDER: SEARCH SUGGESTIONS DROPDOWN
+  // ============================================
+
+  const renderSearchSuggestions = () => {
+    if (!isSearchFocused || searchSuggestions.length === 0) {
+      return null;
+    }
+
+    return (
+      <View style={styles.suggestionsContainer}>
+        {searchSuggestions.map((suggestion) => (
+          <TouchableOpacity
+            key={suggestion.id}
+            style={styles.suggestionItem}
+            onPress={() => handleSuggestionSelect(suggestion)}
+          >
+            <View style={[
+              styles.suggestionIconContainer,
+              suggestion.type === 'place' && styles.suggestionIconPlace,
+              suggestion.type === 'category' && styles.suggestionIconCategory,
+              suggestion.type === 'location' && styles.suggestionIconLocation,
+              suggestion.type === 'recent' && styles.suggestionIconRecent,
+            ]}>
+              <Ionicons
+                name={suggestion.icon as any}
+                size={18}
+                color={
+                  suggestion.type === 'place' ? '#0A84FF' :
+                  suggestion.type === 'category' ? '#34C759' :
+                  suggestion.type === 'location' ? '#FF9500' : '#8E8E93'
+                }
+              />
+            </View>
+            <View style={styles.suggestionTextContainer}>
+              <Text style={styles.suggestionTitle}>{suggestion.title}</Text>
+              {suggestion.subtitle && (
+                <Text style={styles.suggestionSubtitle}>{suggestion.subtitle}</Text>
+              )}
+            </View>
+            <Ionicons
+              name={suggestion.type === 'place' ? 'chevron-forward' : 'arrow-forward'}
+              size={16}
+              color="#C7C7CC"
+            />
+          </TouchableOpacity>
+        ))}
+        
+        {/* Show "Search for..." option */}
+        {searchQuery.trim().length > 0 && (
+          <TouchableOpacity
+            style={styles.suggestionItem}
+            onPress={() => handleSearchSubmit()}
+          >
+            <View style={[styles.suggestionIconContainer, styles.suggestionIconSearch]}>
+              <Ionicons name="search" size={18} color="#0A84FF" />
+            </View>
+            <View style={styles.suggestionTextContainer}>
+              <Text style={styles.suggestionTitle}>Search for "{searchQuery}"</Text>
+              <Text style={styles.suggestionSubtitle}>See all results on map</Text>
+            </View>
+            <Ionicons name="arrow-forward" size={16} color="#C7C7CC" />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
+  // ============================================
+  // RENDER: PHOTO CAROUSEL
+  // ============================================
+
   const PhotoCarousel = ({ photos, placeName, placeAddress }: { photos?: string[], placeName: string, placeAddress: string }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
-    const displayPhotos = photos && photos.length > 0 ? photos : [null, null, null];
+    const displayPhotos = photos && photos.length > 0 ? photos : [null];
 
     return (
       <View style={styles.carouselContainer}>
@@ -562,7 +780,6 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
           ))}
         </ScrollView>
         
-        {/* Dark Gradient Overlay with Place Name/Address */}
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.7)']}
           style={styles.photoGradientOverlay}
@@ -571,23 +788,27 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
           <Text style={styles.overlayPlaceAddress} numberOfLines={1}>{placeAddress}</Text>
         </LinearGradient>
         
-        {/* Pagination Dots */}
-        <View style={styles.dotsContainer}>
-          {displayPhotos.slice(0, 3).map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.dot,
-                currentIndex === index ? styles.dotActive : styles.dotInactive,
-              ]}
-            />
-          ))}
-        </View>
+        {displayPhotos.length > 1 && (
+          <View style={styles.dotsContainer}>
+            {displayPhotos.slice(0, 3).map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.dot,
+                  currentIndex === index ? styles.dotActive : styles.dotInactive,
+                ]}
+              />
+            ))}
+          </View>
+        )}
       </View>
     );
   };
 
-  // Updated renderPlaceCard with new compact design
+  // ============================================
+  // RENDER: PLACE CARD
+  // ============================================
+
   const renderPlaceCard = ({ item: place }: { item: Place }) => {
     const fullAddress = place.city && place.state_region
       ? `${place.address_line1}, ${place.city}, ${place.state_region}`
@@ -596,120 +817,357 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
     return (
       <TouchableOpacity
         style={styles.card}
-        onPress={() => {
-          navigation.navigate('PlaceDetails', { placeId: place.id });
-          bottomSheetRef.current?.close();
-        }}
-        activeOpacity={0.9}
+        onPress={() => handlePlacePress(place)}
+        activeOpacity={0.95}
       >
-        {/* Photo with Name Overlay */}
-        <PhotoCarousel 
-          photos={place.photos} 
+        <PhotoCarousel
+          photos={place.photos}
           placeName={place.name}
           placeAddress={fullAddress}
         />
-
-        {/* Signal Bars - 2x2 Grid */}
+        
+        {/* Signals */}
         {place.signals && place.signals.length > 0 && (
           <View style={styles.signalsContainer}>
             {sortSignalsForDisplay(place.signals).map((signal, index) => (
               <View
                 key={index}
-                style={[
-                  styles.signalBadge,
-                  styles.signalBadgeFixed,
-                  { backgroundColor: getSignalColor(signal.bucket) },
-                ]}
+                style={[styles.signalPill, { backgroundColor: getSignalColor(signal.bucket) }]}
               >
-                <Text style={styles.signalText} numberOfLines={1}>
+                <Text style={styles.signalText}>
                   {signal.bucket} ×{signal.tap_total}
                 </Text>
               </View>
             ))}
           </View>
         )}
-
-        {/* Footer: Category • Price • Status */}
-        <View style={styles.metaInfo}>
+        
+        {/* Meta info */}
+        <View style={styles.metaRow}>
           <Text style={styles.metaText}>{place.category}</Text>
-          <Text style={styles.metaDot}> • </Text>
+          <Text style={styles.metaDot}>•</Text>
           <Text style={styles.metaText}>$$</Text>
-          {!!place.distance && (
-            <>
-              <Text style={styles.metaDot}> • </Text>
-              <Text style={styles.metaText}>
-                {place.distance.toFixed(1)} mi
-              </Text>
-            </>
-          )}
-          {place.current_status && (
-            <>
-              <Text style={styles.metaDot}> • </Text>
-              <Text style={[styles.metaText, styles.statusOpen]}>
-                {place.current_status === 'open_accessible' ? 'Open' : 
-                 place.current_status === 'unknown' ? 'No Vibe Yet' : 
-                 place.current_status}
-              </Text>
-            </>
-          )}
+          <Text style={styles.metaDot}>•</Text>
+          <Text style={[styles.metaText, { color: '#34C759' }]}>
+            {place.current_status || 'Open'}
+          </Text>
         </View>
-
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleCall(place.phone)}
-          >
+        
+        {/* Action buttons */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleCall(place)}>
             <Ionicons name="call-outline" size={20} color="#666" />
-            <Text style={styles.actionButtonText}>Call</Text>
+            <Text style={styles.actionText}>Call</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleWebsite(place.website)}
-          >
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleWebsite(place)}>
             <Ionicons name="globe-outline" size={20} color="#666" />
-            <Text style={styles.actionButtonText}>Website</Text>
+            <Text style={styles.actionText}>Website</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handlePhotos(place)}
-          >
+          <TouchableOpacity style={styles.actionButton}>
             <Ionicons name="images-outline" size={20} color="#666" />
-            <Text style={styles.actionButtonText}>Photos</Text>
+            <Text style={styles.actionText}>Photos</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleShare(place)}
-          >
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleShare(place)}>
             <Ionicons name="share-outline" size={20} color="#666" />
-            <Text style={styles.actionButtonText}>Share</Text>
+            <Text style={styles.actionText}>Share</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
   };
 
-  if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#0A84FF" />
-      </View>
-    );
-  }
+  // ============================================
+  // RENDER: CONTENT MODE (Default Home Screen)
+  // ============================================
 
-  return (
-    <View style={styles.container}>
+  const renderContentMode = () => (
+    <View style={styles.contentModeContainer}>
+      {/* Map Peek at Top */}
+      <TouchableOpacity 
+        style={styles.mapPeekContainer}
+        onPress={switchToMapMode}
+        activeOpacity={0.9}
+      >
+        {/* @ts-ignore */}
+        <MapLibreGL.MapView
+          style={styles.mapPeek}
+          styleURL={MAP_STYLES[mapStyle].type === 'vector' ? (MAP_STYLES[mapStyle] as any).url : undefined}
+          logoEnabled={false}
+          attributionEnabled={false}
+          scrollEnabled={false}
+          pitchEnabled={false}
+          rotateEnabled={false}
+          zoomEnabled={false}
+        >
+          <MapLibreGL.Camera
+            zoomLevel={13}
+            centerCoordinate={userLocation || [-97.7431, 30.2672]}
+          />
+          
+          {MAP_STYLES[mapStyle].type === 'raster' && (
+            <MapLibreGL.RasterSource
+              id="raster-source-peek"
+              tileUrlTemplates={[MAP_STYLES[mapStyle].tileUrl!]}
+              tileSize={256}
+            >
+              <MapLibreGL.RasterLayer
+                id="raster-layer-peek"
+                sourceID="raster-source-peek"
+                style={{ rasterOpacity: 1 }}
+              />
+            </MapLibreGL.RasterSource>
+          )}
+          
+          {userLocation && (
+            <MapLibreGL.PointAnnotation
+              id="user-location-peek"
+              coordinate={userLocation}
+            >
+              <View style={styles.userLocationMarker}>
+                <View style={styles.userLocationDot} />
+              </View>
+            </MapLibreGL.PointAnnotation>
+          )}
+        </MapLibreGL.MapView>
+        
+        {/* Tap to expand overlay */}
+        <View style={styles.mapPeekOverlay}>
+          <Ionicons name="expand-outline" size={20} color="#fff" />
+          <Text style={styles.mapPeekText}>Tap to explore map</Text>
+        </View>
+      </TouchableOpacity>
+      
+      {/* Content Area */}
+      <View style={styles.contentArea}>
+        {/* Header */}
+        <View style={styles.contentHeader}>
+          <Text style={styles.greetingText}>{greeting}</Text>
+          <Text style={styles.titleText}>What are you looking for?</Text>
+          {locationName ? (
+            <View style={styles.locationRow}>
+              <Ionicons name="location" size={14} color="#0A84FF" />
+              <Text style={styles.locationText}>{locationName}</Text>
+            </View>
+          ) : null}
+        </View>
+        
+        {/* Search Bar with Autocomplete */}
+        <View style={styles.searchWrapper}>
+          <View style={[
+            styles.contentSearchBar,
+            isSearchFocused && styles.contentSearchBarFocused
+          ]}>
+            <Ionicons name="search" size={20} color="#8E8E93" />
+            <TextInput
+              ref={searchInputRef}
+              style={styles.contentSearchInput}
+              placeholder="Search places, categories..."
+              placeholderTextColor="#8E8E93"
+              value={searchQuery}
+              onChangeText={handleSearchInputChange}
+              onFocus={handleSearchFocus}
+              onBlur={handleSearchBlur}
+              onSubmitEditing={() => handleSearchSubmit()}
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={clearSearch}>
+                <Ionicons name="close-circle" size={20} color="#8E8E93" />
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          {/* Search Suggestions Dropdown */}
+          {renderSearchSuggestions()}
+        </View>
+        
+        {/* Only show rest of content when not focused on search */}
+        {!isSearchFocused && (
+          <>
+            {/* Category Chips */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.categoryScrollView}
+              contentContainerStyle={styles.categoryScrollContent}
+            >
+              {categories.map((category) => (
+                <TouchableOpacity
+                  key={category}
+                  style={[
+                    styles.categoryChip,
+                    selectedCategory === category && styles.categoryChipActive,
+                  ]}
+                  onPress={() => {
+                    handleCategorySelect(category);
+                    if (category !== 'All') {
+                      switchToMapMode();
+                    }
+                  }}
+                >
+                  <Ionicons
+                    name={
+                      category === 'All' ? 'apps' :
+                      category === 'Restaurants' ? 'restaurant' :
+                      category === 'Cafes' ? 'cafe' :
+                      category === 'Bars' ? 'beer' : 'cart'
+                    }
+                    size={16}
+                    color={selectedCategory === category ? '#fff' : '#666'}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text
+                    style={[
+                      styles.categoryChipText,
+                      selectedCategory === category && styles.categoryChipTextActive,
+                    ]}
+                  >
+                    {category}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            
+            {/* Scrollable Content */}
+            <ScrollView 
+              style={styles.contentScrollView}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Recent Searches */}
+              {recentSearches.length > 0 && (
+                <View style={styles.contentSection}>
+                  <Text style={styles.sectionTitle}>Recent Searches</Text>
+                  <View style={styles.recentSearchesRow}>
+                    {recentSearches.slice(0, 4).map((term, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.recentSearchChip}
+                        onPress={() => handleSearchFromRecent(term)}
+                      >
+                        <Ionicons name="time-outline" size={14} color="#666" />
+                        <Text style={styles.recentSearchText}>{term}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+              
+              {/* Trending Near You */}
+              <View style={styles.contentSection}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Trending Near You</Text>
+                  <TouchableOpacity onPress={switchToMapMode}>
+                    <Text style={styles.seeAllText}>See All</Text>
+                  </TouchableOpacity>
+                </View>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.trendingScrollContent}
+                >
+                  {filteredPlaces.slice(0, 5).map((place) => (
+                    <TouchableOpacity
+                      key={place.id}
+                      style={styles.trendingCard}
+                      onPress={() => handlePlacePress(place)}
+                    >
+                      {place.photos && place.photos[0] ? (
+                        <Image
+                          source={{ uri: place.photos[0] }}
+                          style={styles.trendingImage}
+                        />
+                      ) : (
+                        <View style={[styles.trendingImage, styles.placeholderPhoto]}>
+                          <Ionicons name="image-outline" size={32} color="#ccc" />
+                        </View>
+                      )}
+                      <Text style={styles.trendingName} numberOfLines={1}>{place.name}</Text>
+                      <Text style={styles.trendingCategory}>{place.category}</Text>
+                      {place.signals && place.signals.length > 0 && (
+                        <View style={styles.trendingSignalRow}>
+                          <Ionicons name="radio" size={12} color="#0A84FF" />
+                          <Text style={styles.trendingSignalText}>
+                            {place.signals.reduce((sum, s) => sum + s.tap_total, 0)} taps
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+              
+              {/* Explore Categories */}
+              <View style={styles.contentSection}>
+                <Text style={styles.sectionTitle}>Explore</Text>
+                <View style={styles.exploreGrid}>
+                  {['Restaurants', 'Cafes', 'Bars', 'Shopping', 'Entertainment', 'Services'].map((cat) => (
+                    <TouchableOpacity
+                      key={cat}
+                      style={styles.exploreItem}
+                      onPress={() => {
+                        handleCategorySelect(cat);
+                        switchToMapMode();
+                      }}
+                    >
+                      <View style={styles.exploreIconContainer}>
+                        <Ionicons
+                          name={
+                            cat === 'Restaurants' ? 'restaurant' :
+                            cat === 'Cafes' ? 'cafe' :
+                            cat === 'Bars' ? 'beer' :
+                            cat === 'Shopping' ? 'cart' :
+                            cat === 'Entertainment' ? 'film' : 'briefcase'
+                          }
+                          size={24}
+                          color="#0A84FF"
+                        />
+                      </View>
+                      <Text style={styles.exploreText}>{cat}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              
+              {/* Did You Know */}
+              <View style={styles.contentSection}>
+                <View style={styles.didYouKnowCard}>
+                  <View style={styles.didYouKnowIcon}>
+                    <Ionicons name="bulb" size={24} color="#FFD60A" />
+                  </View>
+                  <View style={styles.didYouKnowContent}>
+                    <Text style={styles.didYouKnowTitle}>Did you know?</Text>
+                    <Text style={styles.didYouKnowText}>
+                      TavvY uses tap-based signals instead of star ratings to give you 
+                      honest, structured insights about places.
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              
+              {/* Bottom padding */}
+              <View style={{ height: 100 }} />
+            </ScrollView>
+          </>
+        )}
+      </View>
+    </View>
+  );
+
+  // ============================================
+  // RENDER: MAP MODE (Search Results)
+  // ============================================
+
+  const renderMapMode = () => (
+    <View style={styles.mapModeContainer}>
+      {/* Full Map */}
       {/* @ts-ignore */}
       <MapLibreGL.MapView
         key={mapStyle}
-        style={styles.map}
+        style={styles.fullMap}
         styleURL={MAP_STYLES[mapStyle].type === 'vector' ? (MAP_STYLES[mapStyle] as any).url : undefined}
         logoEnabled={false}
         attributionEnabled={false}
-        onRegionDidChange={handleRegionChange}
       >
         <MapLibreGL.Camera
           ref={cameraRef}
@@ -719,7 +1177,6 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
           animationDuration={2000}
         />
 
-        {/* Render Raster Source for OSM/Satellite */}
         {MAP_STYLES[mapStyle].type === 'raster' && (
           <MapLibreGL.RasterSource
             id="raster-source"
@@ -749,7 +1206,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
           <MapLibreGL.PointAnnotation
             key={place.id}
             id={place.id}
-            coordinate={[place.longitude, place.latitude]}
+            coordinate={[place.longitude || place.lng || 0, place.latitude || place.lat || 0]}
             onSelected={() => handleMarkerPress(place)}
           >
             <View style={styles.markerContainer}>
@@ -761,13 +1218,9 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
               >
                 <Ionicons
                   name={
-                    place.category?.toLowerCase() === 'restaurants'
-                      ? 'restaurant'
-                      : place.category?.toLowerCase() === 'cafes'
-                      ? 'cafe'
-                      : place.category?.toLowerCase() === 'bars'
-                      ? 'beer'
-                      : 'location'
+                    place.category?.toLowerCase() === 'restaurants' ? 'restaurant' :
+                    place.category?.toLowerCase() === 'cafes' ? 'cafe' :
+                    place.category?.toLowerCase() === 'bars' ? 'beer' : 'location'
                   }
                   size={20}
                   color="#fff"
@@ -778,44 +1231,56 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
         ))}
       </MapLibreGL.MapView>
 
-      <View style={styles.searchOverlay}>
-        <View style={styles.searchBar}>
+      {/* Search Overlay */}
+      <View style={styles.mapSearchOverlay}>
+        {/* Back button */}
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={switchToContentMode}
+        >
+          <Ionicons name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
+        
+        {/* Search Bar */}
+        <View style={styles.mapSearchBar}>
           <Ionicons name="search" size={20} color="#999" />
           <TextInput
-            style={styles.searchInput}
+            style={styles.mapSearchInput}
             placeholder="Search places or locations"
             placeholderTextColor="#999"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={20} color="#999" />
+            </TouchableOpacity>
+          )}
         </View>
-        
+      </View>
+      
+      {/* Category Filters */}
+      <View style={styles.mapCategoryOverlay}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={styles.categoriesScroll}
-          contentContainerStyle={styles.categoriesContent}
+          contentContainerStyle={styles.mapCategoryContent}
         >
           {categories.map((category) => (
             <TouchableOpacity
               key={category}
               style={[
-                styles.categoryChip,
-                selectedCategory === category && styles.categoryChipActive,
+                styles.mapCategoryChip,
+                selectedCategory === category && styles.mapCategoryChipActive,
               ]}
-              onPress={() => setSelectedCategory(category)}
+              onPress={() => handleCategorySelect(category)}
             >
               <Ionicons
                 name={
-                  category === 'All'
-                    ? 'star'
-                    : category === 'Restaurants'
-                    ? 'restaurant'
-                    : category === 'Cafes'
-                    ? 'cafe'
-                    : category === 'Bars'
-                    ? 'beer'
-                    : 'cart'
+                  category === 'All' ? 'star' :
+                  category === 'Restaurants' ? 'restaurant' :
+                  category === 'Cafes' ? 'cafe' :
+                  category === 'Bars' ? 'beer' : 'cart'
                 }
                 size={12}
                 color={selectedCategory === category ? '#fff' : '#666'}
@@ -823,8 +1288,8 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
               />
               <Text
                 style={[
-                  styles.categoryChipText,
-                  selectedCategory === category && styles.categoryChipTextActive,
+                  styles.mapCategoryChipText,
+                  selectedCategory === category && styles.mapCategoryChipTextActive,
                 ]}
               >
                 {category}
@@ -834,194 +1299,453 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
         </ScrollView>
       </View>
 
-      {/* Search This Area Button */}
-      {showSearchAreaBtn && (
-        <TouchableOpacity style={styles.searchAreaBtn} onPress={handleSearchArea}>
-          <Text style={styles.searchAreaText}>Search this area</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Weather Popup */}
-      {showWeatherPopup && (
-        <View style={styles.weatherPopup}>
-          <View style={styles.weatherHeader}>
-            <Text style={styles.weatherTitle}>Weather in the area</Text>
-            <TouchableOpacity onPress={() => setShowWeatherPopup(false)}>
-              <Ionicons name="close" size={24} color="#666" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.weatherMainContainer}>
-            <View style={styles.weatherCurrentRow}>
-              <Text style={styles.weatherBigTemp}>{weather.temp}°</Text>
-              <Ionicons name={weather.icon as any} size={48} color="#FF9500" />
-            </View>
-            <Text style={styles.weatherSubtitle}>
-              {weather.condition} • Feels like: {weather.feelsLike}°
-            </Text>
-            <Text style={styles.weatherRange}>H: {weather.high}° L: {weather.low}°</Text>
-          </View>
-
-          {/* Hourly Forecast Row */}
-          <View style={styles.hourlyForecastContainer}>
-            <View style={styles.hourlyItem}>
-              <Text style={styles.hourlyTemp}>{weather.temp}°</Text>
-              <Ionicons name="sunny" size={20} color="#FF9500" style={styles.hourlyIcon} />
-              <Text style={styles.hourlyTime}>Now</Text>
-            </View>
-            <View style={styles.hourlyItem}>
-              <Text style={styles.hourlyTemp}>{weather.temp - 1}°</Text>
-              <Ionicons name="sunny" size={20} color="#FF9500" style={styles.hourlyIcon} />
-              <Text style={styles.hourlyTime}>2 PM</Text>
-            </View>
-            <View style={styles.hourlyItem}>
-              <Text style={styles.hourlyTemp}>{weather.temp}°</Text>
-              <Ionicons name="sunny" size={20} color="#FF9500" style={styles.hourlyIcon} />
-              <Text style={styles.hourlyTime}>3 PM</Text>
-            </View>
-            <View style={styles.hourlyItem}>
-              <Text style={styles.hourlyTemp}>{weather.temp - 1}°</Text>
-              <Ionicons name="sunny" size={20} color="#FF9500" style={styles.hourlyIcon} />
-              <Text style={styles.hourlyTime}>4 PM</Text>
-            </View>
-          </View>
-
-          {/* Air Quality Row */}
-          <View style={styles.airQualityContainer}>
-            <View style={styles.airQualityHeader}>
-              <Text style={styles.airQualityLabel}>Air quality</Text>
-              <Ionicons name="chevron-forward" size={16} color="#666" />
-            </View>
-            <View style={styles.airQualityValueRow}>
-              <View style={styles.airQualityDot} />
-              <Text style={styles.airQualityValue}>Good • 50 AQI</Text>
-            </View>
-          </View>
-
-          <Text style={styles.weatherFooterLink}>About air quality, Google Weather</Text>
-
-          <TouchableOpacity 
-            style={styles.weatherCloseButton}
-            onPress={() => setShowWeatherPopup(false)}
-          >
-            <Text style={styles.weatherCloseButtonText}>Close</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      <View style={styles.bottomRightControls}>
-        {showStylePicker && (
-          <View style={styles.stylePickerContainer}>
-            {Object.entries(MAP_STYLES).map(([key, style]) => (
-              <TouchableOpacity
-                key={key}
-                style={[
-                  styles.styleOption,
-                  mapStyle === key && styles.styleOptionActive,
-                ]}
-                onPress={() => {
-                  setMapStyle(key as keyof typeof MAP_STYLES);
-                  setShowStylePicker(false);
-                }}
-              >
-                <Ionicons
-                  name={style.icon as any}
-                  size={20}
-                  color={mapStyle === key ? '#0A84FF' : '#666'}
-                />
-                <Text
-                  style={[
-                    styles.styleOptionText,
-                    mapStyle === key && styles.styleOptionTextActive,
-                  ]}
-                >
-                  {style.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        <View style={styles.combinedControlCard}>
-          <TouchableOpacity
-            style={styles.iconOnlyButton}
-            onPress={handleMyLocation}
-          >
-            <Ionicons name="navigate" size={22} color="#000" />
-          </TouchableOpacity>
-
-          <View style={styles.horizontalDivider} />
-
-          <TouchableOpacity
-            style={styles.iconOnlyButton}
-            onPress={() => setShowStylePicker(!showStylePicker)}
-          >
-            <Ionicons name="layers" size={22} color="#000" />
-          </TouchableOpacity>
-          
-          <View style={styles.horizontalDivider} />
-
-          <TouchableOpacity
-            style={styles.iconOnlyButton}
-            onPress={() => setShowWeatherPopup(!showWeatherPopup)}
-          >
-            <Ionicons name={weather.icon as any} size={22} color="#FF9500" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
+      {/* Bottom Sheet with Place Cards */}
       <BottomSheet
         ref={bottomSheetRef}
         index={1}
-        snapPoints={snapPoints}
-        enablePanDownToClose={false}
-        handleIndicatorStyle={styles.bottomSheetIndicator}
+        snapPoints={['15%', '50%', '90%']}
         backgroundStyle={styles.bottomSheetBackground}
+        handleIndicatorStyle={styles.bottomSheetHandle}
       >
         <BottomSheetFlatList
           data={filteredPlaces}
-          renderItem={renderPlaceCard}
           keyExtractor={(item) => item.id}
+          renderItem={renderPlaceCard}
           contentContainerStyle={styles.bottomSheetContent}
           showsVerticalScrollIndicator={false}
         />
       </BottomSheet>
     </View>
   );
+
+  // ============================================
+  // MAIN RENDER
+  // ============================================
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0A84FF" />
+        <Text style={styles.loadingText}>Loading places...</Text>
+      </View>
+    );
+  }
+
+  return viewMode === 'content' ? renderContentMode() : renderMapMode();
 }
 
+// ============================================
+// STYLES
+// ============================================
+
 const styles = StyleSheet.create({
-  searchAreaBtn: {
-    position: 'absolute',
-    top: 170,
-    alignSelf: 'center',
-    backgroundColor: 'white',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-    zIndex: 10,
-  },
-  searchAreaText: {
-    fontWeight: '600',
-    color: '#000',
-  },
-  container: {
-    flex: 1,
-  },
-  centerContainer: {
+  // Loading
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
   },
-  map: {
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+  },
+  
+  // Content Mode
+  contentModeContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  mapPeekContainer: {
+    height: MAP_PEEK_HEIGHT,
+    overflow: 'hidden',
+  },
+  mapPeek: {
     flex: 1,
   },
+  mapPeekOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  mapPeekText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  contentArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -20,
+    paddingTop: 20,
+  },
+  contentHeader: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  greetingText: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginBottom: 4,
+  },
+  titleText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 8,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  locationText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 4,
+  },
+  
+  // Search
+  searchWrapper: {
+    position: 'relative',
+    zIndex: 1000,
+    marginHorizontal: 20,
+    marginBottom: 16,
+  },
+  contentSearchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  contentSearchBarFocused: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#0A84FF',
+  },
+  contentSearchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 16,
+    color: '#000',
+  },
+  
+  // Search Suggestions
+  suggestionsContainer: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginTop: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    maxHeight: 300,
+    overflow: 'hidden',
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+  },
+  suggestionIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  suggestionIconPlace: {
+    backgroundColor: '#E8F4FF',
+  },
+  suggestionIconCategory: {
+    backgroundColor: '#E8FFF0',
+  },
+  suggestionIconLocation: {
+    backgroundColor: '#FFF5E8',
+  },
+  suggestionIconRecent: {
+    backgroundColor: '#F2F2F7',
+  },
+  suggestionIconSearch: {
+    backgroundColor: '#E8F4FF',
+  },
+  suggestionTextContainer: {
+    flex: 1,
+  },
+  suggestionTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000',
+  },
+  suggestionSubtitle: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
+  
+  // Categories
+  categoryScrollView: {
+    marginBottom: 16,
+  },
+  categoryScrollContent: {
+    paddingHorizontal: 20,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  categoryChipActive: {
+    backgroundColor: '#0A84FF',
+  },
+  categoryChipText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  categoryChipTextActive: {
+    color: '#fff',
+  },
+  contentScrollView: {
+    flex: 1,
+  },
+  contentSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 12,
+  },
+  seeAllText: {
+    fontSize: 14,
+    color: '#0A84FF',
+    fontWeight: '500',
+  },
+  recentSearchesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  recentSearchChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  recentSearchText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 6,
+  },
+  trendingScrollContent: {
+    paddingRight: 20,
+  },
+  trendingCard: {
+    width: 160,
+    marginRight: 12,
+  },
+  trendingImage: {
+    width: 160,
+    height: 120,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  trendingName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 2,
+  },
+  trendingCategory: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginBottom: 4,
+  },
+  trendingSignalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  trendingSignalText: {
+    fontSize: 12,
+    color: '#0A84FF',
+    marginLeft: 4,
+  },
+  exploreGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  exploreItem: {
+    width: (width - 52) / 3,
+    alignItems: 'center',
+    paddingVertical: 16,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+  },
+  exploreIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#E8F4FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  exploreText: {
+    fontSize: 13,
+    color: '#000',
+    fontWeight: '500',
+  },
+  didYouKnowCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFBEB',
+    borderRadius: 16,
+    padding: 16,
+  },
+  didYouKnowIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFF3CD',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  didYouKnowContent: {
+    flex: 1,
+  },
+  didYouKnowTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 4,
+  },
+  didYouKnowText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  
+  // Map Mode
+  mapModeContainer: {
+    flex: 1,
+  },
+  fullMap: {
+    flex: 1,
+  },
+  mapSearchOverlay: {
+    position: 'absolute',
+    top: 60,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  mapSearchBar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  mapSearchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 16,
+    color: '#000',
+  },
+  mapCategoryOverlay: {
+    position: 'absolute',
+    top: 120,
+    left: 0,
+    right: 0,
+  },
+  mapCategoryContent: {
+    paddingHorizontal: 16,
+  },
+  mapCategoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  mapCategoryChipActive: {
+    backgroundColor: '#0A84FF',
+  },
+  mapCategoryChipText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+  },
+  mapCategoryChipTextActive: {
+    color: '#fff',
+  },
+  
+  // Map markers
   markerContainer: {
     alignItems: 'center',
   },
@@ -1060,410 +1784,135 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 4,
   },
-  searchOverlay: {
-    zIndex: 10,
-    position: 'absolute',
-    top: 60,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 16,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 16,
-    color: '#000',
-  },
-  categoriesScroll: {
-    marginTop: 12,
-  },
-  categoriesContent: {
-    paddingRight: 16,
-  },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  categoryChipActive: {
-    backgroundColor: '#0A84FF',
-  },
-  categoryChipText: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '500',
-  },
-  categoryChipTextActive: {
-    color: '#fff',
-  },
-  weatherPopup: {
-    position: 'absolute',
-    top: 180,
-    alignSelf: 'center',
-    width: width - 80,
-    backgroundColor: '#fff',
-    borderRadius: 28,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10,
-    zIndex: 100,
-  },
-  weatherHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  weatherTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#202124',
-  },
-  weatherMainContainer: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  weatherCurrentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  weatherBigTemp: {
-    fontSize: 56,
-    fontWeight: '500',
-    color: '#202124',
-    letterSpacing: -1,
-  },
-  weatherSubtitle: {
-    fontSize: 16,
-    color: '#5F6368',
-    marginTop: 4,
-  },
-  weatherRange: {
-    fontSize: 16,
-    color: '#5F6368',
-    marginTop: 4,
-  },
-  hourlyForecastContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#F8F9FA',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-  },
-  hourlyItem: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  hourlyTemp: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#202124',
-  },
-  hourlyIcon: {
-    marginVertical: 4,
-  },
-  hourlyTime: {
-    fontSize: 14,
-    color: '#5F6368',
-  },
-  airQualityContainer: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-  },
-  airQualityHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  airQualityLabel: {
-    fontSize: 14,
-    color: '#5F6368',
-  },
-  airQualityValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  airQualityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#1E8E3E',
-  },
-  airQualityValue: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#202124',
-  },
-  weatherFooterLink: {
-    fontSize: 14,
-    color: '#00796B',
-    marginBottom: 20,
-  },
-  weatherCloseButton: {
-    backgroundColor: '#E8F0FE',
-    borderRadius: 24,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  weatherCloseButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#006064',
-  },
-  bottomRightControls: {
-    position: 'absolute',
-    bottom: 180,
-    right: 16,
-    alignItems: 'flex-end',
-  },
-  combinedControlCard: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    borderRadius: 12,
-    padding: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  iconOnlyButton: {
-    padding: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  horizontalDivider: {
-    height: 1,
-    width: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-    marginVertical: 2,
-  },
-  stylePickerContainer: {
-    marginBottom: 12,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  styleOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  styleOptionActive: {
-    backgroundColor: '#f0f0f0',
-  },
-  styleOptionText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  styleOptionTextActive: {
-    color: '#0A84FF',
-    fontWeight: '600',
-  },
-  controlButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  locationButton: {
-    marginTop: 12,
-  },
+  
+  // Bottom Sheet
   bottomSheetBackground: {
-    backgroundColor: '#ebebeb',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: '#F2F2F7',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
-  bottomSheetIndicator: {
-    backgroundColor: '#ccc',
-    width: 40,
+  bottomSheetHandle: {
+    backgroundColor: '#C7C7CC',
+    width: 36,
+    height: 5,
   },
   bottomSheetContent: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 8,
     paddingBottom: 100,
   },
+  
+  // Place Card
   card: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    marginBottom: 12,
+    borderRadius: 20,
+    marginBottom: 16,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   carouselContainer: {
-    height: 140,
+    height: 180,
     position: 'relative',
   },
   carouselImage: {
-    width: width - 48,
-    height: 140,
+    width: width - 32,
+    height: 180,
   },
   photo: {
     width: '100%',
     height: '100%',
   },
   placeholderPhoto: {
-    width: '100%',
-    height: '100%',
+    backgroundColor: '#F2F2F7',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
   },
-  // NEW: Gradient overlay for place name/address on photo
   photoGradientOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 80,
-    justifyContent: 'flex-end',
-    paddingHorizontal: 12,
-    paddingBottom: 8,
+    padding: 16,
+    paddingTop: 40,
   },
   overlayPlaceName: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'left',
+    color: '#fff',
   },
   overlayPlaceAddress: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
-    textAlign: 'left',
   },
   dotsContainer: {
     position: 'absolute',
-    bottom: 12,
+    bottom: 60,
     left: 0,
     right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginHorizontal: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginHorizontal: 3,
   },
   dotActive: {
     backgroundColor: '#fff',
   },
   dotInactive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'rgba(255,255,255,0.5)',
   },
   signalsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    justifyContent: 'space-between',
+    padding: 12,
+    gap: 8,
   },
-  signalBadge: {
+  signalPill: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 8,
-  },
-  signalBadgeFixed: {
-    width: '48%',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: 16,
   },
   signalText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    textAlign: 'center',
   },
-  metaInfo: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingBottom: 10,
+    paddingBottom: 12,
   },
   metaText: {
     fontSize: 14,
     color: '#666',
   },
   metaDot: {
-    fontSize: 15,
-    color: '#666',
+    fontSize: 14,
+    color: '#C7C7CC',
+    marginHorizontal: 8,
   },
-  statusOpen: {
-    color: '#34C759',
-    fontWeight: '600',
-  },
-  actionButtons: {
+  actionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: 10,
-    paddingBottom: 12,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: '#F2F2F7',
   },
   actionButton: {
-    alignItems: 'center',
     flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
   },
-  actionButtonText: {
-    marginTop: 3,
+  actionText: {
     fontSize: 12,
     color: '#666',
-    fontWeight: '500',
+    marginTop: 4,
   },
 });
