@@ -336,7 +336,7 @@ export default function AtlasHomeScreen() {
                   style={styles.universeCard}
                   activeOpacity={0.8}
                   onPress={() =>
-                    navigation.navigate('UniverseDetail', { universe })
+                    navigation.navigate('UniverseDetail', { universeId: universe.id, universe })
                   }
                 >
                   <Image
