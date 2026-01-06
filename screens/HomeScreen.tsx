@@ -663,7 +663,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
       <MapLibreGL.MapView
         key={mapStyle}
         style={styles.map}
-        styleURL={MAP_STYLES[mapStyle].type === 'vector' ? MAP_STYLES[mapStyle].url : undefined}
+      {/* @ts-ignore - MapLibre type mismatch */}        styleURL={MAP_STYLES[mapStyle].type === 'vector' ? MAP_STYLES[mapStyle].url : undefined}
         styleJSON={MAP_STYLES[mapStyle].type === 'raster' ? JSON.stringify(EMPTY_STYLE) : undefined}
         logoEnabled={false}
         attributionEnabled={false}

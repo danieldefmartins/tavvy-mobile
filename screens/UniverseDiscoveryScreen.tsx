@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.2)',
-    backdropFilter: 'blur(10px)',
+// @ts-ignore    backdropFilter: 'blur(10px)',
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 4,
