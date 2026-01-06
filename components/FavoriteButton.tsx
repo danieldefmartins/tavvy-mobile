@@ -24,7 +24,7 @@ export default function FavoriteButton({
   const { user } = useAuth();
 
   // ✅ auth handled internally by the hook, only pass placeId
-  const { data: isFavorite = false, isLoading } = useIsPlaceFavorited(placeId);
+  const { data: isFavorite = false, isLoading } = useIsFavorite(placeId);
 
   const addFavorite = useAddFavorite();
   const removeAllFavorites = useRemoveAllFavoritesForPlace();
