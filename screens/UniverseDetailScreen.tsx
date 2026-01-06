@@ -264,8 +264,9 @@ export default function UniverseDetailScreen() {
                         style={styles.subUniverseCard}
                         onPress={() =>
                           navigation.navigate('UniverseDetail', {
-                            universe: subUniverse,
-                          })
+  universeId: subUniverse.id,
+  universe: subUniverse,
+})
                         }
                       >
                         <Image
