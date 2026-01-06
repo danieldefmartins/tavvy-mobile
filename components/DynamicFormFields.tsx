@@ -18,6 +18,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { AddressAutocomplete } from './AddressAutocomplete';
 import {
   CategoryField,
   getFieldsBySection,
@@ -296,11 +297,54 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
   );
 
   switch (field.type) {
+    // Address fields use autocomplete
+    case 'address':
+      return (
+        <View style={styles.fieldContainer}>
+          <AddressAutocomplete
+            value={value || ''}
+            onSelect={(address, details) => {
+              onChange(address);
+              // Auto-fill related fields if available
+              if (details.city && allValues.city === '') {
+                // Note: Parent component should handle setting city/state/postal
+              }
+            }}
+            onChange={onChange}
+            placeholder={field.placeholder || 'Start typing an address...'}
+            label={field.label}
+            required={field.required}
+            error={error}
+            disabled={disabled}
+            mode="address"
+          />
+        </View>
+      );
+
+    // Service area fields use autocomplete with area mode
+    case 'area':
+      return (
+        <View style={styles.fieldContainer}>
+          <AddressAutocomplete
+            value={value || ''}
+            onSelect={(area, details) => {
+              onChange(area);
+            }}
+            onChange={onChange}
+            placeholder={field.placeholder || 'Enter city or region...'}
+            label={field.label}
+            required={field.required}
+            error={error}
+            disabled={disabled}
+            mode="area"
+          />
+        </View>
+      );
+
     case 'text':
     case 'email':
     case 'phone':
     case 'url':
-    case 'address':
       return (
         <View style={styles.fieldContainer}>
           {renderLabel()}

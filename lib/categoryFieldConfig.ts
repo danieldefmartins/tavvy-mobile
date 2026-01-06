@@ -26,6 +26,7 @@ export type FieldType =
   | 'price' 
   | 'hours'
   | 'address'
+  | 'area'
   | 'coordinates'
   | 'image'
   | 'array';
@@ -758,7 +759,7 @@ export const CATEGORY_FIELD_CONFIGS: CategoryFieldConfig[] = [
       {
         field: 'service_area',
         label: 'Service Area',
-        type: 'text',
+        type: 'area',
         placeholder: 'Miami-Dade County, FL',
         helpText: 'Areas you serve',
         section: 'details',
