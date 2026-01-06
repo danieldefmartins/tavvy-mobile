@@ -12,6 +12,7 @@ import {
   Linking,
   Share,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import MapLibreGL from '@maplibre/maplibre-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -261,7 +262,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
 
       if (placesError) {
         console.warn('Supabase error, using mock data:', placesError);
-        alert(`Database Error: ${placesError.message}`); // ADDED ALERT
+        alert(`Database Error: ${placesError.message}`);
         setPlaces(MOCK_PLACES);
         setFilteredPlaces(MOCK_PLACES);
         return;
@@ -361,7 +362,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
       }
     } catch (err: any) {
       console.error('Error fetching places:', err);
-      alert(`Unexpected Error: ${err.message || JSON.stringify(err)}`); // ADDED ALERT
+      alert(`Unexpected Error: ${err.message || JSON.stringify(err)}`);
       setPlaces(MOCK_PLACES);
       setFilteredPlaces(MOCK_PLACES);
     } finally {
@@ -412,8 +413,6 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
   const handleSearchArea = () => {
     setShowSearchAreaBtn(false);
     if (mapRegion) {
-      // In a real implementation, we would pass the bounds to fetchPlaces
-      // For now, we just re-fetch everything which includes the new seeded place
       fetchPlaces();
     }
   };
@@ -455,7 +454,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
   };
 
   const getMarkerColor = (category?: string) => {
-    if (!category) return '#007AFF'; // Default blue for missing category
+    if (!category) return '#007AFF';
     
     const colors: Record<string, string> = {
       restaurants: '#FF6B6B',
@@ -466,38 +465,52 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
     return colors[category.toLowerCase()] || '#007AFF';
   };
 
+  // Signal type detection
   const getSignalType = (bucket: string): 'positive' | 'neutral' | 'negative' => {
     const bucketLower = bucket.toLowerCase();
     
+    // Positive signals
     if (bucketLower.includes('great') || bucketLower.includes('excellent') || 
-        bucketLower.includes('amazing') || bucketLower.includes('affordable')) {
+        bucketLower.includes('amazing') || bucketLower.includes('affordable') ||
+        bucketLower.includes('good') || bucketLower.includes('friendly') ||
+        bucketLower.includes('fast') || bucketLower.includes('clean') ||
+        bucketLower.includes('fresh') || bucketLower.includes('delicious')) {
       return 'positive';
     }
     
+    // Negative signals (Watch Out)
     if (bucketLower.includes('pricey') || bucketLower.includes('expensive') || 
         bucketLower.includes('crowded') || bucketLower.includes('loud') ||
-        bucketLower.includes('slow')) {
+        bucketLower.includes('slow') || bucketLower.includes('dirty') ||
+        bucketLower.includes('rude') || bucketLower.includes('limited') ||
+        bucketLower.includes('wait') || bucketLower.includes('noisy')) {
       return 'negative';
     }
     
     return 'neutral';
   };
 
+  // Updated signal colors - Apple-inspired
   const getSignalColor = (bucket: string) => {
     const type = getSignalType(bucket);
     
-    if (type === 'positive') return '#3b82f6';
-    if (type === 'negative') return '#f97316';
-    return '#6b7280';
+    if (type === 'positive') return '#0A84FF'; // Apple Blue
+    if (type === 'negative') return '#FF9500'; // Orange
+    return '#8E8E93'; // Gray
   };
 
+  // Sort signals: 2 positive first, then 1 neutral, then 1 negative
   const sortSignalsForDisplay = (signals: Signal[]): Signal[] => {
     const positive = signals.filter(s => getSignalType(s.bucket) === 'positive');
     const neutral = signals.filter(s => getSignalType(s.bucket) === 'neutral');
     const negative = signals.filter(s => getSignalType(s.bucket) === 'negative');
     
     const result: Signal[] = [];
+    
+    // First row: 2 positive (blue)
     result.push(...positive.slice(0, 2));
+    
+    // Second row: 1 neutral (gray) + 1 negative (orange)
     if (neutral.length > 0) {
       result.push(neutral[0]);
     }
@@ -508,7 +521,8 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
     return result;
   };
 
-  const PhotoCarousel = ({ photos }: { photos?: string[] }) => {
+  // Updated PhotoCarousel with gradient overlay for name/address
+  const PhotoCarousel = ({ photos, placeName, placeAddress }: { photos?: string[], placeName: string, placeAddress: string }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const displayPhotos = photos && photos.length > 0 ? photos : [null, null, null];
 
@@ -536,6 +550,17 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
             </View>
           ))}
         </ScrollView>
+        
+        {/* Dark Gradient Overlay with Place Name/Address */}
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.7)']}
+          style={styles.photoGradientOverlay}
+        >
+          <Text style={styles.overlayPlaceName} numberOfLines={1}>{placeName}</Text>
+          <Text style={styles.overlayPlaceAddress} numberOfLines={1}>{placeAddress}</Text>
+        </LinearGradient>
+        
+        {/* Pagination Dots */}
         <View style={styles.dotsContainer}>
           {displayPhotos.slice(0, 3).map((_, index) => (
             <View
@@ -551,6 +576,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
     );
   };
 
+  // Updated renderPlaceCard with new compact design
   const renderPlaceCard = ({ item: place }: { item: Place }) => {
     const fullAddress = place.city && place.state_region
       ? `${place.address_line1}, ${place.city}, ${place.state_region}`
@@ -565,86 +591,91 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
         }}
         activeOpacity={0.9}
       >
-        <PhotoCarousel photos={place.photos} />
+        {/* Photo with Name Overlay */}
+        <PhotoCarousel 
+          photos={place.photos} 
+          placeName={place.name}
+          placeAddress={fullAddress}
+        />
 
-        <View style={styles.cardContent}>
-          <Text style={styles.placeName}>{place.name}</Text>
-          <Text style={styles.placeAddress}>{fullAddress}</Text>
+        {/* Signal Bars - 2x2 Grid */}
+        {place.signals && place.signals.length > 0 && (
+          <View style={styles.signalsContainer}>
+            {sortSignalsForDisplay(place.signals).map((signal, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.signalBadge,
+                  styles.signalBadgeFixed,
+                  { backgroundColor: getSignalColor(signal.bucket) },
+                ]}
+              >
+                <Text style={styles.signalText} numberOfLines={1}>
+                  {signal.bucket} ×{signal.tap_total}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
 
-          {place.signals && place.signals.length > 0 && (
-            <View style={styles.signalsContainer}>
-              {sortSignalsForDisplay(place.signals).map((signal, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.signalBadge,
-                    styles.signalBadgeFixed,
-                    { backgroundColor: getSignalColor(signal.bucket) },
-                  ]}
-                >
-                  <Text style={styles.signalText} numberOfLines={1}>
-                    {signal.bucket} ×{signal.tap_total}
-                  </Text>
-                </View>
-              ))}
-            </View>
+        {/* Footer: Category • Price • Status */}
+        <View style={styles.metaInfo}>
+          <Text style={styles.metaText}>{place.category}</Text>
+          <Text style={styles.metaDot}> • </Text>
+          <Text style={styles.metaText}>$$</Text>
+          {!!place.distance && (
+            <>
+              <Text style={styles.metaDot}> • </Text>
+              <Text style={styles.metaText}>
+                {place.distance.toFixed(1)} mi
+              </Text>
+            </>
           )}
+          {place.current_status && (
+            <>
+              <Text style={styles.metaDot}> • </Text>
+              <Text style={[styles.metaText, styles.statusOpen]}>
+                {place.current_status === 'open_accessible' ? 'Open' : 
+                 place.current_status === 'unknown' ? 'No Vibe Yet' : 
+                 place.current_status}
+              </Text>
+            </>
+          )}
+        </View>
 
-          <View style={styles.metaInfo}>
-            <Text style={styles.metaText}>{place.category}</Text>
-            <Text style={styles.metaDot}> • </Text>
-            <Text style={styles.metaText}>$$</Text>
-            {!!place.distance && (
-              <>
-                <Text style={styles.metaDot}> • </Text>
-                <Text style={styles.metaText}>
-                  {place.distance.toFixed(1)} mi
-                </Text>
-              </>
-            )}
-            {place.current_status && (
-              <>
-                <Text style={styles.metaDot}> • </Text>
-                <Text style={[styles.metaText, styles.statusOpen]}>
-                  {place.current_status === 'open_accessible' ? 'Open & Accessible' : place.current_status === 'unknown' ? 'No Vibe Yet' : place.current_status}
-                </Text>
-              </>
-            )}
-          </View>
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleCall(place.phone)}
+          >
+            <Ionicons name="call-outline" size={20} color="#666" />
+            <Text style={styles.actionButtonText}>Call</Text>
+          </TouchableOpacity>
 
-          <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => handleCall(place.phone)}
-            >
-              <Ionicons name="call-outline" size={20} color="#666" />
-              <Text style={styles.actionButtonText}>Call</Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleWebsite(place.website)}
+          >
+            <Ionicons name="globe-outline" size={20} color="#666" />
+            <Text style={styles.actionButtonText}>Website</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => handleWebsite(place.website)}
-            >
-              <Ionicons name="globe-outline" size={20} color="#666" />
-              <Text style={styles.actionButtonText}>Website</Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handlePhotos(place)}
+          >
+            <Ionicons name="images-outline" size={20} color="#666" />
+            <Text style={styles.actionButtonText}>Photos</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => handlePhotos(place)}
-            >
-              <Ionicons name="images-outline" size={20} color="#666" />
-              <Text style={styles.actionButtonText}>Photos</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => handleShare(place)}
-            >
-              <Ionicons name="share-outline" size={20} color="#666" />
-              <Text style={styles.actionButtonText}>Share</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleShare(place)}
+          >
+            <Ionicons name="share-outline" size={20} color="#666" />
+            <Text style={styles.actionButtonText}>Share</Text>
+          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
@@ -653,19 +684,18 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#00bcd4" />
+        <ActivityIndicator size="large" color="#0A84FF" />
       </View>
     );
   }
 
-    return (
+  return (
     <View style={styles.container}>
       {/* @ts-ignore */}
       <MapLibreGL.MapView
         key={mapStyle}
         style={styles.map}
         styleURL={MAP_STYLES[mapStyle].type === 'vector' ? (MAP_STYLES[mapStyle] as any).url : undefined}
-
         logoEnabled={false}
         attributionEnabled={false}
         onRegionDidChange={handleRegionChange}
@@ -673,7 +703,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
         <MapLibreGL.Camera
           ref={cameraRef}
           zoomLevel={14}
-          centerCoordinate={userLocation || [-97.7431, 30.2672]} // Default to Austin, TX
+          centerCoordinate={userLocation || [-97.7431, 30.2672]}
           animationMode="flyTo"
           animationDuration={2000}
         />
@@ -886,7 +916,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
                 <Ionicons
                   name={style.icon as any}
                   size={20}
-                  color={mapStyle === key ? '#007AFF' : '#666'}
+                  color={mapStyle === key ? '#0A84FF' : '#666'}
                 />
                 <Text
                   style={[
@@ -952,7 +982,7 @@ export default function HomeScreen({ navigation }: { navigation: any } ) {
 const styles = StyleSheet.create({
   searchAreaBtn: {
     position: 'absolute',
-    top: 170, // Moved further down to completely clear filters
+    top: 170,
     alignSelf: 'center',
     backgroundColor: 'white',
     paddingHorizontal: 16,
@@ -999,19 +1029,19 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   userLocationMarker: {
-    width: 36, // Larger touch target/halo
+    width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(0, 122, 255, 0.25)', // Slightly stronger halo
+    backgroundColor: 'rgba(0, 122, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   userLocationDot: {
-    width: 22, // Much larger dot (Google style)
+    width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#4285F4', // Google Blue
-    borderWidth: 3, // Thicker white border
+    backgroundColor: '#4285F4',
+    borderWidth: 3,
     borderColor: '#fff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -1067,7 +1097,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   categoryChipActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#0A84FF',
   },
   categoryChipText: {
     fontSize: 13,
@@ -1081,10 +1111,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 180,
     alignSelf: 'center',
-    width: width - 80, // More compact width
+    width: width - 80,
     backgroundColor: '#fff',
-    borderRadius: 28, // Slightly rounder
-    padding: 16, // Reduced padding
+    borderRadius: 28,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
@@ -1114,8 +1144,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   weatherBigTemp: {
-    fontSize: 56, // Slightly smaller
-    fontWeight: '500', // Slightly bolder
+    fontSize: 56,
+    fontWeight: '500',
     color: '#202124',
     letterSpacing: -1,
   },
@@ -1178,7 +1208,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#1E8E3E', // Green for Good
+    backgroundColor: '#1E8E3E',
   },
   airQualityValue: {
     fontSize: 16,
@@ -1187,11 +1217,11 @@ const styles = StyleSheet.create({
   },
   weatherFooterLink: {
     fontSize: 14,
-    color: '#00796B', // Teal link color
+    color: '#00796B',
     marginBottom: 20,
   },
   weatherCloseButton: {
-    backgroundColor: '#E8F0FE', // Light blue button
+    backgroundColor: '#E8F0FE',
     borderRadius: 24,
     paddingVertical: 12,
     alignItems: 'center',
@@ -1199,7 +1229,7 @@ const styles = StyleSheet.create({
   weatherCloseButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#006064', // Darker teal text
+    color: '#006064',
   },
   bottomRightControls: {
     position: 'absolute',
@@ -1210,7 +1240,7 @@ const styles = StyleSheet.create({
   combinedControlCard: {
     flexDirection: 'column',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)', // Apple-style frosted look
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     borderRadius: 12,
     padding: 6,
     shadowColor: '#000',
@@ -1258,7 +1288,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   styleOptionTextActive: {
-    color: '#007AFF',
+    color: '#0A84FF',
     fontWeight: '600',
   },
   controlButton: {
@@ -1321,6 +1351,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f5f5f5',
   },
+  // NEW: Gradient overlay for place name/address on photo
+  photoGradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+  },
+  overlayPlaceName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'left',
+  },
+  overlayPlaceAddress: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 2,
+    textAlign: 'left',
+  },
   dotsContainer: {
     position: 'absolute',
     bottom: 12,
@@ -1337,36 +1390,23 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   dotActive: {
-    backgroundColor: '#000',
+    backgroundColor: '#fff',
   },
   dotInactive: {
     backgroundColor: 'rgba(255, 255, 255, 0.5)',
   },
-  cardContent: {
-    padding: 12,
-  },
-  placeName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 2,
-  },
-  placeAddress: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
   signalsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingTop: 12,
     justifyContent: 'space-between',
   },
   signalBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    marginBottom: 6,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 8,
   },
   signalBadgeFixed: {
     width: '48%',
@@ -1382,7 +1422,8 @@ const styles = StyleSheet.create({
   metaInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
   },
   metaText: {
     fontSize: 14,
@@ -1393,13 +1434,14 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   statusOpen: {
-    color: '#10b981',
+    color: '#34C759',
     fontWeight: '600',
   },
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingTop: 10,
+    paddingBottom: 12,
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
   },
