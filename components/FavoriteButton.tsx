@@ -1,8 +1,14 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
-import { useAddFavorite, useRemoveFavorite, useIsFavorite } from '../hooks/useFavorites';
+
+// ✅ correct file name (no "s")
+import {
+  useIsPlaceFavorited,
+  useAddFavorite,
+  useRemoveAllFavoritesForPlace,
+} from '../hooks/useFavorite';
 
 interface FavoriteButtonProps {
   placeId: string;
@@ -10,38 +16,41 @@ interface FavoriteButtonProps {
   color?: string;
 }
 
-export default function FavoriteButton({ 
-  placeId, 
-  size = 28, 
-  color = '#EF4444' 
+export default function FavoriteButton({
+  placeId,
+  size = 28,
+  color = '#EF4444',
 }: FavoriteButtonProps) {
   const { user } = useAuth();
-  const { data: isFavorite, isLoading } = useIsFavorite(user?.id, placeId);
+
+  // ✅ auth handled internally by the hook, only pass placeId
+  const { data: isFavorite = false, isLoading } = useIsPlaceFavorited(placeId);
+
   const addFavorite = useAddFavorite();
-  const removeFavorite = useRemoveFavorite();
+  const removeAllFavorites = useRemoveAllFavoritesForPlace();
 
   const handlePress = async () => {
     if (!user) {
-      // Show login prompt
-      alert('Please sign in to save favorites');
+      Alert.alert('Sign in required', 'Please sign in to save favorites');
       return;
     }
 
     try {
       if (isFavorite) {
-        await removeFavorite.mutateAsync({ userId: user.id, placeId });
+        await removeAllFavorites.mutateAsync(placeId);
       } else {
-        await addFavorite.mutateAsync({ 
-          userId: user.id, 
+        await addFavorite.mutateAsync({
           placeId,
-          listName: 'Favorites' 
+          listName: 'Favorites',
         });
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);
-      alert('Failed to update favorite');
+      Alert.alert('Error', 'Failed to update favorite');
     }
   };
+
+  const isMutating = addFavorite.isPending || removeAllFavorites.isPending;
 
   if (isLoading) {
     return (
@@ -52,11 +61,7 @@ export default function FavoriteButton({
   }
 
   return (
-    <TouchableOpacity 
-      style={styles.button} 
-      onPress={handlePress}
-      disabled={addFavorite.isPending || removeFavorite.isPending}
-    >
+    <TouchableOpacity style={styles.button} onPress={handlePress} disabled={isMutating}>
       <Ionicons
         name={isFavorite ? 'heart' : 'heart-outline'}
         size={size}
