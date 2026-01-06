@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getPhotoCategories, getCategoryName, getCategoryIcon } from './photoCategoryUtils';
+import { getPhotoCategories, getCategoryName, getCategoryIcon } from '../lib/photoCategoryUtils';
 
 const { width, height } = Dimensions.get('window');
 
