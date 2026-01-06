@@ -47,7 +47,7 @@ const STEPS = [
   },
   {
     id: 'vibe' as const,
-    title: 'How's the vibe?',
+    title: "How's the vibe?",
     subtitle: 'Set the scene.',
     theme: 'vibe',
     limit: 5,
