@@ -231,6 +231,21 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     initializeApp();
   }, []);
 
+  // Handle camera movement when targetLocation changes
+  useEffect(() => {
+    if (targetLocation && viewMode === 'map' && cameraRef.current) {
+      console.log('Moving camera to:', targetLocation, 'zoom: 16');
+      // Use a longer delay to ensure map is fully rendered
+      setTimeout(() => {
+        cameraRef.current?.setCamera({
+          centerCoordinate: targetLocation,
+          zoomLevel: 16,
+          animationDuration: 1000,
+        });
+      }, 500);
+    }
+  }, [targetLocation, viewMode]);
+
   const initializeApp = async () => {
     updateGreeting();
     loadRecentSearches();
@@ -593,19 +608,22 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         
       case 'address':
         // Go to map mode centered on geocoded address
-        saveRecentSearch(suggestion.title);
-        setTargetLocation([suggestion.data.lon, suggestion.data.lat]);
-        setSearchedAddressName(suggestion.title); // Keep address name for display
-        setSearchQuery(suggestion.title); // Show address in search bar
+        console.log('ADDRESS SELECTED:', suggestion.title, suggestion.data);
+        const addressCoords: [number, number] = [suggestion.data.lon, suggestion.data.lat];
+        const addressName = suggestion.title;
+        
+        // Save to recent searches
+        saveRecentSearch(addressName);
+        
+        // Set all states before switching view mode
+        setSearchedAddressName(addressName);
+        setSearchQuery(addressName);
+        setTargetLocation(addressCoords);
+        
+        // Switch to map mode
         setViewMode('map');
-        // Fly camera to the address location with high zoom (16 = street level)
-        setTimeout(() => {
-          cameraRef.current?.setCamera({
-            centerCoordinate: [suggestion.data.lon, suggestion.data.lat],
-            zoomLevel: 16,
-            animationDuration: 1500,
-          });
-        }, 100);
+        
+        console.log('States set - searchQuery:', addressName, 'targetLocation:', addressCoords);
         break;
         
       case 'recent':
@@ -1292,7 +1310,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       {/* Full Map */}
       {/* @ts-ignore */}
       <MapLibreGL.MapView
-        key={mapStyle}
+        key={`${mapStyle}-${targetLocation ? targetLocation.join(',') : 'default'}`}
         style={styles.fullMap}
         styleURL={MAP_STYLES[mapStyle].type === 'vector' ? (MAP_STYLES[mapStyle] as any).url : undefined}
         logoEnabled={false}
@@ -1300,8 +1318,12 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       >
         <MapLibreGL.Camera
           ref={cameraRef}
-          zoomLevel={targetLocation ? 16 : 14}
+          defaultSettings={{
+            centerCoordinate: targetLocation || userLocation || [-97.7431, 30.2672],
+            zoomLevel: targetLocation ? 16 : 14,
+          }}
           centerCoordinate={targetLocation || userLocation || [-97.7431, 30.2672]}
+          zoomLevel={targetLocation ? 16 : 14}
           animationMode="flyTo"
           animationDuration={1500}
         />
