@@ -223,7 +223,7 @@ export default function QuickFormEngine({ formId, title, steps, initialData, onC
   // Load draft on mount
   useEffect(() => {
     if (initialData) {
-      setFormData(prev => ({ ...prev, ...initialData }));
+      setFormData((prev: any) => ({ ...prev, ...initialData }));
     } else {
       checkDraft();
     }

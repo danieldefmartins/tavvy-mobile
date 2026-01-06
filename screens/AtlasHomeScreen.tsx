@@ -225,7 +225,7 @@ export default function AtlasHomeScreen() {
               <Text style={styles.headerTitle}>Tavvy Atlas</Text>
             </View>
             <TouchableOpacity
-              onPress={() => navigation.navigate('AtlasSearch')}
+              onPress={() => navigation.navigate('AtlasSearch', {})}
               style={styles.searchButton}
             >
               <Ionicons name="search" size={22} color="#fff" />

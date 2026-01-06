@@ -336,6 +336,7 @@ interface PhotoWithScore {
   url: string;
   score: number;
   is_cover: boolean;
+  is_flagged?: boolean;
   likes_count: number;
   created_at: string;
 }
