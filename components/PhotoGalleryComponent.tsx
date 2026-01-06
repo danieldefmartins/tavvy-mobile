@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getPhotoCategories, getCategoryName, getCategoryIcon } from '../lib/photoCategoryUtils';
+import { getPhotoCategories, getCategoryName, getCategoryIcon, BusinessType } from '../lib/photoCategoryUtils';
 
 const { width, height } = Dimensions.get('window');
 

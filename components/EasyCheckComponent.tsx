@@ -22,7 +22,7 @@ interface CheckIn {
 
 interface EasyCheckProps {
   placeId: string;
-  businessType: string; // NEW: Business type for dynamic check-in types
+  businessType: import('../lib/businessTypeConfig').BusinessType; // NEW: Business type for dynamic check-in types
   onSubmit: (type: string, note?: string) => Promise<void>;
   onDelete: (checkinId: string) => Promise<void>;
   checkins: CheckIn[];
