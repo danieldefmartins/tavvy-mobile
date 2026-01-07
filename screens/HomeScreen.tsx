@@ -822,9 +822,51 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         break;
         
       case 'recent':
-        // Re-run the recent search
-        setSearchQuery(suggestion.data.query);
-        handleSearchSubmit(suggestion.data.query);
+        // Re-run the recent search - need to geocode if it looks like an address
+        const recentQuery = suggestion.data.query;
+        setSearchQuery(recentQuery);
+        
+        // Check if this looks like an address (contains numbers or common address words)
+        const looksLikeAddress = /\d/.test(recentQuery) || 
+          /\b(street|st|avenue|ave|road|rd|blvd|boulevard|drive|dr|lane|ln|way|court|ct)\b/i.test(recentQuery);
+        
+        if (looksLikeAddress) {
+          // Geocode the address and then navigate
+          setIsSearchingAddress(true);
+          geocodeAddress(recentQuery).then(results => {
+            setIsSearchingAddress(false);
+            if (results.length > 0) {
+              // Use the first result
+              const firstResult = results[0];
+              const coords: [number, number] = [firstResult.data.lon, firstResult.data.lat];
+              
+              const addressInfo: AddressInfo = {
+                displayName: firstResult.data.displayName || firstResult.title,
+                shortName: firstResult.title,
+                coordinates: coords,
+                road: firstResult.data.road,
+                city: firstResult.data.city,
+                state: firstResult.data.state,
+                country: firstResult.data.country,
+                postcode: firstResult.data.postcode,
+              };
+              
+              setSearchedAddressName(firstResult.title);
+              setSearchQuery(firstResult.title);
+              setTargetLocation(coords);
+              setSearchedAddress(addressInfo);
+              setViewMode('map');
+            } else {
+              // No geocoding results, just go to map
+              saveRecentSearch(recentQuery);
+              setViewMode('map');
+            }
+          });
+        } else {
+          // Not an address, just search normally
+          saveRecentSearch(recentQuery);
+          setViewMode('map');
+        }
         break;
     }
   };
@@ -850,8 +892,21 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // ============================================
 
   useEffect(() => {
-    filterPlaces();
-  }, [searchQuery, selectedCategory, places, viewMode]);
+    // Only filter when in map mode or when category/places change
+    if (viewMode === 'map' || selectedCategory !== 'All') {
+      filterPlaces();
+    }
+  }, [selectedCategory, places, viewMode]);
+  
+  // Separate effect for search query changes (debounced)
+  useEffect(() => {
+    if (viewMode === 'map' && searchQuery.trim()) {
+      const timer = setTimeout(() => {
+        filterPlaces();
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [searchQuery]);
 
   const filterPlaces = () => {
     let filtered = places;
@@ -1184,13 +1239,15 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     );
   };
 
-  // Auto-rotate insights every 5 seconds
+  // Auto-rotate insights every 5 seconds (only in content mode)
   useEffect(() => {
+    if (viewMode !== 'content') return;
+    
     const timer = setInterval(() => {
       setCurrentInsightIndex(prev => prev + 1);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [viewMode]);
 
   // ============================================
   // RENDER: ADDRESS INFO CARD
@@ -1998,9 +2055,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       <BottomSheet
         ref={bottomSheetRef}
         index={1}
-        snapPoints={searchedAddress ? ['25%', '55%', '90%'] : ['15%', '50%', '90%']}
+        snapPoints={searchedAddress ? [40, '40%', '65%'] : [40, '35%', '65%']}
         backgroundStyle={styles.bottomSheetBackground}
         handleIndicatorStyle={styles.bottomSheetHandle}
+        enablePanDownToClose={false}
       >
         {searchedAddress ? (
           // Show Address Info Card when viewing a searched address
