@@ -273,17 +273,31 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // Handle camera movement when targetLocation changes
   useEffect(() => {
     if (targetLocation && viewMode === 'map') {
-      // Small delay to ensure map is ready
-      const timeoutId = setTimeout(() => {
-        if (cameraRef.current) {
-          cameraRef.current.setCamera({
-            centerCoordinate: targetLocation,
-            zoomLevel: 16,
-            animationDuration: 800,
-          });
-        }
-      }, 300);
-      return () => clearTimeout(timeoutId);
+      console.log('Moving camera to targetLocation:', targetLocation);
+      
+      // Use multiple attempts with increasing delays to ensure map is ready
+      const attempts = [100, 300, 600, 1000];
+      const timeoutIds: NodeJS.Timeout[] = [];
+      
+      attempts.forEach((delay) => {
+        const timeoutId = setTimeout(() => {
+          if (cameraRef.current) {
+            try {
+              cameraRef.current.setCamera({
+                centerCoordinate: targetLocation,
+                zoomLevel: 16,
+                animationDuration: 500,
+              });
+              console.log('Camera moved successfully at delay:', delay);
+            } catch (e) {
+              console.log('Camera move failed at delay:', delay, e);
+            }
+          }
+        }, delay);
+        timeoutIds.push(timeoutId);
+      });
+      
+      return () => timeoutIds.forEach(id => clearTimeout(id));
     }
   }, [targetLocation, viewMode]);
 
@@ -1528,19 +1542,35 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           placeAddress={fullAddress}
         />
         
-        {/* Signals */}
+        {/* Signals - 2x2 Grid with fixed widths */}
         {place.signals && place.signals.length > 0 && (
           <View style={styles.signalsContainer}>
-            {sortSignalsForDisplay(place.signals).map((signal, index) => (
-              <View
-                key={index}
-                style={[styles.signalPill, { backgroundColor: getSignalColor(signal.bucket) }]}
-              >
-                <Text style={styles.signalText}>
-                  {signal.bucket} ×{signal.tap_total}
-                </Text>
+            <View style={styles.signalsRow}>
+              {sortSignalsForDisplay(place.signals).slice(0, 2).map((signal, index) => (
+                <View
+                  key={index}
+                  style={[styles.signalPill, { backgroundColor: getSignalColor(signal.bucket) }]}
+                >
+                  <Text style={styles.signalText}>
+                    {signal.bucket} ×{signal.tap_total}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            {sortSignalsForDisplay(place.signals).length > 2 && (
+              <View style={styles.signalsRow}>
+                {sortSignalsForDisplay(place.signals).slice(2, 4).map((signal, index) => (
+                  <View
+                    key={index}
+                    style={[styles.signalPill, { backgroundColor: getSignalColor(signal.bucket) }]}
+                  >
+                    <Text style={styles.signalText}>
+                      {signal.bucket} ×{signal.tap_total}
+                    </Text>
+                  </View>
+                ))}
               </View>
-            ))}
+            )}
           </View>
         )}
         
@@ -1860,9 +1890,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <MapLibreGL.Camera
           ref={cameraRef}
           defaultSettings={{
-            centerCoordinate: userLocation || [-97.7431, 30.2672],
-            zoomLevel: 14,
+            centerCoordinate: targetLocation || userLocation || [-97.7431, 30.2672],
+            zoomLevel: targetLocation ? 16 : 14,
           }}
+          centerCoordinate={targetLocation || userLocation || [-97.7431, 30.2672]}
+          zoomLevel={targetLocation ? 16 : 14}
           animationMode="flyTo"
           animationDuration={800}
         />
@@ -2654,15 +2686,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.5)',
   },
   signalsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     padding: 12,
     gap: 8,
   },
+  signalsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
   signalPill: {
+    flex: 1,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   signalText: {
     color: '#fff',
