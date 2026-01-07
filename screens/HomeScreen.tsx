@@ -497,78 +497,88 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     try {
       setLoading(true);
 
+      // Query places with valid coordinates, limit for performance
+      // Foursquare data uses lat/lng columns
       const { data: placesData, error: placesError } = await supabase
         .from('places')
-        .select('*')
+        .select('id, name, lat, lng, latitude, longitude, address_line1, city, state_region, country, category, primary_category, fsq_category_labels, phone, phone_e164, website, website_url, cover_image_url, description, current_status, instagram_url')
+        .not('lat', 'is', null)
+        .not('lng', 'is', null)
+        .neq('lat', 0)
+        .neq('lng', 0)
+        .limit(500)  // Limit for performance - we have millions of places!
         .order('name');
 
       if (placesError) {
-        console.warn('Supabase error, using mock data:', placesError);
+        console.warn('Supabase error:', placesError);
         setPlaces(MOCK_PLACES);
         setFilteredPlaces(MOCK_PLACES);
         return;
       }
 
+      console.log('Fetched places from Supabase:', placesData?.length || 0);
+
       if (placesData && placesData.length > 0) {
-        // Fetch signals for places
+        // Try to fetch signal aggregates (may not exist for Foursquare places)
         const placeIds = placesData.map(p => p.id);
         
-        const { data: signalTaps } = await supabase
-          .from('place_review_signal_taps')
-          .select('place_id, signal_id, intensity')
-          .in('place_id', placeIds);
+        let signalAggregates: any[] = [];
+        try {
+          const { data: signalData } = await supabase
+            .from('place_signal_aggregates')
+            .select('place_id, signal_label, total_taps')
+            .in('place_id', placeIds);
+          signalAggregates = signalData || [];
+        } catch (e) {
+          console.log('No signal aggregates table or data');
+        }
 
-        const { data: reviewItems } = await supabase
-          .from('review_items')
-          .select('id, label, signal_type');
+        // Process places - normalize coordinates and category
+        const processedPlaces = placesData
+          .filter((place) => {
+            // Use lat/lng as primary (Foursquare), fallback to latitude/longitude
+            const lon = place.lng || place.longitude;
+            const lat = place.lat || place.latitude;
+            return typeof lon === 'number' && typeof lat === 'number' && 
+                   !isNaN(lon) && !isNaN(lat) && 
+                   lon !== 0 && lat !== 0;
+          })
+          .map(place => {
+            // Get signals for this place
+            const placeSignals = signalAggregates
+              .filter(s => s.place_id === place.id)
+              .map(s => ({
+                bucket: s.signal_label || 'Unknown',
+                tap_total: s.total_taps || 0,
+              }));
 
-        const itemsMap = new Map(
-          (reviewItems || []).map(item => [item.id, { label: item.label, type: item.signal_type }])
-        );
+            // Determine category from Foursquare data or existing category
+            let category = place.category || place.primary_category || 'Other';
+            if (place.fsq_category_labels && place.fsq_category_labels.length > 0) {
+              category = place.fsq_category_labels[0];
+            }
 
-        // Fetch photos
-        const { data: photosData } = await supabase
-          .from('place_photos')
-          .select('place_id, url')
-          .in('place_id', placeIds)
-          .order('is_cover', { ascending: false });
+            return {
+              ...place,
+              // Normalize coordinates - ensure latitude/longitude are set for map
+              latitude: place.lat || place.latitude,
+              longitude: place.lng || place.longitude,
+              // Normalize category
+              category: category,
+              // Normalize phone and website
+              phone: place.phone || place.phone_e164,
+              website: place.website || place.website_url,
+              // Signals and photos
+              signals: placeSignals,
+              photos: place.cover_image_url ? [place.cover_image_url] : [],
+            };
+          });
 
-        const photosByPlace: Record<string, string[]> = {};
-        (photosData || []).forEach(photo => {
-          if (!photosByPlace[photo.place_id]) {
-            photosByPlace[photo.place_id] = [];
-          }
-          photosByPlace[photo.place_id].push(photo.url);
-        });
-
-        // Process places with signals
-        const placesWithSignals = placesData.map(place => {
-          const placeSignals = (signalTaps || [])
-            .filter(tap => tap.place_id === place.id)
-            .reduce((acc: Record<string, number>, tap) => {
-              const item = itemsMap.get(tap.signal_id);
-              if (item) {
-                const key = item.label;
-                acc[key] = (acc[key] || 0) + tap.intensity;
-              }
-              return acc;
-            }, {});
-
-          const signals = Object.entries(placeSignals).map(([bucket, tap_total]) => ({
-            bucket,
-            tap_total,
-          }));
-
-          return {
-            ...place,
-            signals,
-            photos: photosByPlace[place.id] || [],
-          };
-        });
-
-        setPlaces(placesWithSignals);
-        setFilteredPlaces(placesWithSignals);
+        console.log('Processed places with valid coords:', processedPlaces.length);
+        setPlaces(processedPlaces);
+        setFilteredPlaces(processedPlaces);
       } else {
+        console.log('No places found in database');
         setPlaces(MOCK_PLACES);
         setFilteredPlaces(MOCK_PLACES);
       }
