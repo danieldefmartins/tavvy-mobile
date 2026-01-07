@@ -1884,8 +1884,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         styleURL={MAP_STYLES[mapStyle].type === 'vector' ? (MAP_STYLES[mapStyle] as any).url : undefined}
         logoEnabled={false}
         attributionEnabled={false}
-        rotateEnabled={false}
-        pitchEnabled={false}
+        zoomEnabled={true}
+        scrollEnabled={true}
+        rotateEnabled={true}
+        pitchEnabled={true}
       >
         <MapLibreGL.Camera
           ref={cameraRef}
