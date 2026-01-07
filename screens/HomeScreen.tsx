@@ -306,8 +306,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     loadRecentSearches();
     loadParkingLocation();
     loadSavedLocations();
-    requestLocationPermission();
-    fetchPlaces();
+    requestLocationPermission();  // This will call fetchPlaces with user location
   };
 
   const updateGreeting = () => {
@@ -475,6 +474,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         const coords: [number, number] = [location.coords.longitude, location.coords.latitude];
         setUserLocation(coords);
         
+        // Fetch places near user's location
+        fetchPlaces(coords);
+        
         // Get location name
         const [address] = await Location.reverseGeocodeAsync({
           latitude: location.coords.latitude,
@@ -483,9 +485,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         if (address) {
           setLocationName(`${address.city || ''}, ${address.region || ''}`);
         }
+      } else {
+        // No location permission - fetch with default location
+        fetchPlaces();
       }
     } catch (error) {
       console.log('Error getting location:', error);
+      // Fetch with default location on error
+      fetchPlaces();
     }
   };
 
@@ -493,21 +500,34 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // DATA FETCHING
   // ============================================
 
-  const fetchPlaces = async () => {
+  const fetchPlaces = async (location?: [number, number]) => {
     try {
       setLoading(true);
 
-      // Query places with valid coordinates, limit for performance
-      // Foursquare data uses lat/lng columns
+      // Use provided location, userLocation, or default to Austin, TX
+      const centerLng = location?.[0] || userLocation?.[0] || -97.7431;
+      const centerLat = location?.[1] || userLocation?.[1] || 30.2672;
+      
+      // Create a bounding box (~10km radius) for fast indexed query
+      const latDelta = 0.1;  // ~11km
+      const lngDelta = 0.1;  // ~9km at this latitude
+      
+      const minLat = centerLat - latDelta;
+      const maxLat = centerLat + latDelta;
+      const minLng = centerLng - lngDelta;
+      const maxLng = centerLng + lngDelta;
+
+      console.log(`Fetching places near [${centerLng}, ${centerLat}]`);
+
+      // Query places within bounding box - much faster than scanning all 2.5M+ records
       const { data: placesData, error: placesError } = await supabase
         .from('places')
         .select('id, name, lat, lng, latitude, longitude, address_line1, city, state_region, country, category, primary_category, fsq_category_labels, phone, phone_e164, website, website_url, cover_image_url, description, current_status, instagram_url')
-        .not('lat', 'is', null)
-        .not('lng', 'is', null)
-        .neq('lat', 0)
-        .neq('lng', 0)
-        .limit(500)  // Limit for performance - we have millions of places!
-        .order('name');
+        .gte('lat', minLat)
+        .lte('lat', maxLat)
+        .gte('lng', minLng)
+        .lte('lng', maxLng)
+        .limit(200);  // Limit results for performance
 
       if (placesError) {
         console.warn('Supabase error:', placesError);
@@ -1636,10 +1656,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           styleURL={MAP_STYLES[mapStyle].type === 'vector' ? (MAP_STYLES[mapStyle] as any).url : undefined}
           logoEnabled={false}
           attributionEnabled={false}
-          scrollEnabled={true}
+          scrollEnabled={false}
           pitchEnabled={false}
           rotateEnabled={false}
-          zoomEnabled={true}
+          zoomEnabled={false}
         >
           <MapLibreGL.Camera
             zoomLevel={13}
@@ -1905,10 +1925,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             centerCoordinate: targetLocation || userLocation || [-97.7431, 30.2672],
             zoomLevel: targetLocation ? 16 : 14,
           }}
-          centerCoordinate={targetLocation || userLocation || [-97.7431, 30.2672]}
-          zoomLevel={targetLocation ? 16 : 14}
           animationMode="flyTo"
           animationDuration={800}
+          minZoomLevel={3}
+          maxZoomLevel={20}
         />
         
         {/* Target location marker (for address searches) */}
@@ -2103,6 +2123,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         backgroundStyle={styles.bottomSheetBackground}
         handleIndicatorStyle={styles.bottomSheetHandle}
         enablePanDownToClose={false}
+        enableContentPanningGesture={false}
       >
         {searchedAddress ? (
           // Show Address Info Card when viewing a searched address
