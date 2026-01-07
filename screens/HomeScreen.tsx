@@ -17,7 +17,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
+// Clipboard functionality - will show address in alert for now
 import { LinearGradient } from 'expo-linear-gradient';
 import MapLibreGL from '@maplibre/maplibre-react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -1102,9 +1102,16 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       }
     };
 
-    const handleCopyAddress = async () => {
-      await Clipboard.setStringAsync(searchedAddress.displayName);
-      Alert.alert('Copied!', 'Address copied to clipboard.');
+    const handleCopyAddress = () => {
+      // Show address in alert - user can manually copy
+      // To enable clipboard: npx expo install expo-clipboard, then rebuild
+      Alert.alert(
+        'Address',
+        searchedAddress.displayName,
+        [
+          { text: 'OK', style: 'default' },
+        ]
+      );
     };
 
     const handleSaveParking = () => {
