@@ -250,6 +250,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   
   // Personalization states
   const [greeting, setGreeting] = useState('');
+  const [currentInsightIndex, setCurrentInsightIndex] = useState(0);
   
   // Parking and saved locations
   const [parkingLocation, setParkingLocation] = useState<ParkingLocation | null>(null);
@@ -271,16 +272,18 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   // Handle camera movement when targetLocation changes
   useEffect(() => {
-    if (targetLocation && viewMode === 'map' && cameraRef.current) {
-      console.log('Moving camera to:', targetLocation, 'zoom: 16');
-      // Use a longer delay to ensure map is fully rendered
-      setTimeout(() => {
-        cameraRef.current?.setCamera({
-          centerCoordinate: targetLocation,
-          zoomLevel: 16,
-          animationDuration: 1000,
-        });
-      }, 500);
+    if (targetLocation && viewMode === 'map') {
+      // Small delay to ensure map is ready
+      const timeoutId = setTimeout(() => {
+        if (cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: targetLocation,
+            zoomLevel: 16,
+            animationDuration: 800,
+          });
+        }
+      }, 300);
+      return () => clearTimeout(timeoutId);
     }
   }, [targetLocation, viewMode]);
 
@@ -581,14 +584,26 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   }, [searchQuery, places, recentSearches]);
 
   // Geocode address using Nominatim (OpenStreetMap)
+  const geocodeAbortRef = useRef<AbortController | null>(null);
+  
   const geocodeAddress = async (query: string): Promise<SearchSuggestion[]> => {
+    // Cancel any pending request
+    if (geocodeAbortRef.current) {
+      geocodeAbortRef.current.abort();
+    }
+    
+    // Create new abort controller
+    geocodeAbortRef.current = new AbortController();
+    
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=3&addressdetails=1`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=4&addressdetails=1&countrycodes=us`,
         {
           headers: {
             'User-Agent': 'TavvY-App/1.0',
+            'Accept': 'application/json',
           },
+          signal: geocodeAbortRef.current.signal,
         }
       );
       
@@ -613,11 +628,19 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             lat: parseFloat(result.lat),
             lon: parseFloat(result.lon),
             displayName: result.display_name,
+            road: result.address?.road,
+            city: result.address?.city || result.address?.town || result.address?.village,
+            state: result.address?.state,
+            country: result.address?.country,
+            postcode: result.address?.postcode,
           },
         };
       });
-    } catch (error) {
-      console.log('Geocoding error:', error);
+    } catch (error: any) {
+      // Don't log abort errors
+      if (error.name !== 'AbortError') {
+        console.log('Geocoding error:', error);
+      }
       return [];
     }
   };
@@ -717,7 +740,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             return [...nonAddressSuggestions, ...addressSuggestions];
           });
         }
-      }, 500); // 500ms debounce
+      }, 350); // 350ms debounce for faster response
     }
   };
 
@@ -1066,6 +1089,108 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       </View>
     );
   };
+
+  // ============================================
+  // RENDER: INSIGHTS SECTION
+  // ============================================
+
+  const renderInsightsSection = () => {
+    // Generate personalized insights based on user behavior
+    const insights = [
+      {
+        id: 'discover',
+        icon: 'compass',
+        iconColor: '#FF9500',
+        bgColor: '#FFF3E0',
+        title: 'Discover New Places',
+        subtitle: 'Explore highly-rated spots in your area',
+        action: () => switchToMapMode(),
+      },
+      {
+        id: 'trending',
+        icon: 'trending-up',
+        iconColor: '#34C759',
+        bgColor: '#E8F5E9',
+        title: 'Trending This Week',
+        subtitle: `${places.length} places getting attention nearby`,
+        action: () => switchToMapMode(),
+      },
+      {
+        id: 'tip',
+        icon: 'bulb',
+        iconColor: '#AF52DE',
+        bgColor: '#F3E5F5',
+        title: 'TavvY Tip',
+        subtitle: 'Tap signals to see what makes places special',
+        action: null,
+      },
+      {
+        id: 'parking',
+        icon: 'car',
+        iconColor: '#007AFF',
+        bgColor: '#E3F2FD',
+        title: parkingLocation ? 'Your Car is Saved' : 'Save Your Parking',
+        subtitle: parkingLocation 
+          ? `Parked ${getParkingDuration()} at ${parkingLocation.address || 'saved location'}`
+          : 'Never forget where you parked again',
+        action: parkingLocation ? navigateToParking : () => saveParkingLocation(),
+      },
+    ];
+
+    // Filter out parking insight if no parking and user hasn't used the feature
+    const filteredInsights = insights.filter(i => {
+      if (i.id === 'parking' && !parkingLocation) {
+        // Only show parking tip occasionally
+        return currentInsightIndex % 3 === 0;
+      }
+      return true;
+    });
+
+    const currentInsight = filteredInsights[currentInsightIndex % filteredInsights.length];
+
+    return (
+      <View style={styles.insightsSection}>
+        <TouchableOpacity
+          style={[styles.insightCard, { backgroundColor: currentInsight.bgColor }]}
+          onPress={currentInsight.action || undefined}
+          activeOpacity={currentInsight.action ? 0.7 : 1}
+        >
+          <View style={styles.insightIconContainer}>
+            <Ionicons name={currentInsight.icon as any} size={24} color={currentInsight.iconColor} />
+          </View>
+          <View style={styles.insightTextContainer}>
+            <Text style={styles.insightTitle}>{currentInsight.title}</Text>
+            <Text style={styles.insightSubtitle}>{currentInsight.subtitle}</Text>
+          </View>
+          {currentInsight.action && (
+            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+          )}
+        </TouchableOpacity>
+        
+        {/* Dots indicator */}
+        <View style={styles.insightDotsContainer}>
+          {filteredInsights.map((_, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.insightDot,
+                index === currentInsightIndex % filteredInsights.length && styles.insightDotActive,
+              ]}
+              onPress={() => setCurrentInsightIndex(index)}
+            />
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  // Auto-rotate insights every 5 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentInsightIndex(prev => prev + 1);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   // ============================================
   // RENDER: ADDRESS INFO CARD
@@ -1452,7 +1577,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         
         {/* Tap to expand overlay */}
         <View style={styles.mapPeekOverlay}>
-          <Ionicons name="expand-outline" size={20} color="#fff" />
+          <Ionicons name="expand-outline" size={16} color="#007AFF" />
           <Text style={styles.mapPeekText}>Tap to explore map</Text>
         </View>
       </TouchableOpacity>
@@ -1554,24 +1679,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              {/* Recent Searches */}
-              {recentSearches.length > 0 && (
-                <View style={styles.contentSection}>
-                  <Text style={styles.sectionTitle}>Recent Searches</Text>
-                  <View style={styles.recentSearchesRow}>
-                    {recentSearches.slice(0, 4).map((term, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        style={styles.recentSearchChip}
-                        onPress={() => handleSearchFromRecent(term)}
-                      >
-                        <Ionicons name="time-outline" size={14} color="#666" />
-                        <Text style={styles.recentSearchText}>{term}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              )}
+              {/* Insights Section - Rotating personalized content */}
+              {renderInsightsSection()}
               
               {/* Trending Near You */}
               <View style={styles.contentSection}>
@@ -1683,22 +1792,22 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       {/* Full Map */}
       {/* @ts-ignore */}
       <MapLibreGL.MapView
-        key={`${mapStyle}-${targetLocation ? targetLocation.join(',') : 'default'}`}
+        key={mapStyle}
         style={styles.fullMap}
         styleURL={MAP_STYLES[mapStyle].type === 'vector' ? (MAP_STYLES[mapStyle] as any).url : undefined}
         logoEnabled={false}
         attributionEnabled={false}
+        rotateEnabled={false}
+        pitchEnabled={false}
       >
         <MapLibreGL.Camera
           ref={cameraRef}
           defaultSettings={{
-            centerCoordinate: targetLocation || userLocation || [-97.7431, 30.2672],
-            zoomLevel: targetLocation ? 16 : 14,
+            centerCoordinate: userLocation || [-97.7431, 30.2672],
+            zoomLevel: 14,
           }}
-          centerCoordinate={targetLocation || userLocation || [-97.7431, 30.2672]}
-          zoomLevel={targetLocation ? 16 : 14}
           animationMode="flyTo"
-          animationDuration={1500}
+          animationDuration={800}
         />
         
         {/* Target location marker (for address searches) */}
@@ -1764,11 +1873,20 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </MapLibreGL.PointAnnotation>
         )}
 
-        {filteredPlaces.map((place) => (
+        {filteredPlaces
+          .filter((place) => {
+            // Validate coordinates are valid numbers
+            const lon = place.longitude || place.lng;
+            const lat = place.latitude || place.lat;
+            return typeof lon === 'number' && typeof lat === 'number' && 
+                   !isNaN(lon) && !isNaN(lat) && 
+                   lon !== 0 && lat !== 0;
+          })
+          .map((place) => (
           <MapLibreGL.PointAnnotation
             key={place.id}
             id={place.id}
-            coordinate={[place.longitude || place.lng || 0, place.latitude || place.lat || 0]}
+            coordinate={[place.longitude || place.lng, place.latitude || place.lat]}
             onSelected={() => handleMarkerPress(place)}
           >
             <View style={styles.markerContainer}>
@@ -1954,18 +2072,23 @@ const styles = StyleSheet.create({
   },
   mapPeekOverlay: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    bottom: 8,
+    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
   },
   mapPeekText: {
-    color: '#fff',
-    fontSize: 14,
+    color: '#333',
+    fontSize: 13,
     fontWeight: '500',
     marginLeft: 6,
   },
@@ -2678,5 +2801,55 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 8,
     overflow: 'hidden',
+  },
+  
+  // Insights Section Styles
+  insightsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  insightCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+  },
+  insightIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  insightTextContainer: {
+    flex: 1,
+  },
+  insightTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 2,
+  },
+  insightSubtitle: {
+    fontSize: 13,
+    color: '#666',
+  },
+  insightDotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  insightDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#D1D1D6',
+    marginHorizontal: 4,
+  },
+  insightDotActive: {
+    backgroundColor: '#007AFF',
+    width: 18,
   },
 });
