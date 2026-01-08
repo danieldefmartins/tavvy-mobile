@@ -80,7 +80,7 @@ export default function ProsDashboardScreen() {
           </Text>
           <TouchableOpacity
             style={styles.registerButton}
-            onPress={() => navigation.navigate('ProsRegistrationScreen')}
+            onPress={() => navigation.navigate('ProsRegistration')}
           >
             <Text style={styles.registerButtonText}>Register Now</Text>
           </TouchableOpacity>
@@ -154,7 +154,7 @@ export default function ProsDashboardScreen() {
         <View style={styles.statsGrid}>
           <TouchableOpacity
             style={styles.statCard}
-            onPress={() => navigation.navigate('ProsLeadsScreen')}
+            onPress={() => navigation.navigate('ProsLeads')}
           >
             <View style={[styles.statIcon, { backgroundColor: `${ProsColors.primary}15` }]}>
               <Ionicons name="document-text" size={24} color={ProsColors.primary} />
@@ -165,7 +165,7 @@ export default function ProsDashboardScreen() {
 
           <TouchableOpacity
             style={styles.statCard}
-            onPress={() => navigation.navigate('ProsMessagesScreen')}
+            onPress={() => navigation.navigate('ProsMessages')}
           >
             <View style={[styles.statIcon, { backgroundColor: `${ProsColors.secondary}15` }]}>
               <Ionicons name="chatbubbles" size={24} color={ProsColors.secondary} />
@@ -230,7 +230,7 @@ export default function ProsDashboardScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Leads</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('ProsLeadsScreen')}>
+            <TouchableOpacity onPress={() => navigation.navigate('ProsLeads')}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>

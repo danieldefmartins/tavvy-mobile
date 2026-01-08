@@ -73,11 +73,11 @@ export default function ProsBrowseScreen() {
   };
 
   const handleProPress = (slug: string) => {
-    navigation.navigate('ProsProfileScreen', { slug });
+    navigation.navigate('ProsProfile', { slug });
   };
 
   const handleMessagePress = (proId: number) => {
-    navigation.navigate('ProsMessagesScreen', { proId });
+    navigation.navigate('ProsMessages', { proId });
   };
 
   const selectedCategoryName = selectedCategory

@@ -151,7 +151,7 @@ export default function ProsRegistrationScreen() {
         [
           {
             text: 'Go to Dashboard',
-            onPress: () => navigation.replace('ProsDashboardScreen'),
+            onPress: () => navigation.replace('ProsDashboard'),
           },
         ]
       );

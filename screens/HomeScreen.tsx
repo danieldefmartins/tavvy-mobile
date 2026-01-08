@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -240,6 +240,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [targetLocation, setTargetLocation] = useState<[number, number] | null>(null);
   const [searchedAddressName, setSearchedAddressName] = useState<string>('');
   const [searchedAddress, setSearchedAddress] = useState<AddressInfo | null>(null);
+  const [hasSearchedInMapMode, setHasSearchedInMapMode] = useState(false);
   
   // Location states
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
@@ -273,31 +274,35 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // Handle camera movement when targetLocation changes
   useEffect(() => {
     if (targetLocation && viewMode === 'map') {
-      console.log('Moving camera to targetLocation:', targetLocation);
+      console.log('📍 Moving camera to targetLocation:', targetLocation);
       
-      // Use multiple attempts with increasing delays to ensure map is ready
-      const attempts = [100, 300, 600, 1000];
-      const timeoutIds: NodeJS.Timeout[] = [];
-      
-      attempts.forEach((delay) => {
-        const timeoutId = setTimeout(() => {
-          if (cameraRef.current) {
-            try {
-              cameraRef.current.setCamera({
-                centerCoordinate: targetLocation,
-                zoomLevel: 16,
-                animationDuration: 500,
-              });
-              console.log('Camera moved successfully at delay:', delay);
-            } catch (e) {
-              console.log('Camera move failed at delay:', delay, e);
-            }
+      // Use a single delayed call to ensure map is fully rendered
+      const moveCamera = () => {
+        if (cameraRef.current) {
+          try {
+            cameraRef.current.setCamera({
+              centerCoordinate: targetLocation,
+              zoomLevel: 17, // Closer zoom for street-level view
+              animationMode: 'flyTo',
+              animationDuration: 1000,
+            });
+            console.log('✅ Camera moved to:', targetLocation);
+          } catch (e) {
+            console.log('❌ Camera move failed:', e);
           }
-        }, delay);
-        timeoutIds.push(timeoutId);
-      });
+        }
+      };
       
-      return () => timeoutIds.forEach(id => clearTimeout(id));
+      // Wait for map to be ready, then move camera
+      const timeoutId = setTimeout(moveCamera, 500);
+      
+      // Also try again after a longer delay in case map wasn't ready
+      const backupTimeoutId = setTimeout(moveCamera, 1500);
+      
+      return () => {
+        clearTimeout(timeoutId);
+        clearTimeout(backupTimeoutId);
+      };
     }
   }, [targetLocation, viewMode]);
 
@@ -306,7 +311,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     loadRecentSearches();
     loadParkingLocation();
     loadSavedLocations();
-    requestLocationPermission();  // This will call fetchPlaces with user location
+    requestLocationPermission();
+    fetchPlaces();
   };
 
   const updateGreeting = () => {
@@ -474,9 +480,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         const coords: [number, number] = [location.coords.longitude, location.coords.latitude];
         setUserLocation(coords);
         
-        // Fetch places near user's location
-        fetchPlaces(coords);
-        
         // Get location name
         const [address] = await Location.reverseGeocodeAsync({
           latitude: location.coords.latitude,
@@ -485,14 +488,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         if (address) {
           setLocationName(`${address.city || ''}, ${address.region || ''}`);
         }
-      } else {
-        // No location permission - fetch with default location
-        fetchPlaces();
       }
     } catch (error) {
       console.log('Error getting location:', error);
-      // Fetch with default location on error
-      fetchPlaces();
     }
   };
 
@@ -500,110 +498,151 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // DATA FETCHING
   // ============================================
 
-  const fetchPlaces = async (location?: [number, number]) => {
+  const fetchPlaces = async () => {
     try {
       setLoading(true);
+      console.log('🔍 Fetching places from Supabase...');
 
-      // Use provided location, userLocation, or default to Austin, TX
-      const centerLng = location?.[0] || userLocation?.[0] || -97.7431;
-      const centerLat = location?.[1] || userLocation?.[1] || 30.2672;
-      
-      // Create a bounding box (~10km radius) for fast indexed query
-      const latDelta = 0.1;  // ~11km
-      const lngDelta = 0.1;  // ~9km at this latitude
-      
-      const minLat = centerLat - latDelta;
-      const maxLat = centerLat + latDelta;
-      const minLng = centerLng - lngDelta;
-      const maxLng = centerLng + lngDelta;
-
-      console.log(`Fetching places near [${centerLng}, ${centerLat}]`);
-
-      // Query places within bounding box - much faster than scanning all 2.5M+ records
       const { data: placesData, error: placesError } = await supabase
         .from('places')
-        .select('id, name, lat, lng, latitude, longitude, address_line1, city, state_region, country, category, primary_category, fsq_category_labels, phone, phone_e164, website, website_url, cover_image_url, description, current_status, instagram_url')
-        .gte('lat', minLat)
-        .lte('lat', maxLat)
-        .gte('lng', minLng)
-        .lte('lng', maxLng)
-        .limit(200);  // Limit results for performance
+        .select('*')
+        .eq('is_active', true)
+        .order('name')
+        .limit(100);
 
       if (placesError) {
-        console.warn('Supabase error:', placesError);
+        console.warn('❌ Supabase error:', placesError);
         setPlaces(MOCK_PLACES);
         setFilteredPlaces(MOCK_PLACES);
         return;
       }
 
-      console.log('Fetched places from Supabase:', placesData?.length || 0);
+      console.log(`✅ Fetched ${placesData?.length || 0} places from Supabase`);
 
       if (placesData && placesData.length > 0) {
-        // Try to fetch signal aggregates (may not exist for Foursquare places)
+        // Fetch signals for places (optional - may not exist yet)
         const placeIds = placesData.map(p => p.id);
         
-        let signalAggregates: any[] = [];
+        let signalTaps: any[] = [];
+        let reviewItems: any[] = [];
+        let photosData: any[] = [];
+        
+        // Try to fetch signal taps (may fail if table doesn't exist)
         try {
-          const { data: signalData } = await supabase
-            .from('place_signal_aggregates')
-            .select('place_id, signal_label, total_taps')
+          const { data: taps, error: tapsError } = await supabase
+            .from('place_review_signal_taps')
+            .select('place_id, signal_id, intensity')
             .in('place_id', placeIds);
-          signalAggregates = signalData || [];
+          
+          if (!tapsError && taps) {
+            signalTaps = taps;
+            console.log(`📊 Fetched ${signalTaps.length} signal taps`);
+          }
         } catch (e) {
-          console.log('No signal aggregates table or data');
+          console.log('⚠️ Signal taps table not available');
         }
 
-        // Process places - normalize coordinates and category
-        const processedPlaces = placesData
-          .filter((place) => {
-            // Use lat/lng as primary (Foursquare), fallback to latitude/longitude
-            const lon = place.lng || place.longitude;
-            const lat = place.lat || place.latitude;
-            return typeof lon === 'number' && typeof lat === 'number' && 
-                   !isNaN(lon) && !isNaN(lat) && 
-                   lon !== 0 && lat !== 0;
-          })
-          .map(place => {
-            // Get signals for this place
-            const placeSignals = signalAggregates
-              .filter(s => s.place_id === place.id)
-              .map(s => ({
-                bucket: s.signal_label || 'Unknown',
-                tap_total: s.total_taps || 0,
-              }));
+        // Try to fetch review items (may fail if table doesn't exist)
+        try {
+          const { data: items, error: itemsError } = await supabase
+            .from('review_items')
+            .select('id, label, signal_type');
+          
+          if (!itemsError && items) {
+            reviewItems = items;
+            console.log(`📋 Fetched ${reviewItems.length} review items`);
+          }
+        } catch (e) {
+          console.log('⚠️ Review items table not available');
+        }
 
-            // Determine category from Foursquare data or existing category
-            let category = place.category || place.primary_category || 'Other';
-            if (place.fsq_category_labels && place.fsq_category_labels.length > 0) {
-              category = place.fsq_category_labels[0];
-            }
+        const itemsMap = new Map(
+          reviewItems.map(item => [item.id, { label: item.label, type: item.signal_type }])
+        );
 
-            return {
-              ...place,
-              // Normalize coordinates - ensure latitude/longitude are set for map
-              latitude: place.lat || place.latitude,
-              longitude: place.lng || place.longitude,
-              // Normalize category
-              category: category,
-              // Normalize phone and website
-              phone: place.phone || place.phone_e164,
-              website: place.website || place.website_url,
-              // Signals and photos
-              signals: placeSignals,
-              photos: place.cover_image_url ? [place.cover_image_url] : [],
-            };
-          });
+        // Try to fetch photos (may fail if table doesn't exist)
+        try {
+          const { data: photos, error: photosError } = await supabase
+            .from('place_photos')
+            .select('place_id, url')
+            .in('place_id', placeIds)
+            .order('is_cover', { ascending: false });
+          
+          if (!photosError && photos) {
+            photosData = photos;
+            console.log(`📸 Fetched ${photosData.length} photos`);
+          }
+        } catch (e) {
+          console.log('⚠️ Place photos table not available');
+        }
 
-        console.log('Processed places with valid coords:', processedPlaces.length);
-        setPlaces(processedPlaces);
-        setFilteredPlaces(processedPlaces);
+        const photosByPlace: Record<string, string[]> = {};
+        photosData.forEach(photo => {
+          if (!photosByPlace[photo.place_id]) {
+            photosByPlace[photo.place_id] = [];
+          }
+          photosByPlace[photo.place_id].push(photo.url);
+        });
+
+        // Process places with signals and photos
+        const placesWithSignals = placesData.map(place => {
+          const placeSignals = signalTaps
+            .filter(tap => tap.place_id === place.id)
+            .reduce((acc: Record<string, number>, tap) => {
+              const item = itemsMap.get(tap.signal_id);
+              if (item) {
+                const key = item.label;
+                acc[key] = (acc[key] || 0) + tap.intensity;
+              }
+              return acc;
+            }, {});
+
+          const signals = Object.entries(placeSignals).map(([bucket, tap_total]) => ({
+            bucket,
+            tap_total,
+          }));
+
+          // Use cover_image_url from places table, or photos from place_photos
+          const placePhotos = photosByPlace[place.id] || [];
+          if (place.cover_image_url && !placePhotos.includes(place.cover_image_url)) {
+            placePhotos.unshift(place.cover_image_url);
+          }
+
+          // Normalize coordinates - prefer lat/lng over latitude/longitude
+          const normalizedLat = place.lat ?? place.latitude;
+          const normalizedLng = place.lng ?? place.longitude;
+
+          return {
+            ...place,
+            latitude: normalizedLat,
+            longitude: normalizedLng,
+            signals,
+            photos: placePhotos,
+            // Ensure category is set
+            category: place.primary_category || place.category || 'Other',
+            // Default status if not set
+            current_status: place.current_status || 'Open',
+          };
+        });
+
+        // Filter out places without valid coordinates
+        const validPlaces = placesWithSignals.filter(place => 
+          typeof place.latitude === 'number' && 
+          typeof place.longitude === 'number' &&
+          !isNaN(place.latitude) && 
+          !isNaN(place.longitude)
+        );
+
+        console.log(`✅ ${validPlaces.length} places with valid coordinates`);
+        setPlaces(validPlaces);
+        setFilteredPlaces(validPlaces);
       } else {
-        console.log('No places found in database');
+        console.log('⚠️ No places found, using mock data');
         setPlaces(MOCK_PLACES);
         setFilteredPlaces(MOCK_PLACES);
       }
     } catch (err) {
-      console.error('Error fetching places:', err);
+      console.error('❌ Error fetching places:', err);
       setPlaces(MOCK_PLACES);
       setFilteredPlaces(MOCK_PLACES);
     } finally {
@@ -859,7 +898,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         setTargetLocation(addressCoords);
         setSearchedAddress(addressInfo);
         
-        // Switch to map mode
+        // Switch to map mode and mark as searched
+        setHasSearchedInMapMode(true);
         setViewMode('map');
         
         console.log('States set - searchQuery:', addressName, 'targetLocation:', addressCoords);
@@ -921,6 +961,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       Keyboard.dismiss();
       setIsSearchFocused(false);
       saveRecentSearch(searchTerm.trim());
+      setHasSearchedInMapMode(true);
       setViewMode('map');
     }
   };
@@ -993,20 +1034,23 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // VIEW MODE TRANSITIONS
   // ============================================
 
-  const switchToMapMode = () => {
+  const switchToMapMode = useCallback(() => {
     Keyboard.dismiss();
     setIsSearchFocused(false);
+    // Instant switch - map is already pre-rendered
     setViewMode('map');
-  };
+  }, []);
 
-  const switchToContentMode = () => {
+  const switchToContentMode = useCallback(() => {
+    // Instant switch - content view is already pre-rendered
     setViewMode('content');
     setSearchQuery('');
     setIsSearchFocused(false);
     setTargetLocation(null);
     setSearchedAddressName('');
     setSearchedAddress(null);
-  };
+    setHasSearchedInMapMode(false); // Reset search state when leaving map mode
+  }, []);
 
   // ============================================
   // PLACE CARD HANDLERS
@@ -1497,8 +1541,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // RENDER: PHOTO CAROUSEL
   // ============================================
 
-  const PhotoCarousel = ({ photos, placeName, placeAddress }: { photos?: string[], placeName: string, placeAddress: string }) => {
+  const PhotoCarousel = useCallback(({ photos, placeName, placeAddress }: { photos?: string[], placeName: string, placeAddress: string }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [imageLoading, setImageLoading] = useState(true);
     const displayPhotos = photos && photos.length > 0 ? photos : [null];
 
     return (
@@ -1516,10 +1561,24 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           {displayPhotos.slice(0, 3).map((photo, index) => (
             <View key={index} style={styles.carouselImage}>
               {photo ? (
-                <Image source={{ uri: photo }} style={styles.photo} resizeMode="cover" />
+                <>
+                  {imageLoading && (
+                    <View style={[styles.placeholderPhoto, { position: 'absolute' }]}>
+                      <ActivityIndicator size="small" color="#ccc" />
+                    </View>
+                  )}
+                  <Image 
+                    source={{ uri: photo }} 
+                    style={styles.photo} 
+                    resizeMode="cover"
+                    onLoadStart={() => setImageLoading(true)}
+                    onLoadEnd={() => setImageLoading(false)}
+                  />
+                </>
               ) : (
                 <View style={styles.placeholderPhoto}>
-                  <Ionicons name="image-outline" size={48} color="#ccc" />
+                  <Ionicons name="storefront-outline" size={48} color="#ccc" />
+                  <Text style={styles.placeholderText}>No photo yet</Text>
                 </View>
               )}
             </View>
@@ -1549,7 +1608,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         )}
       </View>
     );
-  };
+  }, []);
 
   // ============================================
   // RENDER: PLACE CARD
@@ -1606,13 +1665,21 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         
         {/* Meta info */}
         <View style={styles.metaRow}>
-          <Text style={styles.metaText}>{place.category}</Text>
+          <Text style={styles.metaText}>{place.category || place.primary_category || 'Place'}</Text>
           <Text style={styles.metaDot}>•</Text>
           <Text style={styles.metaText}>$$</Text>
-          <Text style={styles.metaDot}>•</Text>
-          <Text style={[styles.metaText, { color: '#34C759' }]}>
-            {place.current_status || 'Open'}
-          </Text>
+          {place.current_status && place.current_status !== 'unknown' && (
+            <>
+              <Text style={styles.metaDot}>•</Text>
+              <Text style={[
+                styles.metaText, 
+                { color: place.current_status?.toLowerCase() === 'open' ? '#34C759' : 
+                         place.current_status?.toLowerCase() === 'closed' ? '#FF3B30' : '#8E8E93' }
+              ]}>
+                {place.current_status}
+              </Text>
+            </>
+          )}
         </View>
         
         {/* Action buttons */}
@@ -1642,7 +1709,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // RENDER: CONTENT MODE (Default Home Screen)
   // ============================================
 
-  const renderContentMode = () => (
+  const renderContentMode = useCallback(() => (
     <View style={styles.contentModeContainer}>
       {/* Map Peek at Top */}
       <TouchableOpacity 
@@ -1898,18 +1965,17 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         )}
       </View>
     </View>
-  );
+  ), [mapStyle, userLocation, greeting, locationName, searchQuery, isSearchFocused, searchSuggestions, isSearchingAddress, selectedCategory, filteredPlaces]);
 
   // ============================================
   // RENDER: MAP MODE (Search Results)
   // ============================================
 
-  const renderMapMode = () => (
+  const renderMapMode = useCallback(() => (
     <View style={styles.mapModeContainer}>
       {/* Full Map */}
       {/* @ts-ignore */}
       <MapLibreGL.MapView
-        key={mapStyle}
         style={styles.fullMap}
         styleURL={MAP_STYLES[mapStyle].type === 'vector' ? (MAP_STYLES[mapStyle] as any).url : undefined}
         logoEnabled={false}
@@ -1923,12 +1989,12 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           ref={cameraRef}
           defaultSettings={{
             centerCoordinate: targetLocation || userLocation || [-97.7431, 30.2672],
-            zoomLevel: targetLocation ? 16 : 14,
+            zoomLevel: targetLocation ? 17 : 14,
           }}
+          centerCoordinate={targetLocation || userLocation || [-97.7431, 30.2672]}
+          zoomLevel={targetLocation ? 17 : 14}
           animationMode="flyTo"
-          animationDuration={800}
-          minZoomLevel={3}
-          maxZoomLevel={20}
+          animationDuration={1000}
         />
         
         {/* Target location marker (for address searches) */}
@@ -2054,26 +2120,75 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             placeholder="Search places or locations"
             placeholderTextColor="#999"
             value={searchQuery}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => {
+              // Delay hiding suggestions to allow tap to register
+              setTimeout(() => setIsSearchFocused(false), 200);
+            }}
             onChangeText={(text) => {
               setSearchQuery(text);
+              setIsSearchFocused(true);
               // Clear target location if user starts typing something new
               if (targetLocation && text !== searchedAddressName) {
                 setTargetLocation(null);
                 setSearchedAddressName('');
               }
             }}
+            onSubmitEditing={() => {
+              if (searchQuery.trim().length > 0) {
+                setHasSearchedInMapMode(true);
+                setIsSearchFocused(false);
+                Keyboard.dismiss();
+              }
+            }}
+            returnKeyType="search"
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => {
               setSearchQuery('');
               setTargetLocation(null);
               setSearchedAddressName('');
+              setHasSearchedInMapMode(false);
             }}>
               <Ionicons name="close-circle" size={20} color="#999" />
             </TouchableOpacity>
           )}
         </View>
       </View>
+      
+      {/* Search Suggestions Dropdown in Map Mode */}
+      {isSearchFocused && searchSuggestions.length > 0 && (
+        <View style={styles.mapSearchSuggestions}>
+          <ScrollView 
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {searchSuggestions.map((suggestion, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.mapSuggestionItem}
+                onPress={() => handleSuggestionSelect(suggestion)}
+              >
+                <Ionicons 
+                  name={suggestion.type === 'address' ? 'location' : 'business'} 
+                  size={20} 
+                  color={suggestion.type === 'address' ? '#AF52DE' : '#0A84FF'} 
+                />
+                <View style={styles.mapSuggestionTextContainer}>
+                  <Text style={styles.mapSuggestionTitle} numberOfLines={1}>
+                    {suggestion.title}
+                  </Text>
+                  {suggestion.subtitle && (
+                    <Text style={styles.mapSuggestionSubtitle} numberOfLines={1}>
+                      {suggestion.subtitle}
+                    </Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
       
       {/* Category Filters */}
       <View style={styles.mapCategoryOverlay}>
@@ -2115,37 +2230,38 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         </ScrollView>
       </View>
 
-      {/* Bottom Sheet with Place Cards or Address Card */}
-      <BottomSheet
-        ref={bottomSheetRef}
-        index={1}
-        snapPoints={searchedAddress ? [40, '40%', '65%'] : [40, '35%', '65%']}
-        backgroundStyle={styles.bottomSheetBackground}
-        handleIndicatorStyle={styles.bottomSheetHandle}
-        enablePanDownToClose={false}
-        enableContentPanningGesture={false}
-      >
-        {searchedAddress ? (
-          // Show Address Info Card when viewing a searched address
-          <ScrollView 
-            style={styles.addressCardScrollView}
-            showsVerticalScrollIndicator={false}
-          >
-            {renderAddressInfoCard()}
-          </ScrollView>
-        ) : (
-          // Show place cards for normal browsing
-          <BottomSheetFlatList
-            data={filteredPlaces}
-            keyExtractor={(item) => item.id}
-            renderItem={renderPlaceCard}
-            contentContainerStyle={styles.bottomSheetContent}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-      </BottomSheet>
+      {/* Bottom Sheet with Place Cards or Address Card - only show when user has searched */}
+      {(hasSearchedInMapMode || searchedAddress || selectedPlace) && (
+        <BottomSheet
+          ref={bottomSheetRef}
+          index={1}
+          snapPoints={searchedAddress ? [40, '40%', '65%'] : [40, '35%', '65%']}
+          backgroundStyle={styles.bottomSheetBackground}
+          handleIndicatorStyle={styles.bottomSheetHandle}
+          enablePanDownToClose={false}
+        >
+          {searchedAddress ? (
+            // Show Address Info Card when viewing a searched address
+            <ScrollView 
+              style={styles.addressCardScrollView}
+              showsVerticalScrollIndicator={false}
+            >
+              {renderAddressInfoCard()}
+            </ScrollView>
+          ) : (
+            // Show place cards for search results
+            <BottomSheetFlatList
+              data={filteredPlaces}
+              keyExtractor={(item) => item.id}
+              renderItem={renderPlaceCard}
+              contentContainerStyle={styles.bottomSheetContent}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
+        </BottomSheet>
+      )}
     </View>
-  );
+  ), [mapStyle, userLocation, targetLocation, parkingLocation, filteredPlaces, selectedPlace, searchedAddress, searchQuery, isSearchFocused, searchSuggestions, isSearchingAddress, hasSearchedInMapMode]);
 
   // ============================================
   // MAIN RENDER
@@ -2154,13 +2270,40 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0A84FF" />
-        <Text style={styles.loadingText}>Loading places...</Text>
+        <View style={styles.loadingContent}>
+          <ActivityIndicator size="large" color="#0A84FF" />
+          <Text style={styles.loadingText}>Discovering places nearby...</Text>
+          <Text style={styles.loadingSubtext}>This won't take long</Text>
+        </View>
       </View>
     );
   }
 
-  return viewMode === 'content' ? renderContentMode() : renderMapMode();
+  // Render both views but only show the active one
+  // This keeps the map pre-loaded for instant transitions
+  return (
+    <View style={{ flex: 1 }}>
+      {/* Content Mode - always mounted, visibility controlled */}
+      <View 
+        style={[
+          { flex: 1, position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+          viewMode === 'content' ? { zIndex: 1 } : { zIndex: 0, opacity: 0, pointerEvents: 'none' }
+        ]}
+      >
+        {renderContentMode()}
+      </View>
+      
+      {/* Map Mode - always mounted, visibility controlled */}
+      <View 
+        style={[
+          { flex: 1, position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+          viewMode === 'map' ? { zIndex: 1 } : { zIndex: 0, opacity: 0, pointerEvents: 'none' }
+        ]}
+      >
+        {renderMapMode()}
+      </View>
+    </View>
+  );
 }
 
 // ============================================
@@ -2175,10 +2318,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
   },
+  loadingContent: {
+    alignItems: 'center',
+    padding: 24,
+  },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#666',
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  loadingSubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#8E8E93',
   },
   
   // Content Mode
@@ -2505,6 +2658,7 @@ const styles = StyleSheet.create({
   // Map Mode
   mapModeContainer: {
     flex: 1,
+    backgroundColor: '#E8E8E8', // Prevent white flash during map load
   },
   fullMap: {
     flex: 1,
@@ -2555,11 +2709,48 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000',
   },
+  mapSearchSuggestions: {
+    position: 'absolute',
+    top: 115,
+    left: 72,
+    right: 16,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    maxHeight: 300,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 100,
+  },
+  mapSuggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+  },
+  mapSuggestionTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  mapSuggestionTitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1C1C1E',
+  },
+  mapSuggestionSubtitle: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
   mapCategoryOverlay: {
     position: 'absolute',
-    top: 120,
+    top: 118,
     left: 0,
     right: 0,
+    zIndex: 50,
   },
   mapCategoryContent: {
     paddingHorizontal: 16,
@@ -2679,6 +2870,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F2F7',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  placeholderText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#8E8E93',
   },
   photoGradientOverlay: {
     position: 'absolute',

@@ -51,7 +51,7 @@ export default function ProsLeadsScreen() {
     : leads.filter(lead => lead.status === activeFilter);
 
   const handleLeadPress = (lead: ProLead) => {
-    navigation.navigate('ProsLeadDetailScreen', { leadId: lead.id });
+    navigation.navigate('ProsLeadDetail', { leadId: lead.id });
   };
 
   const handleStatusChange = async (leadId: number, newStatus: string) => {
