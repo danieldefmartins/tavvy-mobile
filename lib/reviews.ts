@@ -550,3 +550,144 @@ export function clearSignalCache(): void {
   signalCache = new Map();
   cacheLoaded = false;
 }
+
+// ============================================
+// THERMOMETER BADGE - Recent Activity (Last 3 Months)
+// ============================================
+
+// Helper: Check if a date is within the specified number of days
+function withinDays(dateString: string, days: number): boolean {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays <= days;
+}
+
+// Fetch thermometer data for a place (positive/negative taps in last 3 months)
+export async function fetchPlaceThermometer(placeId: string, months: number = 3): Promise<{
+  positiveTaps: number;
+  negativeTaps: number;
+}> {
+  try {
+    // Ensure signal cache is loaded
+    await loadSignalCache();
+
+    const daysInPeriod = months * 30; // Approximate days in the period
+
+    // Query the place_review_signal_taps table and JOIN with place_reviews to get created_at
+    const { data: taps, error } = await supabase
+      .from('place_review_signal_taps')
+      .select(`
+        signal_id,
+        intensity,
+        place_reviews (
+          created_at
+        )
+      `)
+      .eq('place_id', placeId);
+
+    if (error) {
+      console.error('Error fetching thermometer data:', error);
+      return { positiveTaps: 0, negativeTaps: 0 };
+    }
+
+    let positiveTaps = 0;
+    let negativeTaps = 0;
+
+    (taps || []).forEach((tap: any) => {
+      const createdAt = tap.place_reviews?.created_at;
+      
+      // Only count taps within the specified period
+      if (!createdAt || !withinDays(createdAt, daysInPeriod)) {
+        return;
+      }
+
+      const signal = getSignalById(tap.signal_id);
+      const category = signal?.signal_type;
+
+      if (category === 'best_for' || category === 'vibe') {
+        // Positive taps (intensity-weighted)
+        positiveTaps += tap.intensity;
+      } else if (category === 'heads_up') {
+        // Negative taps (intensity-weighted)
+        negativeTaps += tap.intensity;
+      }
+    });
+
+    return { positiveTaps, negativeTaps };
+
+  } catch (error) {
+    console.error('Error fetching thermometer data:', error);
+    return { positiveTaps: 0, negativeTaps: 0 };
+  }
+}
+
+// Batch fetch thermometer data for multiple places (more efficient)
+export async function fetchPlacesThermometer(placeIds: string[], months: number = 3): Promise<Map<string, { positiveTaps: number; negativeTaps: number }>> {
+  const result = new Map<string, { positiveTaps: number; negativeTaps: number }>();
+  
+  if (placeIds.length === 0) {
+    return result;
+  }
+
+  try {
+    // Ensure signal cache is loaded
+    await loadSignalCache();
+
+    const daysInPeriod = months * 30;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysInPeriod);
+
+    // Query all taps for the given places
+    const { data: taps, error } = await supabase
+      .from('place_review_signal_taps')
+      .select(`
+        place_id,
+        signal_id,
+        intensity,
+        place_reviews (
+          created_at
+        )
+      `)
+      .in('place_id', placeIds);
+
+    if (error) {
+      console.error('Error fetching batch thermometer data:', error);
+      return result;
+    }
+
+    // Initialize all places with zero counts
+    placeIds.forEach(id => {
+      result.set(id, { positiveTaps: 0, negativeTaps: 0 });
+    });
+
+    // Aggregate taps by place
+    (taps || []).forEach((tap: any) => {
+      const createdAt = tap.place_reviews?.created_at;
+      
+      // Only count taps within the specified period
+      if (!createdAt || !withinDays(createdAt, daysInPeriod)) {
+        return;
+      }
+
+      const signal = getSignalById(tap.signal_id);
+      const category = signal?.signal_type;
+      const placeData = result.get(tap.place_id);
+
+      if (placeData) {
+        if (category === 'best_for' || category === 'vibe') {
+          placeData.positiveTaps += tap.intensity;
+        } else if (category === 'heads_up') {
+          placeData.negativeTaps += tap.intensity;
+        }
+      }
+    });
+
+    return result;
+
+  } catch (error) {
+    console.error('Error fetching batch thermometer data:', error);
+    return result;
+  }
+}

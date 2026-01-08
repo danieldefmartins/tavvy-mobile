@@ -25,7 +25,8 @@ import {
   QuickInfoPill,
 } from '../lib/categories';
 import { supabase } from '../lib/supabaseClient';
-import { fetchPlaceSignals, getPlaceReviewCount, SignalAggregate } from '../lib/reviews';
+import { fetchPlaceSignals, getPlaceReviewCount, SignalAggregate, fetchPlaceThermometer } from '../lib/reviews';
+import { getPlaceholderImageForCategory, getFallbackColorForCategory } from '../lib/categoryPlaceholders';
 import { Colors } from '../constants/Colors';
 import AddYourTapCardEnhanced from '../components/AddYourTapCardEnhanced';
 import {
@@ -235,6 +236,9 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   // NEW: Photo carousel state
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const carouselRef = useRef<FlatList>(null);
+  
+  // Thermometer badge data (last 3 months activity)
+  const [thermometer, setThermometer] = useState<{ positiveTaps: number; negativeTaps: number }>({ positiveTaps: 0, negativeTaps: 0 });
 
   // Determine business type from place data
   const businessType = place ? mapGoogleCategoryToBusinessType(place.primaryCategory || 'default') : 'default';
@@ -473,6 +477,14 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
         const signalData = await fetchPlaceSignals(placeId);
         setSignals(signalData);
 
+        // Fetch thermometer data (last 3 months activity)
+        try {
+          const thermometerData = await fetchPlaceThermometer(placeId, 3);
+          setThermometer(thermometerData);
+        } catch (e) {
+          console.log('Could not fetch thermometer data:', e);
+        }
+
         setLoading(false);
       } catch (err: any) {
         console.error('Error fetching place:', err);
@@ -674,7 +686,43 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
     signalsList: SignalAggregate[],
     colors: { primary: string; light: string; text: string }
   ) => {
-    if (!signalsList || signalsList.length === 0) return null;
+    // Show "Be the first to tap" if no signals
+    if (!signalsList || signalsList.length === 0) {
+      return (
+        <View style={{
+          backgroundColor: '#FFFFFF',
+          borderRadius: 16,
+          marginBottom: 16,
+          padding: 16,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          elevation: 2,
+        }}>
+          <Text style={{ 
+            fontSize: 18, 
+            fontWeight: '700', 
+            color: '#1F2937',
+            marginBottom: 12,
+          }}>
+            {categoryTitle}
+          </Text>
+          <View style={{
+            backgroundColor: colors.primary,
+            borderRadius: 12,
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            alignItems: 'center',
+            opacity: 0.5,
+          }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
+              Be the first to tap
+            </Text>
+          </View>
+        </View>
+      );
+    }
 
     const isExpanded = expandedSection === type;
     const hasMore = signalsList.length > 1;
@@ -817,14 +865,31 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
     );
   };
 
-  // NEW: Render photo carousel item
-  const renderCarouselItem = ({ item }: { item: PlacePhoto }) => (
-    <Image
-      source={{ uri: item.url }}
-      style={styles.carouselImage}
-      resizeMode="cover"
-    />
-  );
+  // NEW: Render photo carousel item with category placeholder support
+  const renderCarouselItem = ({ item }: { item: PlacePhoto }) => {
+    const isPlaceholder = item.id === 'placeholder';
+    const placeholderUrl = getPlaceholderImageForCategory(place?.category || '');
+    const fallbackColor = getFallbackColorForCategory(place?.category || '');
+    
+    return (
+      <View style={styles.carouselImage}>
+        <Image
+          source={{ uri: isPlaceholder ? placeholderUrl : item.url }}
+          style={styles.carouselImageInner}
+          resizeMode="cover"
+          onError={() => {
+            // If image fails to load, it will show fallback
+          }}
+        />
+        {isPlaceholder && (
+          <View style={[styles.placeholderOverlay, { backgroundColor: fallbackColor + '40' }]}>
+            <Ionicons name="storefront-outline" size={48} color="rgba(255,255,255,0.8)" />
+            <Text style={styles.placeholderCategoryText}>{place?.category || 'Business'}</Text>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   // Loading state
   if (loading) {
@@ -905,6 +970,24 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
               <Ionicons name="share-outline" size={22} color="#000" />
             </TouchableOpacity>
           </View>
+          
+          {/* Thermometer Badge - Top Right */}
+          {(thermometer.positiveTaps > 0 || thermometer.negativeTaps > 0) && (
+            <View style={styles.thermometerBadge}>
+              {thermometer.positiveTaps > 0 && (
+                <View style={styles.thermometerItem}>
+                  <View style={[styles.thermometerDot, { backgroundColor: '#0A84FF' }]} />
+                  <Text style={styles.thermometerText}>{thermometer.positiveTaps}</Text>
+                </View>
+              )}
+              {thermometer.negativeTaps > 0 && (
+                <View style={styles.thermometerItem}>
+                  <View style={[styles.thermometerDot, { backgroundColor: '#FF9500' }]} />
+                  <Text style={styles.thermometerText}>{thermometer.negativeTaps}</Text>
+                </View>
+              )}
+            </View>
+          )}
           
           {/* Photo Count Badge */}
           {photos.length > 1 && (
@@ -1500,6 +1583,26 @@ const styles = StyleSheet.create({
     width: width,
     height: 320,
   },
+  carouselImageInner: {
+    width: '100%',
+    height: '100%',
+  },
+  placeholderOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderCategoryText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 8,
+    textTransform: 'capitalize',
+  },
   heroGradient: {
     position: 'absolute',
     bottom: 0,
@@ -1543,6 +1646,33 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
+  },
+  // Thermometer Badge Styles
+  thermometerBadge: {
+    position: 'absolute',
+    top: 60,
+    right: 16,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 10,
+  },
+  thermometerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  thermometerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  thermometerText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   photoCountBadge: {
     position: 'absolute',

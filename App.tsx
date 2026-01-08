@@ -5,7 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
-import ProsLeadDetailScreen from './screens/ProsLeadDetailScreen';
+
 import { AuthProvider } from './contexts/AuthContext';
 import { Colors } from './constants/Colors';
 
