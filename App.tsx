@@ -43,7 +43,7 @@ import SavedScreen from './screens/SavedScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
 
-// ========== PROS SCREENS (NEW) ==========
+// ========== PROS SCREENS ==========
 import ProsHomeScreen from './screens/ProsHomeScreen';
 import ProsBrowseScreen from './screens/ProsBrowseScreen';
 import ProsProfileScreen from './screens/ProsProfileScreen';
@@ -52,6 +52,15 @@ import ProsRegistrationScreen from './screens/ProsRegistrationScreen';
 import ProsMessagesScreen from './screens/ProsMessagesScreen';
 import ProsRequestQuoteScreen from './screens/ProsRequestQuoteScreen';
 import ProsLeadsScreen from './screens/ProsLeadsScreen';
+
+// ========== APPS SCREENS (NEW) ==========
+import AppsHomeScreen from './screens/AppsHomeScreen';
+import QuickFindsScreen from './screens/QuickFindsScreen';
+import QuickFindsResultsScreen from './screens/QuickFindsResultsScreen';
+import ExperiencePathsScreen from './screens/ExperiencePathsScreen';
+import ExperiencePathDetailScreen from './screens/ExperiencePathDetailScreen';
+import HappeningNowScreen from './screens/HappeningNowScreen';
+import HappeningNowDetailScreen from './screens/HappeningNowDetailScreen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -72,7 +81,8 @@ const HomeStackNav = createNativeStackNavigator();
 const AtlasStackNav = createNativeStackNavigator();
 const MenuStackNav = createNativeStackNavigator();
 const UniverseStackNav = createNativeStackNavigator();
-const ProsStackNav = createNativeStackNavigator(); // NEW: Pros Stack
+const ProsStackNav = createNativeStackNavigator();
+const AppsStackNav = createNativeStackNavigator(); // NEW: Apps Stack
 
 // --------------------
 // Home Stack
@@ -115,7 +125,7 @@ function AtlasStack() {
 }
 
 // --------------------
-// Menu Stack
+// Menu Stack (now contains My Account / Login)
 // --------------------
 function MenuStack() {
   return (
@@ -164,7 +174,7 @@ function UniverseStack() {
 }
 
 // --------------------
-// Pros Stack (NEW)
+// Pros Stack
 // --------------------
 function ProsStack() {
   return (
@@ -182,6 +192,29 @@ function ProsStack() {
       />
       <ProsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
     </ProsStackNav.Navigator>
+  );
+}
+
+// --------------------
+// Apps Stack (NEW)
+// --------------------
+function AppsStack() {
+  return (
+    <AppsStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <AppsStackNav.Screen name="AppsHome" component={AppsHomeScreen} />
+      
+      {/* Quick Finds */}
+      <AppsStackNav.Screen name="QuickFinds" component={QuickFindsScreen} />
+      <AppsStackNav.Screen name="QuickFindsResults" component={QuickFindsResultsScreen} />
+      
+      {/* Experience Paths */}
+      <AppsStackNav.Screen name="ExperiencePaths" component={ExperiencePathsScreen} />
+      <AppsStackNav.Screen name="ExperiencePathDetail" component={ExperiencePathDetailScreen} />
+      
+      {/* Happening Now */}
+      <AppsStackNav.Screen name="HappeningNow" component={HappeningNowScreen} />
+      <AppsStackNav.Screen name="HappeningNowDetail" component={HappeningNowDetailScreen} />
+    </AppsStackNav.Navigator>
   );
 }
 
@@ -211,8 +244,8 @@ function TabNavigator() {
             case 'Atlas':
               iconName = focused ? 'map' : 'map-outline';
               break;
-            case 'Menu':
-              iconName = focused ? 'menu' : 'menu-outline';
+            case 'Apps':
+              iconName = focused ? 'apps' : 'apps-outline';
               break;
           }
 
@@ -222,8 +255,6 @@ function TabNavigator() {
     >
       <Tab.Screen name="Home" component={HomeStack} options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen name="Explore" component={UniverseStack} options={{ tabBarLabel: 'Universes' }} />
-
-      {/* CHANGED: Replaced Add tab with Pros tab */}
       <Tab.Screen
         name="Pros"
         component={ProsStack}
@@ -231,9 +262,9 @@ function TabNavigator() {
           tabBarLabel: 'Pros',
         }}
       />
-
       <Tab.Screen name="Atlas" component={AtlasStack} options={{ tabBarLabel: 'Atlas' }} />
-      <Tab.Screen name="Menu" component={MenuStack} options={{ tabBarLabel: 'Menu' }} />
+      {/* CHANGED: Replaced Menu tab with Apps tab */}
+      <Tab.Screen name="Apps" component={AppsStack} options={{ tabBarLabel: 'Apps' }} />
     </Tab.Navigator>
   );
 }
