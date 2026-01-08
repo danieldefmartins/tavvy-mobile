@@ -16,6 +16,7 @@ import {
   TouchableWithoutFeedback,
   Platform,
   Alert,
+  Modal,
 } from 'react-native';
 // Clipboard functionality - will show address in alert for now
 import { LinearGradient } from 'expo-linear-gradient';
@@ -268,6 +269,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const cameraRef = useRef<MapLibreGL.Camera>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const searchInputRef = useRef<TextInput>(null);
+  
+  // Thermometer info modal
+  const [showThermometerInfo, setShowThermometerInfo] = useState(false);
+  const [selectedThermometer, setSelectedThermometer] = useState<{ positiveTaps: number; negativeTaps: number; placeName: string } | null>(null);
 
   // ============================================
   // INITIALIZATION
@@ -1578,23 +1583,38 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           ))}
         </ScrollView>
         
-        {/* Thermometer Badge - Top Right Corner */}
-        {thermometer && totalTaps > 0 && (
-          <View style={styles.thermometerBadge}>
-            {thermometer.positiveTaps > 0 && (
-              <View style={styles.thermometerItem}>
-                <View style={[styles.thermometerDot, { backgroundColor: '#0A84FF' }]} />
-                <Text style={styles.thermometerText}>{thermometer.positiveTaps}</Text>
-              </View>
-            )}
-            {thermometer.negativeTaps > 0 && (
-              <View style={styles.thermometerItem}>
-                <View style={[styles.thermometerDot, { backgroundColor: '#FF9500' }]} />
-                <Text style={styles.thermometerText}>{thermometer.negativeTaps}</Text>
-              </View>
-            )}
+        {/* Thermometer Badge - Top Right Corner - Always Show - Tappable */}
+        <TouchableOpacity 
+          style={styles.thermometerBadge}
+          onPress={() => {
+            setSelectedThermometer({
+              positiveTaps: thermometer?.positiveTaps || 0,
+              negativeTaps: thermometer?.negativeTaps || 0,
+              placeName: placeName,
+            });
+            setShowThermometerInfo(true);
+          }}
+          activeOpacity={0.8}
+        >
+          {/* Large thermometer icons side by side */}
+          <View style={styles.thermometerIconContainer}>
+            <View style={styles.thermometerIconWrapper}>
+              <Image 
+                source={require('../assets/icons/thermometer_blue.png')} 
+                style={styles.thermometerIcon} 
+              />
+              <Text style={styles.thermometerCount}>×{thermometer?.positiveTaps || 0}</Text>
+            </View>
+            <View style={styles.thermometerIconWrapper}>
+              <Image 
+                source={require('../assets/icons/thermometer_orange.png')} 
+                style={styles.thermometerIcon} 
+              />
+              <Text style={styles.thermometerCount}>×{thermometer?.negativeTaps || 0}</Text>
+            </View>
           </View>
-        )}
+          <Text style={styles.thermometerLabel}>last 90 days</Text>
+        </TouchableOpacity>
         
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.7)']}
@@ -2252,7 +2272,97 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     );
   }
 
-  return viewMode === 'content' ? renderContentMode() : renderMapMode();
+  // Thermometer Info Modal
+  const renderThermometerModal = () => (
+    <Modal
+      visible={showThermometerInfo}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => setShowThermometerInfo(false)}
+    >
+      <TouchableOpacity 
+        style={styles.thermometerModalOverlay}
+        activeOpacity={1}
+        onPress={() => setShowThermometerInfo(false)}
+      >
+        <View style={styles.thermometerModalContent}>
+          {/* Header with icons */}
+          <View style={styles.thermometerModalHeader}>
+            <View style={styles.thermometerModalIconRow}>
+              <Image 
+                source={require('../assets/icons/thermometer_blue.png')} 
+                style={styles.thermometerModalIcon} 
+              />
+              <Image 
+                source={require('../assets/icons/thermometer_orange.png')} 
+                style={styles.thermometerModalIcon} 
+              />
+            </View>
+            <Text style={styles.thermometerModalTitle}>Activity Thermometer</Text>
+          </View>
+          
+          {/* Place name */}
+          {selectedThermometer && (
+            <Text style={styles.thermometerModalPlaceName}>{selectedThermometer.placeName}</Text>
+          )}
+          
+          {/* Explanation */}
+          <Text style={styles.thermometerModalDescription}>
+            This shows how many taps this place received in the last 90 days. A place may have thousands of reviews, but this tells you how active it's been lately.
+          </Text>
+          
+          {/* Stats */}
+          {selectedThermometer && (
+            <View style={styles.thermometerModalStats}>
+              <View style={styles.thermometerModalStatItem}>
+                <Image 
+                  source={require('../assets/icons/thermometer_blue.png')} 
+                  style={styles.thermometerModalStatIcon} 
+                />
+                <View>
+                  <Text style={styles.thermometerModalStatNumber}>×{selectedThermometer.positiveTaps}</Text>
+                  <Text style={styles.thermometerModalStatLabel}>Positive Taps</Text>
+                  <Text style={styles.thermometerModalStatHint}>Best For + Vibe signals</Text>
+                </View>
+              </View>
+              <View style={styles.thermometerModalStatItem}>
+                <Image 
+                  source={require('../assets/icons/thermometer_orange.png')} 
+                  style={styles.thermometerModalStatIcon} 
+                />
+                <View>
+                  <Text style={styles.thermometerModalStatNumber}>×{selectedThermometer.negativeTaps}</Text>
+                  <Text style={styles.thermometerModalStatLabel}>Heads Up Taps</Text>
+                  <Text style={styles.thermometerModalStatHint}>Things to watch out for</Text>
+                </View>
+              </View>
+            </View>
+          )}
+          
+          {/* Footer note */}
+          <Text style={styles.thermometerModalFooter}>
+            High numbers = lots of recent activity{"\n"}
+            Low numbers = hasn't been reviewed lately
+          </Text>
+          
+          {/* Close button */}
+          <TouchableOpacity 
+            style={styles.thermometerModalCloseButton}
+            onPress={() => setShowThermometerInfo(false)}
+          >
+            <Text style={styles.thermometerModalCloseText}>Got it</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
+  return (
+    <>
+      {viewMode === 'content' ? renderContentMode() : renderMapMode()}
+      {renderThermometerModal()}
+    </>
+  );
 }
 
 // ============================================
@@ -2815,27 +2925,34 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     right: 12,
-    flexDirection: 'row',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    gap: 10,
-  },
-  thermometerItem: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     gap: 4,
   },
-  thermometerDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  thermometerIconContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: 4,
   },
-  thermometerText: {
+  thermometerIconWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thermometerIcon: {
+    width: 28,
+    height: 28,
+    resizeMode: 'contain',
+  },
+  thermometerCount: {
     color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 2,
   },
   signalsContainer: {
     padding: 12,
@@ -3131,5 +3248,116 @@ const styles = StyleSheet.create({
   insightDotActive: {
     backgroundColor: '#007AFF',
     width: 18,
+  },
+  
+  // Thermometer Label Style
+  thermometerLabel: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 4,
+    letterSpacing: 0.3,
+  },
+  
+  // Thermometer Modal Styles
+  thermometerModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  thermometerModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    alignItems: 'center',
+  },
+  thermometerModalHeader: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  thermometerModalIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  thermometerModalIcon: {
+    width: 36,
+    height: 36,
+    resizeMode: 'contain',
+  },
+  thermometerModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+  },
+  thermometerModalPlaceName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  thermometerModalDescription: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  thermometerModalStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  thermometerModalStatItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  thermometerModalStatIcon: {
+    width: 28,
+    height: 28,
+    resizeMode: 'contain',
+    marginTop: 2,
+  },
+  thermometerModalStatNumber: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000',
+  },
+  thermometerModalStatLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
+  },
+  thermometerModalStatHint: {
+    fontSize: 11,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
+  thermometerModalFooter: {
+    fontSize: 12,
+    color: '#8E8E93',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  thermometerModalCloseButton: {
+    backgroundColor: '#0A84FF',
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    borderRadius: 12,
+  },
+  thermometerModalCloseText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
