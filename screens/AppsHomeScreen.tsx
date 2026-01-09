@@ -67,6 +67,20 @@ const tools: AppTool[] = [
     color: '#FF6B6B',
     backgroundColor: '#FFEBEE',
   },
+  {
+    title: 'Account',
+    icon: 'person-circle',
+    route: 'Profile',
+    color: '#1C1C1E',
+    backgroundColor: '#E5E5EA',
+  },
+  {
+    title: 'Create',
+    icon: 'add-circle',
+    route: 'UniversalAdd',
+    color: '#34C759',
+    backgroundColor: '#E8F5E9',
+  },
 ];
 
 export default function AppsHomeScreen() {
@@ -76,9 +90,6 @@ export default function AppsHomeScreen() {
     if (tool.route === 'Home' || tool.route === 'Pros') {
       // Navigate to other tabs
       navigation.navigate(tool.route);
-    } else if (tool.route === 'Saved') {
-      // Navigate to saved screen in menu stack
-      navigation.navigate('Menu', { screen: 'SavedMain' });
     } else {
       // Navigate within Apps stack
       navigation.navigate(tool.route);
@@ -86,7 +97,7 @@ export default function AppsHomeScreen() {
   };
 
   const handlePersonalLogin = () => {
-    navigation.navigate('Menu', { screen: 'Login' });
+    navigation.navigate('Login');
   };
 
   const handleProLogin = () => {

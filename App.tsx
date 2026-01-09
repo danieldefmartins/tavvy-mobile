@@ -62,6 +62,10 @@ import ExperiencePathDetailScreen from './screens/ExperiencePathDetailScreen';
 import HappeningNowScreen from './screens/HappeningNowScreen';
 import HappeningNowDetailScreen from './screens/HappeningNowDetailScreen';
 
+// Account / utility screens (Menu tab was replaced by Apps)
+// These screens are now accessible from the Apps tab.
+// NOTE: We keep MenuStack for backwards compatibility but do not mount it as a tab.
+
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -202,6 +206,21 @@ function AppsStack() {
   return (
     <AppsStackNav.Navigator screenOptions={{ headerShown: false }}>
       <AppsStackNav.Screen name="AppsHome" component={AppsHomeScreen} />
+
+      {/* Account */}
+      <AppsStackNav.Screen name="Login" component={LoginScreen} />
+      <AppsStackNav.Screen name="SignUp" component={SignUpScreen} />
+      <AppsStackNav.Screen name="Profile" component={ProfileScreen} />
+      <AppsStackNav.Screen name="Saved" component={SavedScreen} />
+
+      {/* Create */}
+      <AppsStackNav.Screen name="UniversalAdd" component={UniversalAddScreen} />
+      <AppsStackNav.Screen name="AddPlace" component={AddPlaceScreen} />
+      <AppsStackNav.Screen
+        name="BusinessCardScanner"
+        component={BusinessCardScannerScreen}
+        options={{ presentation: 'modal' }}
+      />
       
       {/* Quick Finds */}
       <AppsStackNav.Screen name="QuickFinds" component={QuickFindsScreen} />

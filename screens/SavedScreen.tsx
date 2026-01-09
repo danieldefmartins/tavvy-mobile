@@ -73,7 +73,7 @@ export default function SavedScreen({ navigation }: any) {
           </Text>
           <TouchableOpacity
             style={styles.signInButton}
-            onPress={() => navigation.navigate('Profile', { screen: 'Login' })}
+            onPress={() => navigation.navigate('Login')}
           >
             <Text style={styles.signInButtonText}>Sign In</Text>
           </TouchableOpacity>
