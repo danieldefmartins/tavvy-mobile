@@ -23,14 +23,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { ProsColors, PROS_CATEGORIES } from '../constants/ProsConfig';
-import { useProsLeads } from '../hooks/usePros';
+import { ProsColors } from '../constants/ProsConfig';
+import { useServiceCategories } from '../hooks/useProsDirectory';
+import { invokeEdgeFunction } from '../lib/prosEdge';
 
 type RouteParams = {
   ProsRequestQuoteScreen: {
-    proId: number;
-    proName?: string;
-    categoryId?: number;
+    categorySlug?: string;
+    // Optional prefill
+    city?: string;
+    state?: string;
+    zipCode?: string;
   };
 };
 
@@ -39,9 +42,12 @@ type NavigationProp = NativeStackNavigationProp<any>;
 export default function ProsRequestQuoteScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp<RouteParams, 'ProsRequestQuoteScreen'>>();
-  const { proId, proName, categoryId } = route.params;
+  const { categorySlug, city, state, zipCode } = route.params || {};
 
-  const { createLead, loading } = useProsLeads();
+  const { data: categories } = useServiceCategories();
+  const selectedCategory = categorySlug
+    ? categories?.find((c) => c.slug === categorySlug)
+    : undefined;
 
   const [formData, setFormData] = useState({
     title: '',
@@ -49,13 +55,16 @@ export default function ProsRequestQuoteScreen() {
     preferredDate: '',
     budget: '',
     address: '',
-    city: '',
-    state: '',
-    zipCode: '',
+    city: city ?? '',
+    state: state ?? '',
+    zipCode: zipCode ?? '',
     phone: '',
     email: '',
-    categoryId: categoryId || null,
+    urgency: 'this_week' as 'asap' | 'this_week' | 'this_month' | 'flexible',
+    maxPros: 10,
   });
+
+  const [submitting, setSubmitting] = useState(false);
 
   const updateField = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -72,33 +81,39 @@ export default function ProsRequestQuoteScreen() {
     }
 
     try {
-      await createLead({
-        providerId: proId,
-        categoryId: formData.categoryId || undefined,
-        title: formData.title,
-        description: formData.description || undefined,
-        preferredDate: formData.preferredDate ? new Date(formData.preferredDate) : undefined,
-        budget: formData.budget || undefined,
-        address: formData.address || undefined,
-        city: formData.city || undefined,
-        state: formData.state || undefined,
-        zipCode: formData.zipCode || undefined,
-        phone: formData.phone || undefined,
-        email: formData.email || undefined,
-      });
+      setSubmitting(true);
 
-      Alert.alert(
-        'Request Sent!',
-        `Your quote request has been sent to ${proName || 'the pro'}. They will respond soon.`,
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
+      if (!selectedCategory?.id) {
+        Alert.alert('Error', 'Please select a service category.');
+        return;
+      }
+
+      const payload = {
+        category_id: selectedCategory.id,
+        title: formData.title,
+        description: formData.description,
+        city: formData.city,
+        state: formData.state,
+        zip: formData.zipCode,
+        urgency: formData.urgency,
+        max_pros: formData.maxPros,
+        // Optional contact info (kept private until user chooses to share)
+        email: formData.email || undefined,
+      };
+
+      const res = await invokeEdgeFunction<{ project: any; invited_count: number }>(
+        'pros-create-project',
+        payload
       );
+
+      // Navigate to a project status screen (customer-facing)
+      navigation.replace('ProsProjectStatus', {
+        projectId: res.project?.id,
+      });
     } catch (error) {
       Alert.alert('Error', 'Failed to send your request. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -122,13 +137,13 @@ export default function ProsRequestQuoteScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Pro Info */}
-          {proName && (
-            <View style={styles.proInfo}>
-              <Ionicons name="business" size={20} color={ProsColors.primary} />
-              <Text style={styles.proInfoText}>Requesting quote from {proName}</Text>
-            </View>
-          )}
+          {/* Category Info */}
+          <View style={styles.proInfo}>
+            <Ionicons name="briefcase" size={20} color={ProsColors.primary} />
+            <Text style={styles.proInfoText}>
+              {selectedCategory?.name ? `Service: ${selectedCategory.name}` : 'Choose a service'}
+            </Text>
+          </View>
 
           {/* Project Details */}
           <View style={styles.section}>
@@ -181,6 +196,72 @@ export default function ProsRequestQuoteScreen() {
                   onChangeText={(v) => updateField('budget', v)}
                 />
               </View>
+            </View>
+
+            {/* Urgency */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Urgency</Text>
+              <View style={styles.choiceRow}>
+                {[
+                  { key: 'asap', label: 'ASAP' },
+                  { key: 'this_week', label: 'This week' },
+                  { key: 'this_month', label: 'This month' },
+                  { key: 'flexible', label: 'Flexible' },
+                ].map((opt) => (
+                  <TouchableOpacity
+                    key={opt.key}
+                    style={[
+                      styles.choicePill,
+                      formData.urgency === (opt.key as any) && styles.choicePillActive,
+                    ]}
+                    onPress={() => updateField('urgency', opt.key)}
+                  >
+                    <Text
+                      style={[
+                        styles.choicePillText,
+                        formData.urgency === (opt.key as any) && styles.choicePillTextActive,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* How many pros */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>How many pros should we recommend?</Text>
+              <View style={styles.choiceRow}>
+                {[3, 5, 10].map((n) => (
+                  <TouchableOpacity
+                    key={n}
+                    style={[
+                      styles.choicePill,
+                      formData.maxPros === n && styles.choicePillActive,
+                    ]}
+                    onPress={() => updateField('maxPros', n)}
+                  >
+                    <Text
+                      style={[
+                        styles.choicePillText,
+                        formData.maxPros === n && styles.choicePillTextActive,
+                      ]}
+                    >
+                      {n}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity
+                  style={styles.choicePill}
+                  onPress={() => Alert.alert('More pros', 'We can increase this later. For now, defaulting to 10.')}
+                >
+                  <Text style={styles.choicePillText}>More</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.helperText}>
+                We’ll invite more pros if you don’t get enough responses.
+              </Text>
             </View>
           </View>
 
@@ -275,7 +356,7 @@ export default function ProsRequestQuoteScreen() {
           <View style={styles.infoNote}>
             <Ionicons name="information-circle-outline" size={20} color={ProsColors.textSecondary} />
             <Text style={styles.infoNoteText}>
-              Your contact information will be shared with this pro so they can respond to your request.
+              Pros can respond inside Tavvy. You decide if and when to share your contact info.
             </Text>
           </View>
         </ScrollView>
@@ -283,11 +364,11 @@ export default function ProsRequestQuoteScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.submitButton, (!isValid() || loading) && styles.submitButtonDisabled]}
+            style={[styles.submitButton, (!isValid() || submitting) && styles.submitButtonDisabled]}
             onPress={handleSubmit}
-            disabled={!isValid() || loading}
+            disabled={!isValid() || submitting}
           >
-            {loading ? (
+            {submitting ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <>
@@ -384,6 +465,39 @@ const styles = StyleSheet.create({
   },
   inputRow: {
     flexDirection: 'row',
+  },
+  choiceRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+  },
+  choicePill: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: ProsColors.borderLight,
+    backgroundColor: '#FFFFFF',
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  choicePillActive: {
+    backgroundColor: ProsColors.primary,
+    borderColor: ProsColors.primary,
+  },
+  choicePillText: {
+    fontSize: 13,
+    color: ProsColors.textSecondary,
+    fontWeight: '600',
+  },
+  choicePillTextActive: {
+    color: '#FFFFFF',
+  },
+  helperText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: ProsColors.textMuted,
+    lineHeight: 16,
   },
   infoNote: {
     flexDirection: 'row',

@@ -60,13 +60,13 @@ export default function ProsHomeScreen() {
 
   const handleSearch = () => {
     navigation.navigate('ProsBrowse', {
-      searchQuery,
+      query: searchQuery,
       location,
     });
   };
 
-  const handleCategoryPress = (categoryId: number, categoryName: string) => {
-    navigation.navigate('ProsBrowse', { categoryId, categoryName });
+  const handleCategoryPress = (categorySlug: string) => {
+    navigation.navigate('ProsBrowse', { categorySlug });
   };
 
   const handleProPress = (slug: string) => {
@@ -312,7 +312,7 @@ export default function ProsHomeScreen() {
               <ProsCategoryCard
                 key={category.id}
                 category={category}
-                onPress={() => handleCategoryPress(category.id, category.name)}
+                onPress={() => handleCategoryPress(category.slug)}
               />
             ))}
           </View>

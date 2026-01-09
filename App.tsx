@@ -51,6 +51,7 @@ import ProsDashboardScreen from './screens/ProsDashboardScreen';
 import ProsRegistrationScreen from './screens/ProsRegistrationScreen';
 import ProsMessagesScreen from './screens/ProsMessagesScreen';
 import ProsRequestQuoteScreen from './screens/ProsRequestQuoteScreen';
+import ProsProjectStatusScreen from './screens/ProsProjectStatusScreen';
 import ProsLeadsScreen from './screens/ProsLeadsScreen';
 
 // ========== APPS SCREENS (NEW) ==========
@@ -194,6 +195,7 @@ function ProsStack() {
         component={ProsRequestQuoteScreen}
         options={{ presentation: 'modal' }}
       />
+      <ProsStackNav.Screen name="ProsProjectStatus" component={ProsProjectStatusScreen} />
       <ProsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
     </ProsStackNav.Navigator>
   );

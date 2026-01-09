@@ -5,7 +5,7 @@
  * Service discovery and provider search screen.
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -23,8 +23,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ProsColors, PROS_CATEGORIES } from '../constants/ProsConfig';
 import { ProsProviderCard } from '../components/ProsProviderCard';
-import { useSearchPros } from '../hooks/usePros';
-import { Pro } from '../lib/ProsTypes';
+import { useProsDirectory, useServiceCategories } from '../hooks/useProsDirectory';
 
 type RouteParams = {
   ProsBrowseScreen: {
@@ -49,23 +48,51 @@ export default function ProsBrowseScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory || null);
   const [showFilters, setShowFilters] = useState(false);
 
-  const { pros, total, loading, error, searchPros } = useSearchPros();
+  // Categories from DB (fallback to static config if DB is empty)
+  const {
+    data: dbCategories,
+    isLoading: categoriesLoading,
+    error: categoriesError,
+  } = useServiceCategories();
+
+  const categories = (dbCategories && dbCategories.length > 0)
+    ? dbCategories
+    : PROS_CATEGORIES.map((c) => ({
+        id: String(c.id),
+        slug: c.slug,
+        name: c.name,
+        icon: c.icon,
+      }));
+
+  const selectedCategoryObj = selectedCategory
+    ? categories.find((c) => c.slug === selectedCategory)
+    : null;
+
+  const categoryId = selectedCategoryObj?.id;
+
+  const {
+    data: places,
+    isLoading: loading,
+    error,
+    refetch,
+  } = useProsDirectory({
+    categoryId: categoryId,
+    query: searchQuery,
+    cityOrZip: location,
+    limit: 30,
+  });
+
+  const total = places?.length ?? 0;
 
   useEffect(() => {
-    performSearch();
-  }, [selectedCategory]);
-
-  const performSearch = useCallback(() => {
-    searchPros({
-      categorySlug: selectedCategory || undefined,
-      query: searchQuery || undefined,
-      city: location || undefined,
-      limit: 20,
-    });
-  }, [selectedCategory, searchQuery, location]);
+    // Refetch when category changes
+    if (categoryId) {
+      refetch();
+    }
+  }, [categoryId]);
 
   const handleSearch = () => {
-    performSearch();
+    refetch();
   };
 
   const handleCategorySelect = (slug: string | null) => {
@@ -80,17 +107,29 @@ export default function ProsBrowseScreen() {
     navigation.navigate('ProsMessages', { proId });
   };
 
-  const selectedCategoryName = selectedCategory
-    ? PROS_CATEGORIES.find(c => c.slug === selectedCategory)?.name
-    : null;
+  const selectedCategoryName = selectedCategoryObj?.name ?? null;
 
-  const renderPro = ({ item }: { item: Pro }) => (
-    <ProsProviderCard
-      pro={item}
-      onPress={handleProPress}
-      onMessagePress={handleMessagePress}
-    />
-  );
+  const renderPro = ({ item }: { item: any }) => {
+    // Adapt DB place -> ProviderData expected by ProsProviderCard
+    const provider = {
+      id: 0,
+      slug: item?.id,
+      businessName: item?.name,
+      city: item?.city || '—',
+      state: item?.state_region || '—',
+      logoUrl: item?.cover_image_url || undefined,
+      isVerified: true,
+      categoryName: selectedCategoryName || undefined,
+    };
+
+    return (
+      <ProsProviderCard
+        provider={provider as any}
+        onPress={() => handleProPress(provider.slug)}
+        onMessagePress={() => handleMessagePress(0)}
+      />
+    );
+  };
 
   const renderHeader = () => (
     <>
@@ -167,7 +206,7 @@ export default function ProsBrowseScreen() {
             All Services
           </Text>
         </TouchableOpacity>
-        {PROS_CATEGORIES.map((category) => (
+        {categories.map((category) => (
           <TouchableOpacity
             key={category.id}
             style={[
@@ -177,7 +216,12 @@ export default function ProsBrowseScreen() {
             onPress={() => handleCategorySelect(category.slug)}
           >
             <Ionicons
-              name={category.icon as any}
+              name={
+                // Prefer icon from static config (ensures valid Ionicons)
+                (PROS_CATEGORIES.find((c) => c.slug === category.slug)?.icon as any) ||
+                (category.icon as any) ||
+                'briefcase-outline'
+              }
               size={14}
               color={
                 selectedCategory === category.slug
@@ -207,6 +251,22 @@ export default function ProsBrowseScreen() {
           {total} {total === 1 ? 'pro' : 'pros'} found
         </Text>
       </View>
+
+      <View style={styles.ctaRow}>
+        <TouchableOpacity
+          style={[
+            styles.getQuotesButton,
+            !selectedCategory && styles.getQuotesButtonDisabled,
+          ]}
+          onPress={() =>
+            navigation.navigate('ProsRequestQuote', { categorySlug: selectedCategory || undefined })
+          }
+          disabled={!selectedCategory}
+        >
+          <Ionicons name="document-text-outline" size={18} color="#FFFFFF" />
+          <Text style={styles.getQuotesButtonText}>Get Quotes</Text>
+        </TouchableOpacity>
+      </View>
     </>
   );
 
@@ -226,7 +286,7 @@ export default function ProsBrowseScreen() {
           <Ionicons name="alert-circle-outline" size={48} color={ProsColors.error} />
           <Text style={styles.emptyTitle}>Something went wrong</Text>
           <Text style={styles.emptyText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={performSearch}>
+          <TouchableOpacity style={styles.retryButton} onPress={refetch}>
             <Text style={styles.retryButtonText}>Try Again</Text>
           </TouchableOpacity>
         </View>
@@ -256,8 +316,8 @@ export default function ProsBrowseScreen() {
       </View>
 
       <FlatList
-        data={pros}
-        keyExtractor={(item) => item.id.toString()}
+        data={places ?? []}
+        keyExtractor={(item: any) => String(item.id)}
         renderItem={renderPro}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmpty}
@@ -397,6 +457,28 @@ const styles = StyleSheet.create({
   resultsCount: {
     fontSize: 13,
     color: ProsColors.textSecondary,
+  },
+  ctaRow: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  getQuotesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: ProsColors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  getQuotesButtonDisabled: {
+    opacity: 0.5,
+  },
+  getQuotesButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
   listContent: {
     paddingBottom: 24,
