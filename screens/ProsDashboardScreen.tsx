@@ -1,270 +1,268 @@
 /**
- * Pros Dashboard Screen
+ * Pros Dashboard Screen (UPDATED to match mockup)
  * Install path: screens/ProsDashboardScreen.tsx
  * 
- * Dashboard for service providers to manage their profile, leads, and messages.
+ * The main dashboard for service providers to manage their business.
+ * DESIGN MATCHES: pro_dashboard.png mockup
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  Dimensions,
   RefreshControl,
-  Image,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { ProsColors } from '../constants/ProsConfig';
-import { ProsSubscriptionStatusBanner } from '../components/ProsSubscriptionBanner';
-import { ProsLeadCardCompact } from '../components/ProsLeadCard';
-import { useProDashboard, useProsLeads, useProsSubscription, useProsConversations } from '../hooks/usePros';
+import { ProsColors, EARLY_ADOPTER_PRICE } from '../constants/ProsConfig';
+
+const { width } = Dimensions.get('window');
 
 type NavigationProp = NativeStackNavigationProp<any>;
+
+// Sample data
+const SAMPLE_PRO = {
+  name: 'Mike',
+  businessName: 'Ace Electric Services',
+  isVerified: true,
+  newLeads: 12,
+  activeProjects: 8,
+  rating: 4.9,
+  unreadMessages: 3,
+  subscriptionStatus: 'active',
+  subscriptionType: 'Early Adopter',
+  subscriptionPrice: EARLY_ADOPTER_PRICE,
+  renewalDate: 'Dec 2024',
+};
+
+const SAMPLE_LEADS = [
+  {
+    id: '1',
+    customerName: 'Sarah T.',
+    projectTitle: 'Kitchen Lighting Install',
+    location: 'Downtown, Seattle, WA',
+    timeAgo: '3 hours ago',
+    budgetMin: 1500,
+    budgetMax: 2500,
+    status: 'new',
+  },
+  {
+    id: '2',
+    customerName: 'James K.',
+    projectTitle: 'Panel Upgrade',
+    location: 'Bellevue, WA',
+    timeAgo: 'Yesterday',
+    budgetMin: 3000,
+    budgetMax: 5000,
+    status: 'contacted',
+  },
+];
 
 export default function ProsDashboardScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [refreshing, setRefreshing] = useState(false);
 
-  const { profile, loading: profileLoading, fetchProfile } = useProDashboard();
-  const { leads, loading: leadsLoading, fetchLeads } = useProsLeads();
-  const { subscription, fetchSubscription } = useProsSubscription();
-  const { conversations, fetchConversations } = useProsConversations();
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    await Promise.all([
-      fetchProfile(),
-      fetchLeads(),
-      fetchSubscription(),
-      fetchConversations(),
-    ]);
-  };
+  const pro = SAMPLE_PRO;
+  const leads = SAMPLE_LEADS;
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    await new Promise(resolve => setTimeout(resolve, 1000));
     setRefreshing(false);
   };
 
-  const newLeadsCount = leads.filter(l => l.status === 'new').length;
-  const unreadMessagesCount = conversations.reduce((sum, c) => sum + c.conversation.providerUnread, 0);
+  const handleSettings = () => {
+    // Navigate to settings
+  };
 
-  if (profileLoading && !profile) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={ProsColors.primary} />
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const handleViewLeads = () => {
+    navigation.navigate('ProsLeadsScreen');
+  };
 
-  if (!profile) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.emptyContainer}>
-          <Ionicons name="business-outline" size={64} color={ProsColors.textMuted} />
-          <Text style={styles.emptyTitle}>Become a Pro</Text>
-          <Text style={styles.emptyText}>
-            Register your business to start receiving leads and connecting with customers.
-          </Text>
-          <TouchableOpacity
-            style={styles.registerButton}
-            onPress={() => navigation.navigate('ProsRegistration')}
-          >
-            <Text style={styles.registerButtonText}>Register Now</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const handleMessages = () => {
+    navigation.navigate('ProsMessagesScreen');
+  };
 
-  const rating = parseFloat(profile.averageRating) || 0;
+  const handleMyProfile = () => {
+    navigation.navigate('ProsProfileScreen', { proId: 'my-profile' });
+  };
+
+  const handleAnalytics = () => {
+    // Navigate to analytics
+  };
+
+  const handleLeadDetails = (leadId: string) => {
+    navigation.navigate('ProsBidScreen', { leadId });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'new':
+        return { bg: '#3B82F6', text: '#FFFFFF' };
+      case 'contacted':
+        return { bg: '#F59E0B', text: '#FFFFFF' };
+      case 'hired':
+        return { bg: ProsColors.primary, text: '#FFFFFF' };
+      default:
+        return { bg: '#6B7280', text: '#FFFFFF' };
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'new':
+        return 'New';
+      case 'contacted':
+        return 'Contacted';
+      case 'hired':
+        return 'Hired';
+      default:
+        return status;
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Pro Dashboard</Text>
+        <TouchableOpacity onPress={handleSettings} style={styles.settingsButton}>
+          <Ionicons name="settings-outline" size={24} color={ProsColors.primary} />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Dashboard</Text>
-          <TouchableOpacity
-            style={styles.settingsButton}
-            onPress={() => navigation.navigate('ProsSettingsScreen')}
-          >
-            <Ionicons name="settings-outline" size={24} color={ProsColors.textPrimary} />
-          </TouchableOpacity>
+        {/* Welcome Banner - matches mockup */}
+        <View style={styles.welcomeBanner}>
+          <View style={styles.welcomeContent}>
+            <Text style={styles.welcomeTitle}>Welcome back, {pro.name}!</Text>
+            <View style={styles.businessNameRow}>
+              <Text style={styles.businessName}>{pro.businessName}</Text>
+              {pro.isVerified && (
+                <Ionicons name="checkmark-circle" size={18} color={ProsColors.primary} />
+              )}
+            </View>
+          </View>
+          {/* Toolbox illustration placeholder */}
+          <View style={styles.illustrationContainer}>
+            <Ionicons name="construct" size={48} color={ProsColors.primary} />
+          </View>
         </View>
 
-        {/* Profile Card */}
-        <TouchableOpacity
-          style={styles.profileCard}
-          onPress={() => navigation.navigate('ProsEditProfileScreen')}
-        >
-          <View style={styles.profileHeader}>
-            {profile.logoUrl ? (
-              <Image source={{ uri: profile.logoUrl }} style={styles.profileLogo} />
-            ) : (
-              <View style={styles.profileLogoPlaceholder}>
-                <Ionicons name="business" size={28} color={ProsColors.textMuted} />
-              </View>
-            )}
-            <View style={styles.profileInfo}>
-              <View style={styles.profileNameRow}>
-                <Text style={styles.profileName}>{profile.businessName}</Text>
-                {profile.isVerified && (
-                  <Ionicons name="checkmark-circle" size={18} color={ProsColors.primary} />
-                )}
-              </View>
-              <View style={styles.profileRating}>
-                <Ionicons name="star" size={14} color="#F59E0B" />
-                <Text style={styles.ratingText}>
-                  {rating > 0 ? rating.toFixed(1) : 'New'} • {profile.totalReviews} reviews
-                </Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={ProsColors.textMuted} />
-          </View>
-        </TouchableOpacity>
-
-        {/* Subscription Status */}
-        <ProsSubscriptionStatusBanner
-          tier={subscription?.tier || null}
-          status={subscription?.status || null}
-          earlyAdopterNumber={subscription?.earlyAdopterNumber || undefined}
-          expiresAt={subscription?.endDate}
-          onUpgrade={() => navigation.navigate('ProsPricingScreen')}
-        />
-
-        {/* Stats Grid */}
-        <View style={styles.statsGrid}>
-          <TouchableOpacity
-            style={styles.statCard}
-            onPress={() => navigation.navigate('ProsLeads')}
-          >
-            <View style={[styles.statIcon, { backgroundColor: `${ProsColors.primary}15` }]}>
-              <Ionicons name="document-text" size={24} color={ProsColors.primary} />
-            </View>
-            <Text style={styles.statValue}>{newLeadsCount}</Text>
+        {/* Stats Row - matches mockup */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Ionicons name="mail" size={20} color="#3B82F6" />
+            <Text style={styles.statValue}>{pro.newLeads}</Text>
             <Text style={styles.statLabel}>New Leads</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.statCard}
-            onPress={() => navigation.navigate('ProsMessages')}
-          >
-            <View style={[styles.statIcon, { backgroundColor: `${ProsColors.secondary}15` }]}>
-              <Ionicons name="chatbubbles" size={24} color={ProsColors.secondary} />
-            </View>
-            <Text style={styles.statValue}>{unreadMessagesCount}</Text>
-            <Text style={styles.statLabel}>Unread Messages</Text>
-          </TouchableOpacity>
-
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: `${ProsColors.success}15` }]}>
-              <Ionicons name="star" size={24} color={ProsColors.success} />
-            </View>
-            <Text style={styles.statValue}>{profile.totalReviews}</Text>
-            <Text style={styles.statLabel}>Reviews</Text>
           </View>
-
           <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: `${ProsColors.accent}15` }]}>
-              <Ionicons name="eye" size={24} color={ProsColors.accent} />
-            </View>
-            <Text style={styles.statValue}>--</Text>
-            <Text style={styles.statLabel}>Profile Views</Text>
+            <Ionicons name="checkmark-circle" size={20} color={ProsColors.primary} />
+            <Text style={styles.statValue}>{pro.activeProjects}</Text>
+            <Text style={styles.statLabel}>Active Projects</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Ionicons name="star" size={20} color="#F59E0B" />
+            <Text style={styles.statValue}>{pro.rating}</Text>
+            <Text style={styles.statLabel}>Rating</Text>
           </View>
         </View>
 
-        {/* Quick Actions */}
+        {/* Quick Actions - matches mockup */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActions}>
-            <TouchableOpacity
-              style={styles.quickAction}
-              onPress={() => navigation.navigate('ProsEditProfileScreen')}
-            >
+          <View style={styles.quickActionsGrid}>
+            <TouchableOpacity style={styles.quickActionButton} onPress={handleViewLeads}>
+              <Ionicons name="mail-outline" size={22} color={ProsColors.primary} />
+              <Text style={styles.quickActionText}>View Leads</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickActionButton} onPress={handleMessages}>
+              <Ionicons name="chatbubble-outline" size={22} color={ProsColors.primary} />
+              <Text style={styles.quickActionText}>Messages</Text>
+              {pro.unreadMessages > 0 && (
+                <View style={styles.messageBadge}>
+                  <Text style={styles.messageBadgeText}>{pro.unreadMessages}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickActionButton} onPress={handleMyProfile}>
               <Ionicons name="person-outline" size={22} color={ProsColors.primary} />
-              <Text style={styles.quickActionText}>Edit Profile</Text>
+              <Text style={styles.quickActionText}>My Profile</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickAction}
-              onPress={() => navigation.navigate('ProsPhotosScreen')}
-            >
-              <Ionicons name="images-outline" size={22} color={ProsColors.primary} />
-              <Text style={styles.quickActionText}>Manage Photos</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickAction}
-              onPress={() => navigation.navigate('ProsAvailabilityScreen')}
-            >
-              <Ionicons name="calendar-outline" size={22} color={ProsColors.primary} />
-              <Text style={styles.quickActionText}>Set Availability</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickAction}
-              onPress={() => navigation.navigate('ProsServicesScreen')}
-            >
-              <Ionicons name="construct-outline" size={22} color={ProsColors.primary} />
-              <Text style={styles.quickActionText}>Services</Text>
+            <TouchableOpacity style={styles.quickActionButton} onPress={handleAnalytics}>
+              <Ionicons name="trending-up-outline" size={22} color={ProsColors.primary} />
+              <Text style={styles.quickActionText}>Analytics</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Recent Leads */}
+        {/* Recent Leads - matches mockup */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Leads</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('ProsLeads')}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
+          <Text style={styles.sectionTitle}>Recent Leads</Text>
+          <View style={styles.leadsContainer}>
+            {leads.map((lead) => {
+              const statusColors = getStatusColor(lead.status);
+              return (
+                <View key={lead.id} style={styles.leadCard}>
+                  <View style={styles.leadHeader}>
+                    <Text style={styles.leadTitle}>
+                      {lead.customerName} - {lead.projectTitle}
+                    </Text>
+                    <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
+                      <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
+                        {getStatusLabel(lead.status)}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.leadLocation}>{lead.location}</Text>
+                  <Text style={styles.leadTime}>{lead.timeAgo}</Text>
+                  <View style={styles.leadFooter}>
+                    <Text style={styles.leadBudget}>
+                      Budget: ${lead.budgetMin.toLocaleString()} - ${lead.budgetMax.toLocaleString()}
+                    </Text>
+                    <TouchableOpacity onPress={() => handleLeadDetails(lead.id)}>
+                      <Text style={styles.viewDetailsLink}>View Details</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
           </View>
-          {leads.length > 0 ? (
-            leads.slice(0, 3).map((lead) => (
-              <ProsLeadCardCompact
-                key={lead.id}
-                lead={lead}
-                onPress={() => navigation.navigate('ProsLeadDetailScreen', { leadId: lead.id })}
-              />
-            ))
-          ) : (
-            <View style={styles.emptyLeads}>
-              <Ionicons name="document-text-outline" size={32} color={ProsColors.textMuted} />
-              <Text style={styles.emptyLeadsText}>No leads yet</Text>
+        </View>
+
+        {/* Subscription Status - matches mockup */}
+        <View style={styles.subscriptionCard}>
+          <Text style={styles.subscriptionTitle}>Subscription Status</Text>
+          <View style={styles.subscriptionContent}>
+            <View>
+              <View style={styles.subscriptionTypeBadge}>
+                <Text style={styles.subscriptionTypeBadgeText}>{pro.subscriptionType}</Text>
+              </View>
+              <Text style={styles.subscriptionPrice}>${pro.subscriptionPrice}/year</Text>
+              <Text style={styles.subscriptionRenewal}>Renews {pro.renewalDate}</Text>
             </View>
-          )}
-        </View>
-
-        {/* Tips Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pro Tips</Text>
-          <View style={styles.tipCard}>
-            <Ionicons name="bulb-outline" size={24} color={ProsColors.secondary} />
-            <View style={styles.tipContent}>
-              <Text style={styles.tipTitle}>Complete Your Profile</Text>
-              <Text style={styles.tipText}>
-                Profiles with photos and detailed descriptions get 3x more leads.
-              </Text>
+            <View style={styles.subscriptionStatusBadge}>
+              <Ionicons name="checkmark-circle" size={20} color={ProsColors.primary} />
+              <Text style={styles.subscriptionStatusText}>Active</Text>
             </View>
           </View>
         </View>
 
-        <View style={{ height: 32 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -275,51 +273,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: ProsColors.textPrimary,
-    marginTop: 24,
-    marginBottom: 12,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: ProsColors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 24,
-  },
-  registerButton: {
-    backgroundColor: ProsColors.primary,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 10,
-  },
-  registerButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 12,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: ProsColors.textPrimary,
   },
@@ -329,157 +291,237 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  profileCard: {
-    marginHorizontal: 16,
-    backgroundColor: ProsColors.sectionBg,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+  scrollView: {
+    flex: 1,
   },
-  profileHeader: {
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+
+  // Welcome Banner - matches mockup
+  welcomeBanner: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#E8F5F0',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
   },
-  profileLogo: {
-    width: 56,
-    height: 56,
-    borderRadius: 10,
-    backgroundColor: ProsColors.border,
-  },
-  profileLogoPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 10,
-    backgroundColor: ProsColors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileInfo: {
+  welcomeContent: {
     flex: 1,
-    marginLeft: 12,
   },
-  profileNameRow: {
+  welcomeTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: ProsColors.textPrimary,
+    marginBottom: 4,
+  },
+  businessNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  profileName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-  },
-  profileRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  ratingText: {
-    fontSize: 13,
+  businessName: {
+    fontSize: 15,
     color: ProsColors.textSecondary,
-    marginLeft: 4,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    marginTop: 16,
-  },
-  statCard: {
-    width: '50%',
-    padding: 4,
-  },
-  statIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+  illustrationContainer: {
+    width: 80,
+    height: 80,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+  },
+
+  // Stats Row - matches mockup
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: ProsColors.borderLight,
   },
   statValue: {
     fontSize: 24,
     fontWeight: '700',
     color: ProsColors.textPrimary,
+    marginTop: 8,
   },
   statLabel: {
+    fontSize: 12,
+    color: ProsColors.textSecondary,
+    marginTop: 2,
+  },
+
+  // Section
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: ProsColors.textPrimary,
+    marginBottom: 12,
+  },
+
+  // Quick Actions - matches mockup
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  quickActionButton: {
+    width: (width - 42) / 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: ProsColors.primary,
+    gap: 10,
+    position: 'relative',
+  },
+  quickActionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: ProsColors.textPrimary,
+  },
+  messageBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  messageBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  // Leads - matches mockup
+  leadsContainer: {
+    gap: 12,
+  },
+  leadCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: ProsColors.primary,
+  },
+  leadHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  leadTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: ProsColors.textPrimary,
+    flex: 1,
+    marginRight: 10,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  leadLocation: {
+    fontSize: 14,
+    color: ProsColors.textPrimary,
+    marginBottom: 2,
+  },
+  leadTime: {
+    fontSize: 13,
+    color: ProsColors.textSecondary,
+    marginBottom: 8,
+  },
+  leadFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  leadBudget: {
+    fontSize: 14,
+    color: ProsColors.textSecondary,
+  },
+  viewDetailsLink: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: ProsColors.primary,
+    textDecorationLine: 'underline',
+  },
+
+  // Subscription - matches mockup
+  subscriptionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: ProsColors.primary,
+  },
+  subscriptionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: ProsColors.textPrimary,
+    marginBottom: 12,
+  },
+  subscriptionContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  subscriptionTypeBadge: {
+    backgroundColor: ProsColors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  subscriptionTypeBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  subscriptionPrice: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: ProsColors.textPrimary,
+  },
+  subscriptionRenewal: {
     fontSize: 13,
     color: ProsColors.textSecondary,
     marginTop: 2,
   },
-  section: {
-    paddingHorizontal: 16,
-    paddingTop: 24,
-  },
-  sectionHeader: {
+  subscriptionStatusBadge: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    gap: 6,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-    marginBottom: 12,
-  },
-  viewAllText: {
-    fontSize: 14,
+  subscriptionStatusText: {
+    fontSize: 15,
     fontWeight: '600',
     color: ProsColors.primary,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  quickAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${ProsColors.primary}08`,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: `${ProsColors.primary}20`,
-  },
-  quickActionText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: ProsColors.primary,
-    marginLeft: 6,
-  },
-  emptyLeads: {
-    alignItems: 'center',
-    paddingVertical: 24,
-    backgroundColor: ProsColors.sectionBg,
-    borderRadius: 10,
-  },
-  emptyLeadsText: {
-    fontSize: 14,
-    color: ProsColors.textMuted,
-    marginTop: 8,
-  },
-  tipCard: {
-    flexDirection: 'row',
-    backgroundColor: `${ProsColors.secondary}10`,
-    borderRadius: 10,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: `${ProsColors.secondary}20`,
-  },
-  tipContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  tipTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-    marginBottom: 4,
-  },
-  tipText: {
-    fontSize: 13,
-    color: ProsColors.textSecondary,
-    lineHeight: 18,
   },
 });

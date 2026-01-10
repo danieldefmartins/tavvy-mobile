@@ -1,12 +1,14 @@
 /**
- * Pros Home Screen
+ * Pros Home Screen (UPDATED to match mockup)
  * Install path: screens/ProsHomeScreen.tsx
  * 
  * This is the main entry point for the Pros feature.
  * Users can browse services or switch to Pro mode.
+ * 
+ * DESIGN MATCHES: pros_home_screen.png mockup
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -14,13 +16,11 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  FlatList,
-  RefreshControl,
   Dimensions,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -33,13 +33,22 @@ import {
   EARLY_ADOPTER_SPOTS_LEFT,
   EARLY_ADOPTER_SAVINGS,
 } from '../constants/ProsConfig';
-import { ProsCategoryCard } from '../components/ProsCategoryCard';
-import { ProsProviderCard } from '../components/ProsProviderCard';
-import { ProsSubscriptionBanner } from '../components/ProsSubscriptionBanner';
 
 const { width } = Dimensions.get('window');
 
 type NavigationProp = NativeStackNavigationProp<any>;
+
+// Category data matching the mockup
+const CATEGORY_ICONS = [
+  { id: 'electrician', name: 'Electrician', icon: 'flash', color: '#16A34A' },
+  { id: 'plumber', name: 'Plumber', icon: 'water', color: '#3B82F6' },
+  { id: 'pool_cleaning', name: 'Pool Cleaning', icon: 'water-outline', color: '#3B82F6' },
+  { id: 'house_cleaning', name: 'House Cleaning', icon: 'sparkles', color: '#F59E0B' },
+  { id: 'hvac', name: 'HVAC', icon: 'thermometer', color: '#EF4444' },
+  { id: 'roofing', name: 'Roofing', icon: 'home', color: '#6B7280' },
+  { id: 'landscaping', name: 'Landscaping', icon: 'leaf', color: '#16A34A' },
+  { id: 'painting', name: 'Painting', icon: 'color-palette', color: '#8B5CF6' },
+];
 
 export default function ProsHomeScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -47,43 +56,43 @@ export default function ProsHomeScreen() {
   const [location, setLocation] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<'user' | 'pro'>('user');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Use sample data for now
-  const featuredPros = SAMPLE_PROS.slice(0, 6);
+  const featuredPros = SAMPLE_PROS.slice(0, 4);
+  const remainingSpots = EARLY_ADOPTER_SPOTS_LEFT;
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    // Simulate refresh
     await new Promise(resolve => setTimeout(resolve, 1000));
     setRefreshing(false);
   };
 
-  const handleSearch = () => {
-    navigation.navigate('ProsBrowse', {
-      query: searchQuery,
-      location,
+  const handleCategoryPress = (categoryId: string, categoryName: string) => {
+    setSelectedCategory(categoryId);
+    navigation.navigate('ProsCategoryLandingScreen', { categoryId, categoryName });
+  };
+
+  const handleProPress = (proId: string) => {
+    navigation.navigate('ProsProfileScreen', { proId });
+  };
+
+  const handleGetQuote = (proId: string, categoryName: string) => {
+    navigation.navigate('ProsRequestStep1Screen', { 
+      categoryId: proId,
+      categoryName 
     });
   };
 
-  const handleCategoryPress = (categorySlug: string) => {
-    navigation.navigate('ProsBrowse', { categorySlug });
-  };
-
-  const handleProPress = (slug: string) => {
-    navigation.navigate('ProsProfile', { slug });
-  };
-
   const handleProSignup = () => {
-    navigation.navigate('ProsRegistration');
+    navigation.navigate('ProsRegistrationScreen');
   };
 
   const handleProDashboard = () => {
-    navigation.navigate('ProsDashboard');
+    navigation.navigate('ProsDashboardScreen');
   };
 
-  const remainingSpots = EARLY_ADOPTER_SPOTS_LEFT;
-
-  // If user switches to Pro mode, show Pro options
+  // Pro Mode View
   if (viewMode === 'pro') {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -92,26 +101,27 @@ export default function ProsHomeScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Mode Toggle */}
-          <View style={styles.modeToggleContainer}>
-            <TouchableOpacity
-              style={[styles.modeToggle, viewMode === 'user' && styles.modeToggleActive]}
-              onPress={() => setViewMode('user')}
-            >
-              <Ionicons name="search" size={18} color={viewMode === 'user' ? '#fff' : ProsColors.textSecondary} />
-              <Text style={[styles.modeToggleText, viewMode === 'user' && styles.modeToggleTextActive]}>
-                Find Pros
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modeToggle, viewMode === 'pro' && styles.modeToggleActive]}
-              onPress={() => setViewMode('pro')}
-            >
-              <Ionicons name="construct" size={18} color={viewMode === 'pro' ? '#fff' : ProsColors.textSecondary} />
-              <Text style={[styles.modeToggleText, viewMode === 'pro' && styles.modeToggleTextActive]}>
-                I'm a Pro
-              </Text>
-            </TouchableOpacity>
+          {/* Header with Toggle */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>TavvY Pros</Text>
+            <View style={styles.modeToggle}>
+              <TouchableOpacity
+                style={[styles.toggleButton, viewMode === 'user' && styles.toggleButtonActive]}
+                onPress={() => setViewMode('user')}
+              >
+                <Text style={[styles.toggleText, viewMode === 'user' && styles.toggleTextActive]}>
+                  Find Pros
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.toggleButton, viewMode === 'pro' && styles.toggleButtonActive]}
+                onPress={() => setViewMode('pro')}
+              >
+                <Text style={[styles.toggleText, viewMode === 'pro' && styles.toggleTextActive]}>
+                  I'm a Pro
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Pro Mode Content */}
@@ -136,10 +146,10 @@ export default function ProsHomeScreen() {
 
               <TouchableOpacity 
                 style={styles.proActionCard} 
-                onPress={() => navigation.navigate('ProsLeads')}
+                onPress={() => navigation.navigate('ProsLeadsScreen')}
               >
-                <View style={[styles.proActionIcon, { backgroundColor: `${ProsColors.success}15` }]}>
-                  <Ionicons name="mail" size={28} color={ProsColors.success} />
+                <View style={[styles.proActionIcon, { backgroundColor: '#10B98115' }]}>
+                  <Ionicons name="mail" size={28} color="#10B981" />
                 </View>
                 <Text style={styles.proActionTitle}>Leads</Text>
                 <Text style={styles.proActionSubtitle}>Manage requests</Text>
@@ -147,10 +157,10 @@ export default function ProsHomeScreen() {
 
               <TouchableOpacity 
                 style={styles.proActionCard}
-                onPress={() => navigation.navigate('ProsMessages')}
+                onPress={() => navigation.navigate('ProsMessagesScreen')}
               >
-                <View style={[styles.proActionIcon, { backgroundColor: `${ProsColors.secondary}15` }]}>
-                  <Ionicons name="chatbubbles" size={28} color={ProsColors.secondary} />
+                <View style={[styles.proActionIcon, { backgroundColor: '#3B82F615' }]}>
+                  <Ionicons name="chatbubbles" size={28} color="#3B82F6" />
                 </View>
                 <Text style={styles.proActionTitle}>Messages</Text>
                 <Text style={styles.proActionSubtitle}>Chat with clients</Text>
@@ -158,10 +168,10 @@ export default function ProsHomeScreen() {
 
               <TouchableOpacity 
                 style={styles.proActionCard}
-                onPress={() => navigation.navigate('ProsProfile', { slug: 'my-profile' })}
+                onPress={() => navigation.navigate('ProsProfileScreen', { proId: 'my-profile' })}
               >
-                <View style={[styles.proActionIcon, { backgroundColor: `${ProsColors.warning}15` }]}>
-                  <Ionicons name="person" size={28} color={ProsColors.warning} />
+                <View style={[styles.proActionIcon, { backgroundColor: '#F59E0B15' }]}>
+                  <Ionicons name="person" size={28} color="#F59E0B" />
                 </View>
                 <Text style={styles.proActionTitle}>My Profile</Text>
                 <Text style={styles.proActionSubtitle}>Edit your listing</Text>
@@ -198,7 +208,7 @@ export default function ProsHomeScreen() {
     );
   }
 
-  // User Mode (default) - Find Pros
+  // User Mode (default) - Find Pros - MATCHES MOCKUP
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
@@ -209,53 +219,39 @@ export default function ProsHomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        {/* Mode Toggle */}
-        <View style={styles.modeToggleContainer}>
-          <TouchableOpacity
-            style={[styles.modeToggle, viewMode === 'user' && styles.modeToggleActive]}
-            onPress={() => setViewMode('user')}
-          >
-            <Ionicons name="search" size={18} color={viewMode === 'user' ? '#fff' : ProsColors.textSecondary} />
-            <Text style={[styles.modeToggleText, viewMode === 'user' && styles.modeToggleTextActive]}>
-              Find Pros
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeToggle, viewMode === 'pro' && styles.modeToggleActive]}
-            onPress={() => setViewMode('pro')}
-          >
-            <Ionicons name="construct" size={18} color={viewMode === 'pro' ? '#fff' : ProsColors.textSecondary} />
-            <Text style={[styles.modeToggleText, viewMode === 'pro' && styles.modeToggleTextActive]}>
-              I'm a Pro
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Hero Section */}
-        <LinearGradient
-          colors={[ProsColors.heroBg, '#FFFFFF']}
-          style={styles.heroSection}
-        >
-          {/* Early Adopter Badge */}
-          {remainingSpots > 0 && (
-            <TouchableOpacity style={styles.earlyAdopterBadge} onPress={handleProSignup}>
-              <Ionicons name="sparkles" size={14} color={ProsColors.primary} />
-              <Text style={styles.earlyAdopterText}>
-                Are you a Pro? Save ${EARLY_ADOPTER_SAVINGS} · Only {remainingSpots} spots left!
+        {/* Header with Toggle - Matches Mockup */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>TavvY Pros</Text>
+          <View style={styles.modeToggle}>
+            <TouchableOpacity
+              style={[styles.toggleButton, viewMode === 'user' && styles.toggleButtonActive]}
+              onPress={() => setViewMode('user')}
+            >
+              <Text style={[styles.toggleText, viewMode === 'user' && styles.toggleTextActive]}>
+                Find Pros
               </Text>
             </TouchableOpacity>
-          )}
+            <TouchableOpacity
+              style={[styles.toggleButton, viewMode === 'pro' && styles.toggleButtonActive]}
+              onPress={() => setViewMode('pro')}
+            >
+              <Text style={[styles.toggleText, viewMode === 'pro' && styles.toggleTextActive]}>
+                I'm a Pro
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
+        {/* Hero Section - Matches Mockup */}
+        <View style={styles.heroSection}>
           <Text style={styles.heroTitle}>
-            Find Trusted Local{'\n'}
-            <Text style={styles.heroTitleAccent}>Home Service Pros</Text>
+            Find Trusted Local{'\n'}Home Service Pros
           </Text>
           <Text style={styles.heroSubtitle}>
-            Connect with verified electricians, plumbers, cleaners, and more.
-            Get quotes in minutes, not days.
+            Connect with verified electricians, plumbers, cleaners, and more. Get quotes in minutes.
           </Text>
 
-          {/* Search Box */}
+          {/* Search Box - Matches Mockup */}
           <View style={styles.searchContainer}>
             <View style={styles.searchInputContainer}>
               <Ionicons name="search" size={20} color={ProsColors.textMuted} />
@@ -267,131 +263,102 @@ export default function ProsHomeScreen() {
                 onChangeText={setSearchQuery}
               />
             </View>
+
             <View style={styles.locationInputContainer}>
               <Ionicons name="location-outline" size={20} color={ProsColors.textMuted} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="City or ZIP code"
+                placeholder="Location"
                 placeholderTextColor={ProsColors.textMuted}
                 value={location}
                 onChangeText={setLocation}
               />
             </View>
-            <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-              <Text style={styles.searchButtonText}>Search</Text>
-            </TouchableOpacity>
           </View>
+        </View>
 
-          {/* Trust Badges */}
-          <View style={styles.trustBadges}>
-            <View style={styles.trustBadge}>
-              <Ionicons name="shield-checkmark-outline" size={16} color={ProsColors.primary} />
-              <Text style={styles.trustBadgeText}>Verified Pros</Text>
-            </View>
-            <View style={styles.trustBadge}>
-              <Ionicons name="star-outline" size={16} color={ProsColors.primary} />
-              <Text style={styles.trustBadgeText}>Community Reviews</Text>
-            </View>
-            <View style={styles.trustBadge}>
-              <Ionicons name="time-outline" size={16} color={ProsColors.primary} />
-              <Text style={styles.trustBadgeText}>Fast Response</Text>
-            </View>
-          </View>
-        </LinearGradient>
-
-        {/* Browse by Service */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Browse by Service</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('ProsBrowse')}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.categoriesGrid}>
-            {PROS_CATEGORIES.slice(0, 8).map((category) => (
-              <ProsCategoryCard
+        {/* Category Icons - Horizontal Scroll - Matches Mockup */}
+        <View style={styles.categoriesSection}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoriesScrollContent}
+          >
+            {CATEGORY_ICONS.map((category) => (
+              <TouchableOpacity
                 key={category.id}
-                category={category}
-                onPress={() => handleCategoryPress(category.slug)}
-              />
+                style={styles.categoryItem}
+                onPress={() => handleCategoryPress(category.id, category.name)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.categoryIconCircle, { backgroundColor: `${category.color}15` }]}>
+                  <Ionicons name={category.icon as any} size={24} color={category.color} />
+                </View>
+                <Text style={styles.categoryName}>{category.name}</Text>
+                {selectedCategory === category.id && (
+                  <View style={styles.categoryIndicator} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Featured Pros Section - Matches Mockup */}
+        <View style={styles.featuredSection}>
+          <Text style={styles.sectionTitle}>Featured Pros</Text>
+          
+          <View style={styles.prosGrid}>
+            {featuredPros.map((pro) => (
+              <TouchableOpacity
+                key={pro.id}
+                style={styles.proCard}
+                onPress={() => handleProPress(pro.id)}
+                activeOpacity={0.7}
+              >
+                {/* Pro Avatar */}
+                <View style={styles.proCardHeader}>
+                  <View style={styles.proAvatar}>
+                    <Ionicons name="person" size={24} color={ProsColors.textMuted} />
+                  </View>
+                  <View style={styles.proInfo}>
+                    <Text style={styles.proName} numberOfLines={2}>{pro.name}</Text>
+                  </View>
+                </View>
+
+                {/* Rating */}
+                <View style={styles.ratingRow}>
+                  <Text style={styles.ratingNumber}>{pro.rating}</Text>
+                  <View style={styles.starsContainer}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Ionicons
+                        key={star}
+                        name={star <= Math.floor(pro.rating) ? 'star' : star - 0.5 <= pro.rating ? 'star-half' : 'star-outline'}
+                        size={14}
+                        color="#F59E0B"
+                      />
+                    ))}
+                  </View>
+                  <Text style={styles.reviewCount}>({pro.reviewCount} reviews)</Text>
+                </View>
+
+                {/* Location */}
+                <View style={styles.locationRow}>
+                  <Ionicons name="location-outline" size={14} color={ProsColors.textSecondary} />
+                  <Text style={styles.locationText}>{pro.location}</Text>
+                </View>
+
+                {/* Get Quote Button */}
+                <TouchableOpacity
+                  style={styles.getQuoteButton}
+                  onPress={() => handleGetQuote(pro.id, pro.category)}
+                >
+                  <Text style={styles.getQuoteButtonText}>Get Quote</Text>
+                </TouchableOpacity>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        {/* Featured Pros */}
-        {featuredPros.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Featured Pros</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('ProsBrowse')}>
-                <Text style={styles.viewAllText}>View All</Text>
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              horizontal
-              data={featuredPros}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
-                <ProsProviderCard
-                  provider={item}
-                  onPress={() => handleProPress(item.slug)}
-                  style={{ width: width * 0.7, marginRight: 12 }}
-                />
-              )}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.featuredList}
-            />
-          </View>
-        )}
-
-        {/* Pro CTA */}
-        <ProsSubscriptionBanner
-          onPress={handleProSignup}
-        />
-
-        {/* How It Works */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { paddingHorizontal: 16 }]}>How It Works</Text>
-          <View style={styles.stepsContainer}>
-            <View style={styles.step}>
-              <View style={[styles.stepIcon, { backgroundColor: `${ProsColors.primary}15` }]}>
-                <Ionicons name="search" size={24} color={ProsColors.primary} />
-              </View>
-              <Text style={styles.stepTitle}>1. Search</Text>
-              <Text style={styles.stepDescription}>
-                Find local pros by service type and location
-              </Text>
-            </View>
-            <View style={styles.step}>
-              <View style={[styles.stepIcon, { backgroundColor: `${ProsColors.secondary}15` }]}>
-                <Ionicons name="chatbubbles" size={24} color={ProsColors.secondary} />
-              </View>
-              <Text style={styles.stepTitle}>2. Connect</Text>
-              <Text style={styles.stepDescription}>
-                Message pros directly and request quotes
-              </Text>
-            </View>
-            <View style={styles.step}>
-              <View style={[styles.stepIcon, { backgroundColor: `${ProsColors.success}15` }]}>
-                <Ionicons name="checkmark-circle" size={24} color={ProsColors.success} />
-              </View>
-              <Text style={styles.stepTitle}>3. Hire</Text>
-              <Text style={styles.stepDescription}>
-                Choose the best pro and get the job done
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Are you a Pro? Link */}
-        <View style={styles.proLinkSection}>
-          <Text style={styles.proLinkText}>Are you a home service professional?</Text>
-          <TouchableOpacity onPress={() => setViewMode('pro')}>
-            <Text style={styles.proLinkButton}>Join TavvY Pros →</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Bottom Spacing for tab bar */}
         <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
@@ -407,98 +374,81 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
+    paddingBottom: 20,
   },
-  // Mode Toggle
-  modeToggleContainer: {
+
+  // Header - Matches Mockup
+  header: {
     flexDirection: 'row',
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: 4,
-  },
-  modeToggle: {
-    flex: 1,
-    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    gap: 6,
-  },
-  modeToggleActive: {
-    backgroundColor: ProsColors.primary,
-  },
-  modeToggleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: ProsColors.textSecondary,
-  },
-  modeToggleTextActive: {
-    color: '#FFFFFF',
-  },
-  // Hero Section
-  heroSection: {
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
+    paddingVertical: 12,
   },
-  earlyAdopterBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  earlyAdopterText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-    marginLeft: 6,
-  },
-  heroTitle: {
-    fontSize: 32,
+  headerTitle: {
+    fontSize: 22,
     fontWeight: '700',
     color: ProsColors.textPrimary,
-    textAlign: 'center',
-    lineHeight: 40,
-    marginBottom: 12,
   },
-  heroTitleAccent: {
-    color: ProsColors.primary,
+  modeToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 20,
+    padding: 3,
+  },
+  toggleButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 17,
+  },
+  toggleButtonActive: {
+    backgroundColor: ProsColors.primary,
+  },
+  toggleText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: ProsColors.textSecondary,
+  },
+  toggleTextActive: {
+    color: '#FFFFFF',
+  },
+
+  // Hero Section - Matches Mockup
+  heroSection: {
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 20,
+  },
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: ProsColors.textPrimary,
+    lineHeight: 34,
+    marginBottom: 8,
   },
   heroSubtitle: {
     fontSize: 15,
     color: ProsColors.textSecondary,
-    textAlign: 'center',
     lineHeight: 22,
-    marginBottom: 24,
-    paddingHorizontal: 16,
+    marginBottom: 20,
   },
+
+  // Search Container - Matches Mockup
   searchContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 2,
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: ProsColors.sectionBg,
+    backgroundColor: '#F9FAFB',
     borderRadius: 8,
     paddingHorizontal: 12,
     marginBottom: 8,
@@ -506,10 +456,9 @@ const styles = StyleSheet.create({
   locationInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: ProsColors.sectionBg,
+    backgroundColor: '#F9FAFB',
     borderRadius: 8,
     paddingHorizontal: 12,
-    marginBottom: 12,
   },
   searchInput: {
     flex: 1,
@@ -518,111 +467,132 @@ const styles = StyleSheet.create({
     color: ProsColors.textPrimary,
     marginLeft: 8,
   },
-  searchButton: {
-    backgroundColor: ProsColors.primary,
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
+
+  // Categories Section - Matches Mockup
+  categoriesSection: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    marginTop: 8,
   },
-  searchButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  trustBadges: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    marginTop: 20,
+  categoriesScrollContent: {
+    paddingHorizontal: 16,
     gap: 16,
   },
-  trustBadge: {
-    flexDirection: 'row',
+  categoryItem: {
     alignItems: 'center',
+    width: 72,
   },
-  trustBadgeText: {
-    fontSize: 12,
-    color: ProsColors.textSecondary,
-    marginLeft: 4,
-  },
-  section: {
-    paddingTop: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: ProsColors.textPrimary,
-  },
-  viewAllText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: ProsColors.primary,
-  },
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  featuredList: {
-    paddingHorizontal: 16,
-  },
-  stepsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginTop: 16,
-  },
-  step: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: 8,
-  },
-  stepIcon: {
+  categoryIconCircle: {
     width: 56,
     height: 56,
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  stepTitle: {
+  categoryName: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: ProsColors.textPrimary,
+    textAlign: 'center',
+  },
+  categoryIndicator: {
+    width: 24,
+    height: 3,
+    backgroundColor: ProsColors.primary,
+    borderRadius: 1.5,
+    marginTop: 6,
+  },
+
+  // Featured Section - Matches Mockup
+  featuredSection: {
+    paddingHorizontal: 16,
+    paddingTop: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: ProsColors.textPrimary,
+    marginBottom: 16,
+  },
+  prosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  proCard: {
+    width: (width - 44) / 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  proCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  proAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  proInfo: {
+    flex: 1,
+  },
+  proName: {
     fontSize: 14,
     fontWeight: '600',
     color: ProsColors.textPrimary,
-    marginBottom: 4,
+    lineHeight: 18,
   },
-  stepDescription: {
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  ratingNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: ProsColors.textPrimary,
+    marginRight: 4,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    marginRight: 4,
+  },
+  reviewCount: {
     fontSize: 12,
     color: ProsColors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 16,
   },
-  // Pro Link Section
-  proLinkSection: {
+  locationRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 24,
-    marginTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    marginHorizontal: 16,
+    marginBottom: 12,
   },
-  proLinkText: {
-    fontSize: 14,
+  locationText: {
+    fontSize: 12,
     color: ProsColors.textSecondary,
-    marginBottom: 8,
+    marginLeft: 4,
   },
-  proLinkButton: {
-    fontSize: 16,
+  getQuoteButton: {
+    backgroundColor: ProsColors.primary,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  getQuoteButtonText: {
+    fontSize: 14,
     fontWeight: '600',
-    color: ProsColors.primary,
+    color: '#FFFFFF',
   },
+
   // Pro Mode Styles
   proModeContainer: {
     paddingHorizontal: 16,
@@ -684,7 +654,7 @@ const styles = StyleSheet.create({
     color: ProsColors.textSecondary,
   },
   notRegisteredSection: {
-    backgroundColor: ProsColors.heroBg,
+    backgroundColor: '#F9FAFB',
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
@@ -722,7 +692,7 @@ const styles = StyleSheet.create({
   savingsBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: ProsColors.secondary,
+    backgroundColor: '#F59E0B',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,

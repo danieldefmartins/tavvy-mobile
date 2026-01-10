@@ -1,111 +1,164 @@
 /**
- * Pros Request Step 3 Screen
+ * Pros Request Step 3 Screen (FIXED - No react-native-svg dependency)
  * Install path: screens/ProsRequestStep3Screen.tsx
  * 
- * Step 3 of 4: What's your budget?
- * Simple, one-question-per-screen approach with progress indicator.
+ * Step 3 of the multi-step service request form.
+ * Asks: "What's your budget?"
  */
 
 import React, { useState } from 'react';
 import {
   View,
   Text,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Svg, { Circle } from 'react-native-svg';
 
 import { ProsColors } from '../constants/ProsConfig';
 
+const { width } = Dimensions.get('window');
+
 type RouteParams = {
   ProsRequestStep3Screen: {
-    proId?: number;
-    proName?: string;
-    categoryId?: number;
-    categoryName?: string;
-    projectTitle: string;
+    categoryId: string;
+    categoryName: string;
+    projectDescription?: string;
     timeline: string;
+    timelineName: string;
   };
 };
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
-type BudgetOption = {
-  id: string;
-  label: string;
-};
-
-const BUDGET_OPTIONS: BudgetOption[] = [
-  { id: 'under_500', label: 'Under $500' },
-  { id: '500_1000', label: '$500 - $1,000' },
-  { id: '1000_2500', label: '$1,000 - $2,500' },
-  { id: '2500_plus', label: '$2,500+' },
-  { id: 'not_sure', label: 'Not sure yet' },
-];
-
-// Progress Circle Component
-const ProgressCircle = ({ percentage }: { percentage: number }) => {
+// Progress indicator component using basic React Native views
+const ProgressIndicator = ({ progress, step, totalSteps }: { progress: number; step: number; totalSteps: number }) => {
   const size = 80;
   const strokeWidth = 6;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const strokeDashoffset = circumference - (percentage / 100) * circumference;
-
+  
   return (
-    <View style={styles.progressContainer}>
-      <Svg width={size} height={size}>
-        {/* Background circle */}
-        <Circle
-          stroke={ProsColors.borderLight}
-          fill="none"
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          strokeWidth={strokeWidth}
-        />
-        {/* Progress circle */}
-        <Circle
-          stroke={ProsColors.primary}
-          fill="none"
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          strokeWidth={strokeWidth}
-          strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-      </Svg>
-      <View style={styles.progressTextContainer}>
-        <Text style={styles.progressText}>{percentage}%</Text>
+    <View style={progressStyles.container}>
+      {/* Background circle */}
+      <View style={[progressStyles.circle, { width: size, height: size, borderRadius: size / 2 }]}>
+        {/* Progress arc - simulated with a border */}
+        <View style={[
+          progressStyles.progressCircle, 
+          { 
+            width: size - 4, 
+            height: size - 4, 
+            borderRadius: (size - 4) / 2,
+            borderWidth: strokeWidth,
+            borderColor: ProsColors.primary,
+            borderTopColor: progress >= 25 ? ProsColors.primary : ProsColors.border,
+            borderRightColor: progress >= 50 ? ProsColors.primary : ProsColors.border,
+            borderBottomColor: progress >= 75 ? ProsColors.primary : ProsColors.border,
+            borderLeftColor: progress >= 100 ? ProsColors.primary : ProsColors.border,
+          }
+        ]} />
+        {/* Center content */}
+        <View style={progressStyles.centerContent}>
+          <Text style={progressStyles.percentText}>{progress}%</Text>
+        </View>
       </View>
+      <Text style={progressStyles.stepText}>Step {step} of {totalSteps}</Text>
     </View>
   );
 };
 
+const progressStyles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  circle: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: ProsColors.sectionBg,
+  },
+  progressCircle: {
+    position: 'absolute',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  percentText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: ProsColors.primary,
+  },
+  stepText: {
+    fontSize: 13,
+    color: ProsColors.textSecondary,
+    marginTop: 8,
+  },
+});
+
+// Budget options
+const BUDGET_OPTIONS = [
+  {
+    id: 'under_500',
+    title: 'Under $500',
+    subtitle: 'Small projects',
+  },
+  {
+    id: '500_1000',
+    title: '$500 - $1,000',
+    subtitle: 'Medium projects',
+  },
+  {
+    id: '1000_2500',
+    title: '$1,000 - $2,500',
+    subtitle: 'Larger projects',
+  },
+  {
+    id: '2500_5000',
+    title: '$2,500 - $5,000',
+    subtitle: 'Major projects',
+  },
+  {
+    id: 'over_5000',
+    title: 'Over $5,000',
+    subtitle: 'Large-scale work',
+  },
+  {
+    id: 'not_sure',
+    title: 'Not sure yet',
+    subtitle: 'Need quotes to decide',
+  },
+];
+
 export default function ProsRequestStep3Screen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp<RouteParams, 'ProsRequestStep3Screen'>>();
-  const { proId, proName, categoryId, categoryName, projectTitle, timeline } = route.params;
+  const { categoryId, categoryName, projectDescription, timeline, timelineName } = route.params;
 
   const [selectedBudget, setSelectedBudget] = useState<string | null>(null);
 
-  const isValid = selectedBudget !== null;
+  const progress = 75; // Step 3 of 4 = 75%
 
-  const handleNext = () => {
+  const handleBudgetSelect = (budgetId: string) => {
+    setSelectedBudget(budgetId);
+  };
+
+  const handleContinue = () => {
+    if (!selectedBudget) return;
+
+    const budgetName = BUDGET_OPTIONS.find(b => b.id === selectedBudget)?.title;
+
     navigation.navigate('ProsRequestStep4Screen', {
-      proId,
-      proName,
       categoryId,
       categoryName,
-      projectTitle,
+      projectDescription,
       timeline,
+      timelineName,
       budget: selectedBudget,
+      budgetName,
     });
   };
 
@@ -113,71 +166,86 @@ export default function ProsRequestStep3Screen() {
     navigation.goBack();
   };
 
-  const handleClose = () => {
-    // Go back to the beginning
-    navigation.navigate('ProsHomeScreen');
-  };
+  const isValid = selectedBudget !== null;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={ProsColors.primary} />
+          <Ionicons name="chevron-back" size={24} color={ProsColors.textPrimary} />
         </TouchableOpacity>
-        <View style={{ flex: 1 }} />
-        <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-          <Ionicons name="close" size={24} color={ProsColors.textSecondary} />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Request Service</Text>
+        <View style={{ width: 40 }} />
       </View>
 
-      {/* Content */}
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Progress Indicator */}
-        <ProgressCircle percentage={75} />
-        <Text style={styles.stepText}>Step 3 of 4</Text>
+        <ProgressIndicator progress={progress} step={3} totalSteps={4} />
+
+        {/* Summary Badges */}
+        <View style={styles.summaryBadges}>
+          <View style={styles.summaryBadge}>
+            <Ionicons name="construct" size={12} color={ProsColors.primary} />
+            <Text style={styles.summaryBadgeText}>{categoryName}</Text>
+          </View>
+          <View style={styles.summaryBadge}>
+            <Ionicons name="time" size={12} color={ProsColors.primary} />
+            <Text style={styles.summaryBadgeText}>{timelineName}</Text>
+          </View>
+        </View>
 
         {/* Question */}
-        <Text style={styles.questionText}>
-          What's your{'\n'}budget?
+        <Text style={styles.questionTitle}>What's your budget?</Text>
+        <Text style={styles.questionSubtitle}>
+          This helps pros give you accurate quotes.
         </Text>
 
-        {/* Budget Pills */}
-        <View style={styles.pillsContainer}>
+        {/* Budget Options Grid */}
+        <View style={styles.budgetGrid}>
           {BUDGET_OPTIONS.map((option) => (
             <TouchableOpacity
               key={option.id}
               style={[
-                styles.budgetPill,
-                selectedBudget === option.id && styles.budgetPillSelected,
+                styles.budgetCard,
+                selectedBudget === option.id && styles.budgetCardSelected,
               ]}
-              onPress={() => setSelectedBudget(option.id)}
+              onPress={() => handleBudgetSelect(option.id)}
               activeOpacity={0.7}
             >
               <Text style={[
-                styles.budgetPillText,
-                selectedBudget === option.id && styles.budgetPillTextSelected,
+                styles.budgetTitle,
+                selectedBudget === option.id && styles.budgetTitleSelected,
               ]}>
-                {option.label}
+                {option.title}
               </Text>
+              <Text style={styles.budgetSubtitle}>{option.subtitle}</Text>
+              
+              {/* Selection indicator */}
+              {selectedBudget === option.id && (
+                <View style={styles.checkmark}>
+                  <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                </View>
+              )}
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Helper text */}
-        <Text style={styles.helperText}>
-          This helps pros give you accurate estimates
-        </Text>
-      </View>
+        <View style={{ height: 100 }} />
+      </ScrollView>
 
       {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.nextButton, !isValid && styles.nextButtonDisabled]}
-          onPress={handleNext}
+          style={[styles.continueButton, !isValid && styles.continueButtonDisabled]}
+          onPress={handleContinue}
           disabled={!isValid}
         >
-          <Text style={styles.nextButtonText}>Next</Text>
+          <Text style={styles.continueButtonText}>Continue</Text>
           <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
@@ -196,6 +264,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: ProsColors.borderLight,
   },
   backButton: {
     width: 40,
@@ -203,85 +273,102 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
-  closeButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: ProsColors.textPrimary,
   },
-  content: {
+  scrollView: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 20,
   },
-  progressContainer: {
-    alignSelf: 'center',
-    position: 'relative',
+  scrollContent: {
+    padding: 20,
+  },
+  summaryBadges: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
     marginBottom: 16,
   },
-  progressTextContainer: {
+  summaryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${ProsColors.primary}15`,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    gap: 4,
+  },
+  summaryBadgeText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: ProsColors.primary,
+  },
+  questionTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: ProsColors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  questionSubtitle: {
+    fontSize: 15,
+    color: ProsColors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  budgetGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  budgetCard: {
+    width: (width - 52) / 2,
+    backgroundColor: ProsColors.sectionBg,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    position: 'relative',
+  },
+  budgetCardSelected: {
+    borderColor: ProsColors.primary,
+    backgroundColor: `${ProsColors.primary}10`,
+  },
+  budgetTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: ProsColors.textPrimary,
+    marginBottom: 4,
+  },
+  budgetTitleSelected: {
+    color: ProsColors.primary,
+  },
+  budgetSubtitle: {
+    fontSize: 13,
+    color: ProsColors.textSecondary,
+  },
+  checkmark: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: 10,
+    right: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: ProsColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  progressText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: ProsColors.primary,
-  },
-  stepText: {
-    fontSize: 14,
-    color: ProsColors.textSecondary,
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  questionText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: ProsColors.textPrimary,
-    lineHeight: 36,
-    marginBottom: 32,
-    textAlign: 'left',
-  },
-  pillsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  budgetPill: {
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 25,
-    borderWidth: 1.5,
-    borderColor: ProsColors.primary,
-    backgroundColor: '#FFFFFF',
-  },
-  budgetPillSelected: {
-    backgroundColor: ProsColors.primary,
-  },
-  budgetPillText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: ProsColors.primary,
-  },
-  budgetPillTextSelected: {
-    color: '#FFFFFF',
-  },
-  helperText: {
-    fontSize: 14,
-    color: ProsColors.textSecondary,
-    marginTop: 24,
-  },
   footer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingVertical: 16,
     paddingBottom: 24,
+    borderTopWidth: 1,
+    borderTopColor: ProsColors.borderLight,
+    backgroundColor: '#FFFFFF',
   },
-  nextButton: {
+  continueButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -290,10 +377,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     gap: 8,
   },
-  nextButtonDisabled: {
+  continueButtonDisabled: {
     backgroundColor: ProsColors.border,
   },
-  nextButtonText: {
+  continueButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',

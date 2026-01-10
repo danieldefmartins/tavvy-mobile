@@ -1,127 +1,156 @@
 /**
- * Pros Request Step 4 Screen
+ * Pros Request Step 4 Screen (FIXED - No react-native-svg dependency)
  * Install path: screens/ProsRequestStep4Screen.tsx
  * 
- * Step 4 of 4: How many pros should we contact? + Submit
- * Final step with summary and submission.
+ * Step 4 of the multi-step service request form.
+ * Final step: Select number of pros and submit.
  */
 
 import React, { useState } from 'react';
 import {
   View,
   Text,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Svg, { Circle } from 'react-native-svg';
 
 import { ProsColors } from '../constants/ProsConfig';
-import { useProsLeads } from '../hooks/usePros';
+
+const { width } = Dimensions.get('window');
 
 type RouteParams = {
   ProsRequestStep4Screen: {
-    proId?: number;
-    proName?: string;
-    categoryId?: number;
-    categoryName?: string;
-    projectTitle: string;
+    categoryId: string;
+    categoryName: string;
+    projectDescription?: string;
     timeline: string;
+    timelineName: string;
     budget: string;
+    budgetName: string;
   };
 };
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
-const PRO_COUNT_OPTIONS = [1, 3, 5];
-
-// Helper to convert timeline ID to display text
-const getTimelineLabel = (timeline: string): string => {
-  switch (timeline) {
-    case 'asap': return 'ASAP';
-    case 'within_week': return 'Within 1 week';
-    case 'flexible': return 'Flexible';
-    default: return timeline;
-  }
-};
-
-// Helper to convert budget ID to display text
-const getBudgetLabel = (budget: string): string => {
-  switch (budget) {
-    case 'under_500': return 'Under $500';
-    case '500_1000': return '$500 - $1,000';
-    case '1000_2500': return '$1,000 - $2,500';
-    case '2500_plus': return '$2,500+';
-    case 'not_sure': return 'Not sure yet';
-    default: return budget;
-  }
-};
-
-// Progress Circle Component with Checkmark
-const ProgressCircleComplete = () => {
+// Progress indicator component using basic React Native views
+const ProgressIndicator = ({ progress, step, totalSteps }: { progress: number; step: number; totalSteps: number }) => {
   const size = 80;
   const strokeWidth = 6;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-
+  
   return (
-    <View style={styles.progressContainer}>
-      <Svg width={size} height={size}>
-        {/* Full circle */}
-        <Circle
-          stroke={ProsColors.primary}
-          fill="none"
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          strokeWidth={strokeWidth}
-        />
-      </Svg>
-      <View style={styles.progressTextContainer}>
-        <Ionicons name="checkmark" size={32} color={ProsColors.primary} />
+    <View style={progressStyles.container}>
+      {/* Background circle */}
+      <View style={[progressStyles.circle, { width: size, height: size, borderRadius: size / 2 }]}>
+        {/* Progress arc - simulated with a border */}
+        <View style={[
+          progressStyles.progressCircle, 
+          { 
+            width: size - 4, 
+            height: size - 4, 
+            borderRadius: (size - 4) / 2,
+            borderWidth: strokeWidth,
+            borderColor: ProsColors.primary,
+            borderTopColor: progress >= 25 ? ProsColors.primary : ProsColors.border,
+            borderRightColor: progress >= 50 ? ProsColors.primary : ProsColors.border,
+            borderBottomColor: progress >= 75 ? ProsColors.primary : ProsColors.border,
+            borderLeftColor: progress >= 100 ? ProsColors.primary : ProsColors.border,
+          }
+        ]} />
+        {/* Center content */}
+        <View style={progressStyles.centerContent}>
+          <Text style={progressStyles.percentText}>{progress}%</Text>
+        </View>
       </View>
+      <Text style={progressStyles.stepText}>Step {step} of {totalSteps}</Text>
     </View>
   );
 };
 
+const progressStyles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  circle: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: ProsColors.sectionBg,
+  },
+  progressCircle: {
+    position: 'absolute',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  percentText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: ProsColors.primary,
+  },
+  stepText: {
+    fontSize: 13,
+    color: ProsColors.textSecondary,
+    marginTop: 8,
+  },
+});
+
+// Number of pros options
+const PROS_COUNT_OPTIONS = [1, 2, 3, 4, 5];
+
 export default function ProsRequestStep4Screen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp<RouteParams, 'ProsRequestStep4Screen'>>();
-  const { proId, proName, categoryId, categoryName, projectTitle, timeline, budget } = route.params;
+  const { 
+    categoryId, 
+    categoryName, 
+    projectDescription, 
+    timeline, 
+    timelineName, 
+    budget, 
+    budgetName 
+  } = route.params;
 
-  const { createLead, loading } = useProsLeads();
-  const [selectedProCount, setSelectedProCount] = useState<number>(3);
+  const [selectedProsCount, setSelectedProsCount] = useState<number>(3);
+  const [loading, setLoading] = useState(false);
 
-  const handleBack = () => {
-    navigation.goBack();
-  };
-
-  const handleClose = () => {
-    navigation.navigate('ProsHomeScreen');
-  };
+  const progress = 100; // Step 4 of 4 = 100%
 
   const handleSubmit = async () => {
+    setLoading(true);
+
     try {
-      await createLead({
-        providerId: proId || 0,
-        categoryId: categoryId || undefined,
-        title: projectTitle,
-        description: `Timeline: ${getTimelineLabel(timeline)}, Budget: ${getBudgetLabel(budget)}, Pros requested: ${selectedProCount}`,
-        budget: getBudgetLabel(budget),
-      });
+      // TODO: Replace with actual API call
+      // await submitServiceRequest({
+      //   categoryId,
+      //   categoryName,
+      //   projectDescription,
+      //   timeline,
+      //   budget,
+      //   prosCount: selectedProsCount,
+      // });
+
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
       Alert.alert(
-        '🎉 Request Submitted!',
-        `We're finding ${selectedProCount} pros for your project. You'll be notified when they respond.`,
+        'Request Submitted!',
+        `We're reaching out to ${selectedProsCount} pros in your area. You'll receive responses soon!`,
         [
           {
-            text: 'View My Project',
-            onPress: () => navigation.navigate('ProsProjectStatusScreen', { projectTitle }),
+            text: 'Track My Request',
+            onPress: () => navigation.navigate('ProsProjectStatusScreen', {
+              projectId: Date.now(),
+              projectTitle: `${categoryName} Project`,
+            }),
           },
           {
             text: 'Done',
@@ -131,48 +160,54 @@ export default function ProsRequestStep4Screen() {
       );
     } catch (error) {
       Alert.alert('Error', 'Failed to submit your request. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handleBack = () => {
+    navigation.goBack();
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={ProsColors.primary} />
+          <Ionicons name="chevron-back" size={24} color={ProsColors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>TavvY <Text style={styles.headerTitleAccent}>Pros</Text></Text>
-        <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-          <Ionicons name="close" size={24} color={ProsColors.textSecondary} />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Request Service</Text>
+        <View style={{ width: 40 }} />
       </View>
 
-      {/* Content */}
-      <View style={styles.content}>
-        {/* Progress Indicator - Complete */}
-        <ProgressCircleComplete />
-        <Text style={styles.stepText}>Step 4 of 4</Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Progress Indicator */}
+        <ProgressIndicator progress={progress} step={4} totalSteps={4} />
 
         {/* Question */}
-        <Text style={styles.questionText}>
-          How many pros should{'\n'}we contact?
+        <Text style={styles.questionTitle}>Almost done!</Text>
+        <Text style={styles.questionSubtitle}>
+          How many pros would you like to hear from?
         </Text>
 
-        {/* Pro Count Selector */}
-        <View style={styles.proCountContainer}>
-          {PRO_COUNT_OPTIONS.map((count) => (
+        {/* Pros Count Selector */}
+        <View style={styles.prosCountContainer}>
+          {PROS_COUNT_OPTIONS.map((count) => (
             <TouchableOpacity
               key={count}
               style={[
-                styles.proCountButton,
-                selectedProCount === count && styles.proCountButtonSelected,
+                styles.prosCountButton,
+                selectedProsCount === count && styles.prosCountButtonSelected,
               ]}
-              onPress={() => setSelectedProCount(count)}
-              activeOpacity={0.7}
+              onPress={() => setSelectedProsCount(count)}
             >
               <Text style={[
-                styles.proCountText,
-                selectedProCount === count && styles.proCountTextSelected,
+                styles.prosCountText,
+                selectedProsCount === count && styles.prosCountTextSelected,
               ]}>
                 {count}
               </Text>
@@ -180,34 +215,72 @@ export default function ProsRequestStep4Screen() {
           ))}
         </View>
 
-        {/* Helper text */}
-        <Text style={styles.helperText}>
-          We'll keep inviting pros until this many respond to you
+        <Text style={styles.prosCountHint}>
+          We recommend 3 pros for the best comparison.
         </Text>
 
-        {/* Summary Card */}
+        {/* Request Summary */}
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Your Request Summary</Text>
+          <Text style={styles.summaryTitle}>Request Summary</Text>
           
           <View style={styles.summaryRow}>
-            <View style={styles.summaryDot} />
-            <Text style={styles.summaryLabel}>Project Name</Text>
-            <Text style={styles.summaryValue}>{projectTitle}</Text>
+            <View style={styles.summaryIcon}>
+              <Ionicons name="construct" size={18} color={ProsColors.primary} />
+            </View>
+            <View style={styles.summaryContent}>
+              <Text style={styles.summaryLabel}>Service</Text>
+              <Text style={styles.summaryValue}>{categoryName}</Text>
+            </View>
           </View>
-          
+
           <View style={styles.summaryRow}>
-            <View style={styles.summaryDot} />
-            <Text style={styles.summaryLabel}>Timeline</Text>
-            <Text style={styles.summaryValue}>{getTimelineLabel(timeline)}</Text>
+            <View style={styles.summaryIcon}>
+              <Ionicons name="time" size={18} color={ProsColors.primary} />
+            </View>
+            <View style={styles.summaryContent}>
+              <Text style={styles.summaryLabel}>Timeline</Text>
+              <Text style={styles.summaryValue}>{timelineName}</Text>
+            </View>
           </View>
-          
+
           <View style={styles.summaryRow}>
-            <View style={styles.summaryDot} />
-            <Text style={styles.summaryLabel}>Budget</Text>
-            <Text style={styles.summaryValue}>{getBudgetLabel(budget)}</Text>
+            <View style={styles.summaryIcon}>
+              <Ionicons name="cash" size={18} color={ProsColors.primary} />
+            </View>
+            <View style={styles.summaryContent}>
+              <Text style={styles.summaryLabel}>Budget</Text>
+              <Text style={styles.summaryValue}>{budgetName}</Text>
+            </View>
           </View>
+
+          <View style={[styles.summaryRow, { borderBottomWidth: 0 }]}>
+            <View style={styles.summaryIcon}>
+              <Ionicons name="people" size={18} color={ProsColors.primary} />
+            </View>
+            <View style={styles.summaryContent}>
+              <Text style={styles.summaryLabel}>Pros to contact</Text>
+              <Text style={styles.summaryValue}>{selectedProsCount} pros</Text>
+            </View>
+          </View>
+
+          {projectDescription && (
+            <View style={styles.descriptionBox}>
+              <Text style={styles.descriptionLabel}>Project Details</Text>
+              <Text style={styles.descriptionText}>{projectDescription}</Text>
+            </View>
+          )}
         </View>
-      </View>
+
+        {/* Info Note */}
+        <View style={styles.infoNote}>
+          <Ionicons name="shield-checkmark" size={18} color={ProsColors.primary} />
+          <Text style={styles.infoNoteText}>
+            Your contact info is only shared with pros you choose to connect with.
+          </Text>
+        </View>
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
 
       {/* Footer */}
       <View style={styles.footer}>
@@ -221,7 +294,7 @@ export default function ProsRequestStep4Screen() {
           ) : (
             <>
               <Text style={styles.submitButtonText}>Submit Request</Text>
-              <Ionicons name="send" size={20} color="#FFFFFF" />
+              <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
             </>
           )}
         </TouchableOpacity>
@@ -241,14 +314,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-  },
-  headerTitleAccent: {
-    color: ProsColors.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: ProsColors.borderLight,
   },
   backButton: {
     width: 40,
@@ -256,124 +323,142 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
-  closeButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-  },
-  progressContainer: {
-    alignSelf: 'center',
-    position: 'relative',
-    marginBottom: 8,
-  },
-  progressTextContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  stepText: {
-    fontSize: 14,
-    color: ProsColors.primary,
-    marginBottom: 24,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  questionText: {
-    fontSize: 26,
-    fontWeight: '700',
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
     color: ProsColors.textPrimary,
-    lineHeight: 34,
-    marginBottom: 24,
-    textAlign: 'center',
   },
-  proCountContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-    marginBottom: 16,
+  scrollView: {
+    flex: 1,
   },
-  proCountButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 2,
-    borderColor: ProsColors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+  scrollContent: {
+    padding: 20,
   },
-  proCountButtonSelected: {
-    backgroundColor: ProsColors.primary,
-  },
-  proCountText: {
+  questionTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: ProsColors.primary,
+    color: ProsColors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 8,
   },
-  proCountTextSelected: {
-    color: '#FFFFFF',
-  },
-  helperText: {
-    fontSize: 14,
+  questionSubtitle: {
+    fontSize: 15,
     color: ProsColors.textSecondary,
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
+  },
+  prosCountContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  prosCountButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: ProsColors.sectionBg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  prosCountButtonSelected: {
+    borderColor: ProsColors.primary,
+    backgroundColor: ProsColors.primary,
+  },
+  prosCountText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: ProsColors.textPrimary,
+  },
+  prosCountTextSelected: {
+    color: '#FFFFFF',
+  },
+  prosCountHint: {
+    fontSize: 13,
+    color: ProsColors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
   },
   summaryCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: ProsColors.sectionBg,
+    borderRadius: 16,
     padding: 20,
-    borderWidth: 1,
-    borderColor: ProsColors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    marginBottom: 16,
   },
   summaryTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: ProsColors.primary,
+    color: ProsColors.textPrimary,
     marginBottom: 16,
   },
   summaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: ProsColors.borderLight,
   },
-  summaryDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: ProsColors.primary,
+  summaryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: `${ProsColors.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
   },
-  summaryLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-    width: 100,
-  },
-  summaryValue: {
-    fontSize: 14,
-    color: ProsColors.textSecondary,
+  summaryContent: {
     flex: 1,
   },
+  summaryLabel: {
+    fontSize: 12,
+    color: ProsColors.textSecondary,
+    marginBottom: 2,
+  },
+  summaryValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: ProsColors.textPrimary,
+  },
+  descriptionBox: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: ProsColors.borderLight,
+  },
+  descriptionLabel: {
+    fontSize: 12,
+    color: ProsColors.textSecondary,
+    marginBottom: 4,
+  },
+  descriptionText: {
+    fontSize: 14,
+    color: ProsColors.textPrimary,
+    lineHeight: 20,
+  },
+  infoNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: `${ProsColors.primary}10`,
+    borderRadius: 12,
+    padding: 14,
+    gap: 10,
+  },
+  infoNoteText: {
+    flex: 1,
+    fontSize: 13,
+    color: ProsColors.textPrimary,
+    lineHeight: 18,
+  },
   footer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingVertical: 16,
     paddingBottom: 24,
+    borderTopWidth: 1,
+    borderTopColor: ProsColors.borderLight,
+    backgroundColor: '#FFFFFF',
   },
   submitButton: {
     flexDirection: 'row',

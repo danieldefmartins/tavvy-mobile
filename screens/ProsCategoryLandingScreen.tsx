@@ -1,9 +1,10 @@
 /**
- * Pros Category Landing Screen
+ * Pros Category Landing Screen (UPDATED to match mockup)
  * Install path: screens/ProsCategoryLandingScreen.tsx
  * 
  * Dedicated landing page for each service category.
  * Explains how TavvY works and shows top-rated pros in the category.
+ * DESIGN MATCHES: service_landing_page.png mockup
  */
 
 import React, { useEffect, useState } from 'react';
@@ -23,91 +24,80 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { ProsColors, PROS_CATEGORIES } from '../constants/ProsConfig';
-import { ProsProviderCard } from '../components/ProsProviderCard';
-import { useSearchPros } from '../hooks/usePros';
+import { ProsColors, SAMPLE_PROS } from '../constants/ProsConfig';
 
 const { width } = Dimensions.get('window');
 
 type RouteParams = {
   ProsCategoryLandingScreen: {
-    categoryId: number;
-    categorySlug: string;
+    categoryId: string;
     categoryName: string;
   };
 };
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
-// Category hero images (placeholder URLs - replace with actual images)
+// Category hero images
 const CATEGORY_IMAGES: Record<string, string> = {
   electrician: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800',
   plumber: 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=800',
-  'pool-cleaning': 'https://images.unsplash.com/photo-1575429198097-0414ec08e8cd?w=800',
-  'floor-installation': 'https://images.unsplash.com/photo-1581858726788-75bc0f6a952d?w=800',
-  'kitchen-remodeling': 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800',
-  'house-cleaning': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800',
+  pool_cleaning: 'https://images.unsplash.com/photo-1575429198097-0414ec08e8cd?w=800',
+  house_cleaning: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800',
   hvac: 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=800',
   roofing: 'https://images.unsplash.com/photo-1632759145351-1d592919f522?w=800',
   painting: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=800',
   landscaping: 'https://images.unsplash.com/photo-1558904541-efa843a96f01?w=800',
-  handyman: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=800',
-  'pest-control': 'https://images.unsplash.com/photo-1632935190605-828e3c9a8c0e?w=800',
 };
 
 // Popular services by category
 const POPULAR_SERVICES: Record<string, string[]> = {
   electrician: ['Panel Upgrade', 'EV Charger Install', 'Rewiring', 'Outlet Repair', 'Lighting', 'Smart Home'],
   plumber: ['Leak Repair', 'Drain Cleaning', 'Water Heater', 'Pipe Replacement', 'Faucet Install', 'Toilet Repair'],
-  'pool-cleaning': ['Weekly Cleaning', 'Chemical Balance', 'Filter Repair', 'Pool Opening', 'Algae Treatment', 'Equipment Check'],
-  'floor-installation': ['Hardwood', 'Tile', 'Laminate', 'Vinyl', 'Carpet', 'Refinishing'],
-  'kitchen-remodeling': ['Cabinet Install', 'Countertops', 'Backsplash', 'Appliances', 'Lighting', 'Full Remodel'],
-  'house-cleaning': ['Deep Clean', 'Regular Clean', 'Move-In/Out', 'Post-Construction', 'Office Cleaning', 'Window Cleaning'],
+  pool_cleaning: ['Weekly Cleaning', 'Chemical Balance', 'Filter Repair', 'Pool Opening', 'Algae Treatment', 'Equipment Check'],
+  house_cleaning: ['Deep Clean', 'Regular Clean', 'Move-In/Out', 'Post-Construction', 'Office Cleaning', 'Window Cleaning'],
   hvac: ['AC Repair', 'Heating Repair', 'Installation', 'Maintenance', 'Duct Cleaning', 'Thermostat'],
   roofing: ['Roof Repair', 'Replacement', 'Inspection', 'Gutter Install', 'Leak Fix', 'Shingle Repair'],
   painting: ['Interior', 'Exterior', 'Cabinet Painting', 'Deck Staining', 'Wallpaper', 'Touch-ups'],
   landscaping: ['Lawn Care', 'Tree Trimming', 'Garden Design', 'Irrigation', 'Hardscaping', 'Mulching'],
-  handyman: ['Furniture Assembly', 'Drywall Repair', 'Door Install', 'Shelving', 'TV Mounting', 'Minor Repairs'],
-  'pest-control': ['Termites', 'Rodents', 'Ants', 'Roaches', 'Bed Bugs', 'Prevention'],
 };
 
-// How it works steps
+// How it works steps - matches mockup design
 const HOW_IT_WORKS = [
   {
     number: '1',
     title: 'Describe Your Project',
     description: 'Share details about your needs and desired timeline to get started.',
     icon: 'clipboard-outline',
+    color: ProsColors.primary,
   },
   {
     number: '2',
     title: 'Get Matched with Pros',
-    description: 'Receive quotes and profiles from qualified local professionals.',
+    description: 'Receive quotes and profiles from qualified local professionals willing to do the job.',
     icon: 'people-outline',
+    color: '#3B82F6',
   },
   {
     number: '3',
     title: 'Compare & Choose',
-    description: 'Review ratings, past work, and prices to select the best pro.',
-    icon: 'checkmark-circle-outline',
+    description: 'Review ratings, past work, and prices to select the best pro for your project.',
+    icon: 'checkmark-circle',
+    color: ProsColors.primary,
   },
 ];
 
 export default function ProsCategoryLandingScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp<RouteParams, 'ProsCategoryLandingScreen'>>();
-  const { categoryId, categorySlug, categoryName } = route.params;
+  const { categoryId, categoryName } = route.params;
 
-  const { pros, loading, searchPros } = useSearchPros();
+  const [loading, setLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
 
-  const category = PROS_CATEGORIES.find(c => c.id === categoryId);
-  const heroImage = CATEGORY_IMAGES[categorySlug] || CATEGORY_IMAGES.handyman;
-  const popularServices = POPULAR_SERVICES[categorySlug] || POPULAR_SERVICES.handyman;
-
-  useEffect(() => {
-    searchPros({ categorySlug, limit: 4 });
-  }, [categorySlug]);
+  // Use sample data
+  const pros = SAMPLE_PROS.filter(p => p.category.toLowerCase() === categoryId.toLowerCase()).slice(0, 4);
+  const heroImage = CATEGORY_IMAGES[categoryId] || CATEGORY_IMAGES.electrician;
+  const popularServices = POPULAR_SERVICES[categoryId] || POPULAR_SERVICES.electrician;
 
   const handleBack = () => {
     navigation.goBack();
@@ -120,8 +110,8 @@ export default function ProsCategoryLandingScreen() {
     });
   };
 
-  const handleProPress = (slug: string) => {
-    navigation.navigate('ProsProfileScreen', { slug });
+  const handleProPress = (proId: string) => {
+    navigation.navigate('ProsProfileScreen', { proId });
   };
 
   const handleServicePress = (service: string) => {
@@ -132,13 +122,9 @@ export default function ProsCategoryLandingScreen() {
     });
   };
 
-  const handleBrowseAll = () => {
-    navigation.navigate('ProsBrowseScreen', { categorySlug, categoryName });
-  };
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
+      {/* Header - matches mockup */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color={ProsColors.textPrimary} />
@@ -153,7 +139,7 @@ export default function ProsCategoryLandingScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Section */}
+        {/* Hero Section - matches mockup with image and overlay text */}
         <View style={styles.heroSection}>
           {!imageError ? (
             <Image
@@ -163,24 +149,24 @@ export default function ProsCategoryLandingScreen() {
             />
           ) : (
             <View style={[styles.heroImage, styles.heroImagePlaceholder]}>
-              <Ionicons name={category?.icon as any || 'construct'} size={48} color={ProsColors.textMuted} />
+              <Ionicons name="construct" size={48} color={ProsColors.textMuted} />
             </View>
           )}
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.7)']}
+            colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.6)']}
             style={styles.heroOverlay}
           />
           <View style={styles.heroContent}>
             <Text style={styles.heroTitle}>
-              Find Licensed {categoryName}s{'\n'}Near You
+              Find Licensed{'\n'}{categoryName}s{'\n'}Near You
             </Text>
             <Text style={styles.heroSubtitle}>
-              Connect with pre-screened local pros for residential and commercial projects.
+              Connect with pre-screened local pros for residential and commercial {categoryName.toLowerCase()} projects.
             </Text>
           </View>
         </View>
 
-        {/* How TavvY Works Section */}
+        {/* How TavvY Works Section - matches mockup with cards */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>How TavvY Works</Text>
@@ -192,8 +178,8 @@ export default function ProsCategoryLandingScreen() {
               <View key={index} style={styles.stepCard}>
                 <View style={styles.stepHeader}>
                   <Text style={styles.stepNumber}>{step.number}.</Text>
-                  <View style={styles.stepIconContainer}>
-                    <Ionicons name={step.icon as any} size={24} color={ProsColors.primary} />
+                  <View style={[styles.stepIconContainer, { backgroundColor: `${step.color}15` }]}>
+                    <Ionicons name={step.icon as any} size={22} color={step.color} />
                   </View>
                 </View>
                 <Text style={styles.stepTitle}>{step.title}</Text>
@@ -203,7 +189,7 @@ export default function ProsCategoryLandingScreen() {
           </View>
         </View>
 
-        {/* Popular Services Section */}
+        {/* Popular Services Section - matches mockup with pill tags */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Popular Services</Text>
           <View style={styles.servicesContainer}>
@@ -227,67 +213,58 @@ export default function ProsCategoryLandingScreen() {
           </View>
         </View>
 
-        {/* Top Rated Pros Section */}
+        {/* Top Rated Pros Section - matches mockup with horizontal cards */}
         <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Top Rated {categoryName}s</Text>
-            <TouchableOpacity onPress={handleBrowseAll}>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.sectionTitle}>Top Rated {categoryName}s</Text>
 
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={ProsColors.primary} />
             </View>
-          ) : pros.length > 0 ? (
-            <View style={styles.prosGrid}>
-              {pros.slice(0, 4).map((pro) => (
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.prosScrollContent}
+            >
+              {(pros.length > 0 ? pros : SAMPLE_PROS.slice(0, 4)).map((pro) => (
                 <TouchableOpacity
                   key={pro.id}
                   style={styles.proCard}
-                  onPress={() => handleProPress(pro.slug)}
+                  onPress={() => handleProPress(pro.id)}
                 >
+                  {/* Pro Image */}
                   <View style={styles.proImageContainer}>
-                    {pro.logoUrl ? (
-                      <Image source={{ uri: pro.logoUrl }} style={styles.proImage} />
-                    ) : (
-                      <View style={[styles.proImage, styles.proImagePlaceholder]}>
-                        <Ionicons name="person" size={24} color={ProsColors.textMuted} />
-                      </View>
-                    )}
+                    <View style={styles.proImagePlaceholder}>
+                      <Ionicons name="person" size={28} color={ProsColors.textMuted} />
+                    </View>
                     {pro.isVerified && (
                       <View style={styles.verifiedBadge}>
                         <Ionicons name="checkmark-circle" size={16} color={ProsColors.primary} />
                       </View>
                     )}
                   </View>
-                  <Text style={styles.proName} numberOfLines={1}>{pro.businessName}</Text>
-                  <View style={styles.proRating}>
-                    <Ionicons name="star" size={14} color="#F59E0B" />
-                    <Text style={styles.proRatingText}>
-                      {pro.averageRating} ({pro.totalReviews})
-                    </Text>
+
+                  {/* Pro Info */}
+                  <View style={styles.proInfo}>
+                    <Text style={styles.proName} numberOfLines={1}>{pro.name}</Text>
+                    <View style={styles.ratingRow}>
+                      <Ionicons name="star" size={14} color="#F59E0B" />
+                      <Text style={styles.ratingText}>{pro.rating}</Text>
+                      <Text style={styles.reviewCount}>({pro.reviewCount} reviews)</Text>
+                    </View>
                   </View>
+
+                  {/* Request Quote Button */}
                   <TouchableOpacity
                     style={styles.requestQuoteButton}
-                    onPress={() => navigation.navigate('ProsRequestStep1Screen', {
-                      proId: pro.id,
-                      proName: pro.businessName,
-                      categoryId,
-                      categoryName,
-                    })}
+                    onPress={() => handleGetQuotes()}
                   >
-                    <Text style={styles.requestQuoteText}>Request Quote</Text>
+                    <Text style={styles.requestQuoteButtonText}>Request Quote</Text>
                   </TouchableOpacity>
                 </TouchableOpacity>
               ))}
-            </View>
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="search-outline" size={48} color={ProsColors.textMuted} />
-              <Text style={styles.emptyText}>No pros found in this category yet</Text>
-            </View>
+            </ScrollView>
           )}
         </View>
 
@@ -295,15 +272,14 @@ export default function ProsCategoryLandingScreen() {
         <View style={styles.ctaSection}>
           <Text style={styles.ctaTitle}>Ready to get started?</Text>
           <Text style={styles.ctaSubtitle}>
-            Describe your project and get matched with qualified {categoryName.toLowerCase()}s in your area.
+            Describe your project and get matched with top-rated {categoryName.toLowerCase()}s in your area.
           </Text>
           <TouchableOpacity style={styles.ctaButton} onPress={handleGetQuotes}>
             <Text style={styles.ctaButtonText}>Get Free Quotes</Text>
-            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -341,10 +317,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: 20,
   },
+
+  // Hero Section - matches mockup
   heroSection: {
-    height: 220,
+    height: 280,
     position: 'relative',
   },
   heroImage: {
@@ -352,98 +330,82 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   heroImagePlaceholder: {
-    backgroundColor: ProsColors.sectionBg,
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
   heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroContent: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 150,
-  },
-  heroContent: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
+    padding: 20,
   },
   heroTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     color: '#FFFFFF',
+    lineHeight: 34,
     marginBottom: 8,
     textAlign: 'left',
   },
   heroSubtitle: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.9)',
+    lineHeight: 20,
     textAlign: 'left',
   },
+
+  // Section
   section: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 24,
   },
   sectionHeader: {
     marginBottom: 16,
   },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: ProsColors.textPrimary,
+    marginBottom: 8,
   },
   sectionUnderline: {
     width: 40,
     height: 3,
     backgroundColor: ProsColors.primary,
-    marginTop: 8,
-    borderRadius: 2,
+    borderRadius: 1.5,
   },
-  seeAllText: {
-    fontSize: 14,
-    color: ProsColors.primary,
-    fontWeight: '600',
-  },
+
+  // Steps - matches mockup with cards
   stepsContainer: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   stepCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F9FAFB',
     borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: ProsColors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    padding: 14,
   },
   stepHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   stepNumber: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    color: ProsColors.primary,
+    color: ProsColors.textPrimary,
     marginRight: 8,
   },
   stepIconContainer: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: `${ProsColors.primary}15`,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -451,25 +413,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: ProsColors.textPrimary,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   stepDescription: {
     fontSize: 11,
     color: ProsColors.textSecondary,
     lineHeight: 16,
   },
+
+  // Services - matches mockup with pills
   servicesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
+    marginTop: 8,
   },
   servicePill: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: ProsColors.primary,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
   },
   servicePillPrimary: {
     backgroundColor: ProsColors.primary,
@@ -482,89 +447,93 @@ const styles = StyleSheet.create({
   servicePillTextPrimary: {
     color: '#FFFFFF',
   },
+
+  // Pros - matches mockup with horizontal scroll
   loadingContainer: {
-    paddingVertical: 40,
+    height: 200,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  prosGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  prosScrollContent: {
+    paddingTop: 12,
     gap: 12,
   },
   proCard: {
-    width: (width - 52) / 2,
+    width: 160,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: ProsColors.border,
+    borderColor: ProsColors.borderLight,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 2,
   },
   proImageContainer: {
     position: 'relative',
-    marginBottom: 8,
-  },
-  proImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    alignItems: 'center',
+    marginBottom: 10,
   },
   proImagePlaceholder: {
-    backgroundColor: ProsColors.sectionBg,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
   verifiedBadge: {
     position: 'absolute',
     bottom: 0,
-    right: -4,
+    right: 40,
     backgroundColor: '#FFFFFF',
     borderRadius: 10,
+    padding: 2,
+  },
+  proInfo: {
+    alignItems: 'center',
+    marginBottom: 12,
   },
   proName: {
     fontSize: 14,
     fontWeight: '600',
     color: ProsColors.textPrimary,
     marginBottom: 4,
+    textAlign: 'center',
   },
-  proRating: {
+  ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    gap: 4,
   },
-  proRatingText: {
+  ratingText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: ProsColors.textPrimary,
+  },
+  reviewCount: {
     fontSize: 12,
     color: ProsColors.textSecondary,
-    marginLeft: 4,
   },
   requestQuoteButton: {
     backgroundColor: ProsColors.primary,
     borderRadius: 8,
-    paddingVertical: 8,
+    paddingVertical: 10,
     alignItems: 'center',
   },
-  requestQuoteText: {
+  requestQuoteButtonText: {
     fontSize: 13,
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  emptyContainer: {
-    paddingVertical: 40,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: ProsColors.textSecondary,
-    marginTop: 12,
-  },
+
+  // CTA Section
   ctaSection: {
-    marginHorizontal: 20,
+    marginHorizontal: 16,
     marginTop: 32,
-    backgroundColor: `${ProsColors.primary}10`,
+    backgroundColor: '#F9FAFB',
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
@@ -574,7 +543,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: ProsColors.textPrimary,
     marginBottom: 8,
-    textAlign: 'center',
   },
   ctaSubtitle: {
     fontSize: 14,
@@ -584,13 +552,10 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   ctaButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: ProsColors.primary,
     borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    gap: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
   },
   ctaButtonText: {
     fontSize: 16,

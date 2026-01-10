@@ -1,124 +1,165 @@
 /**
- * Pros Request Step 2 Screen
+ * Pros Request Step 2 Screen (FIXED - No react-native-svg dependency)
  * Install path: screens/ProsRequestStep2Screen.tsx
  * 
- * Step 2 of 4: When do you need this done?
- * Simple, one-question-per-screen approach with progress indicator.
+ * Step 2 of the multi-step service request form.
+ * Asks: "When do you need this done?"
  */
 
 import React, { useState } from 'react';
 import {
   View,
   Text,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Svg, { Circle } from 'react-native-svg';
 
 import { ProsColors } from '../constants/ProsConfig';
 
+const { width } = Dimensions.get('window');
+
 type RouteParams = {
   ProsRequestStep2Screen: {
-    proId?: number;
-    proName?: string;
-    categoryId?: number;
-    categoryName?: string;
-    projectTitle: string;
+    categoryId: string;
+    categoryName: string;
+    projectDescription?: string;
   };
 };
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
-type TimelineOption = {
-  id: string;
-  label: string;
-  description: string;
-  icon: keyof typeof Ionicons.glyphMap;
-};
-
-const TIMELINE_OPTIONS: TimelineOption[] = [
-  {
-    id: 'asap',
-    label: 'ASAP',
-    description: 'Get it done as soon as possible',
-    icon: 'flash',
-  },
-  {
-    id: 'within_week',
-    label: 'Within a week',
-    description: 'Schedule it within the next 7 days',
-    icon: 'calendar',
-  },
-  {
-    id: 'flexible',
-    label: "I'm flexible",
-    description: 'No rush, I can wait',
-    icon: 'time-outline',
-  },
-];
-
-// Progress Circle Component
-const ProgressCircle = ({ percentage }: { percentage: number }) => {
+// Progress indicator component using basic React Native views
+const ProgressIndicator = ({ progress, step, totalSteps }: { progress: number; step: number; totalSteps: number }) => {
   const size = 80;
   const strokeWidth = 6;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const strokeDashoffset = circumference - (percentage / 100) * circumference;
-
+  
   return (
-    <View style={styles.progressContainer}>
-      <Svg width={size} height={size}>
-        {/* Background circle */}
-        <Circle
-          stroke={ProsColors.borderLight}
-          fill="none"
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          strokeWidth={strokeWidth}
-        />
-        {/* Progress circle */}
-        <Circle
-          stroke={ProsColors.primary}
-          fill="none"
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          strokeWidth={strokeWidth}
-          strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-      </Svg>
-      <View style={styles.progressTextContainer}>
-        <Text style={styles.progressText}>{percentage}%</Text>
+    <View style={progressStyles.container}>
+      {/* Background circle */}
+      <View style={[progressStyles.circle, { width: size, height: size, borderRadius: size / 2 }]}>
+        {/* Progress arc - simulated with a border */}
+        <View style={[
+          progressStyles.progressCircle, 
+          { 
+            width: size - 4, 
+            height: size - 4, 
+            borderRadius: (size - 4) / 2,
+            borderWidth: strokeWidth,
+            borderColor: ProsColors.primary,
+            borderTopColor: progress >= 25 ? ProsColors.primary : ProsColors.border,
+            borderRightColor: progress >= 50 ? ProsColors.primary : ProsColors.border,
+            borderBottomColor: progress >= 75 ? ProsColors.primary : ProsColors.border,
+            borderLeftColor: progress >= 100 ? ProsColors.primary : ProsColors.border,
+          }
+        ]} />
+        {/* Center content */}
+        <View style={progressStyles.centerContent}>
+          <Text style={progressStyles.percentText}>{progress}%</Text>
+        </View>
       </View>
+      <Text style={progressStyles.stepText}>Step {step} of {totalSteps}</Text>
     </View>
   );
 };
 
+const progressStyles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  circle: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: ProsColors.sectionBg,
+  },
+  progressCircle: {
+    position: 'absolute',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  percentText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: ProsColors.primary,
+  },
+  stepText: {
+    fontSize: 13,
+    color: ProsColors.textSecondary,
+    marginTop: 8,
+  },
+});
+
+// Timeline options
+const TIMELINE_OPTIONS = [
+  {
+    id: 'emergency',
+    title: 'Emergency',
+    subtitle: 'I need help ASAP',
+    icon: 'alert-circle',
+    iconColor: '#EF4444',
+  },
+  {
+    id: 'within_days',
+    title: 'Within a few days',
+    subtitle: 'Flexible but soon',
+    icon: 'time',
+    iconColor: '#F59E0B',
+  },
+  {
+    id: 'within_week',
+    title: 'Within 1 week',
+    subtitle: 'No rush, but this week',
+    icon: 'calendar',
+    iconColor: ProsColors.primary,
+  },
+  {
+    id: 'within_month',
+    title: 'Within 1 month',
+    subtitle: 'Planning ahead',
+    icon: 'calendar-outline',
+    iconColor: '#10B981',
+  },
+  {
+    id: 'flexible',
+    title: 'I\'m flexible',
+    subtitle: 'Whenever works best',
+    icon: 'infinite',
+    iconColor: '#6B7280',
+  },
+];
+
 export default function ProsRequestStep2Screen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp<RouteParams, 'ProsRequestStep2Screen'>>();
-  const { proId, proName, categoryId, categoryName, projectTitle } = route.params;
+  const { categoryId, categoryName, projectDescription } = route.params;
 
   const [selectedTimeline, setSelectedTimeline] = useState<string | null>(null);
 
-  const isValid = selectedTimeline !== null;
+  const progress = 50; // Step 2 of 4 = 50%
 
-  const handleNext = () => {
+  const handleTimelineSelect = (timelineId: string) => {
+    setSelectedTimeline(timelineId);
+  };
+
+  const handleContinue = () => {
+    if (!selectedTimeline) return;
+
+    const timelineName = TIMELINE_OPTIONS.find(t => t.id === selectedTimeline)?.title;
+
     navigation.navigate('ProsRequestStep3Screen', {
-      proId,
-      proName,
       categoryId,
       categoryName,
-      projectTitle,
+      projectDescription,
       timeline: selectedTimeline,
+      timelineName,
     });
   };
 
@@ -126,36 +167,40 @@ export default function ProsRequestStep2Screen() {
     navigation.goBack();
   };
 
-  const handleClose = () => {
-    // Go back to the beginning
-    navigation.navigate('ProsHomeScreen');
-  };
+  const isValid = selectedTimeline !== null;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={ProsColors.primary} />
+          <Ionicons name="chevron-back" size={24} color={ProsColors.textPrimary} />
         </TouchableOpacity>
-        <View style={{ flex: 1 }} />
-        <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-          <Ionicons name="close" size={24} color={ProsColors.textSecondary} />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Request Service</Text>
+        <View style={{ width: 40 }} />
       </View>
 
-      {/* Content */}
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Progress Indicator */}
-        <ProgressCircle percentage={50} />
-        <Text style={styles.stepText}>Step 2 of 4</Text>
+        <ProgressIndicator progress={progress} step={2} totalSteps={4} />
+
+        {/* Category Badge */}
+        <View style={styles.categoryBadge}>
+          <Ionicons name="construct" size={14} color={ProsColors.primary} />
+          <Text style={styles.categoryBadgeText}>{categoryName}</Text>
+        </View>
 
         {/* Question */}
-        <Text style={styles.questionText}>
-          When do you need{'\n'}this done?
+        <Text style={styles.questionTitle}>When do you need this done?</Text>
+        <Text style={styles.questionSubtitle}>
+          This helps pros understand your urgency.
         </Text>
 
-        {/* Options */}
+        {/* Timeline Options */}
         <View style={styles.optionsContainer}>
           {TIMELINE_OPTIONS.map((option) => (
             <TouchableOpacity
@@ -164,46 +209,48 @@ export default function ProsRequestStep2Screen() {
                 styles.optionCard,
                 selectedTimeline === option.id && styles.optionCardSelected,
               ]}
-              onPress={() => setSelectedTimeline(option.id)}
+              onPress={() => handleTimelineSelect(option.id)}
               activeOpacity={0.7}
             >
-              <View style={[
-                styles.optionIconContainer,
-                selectedTimeline === option.id && styles.optionIconContainerSelected,
-              ]}>
+              <View style={[styles.optionIcon, { backgroundColor: `${option.iconColor}15` }]}>
                 <Ionicons
-                  name={option.icon}
+                  name={option.icon as any}
                   size={24}
-                  color={selectedTimeline === option.id ? ProsColors.primary : ProsColors.textSecondary}
+                  color={option.iconColor}
                 />
               </View>
-              <View style={styles.optionTextContainer}>
+              <View style={styles.optionContent}>
                 <Text style={[
-                  styles.optionLabel,
-                  selectedTimeline === option.id && styles.optionLabelSelected,
+                  styles.optionTitle,
+                  selectedTimeline === option.id && styles.optionTitleSelected,
                 ]}>
-                  {option.label}
+                  {option.title}
                 </Text>
-                <Text style={styles.optionDescription}>{option.description}</Text>
+                <Text style={styles.optionSubtitle}>{option.subtitle}</Text>
               </View>
-              {selectedTimeline === option.id && (
-                <View style={styles.checkmarkContainer}>
-                  <Ionicons name="checkmark-circle" size={24} color={ProsColors.primary} />
-                </View>
-              )}
+              <View style={[
+                styles.radioButton,
+                selectedTimeline === option.id && styles.radioButtonSelected,
+              ]}>
+                {selectedTimeline === option.id && (
+                  <View style={styles.radioButtonInner} />
+                )}
+              </View>
             </TouchableOpacity>
           ))}
         </View>
-      </View>
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
 
       {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.nextButton, !isValid && styles.nextButtonDisabled]}
-          onPress={handleNext}
+          style={[styles.continueButton, !isValid && styles.continueButtonDisabled]}
+          onPress={handleContinue}
           disabled={!isValid}
         >
-          <Text style={styles.nextButtonText}>Next</Text>
+          <Text style={styles.continueButtonText}>Continue</Text>
           <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
@@ -222,6 +269,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: ProsColors.borderLight,
   },
   backButton: {
     width: 40,
@@ -229,49 +278,45 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
-  closeButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: ProsColors.textPrimary,
   },
-  content: {
+  scrollView: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 20,
   },
-  progressContainer: {
+  scrollContent: {
+    padding: 20,
+  },
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     alignSelf: 'center',
-    position: 'relative',
+    backgroundColor: `${ProsColors.primary}15`,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
     marginBottom: 16,
   },
-  progressTextContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  progressText: {
-    fontSize: 18,
+  categoryBadgeText: {
+    fontSize: 13,
     fontWeight: '600',
     color: ProsColors.primary,
   },
-  stepText: {
-    fontSize: 14,
-    color: ProsColors.textSecondary,
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  questionText: {
-    fontSize: 28,
+  questionTitle: {
+    fontSize: 24,
     fontWeight: '700',
     color: ProsColors.textPrimary,
-    lineHeight: 36,
-    marginBottom: 32,
-    textAlign: 'left',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  questionSubtitle: {
+    fontSize: 15,
+    color: ProsColors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
   },
   optionsContainer: {
     gap: 12,
@@ -279,58 +324,67 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: ProsColors.sectionBg,
     borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: ProsColors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   optionCardSelected: {
     borderColor: ProsColors.primary,
     backgroundColor: `${ProsColors.primary}05`,
   },
-  optionIconContainer: {
+  optionIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: ProsColors.sectionBg,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
-  optionIconContainerSelected: {
-    backgroundColor: `${ProsColors.primary}15`,
-  },
-  optionTextContainer: {
+  optionContent: {
     flex: 1,
   },
-  optionLabel: {
+  optionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: ProsColors.textPrimary,
     marginBottom: 2,
   },
-  optionLabelSelected: {
+  optionTitleSelected: {
     color: ProsColors.primary,
   },
-  optionDescription: {
+  optionSubtitle: {
     fontSize: 13,
     color: ProsColors.textSecondary,
   },
-  checkmarkContainer: {
-    marginLeft: 8,
+  radioButton: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: ProsColors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioButtonSelected: {
+    borderColor: ProsColors.primary,
+  },
+  radioButtonInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: ProsColors.primary,
   },
   footer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingVertical: 16,
     paddingBottom: 24,
+    borderTopWidth: 1,
+    borderTopColor: ProsColors.borderLight,
+    backgroundColor: '#FFFFFF',
   },
-  nextButton: {
+  continueButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -339,10 +393,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     gap: 8,
   },
-  nextButtonDisabled: {
+  continueButtonDisabled: {
     backgroundColor: ProsColors.border,
   },
-  nextButtonText: {
+  continueButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
