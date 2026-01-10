@@ -70,6 +70,9 @@ import ProsBidScreen from './screens/ProsBidScreen';
 import ProsPaywallScreen from './screens/ProsPaywallScreen';
 import ProsClaimBusinessScreen from './screens/ProsClaimBusinessScreen';
 
+// NEW: Realtors Sub-App
+import RealtorsHubScreen from './screens/RealtorsHubScreen';
+
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -216,6 +219,9 @@ function ProsStack() {
         options={{ presentation: 'modal' }}
       />
       <ProsStackNav.Screen name="ProsClaimBusiness" component={ProsClaimBusinessScreen} />
+
+      {/* NEW: Realtors Sub-App */}
+      <ProsStackNav.Screen name="RealtorsHub" component={RealtorsHubScreen} />
     </ProsStackNav.Navigator>
   );
 }

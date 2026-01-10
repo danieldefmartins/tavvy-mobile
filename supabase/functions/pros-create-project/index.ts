@@ -1,106 +1,186 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Supabase Edge Function: pros-create-project
+// Creates a new project request and invites matching pros
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// NOTE: service role so we can insert + invite even before RLS is perfect.
-// Later we will add proper RLS.
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
-Deno.serve(async (req) => {
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+interface CreateProjectRequest {
+  category_id: string
+  title: string
+  description?: string
+  timeline: 'urgent' | 'this_week' | 'this_month' | 'flexible' | 'planning'
+  budget_range: string
+  address?: string
+  city: string
+  state: string
+  zip_code: string
+  latitude?: number
+  longitude?: number
+  desired_pro_count?: number
+}
 
-  const {
-    created_by, // optional for now (we can replace with auth later)
-    category_slug,
-    subcategory_slug,
-    title,
-    description,
-    city,
-    state,
-    zip,
-    urgency = "this_week",
-    max_pros = 10,
-  } = await req.json().catch(() => ({}));
-
-  if (!category_slug) return new Response("Missing category_slug", { status: 400 });
-  if (!description) return new Response("Missing description", { status: 400 });
-
-  // 1) Resolve category
-  const { data: cat, error: catErr } = await supabase
-    .from("service_categories")
-    .select("id, slug")
-    .eq("slug", category_slug)
-    .single();
-
-  if (catErr || !cat) return new Response("Invalid category_slug", { status: 400 });
-
-  // 2) Resolve subcategory (optional)
-  let subcategory_id: string | null = null;
-  if (subcategory_slug) {
-    const { data: sub } = await supabase
-      .from("service_subcategories")
-      .select("id")
-      .eq("category_id", cat.id)
-      .eq("slug", subcategory_slug)
-      .maybeSingle();
-    subcategory_id = sub?.id ?? null;
+serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
   }
 
-  // 3) Create project request
-  const { data: project, error: projErr } = await supabase
-    .from("project_requests")
-    .insert({
-      created_by: created_by ?? null,
-      category_id: cat.id,
-      subcategory_id,
-      title: title ?? null,
-      description,
-      city: city ?? null,
-      state: state ?? null,
-      zip: zip ?? null,
-      urgency,
-      max_pros: Math.min(Math.max(Number(max_pros) || 10, 1), 50),
-      status: "open",
-    })
-    .select("*")
-    .single();
-
-  if (projErr || !project) {
-    return new Response(JSON.stringify({ error: projErr }), { status: 500 });
-  }
-
-  // 4) Find pros to invite (MVP logic)
-  // For now: any place_services for that category, active=true.
-  // Later: filter by geo radius based on project location.
-  const { data: pros, error: prosErr } = await supabase
-    .from("place_services")
-    .select("place_id")
-    .eq("category_id", cat.id)
-    .eq("is_active", true)
-    .limit(project.max_pros);
-
-  if (prosErr) {
-    return new Response(JSON.stringify({ error: prosErr }), { status: 500 });
-  }
-
-  // 5) Create invites
-  const invites = (pros ?? []).map((p) => ({
-    project_id: project.id,
-    place_id: p.place_id,
-    status: "invited",
-  }));
-
-  if (invites.length > 0) {
-    const { error: invErr } = await supabase.from("project_invites").insert(invites);
-    if (invErr) {
-      return new Response(JSON.stringify({ error: invErr }), { status: 500 });
+  try {
+    // Get the authorization header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('Missing authorization header')
     }
-  }
 
-  return new Response(JSON.stringify({
-    project,
-    invited_count: invites.length,
-  }), { headers: { "Content-Type": "application/json" }});
-});
+    // Create Supabase client with user's auth
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: { headers: { Authorization: authHeader } },
+      }
+    )
+
+    // Get the current user
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+    if (userError || !user) {
+      throw new Error('Unauthorized')
+    }
+
+    // Parse request body
+    const body: CreateProjectRequest = await req.json()
+
+    // Validate required fields
+    if (!body.category_id || !body.title || !body.city || !body.state || !body.zip_code) {
+      throw new Error('Missing required fields: category_id, title, city, state, zip_code')
+    }
+
+    // Create the project request
+    const { data: project, error: projectError } = await supabaseClient
+      .from('project_requests')
+      .insert({
+        user_id: user.id,
+        category_id: body.category_id,
+        title: body.title,
+        description: body.description,
+        timeline: body.timeline,
+        budget_range: body.budget_range,
+        address: body.address,
+        city: body.city,
+        state: body.state,
+        zip_code: body.zip_code,
+        latitude: body.latitude,
+        longitude: body.longitude,
+        desired_pro_count: body.desired_pro_count || 10,
+        status: 'open',
+      })
+      .select()
+      .single()
+
+    if (projectError) {
+      throw new Error(`Failed to create project: ${projectError.message}`)
+    }
+
+    // Find matching pros based on category and location
+    // Using service account for this query to bypass RLS
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    // Get pros that:
+    // 1. Have the matching category
+    // 2. Are in the same city/state or within service radius
+    // 3. Are active and verified
+    // 4. Have active subscription (for priority) or not (they'll see locked leads)
+    const { data: matchingPros, error: prosError } = await supabaseAdmin
+      .from('pro_providers')
+      .select(`
+        id,
+        business_name,
+        city,
+        state,
+        service_radius,
+        pro_category_links!inner(category_id),
+        pro_subscriptions(status, end_date)
+      `)
+      .eq('is_active', true)
+      .eq('pro_category_links.category_id', body.category_id)
+      .or(`city.eq.${body.city},state.eq.${body.state}`)
+      .limit(50) // Get more than needed to filter
+
+    if (prosError) {
+      console.error('Error finding pros:', prosError)
+      // Don't fail the request, just log the error
+    }
+
+    // Create invites for matching pros
+    const invites = []
+    if (matchingPros && matchingPros.length > 0) {
+      // Sort pros: subscribed first, then by proximity
+      const sortedPros = matchingPros.sort((a, b) => {
+        const aSubscribed = a.pro_subscriptions?.some(
+          (s: any) => s.status === 'active' && new Date(s.end_date) > new Date()
+        )
+        const bSubscribed = b.pro_subscriptions?.some(
+          (s: any) => s.status === 'active' && new Date(s.end_date) > new Date()
+        )
+        if (aSubscribed && !bSubscribed) return -1
+        if (!aSubscribed && bSubscribed) return 1
+        return 0
+      })
+
+      // Create invites for top pros
+      const prosToInvite = sortedPros.slice(0, body.desired_pro_count || 10)
+      
+      for (const pro of prosToInvite) {
+        const { data: invite, error: inviteError } = await supabaseAdmin
+          .from('project_invites')
+          .insert({
+            project_id: project.id,
+            provider_id: pro.id,
+            status: 'pending',
+          })
+          .select()
+          .single()
+
+        if (!inviteError && invite) {
+          invites.push(invite)
+        }
+      }
+
+      // TODO: Send notifications to invited pros (SMS/Push)
+      // This will be handled by a separate notification function
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        project,
+        invites_sent: invites.length,
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    )
+
+  } catch (error) {
+    console.error('Error:', error)
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message,
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      }
+    )
+  }
+})
