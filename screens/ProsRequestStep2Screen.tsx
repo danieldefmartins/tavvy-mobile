@@ -1,165 +1,55 @@
-/**
- * Pros Request Step 2 Screen (FIXED - No react-native-svg dependency)
- * Install path: screens/ProsRequestStep2Screen.tsx
- * 
- * Step 2 of the multi-step service request form.
- * Asks: "When do you need this done?"
- */
-
 import React, { useState } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   StyleSheet,
+  ScrollView,
   TouchableOpacity,
-  Dimensions,
+  SafeAreaView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
+import { Ionicons } from '@expo/vector-icons';
 import { ProsColors } from '../constants/ProsConfig';
 
-const { width } = Dimensions.get('window');
-
 type RouteParams = {
-  ProsRequestStep2Screen: {
-    categoryId: string;
-    categoryName: string;
-    projectDescription?: string;
-  };
+  categoryId: string;
+  categoryName: string;
+  description?: string;
 };
 
-type NavigationProp = NativeStackNavigationProp<any>;
-
-// Progress indicator component using basic React Native views
-const ProgressIndicator = ({ progress, step, totalSteps }: { progress: number; step: number; totalSteps: number }) => {
-  const size = 80;
-  const strokeWidth = 6;
-  
-  return (
-    <View style={progressStyles.container}>
-      {/* Background circle */}
-      <View style={[progressStyles.circle, { width: size, height: size, borderRadius: size / 2 }]}>
-        {/* Progress arc - simulated with a border */}
-        <View style={[
-          progressStyles.progressCircle, 
-          { 
-            width: size - 4, 
-            height: size - 4, 
-            borderRadius: (size - 4) / 2,
-            borderWidth: strokeWidth,
-            borderColor: ProsColors.primary,
-            borderTopColor: progress >= 25 ? ProsColors.primary : ProsColors.border,
-            borderRightColor: progress >= 50 ? ProsColors.primary : ProsColors.border,
-            borderBottomColor: progress >= 75 ? ProsColors.primary : ProsColors.border,
-            borderLeftColor: progress >= 100 ? ProsColors.primary : ProsColors.border,
-          }
-        ]} />
-        {/* Center content */}
-        <View style={progressStyles.centerContent}>
-          <Text style={progressStyles.percentText}>{progress}%</Text>
-        </View>
-      </View>
-      <Text style={progressStyles.stepText}>Step {step} of {totalSteps}</Text>
+const ProgressBar = ({ progress }: { progress: number }) => (
+  <View style={styles.progressContainer}>
+    <View style={styles.progressBarBg}>
+      <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
     </View>
-  );
-};
-
-const progressStyles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  circle: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: ProsColors.sectionBg,
-  },
-  progressCircle: {
-    position: 'absolute',
-  },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  percentText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: ProsColors.primary,
-  },
-  stepText: {
-    fontSize: 13,
-    color: ProsColors.textSecondary,
-    marginTop: 8,
-  },
-});
-
-// Timeline options
-const TIMELINE_OPTIONS = [
-  {
-    id: 'emergency',
-    title: 'Emergency',
-    subtitle: 'I need help ASAP',
-    icon: 'alert-circle',
-    iconColor: '#EF4444',
-  },
-  {
-    id: 'within_days',
-    title: 'Within a few days',
-    subtitle: 'Flexible but soon',
-    icon: 'time',
-    iconColor: '#F59E0B',
-  },
-  {
-    id: 'within_week',
-    title: 'Within 1 week',
-    subtitle: 'No rush, but this week',
-    icon: 'calendar',
-    iconColor: ProsColors.primary,
-  },
-  {
-    id: 'within_month',
-    title: 'Within 1 month',
-    subtitle: 'Planning ahead',
-    icon: 'calendar-outline',
-    iconColor: '#10B981',
-  },
-  {
-    id: 'flexible',
-    title: 'I\'m flexible',
-    subtitle: 'Whenever works best',
-    icon: 'infinite',
-    iconColor: '#6B7280',
-  },
-];
+    <Text style={styles.progressText}>{progress}%</Text>
+  </View>
+);
 
 export default function ProsRequestStep2Screen() {
-  const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<RouteProp<RouteParams, 'ProsRequestStep2Screen'>>();
-  const { categoryId, categoryName, projectDescription } = route.params;
-
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
+  
+  const { categoryId, categoryName, description } = route.params;
+  
   const [selectedTimeline, setSelectedTimeline] = useState<string | null>(null);
 
-  const progress = 50; // Step 2 of 4 = 50%
+  const timelines = [
+    { id: 'urgent', label: 'Emergency / ASAP', sublabel: 'Within 24 hours', icon: 'alert-circle' },
+    { id: 'this-week', label: 'This week', sublabel: 'Within 7 days', icon: 'calendar' },
+    { id: 'this-month', label: 'This month', sublabel: 'Within 30 days', icon: 'calendar-outline' },
+    { id: 'flexible', label: 'Flexible', sublabel: 'No rush, just planning', icon: 'time' },
+  ];
 
-  const handleTimelineSelect = (timelineId: string) => {
-    setSelectedTimeline(timelineId);
-  };
-
-  const handleContinue = () => {
+  const handleNext = () => {
     if (!selectedTimeline) return;
-
-    const timelineName = TIMELINE_OPTIONS.find(t => t.id === selectedTimeline)?.title;
-
-    navigation.navigate('ProsRequestStep3Screen', {
+    
+    navigation.navigate('ProsRequestStep3', {
       categoryId,
       categoryName,
-      projectDescription,
+      description,
       timeline: selectedTimeline,
-      timelineName,
     });
   };
 
@@ -167,90 +57,81 @@ export default function ProsRequestStep2Screen() {
     navigation.goBack();
   };
 
-  const isValid = selectedTimeline !== null;
-
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color={ProsColors.textPrimary} />
+          <Ionicons name="arrow-back" size={24} color="#374151" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Request Service</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Progress Indicator */}
-        <ProgressIndicator progress={progress} step={2} totalSteps={4} />
+      <View style={styles.progressWrapper}>
+        <ProgressBar progress={50} />
+        <Text style={styles.stepText}>Step 2 of 4</Text>
+      </View>
 
-        {/* Category Badge */}
-        <View style={styles.categoryBadge}>
-          <Ionicons name="construct" size={14} color={ProsColors.primary} />
-          <Text style={styles.categoryBadgeText}>{categoryName}</Text>
-        </View>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={styles.question}>When do you need this done?</Text>
+        <Text style={styles.subtext}>Select your preferred timeline</Text>
 
-        {/* Question */}
-        <Text style={styles.questionTitle}>When do you need this done?</Text>
-        <Text style={styles.questionSubtitle}>
-          This helps pros understand your urgency.
-        </Text>
-
-        {/* Timeline Options */}
-        <View style={styles.optionsContainer}>
-          {TIMELINE_OPTIONS.map((option) => (
+        <View style={styles.optionsList}>
+          {timelines.map((timeline) => (
             <TouchableOpacity
-              key={option.id}
+              key={timeline.id}
               style={[
                 styles.optionCard,
-                selectedTimeline === option.id && styles.optionCardSelected,
+                selectedTimeline === timeline.id && styles.optionCardSelected,
               ]}
-              onPress={() => handleTimelineSelect(option.id)}
-              activeOpacity={0.7}
+              onPress={() => setSelectedTimeline(timeline.id)}
             >
-              <View style={[styles.optionIcon, { backgroundColor: `${option.iconColor}15` }]}>
+              <View
+                style={[
+                  styles.optionIcon,
+                  selectedTimeline === timeline.id && styles.optionIconSelected,
+                ]}
+              >
                 <Ionicons
-                  name={option.icon as any}
+                  name={timeline.icon as any}
                   size={24}
-                  color={option.iconColor}
+                  color={selectedTimeline === timeline.id ? '#FFFFFF' : ProsColors.primary}
                 />
               </View>
-              <View style={styles.optionContent}>
-                <Text style={[
-                  styles.optionTitle,
-                  selectedTimeline === option.id && styles.optionTitleSelected,
-                ]}>
-                  {option.title}
+              <View style={styles.optionText}>
+                <Text
+                  style={[
+                    styles.optionLabel,
+                    selectedTimeline === timeline.id && styles.optionLabelSelected,
+                  ]}
+                >
+                  {timeline.label}
                 </Text>
-                <Text style={styles.optionSubtitle}>{option.subtitle}</Text>
+                <Text style={styles.optionSublabel}>{timeline.sublabel}</Text>
               </View>
-              <View style={[
-                styles.radioButton,
-                selectedTimeline === option.id && styles.radioButtonSelected,
-              ]}>
-                {selectedTimeline === option.id && (
-                  <View style={styles.radioButtonInner} />
-                )}
+              <View
+                style={[
+                  styles.radioOuter,
+                  selectedTimeline === timeline.id && styles.radioOuterSelected,
+                ]}
+              >
+                {selectedTimeline === timeline.id && <View style={styles.radioInner} />}
               </View>
             </TouchableOpacity>
           ))}
         </View>
-
-        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.continueButton, !isValid && styles.continueButtonDisabled]}
-          onPress={handleContinue}
-          disabled={!isValid}
+          style={[
+            styles.nextButton,
+            !selectedTimeline && styles.nextButtonDisabled,
+          ]}
+          onPress={handleNext}
+          disabled={!selectedTimeline}
         >
-          <Text style={styles.continueButtonText}>Continue</Text>
+          <Text style={styles.nextButtonText}>Continue</Text>
           <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
@@ -270,135 +151,149 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: ProsColors.borderLight,
+    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     width: 40,
     height: 40,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'flex-start',
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '600',
-    color: ProsColors.textPrimary,
+    color: '#111827',
   },
-  scrollView: {
-    flex: 1,
+  progressWrapper: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  scrollContent: {
-    padding: 20,
-  },
-  categoryBadge: {
+  progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'center',
-    backgroundColor: `${ProsColors.primary}15`,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
-    marginBottom: 16,
+    gap: 12,
   },
-  categoryBadgeText: {
-    fontSize: 13,
+  progressBarBg: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: ProsColors.primary,
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 14,
     fontWeight: '600',
     color: ProsColors.primary,
+    width: 40,
+    textAlign: 'right',
   },
-  questionTitle: {
+  stepText: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 8,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  question: {
     fontSize: 24,
-    fontWeight: '700',
-    color: ProsColors.textPrimary,
-    textAlign: 'center',
+    fontWeight: 'bold',
+    color: '#111827',
     marginBottom: 8,
   },
-  questionSubtitle: {
+  subtext: {
     fontSize: 15,
-    color: ProsColors.textSecondary,
-    textAlign: 'center',
+    color: '#6B7280',
     marginBottom: 24,
   },
-  optionsContainer: {
+  optionsList: {
     gap: 12,
   },
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: ProsColors.sectionBg,
-    borderRadius: 12,
     padding: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: 'transparent',
   },
   optionCardSelected: {
     borderColor: ProsColors.primary,
-    backgroundColor: `${ProsColors.primary}05`,
+    backgroundColor: '#EFF6FF',
   },
   optionIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    justifyContent: 'center',
+    backgroundColor: '#E0E7FF',
     alignItems: 'center',
-    marginRight: 14,
+    justifyContent: 'center',
+    marginRight: 16,
   },
-  optionContent: {
+  optionIconSelected: {
+    backgroundColor: ProsColors.primary,
+  },
+  optionText: {
     flex: 1,
   },
-  optionTitle: {
+  optionLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: ProsColors.textPrimary,
+    color: '#111827',
     marginBottom: 2,
   },
-  optionTitleSelected: {
+  optionLabelSelected: {
     color: ProsColors.primary,
   },
-  optionSubtitle: {
-    fontSize: 13,
-    color: ProsColors.textSecondary,
+  optionSublabel: {
+    fontSize: 14,
+    color: '#6B7280',
   },
-  radioButton: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+  radioOuter: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
-    borderColor: ProsColors.border,
-    justifyContent: 'center',
+    borderColor: '#D1D5DB',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  radioButtonSelected: {
+  radioOuterSelected: {
     borderColor: ProsColors.primary,
   },
-  radioButtonInner: {
+  radioInner: {
     width: 12,
     height: 12,
     borderRadius: 6,
     backgroundColor: ProsColors.primary,
   },
   footer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 24,
+    padding: 20,
     borderTopWidth: 1,
-    borderTopColor: ProsColors.borderLight,
-    backgroundColor: '#FFFFFF',
+    borderTopColor: '#E5E7EB',
   },
-  continueButton: {
+  nextButton: {
+    backgroundColor: ProsColors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: ProsColors.primary,
-    borderRadius: 12,
     paddingVertical: 16,
+    borderRadius: 12,
     gap: 8,
   },
-  continueButtonDisabled: {
-    backgroundColor: ProsColors.border,
+  nextButtonDisabled: {
+    backgroundColor: '#D1D5DB',
   },
-  continueButtonText: {
+  nextButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
   },
 });

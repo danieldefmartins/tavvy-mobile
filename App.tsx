@@ -27,9 +27,8 @@ import ClaimBusinessScreen from './screens/ClaimBusinessScreen';
 // ========== UNIVERSE SCREENS ==========
 import UniverseDiscoveryScreen from './screens/UniverseDiscoveryScreen';
 import UniverseLandingScreen from './screens/UniverseLandingScreen';
-import UniverseDetailScreen from './screens/UniverseDetailScreen';
 
-// ========== CREATE SCREENS ==========
+// ========== CREATE/ADD SCREENS ==========
 import UniversalAddScreen from './screens/UniversalAddScreen';
 import AddPlaceScreen from './screens/AddPlaceScreen';
 import BusinessCardScannerScreen from './screens/BusinessCardScannerScreen';
@@ -37,20 +36,17 @@ import BusinessCardScannerScreen from './screens/BusinessCardScannerScreen';
 // ========== ATLAS SCREENS ==========
 import AtlasHomeScreen from './screens/AtlasHomeScreen';
 import ArticleDetailScreen from './screens/ArticleDetailScreen';
+import UniverseDetailScreen from './screens/UniverseDetailScreen';
 import CategoryBrowseScreen from './screens/CategoryBrowseScreen';
 import AtlasSearchScreen from './screens/AtlasSearchScreen';
 
-// ========== APPS / MENU SCREENS ==========
-// NOTE: Using AppsHomeScreen based on user's local project
+// ========== APPS SCREEN (REPLACES MENU) ==========
 import AppsHomeScreen from './screens/AppsHomeScreen';
+import MenuScreen from './screens/MenuScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SavedScreen from './screens/SavedScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
-
-// ========== QUICK FINDS SCREENS ==========
-import QuickFindsScreen from './screens/QuickFindsScreen';
-import QuickFindsResultsScreen from './screens/QuickFindsResultsScreen';
 
 // ========== PROS SCREENS ==========
 import ProsHomeScreen from './screens/ProsHomeScreen';
@@ -60,19 +56,19 @@ import ProsDashboardScreen from './screens/ProsDashboardScreen';
 import ProsRegistrationScreen from './screens/ProsRegistrationScreen';
 import ProsMessagesScreen from './screens/ProsMessagesScreen';
 import ProsLeadsScreen from './screens/ProsLeadsScreen';
-import ProsLeadDetailScreen from './screens/ProsLeadDetailScreen';
-import ProsCategoryScreen from './screens/ProsCategoryScreen';
-import ProsCategoryLandingScreen from './screens/ProsCategoryLandingScreen';
-import ProsClaimBusinessScreen from './screens/ProsClaimBusinessScreen';
-import ProsPaywallScreen from './screens/ProsPaywallScreen';
-import ProsProjectStatusScreen from './screens/ProsProjectStatusScreen';
-import ProsBidScreen from './screens/ProsBidScreen';
 
-// ========== PROS: Multi-Step Request Flow ==========
+// NEW: Multi-Step Request Flow (replaces ProsRequestQuoteScreen)
 import ProsRequestStep1Screen from './screens/ProsRequestStep1Screen';
 import ProsRequestStep2Screen from './screens/ProsRequestStep2Screen';
 import ProsRequestStep3Screen from './screens/ProsRequestStep3Screen';
 import ProsRequestStep4Screen from './screens/ProsRequestStep4Screen';
+
+// NEW: Additional Pros Screens
+import ProsCategoryLandingScreen from './screens/ProsCategoryLandingScreen';
+import ProsProjectStatusScreen from './screens/ProsProjectStatusScreen';
+import ProsBidScreen from './screens/ProsBidScreen';
+import ProsPaywallScreen from './screens/ProsPaywallScreen';
+import ProsClaimBusinessScreen from './screens/ProsClaimBusinessScreen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -115,9 +111,6 @@ function HomeStack() {
         component={BusinessCardScannerScreen}
         options={{ presentation: 'modal' }}
       />
-      {/* Quick Finds */}
-      <HomeStackNav.Screen name="QuickFinds" component={QuickFindsScreen} />
-      <HomeStackNav.Screen name="QuickFindsResults" component={QuickFindsResultsScreen} />
     </HomeStackNav.Navigator>
   );
 }
@@ -138,12 +131,13 @@ function AtlasStack() {
 }
 
 // --------------------
-// Apps Stack (Central Hub)
+// Apps Stack (REPLACES Menu Stack)
 // --------------------
 function AppsStack() {
   return (
     <AppsStackNav.Navigator screenOptions={{ headerShown: false }}>
-      <AppsStackNav.Screen name="AppsMain" component={AppsHomeScreen} />
+      <AppsStackNav.Screen name="AppsHome" component={AppsHomeScreen} />
+      <AppsStackNav.Screen name="MenuMain" component={MenuScreen} />
       <AppsStackNav.Screen name="ProfileMain" component={ProfileScreen} />
       <AppsStackNav.Screen name="SavedMain" component={SavedScreen} />
 
@@ -151,7 +145,7 @@ function AppsStack() {
       <AppsStackNav.Screen name="Login" component={LoginScreen} />
       <AppsStackNav.Screen name="SignUp" component={SignUpScreen} />
 
-      {/* Shared screens accessible from Apps */}
+      {/* Shared screens accessible from apps */}
       <AppsStackNav.Screen name="RateCity" component={RateCityScreen} />
       <AppsStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
       
@@ -165,20 +159,10 @@ function AppsStack() {
         options={{ presentation: 'modal' }}
       />
       
-      {/* Quick Finds accessible from Apps */}
-      <AppsStackNav.Screen name="QuickFinds" component={QuickFindsScreen} />
-      <AppsStackNav.Screen name="QuickFindsResults" component={QuickFindsResultsScreen} />
-      
       {/* Pro Dashboard accessible from Apps */}
       <AppsStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
       <AppsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
-      <AppsStackNav.Screen name="ProsLeadDetail" component={ProsLeadDetailScreen} />
       <AppsStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
-      
-      {/* Pros screens accessible from Apps */}
-      <AppsStackNav.Screen name="ProsHome" component={ProsHomeScreen} />
-      <AppsStackNav.Screen name="ProsBrowse" component={ProsBrowseScreen} />
-      <AppsStackNav.Screen name="ProsProfile" component={ProsProfileScreen} />
     </AppsStackNav.Navigator>
   );
 }
@@ -196,11 +180,12 @@ function UniverseStack() {
 }
 
 // --------------------
-// Pros Stack (with Multi-Step Request Flow)
+// Pros Stack (UPDATED with new screens)
 // --------------------
 function ProsStack() {
   return (
     <ProsStackNav.Navigator screenOptions={{ headerShown: false }}>
+      {/* Main Pros Screens */}
       <ProsStackNav.Screen name="ProsHome" component={ProsHomeScreen} />
       <ProsStackNav.Screen name="ProsBrowse" component={ProsBrowseScreen} />
       <ProsStackNav.Screen name="ProsProfile" component={ProsProfileScreen} />
@@ -208,15 +193,8 @@ function ProsStack() {
       <ProsStackNav.Screen name="ProsRegistration" component={ProsRegistrationScreen} />
       <ProsStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
       <ProsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
-      <ProsStackNav.Screen name="ProsLeadDetail" component={ProsLeadDetailScreen} />
-      <ProsStackNav.Screen name="ProsCategory" component={ProsCategoryScreen} />
-      <ProsStackNav.Screen name="ProsCategoryLanding" component={ProsCategoryLandingScreen} />
-      <ProsStackNav.Screen name="ProsClaimBusiness" component={ProsClaimBusinessScreen} />
-      <ProsStackNav.Screen name="ProsPaywall" component={ProsPaywallScreen} />
-      <ProsStackNav.Screen name="ProsProjectStatus" component={ProsProjectStatusScreen} />
-      <ProsStackNav.Screen name="ProsBid" component={ProsBidScreen} />
-      
-      {/* Multi-Step Service Request Flow */}
+
+      {/* NEW: Multi-Step Service Request Flow */}
       <ProsStackNav.Screen 
         name="ProsRequestStep1" 
         component={ProsRequestStep1Screen}
@@ -225,6 +203,19 @@ function ProsStack() {
       <ProsStackNav.Screen name="ProsRequestStep2" component={ProsRequestStep2Screen} />
       <ProsStackNav.Screen name="ProsRequestStep3" component={ProsRequestStep3Screen} />
       <ProsStackNav.Screen name="ProsRequestStep4" component={ProsRequestStep4Screen} />
+
+      {/* NEW: Category Landing & Project Status */}
+      <ProsStackNav.Screen name="ProsCategoryLanding" component={ProsCategoryLandingScreen} />
+      <ProsStackNav.Screen name="ProsProjectStatus" component={ProsProjectStatusScreen} />
+
+      {/* NEW: Pro Business Screens */}
+      <ProsStackNav.Screen name="ProsBid" component={ProsBidScreen} />
+      <ProsStackNav.Screen 
+        name="ProsPaywall" 
+        component={ProsPaywallScreen}
+        options={{ presentation: 'modal' }}
+      />
+      <ProsStackNav.Screen name="ProsClaimBusiness" component={ProsClaimBusinessScreen} />
     </ProsStackNav.Navigator>
   );
 }
