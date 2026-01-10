@@ -50,22 +50,17 @@ import ProsProfileScreen from './screens/ProsProfileScreen';
 import ProsDashboardScreen from './screens/ProsDashboardScreen';
 import ProsRegistrationScreen from './screens/ProsRegistrationScreen';
 import ProsMessagesScreen from './screens/ProsMessagesScreen';
-import ProsRequestQuoteScreen from './screens/ProsRequestQuoteScreen';
-import ProsProjectStatusScreen from './screens/ProsProjectStatusScreen';
 import ProsLeadsScreen from './screens/ProsLeadsScreen';
 
-// ========== APPS SCREENS (NEW) ==========
-import AppsHomeScreen from './screens/AppsHomeScreen';
-import QuickFindsScreen from './screens/QuickFindsScreen';
-import QuickFindsResultsScreen from './screens/QuickFindsResultsScreen';
-import ExperiencePathsScreen from './screens/ExperiencePathsScreen';
-import ExperiencePathDetailScreen from './screens/ExperiencePathDetailScreen';
-import HappeningNowScreen from './screens/HappeningNowScreen';
-import HappeningNowDetailScreen from './screens/HappeningNowDetailScreen';
+// NEW: Multi-Step Service Request Flow
+import ProsRequestStep1Screen from './screens/ProsRequestStep1Screen';
+import ProsRequestStep2Screen from './screens/ProsRequestStep2Screen';
+import ProsRequestStep3Screen from './screens/ProsRequestStep3Screen';
+import ProsRequestStep4Screen from './screens/ProsRequestStep4Screen';
 
-// Account / utility screens (Menu tab was replaced by Apps)
-// These screens are now accessible from the Apps tab.
-// NOTE: We keep MenuStack for backwards compatibility but do not mount it as a tab.
+// NEW: Category Landing & Project Status
+import ProsCategoryLandingScreen from './screens/ProsCategoryLandingScreen';
+import ProsProjectStatusScreen from './screens/ProsProjectStatusScreen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -87,7 +82,6 @@ const AtlasStackNav = createNativeStackNavigator();
 const MenuStackNav = createNativeStackNavigator();
 const UniverseStackNav = createNativeStackNavigator();
 const ProsStackNav = createNativeStackNavigator();
-const AppsStackNav = createNativeStackNavigator(); // NEW: Apps Stack
 
 // --------------------
 // Home Stack
@@ -130,7 +124,7 @@ function AtlasStack() {
 }
 
 // --------------------
-// Menu Stack (now contains My Account / Login)
+// Menu Stack
 // --------------------
 function MenuStack() {
   return (
@@ -179,63 +173,34 @@ function UniverseStack() {
 }
 
 // --------------------
-// Pros Stack
+// Pros Stack (UPDATED with new screens)
 // --------------------
 function ProsStack() {
   return (
     <ProsStackNav.Navigator screenOptions={{ headerShown: false }}>
-      <ProsStackNav.Screen name="ProsHome" component={ProsHomeScreen} />
-      <ProsStackNav.Screen name="ProsBrowse" component={ProsBrowseScreen} />
-      <ProsStackNav.Screen name="ProsProfile" component={ProsProfileScreen} />
-      <ProsStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
-      <ProsStackNav.Screen name="ProsRegistration" component={ProsRegistrationScreen} />
-      <ProsStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
+      {/* Main Pros Screens */}
+      <ProsStackNav.Screen name="ProsHomeScreen" component={ProsHomeScreen} />
+      <ProsStackNav.Screen name="ProsBrowseScreen" component={ProsBrowseScreen} />
+      <ProsStackNav.Screen name="ProsProfileScreen" component={ProsProfileScreen} />
+      <ProsStackNav.Screen name="ProsDashboardScreen" component={ProsDashboardScreen} />
+      <ProsStackNav.Screen name="ProsRegistrationScreen" component={ProsRegistrationScreen} />
+      <ProsStackNav.Screen name="ProsMessagesScreen" component={ProsMessagesScreen} />
+      <ProsStackNav.Screen name="ProsLeadsScreen" component={ProsLeadsScreen} />
+      
+      {/* NEW: Multi-Step Service Request Flow */}
       <ProsStackNav.Screen 
-        name="ProsRequestQuote" 
-        component={ProsRequestQuoteScreen}
+        name="ProsRequestStep1Screen" 
+        component={ProsRequestStep1Screen}
         options={{ presentation: 'modal' }}
       />
-      <ProsStackNav.Screen name="ProsProjectStatus" component={ProsProjectStatusScreen} />
-      <ProsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
+      <ProsStackNav.Screen name="ProsRequestStep2Screen" component={ProsRequestStep2Screen} />
+      <ProsStackNav.Screen name="ProsRequestStep3Screen" component={ProsRequestStep3Screen} />
+      <ProsStackNav.Screen name="ProsRequestStep4Screen" component={ProsRequestStep4Screen} />
+      
+      {/* NEW: Category Landing & Project Status */}
+      <ProsStackNav.Screen name="ProsCategoryLandingScreen" component={ProsCategoryLandingScreen} />
+      <ProsStackNav.Screen name="ProsProjectStatusScreen" component={ProsProjectStatusScreen} />
     </ProsStackNav.Navigator>
-  );
-}
-
-// --------------------
-// Apps Stack (NEW)
-// --------------------
-function AppsStack() {
-  return (
-    <AppsStackNav.Navigator screenOptions={{ headerShown: false }}>
-      <AppsStackNav.Screen name="AppsHome" component={AppsHomeScreen} />
-
-      {/* Account */}
-      <AppsStackNav.Screen name="Login" component={LoginScreen} />
-      <AppsStackNav.Screen name="SignUp" component={SignUpScreen} />
-      <AppsStackNav.Screen name="Profile" component={ProfileScreen} />
-      <AppsStackNav.Screen name="Saved" component={SavedScreen} />
-
-      {/* Create */}
-      <AppsStackNav.Screen name="UniversalAdd" component={UniversalAddScreen} />
-      <AppsStackNav.Screen name="AddPlace" component={AddPlaceScreen} />
-      <AppsStackNav.Screen
-        name="BusinessCardScanner"
-        component={BusinessCardScannerScreen}
-        options={{ presentation: 'modal' }}
-      />
-      
-      {/* Quick Finds */}
-      <AppsStackNav.Screen name="QuickFinds" component={QuickFindsScreen} />
-      <AppsStackNav.Screen name="QuickFindsResults" component={QuickFindsResultsScreen} />
-      
-      {/* Experience Paths */}
-      <AppsStackNav.Screen name="ExperiencePaths" component={ExperiencePathsScreen} />
-      <AppsStackNav.Screen name="ExperiencePathDetail" component={ExperiencePathDetailScreen} />
-      
-      {/* Happening Now */}
-      <AppsStackNav.Screen name="HappeningNow" component={HappeningNowScreen} />
-      <AppsStackNav.Screen name="HappeningNowDetail" component={HappeningNowDetailScreen} />
-    </AppsStackNav.Navigator>
   );
 }
 
@@ -265,8 +230,8 @@ function TabNavigator() {
             case 'Atlas':
               iconName = focused ? 'map' : 'map-outline';
               break;
-            case 'Apps':
-              iconName = focused ? 'apps' : 'apps-outline';
+            case 'Menu':
+              iconName = focused ? 'menu' : 'menu-outline';
               break;
           }
 
@@ -276,6 +241,8 @@ function TabNavigator() {
     >
       <Tab.Screen name="Home" component={HomeStack} options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen name="Explore" component={UniverseStack} options={{ tabBarLabel: 'Universes' }} />
+
+      {/* Pros Tab */}
       <Tab.Screen
         name="Pros"
         component={ProsStack}
@@ -283,9 +250,9 @@ function TabNavigator() {
           tabBarLabel: 'Pros',
         }}
       />
+
       <Tab.Screen name="Atlas" component={AtlasStack} options={{ tabBarLabel: 'Atlas' }} />
-      {/* CHANGED: Replaced Menu tab with Apps tab */}
-      <Tab.Screen name="Apps" component={AppsStack} options={{ tabBarLabel: 'Apps' }} />
+      <Tab.Screen name="Menu" component={MenuStack} options={{ tabBarLabel: 'Menu' }} />
     </Tab.Navigator>
   );
 }

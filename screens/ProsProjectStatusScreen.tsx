@@ -1,24 +1,21 @@
 /**
- * Customer-facing Project Status screen (Pros tab)
- *
- * Shows:
- * - project summary
- * - how many pros have been invited
- * - list of invited pros (business names)
- *
- * DB tables expected:
- * - pros_projects
- * - pros_project_invites (project_id, place_id, status, created_at)
+ * Pros Project Status Screen
+ * Install path: screens/ProsProjectStatusScreen.tsx
+ * 
+ * Allows customers to track the status of their service requests
+ * and view responses from pros.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
+  Image,
+  RefreshControl,
   ActivityIndicator,
-  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,171 +23,348 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ProsColors } from '../constants/ProsConfig';
-import { supabase } from '../lib/supabaseClient';
 
 type RouteParams = {
-  ProsProjectStatus: {
-    projectId: string;
+  ProsProjectStatusScreen: {
+    projectId?: number;
+    projectTitle?: string;
   };
 };
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
-type InviteRow = {
-  id: string;
-  status: string;
-  created_at: string;
-  places?: {
-    id: string;
-    name: string;
-    city?: string | null;
-    state_region?: string | null;
-  } | null;
+// Mock data for demonstration - replace with actual API calls
+type ProResponse = {
+  id: number;
+  proName: string;
+  proImage: string | null;
+  rating: number;
+  reviewCount: number;
+  isVerified: boolean;
+  lowEstimate: number;
+  highEstimate: number;
+  pitch: string;
+  availability: string;
+  responseTime: string;
 };
+
+type ProjectStatus = {
+  id: number;
+  title: string;
+  status: 'pending' | 'matching' | 'responses' | 'hired' | 'completed';
+  timeline: string;
+  budget: string;
+  prosRequested: number;
+  prosResponded: number;
+  createdAt: string;
+  responses: ProResponse[];
+};
+
+// Status step configuration
+const STATUS_STEPS = [
+  { key: 'pending', label: 'Request Sent', icon: 'paper-plane' },
+  { key: 'matching', label: 'Finding Pros', icon: 'search' },
+  { key: 'responses', label: 'Reviewing Quotes', icon: 'documents' },
+  { key: 'hired', label: 'Pro Hired', icon: 'checkmark-circle' },
+];
 
 export default function ProsProjectStatusScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<RouteProp<RouteParams, 'ProsProjectStatus'>>();
-  const projectId = route.params?.projectId;
+  const route = useRoute<RouteProp<RouteParams, 'ProsProjectStatusScreen'>>();
+  const { projectId, projectTitle } = route.params || {};
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [project, setProject] = useState<any>(null);
-  const [invites, setInvites] = useState<InviteRow[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [project, setProject] = useState<ProjectStatus | null>(null);
 
-  const fetchAll = useCallback(async () => {
-    if (!projectId) return;
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data: projectData, error: projectError } = await supabase
-        .from('pros_projects')
-        .select('*')
-        .eq('id', projectId)
-        .single();
-
-      if (projectError) throw projectError;
-
-      const { data: invitesData, error: invitesError } = await supabase
-        .from('pros_project_invites')
-        .select(
-          `id,status,created_at,
-           places:places(id,name,city,state_region)`
-        )
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: true })
-        .limit(50);
-
-      if (invitesError) throw invitesError;
-
-      setProject(projectData);
-      setInvites((invitesData ?? []) as any);
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to load project');
-    } finally {
-      setLoading(false);
-    }
+  // Mock data - replace with actual API call
+  useEffect(() => {
+    loadProjectStatus();
   }, [projectId]);
 
-  useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
-
-  const invitedCount = invites.length;
-  const invitedLabel = useMemo(() => {
-    if (!invitedCount) return 'Inviting pros...';
-    return `Invited ${invitedCount} ${invitedCount === 1 ? 'pro' : 'pros'}`;
-  }, [invitedCount]);
-
-  const renderInvite = ({ item }: { item: InviteRow }) => {
-    const name = item.places?.name ?? 'Pro';
-    const loc = [item.places?.city, item.places?.state_region].filter(Boolean).join(', ');
-
-    return (
-      <View style={styles.inviteRow}>
-        <View style={styles.inviteLeft}>
-          <View style={styles.inviteIcon}>
-            <Ionicons name="business" size={18} color={ProsColors.textSecondary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.inviteName} numberOfLines={1}>{name}</Text>
-            {!!loc && <Text style={styles.inviteLoc} numberOfLines={1}>{loc}</Text>}
-          </View>
-        </View>
-        <View style={styles.statusPill}>
-          <Text style={styles.statusPillText}>{item.status}</Text>
-        </View>
-      </View>
-    );
+  const loadProjectStatus = async () => {
+    setLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+      setProject({
+        id: projectId || 1,
+        title: projectTitle || 'Kitchen Lighting Installation',
+        status: 'responses',
+        timeline: 'Within 1 week',
+        budget: '$500 - $1,000',
+        prosRequested: 3,
+        prosResponded: 2,
+        createdAt: new Date().toISOString(),
+        responses: [
+          {
+            id: 1,
+            proName: 'Mike\'s Electric',
+            proImage: null,
+            rating: 4.9,
+            reviewCount: 127,
+            isVerified: true,
+            lowEstimate: 450,
+            highEstimate: 650,
+            pitch: 'Hi! I\'ve done over 200 kitchen lighting projects. I can come by tomorrow for a free estimate and have this done within 3 days.',
+            availability: 'Available tomorrow',
+            responseTime: '2 hours ago',
+          },
+          {
+            id: 2,
+            proName: 'Bright Solutions LLC',
+            proImage: null,
+            rating: 4.7,
+            reviewCount: 89,
+            isVerified: true,
+            lowEstimate: 500,
+            highEstimate: 750,
+            pitch: 'Hello! I specialize in modern kitchen lighting. Happy to discuss options that fit your budget and style.',
+            availability: 'Available this week',
+            responseTime: '5 hours ago',
+          },
+        ],
+      });
+      setLoading(false);
+    }, 1000);
   };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadProjectStatus();
+    setRefreshing(false);
+  };
+
+  const handleBack = () => {
+    navigation.goBack();
+  };
+
+  const handleViewProfile = (proId: number) => {
+    navigation.navigate('ProsProfileScreen', { id: proId });
+  };
+
+  const handleMessage = (proId: number, proName: string) => {
+    navigation.navigate('ProsMessagesScreen', { proId, proName });
+  };
+
+  const handleInviteMore = () => {
+    // Navigate to invite more pros flow
+    navigation.navigate('ProsRequestStep1Screen', {
+      projectTitle: project?.title,
+    });
+  };
+
+  const getStatusIndex = (status: string): number => {
+    return STATUS_STEPS.findIndex(s => s.key === status);
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={ProsColors.primary} />
+          <Text style={styles.loadingText}>Loading project status...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!project) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={ProsColors.textMuted} />
+          <Text style={styles.errorText}>Project not found</Text>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const currentStatusIndex = getStatusIndex(project.status);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={ProsColors.textPrimary} />
+        <TouchableOpacity onPress={handleBack} style={styles.headerBackButton}>
+          <Ionicons name="chevron-back" size={24} color={ProsColors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Your Project</Text>
-        <TouchableOpacity onPress={fetchAll} style={styles.backButton}>
-          <Ionicons name="refresh" size={22} color={ProsColors.textSecondary} />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Project Status</Text>
+        <View style={{ width: 40 }} />
       </View>
 
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={ProsColors.primary} />
-          <Text style={styles.centerText}>Loading your project...</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.center}>
-          <Ionicons name="alert-circle-outline" size={40} color={ProsColors.error} />
-          <Text style={styles.errorTitle}>Something went wrong</Text>
-          <Text style={styles.centerText}>{error}</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={fetchAll}>
-            <Text style={styles.primaryButtonText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <>
-          {/* Summary */}
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle} numberOfLines={2}>
-              {project?.title ?? 'Project'}
-            </Text>
-            {!!project?.description && (
-              <Text style={styles.summaryDescription} numberOfLines={3}>
-                {project.description}
-              </Text>
-            )}
-            <View style={styles.summaryMeta}>
-              <View style={styles.metaItem}>
-                <Ionicons name="time-outline" size={16} color={ProsColors.textSecondary} />
-                <Text style={styles.metaText}>{project?.urgency ?? '—'}</Text>
-              </View>
-              <View style={styles.metaItem}>
-                <Ionicons name="people-outline" size={16} color={ProsColors.textSecondary} />
-                <Text style={styles.metaText}>{project?.max_pros ?? 10} recommended</Text>
-              </View>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Project Title Card */}
+        <View style={styles.projectCard}>
+          <Text style={styles.projectTitle}>{project.title}</Text>
+          <View style={styles.projectMeta}>
+            <View style={styles.metaItem}>
+              <Ionicons name="time-outline" size={16} color={ProsColors.textSecondary} />
+              <Text style={styles.metaText}>{project.timeline}</Text>
             </View>
-            <Text style={styles.invitedLabel}>{invitedLabel}</Text>
+            <View style={styles.metaItem}>
+              <Ionicons name="cash-outline" size={16} color={ProsColors.textSecondary} />
+              <Text style={styles.metaText}>{project.budget}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Status Progress */}
+        <View style={styles.statusSection}>
+          <Text style={styles.sectionTitle}>Status</Text>
+          <View style={styles.statusSteps}>
+            {STATUS_STEPS.map((step, index) => {
+              const isCompleted = index <= currentStatusIndex;
+              const isCurrent = index === currentStatusIndex;
+              
+              return (
+                <View key={step.key} style={styles.statusStep}>
+                  <View style={styles.statusStepLeft}>
+                    <View style={[
+                      styles.statusDot,
+                      isCompleted && styles.statusDotCompleted,
+                      isCurrent && styles.statusDotCurrent,
+                    ]}>
+                      {isCompleted && (
+                        <Ionicons
+                          name={isCurrent ? step.icon as any : 'checkmark'}
+                          size={14}
+                          color="#FFFFFF"
+                        />
+                      )}
+                    </View>
+                    {index < STATUS_STEPS.length - 1 && (
+                      <View style={[
+                        styles.statusLine,
+                        isCompleted && styles.statusLineCompleted,
+                      ]} />
+                    )}
+                  </View>
+                  <View style={styles.statusStepContent}>
+                    <Text style={[
+                      styles.statusStepLabel,
+                      isCompleted && styles.statusStepLabelCompleted,
+                      isCurrent && styles.statusStepLabelCurrent,
+                    ]}>
+                      {step.label}
+                    </Text>
+                    {isCurrent && (
+                      <Text style={styles.statusStepSubtext}>
+                        {project.prosResponded} of {project.prosRequested} pros responded
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Pro Responses */}
+        <View style={styles.responsesSection}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Pro Responses</Text>
+            <Text style={styles.responseCount}>
+              {project.prosResponded}/{project.prosRequested}
+            </Text>
           </View>
 
-          <FlatList
-            data={invites}
-            keyExtractor={(item) => String(item.id)}
-            renderItem={renderInvite}
-            contentContainerStyle={styles.listContent}
-            ListEmptyComponent={
-              <View style={styles.centerSmall}>
-                <ActivityIndicator color={ProsColors.primary} />
-                <Text style={styles.centerText}>Inviting pros in your area...</Text>
+          {project.responses.length > 0 ? (
+            project.responses.map((response) => (
+              <View key={response.id} style={styles.responseCard}>
+                {/* Pro Header */}
+                <View style={styles.responseHeader}>
+                  <View style={styles.proInfo}>
+                    {response.proImage ? (
+                      <Image source={{ uri: response.proImage }} style={styles.proAvatar} />
+                    ) : (
+                      <View style={[styles.proAvatar, styles.proAvatarPlaceholder]}>
+                        <Ionicons name="person" size={20} color={ProsColors.textMuted} />
+                      </View>
+                    )}
+                    <View style={styles.proDetails}>
+                      <View style={styles.proNameRow}>
+                        <Text style={styles.proName}>{response.proName}</Text>
+                        {response.isVerified && (
+                          <Ionicons name="checkmark-circle" size={16} color={ProsColors.primary} />
+                        )}
+                      </View>
+                      <View style={styles.proRating}>
+                        <Ionicons name="star" size={14} color="#F59E0B" />
+                        <Text style={styles.proRatingText}>
+                          {response.rating} ({response.reviewCount} reviews)
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Text style={styles.responseTime}>{response.responseTime}</Text>
+                </View>
+
+                {/* Estimate */}
+                <View style={styles.estimateContainer}>
+                  <Text style={styles.estimateLabel}>Estimated Price</Text>
+                  <Text style={styles.estimateValue}>
+                    ${response.lowEstimate} - ${response.highEstimate}
+                  </Text>
+                </View>
+
+                {/* Pitch */}
+                <Text style={styles.pitchText}>{response.pitch}</Text>
+
+                {/* Availability */}
+                <View style={styles.availabilityRow}>
+                  <Ionicons name="calendar-outline" size={16} color={ProsColors.primary} />
+                  <Text style={styles.availabilityText}>{response.availability}</Text>
+                </View>
+
+                {/* Actions */}
+                <View style={styles.responseActions}>
+                  <TouchableOpacity
+                    style={styles.viewProfileButton}
+                    onPress={() => handleViewProfile(response.id)}
+                  >
+                    <Text style={styles.viewProfileText}>View Profile</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.messageButton}
+                    onPress={() => handleMessage(response.id, response.proName)}
+                  >
+                    <Ionicons name="chatbubble-outline" size={18} color="#FFFFFF" />
+                    <Text style={styles.messageButtonText}>Message</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            }
-          />
-        </>
-      )}
+            ))
+          ) : (
+            <View style={styles.noResponsesContainer}>
+              <Ionicons name="hourglass-outline" size={48} color={ProsColors.textMuted} />
+              <Text style={styles.noResponsesTitle}>Waiting for responses</Text>
+              <Text style={styles.noResponsesText}>
+                We're reaching out to pros in your area. You'll be notified when they respond.
+              </Text>
+            </View>
+          )}
+
+          {/* Invite More Button */}
+          {project.prosResponded < project.prosRequested && (
+            <TouchableOpacity style={styles.inviteMoreButton} onPress={handleInviteMore}>
+              <Ionicons name="add-circle-outline" size={20} color={ProsColors.primary} />
+              <Text style={styles.inviteMoreText}>Invite More Pros</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -198,7 +372,29 @@ export default function ProsProjectStatusScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8F9FA',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: ProsColors.textSecondary,
+    marginTop: 12,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  errorText: {
+    fontSize: 16,
+    color: ProsColors.textSecondary,
+    marginTop: 12,
+    marginBottom: 24,
   },
   header: {
     flexDirection: 'row',
@@ -206,43 +402,47 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: ProsColors.borderLight,
   },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: ProsColors.textPrimary,
-  },
-  backButton: {
+  headerBackButton: {
     width: 40,
     height: 40,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'flex-start',
   },
-  summaryCard: {
-    margin: 16,
-    padding: 16,
-    borderRadius: 14,
-    backgroundColor: ProsColors.sectionBg,
-    borderWidth: 1,
-    borderColor: ProsColors.borderLight,
-  },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
     color: ProsColors.textPrimary,
   },
-  summaryDescription: {
-    marginTop: 8,
-    fontSize: 14,
-    color: ProsColors.textSecondary,
-    lineHeight: 20,
+  scrollView: {
+    flex: 1,
   },
-  summaryMeta: {
+  scrollContent: {
+    padding: 16,
+  },
+  projectCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  projectTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: ProsColors.textPrimary,
+    marginBottom: 12,
+  },
+  projectMeta: {
     flexDirection: 'row',
-    gap: 14,
-    marginTop: 12,
+    gap: 20,
   },
   metaItem: {
     flexDirection: 'row',
@@ -250,98 +450,266 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   metaText: {
-    fontSize: 12,
+    fontSize: 14,
     color: ProsColors.textSecondary,
-    fontWeight: '600',
   },
-  invitedLabel: {
-    marginTop: 12,
-    fontSize: 13,
+  statusSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  sectionTitle: {
+    fontSize: 16,
     fontWeight: '700',
-    color: ProsColors.primary,
+    color: ProsColors.textPrimary,
+    marginBottom: 16,
   },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
-  inviteRow: {
+  sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: ProsColors.borderLight,
+    marginBottom: 16,
   },
-  inviteLeft: {
+  responseCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: ProsColors.primary,
+  },
+  statusSteps: {
+    gap: 0,
+  },
+  statusStep: {
+    flexDirection: 'row',
+    minHeight: 50,
+  },
+  statusStepLeft: {
+    width: 32,
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: ProsColors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusDotCompleted: {
+    backgroundColor: ProsColors.primary,
+  },
+  statusDotCurrent: {
+    backgroundColor: ProsColors.primary,
+  },
+  statusLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: ProsColors.border,
+    marginVertical: 4,
+  },
+  statusLineCompleted: {
+    backgroundColor: ProsColors.primary,
+  },
+  statusStepContent: {
+    flex: 1,
+    paddingLeft: 12,
+    paddingBottom: 16,
+  },
+  statusStepLabel: {
+    fontSize: 14,
+    color: ProsColors.textSecondary,
+  },
+  statusStepLabelCompleted: {
+    color: ProsColors.textPrimary,
+    fontWeight: '500',
+  },
+  statusStepLabelCurrent: {
+    color: ProsColors.primary,
+    fontWeight: '600',
+  },
+  statusStepSubtext: {
+    fontSize: 12,
+    color: ProsColors.textSecondary,
+    marginTop: 4,
+  },
+  responsesSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  responseCard: {
+    borderWidth: 1,
+    borderColor: ProsColors.border,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  responseHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  proInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+  },
+  proAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
+  },
+  proAvatarPlaceholder: {
+    backgroundColor: ProsColors.sectionBg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  proDetails: {
     flex: 1,
   },
-  inviteIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: ProsColors.sectionBg,
+  proNameRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: ProsColors.borderLight,
+    gap: 6,
   },
-  inviteName: {
-    fontSize: 14,
-    fontWeight: '700',
+  proName: {
+    fontSize: 16,
+    fontWeight: '600',
     color: ProsColors.textPrimary,
   },
-  inviteLoc: {
-    marginTop: 2,
+  proRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  proRatingText: {
+    fontSize: 13,
+    color: ProsColors.textSecondary,
+    marginLeft: 4,
+  },
+  responseTime: {
     fontSize: 12,
     color: ProsColors.textMuted,
   },
-  statusPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: ProsColors.primaryLight,
+  estimateContainer: {
+    backgroundColor: `${ProsColors.primary}10`,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
   },
-  statusPillText: {
+  estimateLabel: {
     fontSize: 12,
+    color: ProsColors.textSecondary,
+    marginBottom: 4,
+  },
+  estimateValue: {
+    fontSize: 20,
     fontWeight: '700',
     color: ProsColors.primary,
   },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
+  pitchText: {
+    fontSize: 14,
+    color: ProsColors.textPrimary,
+    lineHeight: 20,
+    marginBottom: 12,
   },
-  centerSmall: {
+  availabilityRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
+    gap: 6,
+    marginBottom: 16,
   },
-  centerText: {
-    marginTop: 10,
+  availabilityText: {
     fontSize: 13,
+    color: ProsColors.primary,
+    fontWeight: '500',
+  },
+  responseActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  viewProfileButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: ProsColors.primary,
+    alignItems: 'center',
+  },
+  viewProfileText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: ProsColors.primary,
+  },
+  messageButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: ProsColors.primary,
+    gap: 6,
+  },
+  messageButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  noResponsesContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  noResponsesTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: ProsColors.textPrimary,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  noResponsesText: {
+    fontSize: 14,
     color: ProsColors.textSecondary,
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 20,
   },
-  errorTitle: {
-    marginTop: 10,
-    fontSize: 16,
-    fontWeight: '800',
-    color: ProsColors.textPrimary,
+  inviteMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: ProsColors.primary,
+    borderStyle: 'dashed',
+    gap: 8,
+    marginTop: 8,
   },
-  primaryButton: {
-    marginTop: 14,
+  inviteMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: ProsColors.primary,
+  },
+  backButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     backgroundColor: ProsColors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: 8,
   },
-  primaryButtonText: {
+  backButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#FFFFFF',
-    fontWeight: '700',
   },
 });
