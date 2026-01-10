@@ -13,7 +13,7 @@ import { Colors } from './constants/Colors';
 import { preloadSignalLabels } from './hooks/useSignalLabels';
 import { preloadSignalCache } from './lib/reviews';
 
-// Screens
+// ========== CORE SCREENS ==========
 import HomeScreen from './screens/HomeScreen';
 import PlaceDetailsScreen from './screens/PlaceDetailsScreen';
 import AddReviewScreen from './screens/AddReviewScreen';
@@ -24,25 +24,33 @@ import CityDetailsScreen from './screens/CityDetailsScreen';
 import RateCityScreen from './screens/RateCityScreen';
 import ClaimBusinessScreen from './screens/ClaimBusinessScreen';
 
+// ========== UNIVERSE SCREENS ==========
 import UniverseDiscoveryScreen from './screens/UniverseDiscoveryScreen';
 import UniverseLandingScreen from './screens/UniverseLandingScreen';
+import UniverseDetailScreen from './screens/UniverseDetailScreen';
 
+// ========== CREATE SCREENS ==========
 import UniversalAddScreen from './screens/UniversalAddScreen';
 import AddPlaceScreen from './screens/AddPlaceScreen';
 import BusinessCardScannerScreen from './screens/BusinessCardScannerScreen';
 
+// ========== ATLAS SCREENS ==========
 import AtlasHomeScreen from './screens/AtlasHomeScreen';
 import ArticleDetailScreen from './screens/ArticleDetailScreen';
-import UniverseDetailScreen from './screens/UniverseDetailScreen';
 import CategoryBrowseScreen from './screens/CategoryBrowseScreen';
 import AtlasSearchScreen from './screens/AtlasSearchScreen';
 
-// ========== APPS SCREEN (RESTORED) ==========
+// ========== APPS / MENU SCREENS ==========
+// NOTE: Using AppsHomeScreen based on user's local project
 import AppsHomeScreen from './screens/AppsHomeScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SavedScreen from './screens/SavedScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
+
+// ========== QUICK FINDS SCREENS ==========
+import QuickFindsScreen from './screens/QuickFindsScreen';
+import QuickFindsResultsScreen from './screens/QuickFindsResultsScreen';
 
 // ========== PROS SCREENS ==========
 import ProsHomeScreen from './screens/ProsHomeScreen';
@@ -51,8 +59,20 @@ import ProsProfileScreen from './screens/ProsProfileScreen';
 import ProsDashboardScreen from './screens/ProsDashboardScreen';
 import ProsRegistrationScreen from './screens/ProsRegistrationScreen';
 import ProsMessagesScreen from './screens/ProsMessagesScreen';
-import ProsRequestQuoteScreen from './screens/ProsRequestQuoteScreen';
 import ProsLeadsScreen from './screens/ProsLeadsScreen';
+import ProsLeadDetailScreen from './screens/ProsLeadDetailScreen';
+import ProsCategoryScreen from './screens/ProsCategoryScreen';
+import ProsCategoryLandingScreen from './screens/ProsCategoryLandingScreen';
+import ProsClaimBusinessScreen from './screens/ProsClaimBusinessScreen';
+import ProsPaywallScreen from './screens/ProsPaywallScreen';
+import ProsProjectStatusScreen from './screens/ProsProjectStatusScreen';
+import ProsBidScreen from './screens/ProsBidScreen';
+
+// ========== PROS: Multi-Step Request Flow ==========
+import ProsRequestStep1Screen from './screens/ProsRequestStep1Screen';
+import ProsRequestStep2Screen from './screens/ProsRequestStep2Screen';
+import ProsRequestStep3Screen from './screens/ProsRequestStep3Screen';
+import ProsRequestStep4Screen from './screens/ProsRequestStep4Screen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -71,7 +91,7 @@ const Tab = createBottomTabNavigator();
 // ✅ Use separate stacks for clarity
 const HomeStackNav = createNativeStackNavigator();
 const AtlasStackNav = createNativeStackNavigator();
-const AppsStackNav = createNativeStackNavigator(); // CHANGED: Renamed from MenuStackNav
+const AppsStackNav = createNativeStackNavigator();
 const UniverseStackNav = createNativeStackNavigator();
 const ProsStackNav = createNativeStackNavigator();
 
@@ -90,12 +110,14 @@ function HomeStack() {
       <HomeStackNav.Screen name="CityDetails" component={CityDetailsScreen} />
       <HomeStackNav.Screen name="RateCity" component={RateCityScreen} />
       <HomeStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
-      {/* Business Card Scanner - accessible from AddPlaceScreen */}
       <HomeStackNav.Screen 
         name="BusinessCardScanner" 
         component={BusinessCardScannerScreen}
         options={{ presentation: 'modal' }}
       />
+      {/* Quick Finds */}
+      <HomeStackNav.Screen name="QuickFinds" component={QuickFindsScreen} />
+      <HomeStackNav.Screen name="QuickFindsResults" component={QuickFindsResultsScreen} />
     </HomeStackNav.Navigator>
   );
 }
@@ -116,12 +138,12 @@ function AtlasStack() {
 }
 
 // --------------------
-// Apps Stack (CHANGED: Was MenuStack)
+// Apps Stack (Central Hub)
 // --------------------
 function AppsStack() {
   return (
     <AppsStackNav.Navigator screenOptions={{ headerShown: false }}>
-      <AppsStackNav.Screen name="AppsMain" component={AppsScreen} />
+      <AppsStackNav.Screen name="AppsMain" component={AppsHomeScreen} />
       <AppsStackNav.Screen name="ProfileMain" component={ProfileScreen} />
       <AppsStackNav.Screen name="SavedMain" component={SavedScreen} />
 
@@ -137,16 +159,20 @@ function AppsStack() {
       <AppsStackNav.Screen name="UniversalAdd" component={UniversalAddScreen} />
       <AppsStackNav.Screen name="AddPlace" component={AddPlaceScreen} />
       
-      {/* Business Card Scanner */}
       <AppsStackNav.Screen 
         name="BusinessCardScanner" 
         component={BusinessCardScannerScreen}
         options={{ presentation: 'modal' }}
       />
       
+      {/* Quick Finds accessible from Apps */}
+      <AppsStackNav.Screen name="QuickFinds" component={QuickFindsScreen} />
+      <AppsStackNav.Screen name="QuickFindsResults" component={QuickFindsResultsScreen} />
+      
       {/* Pro Dashboard accessible from Apps */}
       <AppsStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
       <AppsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
+      <AppsStackNav.Screen name="ProsLeadDetail" component={ProsLeadDetailScreen} />
       <AppsStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
       
       {/* Pros screens accessible from Apps */}
@@ -170,7 +196,7 @@ function UniverseStack() {
 }
 
 // --------------------
-// Pros Stack
+// Pros Stack (with Multi-Step Request Flow)
 // --------------------
 function ProsStack() {
   return (
@@ -181,12 +207,24 @@ function ProsStack() {
       <ProsStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
       <ProsStackNav.Screen name="ProsRegistration" component={ProsRegistrationScreen} />
       <ProsStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
+      <ProsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
+      <ProsStackNav.Screen name="ProsLeadDetail" component={ProsLeadDetailScreen} />
+      <ProsStackNav.Screen name="ProsCategory" component={ProsCategoryScreen} />
+      <ProsStackNav.Screen name="ProsCategoryLanding" component={ProsCategoryLandingScreen} />
+      <ProsStackNav.Screen name="ProsClaimBusiness" component={ProsClaimBusinessScreen} />
+      <ProsStackNav.Screen name="ProsPaywall" component={ProsPaywallScreen} />
+      <ProsStackNav.Screen name="ProsProjectStatus" component={ProsProjectStatusScreen} />
+      <ProsStackNav.Screen name="ProsBid" component={ProsBidScreen} />
+      
+      {/* Multi-Step Service Request Flow */}
       <ProsStackNav.Screen 
-        name="ProsRequestQuote" 
-        component={ProsRequestQuoteScreen}
+        name="ProsRequestStep1" 
+        component={ProsRequestStep1Screen}
         options={{ presentation: 'modal' }}
       />
-      <ProsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
+      <ProsStackNav.Screen name="ProsRequestStep2" component={ProsRequestStep2Screen} />
+      <ProsStackNav.Screen name="ProsRequestStep3" component={ProsRequestStep3Screen} />
+      <ProsStackNav.Screen name="ProsRequestStep4" component={ProsRequestStep4Screen} />
     </ProsStackNav.Navigator>
   );
 }
@@ -217,7 +255,6 @@ function TabNavigator() {
             case 'Atlas':
               iconName = focused ? 'map' : 'map-outline';
               break;
-            // CHANGED: Apps tab with grid icon
             case 'Apps':
               iconName = focused ? 'apps' : 'apps-outline';
               break;
@@ -229,19 +266,8 @@ function TabNavigator() {
     >
       <Tab.Screen name="Home" component={HomeStack} options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen name="Explore" component={UniverseStack} options={{ tabBarLabel: 'Universes' }} />
-
-      {/* Pros tab */}
-      <Tab.Screen
-        name="Pros"
-        component={ProsStack}
-        options={{
-          tabBarLabel: 'Pros',
-        }}
-      />
-
+      <Tab.Screen name="Pros" component={ProsStack} options={{ tabBarLabel: 'Pros' }} />
       <Tab.Screen name="Atlas" component={AtlasStack} options={{ tabBarLabel: 'Atlas' }} />
-      
-      {/* CHANGED: Apps tab (was Menu) with grid icon */}
       <Tab.Screen name="Apps" component={AppsStack} options={{ tabBarLabel: 'Apps' }} />
     </Tab.Navigator>
   );
