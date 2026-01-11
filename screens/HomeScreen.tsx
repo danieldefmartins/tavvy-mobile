@@ -225,9 +225,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // View mode: 'content' (default) or 'map' (search/swipe triggered)
   const [viewMode, setViewMode] = useState<'content' | 'map'>('content');
   
-  // Data states
-  const [places, setPlaces] = useState<Place[]>(MOCK_PLACES);
-  const [filteredPlaces, setFilteredPlaces] = useState<Place[]>(MOCK_PLACES);
+  // Data states - start empty, will be populated from Supabase
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [filteredPlaces, setFilteredPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Search states
@@ -270,10 +270,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     initializeApp();
   }, []);
 
-  // Handle camera movement when targetLocation changes
+  // Handle camera movement AND data fetching when targetLocation changes
   useEffect(() => {
     if (targetLocation && viewMode === 'map') {
       console.log('Moving camera to targetLocation:', targetLocation);
+      
+      // IMPORTANT: Fetch places for the new location
+      // This ensures we load data for the searched area
+      fetchPlaces(targetLocation);
       
       // Use multiple attempts with increasing delays to ensure map is ready
       const attempts = [100, 300, 600, 1000];
@@ -285,7 +289,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             try {
               cameraRef.current.setCamera({
                 centerCoordinate: targetLocation,
-                zoomLevel: 16,
+                zoomLevel: 14, // Slightly zoomed out to show more places
                 animationDuration: 500,
               });
               console.log('Camera moved successfully at delay:', delay);
@@ -519,78 +523,61 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
       console.log(`Fetching places near [${centerLng}, ${centerLat}]`);
 
-      // Query places within bounding box - much faster than scanning all 2.5M+ records
+      // Query fsq_places_raw table (104M Foursquare places)
+      // Column names: fsq_place_id, name, latitude, longitude, address, locality, region, country, fsq_category_labels, tel, website
       const { data: placesData, error: placesError } = await supabase
-        .from('places')
-        .select('id, name, lat, lng, latitude, longitude, address_line1, city, state_region, country, category, primary_category, fsq_category_labels, phone, phone_e164, website, website_url, cover_image_url, description, current_status, instagram_url')
-        .gte('lat', minLat)
-        .lte('lat', maxLat)
-        .gte('lng', minLng)
-        .lte('lng', maxLng)
+        .from('fsq_places_raw')
+        .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, fsq_category_labels, tel, website, email')
+        .gte('latitude', minLat)
+        .lte('latitude', maxLat)
+        .gte('longitude', minLng)
+        .lte('longitude', maxLng)
         .limit(200);  // Limit results for performance
 
       if (placesError) {
         console.warn('Supabase error:', placesError);
-        setPlaces(MOCK_PLACES);
-        setFilteredPlaces(MOCK_PLACES);
+        setPlaces([]);
+        setFilteredPlaces([]);
         return;
       }
 
-      console.log('Fetched places from Supabase:', placesData?.length || 0);
+      console.log('Fetched places from Supabase fsq_places_raw:', placesData?.length || 0);
 
       if (placesData && placesData.length > 0) {
-        // Try to fetch signal aggregates (may not exist for Foursquare places)
-        const placeIds = placesData.map(p => p.id);
-        
-        let signalAggregates: any[] = [];
-        try {
-          const { data: signalData } = await supabase
-            .from('place_signal_aggregates')
-            .select('place_id, signal_label, total_taps')
-            .in('place_id', placeIds);
-          signalAggregates = signalData || [];
-        } catch (e) {
-          console.log('No signal aggregates table or data');
-        }
-
-        // Process places - normalize coordinates and category
+        // Process places - map fsq_places_raw columns to Place interface
         const processedPlaces = placesData
           .filter((place) => {
-            // Use lat/lng as primary (Foursquare), fallback to latitude/longitude
-            const lon = place.lng || place.longitude;
-            const lat = place.lat || place.latitude;
-            return typeof lon === 'number' && typeof lat === 'number' && 
-                   !isNaN(lon) && !isNaN(lat) && 
-                   lon !== 0 && lat !== 0;
+            return typeof place.longitude === 'number' && typeof place.latitude === 'number' && 
+                   !isNaN(place.longitude) && !isNaN(place.latitude) && 
+                   place.longitude !== 0 && place.latitude !== 0;
           })
           .map(place => {
-            // Get signals for this place
-            const placeSignals = signalAggregates
-              .filter(s => s.place_id === place.id)
-              .map(s => ({
-                bucket: s.signal_label || 'Unknown',
-                tap_total: s.total_taps || 0,
-              }));
-
-            // Determine category from Foursquare data or existing category
-            let category = place.category || place.primary_category || 'Other';
-            if (place.fsq_category_labels && place.fsq_category_labels.length > 0) {
-              category = place.fsq_category_labels[0];
+            // Extract category from fsq_category_labels array
+            let category = 'Other';
+            if (place.fsq_category_labels && Array.isArray(place.fsq_category_labels) && place.fsq_category_labels.length > 0) {
+              // fsq_category_labels is like ["Travel and Transportation > Lodging > Hotel"]
+              const firstLabel = place.fsq_category_labels[0];
+              // Get the last part after " > " for cleaner display
+              const parts = firstLabel.split(' > ');
+              category = parts[parts.length - 1] || firstLabel;
             }
 
             return {
-              ...place,
-              // Normalize coordinates - ensure latitude/longitude are set for map
-              latitude: place.lat || place.latitude,
-              longitude: place.lng || place.longitude,
-              // Normalize category
+              id: place.fsq_place_id,
+              name: place.name,
+              latitude: place.latitude,
+              longitude: place.longitude,
+              address_line1: place.address,
+              city: place.locality,
+              state_region: place.region,
+              country: place.country,
               category: category,
-              // Normalize phone and website
-              phone: place.phone || place.phone_e164,
-              website: place.website || place.website_url,
-              // Signals and photos
-              signals: placeSignals,
-              photos: place.cover_image_url ? [place.cover_image_url] : [],
+              primary_category: category,
+              phone: place.tel,
+              website: place.website,
+              email: place.email,
+              signals: [],
+              photos: [],
             };
           });
 
@@ -598,14 +585,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         setPlaces(processedPlaces);
         setFilteredPlaces(processedPlaces);
       } else {
-        console.log('No places found in database');
-        setPlaces(MOCK_PLACES);
-        setFilteredPlaces(MOCK_PLACES);
+        console.log('No places found in database for this area');
+        setPlaces([]);
+        setFilteredPlaces([]);
       }
     } catch (err) {
       console.error('Error fetching places:', err);
-      setPlaces(MOCK_PLACES);
-      setFilteredPlaces(MOCK_PLACES);
+      setPlaces([]);
+      setFilteredPlaces([]);
     } finally {
       setLoading(false);
     }
@@ -915,13 +902,78 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     }
   };
 
-  const handleSearchSubmit = (query?: string) => {
-    const searchTerm = query || searchQuery;
-    if (searchTerm.trim()) {
-      Keyboard.dismiss();
-      setIsSearchFocused(false);
-      saveRecentSearch(searchTerm.trim());
-      setViewMode('map');
+  // Helper: Normalize category from search text
+  const normalizeCategoryFromText = (text: string): string => {
+    const t = text.toLowerCase();
+    if (t.includes('restaurant')) return 'Restaurants';
+    if (t.includes('cafe') || t.includes('coffee')) return 'Cafes';
+    if (t.includes('bar') || t.includes('pub')) return 'Bars';
+    if (t.includes('shop') || t.includes('store') || t.includes('mall')) return 'Shopping';
+    return 'All';
+  };
+
+  // Helper: Strip location phrase from search query
+  const stripLocationPhrase = (q: string): string => q.replace(/\s+in\s+.+$/i, '').trim();
+
+  const handleSearchSubmit = async (query?: string) => {
+    const raw = (query || searchQuery).trim();
+    if (!raw) return;
+
+    Keyboard.dismiss();
+    setIsSearchFocused(false);
+    saveRecentSearch(raw);
+
+    // Detect pattern: "<thing> in <place>" (e.g., "restaurants in Miami")
+    const match = raw.match(/^(.*?)\s+in\s+(.+)$/i);
+
+    // Always go to map mode
+    setViewMode('map');
+
+    if (!match) {
+      // No "in <location>" → just filter local list
+      // The filterPlaces effect will handle filtering
+      return;
+    }
+
+    const thing = (match[1] || '').trim();        // e.g. "restaurants"
+    const locationText = (match[2] || '').trim(); // e.g. "Miami"
+
+    // Set category if we can infer it from "thing"
+    const inferredCategory = normalizeCategoryFromText(thing);
+    if (inferredCategory !== 'All') {
+      setSelectedCategory(inferredCategory);
+    }
+
+    // Use the "thing" as the actual searchQuery (NOT the whole sentence)
+    // This prevents filtering by "restaurants in miami" which matches nothing
+    setSearchQuery(thing || raw);
+
+    // Geocode the location and fetch places near it
+    try {
+      setIsSearchingAddress(true);
+      const results = await geocodeAddress(locationText);
+      setIsSearchingAddress(false);
+
+      if (results.length > 0) {
+        const first = results[0];
+        const coords: [number, number] = [first.data.lon, first.data.lat];
+
+        // Set target location (this triggers the camera to move)
+        setTargetLocation(coords);
+
+        // IMPORTANT: Actually load places near the new location into memory
+        await fetchPlaces(coords);
+
+        // Fly camera to the new location
+        cameraRef.current?.setCamera?.({
+          centerCoordinate: coords,
+          zoomLevel: 13,
+          animationDuration: 800,
+        });
+      }
+    } catch (e) {
+      setIsSearchingAddress(false);
+      console.log('Search geocode failed:', e);
     }
   };
 
@@ -952,29 +1004,67 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     }
   }, [searchQuery]);
 
+  // Helper: Check if place matches selected category using contains logic
+  // This fixes the issue where "Italian Restaurant" doesn't match "Restaurants"
+  const matchesCategory = (place: Place, selected: string): boolean => {
+    if (selected === 'All') return true;
+
+    const cat = (place.category || '').toLowerCase();
+    const primary = (place.primary_category || '').toLowerCase();
+    const selectedLower = selected.toLowerCase();
+
+    // Use contains logic for common categories
+    if (selectedLower === 'restaurants') {
+      return cat.includes('restaurant') || primary.includes('restaurant') || 
+             cat.includes('food') || primary.includes('food') ||
+             cat.includes('dining') || primary.includes('dining');
+    }
+    if (selectedLower === 'cafes') {
+      return cat.includes('cafe') || cat.includes('coffee') || 
+             primary.includes('cafe') || primary.includes('coffee') ||
+             cat.includes('bakery') || primary.includes('bakery');
+    }
+    if (selectedLower === 'bars') {
+      return cat.includes('bar') || cat.includes('pub') || cat.includes('brewery') ||
+             primary.includes('bar') || primary.includes('pub') || primary.includes('brewery') ||
+             cat.includes('nightlife') || primary.includes('nightlife');
+    }
+    if (selectedLower === 'shopping') {
+      return cat.includes('shop') || cat.includes('store') || cat.includes('mall') ||
+             primary.includes('shop') || primary.includes('store') || primary.includes('mall') ||
+             cat.includes('retail') || primary.includes('retail');
+    }
+
+    // Fallback: contains check
+    return cat.includes(selectedLower) || primary.includes(selectedLower);
+  };
+
   const filterPlaces = () => {
     let filtered = places;
 
+    // Apply category filter using contains logic
     if (selectedCategory !== 'All') {
-      filtered = filtered.filter(
-        (place) =>
-          place.category?.toLowerCase() === selectedCategory.toLowerCase() ||
-          place.primary_category?.toLowerCase() === selectedCategory.toLowerCase()
-      );
+      filtered = filtered.filter((place) => matchesCategory(place, selectedCategory));
     }
 
+    // Apply text search filter
     if (searchQuery.trim() && viewMode === 'map') {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (place) =>
-          (place.name && place.name.toLowerCase().includes(query)) ||
-          (place.city && place.city.toLowerCase().includes(query)) ||
-          (place.category && place.category.toLowerCase().includes(query)) ||
-          (place.primary_category && place.primary_category.toLowerCase().includes(query)) ||
-          (place.address_line1 && place.address_line1.toLowerCase().includes(query)) ||
-          (place.state_region && place.state_region.toLowerCase().includes(query)) ||
-          (place.description && place.description.toLowerCase().includes(query))
-      );
+      // Strip "in <location>" from query for filtering
+      const cleanQuery = query.replace(/\s+in\s+.+$/i, '').trim();
+      
+      if (cleanQuery) {
+        filtered = filtered.filter(
+          (place) =>
+            (place.name && place.name.toLowerCase().includes(cleanQuery)) ||
+            (place.city && place.city.toLowerCase().includes(cleanQuery)) ||
+            (place.category && place.category.toLowerCase().includes(cleanQuery)) ||
+            (place.primary_category && place.primary_category.toLowerCase().includes(cleanQuery)) ||
+            (place.address_line1 && place.address_line1.toLowerCase().includes(cleanQuery)) ||
+            (place.state_region && place.state_region.toLowerCase().includes(cleanQuery)) ||
+            (place.description && place.description.toLowerCase().includes(cleanQuery))
+        );
+      }
     }
 
     setFilteredPlaces(filtered);
@@ -1930,10 +2020,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       >
         <MapLibreGL.Camera
           ref={cameraRef}
-          defaultSettings={{
-            centerCoordinate: targetLocation || userLocation || [-97.7431, 30.2672],
-            zoomLevel: targetLocation ? 16 : 14,
-          }}
+          centerCoordinate={targetLocation || userLocation || [-97.7431, 30.2672]}
+          zoomLevel={targetLocation ? 14 : 13}
           animationMode="flyTo"
           animationDuration={800}
           minZoomLevel={3}
@@ -2142,6 +2230,19 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           >
             {renderAddressInfoCard()}
           </ScrollView>
+        ) : filteredPlaces.length === 0 ? (
+          // Empty state when no places found
+          <View style={styles.emptyStateContainer}>
+            <Ionicons name="location-outline" size={48} color="#C7C7CC" />
+            <Text style={styles.emptyStateTitle}>
+              {loading ? 'Loading places...' : 'No places found'}
+            </Text>
+            <Text style={styles.emptyStateSubtitle}>
+              {loading 
+                ? 'Searching nearby locations' 
+                : 'Try searching for a different location or category'}
+            </Text>
+          </View>
         ) : (
           // Show place cards for normal browsing
           <BottomSheetFlatList
@@ -2188,6 +2289,29 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#666',
+  },
+  
+  // Empty State
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 48,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptyStateSubtitle: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   
   // Content Mode

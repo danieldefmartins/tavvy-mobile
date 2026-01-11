@@ -10,7 +10,7 @@ export async function testConnection() {
     // Test 2: Try to query the fsq_places_raw table (104M Foursquare places)
     const { data, error } = await supabase
       .from('fsq_places_raw')
-      .select('fsq_place_id, name, latitude, longitude, locality')
+      .select('fsq_place_id, name, latitude, longitude, locality, country')
       .limit(5);
     
     if (error) {

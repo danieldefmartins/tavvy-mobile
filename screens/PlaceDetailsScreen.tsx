@@ -391,61 +391,69 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           return;
         }
 
-        // Fetch real place data from Supabase
+        // Fetch real place data from Supabase fsq_places_raw table
         const { data: placeData, error: placeError } = await supabase
-          .from('places')
-          .select('*')
-          .eq('id', placeId)
+          .from('fsq_places_raw')
+          .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, fsq_category_labels, tel, website, email, instagram, facebook_id')
+          .eq('fsq_place_id', placeId)
           .single();
 
         if (placeError) throw placeError;
 
-          // Map database fields to Place interface
+        // Extract category from fsq_category_labels
+        let category = 'Other';
+        if (placeData.fsq_category_labels && Array.isArray(placeData.fsq_category_labels) && placeData.fsq_category_labels.length > 0) {
+          const firstLabel = placeData.fsq_category_labels[0];
+          const parts = firstLabel.split(' > ');
+          category = parts[parts.length - 1] || firstLabel;
+        }
+
+        // Map fsq_places_raw fields to Place interface
         const mappedPlace: Place = {
-          id: placeData.id,
+          id: placeData.fsq_place_id,
           name: placeData.name,
           latitude: placeData.latitude,
           longitude: placeData.longitude,
-          priceLevel: placeData.price_level || '$$',
-          primaryCategory: placeData.primary_category || 'Restaurant',
-          features: placeData.features || [],
-          openYearRound: placeData.open_year_round ?? true,
-          coverImageUrl: placeData.cover_image_url,
-          currentStatus: placeData.current_status || 'open_accessible',
-          is24_7: placeData.is_24_7 ?? false,
-          addressLine1: placeData.address_line_1,
-          city: placeData.city,
-          state: placeData.state,
-          zipCode: placeData.zip_code,
-          phone: placeData.phone,
+          priceLevel: '$$',
+          primaryCategory: category,
+          features: [],
+          openYearRound: true,
+          coverImageUrl: undefined,
+          currentStatus: 'open_accessible',
+          is24_7: false,
+          addressLine1: placeData.address,
+          city: placeData.locality,
+          state: placeData.region,
+          zipCode: undefined,
+          phone: placeData.tel,
           website: placeData.website,
-          instagramUrl: placeData.instagram_url,
-          facebookUrl: placeData.facebook_url,
-          distance: placeData.distance || 0,
-          avgMealCost: placeData.avg_meal_cost,
-          totalSites: placeData.total_sites,
-          starRating: placeData.star_rating,
-          closingTime: placeData.closing_time,
-          opening_hours: placeData.opening_hours,
-          is_insured: placeData.is_insured,
-          is_licensed: placeData.is_licensed,
-          established_date: placeData.established_date,
-          socials: placeData.socials,
-          // Map entrance fields
-          entrance_1_name: placeData.entrance_1_name,
-          entrance_1_latitude: placeData.entrance_1_latitude,
-          entrance_1_longitude: placeData.entrance_1_longitude,
-          entrance_1_is_primary: placeData.entrance_1_is_primary,
-          entrance_1_road: placeData.entrance_1_road,
-          entrance_1_notes: placeData.entrance_1_notes,
-          entrance_1_max_rv_length_ft: placeData.entrance_1_max_rv_length_ft,
-          entrance_1_max_rv_height_ft: placeData.entrance_1_max_rv_height_ft,
-          entrance_1_road_type: placeData.entrance_1_road_type,
-          entrance_1_grade: placeData.entrance_1_grade,
-          entrance_1_tight_turns: placeData.entrance_1_tight_turns,
-          entrance_1_low_clearance: placeData.entrance_1_low_clearance,
-          entrance_1_seasonal_access: placeData.entrance_1_seasonal_access,
-          entrance_1_seasonal_notes: placeData.entrance_1_seasonal_notes,
+          instagramUrl: placeData.instagram,
+          facebookUrl: placeData.facebook_id ? `https://facebook.com/${placeData.facebook_id}` : undefined,
+          distance: 0,
+          avgMealCost: undefined,
+          totalSites: undefined,
+          starRating: undefined,
+          closingTime: undefined,
+          opening_hours: undefined,
+          is_insured: undefined,
+          is_licensed: undefined,
+          established_date: undefined,
+          socials: undefined,
+          // Entrance fields not available in fsq_places_raw
+          entrance_1_name: undefined,
+          entrance_1_latitude: undefined,
+          entrance_1_longitude: undefined,
+          entrance_1_is_primary: undefined,
+          entrance_1_road: undefined,
+          entrance_1_notes: undefined,
+          entrance_1_max_rv_length_ft: undefined,
+          entrance_1_max_rv_height_ft: undefined,
+          entrance_1_road_type: undefined,
+          entrance_1_grade: undefined,
+          entrance_1_tight_turns: undefined,
+          entrance_1_low_clearance: undefined,
+          entrance_1_seasonal_access: undefined,
+          entrance_1_seasonal_notes: undefined,
         };
 
         setPlace(mappedPlace);
