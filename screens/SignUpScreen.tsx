@@ -10,13 +10,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
-import { Colors } from '../constants/Colors';
+import { useThemeContext } from '../contexts/ThemeContext';
 
 export default function SignUpScreen({ navigation }: any) {
   const { signUp } = useAuth();
+  const { theme } = useThemeContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -64,32 +66,55 @@ export default function SignUpScreen({ navigation }: any) {
     }
   };
 
+  // Dynamic styles based on theme
+  const dynamicStyles = {
+    container: { backgroundColor: theme.background },
+    logo: { color: theme.primary },
+    subtitle: { color: theme.textSecondary },
+    label: { color: theme.text },
+    input: { 
+      borderColor: theme.border, 
+      backgroundColor: theme.surfaceElevated,
+      color: theme.text,
+    },
+    signUpButton: { backgroundColor: theme.primary },
+    disclaimer: { color: theme.textTertiary },
+    footerText: { color: theme.textSecondary },
+    loginLink: { color: theme.primary },
+  };
+
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, dynamicStyles.container]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#000" />
+            <Ionicons name="arrow-back" size={24} color={theme.text} />
           </TouchableOpacity>
         </View>
 
         {/* Logo/Title */}
         <View style={styles.titleContainer}>
-          <Text style={styles.logo}>TavvY</Text>
-          <Text style={styles.subtitle}>Create your account</Text>
+          <Image 
+            source={require('../assets/brand/logo-icon.png')} 
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <Text style={[styles.logo, dynamicStyles.logo]}>tavvy</Text>
+          <Text style={[styles.subtitle, dynamicStyles.subtitle]}>Create your account</Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Display Name *</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Display Name *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, dynamicStyles.input]}
               placeholder="How should we call you?"
+              placeholderTextColor={theme.textTertiary}
               value={displayName}
               onChangeText={setDisplayName}
               autoCapitalize="words"
@@ -97,10 +122,11 @@ export default function SignUpScreen({ navigation }: any) {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email *</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Email *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, dynamicStyles.input]}
               placeholder="your@email.com"
+              placeholderTextColor={theme.textTertiary}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -110,11 +136,12 @@ export default function SignUpScreen({ navigation }: any) {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password *</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Password *</Text>
             <View style={styles.passwordContainer}>
               <TextInput
-                style={[styles.input, styles.passwordInput]}
+                style={[styles.input, styles.passwordInput, dynamicStyles.input]}
                 placeholder="At least 6 characters"
+                placeholderTextColor={theme.textTertiary}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -127,18 +154,19 @@ export default function SignUpScreen({ navigation }: any) {
                 <Ionicons
                   name={showPassword ? 'eye-off' : 'eye'}
                   size={20}
-                  color="#6b7280"
+                  color={theme.textSecondary}
                 />
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Confirm Password *</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Confirm Password *</Text>
             <View style={styles.passwordContainer}>
               <TextInput
-                style={[styles.input, styles.passwordInput]}
+                style={[styles.input, styles.passwordInput, dynamicStyles.input]}
                 placeholder="Re-enter your password"
+                placeholderTextColor={theme.textTertiary}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showConfirmPassword}
@@ -151,14 +179,14 @@ export default function SignUpScreen({ navigation }: any) {
                 <Ionicons
                   name={showConfirmPassword ? 'eye-off' : 'eye'}
                   size={20}
-                  color="#6b7280"
+                  color={theme.textSecondary}
                 />
               </TouchableOpacity>
             </View>
           </View>
 
           <TouchableOpacity
-            style={[styles.signUpButton, loading && styles.signUpButtonDisabled]}
+            style={[styles.signUpButton, dynamicStyles.signUpButton, loading && styles.signUpButtonDisabled]}
             onPress={handleSignUp}
             disabled={loading}
           >
@@ -169,16 +197,16 @@ export default function SignUpScreen({ navigation }: any) {
             )}
           </TouchableOpacity>
 
-          <Text style={styles.disclaimer}>
+          <Text style={[styles.disclaimer, dynamicStyles.disclaimer]}>
             By signing up, you agree to our Terms of Service and Privacy Policy
           </Text>
         </View>
 
         {/* Login Link */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account? </Text>
+          <Text style={[styles.footerText, dynamicStyles.footerText]}>Already have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.loginLink}>Log In</Text>
+            <Text style={[styles.loginLink, dynamicStyles.loginLink]}>Log In</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -189,7 +217,6 @@ export default function SignUpScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   scrollContent: {
     flexGrow: 1,
@@ -207,15 +234,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
+  logoImage: {
+    width: 80,
+    height: 80,
+    marginBottom: 16,
+    borderRadius: 16,
+  },
   logo: {
-    fontSize: 48,
+    fontSize: 36,
     fontWeight: '700',
-    color: Colors.primary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
-    color: '#6b7280',
   },
   form: {
     marginBottom: 24,
@@ -227,15 +258,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
-    color: '#374151',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    padding: 14,
     fontSize: 16,
-    backgroundColor: '#fff',
   },
   passwordContainer: {
     position: 'relative',
@@ -246,13 +274,12 @@ const styles = StyleSheet.create({
   eyeIcon: {
     position: 'absolute',
     right: 12,
-    top: 12,
+    top: 14,
     padding: 4,
   },
   signUpButton: {
-    backgroundColor: Colors.primary,
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     marginTop: 8,
   },
@@ -266,7 +293,6 @@ const styles = StyleSheet.create({
   },
   disclaimer: {
     fontSize: 12,
-    color: '#9ca3af',
     textAlign: 'center',
     marginTop: 16,
     lineHeight: 18,
@@ -280,11 +306,9 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: '#6b7280',
   },
   loginLink: {
     fontSize: 14,
-    color: Colors.primary,
     fontWeight: '600',
   },
 });

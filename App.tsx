@@ -1,19 +1,21 @@
 import React, { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 
 import { AuthProvider } from './contexts/AuthContext';
-import { Colors } from './constants/Colors';
+import { ThemeProvider, useThemeContext } from './contexts/ThemeContext';
+import { Colors, darkTheme } from './constants/Colors';
 
 // Signal System - Preload cache on app start
 import { preloadSignalLabels } from './hooks/useSignalLabels';
 import { preloadSignalCache } from './lib/reviews';
 
-// ========== CORE SCREENS ==========
+// Screens
 import HomeScreen from './screens/HomeScreen';
 import PlaceDetailsScreen from './screens/PlaceDetailsScreen';
 import AddReviewScreen from './screens/AddReviewScreen';
@@ -24,54 +26,34 @@ import CityDetailsScreen from './screens/CityDetailsScreen';
 import RateCityScreen from './screens/RateCityScreen';
 import ClaimBusinessScreen from './screens/ClaimBusinessScreen';
 
-// ========== UNIVERSE SCREENS ==========
 import UniverseDiscoveryScreen from './screens/UniverseDiscoveryScreen';
 import UniverseLandingScreen from './screens/UniverseLandingScreen';
 
-// ========== CREATE/ADD SCREENS ==========
 import UniversalAddScreen from './screens/UniversalAddScreen';
 import AddPlaceScreen from './screens/AddPlaceScreen';
 import BusinessCardScannerScreen from './screens/BusinessCardScannerScreen';
 
-// ========== ATLAS SCREENS ==========
 import AtlasHomeScreen from './screens/AtlasHomeScreen';
 import ArticleDetailScreen from './screens/ArticleDetailScreen';
 import UniverseDetailScreen from './screens/UniverseDetailScreen';
 import CategoryBrowseScreen from './screens/CategoryBrowseScreen';
 import AtlasSearchScreen from './screens/AtlasSearchScreen';
 
-// ========== APPS SCREEN (REPLACES MENU) ==========
-import AppsHomeScreen from './screens/AppsHomeScreen';
 import MenuScreen from './screens/MenuScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SavedScreen from './screens/SavedScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
 
-// ========== PROS SCREENS ==========
+// ========== PROS SCREENS (NEW) ==========
 import ProsHomeScreen from './screens/ProsHomeScreen';
 import ProsBrowseScreen from './screens/ProsBrowseScreen';
 import ProsProfileScreen from './screens/ProsProfileScreen';
 import ProsDashboardScreen from './screens/ProsDashboardScreen';
 import ProsRegistrationScreen from './screens/ProsRegistrationScreen';
 import ProsMessagesScreen from './screens/ProsMessagesScreen';
+import ProsRequestQuoteScreen from './screens/ProsRequestQuoteScreen';
 import ProsLeadsScreen from './screens/ProsLeadsScreen';
-
-// NEW: Multi-Step Request Flow (replaces ProsRequestQuoteScreen)
-import ProsRequestStep1Screen from './screens/ProsRequestStep1Screen';
-import ProsRequestStep2Screen from './screens/ProsRequestStep2Screen';
-import ProsRequestStep3Screen from './screens/ProsRequestStep3Screen';
-import ProsRequestStep4Screen from './screens/ProsRequestStep4Screen';
-
-// NEW: Additional Pros Screens
-import ProsCategoryLandingScreen from './screens/ProsCategoryLandingScreen';
-import ProsProjectStatusScreen from './screens/ProsProjectStatusScreen';
-import ProsBidScreen from './screens/ProsBidScreen';
-import ProsPaywallScreen from './screens/ProsPaywallScreen';
-import ProsClaimBusinessScreen from './screens/ProsClaimBusinessScreen';
-
-// NEW: Realtors Sub-App
-import RealtorsHubScreen from './screens/RealtorsHubScreen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -90,9 +72,9 @@ const Tab = createBottomTabNavigator();
 // ✅ Use separate stacks for clarity
 const HomeStackNav = createNativeStackNavigator();
 const AtlasStackNav = createNativeStackNavigator();
-const AppsStackNav = createNativeStackNavigator();
+const MenuStackNav = createNativeStackNavigator();
 const UniverseStackNav = createNativeStackNavigator();
-const ProsStackNav = createNativeStackNavigator();
+const ProsStackNav = createNativeStackNavigator(); // NEW: Pros Stack
 
 // --------------------
 // Home Stack
@@ -109,6 +91,7 @@ function HomeStack() {
       <HomeStackNav.Screen name="CityDetails" component={CityDetailsScreen} />
       <HomeStackNav.Screen name="RateCity" component={RateCityScreen} />
       <HomeStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
+      {/* Business Card Scanner - accessible from AddPlaceScreen */}
       <HomeStackNav.Screen 
         name="BusinessCardScanner" 
         component={BusinessCardScannerScreen}
@@ -134,39 +117,39 @@ function AtlasStack() {
 }
 
 // --------------------
-// Apps Stack (REPLACES Menu Stack)
+// Menu Stack
 // --------------------
-function AppsStack() {
+function MenuStack() {
   return (
-    <AppsStackNav.Navigator screenOptions={{ headerShown: false }}>
-      <AppsStackNav.Screen name="AppsHome" component={AppsHomeScreen} />
-      <AppsStackNav.Screen name="MenuMain" component={MenuScreen} />
-      <AppsStackNav.Screen name="ProfileMain" component={ProfileScreen} />
-      <AppsStackNav.Screen name="SavedMain" component={SavedScreen} />
+    <MenuStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <MenuStackNav.Screen name="MenuMain" component={MenuScreen} />
+      <MenuStackNav.Screen name="ProfileMain" component={ProfileScreen} />
+      <MenuStackNav.Screen name="SavedMain" component={SavedScreen} />
 
       {/* Auth */}
-      <AppsStackNav.Screen name="Login" component={LoginScreen} />
-      <AppsStackNav.Screen name="SignUp" component={SignUpScreen} />
+      <MenuStackNav.Screen name="Login" component={LoginScreen} />
+      <MenuStackNav.Screen name="SignUp" component={SignUpScreen} />
 
-      {/* Shared screens accessible from apps */}
-      <AppsStackNav.Screen name="RateCity" component={RateCityScreen} />
-      <AppsStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
+      {/* Shared screens accessible from menu */}
+      <MenuStackNav.Screen name="RateCity" component={RateCityScreen} />
+      <MenuStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
       
-      {/* Create functionality */}
-      <AppsStackNav.Screen name="UniversalAdd" component={UniversalAddScreen} />
-      <AppsStackNav.Screen name="AddPlace" component={AddPlaceScreen} />
+      {/* Create functionality moved to Menu */}
+      <MenuStackNav.Screen name="UniversalAdd" component={UniversalAddScreen} />
+      <MenuStackNav.Screen name="AddPlace" component={AddPlaceScreen} />
       
-      <AppsStackNav.Screen 
+      {/* Business Card Scanner - accessible from AddPlaceScreen */}
+      <MenuStackNav.Screen 
         name="BusinessCardScanner" 
         component={BusinessCardScannerScreen}
         options={{ presentation: 'modal' }}
       />
       
-      {/* Pro Dashboard accessible from Apps */}
-      <AppsStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
-      <AppsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
-      <AppsStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
-    </AppsStackNav.Navigator>
+      {/* Pro Dashboard accessible from Menu */}
+      <MenuStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
+      <MenuStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
+      <MenuStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
+    </MenuStackNav.Navigator>
   );
 }
 
@@ -183,45 +166,23 @@ function UniverseStack() {
 }
 
 // --------------------
-// Pros Stack (UPDATED with new screens)
+// Pros Stack (NEW)
 // --------------------
 function ProsStack() {
   return (
     <ProsStackNav.Navigator screenOptions={{ headerShown: false }}>
-      {/* Main Pros Screens */}
       <ProsStackNav.Screen name="ProsHome" component={ProsHomeScreen} />
       <ProsStackNav.Screen name="ProsBrowse" component={ProsBrowseScreen} />
       <ProsStackNav.Screen name="ProsProfile" component={ProsProfileScreen} />
       <ProsStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
       <ProsStackNav.Screen name="ProsRegistration" component={ProsRegistrationScreen} />
       <ProsStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
+      <ProsStackNav.Screen 
+        name="ProsRequestQuote" 
+        component={ProsRequestQuoteScreen}
+        options={{ presentation: 'modal' }}
+      />
       <ProsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
-
-      {/* NEW: Multi-Step Service Request Flow */}
-      <ProsStackNav.Screen 
-        name="ProsRequestStep1" 
-        component={ProsRequestStep1Screen}
-        options={{ presentation: 'modal' }}
-      />
-      <ProsStackNav.Screen name="ProsRequestStep2" component={ProsRequestStep2Screen} />
-      <ProsStackNav.Screen name="ProsRequestStep3" component={ProsRequestStep3Screen} />
-      <ProsStackNav.Screen name="ProsRequestStep4" component={ProsRequestStep4Screen} />
-
-      {/* NEW: Category Landing & Project Status */}
-      <ProsStackNav.Screen name="ProsCategoryLanding" component={ProsCategoryLandingScreen} />
-      <ProsStackNav.Screen name="ProsProjectStatus" component={ProsProjectStatusScreen} />
-
-      {/* NEW: Pro Business Screens */}
-      <ProsStackNav.Screen name="ProsBid" component={ProsBidScreen} />
-      <ProsStackNav.Screen 
-        name="ProsPaywall" 
-        component={ProsPaywallScreen}
-        options={{ presentation: 'modal' }}
-      />
-      <ProsStackNav.Screen name="ProsClaimBusiness" component={ProsClaimBusinessScreen} />
-
-      {/* NEW: Realtors Sub-App */}
-      <ProsStackNav.Screen name="RealtorsHub" component={RealtorsHubScreen} />
     </ProsStackNav.Navigator>
   );
 }
@@ -230,12 +191,19 @@ function ProsStack() {
 // Tabs
 // --------------------
 function TabNavigator() {
+  const { theme, isDark } = useThemeContext();
+  
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: Colors.tabBarActive,
-        tabBarInactiveTintColor: Colors.tabBarInactive,
+        tabBarActiveTintColor: theme.tabBarActive,
+        tabBarInactiveTintColor: theme.tabBarInactive,
+        tabBarStyle: {
+          backgroundColor: theme.background,
+          borderTopColor: theme.border,
+          borderTopWidth: 0.5,
+        },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
 
@@ -252,8 +220,8 @@ function TabNavigator() {
             case 'Atlas':
               iconName = focused ? 'map' : 'map-outline';
               break;
-            case 'Apps':
-              iconName = focused ? 'apps' : 'apps-outline';
+            case 'Menu':
+              iconName = focused ? 'menu' : 'menu-outline';
               break;
           }
 
@@ -263,17 +231,57 @@ function TabNavigator() {
     >
       <Tab.Screen name="Home" component={HomeStack} options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen name="Explore" component={UniverseStack} options={{ tabBarLabel: 'Universes' }} />
-      <Tab.Screen name="Pros" component={ProsStack} options={{ tabBarLabel: 'Pros' }} />
+
+      {/* CHANGED: Replaced Add tab with Pros tab */}
+      <Tab.Screen
+        name="Pros"
+        component={ProsStack}
+        options={{
+          tabBarLabel: 'Pros',
+        }}
+      />
+
       <Tab.Screen name="Atlas" component={AtlasStack} options={{ tabBarLabel: 'Atlas' }} />
-      <Tab.Screen name="Apps" component={AppsStack} options={{ tabBarLabel: 'Apps' }} />
+      <Tab.Screen name="Menu" component={MenuStack} options={{ tabBarLabel: 'Menu' }} />
     </Tab.Navigator>
   );
 }
 
 // --------------------
-// App Root
+// TavvY Navigation Theme
 // --------------------
-export default function App() {
+const TavvyDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: darkTheme.primary,
+    background: darkTheme.background,
+    card: darkTheme.surface,
+    text: darkTheme.text,
+    border: darkTheme.border,
+    notification: darkTheme.brandOrange,
+  },
+};
+
+const TavvyLightTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: Colors.primary,
+    background: '#FFFFFF',
+    card: '#F8FAFC',
+    text: '#0F172A',
+    border: '#E2E8F0',
+    notification: Colors.secondary,
+  },
+};
+
+// --------------------
+// App Content (with theme access)
+// --------------------
+function AppContent() {
+  const { isDark } = useThemeContext();
+  
   // Preload signal caches on app start for faster signal lookups
   useEffect(() => {
     const initializeSignalSystem = async () => {
@@ -293,12 +301,26 @@ export default function App() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <NavigationContainer theme={isDark ? TavvyDarkTheme : TavvyLightTheme}>
+        <TabNavigator />
+      </NavigationContainer>
+    </>
+  );
+}
+
+// --------------------
+// App Root
+// --------------------
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: darkTheme.background }}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <NavigationContainer>
-            <TabNavigator />
-          </NavigationContainer>
+          <ThemeProvider>
+            <AppContent />
+          </ThemeProvider>
         </AuthProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

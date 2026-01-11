@@ -1,60 +1,145 @@
-// TavvY Design System - Apple-Inspired Color Scheme
+// TavvY Design System - Brand Color Scheme
 // Supports Light and Dark modes with centralized color management
 
 import { useColorScheme } from 'react-native';
 
+// ===== BRAND PALETTE =====
+const brand = {
+  // Primary Brand Colors (from logo)
+  navy: '#0F1233',           // Primary background
+  blue: '#3B82F6',           // Signal blue (icon left)
+  blueLight: '#60A5FA',      // Blue glow/highlight
+  orange: '#F97316',         // Signal orange (icon right)
+  orangeLight: '#FB923C',    // Orange glow/highlight
+  
+  // Text on dark backgrounds
+  textPrimary: '#F1F5F9',    // Soft white (not pure white)
+  textSecondary: '#94A3B8',  // Slate 400
+  textMuted: '#64748B',      // Slate 500
+};
+
 // ===== CORE PALETTE =====
 const palette = {
-  // Primary Brand Color (Apple Blue)
-  blue: '#0A84FF',
-  blueLight: '#E1F0FF',
-  blueDark: '#0066CC',
-
-  // Signal Colors
-  signalPositive: '#0A84FF',      // Blue for positive signals
-  signalNeutral: '#8E8E93',       // Gray for neutral/vibe signals  
-  signalNegative: '#FF9500',      // Orange for watch out signals
-
+  // Brand Colors
+  ...brand,
+  
+  // Signal Colors (Tap Categories)
+  signalPros: '#10B981',        // Emerald green - positive signals
+  signalUniverse: '#0EA5E9',    // Sky blue - context/universe signals
+  signalCons: '#F59E0B',        // Amber - warning/cons signals
+  
   // Semantic Colors
-  success: '#34C759',
+  success: '#10B981',           // Same as Pros
   successLight: '#D1FAE5',
-  warning: '#FF9500',
+  warning: '#F59E0B',           // Same as Cons
   warningLight: '#FEF3C7',
-  error: '#FF3B30',
+  error: '#EF4444',
   errorLight: '#FEE2E2',
+  info: '#0EA5E9',              // Same as Universe
 
   // Grayscale
   white: '#FFFFFF',
   black: '#000000',
   
-  // Light Mode Grays
-  gray50: '#F9FAFB',
-  gray100: '#F2F2F7',
-  gray200: '#E5E5EA',
-  gray300: '#D1D1D6',
-  gray400: '#C7C7CC',
-  gray500: '#8E8E93',
-  gray600: '#636366',
-  gray700: '#48484A',
-  gray800: '#3A3A3C',
-  gray900: '#1C1C1E',
+  // Light Mode Grays (Slate scale)
+  gray50: '#F8FAFC',
+  gray100: '#F1F5F9',
+  gray200: '#E2E8F0',
+  gray300: '#CBD5E1',
+  gray400: '#94A3B8',
+  gray500: '#64748B',
+  gray600: '#475569',
+  gray700: '#334155',
+  gray800: '#1E293B',
+  gray900: '#0F172A',
 
-  // Dark Mode Specific
-  darkBackground: '#000000',
-  darkSurface: '#1C1C1E',
-  darkSurfaceElevated: '#2C2C2E',
-  darkSeparator: '#38383A',
+  // Dark Mode Specific (TavvY Navy scale)
+  darkBackground: '#0F1233',      // TavvY Navy
+  darkSurface: '#1E293B',         // Elevated surface
+  darkSurfaceElevated: '#334155', // More elevated
+  darkSeparator: '#334155',       // Borders
+};
+
+// ===== DARK THEME (Primary for TavvY) =====
+export const darkTheme = {
+  // Backgrounds
+  background: palette.darkBackground,
+  surface: palette.darkSurface,
+  surfaceElevated: palette.darkSurfaceElevated,
+  
+  // Text
+  text: brand.textPrimary,
+  textSecondary: brand.textSecondary,
+  textTertiary: brand.textMuted,
+  textInverse: palette.black,
+  
+  // Borders & Separators
+  border: palette.darkSeparator,
+  separator: palette.darkSeparator,
+  
+  // Interactive Elements
+  primary: brand.blue,
+  primaryLight: 'rgba(59, 130, 246, 0.2)',
+  secondary: brand.orange,
+  
+  // Tab Bar
+  tabBarBackground: 'rgba(15, 18, 51, 0.95)',
+  tabBarActive: brand.blue,
+  tabBarInactive: brand.textSecondary,
+  
+  // Cards
+  cardBackground: palette.darkSurface,
+  cardShadow: 'rgba(0, 0, 0, 0.3)',
+  
+  // Signals (Tap Categories)
+  signalPros: palette.signalPros,
+  signalUniverse: palette.signalUniverse,
+  signalCons: palette.signalCons,
+  
+  // Legacy signal names (for compatibility)
+  signalPositive: palette.signalPros,
+  signalNeutral: palette.signalUniverse,
+  signalNegative: palette.signalCons,
+  
+  // Status
+  success: palette.success,
+  successLight: 'rgba(16, 185, 129, 0.2)',
+  warning: palette.warning,
+  warningLight: 'rgba(245, 158, 11, 0.2)',
+  error: palette.error,
+  errorLight: 'rgba(239, 68, 68, 0.2)',
+  info: palette.info,
+  
+  // Map
+  mapOverlay: 'rgba(15, 18, 51, 0.92)',
+  
+  // Bottom Sheet
+  bottomSheetBackground: palette.darkSurface,
+  bottomSheetHandle: palette.gray600,
+  
+  // Input
+  inputBackground: palette.darkSurfaceElevated,
+  inputBorder: palette.darkSeparator,
+  inputPlaceholder: brand.textMuted,
+  
+  // Photo Overlay Gradient
+  photoGradientStart: 'transparent',
+  photoGradientEnd: 'rgba(15, 18, 51, 0.9)',
+  
+  // Brand accent colors
+  brandBlue: brand.blue,
+  brandOrange: brand.orange,
 };
 
 // ===== LIGHT THEME =====
 export const lightTheme = {
   // Backgrounds
   background: palette.white,
-  surface: palette.gray100,
+  surface: palette.gray50,
   surfaceElevated: palette.white,
   
   // Text
-  text: palette.black,
+  text: palette.gray900,
   textSecondary: palette.gray500,
   textTertiary: palette.gray400,
   textInverse: palette.white,
@@ -64,22 +149,28 @@ export const lightTheme = {
   separator: palette.gray200,
   
   // Interactive Elements
-  primary: palette.blue,
-  primaryLight: palette.blueLight,
+  primary: brand.blue,
+  primaryLight: 'rgba(59, 130, 246, 0.1)',
+  secondary: brand.orange,
   
   // Tab Bar
-  tabBarBackground: 'rgba(255, 255, 255, 0.92)',
-  tabBarActive: palette.blue,
+  tabBarBackground: 'rgba(255, 255, 255, 0.95)',
+  tabBarActive: brand.blue,
   tabBarInactive: palette.gray500,
   
   // Cards
   cardBackground: palette.white,
   cardShadow: 'rgba(0, 0, 0, 0.1)',
   
-  // Signals
-  signalPositive: palette.signalPositive,
-  signalNeutral: palette.signalNeutral,
-  signalNegative: palette.signalNegative,
+  // Signals (Tap Categories)
+  signalPros: palette.signalPros,
+  signalUniverse: palette.signalUniverse,
+  signalCons: palette.signalCons,
+  
+  // Legacy signal names (for compatibility)
+  signalPositive: palette.signalPros,
+  signalNeutral: palette.signalUniverse,
+  signalNegative: palette.signalCons,
   
   // Status
   success: palette.success,
@@ -88,12 +179,13 @@ export const lightTheme = {
   warningLight: palette.warningLight,
   error: palette.error,
   errorLight: palette.errorLight,
+  info: palette.info,
   
   // Map
   mapOverlay: 'rgba(255, 255, 255, 0.92)',
   
   // Bottom Sheet
-  bottomSheetBackground: palette.gray100,
+  bottomSheetBackground: palette.gray50,
   bottomSheetHandle: palette.gray300,
   
   // Input
@@ -104,86 +196,29 @@ export const lightTheme = {
   // Photo Overlay Gradient
   photoGradientStart: 'transparent',
   photoGradientEnd: 'rgba(0, 0, 0, 0.7)',
-};
-
-// ===== DARK THEME =====
-export const darkTheme = {
-  // Backgrounds
-  background: palette.darkBackground,
-  surface: palette.darkSurface,
-  surfaceElevated: palette.darkSurfaceElevated,
   
-  // Text
-  text: palette.white,
-  textSecondary: palette.gray500,
-  textTertiary: palette.gray600,
-  textInverse: palette.black,
-  
-  // Borders & Separators
-  border: palette.darkSeparator,
-  separator: palette.darkSeparator,
-  
-  // Interactive Elements
-  primary: palette.blue,
-  primaryLight: 'rgba(10, 132, 255, 0.2)',
-  
-  // Tab Bar
-  tabBarBackground: 'rgba(28, 28, 30, 0.92)',
-  tabBarActive: palette.blue,
-  tabBarInactive: palette.gray500,
-  
-  // Cards
-  cardBackground: palette.darkSurface,
-  cardShadow: 'rgba(0, 0, 0, 0.3)',
-  
-  // Signals
-  signalPositive: palette.signalPositive,
-  signalNeutral: palette.gray600,
-  signalNegative: palette.signalNegative,
-  
-  // Status
-  success: palette.success,
-  successLight: 'rgba(52, 199, 89, 0.2)',
-  warning: palette.warning,
-  warningLight: 'rgba(255, 149, 0, 0.2)',
-  error: palette.error,
-  errorLight: 'rgba(255, 59, 48, 0.2)',
-  
-  // Map
-  mapOverlay: 'rgba(28, 28, 30, 0.92)',
-  
-  // Bottom Sheet
-  bottomSheetBackground: palette.darkSurface,
-  bottomSheetHandle: palette.gray600,
-  
-  // Input
-  inputBackground: palette.darkSurfaceElevated,
-  inputBorder: palette.darkSeparator,
-  inputPlaceholder: palette.gray500,
-  
-  // Photo Overlay Gradient
-  photoGradientStart: 'transparent',
-  photoGradientEnd: 'rgba(0, 0, 0, 0.8)',
+  // Brand accent colors
+  brandBlue: brand.blue,
+  brandOrange: brand.orange,
 };
 
 // ===== LEGACY COLORS (for backward compatibility) =====
-// These map to the new system for existing components
 export const Colors = {
   // Primary colors
-  primary: palette.blue,
-  secondary: palette.gray500,
+  primary: brand.blue,
+  secondary: brand.orange,
   
   // Backgrounds
-  background: palette.white,
-  surface: palette.gray100,
+  background: palette.darkBackground,
+  surface: palette.darkSurface,
   
   // Text
-  text: palette.black,
-  textSecondary: palette.gray500,
+  text: brand.textPrimary,
+  textSecondary: brand.textSecondary,
   
   // Borders
-  border: palette.gray200,
-  inputBorder: palette.gray300,
+  border: palette.darkSeparator,
+  inputBorder: palette.darkSeparator,
   
   // Status colors
   error: palette.error,
@@ -195,44 +230,71 @@ export const Colors = {
   black: palette.black,
   
   // Tab bar
-  tabBarActive: palette.blue,
-  tabBarInactive: palette.gray500,
+  tabBarActive: brand.blue,
+  tabBarInactive: brand.textSecondary,
 
-  // Review Semantic Themes (Updated to match new design)
+  // Review Semantic Themes
   positive: {
-    primary: palette.signalPositive,
-    light: palette.blueLight,
-    text: palette.blue,
+    primary: palette.signalPros,
+    light: 'rgba(16, 185, 129, 0.15)',
+    text: palette.signalPros,
   },
   vibe: {
-    primary: palette.signalNeutral,
-    light: palette.gray200,
-    text: palette.gray600,
+    primary: palette.signalUniverse,
+    light: 'rgba(14, 165, 233, 0.15)',
+    text: palette.signalUniverse,
   },
   negative: {
-    primary: palette.signalNegative,
-    light: palette.warningLight,
-    text: '#CC7700',
+    primary: palette.signalCons,
+    light: 'rgba(245, 158, 11, 0.15)',
+    text: palette.signalCons,
+  },
+  
+  // Brand colors for direct access
+  brand: {
+    navy: brand.navy,
+    blue: brand.blue,
+    blueLight: brand.blueLight,
+    orange: brand.orange,
+    orangeLight: brand.orangeLight,
   },
 };
 
 // ===== THEME HOOK =====
 export const useTheme = () => {
   const colorScheme = useColorScheme();
-  return colorScheme === 'dark' ? darkTheme : lightTheme;
+  // Default to dark theme for TavvY brand consistency
+  return colorScheme === 'light' ? lightTheme : darkTheme;
 };
 
 // ===== SIGNAL COLORS HELPER =====
-export const getSignalColor = (type: 'positive' | 'neutral' | 'negative', theme: typeof lightTheme) => {
+export const getSignalColor = (type: 'pros' | 'universe' | 'cons' | 'positive' | 'neutral' | 'negative', theme: typeof lightTheme) => {
   switch (type) {
+    case 'pros':
     case 'positive':
-      return theme.signalPositive;
+      return theme.signalPros;
+    case 'universe':
     case 'neutral':
-      return theme.signalNeutral;
+      return theme.signalUniverse;
+    case 'cons':
     case 'negative':
-      return theme.signalNegative;
+      return theme.signalCons;
     default:
-      return theme.signalNeutral;
+      return theme.signalUniverse;
+  }
+};
+
+// ===== TAP INTENSITY HELPER =====
+export const getTapIntensityOpacity = (taps: 1 | 2 | 3): number => {
+  switch (taps) {
+    case 1:
+      return 0.5;
+    case 2:
+      return 0.75;
+    case 3:
+      return 1.0;
+    default:
+      return 1.0;
   }
 };
 
@@ -346,5 +408,19 @@ export const shadows = {
     shadowOpacity: 0.2,
     shadowRadius: 16,
     elevation: 8,
+  },
+};
+
+// ===== BRAND CONFIG (for logo and assets) =====
+export const brandConfig = {
+  // Logo assets are in assets/brand/ directory
+  // Use require('../assets/brand/logo-full.png') etc. in components
+  colors: {
+    navy: brand.navy,
+    blue: brand.blue,
+    orange: brand.orange,
+  },
+  splash: {
+    backgroundColor: brand.navy,
   },
 };
