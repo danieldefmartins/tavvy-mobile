@@ -7,18 +7,18 @@ export async function testConnection() {
     // Test 1: Check if client is initialized
     console.log('✅ Supabase client initialized');
     
-    // Test 2: Try to query the places table
+    // Test 2: Try to query the fsq_places_raw table (104M Foursquare places)
     const { data, error } = await supabase
-      .from('places')
-      .select('*')
+      .from('fsq_places_raw')
+      .select('fsq_place_id, name, latitude, longitude, locality, country')
       .limit(5);
     
     if (error) {
-      console.error('❌ Error querying places:', error);
+      console.error('❌ Error querying fsq_places_raw:', error);
       return { success: false, error };
     }
     
-    console.log('✅ Successfully queried places!');
+    console.log('✅ Successfully queried fsq_places_raw!');
     console.log('📊 Found', data?.length, 'places');
     console.log('📄 First place:', data?.[0]);
     

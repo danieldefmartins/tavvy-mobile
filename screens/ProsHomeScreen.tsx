@@ -4,6 +4,8 @@
  * 
  * This is the main entry point for the Pros feature.
  * Users can browse services or switch to Pro mode.
+ * 
+ * UPDATED: White logo + "Pros" section name header
  */
 
 import React, { useEffect, useState } from 'react';
@@ -210,14 +212,14 @@ export default function ProsHomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        {/* Header with Logo */}
+        {/* Header with White Logo + Pros - Updated */}
         <View style={styles.prosHeader}>
           <Image 
-            source={require('../assets/brand/logo-icon.png')} 
+            source={require('../assets/brand/tavvy-logo-white.png')} 
             style={styles.prosHeaderLogo}
             resizeMode="contain"
           />
-          <Text style={styles.prosHeaderTitle}>Tavvy Pros</Text>
+          <Text style={styles.prosHeaderSectionName}>Pros</Text>
         </View>
 
         {/* Mode Toggle */}
@@ -420,24 +422,26 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-  // Header with Logo
+  // Header with Logo - Updated styles
   prosHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 4,
+    backgroundColor: ProsColors.primary, // Add background for white logo visibility
   },
   prosHeaderLogo: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    marginRight: 10,
+    width: 80,
+    height: 24,
+    marginRight: 8,
   },
-  prosHeaderTitle: {
+  prosHeaderSectionName: {
     fontSize: 22,
     fontWeight: '700',
-    color: ProsColors.textPrimary,
+    color: '#FFFFFF',
+    // Use a modern font if available - Space Grotesk
+    // fontFamily: 'SpaceGrotesk-Bold',
   },
   // Mode Toggle
   modeToggleContainer: {

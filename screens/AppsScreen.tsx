@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -101,6 +102,8 @@ const APP_TILES: AppTile[] = [
 export default function AppsScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
+  const colorScheme = useColorScheme();
+  const [themeMode, setThemeMode] = useState<'light' | 'dark'>(colorScheme || 'light');
 
   const handleTilePress = (tile: AppTile) => {
     if (tile.route) {
@@ -142,8 +145,69 @@ export default function AppsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Header with Logo and Theme Toggle */}
         <View style={styles.header}>
+          {/* Top Row: Logo + Theme Toggle */}
+          <View style={styles.headerTopRow}>
+            {/* TavvY Logo - Left Aligned */}
+            <Image
+              source={
+                colorScheme === 'dark'
+                  ? require('../assets/brand/logo-horizontal.png')
+                  : require('../assets/brand/tavvy-logo-Original-Transparent.png')
+              }
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+            
+            {/* Theme Toggle */}
+            <View style={styles.themeToggle}>
+              <TouchableOpacity
+                style={[
+                  styles.themeButton,
+                  themeMode === 'light' && styles.themeButtonActive,
+                ]}
+                onPress={() => setThemeMode('light')}
+              >
+                <Ionicons
+                  name="sunny"
+                  size={16}
+                  color={themeMode === 'light' ? '#F59E0B' : '#9CA3AF'}
+                />
+                <Text
+                  style={[
+                    styles.themeButtonText,
+                    themeMode === 'light' && styles.themeButtonTextActive,
+                  ]}
+                >
+                  Light
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.themeButton,
+                  themeMode === 'dark' && styles.themeButtonActiveDark,
+                ]}
+                onPress={() => setThemeMode('dark')}
+              >
+                <Ionicons
+                  name="moon"
+                  size={16}
+                  color={themeMode === 'dark' ? '#3B82F6' : '#9CA3AF'}
+                />
+                <Text
+                  style={[
+                    styles.themeButtonText,
+                    themeMode === 'dark' && styles.themeButtonTextActiveDark,
+                  ]}
+                >
+                  Dark
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          
+          {/* Title Row */}
           <Text style={styles.headerTitle}>Apps</Text>
           <Text style={styles.headerSubtitle}>Tools & shortcuts</Text>
         </View>
@@ -215,6 +279,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 20,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  headerLogo: {
+    width: 100,
+    height: 28,
+  },
+  themeToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 4,
+  },
+  themeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    gap: 6,
+  },
+  themeButtonActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  themeButtonActiveDark: {
+    backgroundColor: '#1F2937',
+  },
+  themeButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  themeButtonTextActive: {
+    color: '#111827',
+  },
+  themeButtonTextActiveDark: {
+    color: '#FFFFFF',
   },
   headerTitle: {
     fontSize: 34,

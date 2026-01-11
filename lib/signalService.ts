@@ -124,38 +124,30 @@ export const CATEGORY_COLORS = {
   },
 } as const;
 
-// Helper: Get or Create Place to ensure we have a valid UUID
-async function getOrCreatePlace(googlePlaceId: string, placeName: string): Promise<string | null> {
+// Helper: Get Place ID from fsq_places_raw table
+// Note: fsq_places_raw uses fsq_place_id as the identifier, not UUID
+async function getOrCreatePlace(placeId: string, placeName: string): Promise<string | null> {
   try {
-    // 1. Check if place exists by google_place_id
+    // Check if place exists in fsq_places_raw by fsq_place_id
     const { data: existingPlace, error: fetchError } = await supabase
-      .from('places')
-      .select('id')
-      .eq('google_place_id', googlePlaceId)
+      .from('fsq_places_raw')
+      .select('fsq_place_id')
+      .eq('fsq_place_id', placeId)
       .maybeSingle();
 
     if (existingPlace) {
-      return existingPlace.id;
+      return existingPlace.fsq_place_id;
     }
 
-    // 2. If not, create it
-    console.log('Place not found, creating new place for:', googlePlaceId);
-    const { data: newPlace, error: createError } = await supabase
-      .from('places')
-      .insert({
-        google_place_id: googlePlaceId,
-        name: placeName,
-        // Add other default fields if necessary
-      })
-      .select('id')
-      .single();
-
-    if (createError) {
-      console.error('Error creating place:', createError);
-      return null;
+    // For fsq_places_raw, we don't create new places - they come from Foursquare
+    // Just return the placeId if it looks like a valid Foursquare ID
+    if (placeId && placeId.length > 10) {
+      console.log('Place not in fsq_places_raw, using ID directly:', placeId);
+      return placeId;
     }
 
-    return newPlace.id;
+    console.error('Invalid place ID:', placeId);
+    return null;
   } catch (error) {
     console.error('Error in getOrCreatePlace:', error);
     return null;

@@ -6,6 +6,7 @@
 // - ORGANIC CURVE: Wide-arc technique for smooth horizon
 // - Elegant floating cards with soft shadows
 // - Complete mock data
+// - UPDATED: White logo + "Atlas" section name header
 // ============================================================================
 
 import React, { useEffect, useState } from 'react';
@@ -216,15 +217,16 @@ export default function AtlasHomeScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* Header Content */}
+          {/* Header Content - Updated with White Logo + Atlas */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
+              {/* TavvY White Logo + Section Name */}
               <Image 
-                source={require('../assets/brand/logo-icon.png')} 
+                source={require('../assets/brand/tavvy-logo-white.png')} 
                 style={styles.headerLogo}
                 resizeMode="contain"
               />
-              <Text style={styles.headerTitle}>Tavvy Atlas</Text>
+              <Text style={styles.headerSectionName}>Atlas</Text>
             </View>
             <TouchableOpacity
               onPress={() => navigation.navigate('AtlasSearch', {})}
@@ -407,7 +409,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
 
-  // Header Content
+  // Header Content - Updated styles
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -420,25 +422,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  logoContainer: {
-    marginRight: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
-  },
   headerLogo: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    marginRight: 10,
+    width: 80,
+    height: 24,
+    marginRight: 8,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
+  headerSectionName: {
+    fontSize: 22,
+    fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.5,
+    // Use a modern font if available - Space Grotesk
+    // fontFamily: 'SpaceGrotesk-Bold',
   },
   searchButton: {
     width: 40,
