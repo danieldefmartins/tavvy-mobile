@@ -25,44 +25,69 @@ export function useNearbyPlaces(
     queryFn: async () => {
       if (!latitude || !longitude) return [];
 
-      // UPDATED: Removed strict .not() filters to allow fallback to lat/lng columns
+      // Create bounding box for efficient query
+      const latDelta = 0.1; // ~11km
+      const lngDelta = 0.1;
+      
+      // Query fsq_places_raw table (104M Foursquare places)
       let query = supabase
-        .from('places')
-        .select('*');
+        .from('fsq_places_raw')
+        .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, fsq_category_labels')
+        .gte('latitude', latitude - latDelta)
+        .lte('latitude', latitude + latDelta)
+        .gte('longitude', longitude - lngDelta)
+        .lte('longitude', longitude + lngDelta)
+        .limit(200);
 
-      // Filter by categories if provided
-      if (options?.categories && options.categories.length > 0) {
-        query = query.in('primary_category', options.categories);
-      }
-
-      const { data, error } = await query.limit(100);
+      const { data, error } = await query;
 
       if (error) throw error;
 
-      // Calculate distance and filter by radius
+      // Calculate distance and map to Place interface
       const placesWithDistance = (data || [])
-        .filter((place: any) => (place.latitude || place.lat) && (place.longitude || place.lng))
+        .filter((place: any) => place.latitude && place.longitude)
         .map((place: any) => {
-          // Fallback to lat/lng if latitude/longitude are missing
-          const placeLat = place.latitude || place.lat;
-          const placeLng = place.longitude || place.lng;
+          // Parse category from fsq_category_labels
+          let category = 'Other';
+          if (place.fsq_category_labels) {
+            // fsq_category_labels is stored as text, might be comma-separated
+            const labels = typeof place.fsq_category_labels === 'string' 
+              ? place.fsq_category_labels.split(',')[0] 
+              : place.fsq_category_labels[0];
+            if (labels) category = labels.trim();
+          }
           
           return {
-            ...place,
-            latitude: placeLat, // Ensure standardized keys
-            longitude: placeLng,
+            id: place.fsq_place_id,
+            name: place.name,
+            latitude: place.latitude,
+            longitude: place.longitude,
+            primary_category: category,
+            address_line1: place.address,
+            city: place.locality,
+            state_region: place.region,
+            country: place.country,
             distance: calculateDistance(
               latitude,
               longitude,
-              placeLat,
-              placeLng
+              place.latitude,
+              place.longitude
             ),
           };
         });
 
-      // NUCLEAR OPTION: Return ALL places, sorted by distance
-      return placesWithDistance
-        .sort((a, b) => a.distance - b.distance);
+      // Filter by categories if provided
+      let filtered = placesWithDistance;
+      if (options?.categories && options.categories.length > 0) {
+        filtered = placesWithDistance.filter((p: any) => 
+          options.categories!.some(cat => 
+            p.primary_category?.toLowerCase().includes(cat.toLowerCase())
+          )
+        );
+      }
+
+      // Return sorted by distance
+      return filtered.sort((a, b) => a.distance - b.distance);
     },
     enabled: !!latitude && !!longitude,
   });
