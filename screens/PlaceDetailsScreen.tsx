@@ -25,8 +25,7 @@ import {
   QuickInfoPill,
 } from '../lib/categories';
 import { supabase } from '../lib/supabaseClient';
-import { fetchPlaceSignals, getPlaceReviewCount, SignalAggregate, fetchPlaceThermometer } from '../lib/reviews';
-import { getPlaceholderImageForCategory, getFallbackColorForCategory } from '../lib/categoryPlaceholders';
+import { fetchPlaceSignals, getPlaceReviewCount, SignalAggregate } from '../lib/reviews';
 import { Colors } from '../constants/Colors';
 import AddYourTapCardEnhanced from '../components/AddYourTapCardEnhanced';
 import {
@@ -236,10 +235,6 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   // NEW: Photo carousel state
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const carouselRef = useRef<FlatList>(null);
-  
-  // Thermometer badge data (last 3 months activity)
-  const [thermometer, setThermometer] = useState<{ positiveTaps: number; negativeTaps: number }>({ positiveTaps: 0, negativeTaps: 0 });
-  const [showThermometerInfo, setShowThermometerInfo] = useState(false);
 
   // Determine business type from place data
   const businessType = place ? mapGoogleCategoryToBusinessType(place.primaryCategory || 'default') : 'default';
@@ -478,14 +473,6 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
         const signalData = await fetchPlaceSignals(placeId);
         setSignals(signalData);
 
-        // Fetch thermometer data (last 3 months activity)
-        try {
-          const thermometerData = await fetchPlaceThermometer(placeId, 3);
-          setThermometer(thermometerData);
-        } catch (e) {
-          console.log('Could not fetch thermometer data:', e);
-        }
-
         setLoading(false);
       } catch (err: any) {
         console.error('Error fetching place:', err);
@@ -687,43 +674,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
     signalsList: SignalAggregate[],
     colors: { primary: string; light: string; text: string }
   ) => {
-    // Show "Be the first to tap" if no signals
-    if (!signalsList || signalsList.length === 0) {
-      return (
-        <View style={{
-          backgroundColor: '#FFFFFF',
-          borderRadius: 16,
-          marginBottom: 16,
-          padding: 16,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 8,
-          elevation: 2,
-        }}>
-          <Text style={{ 
-            fontSize: 18, 
-            fontWeight: '700', 
-            color: '#1F2937',
-            marginBottom: 12,
-          }}>
-            {categoryTitle}
-          </Text>
-          <View style={{
-            backgroundColor: colors.primary,
-            borderRadius: 12,
-            paddingVertical: 14,
-            paddingHorizontal: 16,
-            alignItems: 'center',
-            opacity: 0.5,
-          }}>
-            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
-              Be the first to tap
-            </Text>
-          </View>
-        </View>
-      );
-    }
+    if (!signalsList || signalsList.length === 0) return null;
 
     const isExpanded = expandedSection === type;
     const hasMore = signalsList.length > 1;
@@ -866,31 +817,14 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
     );
   };
 
-  // NEW: Render photo carousel item with category placeholder support
-  const renderCarouselItem = ({ item }: { item: PlacePhoto }) => {
-    const isPlaceholder = item.id === 'placeholder';
-    const placeholderUrl = getPlaceholderImageForCategory(place?.category || '');
-    const fallbackColor = getFallbackColorForCategory(place?.category || '');
-    
-    return (
-      <View style={styles.carouselImage}>
-        <Image
-          source={{ uri: isPlaceholder ? placeholderUrl : item.url }}
-          style={styles.carouselImageInner}
-          resizeMode="cover"
-          onError={() => {
-            // If image fails to load, it will show fallback
-          }}
-        />
-        {isPlaceholder && (
-          <View style={[styles.placeholderOverlay, { backgroundColor: fallbackColor + '40' }]}>
-            <Ionicons name="storefront-outline" size={48} color="rgba(255,255,255,0.8)" />
-            <Text style={styles.placeholderCategoryText}>{place?.category || 'Business'}</Text>
-          </View>
-        )}
-      </View>
-    );
-  };
+  // NEW: Render photo carousel item
+  const renderCarouselItem = ({ item }: { item: PlacePhoto }) => (
+    <Image
+      source={{ uri: item.url }}
+      style={styles.carouselImage}
+      resizeMode="cover"
+    />
+  );
 
   // Loading state
   if (loading) {
@@ -964,6 +898,11 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           
           {/* Top Right Buttons */}
           <View style={styles.topRightButtons}>
+            <Image 
+              source={require('../assets/brand/logo-icon.png')} 
+              style={styles.headerLogoSmall}
+              resizeMode="contain"
+            />
             <TouchableOpacity style={styles.actionButton}>
               <Ionicons name="heart-outline" size={22} color="#000" />
             </TouchableOpacity>
@@ -971,32 +910,6 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
               <Ionicons name="share-outline" size={22} color="#000" />
             </TouchableOpacity>
           </View>
-          
-          {/* Thermometer Badge - Top Right - Always Show - Tappable */}
-          <TouchableOpacity 
-            style={styles.thermometerBadge}
-            onPress={() => setShowThermometerInfo(true)}
-            activeOpacity={0.8}
-          >
-            {/* Large thermometer icons side by side */}
-            <View style={styles.thermometerIconContainer}>
-              <View style={styles.thermometerIconWrapper}>
-                <Image 
-                  source={require('../assets/icons/thermometer_blue.png')} 
-                  style={styles.thermometerIcon} 
-                />
-                <Text style={styles.thermometerCount}>×{thermometer.positiveTaps}</Text>
-              </View>
-              <View style={styles.thermometerIconWrapper}>
-                <Image 
-                  source={require('../assets/icons/thermometer_orange.png')} 
-                  style={styles.thermometerIcon} 
-                />
-                <Text style={styles.thermometerCount}>×{thermometer.negativeTaps}</Text>
-              </View>
-            </View>
-            <Text style={styles.thermometerLabel}>last 90 days</Text>
-          </TouchableOpacity>
           
           {/* Photo Count Badge */}
           {photos.length > 1 && (
@@ -1539,85 +1452,6 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           </View>
         </View>
       </Modal>
-
-      {/* Thermometer Info Modal */}
-      <Modal
-        visible={showThermometerInfo}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowThermometerInfo(false)}
-      >
-        <TouchableOpacity 
-          style={styles.thermometerModalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowThermometerInfo(false)}
-        >
-          <View style={styles.thermometerModalContent}>
-            {/* Header with icons */}
-            <View style={styles.thermometerModalHeader}>
-              <View style={styles.thermometerModalIconRow}>
-                <Image 
-                  source={require('../assets/icons/thermometer_blue.png')} 
-                  style={styles.thermometerModalIcon} 
-                />
-                <Image 
-                  source={require('../assets/icons/thermometer_orange.png')} 
-                  style={styles.thermometerModalIcon} 
-                />
-              </View>
-              <Text style={styles.thermometerModalTitle}>Activity Thermometer</Text>
-            </View>
-            
-            {/* Place name */}
-            <Text style={styles.thermometerModalPlaceName}>{place?.name}</Text>
-            
-            {/* Explanation */}
-            <Text style={styles.thermometerModalDescription}>
-              This shows how many taps this place received in the last 90 days. A place may have thousands of reviews, but this tells you how active it's been lately.
-            </Text>
-            
-            {/* Stats */}
-            <View style={styles.thermometerModalStats}>
-              <View style={styles.thermometerModalStatItem}>
-                <Image 
-                  source={require('../assets/icons/thermometer_blue.png')} 
-                  style={styles.thermometerModalStatIcon} 
-                />
-                <View>
-                  <Text style={styles.thermometerModalStatNumber}>×{thermometer.positiveTaps}</Text>
-                  <Text style={styles.thermometerModalStatLabel}>Positive Taps</Text>
-                  <Text style={styles.thermometerModalStatHint}>Best For + Vibe signals</Text>
-                </View>
-              </View>
-              <View style={styles.thermometerModalStatItem}>
-                <Image 
-                  source={require('../assets/icons/thermometer_orange.png')} 
-                  style={styles.thermometerModalStatIcon} 
-                />
-                <View>
-                  <Text style={styles.thermometerModalStatNumber}>×{thermometer.negativeTaps}</Text>
-                  <Text style={styles.thermometerModalStatLabel}>Heads Up Taps</Text>
-                  <Text style={styles.thermometerModalStatHint}>Things to watch out for</Text>
-                </View>
-              </View>
-            </View>
-            
-            {/* Footer note */}
-            <Text style={styles.thermometerModalFooter}>
-              High numbers = lots of recent activity{"\n"}
-              Low numbers = hasn't been reviewed lately
-            </Text>
-            
-            {/* Close button */}
-            <TouchableOpacity 
-              style={styles.thermometerModalCloseButton}
-              onPress={() => setShowThermometerInfo(false)}
-            >
-              <Text style={styles.thermometerModalCloseText}>Got it</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </View>
   );
 }
@@ -1671,26 +1505,6 @@ const styles = StyleSheet.create({
     width: width,
     height: 320,
   },
-  carouselImageInner: {
-    width: '100%',
-    height: '100%',
-  },
-  placeholderOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderCategoryText: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 8,
-    textTransform: 'capitalize',
-  },
   heroGradient: {
     position: 'absolute',
     bottom: 0,
@@ -1721,6 +1535,13 @@ const styles = StyleSheet.create({
     right: 16,
     flexDirection: 'row',
     gap: 8,
+    alignItems: 'center',
+  },
+  headerLogoSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    marginRight: 4,
   },
   actionButton: {
     width: 40,
@@ -1734,47 +1555,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
-  },
-  // Thermometer Badge Styles
-  thermometerBadge: {
-    position: 'absolute',
-    top: 100,
-    right: 16,
-    flexDirection: 'column',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 4,
-  },
-  thermometerIconContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  thermometerIconWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  thermometerIcon: {
-    width: 32,
-    height: 32,
-    resizeMode: 'contain',
-  },
-  thermometerCount: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  thermometerLabel: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 4,
-    letterSpacing: 0.3,
   },
   photoCountBadge: {
     position: 'absolute',
@@ -2457,107 +2237,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
-  },
-  
-  // Thermometer Modal Styles
-  thermometerModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  thermometerModalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 24,
-    width: '100%',
-    maxWidth: 340,
-    alignItems: 'center',
-  },
-  thermometerModalHeader: {
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  thermometerModalIconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
-  },
-  thermometerModalIcon: {
-    width: 36,
-    height: 36,
-    resizeMode: 'contain',
-  },
-  thermometerModalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#000',
-  },
-  thermometerModalPlaceName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  thermometerModalDescription: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 20,
-  },
-  thermometerModalStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    marginBottom: 20,
-    paddingHorizontal: 10,
-  },
-  thermometerModalStatItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  thermometerModalStatIcon: {
-    width: 28,
-    height: 28,
-    resizeMode: 'contain',
-    marginTop: 2,
-  },
-  thermometerModalStatNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#000',
-  },
-  thermometerModalStatLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#333',
-  },
-  thermometerModalStatHint: {
-    fontSize: 11,
-    color: '#8E8E93',
-    marginTop: 2,
-  },
-  thermometerModalFooter: {
-    fontSize: 12,
-    color: '#8E8E93',
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 16,
-  },
-  thermometerModalCloseButton: {
-    backgroundColor: '#0A84FF',
-    paddingVertical: 12,
-    paddingHorizontal: 40,
-    borderRadius: 12,
-  },
-  thermometerModalCloseText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

@@ -17,7 +17,7 @@ import {
   FlatList,
   RefreshControl,
   Dimensions,
-  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,16 +28,15 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { 
   ProsColors, 
   PROS_CATEGORIES, 
+  SAMPLE_PROS,
   EARLY_ADOPTER_PRICE,
   STANDARD_PRICE,
   EARLY_ADOPTER_SPOTS_LEFT,
   EARLY_ADOPTER_SAVINGS,
 } from '../constants/ProsConfig';
-import { ProsCategoryCard, ProsCategoryScroll } from '../components/ProsCategoryCard';
+import { ProsCategoryCard } from '../components/ProsCategoryCard';
 import { ProsProviderCard } from '../components/ProsProviderCard';
-import { useSearchPros } from '../hooks/usePros';
-import { useCategories } from '../hooks/useCategories';
-import { Pro } from '../lib/ProsTypes';
+import { ProsSubscriptionBanner } from '../components/ProsSubscriptionBanner';
 
 const { width } = Dimensions.get('window');
 
@@ -50,36 +49,25 @@ export default function ProsHomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<'user' | 'pro'>('user');
 
-  const { pros, loading, searchPros } = useSearchPros();
-  const { categories, loading: categoriesLoading, error: categoriesError } = useCategories();
-
-  useEffect(() => {
-    // Load initial pros near user
-    searchPros({ limit: 6 });
-  }, []);
+  // Use sample data for now
+  const featuredPros = SAMPLE_PROS.slice(0, 6);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await searchPros({ limit: 6 });
+    // Simulate refresh
+    await new Promise(resolve => setTimeout(resolve, 1000));
     setRefreshing(false);
   };
 
   const handleSearch = () => {
     navigation.navigate('ProsBrowse', {
-      query: searchQuery,
+      searchQuery,
       location,
     });
   };
 
-  const handleCategoryPress = (slug: string) => {
-    // Try to find category from fetched categories first, then fall back to hardcoded
-    const category = categories.find(c => c.slug === slug) || PROS_CATEGORIES.find(c => c.slug === slug);
-    if (category) {
-      navigation.navigate('ProsRequestStep1', { 
-        categoryId: category.id.toString(), 
-        categoryName: category.name 
-      });
-    }
+  const handleCategoryPress = (categoryId: number, categoryName: string) => {
+    navigation.navigate('ProsBrowse', { categoryId, categoryName });
   };
 
   const handleProPress = (slug: string) => {
@@ -92,10 +80,6 @@ export default function ProsHomeScreen() {
 
   const handleProDashboard = () => {
     navigation.navigate('ProsDashboard');
-  };
-
-  const handleViewAll = () => {
-    navigation.navigate('ProsBrowse');
   };
 
   const remainingSpots = EARLY_ADOPTER_SPOTS_LEFT;
@@ -218,28 +202,6 @@ export default function ProsHomeScreen() {
   // User Mode (default) - Find Pros
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>TavvY Pros</Text>
-        <View style={styles.headerToggle}>
-          <TouchableOpacity
-            style={[styles.modeToggle, viewMode === 'user' && styles.modeToggleActive]}
-            onPress={() => setViewMode('user')}
-          >
-            <Text style={[styles.modeToggleText, viewMode === 'user' && styles.modeToggleTextActive]}>
-              Find Pros
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeToggle, viewMode === 'pro' && styles.modeToggleActive]}
-            onPress={() => setViewMode('pro')}
-          >
-            <Text style={[styles.modeToggleText, viewMode === 'pro' && styles.modeToggleTextActive]}>
-              I'm a Pro
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -248,6 +210,37 @@ export default function ProsHomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
+        {/* Header with Logo */}
+        <View style={styles.prosHeader}>
+          <Image 
+            source={require('../assets/brand/logo-icon.png')} 
+            style={styles.prosHeaderLogo}
+            resizeMode="contain"
+          />
+          <Text style={styles.prosHeaderTitle}>Tavvy Pros</Text>
+        </View>
+
+        {/* Mode Toggle */}
+        <View style={styles.modeToggleContainer}>
+          <TouchableOpacity
+            style={[styles.modeToggle, viewMode === 'user' && styles.modeToggleActive]}
+            onPress={() => setViewMode('user')}
+          >
+            <Ionicons name="search" size={18} color={viewMode === 'user' ? '#fff' : ProsColors.textSecondary} />
+            <Text style={[styles.modeToggleText, viewMode === 'user' && styles.modeToggleTextActive]}>
+              Find Pros
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeToggle, viewMode === 'pro' && styles.modeToggleActive]}
+            onPress={() => setViewMode('pro')}
+          >
+            <Ionicons name="construct" size={18} color={viewMode === 'pro' ? '#fff' : ProsColors.textSecondary} />
+            <Text style={[styles.modeToggleText, viewMode === 'pro' && styles.modeToggleTextActive]}>
+              I'm a Pro
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Hero Section */}
         <LinearGradient
@@ -274,19 +267,19 @@ export default function ProsHomeScreen() {
           </Text>
 
           {/* Search Box */}
-          <View style={styles.searchBox}>
+          <View style={styles.searchContainer}>
             <View style={styles.searchInputContainer}>
               <Ionicons name="search" size={20} color={ProsColors.textMuted} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="What service do you need? (e.g. Plumber)"
+                placeholder="What service do you need?"
                 placeholderTextColor={ProsColors.textMuted}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
             </View>
             <View style={styles.locationInputContainer}>
-              <Ionicons name="location" size={20} color={ProsColors.textMuted} />
+              <Ionicons name="location-outline" size={20} color={ProsColors.textMuted} />
               <TextInput
                 style={styles.searchInput}
                 placeholder="City or ZIP code"
@@ -300,13 +293,14 @@ export default function ProsHomeScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Trust Badges */}
           <View style={styles.trustBadges}>
             <View style={styles.trustBadge}>
-              <Ionicons name="checkmark-circle-outline" size={16} color={ProsColors.success} />
+              <Ionicons name="shield-checkmark-outline" size={16} color={ProsColors.primary} />
               <Text style={styles.trustBadgeText}>Verified Pros</Text>
             </View>
             <View style={styles.trustBadge}>
-              <Ionicons name="star-outline" size={16} color={ProsColors.warning} />
+              <Ionicons name="star-outline" size={16} color={ProsColors.primary} />
               <Text style={styles.trustBadgeText}>Community Reviews</Text>
             </View>
             <View style={styles.trustBadge}>
@@ -316,91 +310,99 @@ export default function ProsHomeScreen() {
           </View>
         </LinearGradient>
 
-        {/* Browse by Service - Horizontal Scroll */}
-        <View style={styles.categoriesSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Browse by Service</Text>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.categoriesScroll}
-            contentContainerStyle={styles.categoriesScrollContent}
-          >
-            {(categories.length > 0 ? categories : PROS_CATEGORIES).map((category) => (
-              <ProsCategoryCard
-                key={category.id}
-                {...category}
-                onPress={() => handleCategoryPress(category.slug)}
-              />
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Pros Near You - The "Browse" List */}
+        {/* Browse by Service */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Pros Near You</Text>
-            <TouchableOpacity onPress={handleViewAll}>
+            <Text style={styles.sectionTitle}>Browse by Service</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('ProsBrowse')}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.featuredList}>
-            {pros.map((pro) => (
-              <ProsProviderCard
-                key={pro.id}
-                pro={pro}
-                onPress={() => handleProPress(pro.slug)}
+          <View style={styles.categoriesGrid}>
+            {PROS_CATEGORIES.slice(0, 8).map((category) => (
+              <ProsCategoryCard
+                key={category.id}
+                category={category}
+                onPress={() => handleCategoryPress(category.id, category.name)}
               />
             ))}
-            {loading && <ActivityIndicator size="small" color={ProsColors.primary} style={{ marginVertical: 20 }} />}
           </View>
         </View>
 
-        {/* How it Works */}
-        <View style={[styles.section, { backgroundColor: '#F9FAFB' }]}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>How it Works</Text>
+        {/* Featured Pros */}
+        {featuredPros.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Featured Pros</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('ProsBrowse')}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              horizontal
+              data={featuredPros}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <ProsProviderCard
+                  provider={item}
+                  onPress={() => handleProPress(item.slug)}
+                  style={{ width: width * 0.7, marginRight: 12 }}
+                />
+              )}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.featuredList}
+            />
           </View>
+        )}
+
+        {/* Pro CTA */}
+        <ProsSubscriptionBanner
+          onPress={handleProSignup}
+        />
+
+        {/* How It Works */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { paddingHorizontal: 16 }]}>How It Works</Text>
           <View style={styles.stepsContainer}>
             <View style={styles.step}>
               <View style={[styles.stepIcon, { backgroundColor: `${ProsColors.primary}15` }]}>
-                <Ionicons name="list" size={24} color={ProsColors.primary} />
+                <Ionicons name="search" size={24} color={ProsColors.primary} />
               </View>
-              <View>
-                <Text style={styles.stepTitle}>1. Describe your project</Text>
-                <Text style={styles.stepDescription}>Tell us what you need and when you need it.</Text>
-              </View>
+              <Text style={styles.stepTitle}>1. Search</Text>
+              <Text style={styles.stepDescription}>
+                Find local pros by service type and location
+              </Text>
             </View>
             <View style={styles.step}>
               <View style={[styles.stepIcon, { backgroundColor: `${ProsColors.secondary}15` }]}>
-                <Ionicons name="people" size={24} color={ProsColors.secondary} />
+                <Ionicons name="chatbubbles" size={24} color={ProsColors.secondary} />
               </View>
-              <View>
-                <Text style={styles.stepTitle}>2. Get matched with pros</Text>
-                <Text style={styles.stepDescription}>We'll notify top-rated local professionals.</Text>
-              </View>
+              <Text style={styles.stepTitle}>2. Connect</Text>
+              <Text style={styles.stepDescription}>
+                Message pros directly and request quotes
+              </Text>
             </View>
             <View style={styles.step}>
               <View style={[styles.stepIcon, { backgroundColor: `${ProsColors.success}15` }]}>
-                <Ionicons name="chatbubbles" size={24} color={ProsColors.success} />
+                <Ionicons name="checkmark-circle" size={24} color={ProsColors.success} />
               </View>
-              <View>
-                <Text style={styles.stepTitle}>3. Compare and hire</Text>
-                <Text style={styles.stepDescription}>Review quotes, chat, and choose the best pro.</Text>
-              </View>
+              <Text style={styles.stepTitle}>3. Hire</Text>
+              <Text style={styles.stepDescription}>
+                Choose the best pro and get the job done
+              </Text>
             </View>
           </View>
         </View>
 
-        {/* Pro Link */}
+        {/* Are you a Pro? Link */}
         <View style={styles.proLinkSection}>
-          <Text style={styles.proLinkText}>Are you a service professional?</Text>
+          <Text style={styles.proLinkText}>Are you a home service professional?</Text>
           <TouchableOpacity onPress={() => setViewMode('pro')}>
-            <Text style={styles.proLinkButton}>Switch to Pro Mode</Text>
+            <Text style={styles.proLinkButton}>Join TavvY Pros →</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Bottom Spacing for tab bar */}
         <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
@@ -418,56 +420,49 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-  // Header
-  header: {
+  // Header with Logo
+  prosHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: ProsColors.borderLight,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
-  headerTitle: {
-    fontSize: 28,
+  prosHeaderLogo: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  prosHeaderTitle: {
+    fontSize: 22,
     fontWeight: '700',
-    color: '#111827',
-  },
-  headerToggle: {
-    flexDirection: 'row',
-    gap: 8,
+    color: ProsColors.textPrimary,
   },
   // Mode Toggle
   modeToggleContainer: {
     flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: 4,
     marginHorizontal: 16,
     marginTop: 12,
     marginBottom: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 4,
   },
   modeToggle: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 24,
-    backgroundColor: '#F3F4F6',
-    gap: 8,
+    borderRadius: 10,
+    gap: 6,
   },
   modeToggleActive: {
     backgroundColor: ProsColors.primary,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   modeToggleText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: ProsColors.textSecondary,
   },
@@ -477,31 +472,35 @@ const styles = StyleSheet.create({
   // Hero Section
   heroSection: {
     paddingHorizontal: 16,
-    paddingTop: 24,
-    paddingBottom: 32,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   earlyAdopterBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${ProsColors.primary}10`,
+    alignSelf: 'center',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 20,
-    alignSelf: 'flex-start',
     marginBottom: 16,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: `${ProsColors.primary}20`,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   earlyAdopterText: {
     fontSize: 12,
     fontWeight: '600',
-    color: ProsColors.primary,
+    color: ProsColors.textPrimary,
+    marginLeft: 6,
   },
   heroTitle: {
     fontSize: 32,
-    fontWeight: '800',
+    fontWeight: '700',
     color: ProsColors.textPrimary,
+    textAlign: 'center',
     lineHeight: 40,
     marginBottom: 12,
   },
@@ -509,15 +508,17 @@ const styles = StyleSheet.create({
     color: ProsColors.primary,
   },
   heroSubtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: ProsColors.textSecondary,
-    lineHeight: 24,
+    textAlign: 'center',
+    lineHeight: 22,
     marginBottom: 24,
+    paddingHorizontal: 16,
   },
-  searchBox: {
+  searchContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 12,
+    padding: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -527,23 +528,22 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: ProsColors.sectionBg,
     borderRadius: 8,
     paddingHorizontal: 12,
-    height: 48,
     marginBottom: 8,
   },
   locationInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: ProsColors.sectionBg,
     borderRadius: 8,
     paddingHorizontal: 12,
-    height: 48,
     marginBottom: 12,
   },
   searchInput: {
     flex: 1,
+    height: 44,
     fontSize: 15,
     color: ProsColors.textPrimary,
     marginLeft: 8,
@@ -551,9 +551,8 @@ const styles = StyleSheet.create({
   searchButton: {
     backgroundColor: ProsColors.primary,
     borderRadius: 8,
-    height: 48,
+    paddingVertical: 14,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   searchButtonText: {
     color: '#FFFFFF',
@@ -563,21 +562,21 @@ const styles = StyleSheet.create({
   trustBadges: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 16,
+    flexWrap: 'wrap',
     marginTop: 20,
+    gap: 16,
   },
   trustBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
   },
   trustBadgeText: {
     fontSize: 12,
     color: ProsColors.textSecondary,
+    marginLeft: 4,
   },
-  // Sections
   section: {
-    paddingVertical: 24,
+    paddingTop: 24,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -602,71 +601,62 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
   },
-  categoriesSection: {
-    paddingVertical: 16,
-  },
-  categoriesScroll: {
-    flexGrow: 0,
-  },
-  categoriesScrollContent: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
   featuredList: {
     paddingHorizontal: 16,
   },
-  // Steps
   stepsContainer: {
+    flexDirection: 'row',
     paddingHorizontal: 16,
     marginTop: 16,
-    gap: 24,
   },
   step: {
-    flexDirection: 'row',
+    flex: 1,
     alignItems: 'center',
-    gap: 16,
+    paddingHorizontal: 8,
   },
   stepIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   stepTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: ProsColors.textPrimary,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   stepDescription: {
-    fontSize: 14,
+    fontSize: 12,
     color: ProsColors.textSecondary,
-    flex: 1,
+    textAlign: 'center',
+    lineHeight: 16,
   },
-  // Pro Link
+  // Pro Link Section
   proLinkSection: {
-    padding: 24,
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    paddingVertical: 24,
+    marginTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
     marginHorizontal: 16,
-    borderRadius: 16,
-    marginBottom: 24,
   },
   proLinkText: {
-    fontSize: 15,
+    fontSize: 14,
     color: ProsColors.textSecondary,
     marginBottom: 8,
   },
   proLinkButton: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: ProsColors.primary,
   },
   // Pro Mode Styles
   proModeContainer: {
     paddingHorizontal: 16,
-    paddingTop: 24,
+    paddingTop: 16,
   },
   proModeHeader: {
     alignItems: 'center',
@@ -680,38 +670,37 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   proModeSubtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: ProsColors.textSecondary,
     textAlign: 'center',
-    paddingHorizontal: 32,
   },
   proActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 12,
     marginBottom: 32,
   },
   proActionCard: {
-    width: (width - 44) / 2,
+    width: '48%',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
+    padding: 20,
+    marginBottom: 16,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   proActionIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 12,
   },
   proActionTitle: {
@@ -725,19 +714,49 @@ const styles = StyleSheet.create({
     color: ProsColors.textSecondary,
   },
   notRegisteredSection: {
-    backgroundColor: '#111827',
-    borderRadius: 20,
+    backgroundColor: ProsColors.heroBg,
+    borderRadius: 16,
     padding: 24,
     alignItems: 'center',
+  },
+  notRegisteredTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: ProsColors.textPrimary,
+    marginBottom: 8,
+  },
+  notRegisteredSubtitle: {
+    fontSize: 14,
+    color: ProsColors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  registerButton: {
+    backgroundColor: ProsColors.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    marginBottom: 12,
+  },
+  registerButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  earlyAdopterNote: {
+    fontSize: 12,
+    color: ProsColors.textSecondary,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   savingsBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: ProsColors.primary,
+    backgroundColor: ProsColors.secondary,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    marginBottom: 16,
+    marginBottom: 12,
     gap: 6,
   },
   savingsBadgeText: {
@@ -745,51 +764,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  notRegisteredTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  notRegisteredSubtitle: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 20,
-  },
   pricingComparison: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 16,
     gap: 12,
-    marginBottom: 24,
   },
   originalPrice: {
-    fontSize: 16,
-    color: '#6B7280',
+    fontSize: 18,
+    color: ProsColors.textMuted,
     textDecorationLine: 'line-through',
   },
   discountedPrice: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  registerButton: {
-    backgroundColor: '#FFFFFF',
-    width: '100%',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  registerButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  earlyAdopterNote: {
-    fontSize: 12,
-    color: '#6B7280',
+    color: ProsColors.primary,
   },
 });

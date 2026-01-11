@@ -1,14 +1,15 @@
 import React, { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { StripeProvider } from '@stripe/stripe-react-native';
 
 import { AuthProvider } from './contexts/AuthContext';
-import { Colors } from './constants/Colors';
+import { ThemeProvider, useThemeContext } from './contexts/ThemeContext';
+import { Colors, darkTheme } from './constants/Colors';
 
 // Signal System - Preload cache on app start
 import { preloadSignalLabels } from './hooks/useSignalLabels';
@@ -44,9 +45,6 @@ import SavedScreen from './screens/SavedScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
 
-// Apps Screen
-import AppsHomeScreen from './screens/AppsHomeScreen';
-
 // ========== PROS SCREENS (NEW) ==========
 import ProsHomeScreen from './screens/ProsHomeScreen';
 import ProsBrowseScreen from './screens/ProsBrowseScreen';
@@ -54,13 +52,8 @@ import ProsProfileScreen from './screens/ProsProfileScreen';
 import ProsDashboardScreen from './screens/ProsDashboardScreen';
 import ProsRegistrationScreen from './screens/ProsRegistrationScreen';
 import ProsMessagesScreen from './screens/ProsMessagesScreen';
+import ProsRequestQuoteScreen from './screens/ProsRequestQuoteScreen';
 import ProsLeadsScreen from './screens/ProsLeadsScreen';
-
-// New Multi-step Request Flow
-import ProsRequestStep1Screen from './screens/ProsRequestStep1Screen';
-import ProsRequestStep2Screen from './screens/ProsRequestStep2Screen';
-import ProsRequestStep3Screen from './screens/ProsRequestStep3Screen';
-import ProsRequestStep4Screen from './screens/ProsRequestStep4Screen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -81,8 +74,7 @@ const HomeStackNav = createNativeStackNavigator();
 const AtlasStackNav = createNativeStackNavigator();
 const MenuStackNav = createNativeStackNavigator();
 const UniverseStackNav = createNativeStackNavigator();
-const ProsStackNav = createNativeStackNavigator();
-const AppsStackNav = createNativeStackNavigator();
+const ProsStackNav = createNativeStackNavigator(); // NEW: Pros Stack
 
 // --------------------
 // Home Stack
@@ -99,6 +91,7 @@ function HomeStack() {
       <HomeStackNav.Screen name="CityDetails" component={CityDetailsScreen} />
       <HomeStackNav.Screen name="RateCity" component={RateCityScreen} />
       <HomeStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
+      {/* Business Card Scanner - accessible from AddPlaceScreen */}
       <HomeStackNav.Screen 
         name="BusinessCardScanner" 
         component={BusinessCardScannerScreen}
@@ -132,17 +125,27 @@ function MenuStack() {
       <MenuStackNav.Screen name="MenuMain" component={MenuScreen} />
       <MenuStackNav.Screen name="ProfileMain" component={ProfileScreen} />
       <MenuStackNav.Screen name="SavedMain" component={SavedScreen} />
+
+      {/* Auth */}
       <MenuStackNav.Screen name="Login" component={LoginScreen} />
       <MenuStackNav.Screen name="SignUp" component={SignUpScreen} />
+
+      {/* Shared screens accessible from menu */}
       <MenuStackNav.Screen name="RateCity" component={RateCityScreen} />
       <MenuStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
+      
+      {/* Create functionality moved to Menu */}
       <MenuStackNav.Screen name="UniversalAdd" component={UniversalAddScreen} />
       <MenuStackNav.Screen name="AddPlace" component={AddPlaceScreen} />
+      
+      {/* Business Card Scanner - accessible from AddPlaceScreen */}
       <MenuStackNav.Screen 
         name="BusinessCardScanner" 
         component={BusinessCardScannerScreen}
         options={{ presentation: 'modal' }}
       />
+      
+      {/* Pro Dashboard accessible from Menu */}
       <MenuStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
       <MenuStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
       <MenuStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
@@ -163,7 +166,7 @@ function UniverseStack() {
 }
 
 // --------------------
-// Pros Stack
+// Pros Stack (NEW)
 // --------------------
 function ProsStack() {
   return (
@@ -174,28 +177,13 @@ function ProsStack() {
       <ProsStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
       <ProsStackNav.Screen name="ProsRegistration" component={ProsRegistrationScreen} />
       <ProsStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
+      <ProsStackNav.Screen 
+        name="ProsRequestQuote" 
+        component={ProsRequestQuoteScreen}
+        options={{ presentation: 'modal' }}
+      />
       <ProsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
-      <ProsStackNav.Screen name="ProsRequestStep1" component={ProsRequestStep1Screen} />
-      <ProsStackNav.Screen name="ProsRequestStep2" component={ProsRequestStep2Screen} />
-      <ProsStackNav.Screen name="ProsRequestStep3" component={ProsRequestStep3Screen} />
-      <ProsStackNav.Screen name="ProsRequestStep4" component={ProsRequestStep4Screen} />
     </ProsStackNav.Navigator>
-  );
-}
-
-// --------------------
-// Apps Stack
-// --------------------
-function AppsStack() {
-  return (
-    <AppsStackNav.Navigator screenOptions={{ headerShown: false }}>
-      <AppsStackNav.Screen name="AppsMain" component={AppsHomeScreen} />
-      {/* Add other app-specific screens here as they are developed */}
-      <AppsStackNav.Screen name="ProsHome" component={ProsHomeScreen} />
-      <AppsStackNav.Screen name="UniversalAdd" component={UniversalAddScreen} />
-      <AppsStackNav.Screen name="ProfileMain" component={ProfileScreen} />
-      <AppsStackNav.Screen name="SavedMain" component={SavedScreen} />
-    </AppsStackNav.Navigator>
   );
 }
 
@@ -203,12 +191,19 @@ function AppsStack() {
 // Tabs
 // --------------------
 function TabNavigator() {
+  const { theme, isDark } = useThemeContext();
+  
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: Colors.tabBarActive,
-        tabBarInactiveTintColor: Colors.tabBarInactive,
+        tabBarActiveTintColor: theme.tabBarActive,
+        tabBarInactiveTintColor: theme.tabBarInactive,
+        tabBarStyle: {
+          backgroundColor: theme.background,
+          borderTopColor: theme.border,
+          borderTopWidth: 0.5,
+        },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
 
@@ -225,8 +220,8 @@ function TabNavigator() {
             case 'Atlas':
               iconName = focused ? 'map' : 'map-outline';
               break;
-            case 'Apps':
-              iconName = focused ? 'apps' : 'apps-outline';
+            case 'Menu':
+              iconName = focused ? 'menu' : 'menu-outline';
               break;
           }
 
@@ -236,20 +231,62 @@ function TabNavigator() {
     >
       <Tab.Screen name="Home" component={HomeStack} options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen name="Explore" component={UniverseStack} options={{ tabBarLabel: 'Universes' }} />
-      <Tab.Screen name="Pros" component={ProsStack} options={{ tabBarLabel: 'Pros' }} />
+
+      {/* CHANGED: Replaced Add tab with Pros tab */}
+      <Tab.Screen
+        name="Pros"
+        component={ProsStack}
+        options={{
+          tabBarLabel: 'Pros',
+        }}
+      />
+
       <Tab.Screen name="Atlas" component={AtlasStack} options={{ tabBarLabel: 'Atlas' }} />
-      <Tab.Screen name="Apps" component={AppsStack} options={{ tabBarLabel: 'Apps' }} />
+      <Tab.Screen name="Menu" component={MenuStack} options={{ tabBarLabel: 'Menu' }} />
     </Tab.Navigator>
   );
 }
 
 // --------------------
-// App Root
+// TavvY Navigation Theme
 // --------------------
-export default function App() {
+const TavvyDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: darkTheme.primary,
+    background: darkTheme.background,
+    card: darkTheme.surface,
+    text: darkTheme.text,
+    border: darkTheme.border,
+    notification: darkTheme.brandOrange,
+  },
+};
+
+const TavvyLightTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: Colors.primary,
+    background: '#FFFFFF',
+    card: '#F8FAFC',
+    text: '#0F172A',
+    border: '#E2E8F0',
+    notification: Colors.secondary,
+  },
+};
+
+// --------------------
+// App Content (with theme access)
+// --------------------
+function AppContent() {
+  const { isDark } = useThemeContext();
+  
+  // Preload signal caches on app start for faster signal lookups
   useEffect(() => {
     const initializeSignalSystem = async () => {
       try {
+        // Preload both caches in parallel
         await Promise.all([
           preloadSignalLabels(),
           preloadSignalCache(),
@@ -264,14 +301,26 @@ export default function App() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <NavigationContainer theme={isDark ? TavvyDarkTheme : TavvyLightTheme}>
+        <TabNavigator />
+      </NavigationContainer>
+    </>
+  );
+}
+
+// --------------------
+// App Root
+// --------------------
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: darkTheme.background }}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <StripeProvider publishableKey="pk_live_51OzU8UIeV9jtGwIXGwIRq2F3JeJir8FRX4DKNgSPPLmU09dqwrP67ezYxeltDynFn4vtf77WBOBmaN4IFsxxjSpq00U3DCRhWp">
-            <NavigationContainer>
-              <TabNavigator />
-            </NavigationContainer>
-          </StripeProvider>
+          <ThemeProvider>
+            <AppContent />
+          </ThemeProvider>
         </AuthProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

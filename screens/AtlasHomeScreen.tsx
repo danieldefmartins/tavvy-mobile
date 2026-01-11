@@ -219,9 +219,11 @@ export default function AtlasHomeScreen() {
           {/* Header Content */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <View style={styles.logoContainer}>
-                <MaterialCommunityIcons name="map-legend" size={26} color="#fff" />
-              </View>
+              <Image 
+                source={require('../assets/brand/logo-icon.png')} 
+                style={styles.headerLogo}
+                resizeMode="contain"
+              />
               <Text style={styles.headerTitle}>Tavvy Atlas</Text>
             </View>
             <TouchableOpacity
@@ -425,6 +427,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 2,
     elevation: 2,
+  },
+  headerLogo: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    marginRight: 10,
   },
   headerTitle: {
     fontSize: 24,

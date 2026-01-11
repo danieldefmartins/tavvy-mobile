@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "tavvy-mobile",
+    "name": "Tavvy",
     "slug": "tavvy-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0F1233"
     },
     "plugins": [
       [
@@ -19,14 +19,7 @@
           "locationAlwaysAndWhenInUsePermission": "Allow Tavvy to use your location to show nearby places."
         }
       ],
-      "@maplibre/maplibre-react-native",
-      [
-        "@stripe/stripe-react-native",
-        {
-          "merchantIdentifier": "merchant.com.tavvy",
-          "enableGooglePay": false
-        }
-      ]
+      "@maplibre/maplibre-react-native"
     ],
     "ios": {
       "supportsTablet": true,
@@ -34,13 +27,14 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "Tavvy needs your location to show nearby places on the map.",
-        "NSLocationAlwaysUsageDescription": "Tavvy needs your location to show nearby places."
+        "NSLocationAlwaysUsageDescription": "Tavvy needs your location to show nearby places.",
+        "UIStatusBarStyle": "UIStatusBarStyleLightContent"
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0F1233"
       },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
