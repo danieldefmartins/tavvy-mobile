@@ -1,0 +1,120 @@
+// ============================================
+// UPDATED PlaceDetailsScreen.tsx - Replace the fetch section (around lines 394-449)
+// This handles both fsq_places_raw (Foursquare) and places (user-added) tables
+// ============================================
+
+// Replace the existing fetch code (lines 394-449) with this:
+
+// First try fsq_places_raw (Foursquare data - 104M places)
+let placeData = null;
+let placeError = null;
+
+// Check if placeId looks like a Foursquare ID (alphanumeric) vs UUID
+const isFoursquareId = placeId && !placeId.includes('-');
+
+if (isFoursquareId) {
+  // Query fsq_places_raw table
+  const { data, error } = await supabase
+    .from('fsq_places_raw')
+    .select('*')
+    .eq('fsq_place_id', placeId)
+    .single();
+  
+  if (data) {
+    // Map Foursquare fields to Place interface
+    const mappedPlace: Place = {
+      id: data.fsq_place_id,
+      name: data.name,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      priceLevel: '$$', // Not available in Foursquare data
+      primaryCategory: data.fsq_category_labels?.[0] || 'Place',
+      features: [],
+      openYearRound: true,
+      coverImageUrl: null,
+      currentStatus: 'Unknown',
+      is24_7: false,
+      addressLine1: data.address,
+      city: data.locality,
+      state: data.region,
+      zipCode: data.postcode,
+      phone: data.tel,
+      website: data.website,
+      instagramUrl: data.instagram,
+      facebookUrl: data.facebook_id,
+      distance: 0,
+      avgMealCost: null,
+      totalSites: null,
+      starRating: null,
+      closingTime: null,
+      opening_hours: null,
+      is_insured: false,
+      is_licensed: false,
+      established_date: null,
+      socials: null,
+    };
+    
+    setPlace(mappedPlace);
+    setLoading(false);
+    return;
+  }
+}
+
+// Fallback to places table (user-added places)
+const { data: placesTableData, error: placesTableError } = await supabase
+  .from('places')
+  .select('*')
+  .eq('id', placeId)
+  .single();
+
+if (placesTableError) throw placesTableError;
+
+// Map database fields to Place interface (existing code)
+const mappedPlace: Place = {
+  id: placesTableData.id,
+  name: placesTableData.name,
+  latitude: placesTableData.latitude || placesTableData.lat,
+  longitude: placesTableData.longitude || placesTableData.lng,
+  priceLevel: placesTableData.price_level || '$$',
+  primaryCategory: placesTableData.primary_category || 'Restaurant',
+  features: placesTableData.features || [],
+  openYearRound: placesTableData.open_year_round ?? true,
+  coverImageUrl: placesTableData.cover_image_url,
+  currentStatus: placesTableData.current_status || 'open_accessible',
+  is24_7: placesTableData.is_24_7 ?? false,
+  addressLine1: placesTableData.address_line_1,
+  city: placesTableData.city,
+  state: placesTableData.state,
+  zipCode: placesTableData.zip_code,
+  phone: placesTableData.phone,
+  website: placesTableData.website,
+  instagramUrl: placesTableData.instagram_url,
+  facebookUrl: placesTableData.facebook_url,
+  distance: placesTableData.distance || 0,
+  avgMealCost: placesTableData.avg_meal_cost,
+  totalSites: placesTableData.total_sites,
+  starRating: placesTableData.star_rating,
+  closingTime: placesTableData.closing_time,
+  opening_hours: placesTableData.opening_hours,
+  is_insured: placesTableData.is_insured,
+  is_licensed: placesTableData.is_licensed,
+  established_date: placesTableData.established_date,
+  socials: placesTableData.socials,
+  // Map entrance fields
+  entrance_1_name: placesTableData.entrance_1_name,
+  entrance_1_latitude: placesTableData.entrance_1_latitude,
+  entrance_1_longitude: placesTableData.entrance_1_longitude,
+  entrance_1_is_primary: placesTableData.entrance_1_is_primary,
+  entrance_1_road: placesTableData.entrance_1_road,
+  entrance_1_notes: placesTableData.entrance_1_notes,
+  entrance_1_max_rv_length_ft: placesTableData.entrance_1_max_rv_length_ft,
+  entrance_1_max_rv_height_ft: placesTableData.entrance_1_max_rv_height_ft,
+  entrance_1_road_type: placesTableData.entrance_1_road_type,
+  entrance_1_grade: placesTableData.entrance_1_grade,
+  entrance_1_tight_turns: placesTableData.entrance_1_tight_turns,
+  entrance_1_low_clearance: placesTableData.entrance_1_low_clearance,
+  entrance_1_seasonal_access: placesTableData.entrance_1_seasonal_access,
+  entrance_1_seasonal_notes: placesTableData.entrance_1_seasonal_notes,
+};
+
+setPlace(mappedPlace);
