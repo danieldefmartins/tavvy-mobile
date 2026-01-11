@@ -1703,8 +1703,17 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       <View style={styles.contentArea}>
         {/* Header */}
         <View style={styles.contentHeader}>
-          <Text style={styles.greetingText}>{greeting}</Text>
-          <Text style={styles.titleText}>What are you looking for?</Text>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.greetingText}>{greeting}</Text>
+              <Text style={styles.titleText}>What are you looking for?</Text>
+            </View>
+            <Image 
+              source={require('../assets/brand/logo-icon.png')} 
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+          </View>
           {locationName ? (
             <View style={styles.locationRow}>
               <Ionicons name="location" size={14} color="#0A84FF" />
@@ -2226,6 +2235,16 @@ const styles = StyleSheet.create({
   contentHeader: {
     paddingHorizontal: 20,
     marginBottom: 16,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
   },
   greetingText: {
     fontSize: 14,

@@ -13,15 +13,17 @@ import {
   StyleSheet,
   ScrollView,
   SafeAreaView,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../constants/Colors';
+import { useThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function MenuScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { theme } = useThemeContext();
 
   const menuItems = [
     {
@@ -30,7 +32,7 @@ export default function MenuScreen() {
       subtitle: user ? 'View and edit your profile' : 'Sign in to your account',
       icon: 'person',
       screen: 'ProfileMain',
-      color: Colors.primary,
+      color: theme.primary,
     },
     {
       id: 'saved',
@@ -38,25 +40,25 @@ export default function MenuScreen() {
       subtitle: 'Your bookmarked places',
       icon: 'bookmark',
       screen: 'SavedMain',
-      color: '#f59e0b',
+      color: theme.signalCons, // Amber/Orange
     },
-    // ========== NEW: Add New (Create) option ==========
+    // ========== Add New (Create) option ==========
     {
       id: 'add',
       title: 'Add New',
       subtitle: 'Add a place, business, city, or universe',
       icon: 'add-circle',
       screen: 'UniversalAdd',
-      color: '#10b981',
+      color: theme.signalPros, // Green
     },
-    // ========== NEW: Pro Dashboard option ==========
+    // ========== Pro Dashboard option ==========
     {
       id: 'proDashboard',
       title: 'Pro Dashboard',
       subtitle: 'Manage your service business',
       icon: 'construct',
       screen: 'ProsDashboard',
-      color: '#3b82f6',
+      color: theme.signalUniverse, // Blue
     },
     {
       id: 'settings',
@@ -64,7 +66,7 @@ export default function MenuScreen() {
       subtitle: 'App preferences and account',
       icon: 'settings',
       screen: null, // Not implemented yet
-      color: '#6b7280',
+      color: theme.textSecondary,
     },
     {
       id: 'help',
@@ -72,7 +74,7 @@ export default function MenuScreen() {
       subtitle: 'Get help and send feedback',
       icon: 'help-circle',
       screen: null, // Not implemented yet
-      color: '#8b5cf6',
+      color: theme.brandOrange,
     },
   ];
 
@@ -85,16 +87,44 @@ export default function MenuScreen() {
     }
   };
 
+  // Dynamic styles based on theme
+  const dynamicStyles = {
+    container: {
+      backgroundColor: theme.background,
+    },
+    header: {
+      borderBottomColor: theme.border,
+    },
+    headerTitle: {
+      color: theme.text,
+    },
+    userCard: {
+      backgroundColor: theme.primary,
+    },
+    menuItem: {
+      borderBottomColor: theme.surface,
+    },
+    menuTitle: {
+      color: theme.text,
+    },
+    menuSubtitle: {
+      color: theme.textSecondary,
+    },
+    appInfoText: {
+      color: theme.textTertiary,
+    },
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Menu</Text>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, dynamicStyles.header]}>
+        <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>Menu</Text>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* User Info Card (if logged in) */}
         {user && (
-          <View style={styles.userCard}>
+          <View style={[styles.userCard, dynamicStyles.userCard]}>
             <View style={styles.userAvatar}>
               <Ionicons name="person" size={32} color="#fff" />
             </View>
@@ -105,30 +135,39 @@ export default function MenuScreen() {
           </View>
         )}
 
+        {/* Logo Section */}
+        <View style={styles.logoSection}>
+          <Image 
+            source={require('../assets/brand/logo-icon.png')} 
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+        </View>
+
         {/* Menu Items */}
         <View style={styles.menuSection}>
           {menuItems.map((item) => (
             <TouchableOpacity
               key={item.id}
-              style={styles.menuItem}
+              style={[styles.menuItem, dynamicStyles.menuItem]}
               onPress={() => handleMenuItemPress(item)}
             >
               <View style={[styles.menuIconContainer, { backgroundColor: `${item.color}20` }]}>
                 <Ionicons name={item.icon as any} size={24} color={item.color} />
               </View>
               <View style={styles.menuContent}>
-                <Text style={styles.menuTitle}>{item.title}</Text>
-                <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                <Text style={[styles.menuTitle, dynamicStyles.menuTitle]}>{item.title}</Text>
+                <Text style={[styles.menuSubtitle, dynamicStyles.menuSubtitle]}>{item.subtitle}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
             </TouchableOpacity>
           ))}
         </View>
 
         {/* App Info */}
         <View style={styles.appInfo}>
-          <Text style={styles.appInfoText}>Tavvy v1.0.0</Text>
-          <Text style={styles.appInfoText}>Made with ❤️ for explorers</Text>
+          <Text style={[styles.appInfoText, dynamicStyles.appInfoText]}>Tavvy v1.0.0</Text>
+          <Text style={[styles.appInfoText, dynamicStyles.appInfoText]}>A savvy way of tapping</Text>
         </View>
 
         <View style={{ height: 40 }} />
@@ -140,28 +179,33 @@ export default function MenuScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   header: {
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
   },
   scrollView: {
     flex: 1,
+  },
+  logoSection: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  logoImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
   },
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
     margin: 20,
     padding: 16,
-    backgroundColor: Colors.primary,
     borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -199,7 +243,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
   },
   menuIconContainer: {
     width: 48,
@@ -215,12 +258,10 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
     marginBottom: 4,
   },
   menuSubtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
   },
   appInfo: {
     alignItems: 'center',
@@ -228,7 +269,6 @@ const styles = StyleSheet.create({
   },
   appInfoText: {
     fontSize: 14,
-    color: '#9ca3af',
     marginBottom: 4,
   },
 });

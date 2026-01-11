@@ -1,0 +1,4 @@
+-- Remote migration placeholder
+-- This file exists to reconcile Supabase migration history.
+-- The remote project has migration 20260107155400 marked as applied.
+-- No SQL is applied here intentionally.

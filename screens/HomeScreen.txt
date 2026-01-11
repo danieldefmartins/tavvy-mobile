@@ -1,0 +1,101 @@
+// ============================================
+// REPLACE THE fetchPlaces FUNCTION IN HomeScreen.tsx
+// Find lines 503-612 and replace with this code
+// ============================================
+
+  const fetchPlaces = async (location?: [number, number]) => {
+    try {
+      setLoading(true);
+
+      // Use provided location, userLocation, or default to Austin, TX
+      const centerLng = location?.[0] || userLocation?.[0] || -97.7431;
+      const centerLat = location?.[1] || userLocation?.[1] || 30.2672;
+      
+      // Create a bounding box (~10km radius) for fast indexed query
+      const latDelta = 0.1;  // ~11km
+      const lngDelta = 0.1;  // ~9km at this latitude
+      
+      const minLat = centerLat - latDelta;
+      const maxLat = centerLat + latDelta;
+      const minLng = centerLng - lngDelta;
+      const maxLng = centerLng + lngDelta;
+
+      console.log(`Fetching places near [${centerLng}, ${centerLat}]`);
+
+      // Query fsq_places_raw table (104M Foursquare places)
+      const { data: placesData, error: placesError } = await supabase
+        .from('fsq_places_raw')
+        .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, fsq_category_labels, tel, website, email, instagram, facebook_id')
+        .gte('latitude', minLat)
+        .lte('latitude', maxLat)
+        .gte('longitude', minLng)
+        .lte('longitude', maxLng)
+        .limit(200);
+
+      if (placesError) {
+        console.warn('Supabase error:', placesError);
+        setPlaces(MOCK_PLACES);
+        setFilteredPlaces(MOCK_PLACES);
+        return;
+      }
+
+      console.log('Fetched places from Supabase:', placesData?.length || 0);
+
+      if (placesData && placesData.length > 0) {
+        // Process places - map Foursquare fields to app format
+        const processedPlaces = placesData
+          .filter((place) => {
+            return typeof place.longitude === 'number' && typeof place.latitude === 'number' && 
+                   !isNaN(place.longitude) && !isNaN(place.latitude) && 
+                   place.longitude !== 0 && place.latitude !== 0;
+          })
+          .map(place => {
+            // Parse category from fsq_category_labels
+            let category = 'Other';
+            if (place.fsq_category_labels) {
+              // fsq_category_labels might be stored as comma-separated string or array
+              const labels = typeof place.fsq_category_labels === 'string' 
+                ? place.fsq_category_labels.split(',')[0] 
+                : Array.isArray(place.fsq_category_labels) 
+                  ? place.fsq_category_labels[0] 
+                  : place.fsq_category_labels;
+              if (labels) category = String(labels).trim();
+            }
+
+            return {
+              id: place.fsq_place_id,
+              name: place.name,
+              latitude: place.latitude,
+              longitude: place.longitude,
+              address_line1: place.address,
+              city: place.locality,
+              state_region: place.region,
+              country: place.country,
+              category: category,
+              primary_category: category,
+              phone: place.tel,
+              website: place.website,
+              instagram_url: place.instagram,
+              facebook_url: place.facebook_id,
+              // No signals for Foursquare places yet
+              signals: [],
+              photos: [],
+            };
+          });
+
+        console.log('Processed places with valid coords:', processedPlaces.length);
+        setPlaces(processedPlaces);
+        setFilteredPlaces(processedPlaces);
+      } else {
+        console.log('No places found in database');
+        setPlaces(MOCK_PLACES);
+        setFilteredPlaces(MOCK_PLACES);
+      }
+    } catch (err) {
+      console.error('Error fetching places:', err);
+      setPlaces(MOCK_PLACES);
+      setFilteredPlaces(MOCK_PLACES);
+    } finally {
+      setLoading(false);
+    }
+  };

@@ -66,7 +66,11 @@ export default function SavedScreen({ navigation }: any) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.emptyState}>
-          <Ionicons name="person-circle-outline" size={80} color="#D1D5DB" />
+          <Image 
+            source={require('../assets/brand/logo-icon.png')} 
+            style={styles.emptyLogo}
+            resizeMode="contain"
+          />
           <Text style={styles.emptyTitle}>Sign in to view saved places</Text>
           <Text style={styles.emptySubtitle}>
             Keep track of your favorite spots and places you want to visit.
@@ -105,7 +109,11 @@ export default function SavedScreen({ navigation }: any) {
         />
       ) : (
         <View style={styles.emptyState}>
-          <Ionicons name="heart-outline" size={80} color="#D1D5DB" />
+          <Image 
+            source={require('../assets/brand/logo-icon.png')} 
+            style={styles.emptyLogo}
+            resizeMode="contain"
+          />
           <Text style={styles.emptyTitle}>No saved places yet</Text>
           <Text style={styles.emptySubtitle}>
             Tap the heart icon on any place to save it to your list.
@@ -213,6 +221,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
+  },
+  emptyLogo: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    marginBottom: 8,
   },
   emptyTitle: {
     fontSize: 20,

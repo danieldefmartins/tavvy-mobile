@@ -78,12 +78,14 @@ export default function ProfileScreen({ navigation }: any) {
       <View style={styles.container}>
         <View style={styles.guestContent}>
           <View style={styles.guestHeader}>
-            <View style={styles.logoContainer}>
-              <Text style={styles.logoText}>T</Text>
-            </View>
+            <Image 
+              source={require('../assets/brand/logo-full.png')} 
+              style={styles.guestLogo}
+              resizeMode="contain"
+            />
             <Text style={styles.guestTitle}>Welcome to TavvY</Text>
             <Text style={styles.guestSubtitle}>
-              Discover and share the vibe of places around you.
+              A savvy way of tapping. Discover and share the vibe of places around you.
             </Text>
           </View>
 
@@ -208,6 +210,11 @@ const styles = StyleSheet.create({
   guestHeader: {
     alignItems: 'center',
     marginBottom: 48,
+  },
+  guestLogo: {
+    width: 180,
+    height: 120,
+    marginBottom: 24,
   },
   logoContainer: {
     width: 80,

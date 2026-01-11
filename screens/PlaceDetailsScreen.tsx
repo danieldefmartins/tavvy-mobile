@@ -898,6 +898,11 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           
           {/* Top Right Buttons */}
           <View style={styles.topRightButtons}>
+            <Image 
+              source={require('../assets/brand/logo-icon.png')} 
+              style={styles.headerLogoSmall}
+              resizeMode="contain"
+            />
             <TouchableOpacity style={styles.actionButton}>
               <Ionicons name="heart-outline" size={22} color="#000" />
             </TouchableOpacity>
@@ -1530,6 +1535,13 @@ const styles = StyleSheet.create({
     right: 16,
     flexDirection: 'row',
     gap: 8,
+    alignItems: 'center',
+  },
+  headerLogoSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    marginRight: 4,
   },
   actionButton: {
     width: 40,

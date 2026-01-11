@@ -23,7 +23,7 @@ export default function UniverseDiscoveryScreen() {
 
   const categories = [
     { id: 'All', label: 'All', icon: null },
-    { id: 'Theme Parks', label: 'Theme Parks', icon: 'roller-coaster-outline' },
+    { id: 'Theme Parks', label: 'Theme Parks', icon: 'ticket-outline' },
     { id: 'Airports', label: 'Airports', icon: 'airplane-outline' },
     { id: 'Campuses', label: 'Campuses', icon: 'school-outline' },
     { id: 'Festivals', label: 'Festivals', icon: 'musical-notes-outline' },

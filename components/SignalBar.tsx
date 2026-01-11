@@ -41,11 +41,11 @@ export default function SignalBar({ label, tapCount, type, icon, details }: Sign
   const getBackgroundColor = () => {
     switch (type) {
       case 'positive':
-        return theme.signalPositive;
+        return theme.signalPros;      // Green - positive signals
       case 'neutral':
-        return theme.signalNeutral;
+        return theme.signalUniverse;  // Blue - context/universe signals
       case 'negative':
-        return theme.signalNegative;
+        return theme.signalCons;      // Amber - warning/cons signals
     }
   };
   

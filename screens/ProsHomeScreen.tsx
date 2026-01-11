@@ -17,6 +17,7 @@ import {
   FlatList,
   RefreshControl,
   Dimensions,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -209,6 +210,16 @@ export default function ProsHomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
+        {/* Header with Logo */}
+        <View style={styles.prosHeader}>
+          <Image 
+            source={require('../assets/brand/logo-icon.png')} 
+            style={styles.prosHeaderLogo}
+            resizeMode="contain"
+          />
+          <Text style={styles.prosHeaderTitle}>Tavvy Pros</Text>
+        </View>
+
         {/* Mode Toggle */}
         <View style={styles.modeToggleContainer}>
           <TouchableOpacity
@@ -408,6 +419,25 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+  },
+  // Header with Logo
+  prosHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  prosHeaderLogo: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  prosHeaderTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: ProsColors.textPrimary,
   },
   // Mode Toggle
   modeToggleContainer: {

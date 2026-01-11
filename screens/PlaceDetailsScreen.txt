@@ -1,0 +1,137 @@
+// ============================================
+// REPLACE THE PLACE FETCH SECTION IN PlaceDetailsScreen.tsx
+// Find lines 394-449 and replace with this code
+// ============================================
+
+        // Check if placeId looks like a Foursquare ID (alphanumeric, no dashes)
+        // vs UUID (has dashes like "550e8400-e29b-41d4-a716-446655440000")
+        const isFoursquareId = placeId && !placeId.includes('-');
+
+        if (isFoursquareId) {
+          // Query fsq_places_raw table for Foursquare places
+          const { data: fsqData, error: fsqError } = await supabase
+            .from('fsq_places_raw')
+            .select('*')
+            .eq('fsq_place_id', placeId)
+            .limit(1)
+            .single();
+
+          if (fsqData && !fsqError) {
+            // Parse category from fsq_category_labels
+            let category = 'Place';
+            if (fsqData.fsq_category_labels) {
+              const labels = typeof fsqData.fsq_category_labels === 'string' 
+                ? fsqData.fsq_category_labels.split(',')[0] 
+                : Array.isArray(fsqData.fsq_category_labels) 
+                  ? fsqData.fsq_category_labels[0] 
+                  : fsqData.fsq_category_labels;
+              if (labels) category = String(labels).trim();
+            }
+
+            // Map Foursquare fields to Place interface
+            const mappedPlace: Place = {
+              id: fsqData.fsq_place_id,
+              name: fsqData.name,
+              latitude: fsqData.latitude,
+              longitude: fsqData.longitude,
+              priceLevel: '$$', // Not available in Foursquare data
+              primaryCategory: category,
+              features: [],
+              openYearRound: true,
+              coverImageUrl: null,
+              currentStatus: 'Unknown',
+              is24_7: false,
+              addressLine1: fsqData.address,
+              city: fsqData.locality,
+              state: fsqData.region,
+              zipCode: fsqData.postcode,
+              phone: fsqData.tel,
+              website: fsqData.website,
+              instagramUrl: fsqData.instagram,
+              facebookUrl: fsqData.facebook_id,
+              distance: 0,
+              avgMealCost: null,
+              totalSites: null,
+              starRating: null,
+              closingTime: null,
+              opening_hours: null,
+              is_insured: false,
+              is_licensed: false,
+              established_date: null,
+              socials: null,
+            };
+
+            setPlace(mappedPlace);
+            setPhotos([]); // No photos for Foursquare places
+            
+            // Fetch signals (may not exist for Foursquare places)
+            try {
+              const signalData = await fetchPlaceSignals(placeId);
+              setSignals(signalData);
+            } catch (e) {
+              setSignals({ good_for: [], vibe: [], heads_up: [], medals: [] });
+            }
+
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Fallback: Query original places table (for user-added places with UUIDs)
+        const { data: placeData, error: placeError } = await supabase
+          .from('places')
+          .select('*')
+          .eq('id', placeId)
+          .single();
+
+        if (placeError) throw placeError;
+
+        // Map database fields to Place interface (original code)
+        const mappedPlace: Place = {
+          id: placeData.id,
+          name: placeData.name,
+          latitude: placeData.latitude || placeData.lat,
+          longitude: placeData.longitude || placeData.lng,
+          priceLevel: placeData.price_level || '$$',
+          primaryCategory: placeData.primary_category || 'Restaurant',
+          features: placeData.features || [],
+          openYearRound: placeData.open_year_round ?? true,
+          coverImageUrl: placeData.cover_image_url,
+          currentStatus: placeData.current_status || 'open_accessible',
+          is24_7: placeData.is_24_7 ?? false,
+          addressLine1: placeData.address_line_1,
+          city: placeData.city,
+          state: placeData.state,
+          zipCode: placeData.zip_code,
+          phone: placeData.phone,
+          website: placeData.website,
+          instagramUrl: placeData.instagram_url,
+          facebookUrl: placeData.facebook_url,
+          distance: placeData.distance || 0,
+          avgMealCost: placeData.avg_meal_cost,
+          totalSites: placeData.total_sites,
+          starRating: placeData.star_rating,
+          closingTime: placeData.closing_time,
+          opening_hours: placeData.opening_hours,
+          is_insured: placeData.is_insured,
+          is_licensed: placeData.is_licensed,
+          established_date: placeData.established_date,
+          socials: placeData.socials,
+          // Map entrance fields
+          entrance_1_name: placeData.entrance_1_name,
+          entrance_1_latitude: placeData.entrance_1_latitude,
+          entrance_1_longitude: placeData.entrance_1_longitude,
+          entrance_1_is_primary: placeData.entrance_1_is_primary,
+          entrance_1_road: placeData.entrance_1_road,
+          entrance_1_notes: placeData.entrance_1_notes,
+          entrance_1_max_rv_length_ft: placeData.entrance_1_max_rv_length_ft,
+          entrance_1_max_rv_height_ft: placeData.entrance_1_max_rv_height_ft,
+          entrance_1_road_type: placeData.entrance_1_road_type,
+          entrance_1_grade: placeData.entrance_1_grade,
+          entrance_1_tight_turns: placeData.entrance_1_tight_turns,
+          entrance_1_low_clearance: placeData.entrance_1_low_clearance,
+          entrance_1_seasonal_access: placeData.entrance_1_seasonal_access,
+          entrance_1_seasonal_notes: placeData.entrance_1_seasonal_notes,
+        };
+
+        setPlace(mappedPlace);

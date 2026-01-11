@@ -1,13 +1,15 @@
 import React, { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 
 import { AuthProvider } from './contexts/AuthContext';
-import { Colors } from './constants/Colors';
+import { ThemeProvider, useThemeContext } from './contexts/ThemeContext';
+import { Colors, darkTheme } from './constants/Colors';
 
 // Signal System - Preload cache on app start
 import { preloadSignalLabels } from './hooks/useSignalLabels';
@@ -38,6 +40,7 @@ import CategoryBrowseScreen from './screens/CategoryBrowseScreen';
 import AtlasSearchScreen from './screens/AtlasSearchScreen';
 
 import MenuScreen from './screens/MenuScreen';
+import AppsScreen from './screens/AppsScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SavedScreen from './screens/SavedScreen';
 import LoginScreen from './screens/LoginScreen';
@@ -115,12 +118,12 @@ function AtlasStack() {
 }
 
 // --------------------
-// Menu Stack
+// Apps Stack
 // --------------------
-function MenuStack() {
+function AppsStack() {
   return (
     <MenuStackNav.Navigator screenOptions={{ headerShown: false }}>
-      <MenuStackNav.Screen name="MenuMain" component={MenuScreen} />
+      <MenuStackNav.Screen name="AppsMain" component={AppsScreen} />
       <MenuStackNav.Screen name="ProfileMain" component={ProfileScreen} />
       <MenuStackNav.Screen name="SavedMain" component={SavedScreen} />
 
@@ -189,12 +192,19 @@ function ProsStack() {
 // Tabs
 // --------------------
 function TabNavigator() {
+  const { theme, isDark } = useThemeContext();
+  
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: Colors.tabBarActive,
-        tabBarInactiveTintColor: Colors.tabBarInactive,
+        tabBarActiveTintColor: theme.tabBarActive,
+        tabBarInactiveTintColor: theme.tabBarInactive,
+        tabBarStyle: {
+          backgroundColor: theme.background,
+          borderTopColor: theme.border,
+          borderTopWidth: 0.5,
+        },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
 
@@ -211,8 +221,8 @@ function TabNavigator() {
             case 'Atlas':
               iconName = focused ? 'map' : 'map-outline';
               break;
-            case 'Menu':
-              iconName = focused ? 'menu' : 'menu-outline';
+            case 'Apps':
+              iconName = focused ? 'apps' : 'apps-outline';
               break;
           }
 
@@ -233,15 +243,46 @@ function TabNavigator() {
       />
 
       <Tab.Screen name="Atlas" component={AtlasStack} options={{ tabBarLabel: 'Atlas' }} />
-      <Tab.Screen name="Menu" component={MenuStack} options={{ tabBarLabel: 'Menu' }} />
+      <Tab.Screen name="Apps" component={AppsStack} options={{ tabBarLabel: 'Apps' }} />
     </Tab.Navigator>
   );
 }
 
 // --------------------
-// App Root
+// TavvY Navigation Theme
 // --------------------
-export default function App() {
+const TavvyDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: darkTheme.primary,
+    background: darkTheme.background,
+    card: darkTheme.surface,
+    text: darkTheme.text,
+    border: darkTheme.border,
+    notification: darkTheme.brandOrange,
+  },
+};
+
+const TavvyLightTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: Colors.primary,
+    background: '#FFFFFF',
+    card: '#F8FAFC',
+    text: '#0F172A',
+    border: '#E2E8F0',
+    notification: Colors.secondary,
+  },
+};
+
+// --------------------
+// App Content (with theme access)
+// --------------------
+function AppContent() {
+  const { isDark } = useThemeContext();
+  
   // Preload signal caches on app start for faster signal lookups
   useEffect(() => {
     const initializeSignalSystem = async () => {
@@ -261,12 +302,26 @@ export default function App() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <NavigationContainer theme={isDark ? TavvyDarkTheme : TavvyLightTheme}>
+        <TabNavigator />
+      </NavigationContainer>
+    </>
+  );
+}
+
+// --------------------
+// App Root
+// --------------------
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: darkTheme.background }}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <NavigationContainer>
-            <TabNavigator />
-          </NavigationContainer>
+          <ThemeProvider>
+            <AppContent />
+          </ThemeProvider>
         </AuthProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>
