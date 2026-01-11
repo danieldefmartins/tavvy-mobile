@@ -51,16 +51,24 @@ export default function UniverseDiscoveryScreen() {
       <View style={styles.headerBg} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Header Content */}
+        {/* Header Content - Updated with Logo */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.headerTitle}>Universes</Text>
-            <Text style={styles.headerSubtitle}>Explore worlds with many places inside</Text>
+          <View style={styles.headerLeft}>
+            {/* TavvY White Logo + Section Name */}
+            <Image
+              source={require('../assets/brand/tavvy-logo-white.png')}
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.headerSectionName}>Universes</Text>
           </View>
           <TouchableOpacity style={styles.profileButton}>
             <Ionicons name="person-circle-outline" size={32} color="#fff" />
           </TouchableOpacity>
         </View>
+        
+        {/* Subtitle */}
+        <Text style={styles.headerSubtitle}>Explore worlds with many places inside</Text>
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
@@ -209,20 +217,32 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 20,
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 4,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 80,
+    height: 24,
+    marginRight: 8,
+  },
+  headerSectionName: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    // Use a modern font if available - Space Grotesk
+    // fontFamily: 'SpaceGrotesk-Bold',
   },
   headerSubtitle: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
   profileButton: {
     padding: 4,
@@ -335,7 +355,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.2)',
-// @ts-ignore    backdropFilter: 'blur(10px)',
+    // @ts-ignore
+    backdropFilter: 'blur(10px)',
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 4,
