@@ -40,6 +40,7 @@ import CategoryBrowseScreen from './screens/CategoryBrowseScreen';
 import AtlasSearchScreen from './screens/AtlasSearchScreen';
 
 import MenuScreen from './screens/MenuScreen';
+import AppsScreen from './screens/AppsScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SavedScreen from './screens/SavedScreen';
 import LoginScreen from './screens/LoginScreen';
@@ -117,12 +118,12 @@ function AtlasStack() {
 }
 
 // --------------------
-// Menu Stack
+// Apps Stack
 // --------------------
-function MenuStack() {
+function AppsStack() {
   return (
     <MenuStackNav.Navigator screenOptions={{ headerShown: false }}>
-      <MenuStackNav.Screen name="MenuMain" component={MenuScreen} />
+      <MenuStackNav.Screen name="AppsMain" component={AppsScreen} />
       <MenuStackNav.Screen name="ProfileMain" component={ProfileScreen} />
       <MenuStackNav.Screen name="SavedMain" component={SavedScreen} />
 
@@ -220,8 +221,8 @@ function TabNavigator() {
             case 'Atlas':
               iconName = focused ? 'map' : 'map-outline';
               break;
-            case 'Menu':
-              iconName = focused ? 'menu' : 'menu-outline';
+            case 'Apps':
+              iconName = focused ? 'apps' : 'apps-outline';
               break;
           }
 
@@ -242,7 +243,7 @@ function TabNavigator() {
       />
 
       <Tab.Screen name="Atlas" component={AtlasStack} options={{ tabBarLabel: 'Atlas' }} />
-      <Tab.Screen name="Menu" component={MenuStack} options={{ tabBarLabel: 'Menu' }} />
+      <Tab.Screen name="Apps" component={AppsStack} options={{ tabBarLabel: 'Apps' }} />
     </Tab.Navigator>
   );
 }
