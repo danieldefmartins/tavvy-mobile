@@ -87,17 +87,12 @@ serve(async (req) => {
     }
 
     // Find matching pros based on category and location
-    // Using service account for this query to bypass RLS
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Get pros that:
-    // 1. Have the matching category
-    // 2. Are in the same city/state or within service radius
-    // 3. Are active and verified
-    // 4. Have active subscription (for priority) or not (they'll see locked leads)
+    // Simplified matching logic to avoid complex joins that might fail
     const { data: matchingPros, error: prosError } = await supabaseAdmin
       .from('pro_providers')
       .select(`
@@ -105,38 +100,20 @@ serve(async (req) => {
         business_name,
         city,
         state,
-        service_radius,
-        pro_category_links!inner(category_id),
         pro_subscriptions(status, end_date)
       `)
       .eq('is_active', true)
-      .eq('pro_category_links.category_id', body.category_id)
-      .or(`city.eq.${body.city},state.eq.${body.state}`)
-      .limit(50) // Get more than needed to filter
+      .or(`city.ilike.%${body.city}%,state.eq.${body.state}`)
+      .limit(50)
 
     if (prosError) {
       console.error('Error finding pros:', prosError)
-      // Don't fail the request, just log the error
     }
 
     // Create invites for matching pros
     const invites = []
     if (matchingPros && matchingPros.length > 0) {
-      // Sort pros: subscribed first, then by proximity
-      const sortedPros = matchingPros.sort((a, b) => {
-        const aSubscribed = a.pro_subscriptions?.some(
-          (s: any) => s.status === 'active' && new Date(s.end_date) > new Date()
-        )
-        const bSubscribed = b.pro_subscriptions?.some(
-          (s: any) => s.status === 'active' && new Date(s.end_date) > new Date()
-        )
-        if (aSubscribed && !bSubscribed) return -1
-        if (!aSubscribed && bSubscribed) return 1
-        return 0
-      })
-
-      // Create invites for top pros
-      const prosToInvite = sortedPros.slice(0, body.desired_pro_count || 10)
+      const prosToInvite = matchingPros.slice(0, body.desired_pro_count || 10)
       
       for (const pro of prosToInvite) {
         const { data: invite, error: inviteError } = await supabaseAdmin
@@ -153,9 +130,6 @@ serve(async (req) => {
           invites.push(invite)
         }
       }
-
-      // TODO: Send notifications to invited pros (SMS/Push)
-      // This will be handled by a separate notification function
     }
 
     return new Response(

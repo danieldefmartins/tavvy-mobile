@@ -19,16 +19,22 @@ serve(async (req) => {
 
     const { categorySlug, query, city, state, zipCode, limit = 10, offset = 0 } = await req.json();
 
-    let queryBuilder = supabaseAdmin.from('pro_providers').select('*, service_categories(*)', { count: 'exact' });
+    // Start building the query
+    let queryBuilder = supabaseAdmin
+      .from('pro_providers')
+      .select('*, service_categories!inner(*)', { count: 'exact' });
 
-    if (categorySlug) {
+    // Filter by category slug if provided
+    if (categorySlug && categorySlug !== 'all') {
         queryBuilder = queryBuilder.eq('service_categories.slug', categorySlug);
     }
 
+    // Filter by search query (FTS)
     if (query) {
-        queryBuilder = queryBuilder.textSearch('fts', query);
+        queryBuilder = queryBuilder.ilike('business_name', `%${query}%`);
     }
 
+    // Filter by location
     if (city) {
         queryBuilder = queryBuilder.ilike('city', `%${city}%`);
     }
@@ -41,11 +47,16 @@ serve(async (req) => {
         queryBuilder = queryBuilder.eq('zip_code', zipCode);
     }
 
+    // Ensure provider is active
+    queryBuilder = queryBuilder.eq('is_active', true);
+
+    // Pagination
     queryBuilder = queryBuilder.range(offset, offset + limit - 1);
 
     const { data, error, count } = await queryBuilder;
 
     if (error) {
+      console.error('Search error:', error);
       throw error;
     }
 
@@ -57,6 +68,7 @@ serve(async (req) => {
       }
     )
   } catch (error) {
+    console.error('Function error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {

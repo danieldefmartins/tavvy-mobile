@@ -73,11 +73,11 @@ export default function ProsBrowseScreen() {
   };
 
   const handleProPress = (slug: string) => {
-    navigation.navigate('ProsProfileScreen', { slug });
+    navigation.navigate('ProsProfile', { slug });
   };
 
   const handleMessagePress = (proId: number) => {
-    navigation.navigate('ProsMessagesScreen', { proId });
+    navigation.navigate('ProsMessages', { proId });
   };
 
   const selectedCategoryName = selectedCategory
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: ProsColors.sectionBg,
+    backgroundColor: '#F3F4F6',
     borderRadius: 10,
     paddingHorizontal: 12,
     height: 44,
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   filterButton: {
     width: 44,
     height: 44,
-    backgroundColor: ProsColors.sectionBg,
+    backgroundColor: '#F3F4F6',
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   locationBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: ProsColors.sectionBg,
+    backgroundColor: '#F3F4F6',
     borderRadius: 10,
     paddingHorizontal: 12,
     height: 44,
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   categoryPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: ProsColors.sectionBg,
+    backgroundColor: '#F3F4F6',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,

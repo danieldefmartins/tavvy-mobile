@@ -44,6 +44,9 @@ import SavedScreen from './screens/SavedScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
 
+// Apps Screen
+import AppsHomeScreen from './screens/AppsHomeScreen';
+
 // ========== PROS SCREENS (NEW) ==========
 import ProsHomeScreen from './screens/ProsHomeScreen';
 import ProsBrowseScreen from './screens/ProsBrowseScreen';
@@ -78,7 +81,8 @@ const HomeStackNav = createNativeStackNavigator();
 const AtlasStackNav = createNativeStackNavigator();
 const MenuStackNav = createNativeStackNavigator();
 const UniverseStackNav = createNativeStackNavigator();
-const ProsStackNav = createNativeStackNavigator(); // NEW: Pros Stack
+const ProsStackNav = createNativeStackNavigator();
+const AppsStackNav = createNativeStackNavigator();
 
 // --------------------
 // Home Stack
@@ -95,7 +99,6 @@ function HomeStack() {
       <HomeStackNav.Screen name="CityDetails" component={CityDetailsScreen} />
       <HomeStackNav.Screen name="RateCity" component={RateCityScreen} />
       <HomeStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
-      {/* Business Card Scanner - accessible from AddPlaceScreen */}
       <HomeStackNav.Screen 
         name="BusinessCardScanner" 
         component={BusinessCardScannerScreen}
@@ -129,27 +132,17 @@ function MenuStack() {
       <MenuStackNav.Screen name="MenuMain" component={MenuScreen} />
       <MenuStackNav.Screen name="ProfileMain" component={ProfileScreen} />
       <MenuStackNav.Screen name="SavedMain" component={SavedScreen} />
-
-      {/* Auth */}
       <MenuStackNav.Screen name="Login" component={LoginScreen} />
       <MenuStackNav.Screen name="SignUp" component={SignUpScreen} />
-
-      {/* Shared screens accessible from menu */}
       <MenuStackNav.Screen name="RateCity" component={RateCityScreen} />
       <MenuStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
-      
-      {/* Create functionality moved to Menu */}
       <MenuStackNav.Screen name="UniversalAdd" component={UniversalAddScreen} />
       <MenuStackNav.Screen name="AddPlace" component={AddPlaceScreen} />
-      
-      {/* Business Card Scanner - accessible from AddPlaceScreen */}
       <MenuStackNav.Screen 
         name="BusinessCardScanner" 
         component={BusinessCardScannerScreen}
         options={{ presentation: 'modal' }}
       />
-      
-      {/* Pro Dashboard accessible from Menu */}
       <MenuStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
       <MenuStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
       <MenuStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
@@ -170,7 +163,7 @@ function UniverseStack() {
 }
 
 // --------------------
-// Pros Stack (NEW)
+// Pros Stack
 // --------------------
 function ProsStack() {
   return (
@@ -182,13 +175,27 @@ function ProsStack() {
       <ProsStackNav.Screen name="ProsRegistration" component={ProsRegistrationScreen} />
       <ProsStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
       <ProsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
-      
-      {/* New Multi-step Request Flow */}
       <ProsStackNav.Screen name="ProsRequestStep1" component={ProsRequestStep1Screen} />
       <ProsStackNav.Screen name="ProsRequestStep2" component={ProsRequestStep2Screen} />
       <ProsStackNav.Screen name="ProsRequestStep3" component={ProsRequestStep3Screen} />
       <ProsStackNav.Screen name="ProsRequestStep4" component={ProsRequestStep4Screen} />
     </ProsStackNav.Navigator>
+  );
+}
+
+// --------------------
+// Apps Stack
+// --------------------
+function AppsStack() {
+  return (
+    <AppsStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <AppsStackNav.Screen name="AppsMain" component={AppsHomeScreen} />
+      {/* Add other app-specific screens here as they are developed */}
+      <AppsStackNav.Screen name="ProsHome" component={ProsHomeScreen} />
+      <AppsStackNav.Screen name="UniversalAdd" component={UniversalAddScreen} />
+      <AppsStackNav.Screen name="ProfileMain" component={ProfileScreen} />
+      <AppsStackNav.Screen name="SavedMain" component={SavedScreen} />
+    </AppsStackNav.Navigator>
   );
 }
 
@@ -218,8 +225,8 @@ function TabNavigator() {
             case 'Atlas':
               iconName = focused ? 'map' : 'map-outline';
               break;
-            case 'Menu':
-              iconName = focused ? 'menu' : 'menu-outline';
+            case 'Apps':
+              iconName = focused ? 'apps' : 'apps-outline';
               break;
           }
 
@@ -229,18 +236,9 @@ function TabNavigator() {
     >
       <Tab.Screen name="Home" component={HomeStack} options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen name="Explore" component={UniverseStack} options={{ tabBarLabel: 'Universes' }} />
-
-      {/* CHANGED: Replaced Add tab with Pros tab */}
-      <Tab.Screen
-        name="Pros"
-        component={ProsStack}
-        options={{
-          tabBarLabel: 'Pros',
-        }}
-      />
-
+      <Tab.Screen name="Pros" component={ProsStack} options={{ tabBarLabel: 'Pros' }} />
       <Tab.Screen name="Atlas" component={AtlasStack} options={{ tabBarLabel: 'Atlas' }} />
-      <Tab.Screen name="Menu" component={MenuStack} options={{ tabBarLabel: 'Menu' }} />
+      <Tab.Screen name="Apps" component={AppsStack} options={{ tabBarLabel: 'Apps' }} />
     </Tab.Navigator>
   );
 }
@@ -249,11 +247,9 @@ function TabNavigator() {
 // App Root
 // --------------------
 export default function App() {
-  // Preload signal caches on app start for faster signal lookups
   useEffect(() => {
     const initializeSignalSystem = async () => {
       try {
-        // Preload both caches in parallel
         await Promise.all([
           preloadSignalLabels(),
           preloadSignalCache(),
