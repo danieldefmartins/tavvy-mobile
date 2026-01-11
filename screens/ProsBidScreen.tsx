@@ -1,458 +1,132 @@
-/**
- * Pros Bid Screen (UPDATED to match mockup)
- * Install path: screens/ProsBidScreen.tsx
- * 
- * Screen for pros to respond to leads with pricing and pitch.
- * DESIGN MATCHES: pro_bid_screen.png mockup
- */
-
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, SafeAreaView, Alert } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
+import { Ionicons } from '@expo/vector-icons';
 import { ProsColors } from '../constants/ProsConfig';
 
-type RouteParams = {
-  ProsBidScreen: {
-    leadId: string;
-  };
-};
-
-type NavigationProp = NativeStackNavigationProp<any>;
-
-// Sample lead data
-const SAMPLE_LEAD = {
-  id: '1',
-  customerName: 'Sarah T.',
-  projectTitle: 'Kitchen Lighting Installation',
-  location: 'Seattle, WA',
-  budgetMin: 1500,
-  budgetMax: 2500,
-  timeline: 'Within a week',
-  description: 'Looking to install recessed lighting in my kitchen. Currently have 2 existing fixtures that need to be removed. Kitchen is approximately 200 sq ft.',
-};
+type RouteParams = { leadId: string; customerName: string; service: string; timeline: string; budget: string; description: string };
 
 export default function ProsBidScreen() {
-  const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<RouteProp<RouteParams, 'ProsBidScreen'>>();
-  const { leadId } = route.params;
-
-  const [lowEstimate, setLowEstimate] = useState('');
-  const [highEstimate, setHighEstimate] = useState('');
-  const [pitch, setPitch] = useState('');
-  const [availableDate, setAvailableDate] = useState('');
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
+  const { leadId, customerName, service, timeline, budget, description } = route.params || { leadId: '1', customerName: 'Customer', service: 'Service', timeline: 'Flexible', budget: 'Not specified', description: '' };
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const lead = SAMPLE_LEAD;
-  const MAX_PITCH_LENGTH = 500;
-
-  const handleBack = () => {
-    navigation.goBack();
-  };
+  const handleBack = () => navigation.goBack();
 
   const handleSubmit = async () => {
-    if (!lowEstimate || !highEstimate) {
-      Alert.alert('Missing Information', 'Please provide a price range estimate.');
-      return;
-    }
-
-    if (!pitch.trim()) {
-      Alert.alert('Missing Information', 'Please write a pitch to introduce yourself.');
-      return;
-    }
-
+    if (!minPrice || !maxPrice) { Alert.alert('Missing Information', 'Please enter your price range.'); return; }
     setIsSubmitting(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setIsSubmitting(false);
-    Alert.alert(
-      'Response Sent!',
-      'Your response has been sent to the customer. They will be notified and can view your profile.',
-      [{ text: 'OK', onPress: () => navigation.goBack() }]
-    );
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      Alert.alert('Success!', 'Your bid has been submitted. The customer will be notified.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to submit bid. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoid}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={ProsColors.textPrimary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Respond to Lead</Text>
-          <View style={{ width: 40 }} />
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}><Ionicons name="arrow-back" size={24} color="#374151" /></TouchableOpacity>
+        <Text style={styles.headerTitle}>Submit Bid</Text>
+        <View style={{ width: 40 }} />
+      </View>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.leadCard}>
+          <View style={styles.leadHeader}>
+            <View style={styles.customerAvatar}><Text style={styles.avatarText}>{customerName.charAt(0)}</Text></View>
+            <View style={styles.leadInfo}><Text style={styles.customerName}>{customerName}</Text><Text style={styles.serviceType}>{service}</Text></View>
+          </View>
+          <View style={styles.leadDetails}>
+            <View style={styles.detailItem}><Ionicons name="calendar" size={16} color="#6B7280" /><Text style={styles.detailLabel}>Timeline:</Text><Text style={styles.detailValue}>{timeline}</Text></View>
+            <View style={styles.detailItem}><Ionicons name="wallet" size={16} color="#6B7280" /><Text style={styles.detailLabel}>Budget:</Text><Text style={styles.detailValue}>{budget}</Text></View>
+          </View>
+          {description ? <View style={styles.descriptionBox}><Text style={styles.descriptionLabel}>Project Description:</Text><Text style={styles.descriptionText}>{description}</Text></View> : null}
         </View>
-
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Lead Info Card - Dark background matching mockup */}
-          <View style={styles.leadCard}>
-            <View style={styles.customerRow}>
-              <View style={styles.customerAvatar}>
-                <Ionicons name="person-outline" size={18} color="#FFFFFF" />
-              </View>
-              <Text style={styles.customerName}>{lead.customerName}</Text>
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>Your Estimate</Text>
+          <Text style={styles.sectionSubtitle}>Provide a ballpark price range for this project</Text>
+          <View style={styles.priceInputs}>
+            <View style={styles.priceInputWrapper}>
+              <Text style={styles.inputLabel}>Min Price</Text>
+              <View style={styles.priceInput}><Text style={styles.dollarSign}>$</Text><TextInput style={styles.input} placeholder="0" placeholderTextColor="#9CA3AF" keyboardType="numeric" value={minPrice} onChangeText={setMinPrice} /></View>
             </View>
-            <Text style={styles.projectTitle}>{lead.projectTitle}</Text>
-            <View style={styles.locationRow}>
-              <Ionicons name="location-outline" size={16} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.locationText}>{lead.location}</Text>
+            <View style={styles.priceDivider}><Text style={styles.dividerText}>to</Text></View>
+            <View style={styles.priceInputWrapper}>
+              <Text style={styles.inputLabel}>Max Price</Text>
+              <View style={styles.priceInput}><Text style={styles.dollarSign}>$</Text><TextInput style={styles.input} placeholder="0" placeholderTextColor="#9CA3AF" keyboardType="numeric" value={maxPrice} onChangeText={setMaxPrice} /></View>
             </View>
-            <Text style={styles.budgetText}>
-              ${lead.budgetMin.toLocaleString()} - ${lead.budgetMax.toLocaleString()}
-            </Text>
-            <Text style={styles.timelineText}>{lead.timeline}</Text>
-          </View>
-
-          {/* Your Response Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your Response</Text>
-
-            {/* Ballpark Price Range */}
-            <Text style={styles.fieldLabel}>Ballpark Price Range</Text>
-            <View style={styles.priceInputRow}>
-              <View style={styles.priceInputContainer}>
-                <Text style={styles.dollarSign}>$</Text>
-                <View style={styles.priceInputWrapper}>
-                  <Text style={styles.priceInputLabel}>Low estimate</Text>
-                  <TextInput
-                    style={styles.priceInput}
-                    placeholder="1700"
-                    placeholderTextColor={ProsColors.textMuted}
-                    keyboardType="numeric"
-                    value={lowEstimate}
-                    onChangeText={setLowEstimate}
-                  />
-                </View>
-              </View>
-              <View style={styles.priceInputContainer}>
-                <Text style={styles.dollarSign}>$</Text>
-                <View style={styles.priceInputWrapper}>
-                  <Text style={styles.priceInputLabel}>High estimate</Text>
-                  <TextInput
-                    style={styles.priceInput}
-                    placeholder="2200"
-                    placeholderTextColor={ProsColors.textMuted}
-                    keyboardType="numeric"
-                    value={highEstimate}
-                    onChangeText={setHighEstimate}
-                  />
-                </View>
-              </View>
-            </View>
-            <Text style={styles.priceHint}>
-              Give an honest range based on the description. Final quote can differ after inspection.
-            </Text>
-
-            {/* Your Pitch */}
-            <Text style={styles.fieldLabel}>Your Pitch</Text>
-            <View style={styles.pitchInputContainer}>
-              <TextInput
-                style={styles.pitchInput}
-                placeholder="Introduce yourself and explain why you're a good fit for this project..."
-                placeholderTextColor={ProsColors.textMuted}
-                multiline
-                textAlignVertical="top"
-                maxLength={MAX_PITCH_LENGTH}
-                value={pitch}
-                onChangeText={setPitch}
-              />
-            </View>
-            <Text style={styles.characterCount}>
-              {pitch.length}/{MAX_PITCH_LENGTH}
-            </Text>
-
-            {/* Availability */}
-            <Text style={styles.fieldLabel}>Availability</Text>
-            <TouchableOpacity style={styles.dateInputContainer}>
-              <Ionicons name="calendar-outline" size={20} color={ProsColors.textMuted} />
-              <View style={styles.dateInputWrapper}>
-                <Text style={styles.dateInputLabel}>Earliest available date</Text>
-                <TextInput
-                  style={styles.dateInput}
-                  placeholder="Oct 26, 2024"
-                  placeholderTextColor={ProsColors.textMuted}
-                  value={availableDate}
-                  onChangeText={setAvailableDate}
-                />
-              </View>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-
-        {/* Bottom CTA */}
-        <View style={styles.bottomCTA}>
-          <TouchableOpacity
-            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={isSubmitting}
-          >
-            <Text style={styles.submitButtonText}>
-              {isSubmitting ? 'Submitting...' : 'Submit Response'}
-            </Text>
-          </TouchableOpacity>
-          <View style={styles.infoRow}>
-            <Ionicons name="information-circle-outline" size={16} color={ProsColors.textSecondary} />
-            <Text style={styles.infoText}>
-              The customer will see your profile, rating, and this response.
-            </Text>
           </View>
         </View>
-      </KeyboardAvoidingView>
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>Message to Customer</Text>
+          <Text style={styles.sectionSubtitle}>Introduce yourself and explain your approach</Text>
+          <TextInput style={styles.messageInput} placeholder="Hi! I'd be happy to help with your project..." placeholderTextColor="#9CA3AF" multiline numberOfLines={6} value={message} onChangeText={setMessage} textAlignVertical="top" />
+        </View>
+        <View style={styles.tipsCard}>
+          <Ionicons name="bulb" size={20} color="#F59E0B" />
+          <View style={styles.tipsContent}>
+            <Text style={styles.tipsTitle}>Tips for a winning bid</Text>
+            <Text style={styles.tipsText}>• Respond quickly - fast responses get hired more</Text>
+            <Text style={styles.tipsText}>• Be specific about your experience</Text>
+            <Text style={styles.tipsText}>• Explain your process and timeline</Text>
+          </View>
+        </View>
+      </ScrollView>
+      <View style={styles.footer}>
+        <TouchableOpacity style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]} onPress={handleSubmit} disabled={isSubmitting}>
+          {isSubmitting ? <Text style={styles.submitButtonText}>Submitting...</Text> : <><Text style={styles.submitButtonText}>Submit Bid</Text><Ionicons name="send" size={18} color="#FFFFFF" /></>}
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  keyboardAvoid: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: ProsColors.borderLight,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 20,
-  },
-
-  // Lead Card - Dark background matching mockup
-  leadCard: {
-    backgroundColor: '#374151',
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 12,
-    padding: 20,
-  },
-  customerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  customerAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  customerName: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#FFFFFF',
-  },
-  projectTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  locationText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginLeft: 4,
-  },
-  budgetText: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  timelineText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-  },
-
-  // Section
-  section: {
-    paddingHorizontal: 16,
-    paddingTop: 24,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: ProsColors.textPrimary,
-    marginBottom: 20,
-  },
-  fieldLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-    marginBottom: 10,
-    marginTop: 16,
-  },
-
-  // Price Inputs - matching mockup
-  priceInputRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  priceInputContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: ProsColors.borderLight,
-    borderRadius: 10,
-    paddingLeft: 14,
-  },
-  dollarSign: {
-    fontSize: 16,
-    color: ProsColors.textSecondary,
-    marginRight: 8,
-  },
-  priceInputWrapper: {
-    flex: 1,
-    paddingVertical: 10,
-  },
-  priceInputLabel: {
-    fontSize: 12,
-    color: ProsColors.textSecondary,
-    marginBottom: 2,
-  },
-  priceInput: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-    padding: 0,
-  },
-  priceHint: {
-    fontSize: 13,
-    color: ProsColors.textSecondary,
-    marginTop: 10,
-    lineHeight: 18,
-  },
-
-  // Pitch Input - matching mockup
-  pitchInputContainer: {
-    borderWidth: 1,
-    borderColor: ProsColors.borderLight,
-    borderRadius: 10,
-    padding: 14,
-    minHeight: 120,
-  },
-  pitchInput: {
-    fontSize: 15,
-    color: ProsColors.textPrimary,
-    lineHeight: 22,
-    minHeight: 90,
-  },
-  characterCount: {
-    fontSize: 12,
-    color: ProsColors.textSecondary,
-    textAlign: 'right',
-    marginTop: 6,
-  },
-
-  // Date Input - matching mockup
-  dateInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: ProsColors.borderLight,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  dateInputWrapper: {
-    flex: 1,
-    marginLeft: 10,
-  },
-  dateInputLabel: {
-    fontSize: 12,
-    color: ProsColors.textSecondary,
-    marginBottom: 2,
-  },
-  dateInput: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: ProsColors.textPrimary,
-    padding: 0,
-  },
-
-  // Bottom CTA - matching mockup
-  bottomCTA: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: ProsColors.borderLight,
-    backgroundColor: '#FFFFFF',
-  },
-  submitButton: {
-    backgroundColor: ProsColors.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  submitButtonDisabled: {
-    opacity: 0.7,
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  infoText: {
-    fontSize: 13,
-    color: ProsColors.textSecondary,
-  },
+  container: { flex: 1, backgroundColor: '#F3F4F6' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  backButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '600', color: '#111827' },
+  content: { flex: 1, padding: 16 },
+  leadCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16 },
+  leadHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  customerAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#E0E7FF', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  avatarText: { color: ProsColors.primary, fontSize: 18, fontWeight: 'bold' },
+  leadInfo: { flex: 1 },
+  customerName: { fontSize: 16, fontWeight: '600', color: '#111827' },
+  serviceType: { fontSize: 14, color: '#6B7280' },
+  leadDetails: { gap: 8 },
+  detailItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  detailLabel: { fontSize: 14, color: '#6B7280' },
+  detailValue: { fontSize: 14, fontWeight: '500', color: '#111827' },
+  descriptionBox: { marginTop: 16, padding: 12, backgroundColor: '#F9FAFB', borderRadius: 8 },
+  descriptionLabel: { fontSize: 12, color: '#6B7280', marginBottom: 4 },
+  descriptionText: { fontSize: 14, color: '#374151' },
+  formSection: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16 },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 4 },
+  sectionSubtitle: { fontSize: 13, color: '#6B7280', marginBottom: 16 },
+  priceInputs: { flexDirection: 'row', alignItems: 'flex-end' },
+  priceInputWrapper: { flex: 1 },
+  inputLabel: { fontSize: 12, color: '#6B7280', marginBottom: 6 },
+  priceInput: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB', paddingHorizontal: 12 },
+  dollarSign: { fontSize: 16, color: '#6B7280', marginRight: 4 },
+  input: { flex: 1, fontSize: 16, color: '#111827', paddingVertical: 12 },
+  priceDivider: { paddingHorizontal: 12, paddingBottom: 12 },
+  dividerText: { color: '#9CA3AF', fontSize: 14 },
+  messageInput: { backgroundColor: '#F9FAFB', borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB', padding: 12, fontSize: 14, color: '#111827', minHeight: 120 },
+  tipsCard: { flexDirection: 'row', backgroundColor: '#FFFBEB', borderRadius: 12, padding: 16, marginBottom: 16, gap: 12 },
+  tipsContent: { flex: 1 },
+  tipsTitle: { fontSize: 14, fontWeight: '600', color: '#92400E', marginBottom: 8 },
+  tipsText: { fontSize: 13, color: '#78350F', marginBottom: 4 },
+  footer: { padding: 16, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#E5E7EB' },
+  submitButton: { backgroundColor: ProsColors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, borderRadius: 12, gap: 8 },
+  submitButtonDisabled: { backgroundColor: '#9CA3AF' },
+  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
 });

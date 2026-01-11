@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -33,27 +33,35 @@ export default function ProsRequestStep1Screen() {
   
   const { categoryId, categoryName } = route.params || {};
   
-  const [selectedService, setSelectedService] = useState<string | null>(null);
+  const [selectedService, setSelectedService] = useState<string | null>(categoryId || null);
   const [description, setDescription] = useState('');
 
+  useEffect(() => {
+    if (categoryId) {
+      setSelectedService(categoryId);
+    }
+  }, [categoryId]);
+
   const services = [
-    { id: 'plumbing', name: 'Plumbing', icon: 'water' },
-    { id: 'electrical', name: 'Electrical', icon: 'flash' },
-    { id: 'hvac', name: 'HVAC', icon: 'thermometer' },
-    { id: 'cleaning', name: 'Cleaning', icon: 'sparkles' },
-    { id: 'landscaping', name: 'Landscaping', icon: 'leaf' },
-    { id: 'painting', name: 'Painting', icon: 'color-palette' },
-    { id: 'roofing', name: 'Roofing', icon: 'home' },
-    { id: 'flooring', name: 'Flooring', icon: 'grid' },
-    { id: 'other', name: 'Other', icon: 'ellipsis-horizontal' },
+    { id: '1', name: 'Plumbing', icon: 'water' },
+    { id: '2', name: 'Electrical', icon: 'flash' },
+    { id: '3', name: 'HVAC', icon: 'thermometer' },
+    { id: '4', name: 'Cleaning', icon: 'sparkles' },
+    { id: '5', name: 'Landscaping', icon: 'leaf' },
+    { id: '6', name: 'Painting', icon: 'color-palette' },
+    { id: '7', name: 'Roofing', icon: 'home' },
+    { id: '8', name: 'Flooring', icon: 'grid' },
+    { id: '9', name: 'Other', icon: 'ellipsis-horizontal' },
   ];
 
   const handleNext = () => {
     if (!selectedService) return;
     
+    const selectedCategory = services.find(s => s.id === selectedService);
+    
     navigation.navigate('ProsRequestStep2', {
-      categoryId: categoryId || selectedService,
-      categoryName: categoryName || services.find(s => s.id === selectedService)?.name,
+      categoryId: selectedService,
+      categoryName: categoryName || selectedCategory?.name || 'Service',
       description,
     });
   };

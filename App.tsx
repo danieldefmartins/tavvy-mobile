@@ -1,15 +1,14 @@
 import React, { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { StripeProvider } from '@stripe/stripe-react-native';
 
 import { AuthProvider } from './contexts/AuthContext';
-import { ThemeProvider, useThemeContext } from './contexts/ThemeContext';
-import { Colors, darkTheme } from './constants/Colors';
+import { Colors } from './constants/Colors';
 
 // Signal System - Preload cache on app start
 import { preloadSignalLabels } from './hooks/useSignalLabels';
@@ -52,8 +51,13 @@ import ProsProfileScreen from './screens/ProsProfileScreen';
 import ProsDashboardScreen from './screens/ProsDashboardScreen';
 import ProsRegistrationScreen from './screens/ProsRegistrationScreen';
 import ProsMessagesScreen from './screens/ProsMessagesScreen';
-import ProsRequestQuoteScreen from './screens/ProsRequestQuoteScreen';
 import ProsLeadsScreen from './screens/ProsLeadsScreen';
+
+// New Multi-step Request Flow
+import ProsRequestStep1Screen from './screens/ProsRequestStep1Screen';
+import ProsRequestStep2Screen from './screens/ProsRequestStep2Screen';
+import ProsRequestStep3Screen from './screens/ProsRequestStep3Screen';
+import ProsRequestStep4Screen from './screens/ProsRequestStep4Screen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -177,12 +181,13 @@ function ProsStack() {
       <ProsStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
       <ProsStackNav.Screen name="ProsRegistration" component={ProsRegistrationScreen} />
       <ProsStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
-      <ProsStackNav.Screen 
-        name="ProsRequestQuote" 
-        component={ProsRequestQuoteScreen}
-        options={{ presentation: 'modal' }}
-      />
       <ProsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
+      
+      {/* New Multi-step Request Flow */}
+      <ProsStackNav.Screen name="ProsRequestStep1" component={ProsRequestStep1Screen} />
+      <ProsStackNav.Screen name="ProsRequestStep2" component={ProsRequestStep2Screen} />
+      <ProsStackNav.Screen name="ProsRequestStep3" component={ProsRequestStep3Screen} />
+      <ProsStackNav.Screen name="ProsRequestStep4" component={ProsRequestStep4Screen} />
     </ProsStackNav.Navigator>
   );
 }
@@ -191,19 +196,12 @@ function ProsStack() {
 // Tabs
 // --------------------
 function TabNavigator() {
-  const { theme, isDark } = useThemeContext();
-  
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: theme.tabBarActive,
-        tabBarInactiveTintColor: theme.tabBarInactive,
-        tabBarStyle: {
-          backgroundColor: theme.background,
-          borderTopColor: theme.border,
-          borderTopWidth: 0.5,
-        },
+        tabBarActiveTintColor: Colors.tabBarActive,
+        tabBarInactiveTintColor: Colors.tabBarInactive,
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
 
@@ -248,40 +246,9 @@ function TabNavigator() {
 }
 
 // --------------------
-// TavvY Navigation Theme
+// App Root
 // --------------------
-const TavvyDarkTheme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    primary: darkTheme.primary,
-    background: darkTheme.background,
-    card: darkTheme.surface,
-    text: darkTheme.text,
-    border: darkTheme.border,
-    notification: darkTheme.brandOrange,
-  },
-};
-
-const TavvyLightTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    primary: Colors.primary,
-    background: '#FFFFFF',
-    card: '#F8FAFC',
-    text: '#0F172A',
-    border: '#E2E8F0',
-    notification: Colors.secondary,
-  },
-};
-
-// --------------------
-// App Content (with theme access)
-// --------------------
-function AppContent() {
-  const { isDark } = useThemeContext();
-  
+export default function App() {
   // Preload signal caches on app start for faster signal lookups
   useEffect(() => {
     const initializeSignalSystem = async () => {
@@ -301,26 +268,14 @@ function AppContent() {
   }, []);
 
   return (
-    <>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      <NavigationContainer theme={isDark ? TavvyDarkTheme : TavvyLightTheme}>
-        <TabNavigator />
-      </NavigationContainer>
-    </>
-  );
-}
-
-// --------------------
-// App Root
-// --------------------
-export default function App() {
-  return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: darkTheme.background }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <ThemeProvider>
-            <AppContent />
-          </ThemeProvider>
+          <StripeProvider publishableKey="pk_live_51OzU8UIeV9jtGwIXGwIRq2F3JeJir8FRX4DKNgSPPLmU09dqwrP67ezYxeltDynFn4vtf77WBOBmaN4IFsxxjSpq00U3DCRhWp">
+            <NavigationContainer>
+              <TabNavigator />
+            </NavigationContainer>
+          </StripeProvider>
         </AuthProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

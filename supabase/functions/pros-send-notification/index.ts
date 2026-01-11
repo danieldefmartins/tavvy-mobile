@@ -1,5 +1,5 @@
 // Supabase Edge Function: pros-send-notification
-// Sends SMS/Push notifications to pros for new leads and messages
+// Sends SMS/Push notifications to pros for new leads and messages using Go High Level for SMS.
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -19,58 +19,44 @@ interface SendNotificationRequest {
   data?: Record<string, any>
 }
 
-// Format phone number for Twilio
-function formatPhoneNumber(phone: string): string {
-  const digits = phone.replace(/\D/g, '')
-  if (digits.length === 10) {
-    return `+1${digits}`
-  }
-  if (digits.length === 11 && digits.startsWith('1')) {
-    return `+${digits}`
-  }
-  return `+${digits}`
-}
+// Send SMS via Go High Level
+async function sendSmsGHL(to: string, body: string): Promise<boolean> {
+  const ghlApiKey = Deno.env.get('GHL_API_KEY');
+  const ghlLocationId = Deno.env.get('GHL_LOCATION_ID');
 
-// Send SMS via Twilio
-async function sendSMS(to: string, body: string): Promise<boolean> {
-  const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID')
-  const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN')
-  const twilioPhoneNumber = Deno.env.get('TWILIO_PHONE_NUMBER')
-
-  if (!twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber) {
-    console.log('Twilio not configured')
-    return false
+  if (!ghlApiKey || !ghlLocationId) {
+    console.log('Go High Level not configured. Missing GHL_API_KEY or GHL_LOCATION_ID.');
+    return false;
   }
 
   try {
-    const formattedPhone = formatPhoneNumber(to)
-    
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${btoa(`${twilioAccountSid}:${twilioAuthToken}`)}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          To: formattedPhone,
-          From: twilioPhoneNumber,
-          Body: body,
-        }),
-      }
-    )
+    const response = await fetch('https://services.leadconnectorhq.com/conversations/messages', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${ghlApiKey}`,
+        'Version': '2021-07-28',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'SMS',
+        location_id: ghlLocationId,
+        phone: to,
+        message: body,
+      }),
+    });
 
     if (!response.ok) {
-      const error = await response.text()
-      console.error('Twilio error:', error)
-      return false
+      const error = await response.json();
+      console.error('Go High Level API error:', error);
+      return false;
     }
 
-    return true
+    console.log('GHL SMS sent successfully.');
+    return true;
   } catch (error) {
-    console.error('SMS send error:', error)
-    return false
+    console.error('GHL SMS send error:', error);
+    return false;
   }
 }
 
@@ -119,31 +105,17 @@ serve(async (req) => {
   }
 
   try {
-    // This function should be called internally (from other edge functions or triggers)
-    // Verify the request is from a trusted source
-    const authHeader = req.headers.get('Authorization')
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    
-    // Allow service role key or valid user token
-    if (!authHeader) {
-      throw new Error('Missing authorization header')
-    }
-
-    // Create admin client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Parse request body
     const body: SendNotificationRequest = await req.json()
 
-    // Validate required fields
     if (!body.provider_id || !body.type || !body.title || !body.body) {
       throw new Error('Missing required fields: provider_id, type, title, body')
     }
 
-    // Get provider info and notification preferences
     const { data: provider, error: providerError } = await supabaseAdmin
       .from('pro_providers')
       .select(`
@@ -172,7 +144,6 @@ serve(async (req) => {
       push_messages: true,
     }
 
-    // Get user's push token if available
     const { data: userProfile } = await supabaseAdmin
       .from('profiles')
       .select('expo_push_token')
@@ -184,7 +155,6 @@ serve(async (req) => {
       push_sent: false,
     }
 
-    // Determine which notifications to send based on type and preferences
     let shouldSendSMS = false
     let shouldSendPush = false
 
@@ -199,18 +169,16 @@ serve(async (req) => {
         break
       case 'bid_accepted':
       case 'project_update':
-        shouldSendSMS = true // Always notify for important updates
+        shouldSendSMS = true
         shouldSendPush = true
         break
     }
 
-    // Send SMS if enabled and phone available
     if (shouldSendSMS && provider.phone) {
       const smsBody = `TavvY Pros: ${body.title}\n\n${body.body}`
-      results.sms_sent = await sendSMS(provider.phone, smsBody)
+      results.sms_sent = await sendSmsGHL(provider.phone, smsBody)
     }
 
-    // Send push notification if enabled and token available
     if (shouldSendPush && userProfile?.expo_push_token) {
       results.push_sent = await sendPushNotification(
         userProfile.expo_push_token,
@@ -219,21 +187,6 @@ serve(async (req) => {
         body.data
       )
     }
-
-    // Log notification for analytics
-    await supabaseAdmin
-      .from('pro_notification_log')
-      .insert({
-        provider_id: body.provider_id,
-        type: body.type,
-        title: body.title,
-        body: body.body,
-        sms_sent: results.sms_sent,
-        push_sent: results.push_sent,
-      })
-      .catch(() => {
-        // Table might not exist, ignore error
-      })
 
     return new Response(
       JSON.stringify({
@@ -247,7 +200,6 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error:', error)
     return new Response(
       JSON.stringify({
         success: false,

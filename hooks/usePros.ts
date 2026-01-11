@@ -1,10 +1,11 @@
 /**
  * Pros API Hooks
+ * Connects to Supabase Edge Functions for the TavvY Pros feature.
  * Install path: hooks/usePros.ts
  */
 
 import { useState, useCallback } from 'react';
-import { PROS_API_URL } from '../constants/ProsConfig';
+import { supabase } from '../lib/supabaseClient';
 import {
   ProCategory,
   Pro,
@@ -19,36 +20,20 @@ import {
   ProProfileUpdateForm,
 } from '../types/pros';
 
-// Helper for tRPC-style API calls
-async function trpcCall<T>(
-  endpoint: string,
-  input?: Record<string, unknown>,
-  method: 'GET' | 'POST' = 'GET'
+// Helper for calling Supabase Edge Functions
+async function invokeFunction<T>(
+  functionName: string,
+  body?: Record<string, unknown>
 ): Promise<T> {
-  const url = new URL(`${PROS_API_URL}/api/trpc/${endpoint}`);
-  
-  const options: RequestInit = {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-  };
+  const { data, error } = await supabase.functions.invoke(functionName, {
+    body: body || {},
+  });
 
-  if (method === 'GET' && input) {
-    url.searchParams.set('input', JSON.stringify(input));
-  } else if (method === 'POST' && input) {
-    options.body = JSON.stringify(input);
+  if (error) {
+    throw new Error(error.message);
   }
 
-  const response = await fetch(url.toString(), options);
-  
-  if (!response.ok) {
-    throw new Error(`API Error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.result?.data as T;
+  return data as T;
 }
 
 // ============================================
@@ -64,7 +49,7 @@ export function useProsCategories() {
     setLoading(true);
     setError(null);
     try {
-      const data = await trpcCall<ProCategory[]>('categories.list');
+      const data = await invokeFunction<ProCategory[]>('pros-categories-list');
       setCategories(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch categories');
@@ -98,7 +83,7 @@ export function useSearchPros() {
     setLoading(true);
     setError(null);
     try {
-      const data = await trpcCall<SearchProsResponse>('providers.search', params);
+      const data = await invokeFunction<SearchProsResponse>('pros-providers-search', params);
       setPros(data.providers);
       setTotal(data.total);
     } catch (err) {
@@ -120,7 +105,7 @@ export function useFeaturedPros() {
     setLoading(true);
     setError(null);
     try {
-      const data = await trpcCall<Pro[]>('providers.featured', { limit });
+      const data = await invokeFunction<Pro[]>('pros-providers-featured', { limit });
       setPros(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch featured pros');
@@ -141,7 +126,7 @@ export function useProProfile() {
     setLoading(true);
     setError(null);
     try {
-      const data = await trpcCall<ProProfileResponse>('providers.getBySlug', { slug });
+      const data = await invokeFunction<ProProfileResponse>('pros-providers-get-by-slug', { slug });
       setPro(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch pro');
@@ -166,7 +151,7 @@ export function useProsLeads() {
     setLoading(true);
     setError(null);
     try {
-      const data = await trpcCall<ProLead[]>('leads.getProviderLeads', { status });
+      const data = await invokeFunction<ProLead[]>('pros-leads-get-provider-leads', { status });
       setLeads(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch leads');
@@ -179,7 +164,7 @@ export function useProsLeads() {
     setLoading(true);
     setError(null);
     try {
-      const data = await trpcCall<ProLead>('leads.create', form, 'POST');
+      const data = await invokeFunction<ProLead>('pros-create-project', form);
       return data;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create lead');
@@ -191,8 +176,8 @@ export function useProsLeads() {
 
   const updateLeadStatus = useCallback(async (leadId: number, status: string) => {
     try {
-      await trpcCall('leads.updateStatus', { leadId, status }, 'POST');
-      setLeads(prev => prev.map(lead => 
+      await invokeFunction('pros-leads-update-status', { leadId, status });
+      setLeads(prev => prev.map(lead =>
         lead.id === leadId ? { ...lead, status: status as ProLead['status'] } : lead
       ));
     } catch (err) {
@@ -217,7 +202,7 @@ export function useProsConversations() {
     setLoading(true);
     setError(null);
     try {
-      const data = await trpcCall<ProConversationWithDetails[]>('messages.getConversations');
+      const data = await invokeFunction<ProConversationWithDetails[]>('pros-messages-get-conversations');
       setConversations(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch conversations');
@@ -238,7 +223,7 @@ export function useProsMessages(conversationId: number) {
     setLoading(true);
     setError(null);
     try {
-      const data = await trpcCall<{ messages: ProMessage[] }>('messages.getMessages', { conversationId });
+      const data = await invokeFunction<{ messages: ProMessage[] }>('pros-messages-get-messages', { conversationId });
       setMessages(data.messages);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch messages');
@@ -249,7 +234,7 @@ export function useProsMessages(conversationId: number) {
 
   const sendMessage = useCallback(async (content: string) => {
     try {
-      const newMessage = await trpcCall<ProMessage>('messages.send', { conversationId, content }, 'POST');
+      const newMessage = await invokeFunction<ProMessage>('pros-send-message', { conversationId, content });
       setMessages(prev => [...prev, newMessage]);
       return newMessage;
     } catch (err) {
@@ -269,11 +254,11 @@ export function useProsStartConversation() {
     setLoading(true);
     setError(null);
     try {
-      const data = await trpcCall<{ conversationId: number }>('messages.startConversation', {
+      const data = await invokeFunction<{ conversationId: number }>('pros-start-thread', {
         providerId,
         message,
         leadRequestId,
-      }, 'POST');
+      });
       return data.conversationId;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start conversation');
@@ -300,7 +285,7 @@ export function useProsSubscription() {
     setLoading(true);
     setError(null);
     try {
-      const data = await trpcCall<ProSubscription | null>('subscriptions.getMySubscription');
+      const data = await invokeFunction<ProSubscription | null>('pros-subscriptions-get-my-subscription');
       setSubscription(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch subscription');
@@ -311,7 +296,7 @@ export function useProsSubscription() {
 
   const fetchEarlyAdopterCount = useCallback(async () => {
     try {
-      const data = await trpcCall<{ count: number }>('subscriptions.getEarlyAdopterCount');
+      const data = await invokeFunction<{ count: number }>('pros-subscriptions-get-early-adopter-count');
       setEarlyAdopterCount(data.count);
     } catch (err) {
       console.error('Failed to fetch early adopter count:', err);
@@ -322,7 +307,7 @@ export function useProsSubscription() {
     setLoading(true);
     setError(null);
     try {
-      const data = await trpcCall<ProSubscription>('subscriptions.subscribe', { tier }, 'POST');
+      const data = await invokeFunction<ProSubscription>('pros-subscriptions-subscribe', { tier });
       setSubscription(data);
       return data;
     } catch (err) {
@@ -349,7 +334,7 @@ export function useProDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const data = await trpcCall<Pro>('providerDashboard.getProfile');
+      const data = await invokeFunction<Pro>('pros-dashboard-get-profile');
       setProfile(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch profile');
@@ -362,7 +347,7 @@ export function useProDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const data = await trpcCall<Pro>('providerDashboard.register', form, 'POST');
+      const data = await invokeFunction<Pro>('pros-dashboard-register', form);
       setProfile(data);
       return data;
     } catch (err) {
@@ -377,7 +362,7 @@ export function useProDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const data = await trpcCall<Pro>('providerDashboard.updateProfile', form, 'POST');
+      const data = await invokeFunction<Pro>('pros-dashboard-update-profile', form);
       setProfile(data);
       return data;
     } catch (err) {
@@ -397,7 +382,7 @@ export function useProDashboard() {
 
 export function useProsAuth() {
   const [user, setUser] = useState<{
-    id: number;
+    id: string;
     name: string | null;
     email: string | null;
     role: string;
@@ -407,7 +392,7 @@ export function useProsAuth() {
   const checkAuth = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await trpcCall<typeof user>('auth.me');
+      const data = await invokeFunction<typeof user>('pros-auth-me');
       setUser(data);
     } catch {
       setUser(null);
@@ -418,7 +403,7 @@ export function useProsAuth() {
 
   const logout = useCallback(async () => {
     try {
-      await trpcCall('auth.logout', {}, 'POST');
+      await supabase.auth.signOut();
       setUser(null);
     } catch (err) {
       console.error('Logout failed:', err);
@@ -426,4 +411,73 @@ export function useProsAuth() {
   }, []);
 
   return { user, loading, checkAuth, logout };
+}
+
+// ============================================
+// BIDS HOOKS
+// ============================================
+
+export function useProsBids() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submitBid = useCallback(async (projectId: string, bidData: {
+    amount_min: number;
+    amount_max: number;
+    message: string;
+    estimated_timeline?: string;
+  }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await invokeFunction('pros-submit-bid', { projectId, ...bidData });
+      return data;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit bid');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { loading, error, submitBid };
+}
+
+// ============================================
+// CLAIM BUSINESS HOOKS
+// ============================================
+
+export function useProsClaimBusiness() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const sendOtp = useCallback(async (businessId: string, phone: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await invokeFunction('pros-claim-send-otp', { businessId, phone });
+      return data;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send OTP');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const verifyOtp = useCallback(async (businessId: string, phone: string, otp: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await invokeFunction('pros-claim-verify-otp', { businessId, phone, otp });
+      return data;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to verify OTP');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { loading, error, sendOtp, verifyOtp };
 }

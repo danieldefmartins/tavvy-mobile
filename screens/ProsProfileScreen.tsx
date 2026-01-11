@@ -1,390 +1,328 @@
 /**
- * Pros Profile Screen (UPDATED to match mockup)
+ * Pros Profile Screen
  * Install path: screens/ProsProfileScreen.tsx
  * 
- * Displays a Pro's full profile with cover image, stats, tabs, and reviews.
- * DESIGN MATCHES: contractor_details_screen.png mockup
+ * Individual pro profile with details, photos, reviews.
+ * Uses sample data for testing.
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
   Image,
+  TouchableOpacity,
+  Linking,
   Dimensions,
-  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { ProsColors } from '../constants/ProsConfig';
+import { ProsColors, SAMPLE_PROS, DAYS_OF_WEEK, SamplePro } from '../constants/ProsConfig';
 
 const { width } = Dimensions.get('window');
 
 type RouteParams = {
-  ProsProfileScreen: {
-    proId: string;
+  ProsProfile: {
+    slug: string;
   };
 };
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
-// Tab options
-const TABS = ['About', 'Services', 'Photos', 'Reviews'];
+// Sample reviews - empty, real data from Supabase
+const SAMPLE_REVIEWS: any[] = [];
 
-// Sample pro data (would come from API)
-const SAMPLE_PRO = {
-  id: '1',
-  name: 'Ace Electric Services',
-  tagline: 'Licensed & Insured Electrician',
-  rating: 4.9,
-  reviewCount: 127,
-  yearsInBusiness: 15,
-  location: 'Miami, FL',
-  serviceRadius: '30 mi radius',
-  isVerified: true,
-  coverImage: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800',
-  profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
-  description: 'Ace Electric Services is your trusted residential and commercial electrician in Miami. With over 15 years of experience, we specialize in electrical panel upgrades, rewiring, lighting installation, and emergency repairs. We are committed to safety, quality workmanship, and excellent customer service.',
-  licenseNumber: 'EC13009876',
-  insurance: 'General Liability $2M, Workers\' Compensation',
-  services: [
-    'Panel Upgrades', 'Rewiring', 'Lighting Installation', 'Troubleshooting',
-    'EV Charger Install', 'Smart Home Setup', 'Safety Inspections', 'Generator Installation'
-  ],
-  recentWork: [
-    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400',
-    'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400',
-    'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=400',
-  ],
-  reviews: [
-    {
-      id: '1',
-      author: 'Sarah J.',
-      avatar: null,
-      rating: 5,
-      date: 'Oct 12, 2023',
-      text: 'Ace Electric Services did an amazing job upgrading our electrical panel. They were professional, efficient, and left the workspace clean. Highly recommend!',
-    },
-    {
-      id: '2',
-      author: 'Mike D.',
-      avatar: null,
-      rating: 5,
-      date: 'Sept 28, 2023',
-      text: 'Excellent service! Fixed a flickering light issue that others couldn\'t solve. Very knowledgeable and fair pricing. Will definitely use again.',
-    },
-  ],
-};
+// Sample photos - empty, real data from Supabase
+const SAMPLE_PHOTOS: string[] = [];
 
 export default function ProsProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<RouteProp<RouteParams, 'ProsProfileScreen'>>();
-  const { proId } = route.params;
+  const route = useRoute<RouteProp<RouteParams, 'ProsProfile'>>();
+  const { slug } = route.params;
 
-  const [activeTab, setActiveTab] = useState('About');
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const [activeTab, setActiveTab] = useState<'about' | 'photos' | 'reviews'>('about');
 
-  // Use sample data for now
-  const pro = SAMPLE_PRO;
+  // Find pro from sample data
+  const pro = useMemo(() => {
+    return SAMPLE_PROS.find(p => p.slug === slug);
+  }, [slug]);
 
-  const handleBack = () => {
-    navigation.goBack();
-  };
-
-  const handleRequestQuote = () => {
-    navigation.navigate('ProsRequestStep1Screen', {
-      categoryId: 'electrician',
-      categoryName: 'Electrician',
-      proId: pro.id,
-    });
+  const handleCall = () => {
+    if (pro?.phone) {
+      Linking.openURL(`tel:${pro.phone}`);
+    }
   };
 
   const handleMessage = () => {
-    navigation.navigate('ProsMessagesScreen', {
-      proId: pro.id,
-      proName: pro.name,
+    navigation.navigate('ProsMessages', { 
+      recipientId: pro?.id,
+      recipientName: pro?.businessName 
     });
   };
 
-  const renderStars = (rating: number) => {
+  const handleRequestQuote = () => {
+    navigation.navigate('ProsRequestQuote', { 
+      proId: pro?.id, 
+      proName: pro?.businessName 
+    });
+  };
+
+  if (!pro) {
     return (
-      <View style={styles.starsContainer}>
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Ionicons
-            key={star}
-            name={star <= Math.floor(rating) ? 'star' : star - 0.5 <= rating ? 'star-half' : 'star-outline'}
-            size={16}
-            color="#F59E0B"
-          />
-        ))}
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={ProsColors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={ProsColors.error} />
+          <Text style={styles.errorTitle}>Pro not found</Text>
+          <Text style={styles.errorText}>Unable to load this profile</Text>
+          <TouchableOpacity 
+            style={styles.backHomeButton}
+            onPress={() => navigation.navigate('ProsHome')}
+          >
+            <Text style={styles.backHomeButtonText}>Back to Home</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
-  };
-
-  const renderAboutTab = () => (
-    <View style={styles.tabContent}>
-      {/* Business Description */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Business Description</Text>
-        <Text style={styles.descriptionText}>{pro.description}</Text>
-      </View>
-
-      {/* License & Insurance */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>License & Insurance</Text>
-        <Text style={styles.licenseText}>
-          <Text style={styles.licenseLabel}>License Number: </Text>
-          {pro.licenseNumber}
-        </Text>
-        <Text style={styles.licenseText}>
-          <Text style={styles.licenseLabel}>Insurance: </Text>
-          {pro.insurance}
-        </Text>
-      </View>
-
-      {/* Services Offered */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Services Offered</Text>
-        <View style={styles.servicesContainer}>
-          {pro.services.map((service, index) => (
-            <View key={index} style={styles.servicePill}>
-              <Text style={styles.servicePillText}>{service}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Recent Work */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recent Work</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.workGallery}>
-            {pro.recentWork.map((image, index) => (
-              <Image
-                key={index}
-                source={{ uri: image }}
-                style={styles.workImage}
-              />
-            ))}
-          </View>
-        </ScrollView>
-      </View>
-
-      {/* Customer Reviews */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Customer Reviews</Text>
-        <View style={styles.reviewsContainer}>
-          {pro.reviews.map((review) => (
-            <View key={review.id} style={styles.reviewCard}>
-              <View style={styles.reviewHeader}>
-                <View style={styles.reviewerInfo}>
-                  <View style={styles.reviewerAvatar}>
-                    <Ionicons name="person" size={16} color={ProsColors.textMuted} />
-                  </View>
-                  <View>
-                    <Text style={styles.reviewerName}>{review.author}</Text>
-                    {renderStars(review.rating)}
-                  </View>
-                </View>
-                <Text style={styles.reviewDate}>{review.date}</Text>
-              </View>
-              <Text style={styles.reviewText}>{review.text}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    </View>
-  );
-
-  const renderServicesTab = () => (
-    <View style={styles.tabContent}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>All Services</Text>
-        <View style={styles.servicesListContainer}>
-          {pro.services.map((service, index) => (
-            <TouchableOpacity key={index} style={styles.serviceListItem}>
-              <View style={styles.serviceListIcon}>
-                <Ionicons name="checkmark-circle" size={20} color={ProsColors.primary} />
-              </View>
-              <Text style={styles.serviceListText}>{service}</Text>
-              <Ionicons name="chevron-forward" size={20} color={ProsColors.textMuted} />
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-    </View>
-  );
-
-  const renderPhotosTab = () => (
-    <View style={styles.tabContent}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Work Gallery</Text>
-        <View style={styles.photosGrid}>
-          {pro.recentWork.map((image, index) => (
-            <TouchableOpacity key={index} style={styles.photoGridItem}>
-              <Image source={{ uri: image }} style={styles.photoGridImage} />
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-    </View>
-  );
-
-  const renderReviewsTab = () => (
-    <View style={styles.tabContent}>
-      <View style={styles.section}>
-        <View style={styles.reviewsSummary}>
-          <Text style={styles.reviewsSummaryRating}>{pro.rating}</Text>
-          {renderStars(pro.rating)}
-          <Text style={styles.reviewsSummaryCount}>Based on {pro.reviewCount} reviews</Text>
-        </View>
-      </View>
-      <View style={styles.section}>
-        {pro.reviews.map((review) => (
-          <View key={review.id} style={styles.reviewCard}>
-            <View style={styles.reviewHeader}>
-              <View style={styles.reviewerInfo}>
-                <View style={styles.reviewerAvatar}>
-                  <Ionicons name="person" size={16} color={ProsColors.textMuted} />
-                </View>
-                <View>
-                  <Text style={styles.reviewerName}>{review.author}</Text>
-                  {renderStars(review.rating)}
-                </View>
-              </View>
-              <Text style={styles.reviewDate}>{review.date}</Text>
-            </View>
-            <Text style={styles.reviewText}>{review.text}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'About':
-        return renderAboutTab();
-      case 'Services':
-        return renderServicesTab();
-      case 'Photos':
-        return renderPhotosTab();
-      case 'Reviews':
-        return renderReviewsTab();
-      default:
-        return renderAboutTab();
-    }
-  };
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={ProsColors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Pro Profile</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity style={styles.shareButton}>
+          <Ionicons name="share-outline" size={24} color={ProsColors.textPrimary} />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView showsVerticalScrollIndicator={false}>
         {/* Cover Image */}
-        <View style={styles.coverContainer}>
-          <Image
-            source={{ uri: pro.coverImage }}
-            style={styles.coverImage}
-          />
-          {/* Profile Image - overlapping cover */}
-          <View style={styles.profileImageContainer}>
-            <Image
-              source={{ uri: pro.profileImage }}
-              style={styles.profileImage}
-            />
+        <Image 
+          source={{ uri: pro.profileImage }} 
+          style={styles.coverImage}
+          resizeMode="cover"
+        />
+
+        {/* Profile Info */}
+        <View style={styles.profileSection}>
+          <View style={styles.profileHeader}>
+            <View style={styles.nameRow}>
+              <Text style={styles.businessName}>{pro.businessName}</Text>
+              {pro.isVerified && (
+                <Ionicons name="checkmark-circle" size={20} color={ProsColors.primary} />
+              )}
+            </View>
+            <Text style={styles.categoryName}>{pro.categoryName}</Text>
+
+            <View style={styles.ratingRow}>
+              <Ionicons name="star" size={18} color="#F59E0B" />
+              <Text style={styles.ratingText}>{pro.rating.toFixed(1)}</Text>
+              <Text style={styles.reviewCount}>
+                ({pro.reviewCount} {pro.reviewCount === 1 ? 'review' : 'reviews'})
+              </Text>
+            </View>
+
+            <View style={styles.locationRow}>
+              <Ionicons name="location-outline" size={16} color={ProsColors.textSecondary} />
+              <Text style={styles.locationText}>
+                {pro.city}, {pro.state} • Serves {pro.serviceRadius} mi radius
+              </Text>
+            </View>
+
+            {/* Badges */}
+            <View style={styles.badges}>
+              {pro.isInsured && (
+                <View style={styles.badge}>
+                  <Ionicons name="shield-checkmark" size={14} color={ProsColors.primary} />
+                  <Text style={styles.badgeText}>Insured</Text>
+                </View>
+              )}
+              {pro.isLicensed && (
+                <View style={styles.badge}>
+                  <Ionicons name="document-text" size={14} color={ProsColors.primary} />
+                  <Text style={styles.badgeText}>Licensed</Text>
+                </View>
+              )}
+              {pro.yearsInBusiness && (
+                <View style={styles.badge}>
+                  <Ionicons name="time" size={14} color={ProsColors.primary} />
+                  <Text style={styles.badgeText}>{pro.yearsInBusiness}+ years</Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
-        {/* Profile Info */}
-        <View style={styles.profileInfo}>
-          <View style={styles.nameRow}>
-            <Text style={styles.proName}>{pro.name}</Text>
-            {pro.isVerified && (
-              <View style={styles.verifiedBadge}>
-                <Ionicons name="checkmark-circle" size={20} color={ProsColors.primary} />
-              </View>
-            )}
-          </View>
-          <Text style={styles.proTagline}>{pro.tagline}</Text>
-
-          {/* Stats Row */}
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Ionicons name="star-outline" size={18} color={ProsColors.textSecondary} />
-              <Text style={styles.statValue}>{pro.rating}</Text>
-              <Text style={styles.statLabel}>Rating</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Ionicons name="chatbubble-outline" size={18} color={ProsColors.textSecondary} />
-              <Text style={styles.statValue}>{pro.reviewCount}</Text>
-              <Text style={styles.statLabel}>Reviews</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Ionicons name="time-outline" size={18} color={ProsColors.textSecondary} />
-              <Text style={styles.statValue}>{pro.yearsInBusiness}</Text>
-              <Text style={styles.statLabel}>Years</Text>
-            </View>
-          </View>
-
-          {/* Location */}
-          <View style={styles.locationRow}>
-            <Ionicons name="location" size={16} color={ProsColors.textSecondary} />
-            <Text style={styles.locationText}>
-              {pro.location} - Serves {pro.serviceRadius}
-            </Text>
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.requestQuoteButton} onPress={handleRequestQuote}>
-              <Ionicons name="document-text" size={18} color="#FFFFFF" />
-              <Text style={styles.requestQuoteButtonText}>Request Quote</Text>
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity style={styles.primaryButton} onPress={handleRequestQuote}>
+            <Ionicons name="document-text-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.primaryButtonText}>Request Quote</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryButton} onPress={handleMessage}>
+            <Ionicons name="chatbubble-outline" size={18} color={ProsColors.primary} />
+          </TouchableOpacity>
+          {pro.phone && (
+            <TouchableOpacity style={styles.secondaryButton} onPress={handleCall}>
+              <Ionicons name="call-outline" size={18} color={ProsColors.primary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
-              <Ionicons name="mail-outline" size={18} color={ProsColors.primary} />
-              <Text style={styles.messageButtonText}>Message</Text>
-            </TouchableOpacity>
-          </View>
+          )}
         </View>
 
         {/* Tabs */}
-        <View style={styles.tabsContainer}>
-          {TABS.map((tab) => (
+        <View style={styles.tabs}>
+          {(['about', 'photos', 'reviews'] as const).map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[styles.tab, activeTab === tab && styles.tabActive]}
               onPress={() => setActiveTab(tab)}
             >
               <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab}
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab === 'photos' && ` (${SAMPLE_PHOTOS.length})`}
+                {tab === 'reviews' && ` (${pro.reviewCount})`}
               </Text>
-              {activeTab === tab && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Tab Content */}
-        {renderTabContent()}
+        {activeTab === 'about' && (
+          <View style={styles.tabContent}>
+            {/* About */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>About</Text>
+              <Text style={styles.description}>{pro.description}</Text>
+            </View>
 
+            {/* Services */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Services</Text>
+              <View style={styles.servicesList}>
+                <View style={styles.serviceTag}>
+                  <Text style={styles.serviceTagText}>{pro.categoryName}</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Contact Info */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Contact</Text>
+              {pro.phone && (
+                <TouchableOpacity style={styles.contactRow} onPress={handleCall}>
+                  <Ionicons name="call-outline" size={18} color={ProsColors.primary} />
+                  <Text style={styles.contactText}>{pro.phone}</Text>
+                </TouchableOpacity>
+              )}
+              {pro.email && (
+                <TouchableOpacity 
+                  style={styles.contactRow}
+                  onPress={() => Linking.openURL(`mailto:${pro.email}`)}
+                >
+                  <Ionicons name="mail-outline" size={18} color={ProsColors.primary} />
+                  <Text style={styles.contactText}>{pro.email}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Business Hours */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Business Hours</Text>
+              {DAYS_OF_WEEK.map((day) => (
+                <View key={day} style={styles.hoursRow}>
+                  <Text style={styles.dayText}>{day}</Text>
+                  <Text style={styles.hoursText}>
+                    {day === 'Sunday' ? 'Closed' : '8:00 AM - 6:00 PM'}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {activeTab === 'photos' && (
+          <View style={styles.tabContent}>
+            <View style={styles.photosGrid}>
+              {SAMPLE_PHOTOS.map((photo, index) => (
+                <TouchableOpacity key={index} style={styles.photoItem}>
+                  <Image source={{ uri: photo }} style={styles.photoImage} />
+                </TouchableOpacity>
+              ))}
+            </View>
+            {SAMPLE_PHOTOS.length === 0 && (
+              <View style={styles.emptyState}>
+                <Ionicons name="images-outline" size={48} color={ProsColors.textMuted} />
+                <Text style={styles.emptyStateText}>No photos yet</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {activeTab === 'reviews' && (
+          <View style={styles.tabContent}>
+            {/* Rating Summary */}
+            <View style={styles.ratingSummary}>
+              <Text style={styles.ratingBig}>{pro.rating.toFixed(1)}</Text>
+              <View style={styles.starsRow}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Ionicons
+                    key={star}
+                    name={star <= Math.round(pro.rating) ? 'star' : 'star-outline'}
+                    size={20}
+                    color="#F59E0B"
+                  />
+                ))}
+              </View>
+              <Text style={styles.totalReviews}>
+                Based on {pro.reviewCount} reviews
+              </Text>
+            </View>
+
+            {/* Reviews List */}
+            {SAMPLE_REVIEWS.map((review) => (
+              <View key={review.id} style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                  <View style={styles.reviewUser}>
+                    <View style={styles.reviewAvatarPlaceholder}>
+                      <Ionicons name="person" size={16} color={ProsColors.textMuted} />
+                    </View>
+                    <View>
+                      <Text style={styles.reviewUserName}>{review.userName}</Text>
+                      <Text style={styles.reviewDate}>
+                        {new Date(review.date).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.reviewRating}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Ionicons
+                        key={star}
+                        name={star <= review.rating ? 'star' : 'star-outline'}
+                        size={14}
+                        color="#F59E0B"
+                      />
+                    ))}
+                  </View>
+                </View>
+                <Text style={styles.reviewContent}>{review.content}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Bottom Spacing */}
         <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
@@ -398,135 +336,117 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: ProsColors.borderLight,
+    position: 'absolute',
+    top: 44,
+    left: 0,
+    right: 0,
+    zIndex: 10,
   },
   backButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.9)',
     justifyContent: 'center',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-  },
-  scrollView: {
-    flex: 1,
-  },
-
-  // Cover & Profile Image
-  coverContainer: {
-    height: 180,
-    position: 'relative',
+  shareButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   coverImage: {
     width: '100%',
-    height: '100%',
+    height: 250,
+    backgroundColor: ProsColors.sectionBg,
   },
-  profileImageContainer: {
-    position: 'absolute',
-    bottom: -40,
-    left: '50%',
-    marginLeft: -45,
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+  profileSection: {
+    padding: 16,
     backgroundColor: '#FFFFFF',
-    padding: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    marginTop: -20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
-  profileImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 41,
-  },
-
-  // Profile Info
-  profileInfo: {
-    paddingTop: 50,
-    paddingHorizontal: 16,
+  profileHeader: {
     alignItems: 'center',
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    marginBottom: 4,
   },
-  proName: {
-    fontSize: 22,
+  businessName: {
+    fontSize: 24,
     fontWeight: '700',
     color: ProsColors.textPrimary,
   },
-  verifiedBadge: {
-    marginLeft: 4,
-  },
-  proTagline: {
+  categoryName: {
     fontSize: 14,
-    color: ProsColors.textSecondary,
-    marginTop: 4,
-    marginBottom: 16,
+    color: ProsColors.primary,
+    fontWeight: '500',
+    marginBottom: 8,
   },
-
-  // Stats Row
-  statsRow: {
+  ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '700',
+  ratingText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: ProsColors.textPrimary,
-    marginTop: 4,
+    marginLeft: 4,
   },
-  statLabel: {
-    fontSize: 12,
+  reviewCount: {
+    fontSize: 14,
     color: ProsColors.textSecondary,
+    marginLeft: 4,
   },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: ProsColors.borderLight,
-  },
-
-  // Location
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   locationText: {
     fontSize: 14,
     color: ProsColors.textSecondary,
+    marginLeft: 4,
   },
-
-  // Action Buttons
+  badges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${ProsColors.primary}10`,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  badgeText: {
+    fontSize: 12,
+    color: ProsColors.primary,
+    marginLeft: 4,
+    fontWeight: '500',
+  },
   actionButtons: {
     flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-    marginBottom: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 8,
   },
-  requestQuoteButton: {
+  primaryButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -536,43 +456,34 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: 8,
   },
-  requestQuoteButtonText: {
-    fontSize: 15,
+  primaryButtonText: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  messageButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+  secondaryButton: {
+    width: 50,
+    height: 50,
     borderRadius: 10,
-    paddingVertical: 14,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: ProsColors.primary,
-    gap: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  messageButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: ProsColors.primary,
-  },
-
-  // Tabs
-  tabsContainer: {
+  tabs: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: ProsColors.borderLight,
-    paddingHorizontal: 16,
   },
   tab: {
     flex: 1,
-    alignItems: 'center',
     paddingVertical: 14,
-    position: 'relative',
+    alignItems: 'center',
   },
-  tabActive: {},
+  tabActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: ProsColors.primary,
+  },
   tabText: {
     fontSize: 14,
     fontWeight: '500',
@@ -582,131 +493,112 @@ const styles = StyleSheet.create({
     color: ProsColors.primary,
     fontWeight: '600',
   },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: '25%',
-    right: '25%',
-    height: 3,
-    backgroundColor: ProsColors.primary,
-    borderRadius: 1.5,
-  },
-
-  // Tab Content
   tabContent: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
+    padding: 16,
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: ProsColors.textPrimary,
     marginBottom: 12,
   },
-  descriptionText: {
-    fontSize: 14,
+  description: {
+    fontSize: 15,
     color: ProsColors.textSecondary,
     lineHeight: 22,
   },
-  licenseText: {
-    fontSize: 14,
-    color: ProsColors.textSecondary,
-    marginBottom: 4,
-  },
-  licenseLabel: {
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-  },
-
-  // Services
-  servicesContainer: {
+  servicesList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  servicePill: {
-    backgroundColor: `${ProsColors.primary}15`,
-    paddingHorizontal: 14,
+  serviceTag: {
+    backgroundColor: ProsColors.sectionBg,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 6,
   },
-  servicePillText: {
+  serviceTagText: {
     fontSize: 13,
+    color: ProsColors.textPrimary,
     fontWeight: '500',
-    color: ProsColors.primary,
   },
-  servicesListContainer: {
-    gap: 8,
-  },
-  serviceListItem: {
+  contactRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 10,
-    padding: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: ProsColors.borderLight,
   },
-  serviceListIcon: {
-    marginRight: 12,
-  },
-  serviceListText: {
-    flex: 1,
+  contactText: {
     fontSize: 15,
-    color: ProsColors.textPrimary,
+    color: ProsColors.primary,
+    marginLeft: 12,
   },
-
-  // Work Gallery
-  workGallery: {
+  hoursRow: {
     flexDirection: 'row',
-    gap: 10,
+    justifyContent: 'space-between',
+    paddingVertical: 8,
   },
-  workImage: {
-    width: 140,
-    height: 100,
-    borderRadius: 10,
+  dayText: {
+    fontSize: 14,
+    color: ProsColors.textSecondary,
   },
-
-  // Photos Grid
+  hoursText: {
+    fontSize: 14,
+    color: ProsColors.textPrimary,
+    fontWeight: '500',
+  },
   photosGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  photoGridItem: {
+  photoItem: {
     width: (width - 48) / 3,
-    aspectRatio: 1,
+    height: (width - 48) / 3,
     borderRadius: 8,
     overflow: 'hidden',
   },
-  photoGridImage: {
+  photoImage: {
     width: '100%',
     height: '100%',
+    backgroundColor: ProsColors.sectionBg,
   },
-
-  // Reviews
-  reviewsContainer: {
-    gap: 12,
-  },
-  reviewsSummary: {
+  emptyState: {
     alignItems: 'center',
-    paddingVertical: 20,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
+    paddingVertical: 40,
   },
-  reviewsSummaryRating: {
+  emptyStateText: {
+    fontSize: 14,
+    color: ProsColors.textMuted,
+    marginTop: 12,
+  },
+  ratingSummary: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: ProsColors.borderLight,
+    marginBottom: 16,
+  },
+  ratingBig: {
     fontSize: 48,
     fontWeight: '700',
     color: ProsColors.textPrimary,
   },
-  reviewsSummaryCount: {
+  starsRow: {
+    flexDirection: 'row',
+    marginVertical: 8,
+  },
+  totalReviews: {
     fontSize: 14,
     color: ProsColors.textSecondary,
-    marginTop: 8,
   },
   reviewCard: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: ProsColors.sectionBg,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -715,38 +607,67 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  reviewerInfo: {
+  reviewUser: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
   },
-  reviewerAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  reviewAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#E5E7EB',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
-  reviewerName: {
+  reviewUserName: {
     fontSize: 14,
     fontWeight: '600',
     color: ProsColors.textPrimary,
-    marginBottom: 2,
-  },
-  starsContainer: {
-    flexDirection: 'row',
-    gap: 2,
   },
   reviewDate: {
     fontSize: 12,
     color: ProsColors.textMuted,
+    marginTop: 2,
   },
-  reviewText: {
+  reviewRating: {
+    flexDirection: 'row',
+  },
+  reviewContent: {
     fontSize: 14,
     color: ProsColors.textSecondary,
     lineHeight: 20,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: ProsColors.textPrimary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    color: ProsColors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  backHomeButton: {
+    backgroundColor: ProsColors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  backHomeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
