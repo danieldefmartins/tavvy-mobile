@@ -17,6 +17,7 @@ import {
   FlatList,
   RefreshControl,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,9 +33,10 @@ import {
   EARLY_ADOPTER_SPOTS_LEFT,
   EARLY_ADOPTER_SAVINGS,
 } from '../constants/ProsConfig';
-import { ProsCategoryCard } from '../components/ProsCategoryCard';
+import { ProsCategoryCard, ProsCategoryScroll } from '../components/ProsCategoryCard';
 import { ProsProviderCard } from '../components/ProsProviderCard';
 import { useSearchPros } from '../hooks/usePros';
+import { useCategories } from '../hooks/useCategories';
 import { Pro } from '../lib/ProsTypes';
 
 const { width } = Dimensions.get('window');
@@ -49,6 +51,7 @@ export default function ProsHomeScreen() {
   const [viewMode, setViewMode] = useState<'user' | 'pro'>('user');
 
   const { pros, loading, searchPros } = useSearchPros();
+  const { categories, loading: categoriesLoading, error: categoriesError } = useCategories();
 
   useEffect(() => {
     // Load initial pros near user
@@ -69,7 +72,8 @@ export default function ProsHomeScreen() {
   };
 
   const handleCategoryPress = (slug: string) => {
-    const category = PROS_CATEGORIES.find(c => c.slug === slug);
+    // Try to find category from fetched categories first, then fall back to hardcoded
+    const category = categories.find(c => c.slug === slug) || PROS_CATEGORIES.find(c => c.slug === slug);
     if (category) {
       navigation.navigate('ProsRequestStep1', { 
         categoryId: category.id.toString(), 
@@ -214,21 +218,14 @@ export default function ProsHomeScreen() {
   // User Mode (default) - Find Pros
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-      >
-        {/* Mode Toggle */}
-        <View style={styles.modeToggleContainer}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>TavvY Pros</Text>
+        <View style={styles.headerToggle}>
           <TouchableOpacity
             style={[styles.modeToggle, viewMode === 'user' && styles.modeToggleActive]}
             onPress={() => setViewMode('user')}
           >
-            <Ionicons name="search" size={18} color={viewMode === 'user' ? '#fff' : ProsColors.textSecondary} />
             <Text style={[styles.modeToggleText, viewMode === 'user' && styles.modeToggleTextActive]}>
               Find Pros
             </Text>
@@ -237,12 +234,20 @@ export default function ProsHomeScreen() {
             style={[styles.modeToggle, viewMode === 'pro' && styles.modeToggleActive]}
             onPress={() => setViewMode('pro')}
           >
-            <Ionicons name="construct" size={18} color={viewMode === 'pro' ? '#fff' : ProsColors.textSecondary} />
             <Text style={[styles.modeToggleText, viewMode === 'pro' && styles.modeToggleTextActive]}>
               I'm a Pro
             </Text>
           </TouchableOpacity>
         </View>
+      </View>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
 
         {/* Hero Section */}
         <LinearGradient
@@ -311,23 +316,25 @@ export default function ProsHomeScreen() {
           </View>
         </LinearGradient>
 
-        {/* Browse by Service */}
-        <View style={styles.section}>
+        {/* Browse by Service - Horizontal Scroll */}
+        <View style={styles.categoriesSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Browse by Service</Text>
-            <TouchableOpacity onPress={handleViewAll}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
           </View>
-          <View style={styles.categoriesGrid}>
-            {PROS_CATEGORIES.slice(0, 4).map((category) => (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.categoriesScroll}
+            contentContainerStyle={styles.categoriesScrollContent}
+          >
+            {(categories.length > 0 ? categories : PROS_CATEGORIES).map((category) => (
               <ProsCategoryCard
                 key={category.id}
-                category={category}
+                {...category}
                 onPress={() => handleCategoryPress(category.slug)}
               />
             ))}
-          </View>
+          </ScrollView>
         </View>
 
         {/* Pros Near You - The "Browse" List */}
@@ -411,6 +418,26 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
+  // Header
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: ProsColors.borderLight,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  headerToggle: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   // Mode Toggle
   modeToggleContainer: {
     flexDirection: 'row',
@@ -422,12 +449,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modeToggle: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    backgroundColor: '#F3F4F6',
     gap: 8,
   },
   modeToggleActive: {
@@ -439,7 +467,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   modeToggleText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: ProsColors.textSecondary,
   },
@@ -573,6 +601,16 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
+  },
+  categoriesSection: {
+    paddingVertical: 16,
+  },
+  categoriesScroll: {
+    flexGrow: 0,
+  },
+  categoriesScrollContent: {
+    paddingHorizontal: 16,
+    gap: 12,
   },
   featuredList: {
     paddingHorizontal: 16,
