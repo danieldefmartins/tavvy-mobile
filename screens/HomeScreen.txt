@@ -1,6 +1,6 @@
 // ============================================
-// REPLACE THE fetchPlaces FUNCTION IN HomeScreen.tsx
-// Find lines 503-612 and replace with this code
+// REPLACE THE fetchPlaces FUNCTION IN screens/HomeScreen.tsx
+// Find the function starting at line ~503 and replace the entire function
 // ============================================
 
   const fetchPlaces = async (location?: [number, number]) => {
@@ -42,6 +42,20 @@
       console.log('Fetched places from Supabase:', placesData?.length || 0);
 
       if (placesData && placesData.length > 0) {
+        // Try to fetch signal aggregates (may not exist for Foursquare places)
+        const placeIds = placesData.map(p => p.fsq_place_id);
+        
+        let signalAggregates: any[] = [];
+        try {
+          const { data: signalData } = await supabase
+            .from('place_signal_aggregates')
+            .select('place_id, signal_label, total_taps')
+            .in('place_id', placeIds);
+          signalAggregates = signalData || [];
+        } catch (e) {
+          console.log('No signal aggregates table or data');
+        }
+
         // Process places - map Foursquare fields to app format
         const processedPlaces = placesData
           .filter((place) => {
@@ -50,10 +64,17 @@
                    place.longitude !== 0 && place.latitude !== 0;
           })
           .map(place => {
+            // Get signals for this place
+            const placeSignals = signalAggregates
+              .filter(s => s.place_id === place.fsq_place_id)
+              .map(s => ({
+                bucket: s.signal_label || 'Unknown',
+                tap_total: s.total_taps || 0,
+              }));
+
             // Parse category from fsq_category_labels
             let category = 'Other';
             if (place.fsq_category_labels) {
-              // fsq_category_labels might be stored as comma-separated string or array
               const labels = typeof place.fsq_category_labels === 'string' 
                 ? place.fsq_category_labels.split(',')[0] 
                 : Array.isArray(place.fsq_category_labels) 
@@ -77,8 +98,7 @@
               website: place.website,
               instagram_url: place.instagram,
               facebook_url: place.facebook_id,
-              // No signals for Foursquare places yet
-              signals: [],
+              signals: placeSignals,
               photos: [],
             };
           });

@@ -124,47 +124,42 @@ export const CATEGORY_COLORS = {
   },
 } as const;
 
-// Helper: Get or Create Place to ensure we have a valid UUID
-async function getOrCreatePlace(googlePlaceId: string, placeName: string): Promise<string | null> {
+// Helper: Get or Create Place - now uses fsq_places_raw
+// For Foursquare places, we use fsq_place_id directly (no UUID needed)
+async function getOrCreatePlace(placeId: string, placeName: string): Promise<string | null> {
   try {
-    // 1. Check if place exists by google_place_id
-    const { data: existingPlace, error: fetchError } = await supabase
-      .from('places')
-      .select('id')
-      .eq('google_place_id', googlePlaceId)
-      .maybeSingle();
+    // Check if it's a Foursquare ID (alphanumeric, no dashes) or UUID
+    const isFoursquareId = placeId && !placeId.includes('-');
+    
+    if (isFoursquareId) {
+      // For Foursquare places, verify it exists in fsq_places_raw
+      const { data: existingPlace, error: fetchError } = await supabase
+        .from('fsq_places_raw')
+        .select('fsq_place_id')
+        .eq('fsq_place_id', placeId)
+        .maybeSingle();
 
-    if (existingPlace) {
-      return existingPlace.id;
+      if (existingPlace) {
+        return existingPlace.fsq_place_id;
+      }
+      
+      // Foursquare place not found - this shouldn't happen for map places
+      console.warn('Foursquare place not found:', placeId);
+      return placeId; // Return as-is, let the review be linked anyway
     }
-
-    // 2. If not, create it
-    console.log('Place not found, creating new place for:', googlePlaceId);
-    const { data: newPlace, error: createError } = await supabase
-      .from('places')
-      .insert({
-        google_place_id: googlePlaceId,
-        name: placeName,
-        // Add other default fields if necessary
-      })
-      .select('id')
-      .single();
-
-    if (createError) {
-      console.error('Error creating place:', createError);
-      return null;
-    }
-
-    return newPlace.id;
+    
+    // For non-Foursquare IDs (UUIDs), return as-is
+    // These would be user-added places in the old places table
+    return placeId;
   } catch (error) {
     console.error('Error in getOrCreatePlace:', error);
-    return null;
+    return placeId; // Return original ID on error
   }
 }
 
 // Submit a new review with signal taps
 export async function submitReview(
-  googlePlaceId: string, // This might be a Google ID or a UUID
+  placeId: string, // Foursquare ID or UUID
   placeName: string,
   signals: ReviewSignalTap[],
   publicNote?: string,
@@ -180,17 +175,10 @@ export async function submitReview(
 
     const userId = user?.id || null;
 
-    // RESOLVE PLACE ID (Fix for 22P02)
-    // We assume the input might be a Google Place ID. We need a UUID.
-    let targetPlaceId = googlePlaceId;
-    
-    // Simple check: If it doesn't look like a UUID (length 36), treat as Google ID
-    if (googlePlaceId.length !== 36) {
-      const resolvedId = await getOrCreatePlace(googlePlaceId, placeName);
-      if (!resolvedId) {
-        return { success: false, error: 'Failed to resolve Place UUID' };
-      }
-      targetPlaceId = resolvedId;
+    // Resolve place ID (verify it exists)
+    const targetPlaceId = await getOrCreatePlace(placeId, placeName);
+    if (!targetPlaceId) {
+      return { success: false, error: 'Failed to resolve Place ID' };
     }
 
     // Step 1: Create the review in place_reviews table
@@ -343,57 +331,59 @@ export async function fetchPlaceSignals(placeId: string): Promise<{
         // Ghost Logic: If score is low (< 1.0) but not zero, mark as ghost
         const isGhost = data.current_score > 0 && data.current_score < 1.0;
 
-        // Only include if score > 0 (Dead zombies are filtered out)
-        if (data.current_score > 0) {
-          const aggregate: SignalAggregate = {
-            place_id: placeId,
-            signal_id: signalId,
-            tap_total: data.tap_total,
-            current_score: parseFloat(data.current_score.toFixed(2)),
-            review_count: data.review_count,
-            last_tap_at: data.last_tap_at,
-            is_ghost: isGhost,
-            label: signal.label,
-            icon: signal.icon_emoji,
-            category: category,
-          };
-          
+        const aggregate: SignalAggregate = {
+          place_id: placeId,
+          signal_id: signalId,
+          tap_total: data.tap_total,
+          current_score: data.current_score,
+          review_count: data.review_count,
+          last_tap_at: data.last_tap_at,
+          is_ghost: isGhost,
+          label: signal.label,
+          icon: signal.icon_emoji,
+          category: category,
+        };
+
+        // Track scores for medal calculations
+        if (category === 'best_for' || category === 'vibe') {
+          totalPositiveScore += data.current_score;
+        } else if (category === 'heads_up') {
+          totalNegativeScore += data.current_score;
+        }
+
+        // Track specific signals for medals
+        if (signal.slug === 'fast_service') {
+          fastServiceScore = data.current_score;
+        } else if (signal.slug === 'slow_service') {
+          slowServiceScore = data.current_score;
+        }
+
+        // Add to appropriate category (skip ghosts from display but keep for calculations)
+        if (!isGhost) {
           result[category].push(aggregate);
-
-          // Track scores for Medals
-          if (category === 'best_for' || category === 'vibe') {
-            totalPositiveScore += data.current_score;
-          } else if (category === 'heads_up') {
-            totalNegativeScore += data.current_score;
-          }
-
-          if (signal.label === 'Fast Service') fastServiceScore += data.current_score;
-          if (signal.label === 'Slow Service') slowServiceScore += data.current_score;
         }
       }
     }
 
-    // Sort each category by current_score descending (Living Score)
+    // Sort each category by current_score descending
     result.best_for.sort((a, b) => b.current_score - a.current_score);
     result.vibe.sort((a, b) => b.current_score - a.current_score);
     result.heads_up.sort((a, b) => b.current_score - a.current_score);
 
-    // --- MEDAL LOGIC ---
-    const totalScore = totalPositiveScore + totalNegativeScore;
-
-    // 🏆 Vibe Check: >90% Positive
-    if (totalScore > 10 && (totalPositiveScore / totalScore) > 0.9) {
+    // MEDAL LOGIC
+    // 1. Vibe Check Medal: Strong vibe signals
+    if (result.vibe.some(s => s.current_score >= 5)) {
       result.medals.push('vibe_check');
     }
 
-    // ⚡ Speed Demon: Fast > 2x Slow
-    if (fastServiceScore > 5 && fastServiceScore > (slowServiceScore * 2)) {
+    // 2. Speed Demon Medal: Fast service with no slow service complaints
+    if (fastServiceScore >= 3 && slowServiceScore < 1) {
       result.medals.push('speed_demon');
     }
 
-    // 💎 Hidden Gem: High Positive, Low Volume
-    if (totalPositiveScore > 10 && totalScore < 50 && (totalPositiveScore / totalScore) > 0.95) {
-      result.medals.push('hidden_gem');
+    // 3. Community Favorite: High positive, low negative
+    if (totalPositiveScore >= 10 && totalNegativeScore < 2) {
+      result.medals.push('community_favorite');
     }
 
     return result;
@@ -404,149 +394,24 @@ export async function fetchPlaceSignals(placeId: string): Promise<{
   }
 }
 
-// Fetch user's existing review for a place (if any)
-export async function fetchUserReview(placeId: string): Promise<{
-  review: PlaceReview | null;
-  signals: ReviewSignalTap[];
-}> {
+// Get reviews for a place
+export async function getPlaceReviews(placeId: string): Promise<PlaceReview[]> {
   try {
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !authData?.user) {
-      // Not logged in or auth error - just return null, don't throw
-      return { review: null, signals: [] };
-    }
-
-    const user = authData.user;
-
-    // Get the user's review
-    const { data: review, error: reviewError } = await supabase
+    const { data, error } = await supabase
       .from('place_reviews')
       .select('*')
       .eq('place_id', placeId)
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (reviewError) {
-      console.error('Error fetching user review:', reviewError);
-      return { review: null, signals: [] };
-    }
-
-    if (!review) {
-      return { review: null, signals: [] };
-    }
-
-    // Get the signal taps for this review
-    const { data: taps, error: tapsError } = await supabase
-      .from('place_review_signal_taps')
-      .select('signal_id, intensity')
-      .eq('review_id', review.id);
-
-    if (tapsError) {
-      return { review: review as PlaceReview, signals: [] };
-    }
-
-    const signals: ReviewSignalTap[] = (taps || []).map(tap => ({
-      signalId: tap.signal_id,
-      intensity: tap.intensity,
-    }));
-
-    return { review: review as PlaceReview, signals };
-
-  } catch (error) {
-    console.error('Error fetching user review:', error);
-    return { review: null, signals: [] };
-  }
-}
-
-// Update an existing review
-export async function updateReview(
-  reviewId: string,
-  placeId: string,
-  signals: ReviewSignalTap[],
-  publicNote?: string,
-  privateNote?: string
-): Promise<{ success: boolean; error?: any }> {
-  try {
-    // Update the review
-    const { error: reviewError } = await supabase
-      .from('place_reviews')
-      .update({
-        public_note: publicNote || null,
-        private_note_owner: privateNote || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', reviewId);
-
-    if (reviewError) {
-      return { success: false, error: reviewError };
-    }
-
-    // Delete existing signal taps
-    const { error: deleteError } = await supabase
-      .from('place_review_signal_taps')
-      .delete()
-      .eq('review_id', reviewId);
-
-    if (deleteError) {
-      console.error('Error deleting old signal taps:', deleteError);
-    }
-
-    // Insert new signal taps
-    if (signals.length > 0) {
-      const signalTaps = signals.map(signal => ({
-        review_id: reviewId,
-        place_id: placeId,
-        signal_id: signal.signalId,
-        intensity: signal.intensity,
-      }));
-
-      const { error: tapsError } = await supabase
-        .from('place_review_signal_taps')
-        .insert(signalTaps);
-
-      if (tapsError) {
-        return { success: false, error: tapsError };
-      }
-    }
-
-    console.log('✅ Review updated successfully!');
-    return { success: true };
-
-  } catch (error) {
-    console.error('Error updating review:', error);
-    return { success: false, error };
-  }
-}
-
-// Get review count for a place
-export async function getPlaceReviewCount(placeId: string): Promise<number> {
-  try {
-    const { count, error } = await supabase
-      .from('place_reviews')
-      .select('*', { count: 'exact', head: true })
-      .eq('place_id', placeId)
-      .eq('status', 'live');
+      .eq('status', 'live')
+      .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error getting review count:', error);
-      return 0;
+      console.error('Error fetching reviews:', error);
+      return [];
     }
 
-    return count || 0;
+    return data || [];
   } catch (error) {
-    console.error('Error getting review count:', error);
-    return 0;
+    console.error('Error fetching reviews:', error);
+    return [];
   }
-}
-
-// Preload signal cache (call early in app lifecycle)
-export async function preloadSignalCache(): Promise<void> {
-  await loadSignalCache();
-}
-
-// Clear signal cache (call when signals are updated)
-export function clearSignalCache(): void {
-  signalCache = new Map();
-  cacheLoaded = false;
 }
