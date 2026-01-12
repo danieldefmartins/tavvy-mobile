@@ -25,6 +25,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useThemeContext } from '../contexts/ThemeContext';
 import {
   getFeaturedArticle,
   getTrendingArticles,
@@ -157,6 +158,7 @@ const MOCK_UNIVERSES = [
 
 export default function AtlasHomeScreen() {
   const navigation = useNavigation();
+  const { theme, isDark } = useThemeContext();
   const [loading, setLoading] = useState(true);
   
   const [featuredArticle, setFeaturedArticle] = useState<AtlasArticle | null>(MOCK_FEATURED as any);
@@ -185,14 +187,14 @@ export default function AtlasHomeScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: isDark ? theme.background : '#fff' }]}>
         <ActivityIndicator size="large" color="#2DD4BF" />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F9FAFB' }]}>
       <StatusBar barStyle="light-content" />
       
       {/* FULL WIDTH GRADIENT HEADER - NO rounded corners */}
@@ -271,11 +273,11 @@ export default function AtlasHomeScreen() {
 
         {/* Trending Now */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Trending Now</Text>
+          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111827' }]}>Trending Now</Text>
           {trendingArticles.map((article) => (
             <TouchableOpacity
               key={article.id}
-              style={styles.trendingCard}
+              style={[styles.trendingCard, { backgroundColor: isDark ? theme.surface : '#fff', borderColor: isDark ? theme.border : '#F3F4F6' }]}
               activeOpacity={0.7}
               onPress={() =>
                 navigation.navigate('ArticleDetail', { article })
@@ -286,7 +288,7 @@ export default function AtlasHomeScreen() {
                 style={styles.trendingImage}
               />
               <View style={styles.trendingContent}>
-                <Text style={styles.trendingTitle} numberOfLines={2}>
+                <Text style={[styles.trendingTitle, { color: isDark ? theme.text : '#1F2937' }]} numberOfLines={2}>
                   {article.title}
                 </Text>
                 
@@ -304,11 +306,11 @@ export default function AtlasHomeScreen() {
                   
                   <View style={styles.trendingStatsRow}>
                     <Ionicons name="heart" size={14} color="#EF4444" style={{ marginRight: 4 }} />
-                    <Text style={styles.trendingStatsText}>
+                    <Text style={[styles.trendingStatsText, { color: isDark ? theme.textSecondary : '#6B7280' }]}>
                       {formatNumber(article.love_count)}
                     </Text>
-                    <Text style={styles.trendingDot}>•</Text>
-                    <Text style={styles.trendingStatsText}>
+                    <Text style={[styles.trendingDot, { color: isDark ? theme.border : '#D1D5DB' }]}>•</Text>
+                    <Text style={[styles.trendingStatsText, { color: isDark ? theme.textSecondary : '#6B7280' }]}>
                       {article.read_time_minutes} min read
                     </Text>
                   </View>
@@ -320,7 +322,7 @@ export default function AtlasHomeScreen() {
 
         {/* Explore Universes */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Explore Universes</Text>
+          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111827' }]}>Explore Universes</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -330,7 +332,7 @@ export default function AtlasHomeScreen() {
             {universes.map((universe) => (
               <TouchableOpacity
                 key={universe.id}
-                style={styles.universeCard}
+                style={[styles.universeCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
                 activeOpacity={0.8}
                 onPress={() =>
                   navigation.navigate('UniverseDetail', { universeId: universe.id, universe })
@@ -341,10 +343,10 @@ export default function AtlasHomeScreen() {
                   style={styles.universeImage}
                 />
                 <View style={styles.universeInfo}>
-                  <Text style={styles.universeName} numberOfLines={1}>
+                  <Text style={[styles.universeName, { color: isDark ? theme.text : '#111827' }]} numberOfLines={1}>
                     {universe.name}
                   </Text>
-                  <Text style={styles.universePlaces}>{universe.place_count} places</Text>
+                  <Text style={[styles.universePlaces, { color: isDark ? theme.textSecondary : '#6B7280' }]}>{universe.place_count} places</Text>
                 </View>
               </TouchableOpacity>
             ))}

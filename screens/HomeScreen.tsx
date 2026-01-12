@@ -25,6 +25,7 @@ import * as Location from 'expo-location';
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useThemeContext } from '../contexts/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -222,6 +223,9 @@ const MOCK_PLACES: Place[] = [
 // ============================================
 
 export default function HomeScreen({ navigation }: { navigation: any }) {
+  // Theme context for dark mode support
+  const { theme, isDark } = useThemeContext();
+  
   // View mode: 'content' (default) or 'map' (search/swipe triggered)
   const [viewMode, setViewMode] = useState<'content' | 'map'>('content');
   
@@ -1200,7 +1204,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         id: 'discover',
         icon: 'compass',
         iconColor: '#FF9500',
-        bgColor: '#FFF3E0',
+        bgColor: isDark ? 'rgba(255, 149, 0, 0.15)' : '#FFF3E0',
         title: 'Discover New Places',
         subtitle: 'Explore highly-rated spots in your area',
         action: () => switchToMapMode(),
@@ -1209,7 +1213,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         id: 'trending',
         icon: 'trending-up',
         iconColor: '#34C759',
-        bgColor: '#E8F5E9',
+        bgColor: isDark ? 'rgba(52, 199, 89, 0.15)' : '#E8F5E9',
         title: 'Trending This Week',
         subtitle: `${places.length} places getting attention nearby`,
         action: () => switchToMapMode(),
@@ -1218,7 +1222,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         id: 'tip',
         icon: 'bulb',
         iconColor: '#AF52DE',
-        bgColor: '#F3E5F5',
+        bgColor: isDark ? 'rgba(175, 82, 222, 0.15)' : '#F3E5F5',
         title: 'TavvY Tip',
         subtitle: 'Tap signals to see what makes places special',
         action: null,
@@ -1227,7 +1231,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         id: 'parking',
         icon: 'car',
         iconColor: '#007AFF',
-        bgColor: '#E3F2FD',
+        bgColor: isDark ? 'rgba(0, 122, 255, 0.15)' : '#E3F2FD',
         title: parkingLocation ? 'Your Car is Saved' : 'Save Your Parking',
         subtitle: parkingLocation 
           ? `Parked ${getParkingDuration()} at ${parkingLocation.address || 'saved location'}`
@@ -1258,8 +1262,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <Ionicons name={currentInsight.icon as any} size={24} color={currentInsight.iconColor} />
           </View>
           <View style={styles.insightTextContainer}>
-            <Text style={styles.insightTitle}>{currentInsight.title}</Text>
-            <Text style={styles.insightSubtitle}>{currentInsight.subtitle}</Text>
+            <Text style={[styles.insightTitle, { color: isDark ? theme.text : '#000' }]}>{currentInsight.title}</Text>
+            <Text style={[styles.insightSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>{currentInsight.subtitle}</Text>
           </View>
           {currentInsight.action && (
             <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
@@ -1562,7 +1566,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
     return (
       <TouchableOpacity
-        style={styles.card}
+        style={[styles.card, { backgroundColor: isDark ? theme.surface : '#fff' }]}
         onPress={() => handlePlacePress(place)}
         activeOpacity={0.95}
       >
@@ -1606,32 +1610,32 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         
         {/* Meta info */}
         <View style={styles.metaRow}>
-          <Text style={styles.metaText}>{place.category}</Text>
-          <Text style={styles.metaDot}>•</Text>
-          <Text style={styles.metaText}>$$</Text>
-          <Text style={styles.metaDot}>•</Text>
+          <Text style={[styles.metaText, { color: isDark ? theme.textSecondary : '#666' }]}>{place.category}</Text>
+          <Text style={[styles.metaDot, { color: isDark ? theme.textSecondary : '#999' }]}>•</Text>
+          <Text style={[styles.metaText, { color: isDark ? theme.textSecondary : '#666' }]}>$$</Text>
+          <Text style={[styles.metaDot, { color: isDark ? theme.textSecondary : '#999' }]}>•</Text>
           <Text style={[styles.metaText, { color: '#34C759' }]}>
             {place.current_status || 'Open'}
           </Text>
         </View>
         
         {/* Action buttons */}
-        <View style={styles.actionRow}>
+        <View style={[styles.actionRow, { borderTopColor: isDark ? theme.border : '#F2F2F7' }]}>
           <TouchableOpacity style={styles.actionButton} onPress={() => handleCall(place)}>
-            <Ionicons name="call-outline" size={20} color="#666" />
-            <Text style={styles.actionText}>Call</Text>
+            <Ionicons name="call-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
+            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Call</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={() => handleWebsite(place)}>
-            <Ionicons name="globe-outline" size={20} color="#666" />
-            <Text style={styles.actionText}>Website</Text>
+            <Ionicons name="globe-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
+            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Website</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="images-outline" size={20} color="#666" />
-            <Text style={styles.actionText}>Photos</Text>
+            <Ionicons name="images-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
+            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Photos</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={() => handleShare(place)}>
-            <Ionicons name="share-outline" size={20} color="#666" />
-            <Text style={styles.actionText}>Share</Text>
+            <Ionicons name="share-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
+            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Share</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -1700,40 +1704,38 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       </TouchableOpacity>
       
       {/* Content Area */}
-      <View style={styles.contentArea}>
-        {/* Header */}
+      <View style={[styles.contentArea, { backgroundColor: isDark ? theme.background : '#fff' }]}>
+        {/* Header with centered logo */}
         <View style={styles.contentHeader}>
-          <View style={styles.headerRow}>
-            <View>
-              <Text style={styles.greetingText}>{greeting}</Text>
-              <Text style={styles.titleText}>What are you looking for?</Text>
-            </View>
+          {/* Centered Logo */}
+          <View style={styles.logoContainer}>
             <Image 
-              source={require('../assets/brand/logo-horizontal.png')} 
+              source={isDark 
+                ? require('../assets/brand/logo-horizontal.png') 
+                : require('../assets/brand/tavvy-logo-Original-Transparent.png')} 
               style={styles.headerLogo}
               resizeMode="contain"
             />
           </View>
-          {locationName ? (
-            <View style={styles.locationRow}>
-              <Ionicons name="location" size={14} color="#0A84FF" />
-              <Text style={styles.locationText}>{locationName}</Text>
-            </View>
-          ) : null}
+          <View>
+            <Text style={[styles.greetingText, { color: isDark ? theme.textSecondary : '#8E8E93' }]}>{greeting}</Text>
+            <Text style={[styles.titleText, { color: isDark ? theme.text : '#000' }]}>What are you looking for?</Text>
+          </View>
         </View>
         
         {/* Search Bar with Autocomplete */}
         <View style={styles.searchWrapper}>
           <View style={[
             styles.contentSearchBar,
+            { backgroundColor: isDark ? theme.surface : '#F2F2F7' },
             isSearchFocused && styles.contentSearchBarFocused
           ]}>
-            <Ionicons name="search" size={20} color="#8E8E93" />
+            <Ionicons name="search" size={20} color={isDark ? theme.textSecondary : '#8E8E93'} />
             <TextInput
               ref={searchInputRef}
-              style={styles.contentSearchInput}
+              style={[styles.contentSearchInput, { color: isDark ? theme.text : '#000' }]}
               placeholder="Search places, categories..."
-              placeholderTextColor="#8E8E93"
+              placeholderTextColor={isDark ? theme.textSecondary : '#8E8E93'}
               value={searchQuery}
               onChangeText={handleSearchInputChange}
               onFocus={handleSearchFocus}
@@ -1743,7 +1745,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={clearSearch}>
-                <Ionicons name="close-circle" size={20} color="#8E8E93" />
+                <Ionicons name="close-circle" size={20} color={isDark ? theme.textSecondary : '#8E8E93'} />
               </TouchableOpacity>
             )}
           </View>
@@ -1767,6 +1769,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   key={category}
                   style={[
                     styles.categoryChip,
+                    { backgroundColor: isDark ? theme.surface : '#F2F2F7', borderColor: isDark ? theme.border : '#E5E5EA' },
                     selectedCategory === category && styles.categoryChipActive,
                   ]}
                   onPress={() => {
@@ -1784,12 +1787,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                       category === 'Bars' ? 'beer' : 'cart'
                     }
                     size={16}
-                    color={selectedCategory === category ? '#fff' : '#666'}
+                    color={selectedCategory === category ? '#fff' : (isDark ? theme.textSecondary : '#666')}
                     style={{ marginRight: 6 }}
                   />
                   <Text
                     style={[
                       styles.categoryChipText,
+                      { color: isDark ? theme.text : '#333' },
                       selectedCategory === category && styles.categoryChipTextActive,
                     ]}
                   >
@@ -1811,7 +1815,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               {/* Trending Near You */}
               <View style={styles.contentSection}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Trending Near You</Text>
+                  <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>Trending Near You</Text>
                   <TouchableOpacity onPress={switchToMapMode}>
                     <Text style={styles.seeAllText}>See All</Text>
                   </TouchableOpacity>
@@ -1824,7 +1828,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   {filteredPlaces.slice(0, 5).map((place) => (
                     <TouchableOpacity
                       key={place.id}
-                      style={styles.trendingCard}
+                      style={[styles.trendingCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
                       onPress={() => handlePlacePress(place)}
                     >
                       {place.photos && place.photos[0] ? (
@@ -1837,8 +1841,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                           <Ionicons name="image-outline" size={32} color="#ccc" />
                         </View>
                       )}
-                      <Text style={styles.trendingName} numberOfLines={1}>{place.name}</Text>
-                      <Text style={styles.trendingCategory}>{place.category}</Text>
+                      <Text style={[styles.trendingName, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>{place.name}</Text>
+                      <Text style={[styles.trendingCategory, { color: isDark ? theme.textSecondary : '#666' }]}>{place.category}</Text>
                       {place.signals && place.signals.length > 0 && (
                         <View style={styles.trendingSignalRow}>
                           <Ionicons name="radio" size={12} color="#0A84FF" />
@@ -1854,7 +1858,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               
               {/* Explore Categories */}
               <View style={styles.contentSection}>
-                <Text style={styles.sectionTitle}>Explore</Text>
+                <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>Explore</Text>
                 <View style={styles.exploreGrid}>
                   {['Restaurants', 'Cafes', 'Bars', 'Shopping', 'Entertainment', 'Services'].map((cat) => (
                     <TouchableOpacity
@@ -1865,7 +1869,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                         switchToMapMode();
                       }}
                     >
-                      <View style={styles.exploreIconContainer}>
+                      <View style={[styles.exploreIconContainer, { backgroundColor: isDark ? 'rgba(10, 132, 255, 0.15)' : '#F2F7FF' }]}>
                         <Ionicons
                           name={
                             cat === 'Restaurants' ? 'restaurant' :
@@ -1878,7 +1882,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                           color="#0A84FF"
                         />
                       </View>
-                      <Text style={styles.exploreText}>{cat}</Text>
+                      <Text style={[styles.exploreText, { color: isDark ? theme.text : '#000' }]}>{cat}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -1886,13 +1890,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               
               {/* Did You Know */}
               <View style={styles.contentSection}>
-                <View style={styles.didYouKnowCard}>
+                <View style={[styles.didYouKnowCard, { backgroundColor: isDark ? theme.surface : '#FFF9E6' }]}>
                   <View style={styles.didYouKnowIcon}>
                     <Ionicons name="bulb" size={24} color="#FFD60A" />
                   </View>
                   <View style={styles.didYouKnowContent}>
-                    <Text style={styles.didYouKnowTitle}>Did you know?</Text>
-                    <Text style={styles.didYouKnowText}>
+                    <Text style={[styles.didYouKnowTitle, { color: isDark ? theme.text : '#000' }]}>Did you know?</Text>
+                    <Text style={[styles.didYouKnowText, { color: isDark ? theme.textSecondary : '#666' }]}>
                       TavvY uses tap-based signals instead of star ratings to give you 
                       honest, structured insights about places.
                     </Text>
@@ -2045,23 +2049,23 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       <View style={styles.mapSearchOverlay}>
         {/* Back button */}
         <TouchableOpacity 
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: isDark ? theme.surface : '#fff' }]}
           onPress={switchToContentMode}
         >
-          <Ionicons name="arrow-back" size={24} color="#000" />
+          <Ionicons name="arrow-back" size={24} color={isDark ? theme.text : '#000'} />
         </TouchableOpacity>
         
         {/* Search Bar */}
-        <View style={[styles.mapSearchBar, targetLocation && styles.mapSearchBarWithAddress]}>
+        <View style={[styles.mapSearchBar, targetLocation && styles.mapSearchBarWithAddress, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
           {targetLocation ? (
             <Ionicons name="location" size={20} color="#AF52DE" />
           ) : (
             <Ionicons name="search" size={20} color="#999" />
           )}
           <TextInput
-            style={styles.mapSearchInput}
+            style={[styles.mapSearchInput, { color: isDark ? theme.text : '#000' }]}
             placeholder="Search places or locations"
-            placeholderTextColor="#999"
+            placeholderTextColor={isDark ? theme.textSecondary : '#999'}
             value={searchQuery}
             onChangeText={(text) => {
               setSearchQuery(text);
@@ -2096,6 +2100,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               key={category}
               style={[
                 styles.mapCategoryChip,
+                { backgroundColor: isDark ? theme.surface : '#fff' },
                 selectedCategory === category && styles.mapCategoryChipActive,
               ]}
               onPress={() => handleCategorySelect(category)}
@@ -2108,12 +2113,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   category === 'Bars' ? 'beer' : 'cart'
                 }
                 size={12}
-                color={selectedCategory === category ? '#fff' : '#666'}
+                color={selectedCategory === category ? '#fff' : (isDark ? theme.textSecondary : '#666')}
                 style={{ marginRight: 4 }}
               />
               <Text
                 style={[
                   styles.mapCategoryChipText,
+                  { color: isDark ? theme.text : '#333' },
                   selectedCategory === category && styles.mapCategoryChipTextActive,
                 ]}
               >
@@ -2129,8 +2135,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         ref={bottomSheetRef}
         index={1}
         snapPoints={searchedAddress ? [40, '40%', '65%'] : [40, '35%', '65%']}
-        backgroundStyle={styles.bottomSheetBackground}
-        handleIndicatorStyle={styles.bottomSheetHandle}
+        backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
+        handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
         enablePanDownToClose={false}
         enableContentPanningGesture={false}
       >
@@ -2162,9 +2168,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: isDark ? theme.background : '#fff' }]}>
         <ActivityIndicator size="large" color="#0A84FF" />
-        <Text style={styles.loadingText}>Loading places...</Text>
+        <Text style={[styles.loadingText, { color: isDark ? theme.textSecondary : '#666' }]}>Loading places...</Text>
       </View>
     );
   }

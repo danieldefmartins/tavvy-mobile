@@ -27,6 +27,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { useThemeContext } from '../contexts/ThemeContext';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { 
@@ -48,6 +49,7 @@ type NavigationProp = NativeStackNavigationProp<any>;
 
 export default function ProsHomeScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const { theme, isDark } = useThemeContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [location, setLocation] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -91,7 +93,7 @@ export default function ProsHomeScreen() {
   // If user switches to Pro mode, show Pro options
   if (viewMode === 'pro') {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#FFFFFF' }]}>
         <StatusBar barStyle="light-content" />
         
         {/* FULL WIDTH GRADIENT HEADER - NO rounded corners */}
@@ -122,13 +124,13 @@ export default function ProsHomeScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Mode Toggle */}
-          <View style={styles.modeToggleContainer}>
+          <View style={[styles.modeToggleContainer, { backgroundColor: isDark ? theme.surface : '#F3F4F6' }]}>
             <TouchableOpacity
               style={[styles.modeToggle, viewMode === 'user' && styles.modeToggleActive]}
               onPress={() => setViewMode('user')}
             >
-              <Ionicons name="search" size={18} color={viewMode === 'user' ? '#fff' : ProsColors.textSecondary} />
-              <Text style={[styles.modeToggleText, viewMode === 'user' && styles.modeToggleTextActive]}>
+              <Ionicons name="search" size={18} color={viewMode === 'user' ? '#fff' : (isDark ? theme.textSecondary : ProsColors.textSecondary)} />
+              <Text style={[styles.modeToggleText, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }, viewMode === 'user' && styles.modeToggleTextActive]}>
                 Find Pros
               </Text>
             </TouchableOpacity>
@@ -136,8 +138,8 @@ export default function ProsHomeScreen() {
               style={[styles.modeToggle, viewMode === 'pro' && styles.modeToggleActive]}
               onPress={() => setViewMode('pro')}
             >
-              <Ionicons name="construct" size={18} color={viewMode === 'pro' ? '#fff' : ProsColors.textSecondary} />
-              <Text style={[styles.modeToggleText, viewMode === 'pro' && styles.modeToggleTextActive]}>
+              <Ionicons name="construct" size={18} color={viewMode === 'pro' ? '#fff' : (isDark ? theme.textSecondary : ProsColors.textSecondary)} />
+              <Text style={[styles.modeToggleText, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }, viewMode === 'pro' && styles.modeToggleTextActive]}>
                 I'm a Pro
               </Text>
             </TouchableOpacity>
@@ -147,64 +149,64 @@ export default function ProsHomeScreen() {
           <View style={styles.proModeContainer}>
             <View style={styles.proModeHeader}>
               <Ionicons name="construct" size={48} color="#3B82F6" />
-              <Text style={styles.proModeTitle}>Welcome, Pro!</Text>
-              <Text style={styles.proModeSubtitle}>
+              <Text style={[styles.proModeTitle, { color: isDark ? theme.text : ProsColors.textPrimary }]}>Welcome, Pro!</Text>
+              <Text style={[styles.proModeSubtitle, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }]}>
                 Manage your business and connect with customers
               </Text>
             </View>
 
             {/* Pro Actions */}
             <View style={styles.proActionsGrid}>
-              <TouchableOpacity style={styles.proActionCard} onPress={handleProDashboard}>
+              <TouchableOpacity style={[styles.proActionCard, { backgroundColor: isDark ? theme.surface : '#fff' }]} onPress={handleProDashboard}>
                 <View style={[styles.proActionIcon, { backgroundColor: '#3B82F615' }]}>
                   <Ionicons name="grid" size={28} color="#3B82F6" />
                 </View>
-                <Text style={styles.proActionTitle}>Dashboard</Text>
-                <Text style={styles.proActionSubtitle}>View stats & leads</Text>
+                <Text style={[styles.proActionTitle, { color: isDark ? theme.text : ProsColors.textPrimary }]}>Dashboard</Text>
+                <Text style={[styles.proActionSubtitle, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }]}>View stats & leads</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={styles.proActionCard} 
+                style={[styles.proActionCard, { backgroundColor: isDark ? theme.surface : '#fff' }]} 
                 onPress={() => navigation.navigate('ProsLeads')}
               >
                 <View style={[styles.proActionIcon, { backgroundColor: `${ProsColors.success}15` }]}>
                   <Ionicons name="mail" size={28} color={ProsColors.success} />
                 </View>
-                <Text style={styles.proActionTitle}>Leads</Text>
-                <Text style={styles.proActionSubtitle}>Manage requests</Text>
+                <Text style={[styles.proActionTitle, { color: isDark ? theme.text : ProsColors.textPrimary }]}>Leads</Text>
+                <Text style={[styles.proActionSubtitle, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }]}>Manage requests</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={styles.proActionCard}
+                style={[styles.proActionCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
                 onPress={() => navigation.navigate('ProsMessages')}
               >
                 <View style={[styles.proActionIcon, { backgroundColor: `${ProsColors.secondary}15` }]}>
                   <Ionicons name="chatbubbles" size={28} color={ProsColors.secondary} />
                 </View>
-                <Text style={styles.proActionTitle}>Messages</Text>
-                <Text style={styles.proActionSubtitle}>Chat with clients</Text>
+                <Text style={[styles.proActionTitle, { color: isDark ? theme.text : ProsColors.textPrimary }]}>Messages</Text>
+                <Text style={[styles.proActionSubtitle, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }]}>Chat with clients</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={styles.proActionCard}
+                style={[styles.proActionCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
                 onPress={() => navigation.navigate('ProsProfile', { slug: 'my-profile' })}
               >
                 <View style={[styles.proActionIcon, { backgroundColor: `${ProsColors.warning}15` }]}>
                   <Ionicons name="person" size={28} color={ProsColors.warning} />
                 </View>
-                <Text style={styles.proActionTitle}>My Profile</Text>
-                <Text style={styles.proActionSubtitle}>Edit your listing</Text>
+                <Text style={[styles.proActionTitle, { color: isDark ? theme.text : ProsColors.textPrimary }]}>My Profile</Text>
+                <Text style={[styles.proActionSubtitle, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }]}>Edit your listing</Text>
               </TouchableOpacity>
             </View>
 
             {/* Not registered yet? */}
-            <View style={styles.notRegisteredSection}>
+            <View style={[styles.notRegisteredSection, { backgroundColor: isDark ? theme.surface : '#F9FAFB' }]}>
               <View style={styles.savingsBadge}>
                 <Ionicons name="sparkles" size={16} color="#fff" />
                 <Text style={styles.savingsBadgeText}>SAVE ${EARLY_ADOPTER_SAVINGS}</Text>
               </View>
-              <Text style={styles.notRegisteredTitle}>Join as an Early Adopter</Text>
-              <Text style={styles.notRegisteredSubtitle}>
+              <Text style={[styles.notRegisteredTitle, { color: isDark ? theme.text : ProsColors.textPrimary }]}>Join as an Early Adopter</Text>
+              <Text style={[styles.notRegisteredSubtitle, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }]}>
                 The first 1,000 pros pay just a fraction of the regular price.
                 Only {remainingSpots} spots remaining!
               </Text>
@@ -229,7 +231,7 @@ export default function ProsHomeScreen() {
 
   // User Mode (default) - Find Pros
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#FFFFFF' }]}>
       <StatusBar barStyle="light-content" />
       
       {/* FULL WIDTH GRADIENT HEADER - NO rounded corners */}
@@ -263,13 +265,13 @@ export default function ProsHomeScreen() {
         }
       >
         {/* Mode Toggle */}
-        <View style={styles.modeToggleContainer}>
+        <View style={[styles.modeToggleContainer, { backgroundColor: isDark ? theme.surface : '#F3F4F6' }]}>
           <TouchableOpacity
             style={[styles.modeToggle, viewMode === 'user' && styles.modeToggleActive]}
             onPress={() => setViewMode('user')}
           >
-            <Ionicons name="search" size={18} color={viewMode === 'user' ? '#fff' : ProsColors.textSecondary} />
-            <Text style={[styles.modeToggleText, viewMode === 'user' && styles.modeToggleTextActive]}>
+            <Ionicons name="search" size={18} color={viewMode === 'user' ? '#fff' : (isDark ? theme.textSecondary : ProsColors.textSecondary)} />
+            <Text style={[styles.modeToggleText, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }, viewMode === 'user' && styles.modeToggleTextActive]}>
               Find Pros
             </Text>
           </TouchableOpacity>
@@ -277,8 +279,8 @@ export default function ProsHomeScreen() {
             style={[styles.modeToggle, viewMode === 'pro' && styles.modeToggleActive]}
             onPress={() => setViewMode('pro')}
           >
-            <Ionicons name="construct" size={18} color={viewMode === 'pro' ? '#fff' : ProsColors.textSecondary} />
-            <Text style={[styles.modeToggleText, viewMode === 'pro' && styles.modeToggleTextActive]}>
+            <Ionicons name="construct" size={18} color={viewMode === 'pro' ? '#fff' : (isDark ? theme.textSecondary : ProsColors.textSecondary)} />
+            <Text style={[styles.modeToggleText, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }, viewMode === 'pro' && styles.modeToggleTextActive]}>
               I'm a Pro
             </Text>
           </TouchableOpacity>
@@ -286,46 +288,46 @@ export default function ProsHomeScreen() {
 
         {/* Hero Section */}
         <LinearGradient
-          colors={[ProsColors.heroBg, '#FFFFFF']}
+          colors={isDark ? [theme.background, theme.background] : [ProsColors.heroBg, '#FFFFFF']}
           style={styles.heroSection}
         >
           {/* Early Adopter Badge */}
           {remainingSpots > 0 && (
-            <TouchableOpacity style={styles.earlyAdopterBadge} onPress={handleProSignup}>
+            <TouchableOpacity style={[styles.earlyAdopterBadge, { backgroundColor: isDark ? theme.surface : '#FFFFFF' }]} onPress={handleProSignup}>
               <Ionicons name="sparkles" size={14} color="#3B82F6" />
-              <Text style={styles.earlyAdopterText}>
+              <Text style={[styles.earlyAdopterText, { color: isDark ? theme.text : ProsColors.textPrimary }]}>
                 Are you a Pro? Save ${EARLY_ADOPTER_SAVINGS} · Only {remainingSpots} spots left!
               </Text>
             </TouchableOpacity>
           )}
 
-          <Text style={styles.heroTitle}>
+          <Text style={[styles.heroTitle, { color: isDark ? theme.text : ProsColors.textPrimary }]}>
             Find Trusted Local{'\n'}
             <Text style={styles.heroTitleAccent}>Home Service Pros</Text>
           </Text>
-          <Text style={styles.heroSubtitle}>
+          <Text style={[styles.heroSubtitle, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }]}>
             Connect with verified electricians, plumbers, cleaners, and more.
             Get quotes in minutes, not days.
           </Text>
 
           {/* Search Box */}
-          <View style={styles.searchContainer}>
-            <View style={styles.searchInputContainer}>
-              <Ionicons name="search" size={20} color={ProsColors.textMuted} />
+          <View style={[styles.searchContainer, { backgroundColor: isDark ? theme.surface : '#FFFFFF' }]}>
+            <View style={[styles.searchInputContainer, { backgroundColor: isDark ? theme.background : ProsColors.sectionBg }]}>
+              <Ionicons name="search" size={20} color={isDark ? theme.textSecondary : ProsColors.textMuted} />
               <TextInput
-                style={styles.searchInput}
+                style={[styles.searchInput, { color: isDark ? theme.text : ProsColors.textPrimary }]}
                 placeholder="What service do you need?"
-                placeholderTextColor={ProsColors.textMuted}
+                placeholderTextColor={isDark ? theme.textSecondary : ProsColors.textMuted}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
             </View>
-            <View style={styles.locationInputContainer}>
-              <Ionicons name="location-outline" size={20} color={ProsColors.textMuted} />
+            <View style={[styles.locationInputContainer, { backgroundColor: isDark ? theme.background : ProsColors.sectionBg }]}>
+              <Ionicons name="location-outline" size={20} color={isDark ? theme.textSecondary : ProsColors.textMuted} />
               <TextInput
-                style={styles.searchInput}
+                style={[styles.searchInput, { color: isDark ? theme.text : ProsColors.textPrimary }]}
                 placeholder="City or ZIP code"
-                placeholderTextColor={ProsColors.textMuted}
+                placeholderTextColor={isDark ? theme.textSecondary : ProsColors.textMuted}
                 value={location}
                 onChangeText={setLocation}
               />
@@ -339,15 +341,15 @@ export default function ProsHomeScreen() {
           <View style={styles.trustBadges}>
             <View style={styles.trustBadge}>
               <Ionicons name="shield-checkmark-outline" size={16} color="#3B82F6" />
-              <Text style={styles.trustBadgeText}>Verified Pros</Text>
+              <Text style={[styles.trustBadgeText, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }]}>Verified Pros</Text>
             </View>
             <View style={styles.trustBadge}>
               <Ionicons name="star-outline" size={16} color="#3B82F6" />
-              <Text style={styles.trustBadgeText}>Community Reviews</Text>
+              <Text style={[styles.trustBadgeText, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }]}>Community Reviews</Text>
             </View>
             <View style={styles.trustBadge}>
               <Ionicons name="time-outline" size={16} color="#3B82F6" />
-              <Text style={styles.trustBadgeText}>Fast Response</Text>
+              <Text style={[styles.trustBadgeText, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }]}>Fast Response</Text>
             </View>
           </View>
         </LinearGradient>
@@ -355,7 +357,7 @@ export default function ProsHomeScreen() {
         {/* Browse by Service */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Browse by Service</Text>
+            <Text style={[styles.sectionTitle, { color: isDark ? theme.text : ProsColors.textPrimary }]}>Browse by Service</Text>
             <TouchableOpacity onPress={() => navigation.navigate('ProsBrowse')}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
@@ -375,7 +377,7 @@ export default function ProsHomeScreen() {
         {featuredPros.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Featured Pros</Text>
+              <Text style={[styles.sectionTitle, { color: isDark ? theme.text : ProsColors.textPrimary }]}>Featured Pros</Text>
               <TouchableOpacity onPress={() => navigation.navigate('ProsBrowse')}>
                 <Text style={styles.viewAllText}>View All</Text>
               </TouchableOpacity>
@@ -404,14 +406,14 @@ export default function ProsHomeScreen() {
 
         {/* How It Works */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { paddingHorizontal: 16 }]}>How It Works</Text>
+          <Text style={[styles.sectionTitle, { paddingHorizontal: 16, color: isDark ? theme.text : ProsColors.textPrimary }]}>How It Works</Text>
           <View style={styles.stepsContainer}>
             <View style={styles.step}>
               <View style={[styles.stepIcon, { backgroundColor: '#3B82F615' }]}>
                 <Ionicons name="search" size={24} color="#3B82F6" />
               </View>
-              <Text style={styles.stepTitle}>1. Search</Text>
-              <Text style={styles.stepDescription}>
+              <Text style={[styles.stepTitle, { color: isDark ? theme.text : ProsColors.textPrimary }]}>1. Search</Text>
+              <Text style={[styles.stepDescription, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }]}>
                 Find local pros by service type and location
               </Text>
             </View>
@@ -419,8 +421,8 @@ export default function ProsHomeScreen() {
               <View style={[styles.stepIcon, { backgroundColor: `${ProsColors.secondary}15` }]}>
                 <Ionicons name="chatbubbles" size={24} color={ProsColors.secondary} />
               </View>
-              <Text style={styles.stepTitle}>2. Connect</Text>
-              <Text style={styles.stepDescription}>
+              <Text style={[styles.stepTitle, { color: isDark ? theme.text : ProsColors.textPrimary }]}>2. Connect</Text>
+              <Text style={[styles.stepDescription, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }]}>
                 Message pros directly and request quotes
               </Text>
             </View>
@@ -428,8 +430,8 @@ export default function ProsHomeScreen() {
               <View style={[styles.stepIcon, { backgroundColor: `${ProsColors.success}15` }]}>
                 <Ionicons name="checkmark-circle" size={24} color={ProsColors.success} />
               </View>
-              <Text style={styles.stepTitle}>3. Hire</Text>
-              <Text style={styles.stepDescription}>
+              <Text style={[styles.stepTitle, { color: isDark ? theme.text : ProsColors.textPrimary }]}>3. Hire</Text>
+              <Text style={[styles.stepDescription, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }]}>
                 Choose the best pro and get the job done
               </Text>
             </View>
@@ -437,8 +439,8 @@ export default function ProsHomeScreen() {
         </View>
 
         {/* Are you a Pro? Link */}
-        <View style={styles.proLinkSection}>
-          <Text style={styles.proLinkText}>Are you a home service professional?</Text>
+        <View style={[styles.proLinkSection, { borderTopColor: isDark ? theme.border : '#E5E7EB' }]}>
+          <Text style={[styles.proLinkText, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }]}>Are you a home service professional?</Text>
           <TouchableOpacity onPress={() => setViewMode('pro')}>
             <Text style={styles.proLinkButton}>Join TavvY Pros →</Text>
           </TouchableOpacity>

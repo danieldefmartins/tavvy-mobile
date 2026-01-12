@@ -23,11 +23,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useThemeContext } from '../contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
 export default function UniverseDiscoveryScreen() {
   const navigation = useNavigation();
+  const { theme, isDark } = useThemeContext();
   const [activeCategory, setActiveCategory] = useState('All');
 
   const categories = [
@@ -53,7 +55,7 @@ export default function UniverseDiscoveryScreen() {
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F9FAFB' }]}>
       <StatusBar barStyle="light-content" />
       
       {/* Full-Width Gradient Header - NO rounded corners */}
@@ -83,12 +85,12 @@ export default function UniverseDiscoveryScreen() {
           <Text style={styles.headerSubtitle}>Explore worlds with many places inside</Text>
 
           {/* Search Bar */}
-          <View style={styles.searchContainer}>
+          <View style={[styles.searchContainer, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
             <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
             <TextInput
               placeholder="Find a universe..."
-              placeholderTextColor="#9CA3AF"
-              style={styles.searchInput}
+              placeholderTextColor={isDark ? theme.textSecondary : '#9CA3AF'}
+              style={[styles.searchInput, { color: isDark ? theme.text : '#1F2937' }]}
             />
           </View>
         </SafeAreaView>
@@ -106,6 +108,7 @@ export default function UniverseDiscoveryScreen() {
               key={cat.id}
               style={[
                 styles.categoryChip,
+                { backgroundColor: isDark ? theme.surface : '#fff' },
                 activeCategory === cat.id && styles.categoryChipActive
               ]}
               onPress={() => setActiveCategory(cat.id)}
@@ -114,12 +117,13 @@ export default function UniverseDiscoveryScreen() {
                 <Ionicons 
                   name={cat.icon as any} 
                   size={16} 
-                  color={activeCategory === cat.id ? '#fff' : '#4B5563'} 
+                  color={activeCategory === cat.id ? '#fff' : (isDark ? theme.textSecondary : '#4B5563')} 
                   style={{ marginRight: 6 }}
                 />
               )}
               <Text style={[
                 styles.categoryText,
+                { color: isDark ? theme.text : '#4B5563' },
                 activeCategory === cat.id && styles.categoryTextActive
               ]}>
                 {cat.label}
@@ -130,7 +134,7 @@ export default function UniverseDiscoveryScreen() {
 
         {/* Featured Universe */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Featured Universe</Text>
+          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111827' }]}>Featured Universe</Text>
           <TouchableOpacity 
             style={styles.featuredCard}
             onPress={() => navigation.navigate('UniverseLanding', { universeId: 'disney' })}
@@ -160,7 +164,7 @@ export default function UniverseDiscoveryScreen() {
           <View style={styles.sectionHeader}>
             <View style={styles.sectionHeaderLeft}>
               <Ionicons name="navigate" size={18} color="#06B6D4" />
-              <Text style={styles.sectionTitleInline}>Nearby Universes</Text>
+              <Text style={[styles.sectionTitleInline, { color: isDark ? theme.text : '#111827' }]}>Nearby Universes</Text>
             </View>
             <TouchableOpacity>
               <Text style={styles.seeAllText}>See Map</Text>
@@ -169,12 +173,12 @@ export default function UniverseDiscoveryScreen() {
           
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.nearbyContainer}>
             {nearbyUniverses.map((item) => (
-              <TouchableOpacity key={item.id} style={styles.nearbyCard}>
+              <TouchableOpacity key={item.id} style={[styles.nearbyCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
                 <Image source={{ uri: item.image }} style={styles.nearbyImage} />
                 <View style={styles.nearbyContent}>
-                  <Text style={styles.nearbyName} numberOfLines={1}>{item.name}</Text>
+                  <Text style={[styles.nearbyName, { color: isDark ? theme.text : '#1F2937' }]} numberOfLines={1}>{item.name}</Text>
                   <View style={styles.nearbyMeta}>
-                    <Text style={styles.nearbyType}>{item.type}</Text>
+                    <Text style={[styles.nearbyType, { color: isDark ? theme.textSecondary : '#6B7280' }]}>{item.type}</Text>
                     <Text style={styles.nearbyDist}>{item.dist}</Text>
                   </View>
                 </View>
@@ -185,18 +189,18 @@ export default function UniverseDiscoveryScreen() {
 
         {/* Popular Grid */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Popular Destinations</Text>
+          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111827' }]}>Popular Destinations</Text>
           <View style={styles.gridContainer}>
             {popularUniverses.map((item) => (
-              <TouchableOpacity key={item.id} style={styles.gridCard}>
+              <TouchableOpacity key={item.id} style={[styles.gridCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
                 <Image source={{ uri: item.image }} style={styles.gridImage} />
                 <View style={styles.gridContent}>
-                  <Text style={styles.gridName} numberOfLines={1}>{item.name}</Text>
-                  <Text style={styles.gridLocation} numberOfLines={1}>{item.location}</Text>
+                  <Text style={[styles.gridName, { color: isDark ? theme.text : '#1F2937' }]} numberOfLines={1}>{item.name}</Text>
+                  <Text style={[styles.gridLocation, { color: isDark ? theme.textSecondary : '#9CA3AF' }]} numberOfLines={1}>{item.location}</Text>
                   <View style={styles.gridFooter}>
                     <Text style={styles.gridType}>{item.type}</Text>
-                    <View style={styles.gridBadge}>
-                      <Text style={styles.gridBadgeText}>{item.places}</Text>
+                    <View style={[styles.gridBadge, { backgroundColor: isDark ? theme.border : '#F3F4F6' }]}>
+                      <Text style={[styles.gridBadgeText, { color: isDark ? theme.text : '#4B5563' }]}>{item.places}</Text>
                     </View>
                   </View>
                 </View>
