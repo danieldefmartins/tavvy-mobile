@@ -1,8 +1,8 @@
 // ============================================================================
-// ATLAS HOME SCREEN (UPDATED - FULL WIDTH GRADIENT HEADER)
+// ATLAS HOME SCREEN (UPDATED - FULL WIDTH SOLID HEADER)
 // ============================================================================
 // Features:
-// - FULL WIDTH GRADIENT: No rounded corners, edge-to-edge gradient header
+// - FULL WIDTH SOLID HEADER: No rounded corners, edge-to-edge banner (#0f1233)
 // - White logo + "Atlas" section name
 // - Elegant floating cards with soft shadows
 // - Complete mock data
@@ -24,7 +24,6 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeContext } from '../contexts/ThemeContext';
 import {
   getFeaturedArticle,
@@ -45,10 +44,12 @@ const MOCK_FEATURED = {
   slug: 'lax-survival-guide',
   excerpt: 'Everything you need to know about navigating Los Angeles International Airport.',
   content: 'This is the full content of the article...',
-  cover_image_url: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2074&auto=format&fit=crop',
+  cover_image_url:
+    'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2074&auto=format&fit=crop',
   author_id: 'a1',
   author_name: 'Sarah Chen',
-  author_avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop',
+  author_avatar_url:
+    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop',
   read_time_minutes: 12,
   view_count: 15420,
   love_count: 2400,
@@ -60,7 +61,7 @@ const MOCK_FEATURED = {
   published_at: new Date().toISOString(),
   category_id: 'c1',
   universe_id: 'u2',
-  category: { id: 'c1', name: 'Airports', color: '#0D9488', icon: '✈️' }
+  category: { id: 'c1', name: 'Airports', color: '#0D9488', icon: '✈️' },
 };
 
 const MOCK_TRENDING = [
@@ -70,7 +71,8 @@ const MOCK_TRENDING = [
     slug: 'nyc-guide',
     excerpt: 'The essential guide for your first trip to the Big Apple.',
     content: 'Content here...',
-    cover_image_url: 'https://images.unsplash.com/photo-1496442226666-8d4a0e62e6e9?q=80&w=2070&auto=format&fit=crop',
+    cover_image_url:
+      'https://images.unsplash.com/photo-1496442226666-8d4a0e62e6e9?q=80&w=2070&auto=format&fit=crop',
     author_id: 'a2',
     author_name: 'Mike Ross',
     author_avatar_url: 'https://via.placeholder.com/100',
@@ -85,7 +87,7 @@ const MOCK_TRENDING = [
     published_at: new Date().toISOString(),
     category_id: 'c2',
     universe_id: null,
-    category: { id: 'c2', name: 'Cities', color: '#3B82F6', icon: '🏙️' }
+    category: { id: 'c2', name: 'Cities', color: '#3B82F6', icon: '🏙️' },
   },
   {
     id: 't2',
@@ -93,7 +95,8 @@ const MOCK_TRENDING = [
     slug: 'disney-guide',
     excerpt: 'How to maximize your magic at Disney World.',
     content: 'Content here...',
-    cover_image_url: 'https://images.unsplash.com/photo-1597466599360-3b9775841aec?q=80&w=2000&auto=format&fit=crop',
+    cover_image_url:
+      'https://images.unsplash.com/photo-1597466599360-3b9775841aec?q=80&w=2000&auto=format&fit=crop',
     author_id: 'a3',
     author_name: 'Jenny Wilson',
     author_avatar_url: 'https://via.placeholder.com/100',
@@ -108,7 +111,7 @@ const MOCK_TRENDING = [
     published_at: new Date().toISOString(),
     category_id: 'c3',
     universe_id: 'u1',
-    category: { id: 'c3', name: 'Theme Parks', color: '#8B5CF6', icon: '🎢' }
+    category: { id: 'c3', name: 'Theme Parks', color: '#8B5CF6', icon: '🎢' },
   },
   {
     id: 't3',
@@ -116,7 +119,8 @@ const MOCK_TRENDING = [
     slug: 'seattle-coffee',
     excerpt: 'Where to find the best beans in the Emerald City.',
     content: 'Content here...',
-    cover_image_url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=2000&auto=format&fit=crop',
+    cover_image_url:
+      'https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=2000&auto=format&fit=crop',
     author_id: 'a4',
     author_name: 'Tom Cook',
     author_avatar_url: 'https://via.placeholder.com/100',
@@ -131,8 +135,8 @@ const MOCK_TRENDING = [
     published_at: new Date().toISOString(),
     category_id: 'c4',
     universe_id: null,
-    category: { id: 'c4', name: 'Food & Drink', color: '#10B981', icon: '☕' }
-  }
+    category: { id: 'c4', name: 'Food & Drink', color: '#10B981', icon: '☕' },
+  },
 ];
 
 const MOCK_UNIVERSES = [
@@ -140,30 +144,39 @@ const MOCK_UNIVERSES = [
     id: 'u1',
     name: 'Disney World',
     place_count: 47,
-    thumbnail_image_url: 'https://images.unsplash.com/photo-1545580249-a3b334eb197f?q=80&w=1000&auto=format&fit=crop'
+    thumbnail_image_url:
+      'https://images.unsplash.com/photo-1545580249-a3b334eb197f?q=80&w=1000&auto=format&fit=crop',
   },
   {
     id: 'u2',
     name: 'LAX Airport',
     place_count: 23,
-    thumbnail_image_url: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?q=80&w=1000&auto=format&fit=crop'
+    thumbnail_image_url:
+      'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?q=80&w=1000&auto=format&fit=crop',
   },
   {
     id: 'u3',
     name: 'Yellowstone',
     place_count: 15,
-    thumbnail_image_url: 'https://images.unsplash.com/photo-1565108170253-2db022359792?q=80&w=1000&auto=format&fit=crop'
-  }
+    thumbnail_image_url:
+      'https://images.unsplash.com/photo-1565108170253-2db022359792?q=80&w=1000&auto=format&fit=crop',
+  },
 ];
 
 export default function AtlasHomeScreen() {
   const navigation = useNavigation();
   const { theme, isDark } = useThemeContext();
   const [loading, setLoading] = useState(true);
-  
-  const [featuredArticle, setFeaturedArticle] = useState<AtlasArticle | null>(MOCK_FEATURED as any);
-  const [trendingArticles, setTrendingArticles] = useState<AtlasArticle[]>(MOCK_TRENDING as any);
-  const [universes, setUniverses] = useState<AtlasUniverse[]>(MOCK_UNIVERSES as any);
+
+  const [featuredArticle, setFeaturedArticle] = useState<AtlasArticle | null>(
+    MOCK_FEATURED as any
+  );
+  const [trendingArticles, setTrendingArticles] = useState<AtlasArticle[]>(
+    MOCK_TRENDING as any
+  );
+  const [universes, setUniverses] = useState<AtlasUniverse[]>(
+    MOCK_UNIVERSES as any
+  );
 
   useEffect(() => {
     loadData();
@@ -187,35 +200,40 @@ export default function AtlasHomeScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: isDark ? theme.background : '#fff' }]}>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: isDark ? theme.background : '#fff' },
+        ]}
+      >
         <ActivityIndicator size="large" color="#2DD4BF" />
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F9FAFB' }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: isDark ? theme.background : '#F9FAFB' },
+      ]}
+    >
       <StatusBar barStyle="light-content" />
-      
-      {/* FULL WIDTH GRADIENT HEADER - NO rounded corners */}
-      <LinearGradient
-        colors={['#5EEAD4', '#2DD4BF', '#0F766E']}
-        locations={[0, 0.4, 1]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.headerGradient}
-      >
-        <SafeAreaView edges={['top']}>
+
+      {/* FULL WIDTH SOLID HEADER - NO rounded corners */}
+      <View style={styles.headerGradient}>
+        <SafeAreaView>
           {/* Header Content with Logo */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Image 
-                source={require('../assets/brand/tavvy-logo-white.png')} 
+              <Image
+                source={require('../assets/brand/tavvy-logo-white.png')}
                 style={styles.headerLogo}
                 resizeMode="contain"
               />
               <Text style={styles.headerSectionName}>Atlas</Text>
             </View>
+
             <TouchableOpacity
               onPress={() => navigation.navigate('AtlasSearch', {})}
               style={styles.searchButton}
@@ -224,10 +242,10 @@ export default function AtlasHomeScreen() {
             </TouchableOpacity>
           </View>
         </SafeAreaView>
-      </LinearGradient>
+      </View>
 
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
@@ -250,18 +268,29 @@ export default function AtlasHomeScreen() {
               <View style={styles.featuredBadge}>
                 <Text style={styles.featuredBadgeText}>FEATURED</Text>
               </View>
-              
+
               <View style={styles.featuredTextContainer}>
                 <Text style={styles.featuredTitle}>{featuredArticle.title}</Text>
-                
+
                 <View style={styles.featuredMeta}>
-                  <Image 
-                    source={{ uri: featuredArticle.author_avatar_url || 'https://via.placeholder.com/32' }} 
-                    style={styles.featuredAuthorAvatar} 
+                  <Image
+                    source={{
+                      uri:
+                        featuredArticle.author_avatar_url ||
+                        'https://via.placeholder.com/32',
+                    }}
+                    style={styles.featuredAuthorAvatar}
                   />
-                  <Text style={styles.featuredAuthor}>{featuredArticle.author_name}</Text>
+                  <Text style={styles.featuredAuthor}>
+                    {featuredArticle.author_name}
+                  </Text>
                   <Text style={styles.featuredDot}>•</Text>
-                  <Ionicons name="time-outline" size={14} color="#E5E7EB" style={{ marginRight: 4 }} />
+                  <Ionicons
+                    name="time-outline"
+                    size={14}
+                    color="#E5E7EB"
+                    style={{ marginRight: 4 }}
+                  />
                   <Text style={styles.featuredReadTime}>
                     {featuredArticle.read_time_minutes} min read
                   </Text>
@@ -273,25 +302,36 @@ export default function AtlasHomeScreen() {
 
         {/* Trending Now */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111827' }]}>Trending Now</Text>
+          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111827' }]}>
+            Trending Now
+          </Text>
+
           {trendingArticles.map((article) => (
             <TouchableOpacity
               key={article.id}
-              style={[styles.trendingCard, { backgroundColor: isDark ? theme.surface : '#fff', borderColor: isDark ? theme.border : '#F3F4F6' }]}
+              style={[
+                styles.trendingCard,
+                {
+                  backgroundColor: isDark ? theme.surface : '#fff',
+                  borderColor: isDark ? theme.border : '#F3F4F6',
+                },
+              ]}
               activeOpacity={0.7}
-              onPress={() =>
-                navigation.navigate('ArticleDetail', { article })
-              }
+              onPress={() => navigation.navigate('ArticleDetail', { article })}
             >
-              <Image
-                source={{ uri: article.cover_image_url }}
-                style={styles.trendingImage}
-              />
+              <Image source={{ uri: article.cover_image_url }} style={styles.trendingImage} />
+
               <View style={styles.trendingContent}>
-                <Text style={[styles.trendingTitle, { color: isDark ? theme.text : '#1F2937' }]} numberOfLines={2}>
+                <Text
+                  style={[
+                    styles.trendingTitle,
+                    { color: isDark ? theme.text : '#1F2937' },
+                  ]}
+                  numberOfLines={2}
+                >
                   {article.title}
                 </Text>
-                
+
                 <View style={styles.trendingFooter}>
                   <View
                     style={[
@@ -303,14 +343,26 @@ export default function AtlasHomeScreen() {
                       {article.category?.name.toUpperCase()}
                     </Text>
                   </View>
-                  
+
                   <View style={styles.trendingStatsRow}>
                     <Ionicons name="heart" size={14} color="#EF4444" style={{ marginRight: 4 }} />
-                    <Text style={[styles.trendingStatsText, { color: isDark ? theme.textSecondary : '#6B7280' }]}>
+                    <Text
+                      style={[
+                        styles.trendingStatsText,
+                        { color: isDark ? theme.textSecondary : '#6B7280' },
+                      ]}
+                    >
                       {formatNumber(article.love_count)}
                     </Text>
-                    <Text style={[styles.trendingDot, { color: isDark ? theme.border : '#D1D5DB' }]}>•</Text>
-                    <Text style={[styles.trendingStatsText, { color: isDark ? theme.textSecondary : '#6B7280' }]}>
+                    <Text style={[styles.trendingDot, { color: isDark ? theme.border : '#D1D5DB' }]}>
+                      •
+                    </Text>
+                    <Text
+                      style={[
+                        styles.trendingStatsText,
+                        { color: isDark ? theme.textSecondary : '#6B7280' },
+                      ]}
+                    >
                       {article.read_time_minutes} min read
                     </Text>
                   </View>
@@ -322,7 +374,10 @@ export default function AtlasHomeScreen() {
 
         {/* Explore Universes */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111827' }]}>Explore Universes</Text>
+          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111827' }]}>
+            Explore Universes
+          </Text>
+
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -332,21 +387,34 @@ export default function AtlasHomeScreen() {
             {universes.map((universe) => (
               <TouchableOpacity
                 key={universe.id}
-                style={[styles.universeCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+                style={[
+                  styles.universeCard,
+                  { backgroundColor: isDark ? theme.surface : '#fff' },
+                ]}
                 activeOpacity={0.8}
                 onPress={() =>
                   navigation.navigate('UniverseDetail', { universeId: universe.id, universe })
                 }
               >
-                <Image
-                  source={{ uri: universe.thumbnail_image_url }}
-                  style={styles.universeImage}
-                />
+                <Image source={{ uri: universe.thumbnail_image_url }} style={styles.universeImage} />
                 <View style={styles.universeInfo}>
-                  <Text style={[styles.universeName, { color: isDark ? theme.text : '#111827' }]} numberOfLines={1}>
+                  <Text
+                    style={[
+                      styles.universeName,
+                      { color: isDark ? theme.text : '#111827' },
+                    ]}
+                    numberOfLines={1}
+                  >
                     {universe.name}
                   </Text>
-                  <Text style={[styles.universePlaces, { color: isDark ? theme.textSecondary : '#6B7280' }]}>{universe.place_count} places</Text>
+                  <Text
+                    style={[
+                      styles.universePlaces,
+                      { color: isDark ? theme.textSecondary : '#6B7280' },
+                    ]}
+                  >
+                    {universe.place_count} places
+                  </Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -370,11 +438,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
   },
-  
-  // FULL WIDTH GRADIENT HEADER - NO rounded corners
+
+  // FULL WIDTH SOLID HEADER - NO rounded corners
   headerGradient: {
+    backgroundColor: '#0f1233',
     paddingBottom: 20,
-    // No borderRadius - full width edge to edge
   },
   header: {
     flexDirection: 'row',
@@ -397,8 +465,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     marginTop: 8,
-  marginLeft: -30,   
-    // Modern font - Space Grotesk if available
+    marginLeft: -10,
     // fontFamily: 'SpaceGrotesk-Bold',
   },
   searchButton: {

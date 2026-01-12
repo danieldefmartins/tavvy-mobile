@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   justifyContent: 'center',
   alignItems: 'center',
 
-  marginLeft: 75,
+  marginLeft: 100,
   marginTop: -8, // ← moves UP (try -2, -4, -6) // ← ADD THIS
 },
 

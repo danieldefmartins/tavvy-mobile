@@ -204,7 +204,7 @@ export default function AppsScreen() {
           <Image 
             source={isDark 
               ? require('../assets/brand/logo-horizontal.png')
-              : require('../assets/brand/tavvy-logo-Original-Transparent.png')
+              : require('../assets/brand/logo-horizontal.png')
             } 
             style={styles.headerLogo}
             resizeMode="contain"

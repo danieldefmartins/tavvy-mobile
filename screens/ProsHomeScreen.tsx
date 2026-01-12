@@ -486,7 +486,7 @@ const styles = StyleSheet.create({
     // Modern font - Space Grotesk if available
     // fontFamily: 'SpaceGrotesk-Bold',
   marginTop: 8,
-  marginLeft: -30,   // up
+  marginLeft: -10,   // up
   // marginTop: 4, // down
   },
   scrollView: {
