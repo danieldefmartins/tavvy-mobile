@@ -1,9 +1,9 @@
 // ============================================================================
-// ATLAS HOME SCREEN (PREMIUM GRADIENT STYLE)
+// ATLAS HOME SCREEN (UPDATED - FULL WIDTH GRADIENT HEADER)
 // ============================================================================
 // Features:
-// - PREMIUM GRADIENT: 3-stop LinearGradient for rich depth (Light -> Medium -> Deep Teal)
-// - ORGANIC CURVE: Wide-arc technique for smooth horizon
+// - FULL WIDTH GRADIENT: No rounded corners, edge-to-edge gradient header
+// - White logo + "Atlas" section name
 // - Elegant floating cards with soft shadows
 // - Complete mock data
 // ============================================================================
@@ -195,36 +195,24 @@ export default function AtlasHomeScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       
-      {/* 
-        PREMIUM GRADIENT HEADER 
-        Using LinearGradient inside the wide circle for that premium look.
-        Gradient: Light Teal -> Medium Teal -> Deep Teal
-      */}
-      <View style={styles.organicHeaderContainer}>
-        <LinearGradient
-          colors={['#5EEAD4', '#2DD4BF', '#0F766E']} // Enhanced 3-stop gradient
-          locations={[0, 0.4, 1]} // Control the spread
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.organicHeaderCircle}
-        />
-      </View>
-
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView 
-          style={styles.scrollView} 
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {/* Header Content */}
+      {/* FULL WIDTH GRADIENT HEADER - NO rounded corners */}
+      <LinearGradient
+        colors={['#5EEAD4', '#2DD4BF', '#0F766E']}
+        locations={[0, 0.4, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <SafeAreaView edges={['top']}>
+          {/* Header Content with Logo */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Image 
-                source={require('../assets/brand/logo-icon.png')} 
+                source={require('../assets/brand/tavvy-logo-white.png')} 
                 style={styles.headerLogo}
                 resizeMode="contain"
               />
-              <Text style={styles.headerTitle}>Tavvy Atlas</Text>
+              <Text style={styles.headerSectionName}>Atlas</Text>
             </View>
             <TouchableOpacity
               onPress={() => navigation.navigate('AtlasSearch', {})}
@@ -233,132 +221,138 @@ export default function AtlasHomeScreen() {
               <Ionicons name="search" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
+        </SafeAreaView>
+      </LinearGradient>
 
-          {/* Featured Article - Floating Card */}
-          {featuredArticle && (
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Featured Article - Floating Card */}
+        {featuredArticle && (
+          <TouchableOpacity
+            style={styles.featuredCard}
+            activeOpacity={0.95}
+            onPress={() =>
+              navigation.navigate('ArticleDetail', {
+                article: featuredArticle,
+              })
+            }
+          >
+            <Image
+              source={{ uri: featuredArticle.cover_image_url }}
+              style={styles.featuredImage}
+            />
+            <View style={styles.featuredOverlay}>
+              <View style={styles.featuredBadge}>
+                <Text style={styles.featuredBadgeText}>FEATURED</Text>
+              </View>
+              
+              <View style={styles.featuredTextContainer}>
+                <Text style={styles.featuredTitle}>{featuredArticle.title}</Text>
+                
+                <View style={styles.featuredMeta}>
+                  <Image 
+                    source={{ uri: featuredArticle.author_avatar_url || 'https://via.placeholder.com/32' }} 
+                    style={styles.featuredAuthorAvatar} 
+                  />
+                  <Text style={styles.featuredAuthor}>{featuredArticle.author_name}</Text>
+                  <Text style={styles.featuredDot}>•</Text>
+                  <Ionicons name="time-outline" size={14} color="#E5E7EB" style={{ marginRight: 4 }} />
+                  <Text style={styles.featuredReadTime}>
+                    {featuredArticle.read_time_minutes} min read
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {/* Trending Now */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Trending Now</Text>
+          {trendingArticles.map((article) => (
             <TouchableOpacity
-              style={styles.featuredCard}
-              activeOpacity={0.95}
+              key={article.id}
+              style={styles.trendingCard}
+              activeOpacity={0.7}
               onPress={() =>
-                navigation.navigate('ArticleDetail', {
-                  article: featuredArticle,
-                })
+                navigation.navigate('ArticleDetail', { article })
               }
             >
               <Image
-                source={{ uri: featuredArticle.cover_image_url }}
-                style={styles.featuredImage}
+                source={{ uri: article.cover_image_url }}
+                style={styles.trendingImage}
               />
-              <View style={styles.featuredOverlay}>
-                <View style={styles.featuredBadge}>
-                  <Text style={styles.featuredBadgeText}>FEATURED</Text>
-                </View>
+              <View style={styles.trendingContent}>
+                <Text style={styles.trendingTitle} numberOfLines={2}>
+                  {article.title}
+                </Text>
                 
-                <View style={styles.featuredTextContainer}>
-                  <Text style={styles.featuredTitle}>{featuredArticle.title}</Text>
+                <View style={styles.trendingFooter}>
+                  <View
+                    style={[
+                      styles.categoryBadge,
+                      { backgroundColor: article.category?.color || '#14b8a6' },
+                    ]}
+                  >
+                    <Text style={styles.categoryBadgeText}>
+                      {article.category?.name.toUpperCase()}
+                    </Text>
+                  </View>
                   
-                  <View style={styles.featuredMeta}>
-                    <Image 
-                      source={{ uri: featuredArticle.author_avatar_url || 'https://via.placeholder.com/32' }} 
-                      style={styles.featuredAuthorAvatar} 
-                    />
-                    <Text style={styles.featuredAuthor}>{featuredArticle.author_name}</Text>
-                    <Text style={styles.featuredDot}>•</Text>
-                    <Ionicons name="time-outline" size={14} color="#E5E7EB" style={{ marginRight: 4 }} />
-                    <Text style={styles.featuredReadTime}>
-                      {featuredArticle.read_time_minutes} min read
+                  <View style={styles.trendingStatsRow}>
+                    <Ionicons name="heart" size={14} color="#EF4444" style={{ marginRight: 4 }} />
+                    <Text style={styles.trendingStatsText}>
+                      {formatNumber(article.love_count)}
+                    </Text>
+                    <Text style={styles.trendingDot}>•</Text>
+                    <Text style={styles.trendingStatsText}>
+                      {article.read_time_minutes} min read
                     </Text>
                   </View>
                 </View>
               </View>
             </TouchableOpacity>
-          )}
+          ))}
+        </View>
 
-          {/* Trending Now */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Trending Now</Text>
-            {trendingArticles.map((article) => (
+        {/* Explore Universes */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Explore Universes</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.universesScroll}
+            contentContainerStyle={{ paddingRight: 20, paddingLeft: 20 }}
+          >
+            {universes.map((universe) => (
               <TouchableOpacity
-                key={article.id}
-                style={styles.trendingCard}
-                activeOpacity={0.7}
+                key={universe.id}
+                style={styles.universeCard}
+                activeOpacity={0.8}
                 onPress={() =>
-                  navigation.navigate('ArticleDetail', { article })
+                  navigation.navigate('UniverseDetail', { universeId: universe.id, universe })
                 }
               >
                 <Image
-                  source={{ uri: article.cover_image_url }}
-                  style={styles.trendingImage}
+                  source={{ uri: universe.thumbnail_image_url }}
+                  style={styles.universeImage}
                 />
-                <View style={styles.trendingContent}>
-                  <Text style={styles.trendingTitle} numberOfLines={2}>
-                    {article.title}
+                <View style={styles.universeInfo}>
+                  <Text style={styles.universeName} numberOfLines={1}>
+                    {universe.name}
                   </Text>
-                  
-                  <View style={styles.trendingFooter}>
-                    <View
-                      style={[
-                        styles.categoryBadge,
-                        { backgroundColor: article.category?.color || '#14b8a6' },
-                      ]}
-                    >
-                      <Text style={styles.categoryBadgeText}>
-                        {article.category?.name.toUpperCase()}
-                      </Text>
-                    </View>
-                    
-                    <View style={styles.trendingStatsRow}>
-                      <Ionicons name="heart" size={14} color="#EF4444" style={{ marginRight: 4 }} />
-                      <Text style={styles.trendingStatsText}>
-                        {formatNumber(article.love_count)}
-                      </Text>
-                      <Text style={styles.trendingDot}>•</Text>
-                      <Text style={styles.trendingStatsText}>
-                        {article.read_time_minutes} min read
-                      </Text>
-                    </View>
-                  </View>
+                  <Text style={styles.universePlaces}>{universe.place_count} places</Text>
                 </View>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
+        </View>
 
-          {/* Explore Universes */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Explore Universes</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.universesScroll}
-              contentContainerStyle={{ paddingRight: 20, paddingLeft: 20 }}
-            >
-              {universes.map((universe) => (
-                <TouchableOpacity
-                  key={universe.id}
-                  style={styles.universeCard}
-                  activeOpacity={0.8}
-                  onPress={() =>
-                    navigation.navigate('UniverseDetail', { universeId: universe.id, universe })
-                  }
-                >
-                  <Image
-                    source={{ uri: universe.thumbnail_image_url }}
-                    style={styles.universeImage}
-                  />
-                  <View style={styles.universeInfo}>
-                    <Text style={styles.universeName} numberOfLines={1}>
-                      {universe.name}
-                    </Text>
-                    <Text style={styles.universePlaces}>{universe.place_count} places</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      </SafeAreaView>
+        <View style={{ height: 100 }} />
+      </ScrollView>
     </View>
   );
 }
@@ -375,70 +369,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   
-  // ORGANIC CURVE STRATEGY
-  organicHeaderContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 300, // Container height
-    overflow: 'hidden', // Clip the circle
-    zIndex: 0,
-  },
-  organicHeaderCircle: {
-    position: 'absolute',
-    top: -400, // Push the circle up so only the bottom arc shows
-    left: -width * 0.25, // Center the wider circle
-    width: width * 1.5, // 150% width for gentle curve
-    height: 650, // Huge circle
-    borderRadius: 325, // Half of height to make it a circle
-    // backgroundColor removed, using LinearGradient instead
-  },
-
-  safeArea: {
-    flex: 1,
-    zIndex: 1,
-  },
-  scrollView: {
-    flex: 1,
-    overflow: 'visible',
-  },
-  scrollContent: {
+  // FULL WIDTH GRADIENT HEADER - NO rounded corners
+  headerGradient: {
     paddingBottom: 20,
+    // No borderRadius - full width edge to edge
   },
-
-  // Header Content
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 40 : 10,
-    marginBottom: 20,
+    paddingTop: Platform.OS === 'android' ? 40 : 16,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  logoContainer: {
-    marginRight: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
-  },
   headerLogo: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    marginRight: 10,
+    width: 80,
+    height: 24,
+    marginRight: 8,
   },
-  headerTitle: {
+  headerSectionName: {
     fontSize: 24,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.5,
+    // Modern font - Space Grotesk if available
+    // fontFamily: 'SpaceGrotesk-Bold',
   },
   searchButton: {
     width: 40,
@@ -449,6 +406,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingTop: 20,
+    paddingBottom: 20,
+  },
+
   // Featured Card
   featuredCard: {
     marginHorizontal: 20,
@@ -456,14 +421,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: '#1F2937',
-    
-    // Softer shadow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 6,
-    
     marginBottom: 8,
   },
   featuredImage: {
@@ -551,7 +513,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 14,
     padding: 10,
-    
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -615,7 +576,6 @@ const styles = StyleSheet.create({
     marginRight: 14,
     borderRadius: 14,
     backgroundColor: '#fff',
-    
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,

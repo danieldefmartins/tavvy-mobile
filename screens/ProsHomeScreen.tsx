@@ -1,9 +1,11 @@
 /**
- * Pros Home Screen
+ * Pros Home Screen (UPDATED - FULL WIDTH GRADIENT HEADER)
  * Install path: screens/ProsHomeScreen.tsx
  * 
  * This is the main entry point for the Pros feature.
  * Users can browse services or switch to Pro mode.
+ * 
+ * UPDATED: Full-width gradient header (no rounded corners) + white logo + "Pros"
  */
 
 import React, { useEffect, useState } from 'react';
@@ -18,6 +20,8 @@ import {
   RefreshControl,
   Dimensions,
   Image,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -87,7 +91,31 @@ export default function ProsHomeScreen() {
   // If user switches to Pro mode, show Pro options
   if (viewMode === 'pro') {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        
+        {/* FULL WIDTH GRADIENT HEADER - NO rounded corners */}
+        <LinearGradient
+          colors={['#3B82F6', '#1D4ED8']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          <SafeAreaView edges={['top']}>
+            {/* Header Content with Logo */}
+            <View style={styles.header}>
+              <View style={styles.headerLeft}>
+                <Image 
+                  source={require('../assets/brand/tavvy-logo-white.png')} 
+                  style={styles.headerLogo}
+                  resizeMode="contain"
+                />
+                <Text style={styles.headerSectionName}>Pros</Text>
+              </View>
+            </View>
+          </SafeAreaView>
+        </LinearGradient>
+
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -118,7 +146,7 @@ export default function ProsHomeScreen() {
           {/* Pro Mode Content */}
           <View style={styles.proModeContainer}>
             <View style={styles.proModeHeader}>
-              <Ionicons name="construct" size={48} color={ProsColors.primary} />
+              <Ionicons name="construct" size={48} color="#3B82F6" />
               <Text style={styles.proModeTitle}>Welcome, Pro!</Text>
               <Text style={styles.proModeSubtitle}>
                 Manage your business and connect with customers
@@ -128,8 +156,8 @@ export default function ProsHomeScreen() {
             {/* Pro Actions */}
             <View style={styles.proActionsGrid}>
               <TouchableOpacity style={styles.proActionCard} onPress={handleProDashboard}>
-                <View style={[styles.proActionIcon, { backgroundColor: `${ProsColors.primary}15` }]}>
-                  <Ionicons name="grid" size={28} color={ProsColors.primary} />
+                <View style={[styles.proActionIcon, { backgroundColor: '#3B82F615' }]}>
+                  <Ionicons name="grid" size={28} color="#3B82F6" />
                 </View>
                 <Text style={styles.proActionTitle}>Dashboard</Text>
                 <Text style={styles.proActionSubtitle}>View stats & leads</Text>
@@ -195,13 +223,37 @@ export default function ProsHomeScreen() {
 
           <View style={{ height: 100 }} />
         </ScrollView>
-      </SafeAreaView>
+      </View>
     );
   }
 
   // User Mode (default) - Find Pros
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* FULL WIDTH GRADIENT HEADER - NO rounded corners */}
+      <LinearGradient
+        colors={['#3B82F6', '#1D4ED8']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <SafeAreaView edges={['top']}>
+          {/* Header Content with Logo */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <Image 
+                source={require('../assets/brand/tavvy-logo-white.png')} 
+                style={styles.headerLogo}
+                resizeMode="contain"
+              />
+              <Text style={styles.headerSectionName}>Pros</Text>
+            </View>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -210,16 +262,6 @@ export default function ProsHomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        {/* Header with Logo */}
-        <View style={styles.prosHeader}>
-          <Image 
-            source={require('../assets/brand/logo-icon.png')} 
-            style={styles.prosHeaderLogo}
-            resizeMode="contain"
-          />
-          <Text style={styles.prosHeaderTitle}>Tavvy Pros</Text>
-        </View>
-
         {/* Mode Toggle */}
         <View style={styles.modeToggleContainer}>
           <TouchableOpacity
@@ -250,7 +292,7 @@ export default function ProsHomeScreen() {
           {/* Early Adopter Badge */}
           {remainingSpots > 0 && (
             <TouchableOpacity style={styles.earlyAdopterBadge} onPress={handleProSignup}>
-              <Ionicons name="sparkles" size={14} color={ProsColors.primary} />
+              <Ionicons name="sparkles" size={14} color="#3B82F6" />
               <Text style={styles.earlyAdopterText}>
                 Are you a Pro? Save ${EARLY_ADOPTER_SAVINGS} · Only {remainingSpots} spots left!
               </Text>
@@ -296,15 +338,15 @@ export default function ProsHomeScreen() {
           {/* Trust Badges */}
           <View style={styles.trustBadges}>
             <View style={styles.trustBadge}>
-              <Ionicons name="shield-checkmark-outline" size={16} color={ProsColors.primary} />
+              <Ionicons name="shield-checkmark-outline" size={16} color="#3B82F6" />
               <Text style={styles.trustBadgeText}>Verified Pros</Text>
             </View>
             <View style={styles.trustBadge}>
-              <Ionicons name="star-outline" size={16} color={ProsColors.primary} />
+              <Ionicons name="star-outline" size={16} color="#3B82F6" />
               <Text style={styles.trustBadgeText}>Community Reviews</Text>
             </View>
             <View style={styles.trustBadge}>
-              <Ionicons name="time-outline" size={16} color={ProsColors.primary} />
+              <Ionicons name="time-outline" size={16} color="#3B82F6" />
               <Text style={styles.trustBadgeText}>Fast Response</Text>
             </View>
           </View>
@@ -365,8 +407,8 @@ export default function ProsHomeScreen() {
           <Text style={[styles.sectionTitle, { paddingHorizontal: 16 }]}>How It Works</Text>
           <View style={styles.stepsContainer}>
             <View style={styles.step}>
-              <View style={[styles.stepIcon, { backgroundColor: `${ProsColors.primary}15` }]}>
-                <Ionicons name="search" size={24} color={ProsColors.primary} />
+              <View style={[styles.stepIcon, { backgroundColor: '#3B82F615' }]}>
+                <Ionicons name="search" size={24} color="#3B82F6" />
               </View>
               <Text style={styles.stepTitle}>1. Search</Text>
               <Text style={styles.stepDescription}>
@@ -405,7 +447,7 @@ export default function ProsHomeScreen() {
         {/* Bottom Spacing for tab bar */}
         <View style={{ height: 100 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -414,36 +456,45 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+  // FULL WIDTH GRADIENT HEADER - NO rounded corners
+  headerGradient: {
+    paddingBottom: 16,
+    // No borderRadius - full width edge to edge
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? 40 : 16,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 80,
+    height: 24,
+    marginRight: 8,
+  },
+  headerSectionName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#fff',
+    // Modern font - Space Grotesk if available
+    // fontFamily: 'SpaceGrotesk-Bold',
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
   },
-  // Header with Logo
-  prosHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
-  },
-  prosHeaderLogo: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    marginRight: 10,
-  },
-  prosHeaderTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: ProsColors.textPrimary,
-  },
   // Mode Toggle
   modeToggleContainer: {
     flexDirection: 'row',
     marginHorizontal: 16,
-    marginTop: 12,
+    marginTop: 16,
     marginBottom: 8,
     backgroundColor: '#F3F4F6',
     borderRadius: 12,
@@ -459,7 +510,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   modeToggleActive: {
-    backgroundColor: ProsColors.primary,
+    backgroundColor: '#3B82F6',
   },
   modeToggleText: {
     fontSize: 14,
@@ -505,7 +556,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   heroTitleAccent: {
-    color: ProsColors.primary,
+    color: '#3B82F6',
   },
   heroSubtitle: {
     fontSize: 15,
@@ -549,7 +600,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   searchButton: {
-    backgroundColor: ProsColors.primary,
+    backgroundColor: '#3B82F6',
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
@@ -593,7 +644,7 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 14,
     fontWeight: '600',
-    color: ProsColors.primary,
+    color: '#3B82F6',
   },
   categoriesGrid: {
     flexDirection: 'row',
@@ -651,7 +702,7 @@ const styles = StyleSheet.create({
   proLinkButton: {
     fontSize: 16,
     fontWeight: '600',
-    color: ProsColors.primary,
+    color: '#3B82F6',
   },
   // Pro Mode Styles
   proModeContainer: {
@@ -732,7 +783,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   registerButton: {
-    backgroundColor: ProsColors.primary,
+    backgroundColor: '#3B82F6',
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 32,
@@ -778,6 +829,6 @@ const styles = StyleSheet.create({
   discountedPrice: {
     fontSize: 32,
     fontWeight: '700',
-    color: ProsColors.primary,
+    color: '#3B82F6',
   },
 });

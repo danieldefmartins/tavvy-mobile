@@ -1709,7 +1709,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <Text style={styles.titleText}>What are you looking for?</Text>
             </View>
             <Image 
-              source={require('../assets/brand/logo-icon.png')} 
+              source={require('../assets/brand/logo-horizontal.png')} 
               style={styles.headerLogo}
               resizeMode="contain"
             />
@@ -2242,9 +2242,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   headerLogo: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
+    // UPDATED: Full horizontal logo instead of icon
+    width: 100,
+    height: 32,
+    // borderRadius removed for horizontal logo
   },
   greetingText: {
     fontSize: 14,
@@ -2537,8 +2538,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backButton: {
-    width: 44,
-    height: 44,
+    width: 100,
+    height: 32,
     borderRadius: 22,
     backgroundColor: '#fff',
     justifyContent: 'center',
@@ -2963,8 +2964,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   insightIconContainer: {
-    width: 44,
-    height: 44,
+    width: 100,
+    height: 32,
     borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.8)',
     alignItems: 'center',

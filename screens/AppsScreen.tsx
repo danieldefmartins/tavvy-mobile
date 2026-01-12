@@ -1,3 +1,11 @@
+/**
+ * AppsScreen.tsx
+ * Tools & shortcuts dashboard
+ * Path: screens/AppsScreen.tsx
+ * 
+ * UPDATED: Added TavvY logo + working theme toggle that affects entire app
+ */
+
 import React from 'react';
 import {
   View,
@@ -11,6 +19,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
+import { useThemeContext } from '../contexts/ThemeContext';
+import ThemeToggle from '../components/ThemeToggle';
 
 interface AppTile {
   id: string;
@@ -18,6 +28,7 @@ interface AppTile {
   icon: string;
   iconType: 'ionicons' | 'material';
   backgroundColor: string;
+  backgroundColorDark: string;
   iconColor: string;
   route?: string;
   params?: object;
@@ -30,6 +41,7 @@ const APP_TILES: AppTile[] = [
     icon: 'flash',
     iconType: 'ionicons',
     backgroundColor: '#FEF3C7',
+    backgroundColorDark: '#78350F',
     iconColor: '#F59E0B',
     route: 'Home',
   },
@@ -39,6 +51,7 @@ const APP_TILES: AppTile[] = [
     icon: 'signpost',
     iconType: 'material',
     backgroundColor: '#EDE9FE',
+    backgroundColorDark: '#4C1D95',
     iconColor: '#8B5CF6',
     route: 'Explore',
   },
@@ -48,6 +61,7 @@ const APP_TILES: AppTile[] = [
     icon: 'sparkles',
     iconType: 'ionicons',
     backgroundColor: '#FCE7F3',
+    backgroundColorDark: '#831843',
     iconColor: '#EC4899',
     route: 'Home',
   },
@@ -57,6 +71,7 @@ const APP_TILES: AppTile[] = [
     icon: 'scan-circle-outline',
     iconType: 'ionicons',
     backgroundColor: '#D1FAE5',
+    backgroundColorDark: '#064E3B',
     iconColor: '#10B981',
     route: 'Home',
   },
@@ -66,6 +81,7 @@ const APP_TILES: AppTile[] = [
     icon: 'briefcase',
     iconType: 'ionicons',
     backgroundColor: '#DBEAFE',
+    backgroundColorDark: '#1E3A8A',
     iconColor: '#3B82F6',
     route: 'Pros',
   },
@@ -75,6 +91,7 @@ const APP_TILES: AppTile[] = [
     icon: 'bookmark',
     iconType: 'ionicons',
     backgroundColor: '#FEE2E2',
+    backgroundColorDark: '#7F1D1D',
     iconColor: '#EF4444',
     route: 'Saved',
   },
@@ -84,6 +101,7 @@ const APP_TILES: AppTile[] = [
     icon: 'person-circle-outline',
     iconType: 'ionicons',
     backgroundColor: '#E5E7EB',
+    backgroundColorDark: '#374151',
     iconColor: '#374151',
     route: 'Profile',
   },
@@ -93,6 +111,7 @@ const APP_TILES: AppTile[] = [
     icon: 'add-circle',
     iconType: 'ionicons',
     backgroundColor: '#D1FAE5',
+    backgroundColorDark: '#064E3B',
     iconColor: '#10B981',
     route: 'UniversalAdd',
   },
@@ -101,6 +120,7 @@ const APP_TILES: AppTile[] = [
 export default function AppsScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
+  const { theme, themeMode, isDark, setThemeMode } = useThemeContext();
 
   const handleTilePress = (tile: AppTile) => {
     if (tile.route) {
@@ -116,13 +136,18 @@ export default function AppsScreen() {
     navigation.navigate('Pros', { screen: 'ProsRegistration' });
   };
 
+  const handleThemeChange = (mode: 'light' | 'dark' | 'system') => {
+    setThemeMode(mode);
+  };
+
   const renderIcon = (tile: AppTile, size: number = 28) => {
+    const iconColor = isDark ? '#FFFFFF' : tile.iconColor;
     if (tile.iconType === 'material') {
       return (
         <MaterialCommunityIcons
           name={tile.icon as any}
           size={size}
-          color={tile.iconColor}
+          color={iconColor}
         />
       );
     }
@@ -130,41 +155,89 @@ export default function AppsScreen() {
       <Ionicons
         name={tile.icon as any}
         size={size}
-        color={tile.iconColor}
+        color={iconColor}
       />
     );
   };
 
+  // Dynamic styles based on theme
+  const dynamicStyles = {
+    container: {
+      backgroundColor: isDark ? theme.background : '#F3F4F6',
+    },
+    headerTitle: {
+      color: isDark ? theme.text : '#111827',
+    },
+    headerSubtitle: {
+      color: isDark ? theme.textSecondary : '#6B7280',
+    },
+    loginButton: {
+      backgroundColor: isDark ? theme.surface : '#fff',
+      borderColor: isDark ? theme.primary : '#3B82F6',
+    },
+    loginButtonText: {
+      color: isDark ? theme.primary : '#3B82F6',
+    },
+    proLoginButton: {
+      borderColor: isDark ? theme.border : '#D1D5DB',
+    },
+    proLoginText: {
+      color: isDark ? theme.textSecondary : '#6B7280',
+    },
+    tileName: {
+      color: isDark ? theme.text : '#374151',
+    },
+    comingSoon: {
+      color: isDark ? theme.textTertiary : '#9CA3AF',
+    },
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]} edges={['top']}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Header with Logo and Theme Toggle */}
+        <View style={styles.headerRow}>
+          <Image 
+            source={isDark 
+              ? require('../assets/brand/logo-horizontal.png')
+              : require('../assets/brand/tavvy-logo-Original-Transparent.png')
+            } 
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
+          <ThemeToggle
+            currentMode={themeMode}
+            onModeChange={handleThemeChange}
+          />
+        </View>
+
+        {/* Title Section */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Apps</Text>
-          <Text style={styles.headerSubtitle}>Tools & shortcuts</Text>
+          <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>Apps</Text>
+          <Text style={[styles.headerSubtitle, dynamicStyles.headerSubtitle]}>Tools & shortcuts</Text>
         </View>
 
         {/* Login Buttons */}
         {!user && (
           <View style={styles.loginButtons}>
             <TouchableOpacity
-              style={styles.loginButton}
+              style={[styles.loginButton, dynamicStyles.loginButton]}
               onPress={handlePersonalLogin}
             >
-              <Ionicons name="person-outline" size={18} color="#3B82F6" />
-              <Text style={styles.loginButtonText}>Personal Login</Text>
+              <Ionicons name="person-outline" size={18} color={isDark ? theme.primary : '#3B82F6'} />
+              <Text style={[styles.loginButtonText, dynamicStyles.loginButtonText]}>Personal Login</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.loginButton, styles.proLoginButton]}
+              style={[styles.loginButton, dynamicStyles.loginButton, dynamicStyles.proLoginButton]}
               onPress={handleProLogin}
             >
-              <Ionicons name="briefcase-outline" size={18} color="#6B7280" />
-              <Text style={[styles.loginButtonText, styles.proLoginText]}>
+              <Ionicons name="briefcase-outline" size={18} color={isDark ? theme.textSecondary : '#6B7280'} />
+              <Text style={[styles.loginButtonText, dynamicStyles.proLoginText]}>
                 Pro Login
               </Text>
             </TouchableOpacity>
@@ -183,18 +256,18 @@ export default function AppsScreen() {
               <View
                 style={[
                   styles.tileIconContainer,
-                  { backgroundColor: tile.backgroundColor },
+                  { backgroundColor: isDark ? tile.backgroundColorDark : tile.backgroundColor },
                 ]}
               >
                 {renderIcon(tile)}
               </View>
-              <Text style={styles.tileName}>{tile.name}</Text>
+              <Text style={[styles.tileName, dynamicStyles.tileName]}>{tile.name}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Coming Soon */}
-        <Text style={styles.comingSoon}>More tools coming soon</Text>
+        <Text style={[styles.comingSoon, dynamicStyles.comingSoon]}>More tools coming soon</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -211,9 +284,22 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
-  header: {
+  // Logo and Theme Toggle Row
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 16,
+    paddingBottom: 8,
+  },
+  headerLogo: {
+    width: 100,
+    height: 32,
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
     paddingBottom: 20,
   },
   headerTitle: {

@@ -1,3 +1,11 @@
+/**
+ * UniverseDiscoveryScreen.tsx
+ * Explore themed universes (theme parks, airports, campuses, etc.)
+ * Path: screens/UniverseDiscoveryScreen.tsx
+ * 
+ * UPDATED: Full-width gradient header (no rounded corners) + white logo + "Universes"
+ */
+
 import React, { useState } from 'react';
 import {
   View,
@@ -14,6 +22,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
@@ -44,34 +53,48 @@ export default function UniverseDiscoveryScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       
-      {/* Header Background */}
-      <View style={styles.headerBg} />
+      {/* Full-Width Gradient Header - NO rounded corners */}
+      <LinearGradient
+        colors={['#06B6D4', '#0891B2']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <SafeAreaView edges={['top']}>
+          {/* Header Content with Logo */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <Image 
+                source={require('../assets/brand/tavvy-logo-white.png')} 
+                style={styles.headerLogo}
+                resizeMode="contain"
+              />
+              <Text style={styles.headerSectionName}>Universes</Text>
+            </View>
+            <TouchableOpacity style={styles.profileButton}>
+              <Ionicons name="person-circle-outline" size={32} color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Subtitle */}
+          <Text style={styles.headerSubtitle}>Explore worlds with many places inside</Text>
+
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+            <TextInput
+              placeholder="Find a universe..."
+              placeholderTextColor="#9CA3AF"
+              style={styles.searchInput}
+            />
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Header Content */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.headerTitle}>Universes</Text>
-            <Text style={styles.headerSubtitle}>Explore worlds with many places inside</Text>
-          </View>
-          <TouchableOpacity style={styles.profileButton}>
-            <Ionicons name="person-circle-outline" size={32} color="#fff" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
-          <TextInput
-            placeholder="Find a universe..."
-            placeholderTextColor="#9CA3AF"
-            style={styles.searchInput}
-          />
-        </View>
-
         {/* Categories */}
         <ScrollView 
           horizontal 
@@ -132,12 +155,12 @@ export default function UniverseDiscoveryScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Nearby Universes (New Discovery Feature) */}
+        {/* Nearby Universes */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionHeaderLeft}>
               <Ionicons name="navigate" size={18} color="#06B6D4" />
-              <Text style={styles.sectionTitle}>Nearby Universes</Text>
+              <Text style={styles.sectionTitleInline}>Nearby Universes</Text>
             </View>
             <TouchableOpacity>
               <Text style={styles.seeAllText}>See Map</Text>
@@ -182,9 +205,9 @@ export default function UniverseDiscoveryScreen() {
           </View>
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -193,36 +216,40 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
-  headerBg: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 200,
-    backgroundColor: '#06B6D4', // Cyan-500
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-  },
-  scrollContent: {
-    paddingTop: Platform.OS === 'android' ? 40 : 0,
+  // Full-width gradient header - NO rounded corners
+  headerGradient: {
+    paddingBottom: 20,
+    // No borderRadius - full width edge to edge
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    marginBottom: 20,
+    paddingTop: Platform.OS === 'android' ? 40 : 16,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 80,
+    height: 24,
+    marginRight: 8,
+  },
+  headerSectionName: {
+    fontSize: 24,
+    fontWeight: '700',
     color: '#fff',
-    marginBottom: 4,
+    // Modern font - Space Grotesk if available
+    // fontFamily: 'SpaceGrotesk-Bold',
   },
   headerSubtitle: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: 20,
+    marginTop: 4,
+    marginBottom: 16,
   },
   profileButton: {
     padding: 4,
@@ -240,7 +267,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 3,
-    marginBottom: 24,
   },
   searchIcon: {
     marginRight: 12,
@@ -249,6 +275,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#1F2937',
+  },
+  scrollContent: {
+    paddingTop: 16,
   },
   categoriesContainer: {
     paddingHorizontal: 20,
@@ -301,6 +330,11 @@ const styles = StyleSheet.create({
     marginLeft: 20,
     marginBottom: 12,
   },
+  sectionTitleInline: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
   seeAllText: {
     fontSize: 14,
     fontWeight: '600',
@@ -329,13 +363,12 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 20,
     paddingTop: 60,
-    backgroundColor: 'rgba(0,0,0,0.3)', // Gradient simulated
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   popularTag: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.2)',
-// @ts-ignore    backdropFilter: 'blur(10px)',
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 4,
