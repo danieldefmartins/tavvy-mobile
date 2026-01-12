@@ -475,8 +475,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerLogo: {
-    width: 80,
-    height: 24,
+    width: 192,
+    height: 58,
     marginRight: 8,
   },
   headerSectionName: {
@@ -485,6 +485,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     // Modern font - Space Grotesk if available
     // fontFamily: 'SpaceGrotesk-Bold',
+  marginTop: 8,
+  marginLeft: -30,   // up
+  // marginTop: 4, // down
   },
   scrollView: {
     flex: 1,

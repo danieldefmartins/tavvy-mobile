@@ -388,14 +388,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerLogo: {
-    width: 80,
-    height: 24,
+    width: 192,
+    height: 58,
     marginRight: 8,
   },
   headerSectionName: {
     fontSize: 24,
     fontWeight: '700',
     color: '#fff',
+    marginTop: 8,
+  marginLeft: -30,   
     // Modern font - Space Grotesk if available
     // fontFamily: 'SpaceGrotesk-Bold',
   },

@@ -2242,6 +2242,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 16,
   },
+  logoContainer: {
+  width: '100%',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginBottom: 8,
+},
+
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -2249,8 +2256,8 @@ const styles = StyleSheet.create({
   },
   headerLogo: {
     // UPDATED: Full horizontal logo instead of icon
-    width: 100,
-    height: 32,
+    width: 190,
+    height: 60,
     // borderRadius removed for horizontal logo
   },
   greetingText: {
