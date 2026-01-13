@@ -2,8 +2,12 @@
  * AppsScreen.tsx
  * Tools & shortcuts dashboard
  * Path: screens/AppsScreen.tsx
- * 
- * UPDATED: Added TavvY logo + working theme toggle that affects entire app
+ *
+ * UPDATED:
+ * - Added full-width header banner (#0f1233) that extends to the top
+ * - Toggle moved 1 line ABOVE the logo, aligned right (prevents clipping)
+ * - Keeps logo switching for light/dark
+ * - Keeps ThemeToggle
  */
 
 import React from 'react';
@@ -142,6 +146,7 @@ export default function AppsScreen() {
 
   const renderIcon = (tile: AppTile, size: number = 28) => {
     const iconColor = isDark ? '#FFFFFF' : tile.iconColor;
+
     if (tile.iconType === 'material') {
       return (
         <MaterialCommunityIcons
@@ -151,6 +156,7 @@ export default function AppsScreen() {
         />
       );
     }
+
     return (
       <Ionicons
         name={tile.icon as any}
@@ -199,20 +205,28 @@ export default function AppsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header with Logo and Theme Toggle */}
-        <View style={styles.headerRow}>
-          <Image 
-            source={isDark 
-              ? require('../assets/brand/logo-horizontal.png')
-              : require('../assets/brand/logo-horizontal.png')
-            } 
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
-          <ThemeToggle
-            currentMode={themeMode}
-            onModeChange={handleThemeChange}
-          />
+        {/* HEADER BANNER (FULL WIDTH) */}
+        <View style={styles.headerBanner}>
+          {/* Toggle Row (1 line ABOVE logo, aligned right) */}
+          <View style={styles.toggleRow}>
+            <ThemeToggle
+              currentMode={themeMode}
+              onModeChange={handleThemeChange}
+            />
+          </View>
+
+          {/* Logo Row */}
+          <View style={styles.logoRow}>
+            <Image
+              source={
+                isDark
+                  ? require('../assets/brand/logo-horizontal.png')
+                  : require('../assets/brand/logo-horizontal.png')
+              }
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+          </View>
         </View>
 
         {/* Title Section */}
@@ -284,19 +298,34 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
-  // Logo and Theme Toggle Row
-  headerRow: {
+
+  // Header banner background
+  headerBanner: {
+    backgroundColor: '#0f1233',
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+
+  // Toggle row above logo (right aligned)
+  toggleRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingBottom: 10,
+  },
+
+  // Logo row below toggle
+  logoRow: {
+    paddingHorizontal: 20,
+    paddingTop: 2,
     paddingBottom: 8,
   },
+
   headerLogo: {
     width: 200,
     height: 60,
   },
+
   header: {
     paddingHorizontal: 20,
     paddingTop: 8,
@@ -312,6 +341,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#6B7280',
   },
+
   loginButtons: {
     flexDirection: 'row',
     paddingHorizontal: 20,
@@ -341,6 +371,7 @@ const styles = StyleSheet.create({
   proLoginText: {
     color: '#6B7280',
   },
+
   tilesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -367,6 +398,7 @@ const styles = StyleSheet.create({
     color: '#374151',
     textAlign: 'center',
   },
+
   comingSoon: {
     fontSize: 14,
     color: '#9CA3AF',
