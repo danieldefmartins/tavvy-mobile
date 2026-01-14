@@ -115,38 +115,29 @@ export default function UniverseDiscoveryScreen() {
         style={styles.headerGradient}
       >
         <SafeAreaView>
-          {/* Header row: Logo (L) / Title (C) / Icon (R) */}
+          {/* Header row: Title (L) / Icon (R) */}
           <View style={styles.headerRow}>
-            {/* Left: Logo */}
+            {/* Left: Title */}
             <View style={styles.headerLeft}>
-              <Image
-                source={require('../assets/brand/tavvy-logo-white.png')}
-                style={styles.headerLogo}
-                resizeMode="contain"
-              />
-            </View>
-
-            {/* Center: Title (absolute centered) */}
-            <View style={styles.headerCenter} pointerEvents="none">
               <Text style={styles.headerTitle}>Universes</Text>
             </View>
 
             {/* Right: Profile */}
             <TouchableOpacity style={styles.headerRight}>
-              <Ionicons name="person-circle-outline" size={32} color="#fff" />
+              <Ionicons name="person-circle-outline" size={28} color="#fff" />
             </TouchableOpacity>
           </View>
 
-          {/* Subtitle aligned with logo left edge */}
+          {/* Subtitle */}
           <Text style={styles.headerSubtitle}>Explore worlds with many places inside</Text>
 
           {/* Search bar */}
-          <View style={[styles.searchContainer, { backgroundColor: isDark ? theme.surface : '#0B1220' }]}>
-            <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+          <View style={[styles.searchContainer, { backgroundColor: isDark ? theme.surface : '#F3F4F6', borderWidth: isDark ? 0 : 1, borderColor: '#E5E7EB' }]}>
+            <Ionicons name="search" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} style={styles.searchIcon} />
             <TextInput
               placeholder="Find a universe..."
-              placeholderTextColor="#9CA3AF"
-              style={[styles.searchInput, { color: '#fff' }]}
+              placeholderTextColor={isDark ? '#9CA3AF' : '#9CA3AF'}
+              style={[styles.searchInput, { color: isDark ? '#fff' : '#111827' }]}
             />
           </View>
         </SafeAreaView>
@@ -162,7 +153,7 @@ export default function UniverseDiscoveryScreen() {
                 key={cat.id}
                 style={[
                   styles.categoryChip,
-                  { backgroundColor: isDark ? theme.surface : '#1F2937' },
+                  { backgroundColor: isDark ? theme.surface : (isActive ? '#06B6D4' : '#E5E7EB') },
                   isActive && styles.categoryChipActive,
                 ]}
                 onPress={() => setActiveCategory(cat.id)}
@@ -175,7 +166,7 @@ export default function UniverseDiscoveryScreen() {
                     style={{ marginRight: 6 }}
                   />
                 )}
-                <Text style={[styles.categoryText, { color: isActive ? '#fff' : '#E5E7EB' }]}>{cat.label}</Text>
+                <Text style={[styles.categoryText, { color: isActive ? '#fff' : (isDark ? '#E5E7EB' : '#374151') }]}>{cat.label}</Text>
               </TouchableOpacity>
             );
           })}
@@ -280,63 +271,44 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
 
   headerGradient: {
-    paddingBottom: 18,
+    paddingBottom: 14,
   },
 
   // Header layout
   headerRow: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 40 : 16,
-    height: 64,
+    paddingTop: Platform.OS === 'android' ? 12 : 8,
+    height: 44,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
 
   headerLeft: {
-    width: 140, // reserved space so title can center independently
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
 
-  headerCenter: {
-  position: 'absolute',
-  left: 0,
-  right: 0,
-  top: Platform.OS === 'android' ? 40 : 16,
-  height: 64,
-  justifyContent: 'center',
-  alignItems: 'center',
-
-  marginLeft: 100,
-  marginTop: -8, // ← moves UP (try -2, -4, -6) // ← ADD THIS
-},
-
-
   headerRight: {
-    marginLeft: 'auto',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 4,
   },
 
-  headerLogo: {
-    width: 192,
-    height: 70,
-  },
-
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 26,
+    fontWeight: '800',
     color: '#fff',
+    letterSpacing: -0.5,
   },
 
   headerSubtitle: {
     paddingHorizontal: 20,
     marginTop: 2,
-    marginBottom: 8,
+    marginBottom: 10,
     fontSize: 14,
-    color: 'rgba(255,255,255,0.92)',
-    textAlign: 'center', // ← ADD THIS
+    color: 'rgba(255,255,255,0.9)',
+    textAlign: 'left',
   },
 
   // Search
@@ -439,12 +411,14 @@ const styles = StyleSheet.create({
 
   featuredOverlay: {
     position: 'absolute',
+    top: 0,
     bottom: 0,
     left: 0,
     right: 0,
     padding: 20,
     paddingTop: 60,
-    backgroundColor: 'rgba(0,0,0,0.28)',
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
 
   popularTag: {

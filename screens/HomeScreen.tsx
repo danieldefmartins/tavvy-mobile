@@ -1711,7 +1711,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <View style={styles.signalsContainer}>
           <View style={styles.signalsRow}>
             {getDisplaySignals(place.signals).slice(0, 2).map((signal, index) => (
-              <View key={index} style={styles.signalPillWrapper}>
+              <View key={`${place.id}-row1-sig-${index}`} style={styles.signalPillWrapper}>
                 <View style={[styles.signalPill, { backgroundColor: getSignalColor(signal.bucket) }]}>
                   <Ionicons 
                     name={getSignalIcon(signal.bucket) as any} 
@@ -1732,7 +1732,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           {getDisplaySignals(place.signals).length > 2 && (
             <View style={styles.signalsRow}>
               {getDisplaySignals(place.signals).slice(2, 4).map((signal, index) => (
-                <View key={index} style={styles.signalPillWrapper}>
+                <View key={`${place.id}-row2-sig-${index}`} style={styles.signalPillWrapper}>
                   <View style={[styles.signalPill, { backgroundColor: getSignalColor(signal.bucket) }]}>
                     <Ionicons 
                       name={getSignalIcon(signal.bucket) as any} 
@@ -1950,7 +1950,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   {/* Signals Grid - Always show with fallbacks for empty categories */}
                   <View style={[styles.signalsGrid, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
                     {getDisplaySignals(place.signals).map((signal, idx) => (
-                      <View key={`${place.id}-sig-${idx}`} style={styles.signalBadgeWrapper}>
+                      <View key={`trending-${trendingIndex}-${place.id}-sig-${idx}`} style={styles.signalBadgeWrapper}>
                         <View style={[styles.signalBadge, { backgroundColor: getSignalColor(signal.bucket) }]}>
                           <Ionicons 
                             name={getSignalIcon(signal.bucket) as any} 
@@ -2021,9 +2021,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
             {/* ===== RIDES & ATTRACTIONS SECTION ===== */}
             <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>🎢 Rides & Attractions</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('CategoryBrowse', { category: 'rides' })}>
+              <View style={styles.featureSectionHeader}>
+                <Text style={[styles.featureSectionTitle, { color: isDark ? theme.text : '#000' }]}>🎢 Rides & Attractions</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('RidesBrowse')}>
                   <Text style={styles.seeAllText}>See All</Text>
                 </TouchableOpacity>
               </View>
@@ -2060,9 +2060,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
             {/* ===== RV & CAMPING SECTION ===== */}
             <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>🏕️ RV & Camping</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('CategoryBrowse', { category: 'camping' })}>
+              <View style={styles.featureSectionHeader}>
+                <Text style={[styles.featureSectionTitle, { color: isDark ? theme.text : '#000' }]}>🏕️ RV & Camping</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('RVCampingBrowse')}>
                   <Text style={styles.seeAllText}>See All</Text>
                 </TouchableOpacity>
               </View>
@@ -2099,8 +2099,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
             {/* ===== TOP CONTRIBUTORS SECTION ===== */}
             <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>🏆 Top Contributors</Text>
+              <View style={styles.featureSectionHeader}>
+                <Text style={[styles.featureSectionTitle, { color: isDark ? theme.text : '#000' }]}>🏆 Top Contributors</Text>
                 <TouchableOpacity onPress={() => navigation.navigate('Profile', { screen: 'Leaderboard' })}>
                   <Text style={styles.seeAllText}>View All</Text>
                 </TouchableOpacity>
@@ -2521,7 +2521,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                     {/* Signal bars */}
                     <View style={styles.categoryResultSignals}>
                       {getDisplaySignals(place.signals).slice(0, 2).map((signal, idx) => (
-                        <View key={idx} style={[styles.categoryResultSignalBadge, { backgroundColor: getSignalColor(signal.bucket) }]}>
+                        <View key={`cat-${catIndex}-${place.id}-sig-${idx}`} style={[styles.categoryResultSignalBadge, { backgroundColor: getSignalColor(signal.bucket) }]}>
                           <Text style={styles.categoryResultSignalText} numberOfLines={1}>
                             {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
                           </Text>
@@ -3795,12 +3795,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 24,
   },
-  sectionHeader: {
+  featureSectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  sectionTitle: {
+  featureSectionTitle: {
     fontSize: 20,
     fontWeight: '700',
   },

@@ -18,6 +18,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -50,39 +51,49 @@ const APP_TILES: AppTile[] = [
     route: 'Home',
   },
   {
-    id: 'paths',
-    name: 'Paths',
-    icon: 'signpost',
-    iconType: 'material',
-    backgroundColor: '#EDE9FE',
-    backgroundColorDark: '#4C1D95',
-    iconColor: '#8B5CF6',
-    route: 'Explore',
+    id: 'universes',
+    name: 'Universes',
+    icon: 'planet',
+    iconType: 'ionicons',
+    backgroundColor: '#CCFBF1',
+    backgroundColorDark: '#134E4A',
+    iconColor: '#14B8A6',
+    route: 'Universes',
   },
   {
-    id: 'happening',
-    name: 'Happening',
-    icon: 'sparkles',
+    id: 'rides',
+    name: 'Rides',
+    icon: 'train',
     iconType: 'ionicons',
-    backgroundColor: '#FCE7F3',
-    backgroundColorDark: '#831843',
-    iconColor: '#EC4899',
-    route: 'Home',
+    backgroundColor: '#FEE2E2',
+    backgroundColorDark: '#7F1D1D',
+    iconColor: '#EF4444',
+    route: 'RidesBrowse',
   },
   {
-    id: 'map-lens',
-    name: 'Map Lens',
-    icon: 'scan-circle-outline',
+    id: 'rv-camping',
+    name: 'RV & Camping',
+    icon: 'bonfire',
     iconType: 'ionicons',
-    backgroundColor: '#D1FAE5',
-    backgroundColorDark: '#064E3B',
-    iconColor: '#10B981',
-    route: 'Home',
+    backgroundColor: '#FED7AA',
+    backgroundColorDark: '#7C2D12',
+    iconColor: '#EA580C',
+    route: 'RVCampingBrowse',
+  },
+  {
+    id: 'atlas',
+    name: 'Atlas',
+    icon: 'book',
+    iconType: 'ionicons',
+    backgroundColor: '#E0E7FF',
+    backgroundColorDark: '#312E81',
+    iconColor: '#4F46E5',
+    route: 'Atlas',
   },
   {
     id: 'pros',
     name: 'Pros',
-    icon: 'briefcase',
+    icon: 'construct',
     iconType: 'ionicons',
     backgroundColor: '#DBEAFE',
     backgroundColorDark: '#1E3A8A',
@@ -92,21 +103,21 @@ const APP_TILES: AppTile[] = [
   {
     id: 'saved',
     name: 'Saved',
-    icon: 'bookmark',
+    icon: 'heart',
     iconType: 'ionicons',
-    backgroundColor: '#FEE2E2',
-    backgroundColorDark: '#7F1D1D',
-    iconColor: '#EF4444',
+    backgroundColor: '#FCE7F3',
+    backgroundColorDark: '#831843',
+    iconColor: '#EC4899',
     route: 'Saved',
   },
   {
     id: 'account',
     name: 'Account',
-    icon: 'person-circle-outline',
+    icon: 'person',
     iconType: 'ionicons',
     backgroundColor: '#E5E7EB',
     backgroundColorDark: '#374151',
-    iconColor: '#374151',
+    iconColor: '#6B7280',
     route: 'Profile',
   },
   {
@@ -207,22 +218,36 @@ export default function AppsScreen() {
       >
         {/* HEADER BANNER (FULL WIDTH) */}
         <View style={styles.headerBanner}>
-          {/* Toggle Row (1 line ABOVE logo, aligned right) */}
+          {/* Toggle Row - HomeScreen style */}
           <View style={styles.toggleRow}>
-            <ThemeToggle
-              currentMode={themeMode}
-              onModeChange={handleThemeChange}
-            />
+            <View style={[styles.segment, { 
+              borderColor: 'rgba(255,255,255,0.14)', 
+              backgroundColor: 'rgba(255,255,255,0.08)' 
+            }]}>
+              <TouchableOpacity
+                style={[styles.segmentItem, !isDark && styles.segmentItemActive]}
+                onPress={() => setThemeMode('light')}
+                activeOpacity={0.9}
+              >
+                <Ionicons name="sunny" size={16} color={!isDark ? '#fff' : 'rgba(255,255,255,0.6)'} />
+                <Text style={[styles.segmentText, { color: !isDark ? '#fff' : 'rgba(255,255,255,0.6)' }]}>Light</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.segmentItem, isDark && styles.segmentItemActive]}
+                onPress={() => setThemeMode('dark')}
+                activeOpacity={0.9}
+              >
+                <Ionicons name="moon" size={16} color={isDark ? '#fff' : 'rgba(255,255,255,0.6)'} />
+                <Text style={[styles.segmentText, { color: isDark ? '#fff' : 'rgba(255,255,255,0.6)' }]}>Dark</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Logo Row */}
+          {/* Logo Row - Bigger logo */}
           <View style={styles.logoRow}>
             <Image
-              source={
-                isDark
-                  ? require('../assets/brand/logo-horizontal.png')
-                  : require('../assets/brand/logo-horizontal.png')
-              }
+              source={require('../assets/brand/logo-horizontal.png')}
               style={styles.headerLogo}
               resizeMode="contain"
             />
@@ -303,27 +328,57 @@ const styles = StyleSheet.create({
   headerBanner: {
     backgroundColor: '#0f1233',
     paddingTop: 14,
-    paddingBottom: 10,
+    paddingBottom: 16,
   },
 
-  // Toggle row above logo (right aligned)
+  // Toggle row - HomeScreen style
   toggleRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+
+  // Segment control (Light/Dark toggle) - Matching HomeScreen style
+  segment: {
+    height: 44,
+    borderRadius: 18,
+    flexDirection: 'row',
+    padding: 4,
+    borderWidth: 1,
+    minWidth: 180,
+  },
+  segmentItem: {
+    flex: 1,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  segmentItemActive: {
+    backgroundColor: '#3B82F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: Platform.OS === 'ios' ? 0.15 : 0.0,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  segmentText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // Logo row below toggle - Bigger logo
+  logoRow: {
+    paddingHorizontal: 20,
+    paddingTop: 4,
     paddingBottom: 10,
   },
 
-  // Logo row below toggle
-  logoRow: {
-    paddingHorizontal: 20,
-    paddingTop: 2,
-    paddingBottom: 8,
-  },
-
   headerLogo: {
-    width: 200,
-    height: 60,
+    width: 240,
+    height: 72,
   },
 
   header: {

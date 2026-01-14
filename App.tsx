@@ -56,6 +56,10 @@ import ProsMessagesScreen from './screens/ProsMessagesScreen';
 import ProsRequestQuoteScreen from './screens/ProsRequestQuoteScreen';
 import ProsLeadsScreen from './screens/ProsLeadsScreen';
 
+// ========== BROWSE SCREENS ==========
+import RidesBrowseScreen from './screens/RidesBrowseScreen';
+import RVCampingBrowseScreen from './screens/RVCampingBrowseScreen';
+
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -92,6 +96,9 @@ function HomeStack() {
       <HomeStackNav.Screen name="CityDetails" component={CityDetailsScreen} />
       <HomeStackNav.Screen name="RateCity" component={RateCityScreen} />
       <HomeStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
+      {/* Browse Screens */}
+      <HomeStackNav.Screen name="RidesBrowse" component={RidesBrowseScreen} />
+      <HomeStackNav.Screen name="RVCampingBrowse" component={RVCampingBrowseScreen} />
       {/* Business Card Scanner - accessible from AddPlaceScreen */}
       <HomeStackNav.Screen 
         name="BusinessCardScanner" 

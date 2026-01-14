@@ -104,16 +104,9 @@ export default function ProsHomeScreen() {
           style={styles.headerGradient}
         >
           <SafeAreaView edges={['top']}>
-            {/* Header Content with Logo */}
+            {/* Header Content */}
             <View style={styles.header}>
-              <View style={styles.headerLeft}>
-                <Image 
-                  source={require('../assets/brand/tavvy-logo-white.png')} 
-                  style={styles.headerLogo}
-                  resizeMode="contain"
-                />
-                <Text style={styles.headerSectionName}>Pros</Text>
-              </View>
+              <Text style={styles.headerTitle}>Pros</Text>
             </View>
           </SafeAreaView>
         </LinearGradient>
@@ -242,16 +235,9 @@ export default function ProsHomeScreen() {
         style={styles.headerGradient}
       >
         <SafeAreaView edges={['top']}>
-          {/* Header Content with Logo */}
+          {/* Header Content */}
           <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Image 
-                source={require('../assets/brand/tavvy-logo-white.png')} 
-                style={styles.headerLogo}
-                resizeMode="contain"
-              />
-              <Text style={styles.headerSectionName}>Pros</Text>
-            </View>
+            <Text style={styles.headerTitle}>Pros</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -366,7 +352,11 @@ export default function ProsHomeScreen() {
             {PROS_CATEGORIES.slice(0, 8).map((category) => (
               <ProsCategoryCard
                 key={category.id}
-                category={category}
+                id={category.id}
+                name={category.name}
+                slug={category.slug}
+                icon={category.icon}
+                color={category.color}
                 onPress={() => handleCategoryPress(category.id, category.name)}
               />
             ))}
@@ -460,34 +450,22 @@ const styles = StyleSheet.create({
   },
   // FULL WIDTH GRADIENT HEADER - NO rounded corners
   headerGradient: {
-    paddingBottom: 16,
+    paddingBottom: 14,
     // No borderRadius - full width edge to edge
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android' ? 40 : 16,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? 12 : 8,
+    height: 44,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerLogo: {
-    width: 192,
-    height: 58,
-    marginRight: 8,
-  },
-  headerSectionName: {
-    fontSize: 24,
-    fontWeight: '700',
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: '800',
     color: '#fff',
-    // Modern font - Space Grotesk if available
-    // fontFamily: 'SpaceGrotesk-Bold',
-  marginTop: 8,
-  marginLeft: -10,   // up
-  // marginTop: 4, // down
+    letterSpacing: -0.5,
   },
   scrollView: {
     flex: 1,
