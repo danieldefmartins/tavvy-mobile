@@ -28,7 +28,6 @@ import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThemeContext } from '../contexts/ThemeContext';
-import SignalBar, { getSignalTypeFromBucket, SIGNAL_COLORS } from '../components/SignalBar';
 
 const { width, height } = Dimensions.get('window');
 
@@ -571,8 +570,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
       console.log(`Fetching places near [${centerLng}, ${centerLat}]`);
 
-      // Query from fsq_places_raw - the main Foursquare data table
-      const { data: placesData, error: placesError } = await supabase
+      // Query from both fsq_places_raw (Foursquare) and tavvy_places (user-added)
+      
+      // 1. Fetch from Foursquare data
+      const { data: fsqPlacesData, error: fsqError } = await supabase
         .from('fsq_places_raw')
         .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, postcode, tel, website, email, instagram, facebook_id, twitter, fsq_category_ids, fsq_category_labels, date_created, date_refreshed, date_closed')
         .gte('latitude', minLat)
@@ -580,7 +581,34 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         .gte('longitude', minLng)
         .lte('longitude', maxLng)
         .is('date_closed', null)
-        .limit(200);
+        .limit(150);
+      
+      // 2. Fetch from user-added places
+      const { data: tavvyPlacesData, error: tavvyError } = await supabase
+        .from('tavvy_places')
+        .select('id, name, latitude, longitude, address, city, region, country, postcode, phone, website, email, instagram, facebook, twitter, tavvy_category, tavvy_subcategory, photos, cover_image_url, created_at')
+        .gte('latitude', minLat)
+        .lte('latitude', maxLat)
+        .gte('longitude', minLng)
+        .lte('longitude', maxLng)
+        .eq('is_deleted', false)
+        .limit(50);
+      
+      // Combine both sources
+      const fsqPlaces = (fsqPlacesData || []).map(p => ({ ...p, source: 'foursquare' }));
+      const tavvyPlaces = (tavvyPlacesData || []).map(p => ({ 
+        ...p, 
+        source: 'user',
+        fsq_place_id: p.id, // Use id as the identifier
+        locality: p.city,
+        tel: p.phone,
+        fsq_category_labels: [p.tavvy_subcategory || p.tavvy_category || 'Other']
+      }));
+      
+      const placesData = [...fsqPlaces, ...tavvyPlaces];
+      const placesError = fsqError || tavvyError;
+      
+      console.log(`Fetched ${fsqPlaces.length} Foursquare places, ${tavvyPlaces.length} user-added places`);
 
       if (placesError) {
         console.warn('Supabase error:', placesError);
@@ -1206,14 +1234,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const getSignalColor = (bucket: string) => {
     const type = getSignalType(bucket);
-    // Match PlaceDetailsScreen colors: Blue/Gray/Orange
-    if (type === 'positive') return '#0A84FF';  // Blue - The Good
-    if (type === 'negative') return '#FF9500';  // Orange - Heads Up
-    return '#8E8E93';  // Gray - The Vibe
+    if (type === 'positive') return '#0A84FF'; // Blue - The Good
+    if (type === 'negative') return '#FF9500'; // Orange - Heads Up
+    return '#8E8E93'; // Gray - The Vibe
   };
 
   const getSignalIconColor = (bucket: string) => {
-    // White icons for solid colored backgrounds
+    // White icons on solid colored backgrounds
     return '#FFFFFF';
   };
 
@@ -1222,6 +1249,43 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     if (type === 'positive') return 'thumbs-up';
     if (type === 'negative') return 'alert';
     return 'trending-up';
+  };
+
+  // Get category-based fallback image URL when place has no photo
+  const getCategoryFallbackImage = (category: string): string => {
+    const lowerCategory = (category || '').toLowerCase();
+    
+    const imageMap: Record<string, string> = {
+      'restaurant': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+      'italian': 'https://images.unsplash.com/photo-1498579150354-977475b7ea0b?w=800',
+      'mexican': 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800',
+      'asian': 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
+      'coffee': 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800',
+      'cafe': 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800',
+      'rv park': 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=800',
+      'campground': 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
+      'camping': 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
+      'hotel': 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
+      'resort': 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800',
+      'bar': 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800',
+      'nightclub': 'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=800',
+      'shopping': 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800',
+      'mall': 'https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?w=800',
+      'gym': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800',
+      'spa': 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800',
+      'bakery': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800',
+      'pizza': 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800',
+      'sushi': 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800',
+      'burger': 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800',
+      'taco': 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800',
+      'default': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+    };
+    
+    for (const [key, url] of Object.entries(imageMap)) {
+      if (lowerCategory.includes(key)) return url;
+    }
+    
+    return imageMap.default;
   };
 
   // Generate display signals with fallbacks for missing categories
@@ -1263,10 +1327,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   // Get the placeholder text for empty signal categories
   const getEmptySignalText = (bucket: string): string => {
-    if (bucket === 'The Good') return 'No The Good taps yet';
-    if (bucket === 'The Vibe') return 'No The Vibe taps yet';
-    if (bucket === 'Heads Up') return 'No Heads Up taps yet';
-    return 'Be the first to rate it';
+    // All empty states now use the same encouraging call-to-action
+    return 'Be the first to tap!';
   };
 
   const sortSignalsForDisplay = (signals: Signal[]): Signal[] => {
@@ -1573,9 +1635,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // RENDER: PHOTO CAROUSEL
   // ============================================
 
-  const PhotoCarousel = ({ photos, placeName, placeAddress }: { photos?: string[], placeName: string, placeAddress: string }) => {
+  const PhotoCarousel = ({ photos, placeName, placeAddress, placeCategory }: { photos?: string[], placeName: string, placeAddress: string, placeCategory?: string }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
-    const displayPhotos = photos && photos.length > 0 ? photos : [null];
+    // Use category fallback image if no photos exist
+    const fallbackImage = getCategoryFallbackImage(placeCategory || '');
+    const displayPhotos = photos && photos.length > 0 ? photos : [fallbackImage];
 
     return (
       <View style={styles.carouselContainer}>
@@ -1591,13 +1655,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         >
           {displayPhotos.slice(0, 3).map((photo, index) => (
             <View key={index} style={styles.carouselImage}>
-              {photo ? (
-                <Image source={{ uri: photo }} style={styles.photo} resizeMode="cover" />
-              ) : (
-                <View style={styles.placeholderPhoto}>
-                  <Ionicons name="image-outline" size={48} color="#ccc" />
-                </View>
-              )}
+              <Image source={{ uri: photo }} style={styles.photo} resizeMode="cover" />
             </View>
           ))}
         </ScrollView>
@@ -1646,40 +1704,53 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           photos={place.photos}
           placeName={place.name}
           placeAddress={fullAddress}
+          placeCategory={place.category || place.primary_category}
         />
         
-        {/* Signals - 2x2 Grid using universal SignalBar component */}
+        {/* Signals - Always show with fallbacks for empty categories */}
         <View style={styles.signalsContainer}>
-          {/* Row 1: Two "The Good" signals */}
           <View style={styles.signalsRow}>
             {getDisplaySignals(place.signals).slice(0, 2).map((signal, index) => (
-              <View key={`good-${index}`} style={styles.signalGridItem}>
-                <SignalBar
-                  label={signal.bucket}
-                  tapCount={signal.tap_total}
-                  type={getSignalTypeFromBucket(signal.bucket)}
-                  size="compact"
-                  isEmpty={signal.isEmpty}
-                  emptyText={getEmptySignalText(signal.bucket)}
-                />
+              <View key={index} style={styles.signalPillWrapper}>
+                <View style={[styles.signalPill, { backgroundColor: getSignalColor(signal.bucket) }]}>
+                  <Ionicons 
+                    name={getSignalIcon(signal.bucket) as any} 
+                    size={12} 
+                    color={getSignalIconColor(signal.bucket)} 
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text style={[styles.signalText, signal.isEmpty && styles.signalTextEmpty]} numberOfLines={1}>
+                    {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
+                  </Text>
+                </View>
+                {!signal.isEmpty && (
+                  <Text style={styles.signalTapCount}>x{signal.tap_total}</Text>
+                )}
               </View>
             ))}
           </View>
-          {/* Row 2: One "The Vibe" + One "Heads Up" */}
-          <View style={styles.signalsRow}>
-            {getDisplaySignals(place.signals).slice(2, 4).map((signal, index) => (
-              <View key={`other-${index}`} style={styles.signalGridItem}>
-                <SignalBar
-                  label={signal.bucket}
-                  tapCount={signal.tap_total}
-                  type={getSignalTypeFromBucket(signal.bucket)}
-                  size="compact"
-                  isEmpty={signal.isEmpty}
-                  emptyText={getEmptySignalText(signal.bucket)}
-                />
-              </View>
-            ))}
-          </View>
+          {getDisplaySignals(place.signals).length > 2 && (
+            <View style={styles.signalsRow}>
+              {getDisplaySignals(place.signals).slice(2, 4).map((signal, index) => (
+                <View key={index} style={styles.signalPillWrapper}>
+                  <View style={[styles.signalPill, { backgroundColor: getSignalColor(signal.bucket) }]}>
+                    <Ionicons 
+                      name={getSignalIcon(signal.bucket) as any} 
+                      size={12} 
+                      color={getSignalIconColor(signal.bucket)} 
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={[styles.signalText, signal.isEmpty && styles.signalTextEmpty]} numberOfLines={1}>
+                      {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
+                    </Text>
+                  </View>
+                  {!signal.isEmpty && (
+                    <Text style={styles.signalTapCount}>x{signal.tap_total}</Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
         </View>
         
         {/* Quick Actions */}
@@ -1834,16 +1905,16 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               showsHorizontalScrollIndicator={false} 
               contentContainerStyle={styles.trendingScroll}
             >
-              {filteredPlaces.slice(0, 10).map((place, placeIndex) => (
+              {filteredPlaces.slice(0, 10).map((place, trendingIndex) => (
                 <TouchableOpacity
-                  key={`trending-${place.id}-${placeIndex}`}
+                  key={`trending-${place.id}-${trendingIndex}`}
                   onPress={() => handlePlacePress(place)}
                   activeOpacity={0.92}
                   style={[styles.previewCard, { width: cardWidth, backgroundColor: isDark ? theme.surface : '#fff' }]}
                 >
                   {/* Image with overlay */}
                   <ImageBackground 
-                    source={{ uri: place.photos?.[0] || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800' }} 
+                    source={{ uri: place.photos?.[0] || getCategoryFallbackImage(place.category || place.primary_category) }} 
                     style={styles.previewImage} 
                     imageStyle={styles.previewImageRadius}
                   >
@@ -1876,38 +1947,26 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                     </TouchableOpacity>
                   </View>
 
-                  {/* Signals Grid - 2x2 using universal SignalBar component */}
+                  {/* Signals Grid - Always show with fallbacks for empty categories */}
                   <View style={[styles.signalsGrid, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-                    {/* Row 1: Two "The Good" signals */}
-                    <View style={styles.signalsRow}>
-                      {getDisplaySignals(place.signals).slice(0, 2).map((signal, idx) => (
-                        <View key={`${place.id}-good-${idx}`} style={styles.signalGridItem}>
-                          <SignalBar
-                            label={signal.bucket}
-                            tapCount={signal.tap_total}
-                            type={getSignalTypeFromBucket(signal.bucket)}
-                            size="compact"
-                            isEmpty={signal.isEmpty}
-                            emptyText={getEmptySignalText(signal.bucket)}
+                    {getDisplaySignals(place.signals).map((signal, idx) => (
+                      <View key={`${place.id}-sig-${idx}`} style={styles.signalBadgeWrapper}>
+                        <View style={[styles.signalBadge, { backgroundColor: getSignalColor(signal.bucket) }]}>
+                          <Ionicons 
+                            name={getSignalIcon(signal.bucket) as any} 
+                            size={12} 
+                            color={getSignalIconColor(signal.bucket)} 
+                            style={{ marginRight: 4 }}
                           />
+                          <Text style={[styles.signalLabel, signal.isEmpty && styles.signalLabelEmpty]} numberOfLines={1}>
+                            {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
+                          </Text>
                         </View>
-                      ))}
-                    </View>
-                    {/* Row 2: One "The Vibe" + One "Heads Up" */}
-                    <View style={styles.signalsRow}>
-                      {getDisplaySignals(place.signals).slice(2, 4).map((signal, idx) => (
-                        <View key={`${place.id}-other-${idx}`} style={styles.signalGridItem}>
-                          <SignalBar
-                            label={signal.bucket}
-                            tapCount={signal.tap_total}
-                            type={getSignalTypeFromBucket(signal.bucket)}
-                            size="compact"
-                            isEmpty={signal.isEmpty}
-                            emptyText={getEmptySignalText(signal.bucket)}
-                          />
-                        </View>
-                      ))}
-                    </View>
+                        {!signal.isEmpty && (
+                          <Text style={styles.signalCount}>x{signal.tap_total}</Text>
+                        )}
+                      </View>
+                    ))}
                   </View>
                 </TouchableOpacity>
               ))}
@@ -1958,6 +2017,159 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   </Text>
                 </View>
               </View>
+            </View>
+
+            {/* ===== RIDES & ATTRACTIONS SECTION ===== */}
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>🎢 Rides & Attractions</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('CategoryBrowse', { category: 'rides' })}>
+                  <Text style={styles.seeAllText}>See All</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.sectionSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
+                Theme park experiences reviewed by the community
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
+                {[
+                  { id: 'ride1', name: 'Space Mountain', universe: 'Magic Kingdom', signals: 234, type: 'Thrill', image: 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=400' },
+                  { id: 'ride2', name: 'Hagrid\'s Motorbike', universe: 'Universal Orlando', signals: 456, type: 'Family', image: 'https://images.unsplash.com/photo-1566552881560-0be862a7c445?w=400' },
+                  { id: 'ride3', name: 'Avatar Flight', universe: 'Animal Kingdom', signals: 312, type: 'Immersive', image: 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=400' },
+                ].map((ride) => (
+                  <TouchableOpacity
+                    key={ride.id}
+                    style={[styles.featureCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+                    onPress={() => navigation.navigate('PlaceDetails', { placeId: ride.id })}
+                    activeOpacity={0.9}
+                  >
+                    <Image source={{ uri: ride.image }} style={styles.featureCardImage} />
+                    <View style={styles.featureCardContent}>
+                      <Text style={[styles.featureCardTitle, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>{ride.name}</Text>
+                      <Text style={[styles.featureCardSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>{ride.universe}</Text>
+                      <View style={styles.featureCardMeta}>
+                        <View style={[styles.featureCardBadge, { backgroundColor: '#E8F4FD' }]}>
+                          <Text style={[styles.featureCardBadgeText, { color: '#0A84FF' }]}>✨ {ride.type}</Text>
+                        </View>
+                        <Text style={[styles.featureCardSignals, { color: isDark ? theme.textSecondary : '#888' }]}>×{ride.signals}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* ===== RV & CAMPING SECTION ===== */}
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>🏕️ RV & Camping</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('CategoryBrowse', { category: 'camping' })}>
+                  <Text style={styles.seeAllText}>See All</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.sectionSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
+                Campgrounds and RV parks with real traveler insights
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
+                {[
+                  { id: 'camp1', name: 'Fort Wilderness', location: 'Orlando, FL', signals: 189, type: 'Full Hookups', image: 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=400' },
+                  { id: 'camp2', name: 'Yosemite Pines', location: 'Groveland, CA', signals: 234, type: 'Scenic', image: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400' },
+                  { id: 'camp3', name: 'KOA Yellowstone', location: 'West Yellowstone, MT', signals: 156, type: 'Family', image: 'https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=400' },
+                ].map((camp) => (
+                  <TouchableOpacity
+                    key={camp.id}
+                    style={[styles.featureCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+                    onPress={() => navigation.navigate('PlaceDetails', { placeId: camp.id })}
+                    activeOpacity={0.9}
+                  >
+                    <Image source={{ uri: camp.image }} style={styles.featureCardImage} />
+                    <View style={styles.featureCardContent}>
+                      <Text style={[styles.featureCardTitle, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>{camp.name}</Text>
+                      <Text style={[styles.featureCardSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>{camp.location}</Text>
+                      <View style={styles.featureCardMeta}>
+                        <View style={[styles.featureCardBadge, { backgroundColor: '#E8F8E8' }]}>
+                          <Text style={[styles.featureCardBadgeText, { color: '#34C759' }]}>⛺ {camp.type}</Text>
+                        </View>
+                        <Text style={[styles.featureCardSignals, { color: isDark ? theme.textSecondary : '#888' }]}>×{camp.signals}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* ===== TOP CONTRIBUTORS SECTION ===== */}
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>🏆 Top Contributors</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('Profile', { screen: 'Leaderboard' })}>
+                  <Text style={styles.seeAllText}>View All</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.sectionSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
+                Community members making a difference
+              </Text>
+              <View style={[styles.leaderboardCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+                {[
+                  { rank: 1, name: 'Sarah M.', taps: 1247, badge: '🥇', streak: 45 },
+                  { rank: 2, name: 'Mike R.', taps: 1089, badge: '🥈', streak: 32 },
+                  { rank: 3, name: 'Jenny W.', taps: 956, badge: '🥉', streak: 28 },
+                  { rank: 4, name: 'Tom C.', taps: 823, badge: '⭐', streak: 21 },
+                  { rank: 5, name: 'Lisa K.', taps: 712, badge: '⭐', streak: 18 },
+                ].map((user, index) => (
+                  <View key={user.rank} style={[styles.leaderboardRow, index < 4 && styles.leaderboardRowBorder]}>
+                    <View style={styles.leaderboardLeft}>
+                      <Text style={styles.leaderboardBadge}>{user.badge}</Text>
+                      <View style={styles.leaderboardAvatar}>
+                        <Text style={styles.leaderboardAvatarText}>{user.name.charAt(0)}</Text>
+                      </View>
+                      <View>
+                        <Text style={[styles.leaderboardName, { color: isDark ? theme.text : '#000' }]}>{user.name}</Text>
+                        <Text style={[styles.leaderboardStreak, { color: isDark ? theme.textSecondary : '#888' }]}>🔥 {user.streak} day streak</Text>
+                      </View>
+                    </View>
+                    <View style={styles.leaderboardRight}>
+                      <Text style={[styles.leaderboardTaps, { color: isDark ? theme.text : '#000' }]}>{user.taps.toLocaleString()}</Text>
+                      <Text style={[styles.leaderboardTapsLabel, { color: isDark ? theme.textSecondary : '#888' }]}>taps</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* ===== HOW TAVVY WORKS SECTION ===== */}
+            <View style={styles.howItWorksSection}>
+              <Text style={[styles.howItWorksTitle, { color: isDark ? theme.text : '#000' }]}>
+                ✨ How TavvY Works
+              </Text>
+              <Text style={[styles.howItWorksSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
+                A smarter way to discover and review places
+              </Text>
+              
+              <View style={[styles.howItWorksCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+                {[
+                  { icon: '👆', title: 'Tap, Don\'t Type', desc: 'Quick 1-3 tap signals instead of writing long reviews. Share your experience in seconds.' },
+                  { icon: '🎯', title: 'Honest Insights', desc: 'See what places are actually good for with The Good, The Vibe, and Heads Up signals.' },
+                  { icon: '👥', title: 'Community Powered', desc: 'Real signals from real people, not algorithms. Authentic experiences you can trust.' },
+                  { icon: '⚡', title: 'Compare Instantly', desc: 'Compare places at a glance without reading paragraphs. Make decisions faster.' },
+                  { icon: '🔄', title: 'Second Chances', desc: 'Bad reviews refresh if not recurring. Everyone deserves a chance to improve.' },
+                ].map((item, index) => (
+                  <View key={index} style={[styles.howItWorksRow, index < 4 && styles.howItWorksRowBorder]}>
+                    <Text style={styles.howItWorksIcon}>{item.icon}</Text>
+                    <View style={styles.howItWorksContent}>
+                      <Text style={[styles.howItWorksItemTitle, { color: isDark ? theme.text : '#000' }]}>{item.title}</Text>
+                      <Text style={[styles.howItWorksItemDesc, { color: isDark ? theme.textSecondary : '#666' }]}>{item.desc}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+              
+              <TouchableOpacity 
+                style={styles.learnMoreButton}
+                onPress={() => navigation.navigate('Apps', { screen: 'About' })}
+              >
+                <Text style={styles.learnMoreText}>Learn More About TavvY</Text>
+                <Ionicons name="arrow-forward" size={16} color="#0A84FF" />
+              </TouchableOpacity>
             </View>
 
             {/* Bottom padding */}
@@ -2073,7 +2285,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           .map((place, mapIndex) => (
           <MapLibreGL.PointAnnotation
             key={`map-${place.id}-${mapIndex}`}
-            id={place.id}
+            id={`${place.id}-${mapIndex}`}
             coordinate={[place.longitude || place.lng, place.latitude || place.lat]}
             onSelected={() => handleMarkerPress(place)}
           >
@@ -2306,38 +2518,15 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                       {place.category} • {place.city || place.address_line1 || 'Nearby'}
                     </Text>
                     
-                    {/* Signal bars - 2x2 grid using universal SignalBar component */}
+                    {/* Signal bars */}
                     <View style={styles.categoryResultSignals}>
-                      {/* Row 1: Two "The Good" signals */}
-                      <View style={styles.signalsRow}>
-                        {getDisplaySignals(place.signals).slice(0, 2).map((signal, idx) => (
-                          <View key={`cat-good-${idx}`} style={styles.signalGridItem}>
-                            <SignalBar
-                              label={signal.bucket}
-                              tapCount={signal.tap_total}
-                              type={getSignalTypeFromBucket(signal.bucket)}
-                              size="compact"
-                              isEmpty={signal.isEmpty}
-                              emptyText={getEmptySignalText(signal.bucket)}
-                            />
-                          </View>
-                        ))}
-                      </View>
-                      {/* Row 2: One "The Vibe" + One "Heads Up" */}
-                      <View style={styles.signalsRow}>
-                        {getDisplaySignals(place.signals).slice(2, 4).map((signal, idx) => (
-                          <View key={`cat-other-${idx}`} style={styles.signalGridItem}>
-                            <SignalBar
-                              label={signal.bucket}
-                              tapCount={signal.tap_total}
-                              type={getSignalTypeFromBucket(signal.bucket)}
-                              size="compact"
-                              isEmpty={signal.isEmpty}
-                              emptyText={getEmptySignalText(signal.bucket)}
-                            />
-                          </View>
-                        ))}
-                      </View>
+                      {getDisplaySignals(place.signals).slice(0, 2).map((signal, idx) => (
+                        <View key={idx} style={[styles.categoryResultSignalBadge, { backgroundColor: getSignalColor(signal.bucket) }]}>
+                          <Text style={styles.categoryResultSignalText} numberOfLines={1}>
+                            {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
+                          </Text>
+                        </View>
+                      ))}
                     </View>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color={isDark ? theme.textSecondary : '#ccc'} />
@@ -2755,12 +2944,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 11, // Smaller font for full text
     fontWeight: '700',
-    color: '#FFFFFF',  // White text for solid colored backgrounds
+    color: '#FFFFFF', // White text on solid backgrounds
   },
   signalLabelEmpty: {
-    fontWeight: '600',
-    fontStyle: 'normal',
-    color: 'rgba(255, 255, 255, 0.9)',  // White with slight transparency for empty state
+    fontWeight: '500',
+    fontStyle: 'italic',
+    color: 'rgba(255, 255, 255, 0.85)', // White with slight transparency for empty states
     fontSize: 10,
   },
   signalCount: {
@@ -3089,9 +3278,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  signalGridItem: {
-    flex: 1,
-  },
   signalPillWrapper: {
     flex: 1,
     position: 'relative',
@@ -3108,12 +3294,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 11, // Smaller for full text
     fontWeight: '700',
-    color: '#FFFFFF',  // White text for solid colored backgrounds
+    color: '#FFFFFF', // White text on solid backgrounds
   },
   signalTextEmpty: {
-    fontWeight: '600',
-    fontStyle: 'normal',
-    color: 'rgba(255, 255, 255, 0.9)',  // White with slight transparency for empty state
+    fontWeight: '500',
+    fontStyle: 'italic',
+    color: 'rgba(255, 255, 255, 0.85)', // White with slight transparency for empty states
     fontSize: 10,
   },
   signalTapCount: {
@@ -3439,8 +3625,8 @@ const styles = StyleSheet.create({
   },
   categoryResultSignalText: {
     fontSize: 11,
-    fontWeight: '500',
-    color: '#FFFFFF',  // White text for solid colored backgrounds
+    fontWeight: '600',
+    color: '#FFFFFF', // White text on solid colored backgrounds
   },
 
   // Filter Modal
@@ -3602,5 +3788,209 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+
+  // ===== NEW SECTIONS STYLES =====
+  sectionContainer: {
+    paddingHorizontal: 20,
+    marginTop: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0A84FF',
+  },
+
+  // Feature Cards (Rides, RV & Camping)
+  featureCard: {
+    width: 200,
+    marginRight: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  featureCardImage: {
+    width: '100%',
+    height: 120,
+  },
+  featureCardContent: {
+    padding: 12,
+  },
+  featureCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  featureCardSubtitle: {
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  featureCardMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  featureCardBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  featureCardBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  featureCardSignals: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  // Leaderboard
+  leaderboardCard: {
+    marginTop: 12,
+    borderRadius: 16,
+    padding: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  leaderboardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  leaderboardRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  leaderboardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  leaderboardBadge: {
+    fontSize: 20,
+    marginRight: 10,
+    width: 28,
+    textAlign: 'center',
+  },
+  leaderboardAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E8F4FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  leaderboardAvatarText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0A84FF',
+  },
+  leaderboardName: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  leaderboardStreak: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  leaderboardRight: {
+    alignItems: 'flex-end',
+  },
+  leaderboardTaps: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  leaderboardTapsLabel: {
+    fontSize: 11,
+    marginTop: 1,
+  },
+
+  // How TavvY Works Section
+  howItWorksSection: {
+    paddingHorizontal: 20,
+    marginTop: 32,
+    marginBottom: 16,
+  },
+  howItWorksTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  howItWorksSubtitle: {
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  howItWorksCard: {
+    borderRadius: 16,
+    padding: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  howItWorksRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+  },
+  howItWorksRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  howItWorksIcon: {
+    fontSize: 24,
+    marginRight: 14,
+    width: 32,
+    textAlign: 'center',
+  },
+  howItWorksContent: {
+    flex: 1,
+  },
+  howItWorksItemTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  howItWorksItemDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  learnMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    paddingVertical: 12,
+  },
+  learnMoreText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0A84FF',
+    marginRight: 6,
   },
 });

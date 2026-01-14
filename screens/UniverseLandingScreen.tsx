@@ -17,6 +17,28 @@ import { LinearGradient } from 'expo-linear-gradient'; // Optional: Remove if no
 
 const { width } = Dimensions.get('window');
 
+// Get category-based fallback image URL when place has no photo
+const getCategoryFallbackImage = (category: string): string => {
+  const lowerCategory = (category || '').toLowerCase();
+  
+  const imageMap: Record<string, string> = {
+    'restaurant': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+    'ride': 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800',
+    'attraction': 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800',
+    'theme park': 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800',
+    'family': 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800',
+    'themed': 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800',
+    'unique': 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800',
+    'default': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+  };
+  
+  for (const [key, url] of Object.entries(imageMap)) {
+    if (lowerCategory.includes(key)) return url;
+  }
+  
+  return imageMap.default;
+};
+
 export default function UniverseLandingScreen() {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState('Places');
@@ -158,7 +180,7 @@ export default function UniverseLandingScreen() {
               style={[styles.placeCard, place.status === 'Closed' && styles.placeCardClosed]}
               onPress={() => navigation.navigate('PlaceDetails', { placeId: place.id })}
             >
-              <Image source={{ uri: place.img }} style={styles.placeImage} />
+              <Image source={{ uri: place.img || getCategoryFallbackImage(place.type) }} style={styles.placeImage} />
               <View style={styles.placeContent}>
                 <View style={styles.placeHeader}>
                   <View>

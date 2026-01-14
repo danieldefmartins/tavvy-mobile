@@ -24,6 +24,32 @@ import {
   type AtlasArticle,
 } from '../lib/atlas';
 
+// Get category-based fallback image URL when place has no photo
+const getCategoryFallbackImage = (category: string): string => {
+  const lowerCategory = (category || '').toLowerCase();
+  
+  const imageMap: Record<string, string> = {
+    'restaurant': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+    'coffee': 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800',
+    'cafe': 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800',
+    'rv park': 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=800',
+    'campground': 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
+    'hotel': 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
+    'bar': 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800',
+    'ride': 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800',
+    'attraction': 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800',
+    'theme park': 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800',
+    'airport': 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800',
+    'default': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+  };
+  
+  for (const [key, url] of Object.entries(imageMap)) {
+    if (lowerCategory.includes(key)) return url;
+  }
+  
+  return imageMap.default;
+};
+
 export default function UniverseDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -227,12 +253,10 @@ export default function UniverseDetailScreen() {
 })
                         }
                       >
-                        {place.photos && place.photos[0] && (
-                          <Image
-                            source={{ uri: place.photos[0] }}
-                            style={styles.placeImage}
-                          />
-                        )}
+                        <Image
+                          source={{ uri: (place.photos && place.photos[0]) || getCategoryFallbackImage(place.primary_category) }}
+                          style={styles.placeImage}
+                        />
                         <View style={styles.placeInfo}>
                           <Text style={styles.placeName} numberOfLines={1}>
                             {place.name}

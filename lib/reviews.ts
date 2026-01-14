@@ -258,6 +258,11 @@ function calculateDecayedScore(intensity: number, createdAt: string): number {
   return intensity * decayFactor;
 }
 
+// Helper: Check if string is a valid UUID
+function isValidUUID(str: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
 // Fetch aggregated signals for a place with LIVING SCORE logic
 export async function fetchPlaceSignals(placeId: string): Promise<{
   best_for: SignalAggregate[];
@@ -268,6 +273,13 @@ export async function fetchPlaceSignals(placeId: string): Promise<{
   try {
     // Ensure signal cache is loaded
     await loadSignalCache();
+
+    // Check if placeId is a valid UUID - Foursquare IDs are 24-char hex strings, not UUIDs
+    // If not a valid UUID, return empty results (no taps for Foursquare places yet)
+    if (!isValidUUID(placeId)) {
+      console.log('Non-UUID placeId detected, returning empty signals:', placeId);
+      return { best_for: [], vibe: [], heads_up: [], medals: [] };
+    }
 
     // Query the place_review_signal_taps table and JOIN with place_reviews to get created_at
     const { data: taps, error } = await supabase
@@ -522,6 +534,11 @@ export async function updateReview(
 // Get review count for a place
 export async function getPlaceReviewCount(placeId: string): Promise<number> {
   try {
+    // Check if placeId is a valid UUID - Foursquare IDs are not UUIDs
+    if (!isValidUUID(placeId)) {
+      return 0; // No reviews for non-UUID places yet
+    }
+
     const { count, error } = await supabase
       .from('place_reviews')
       .select('*', { count: 'exact', head: true })

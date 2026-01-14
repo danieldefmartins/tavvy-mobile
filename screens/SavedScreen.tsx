@@ -15,6 +15,33 @@ import { Ionicons } from '@expo/vector-icons';
 import { useUserFavorites, FavoriteWithPlace } from '../hooks/useFavorite';
 import { useAuth } from '../contexts/AuthContext';
 
+// Get category-based fallback image URL when place has no photo
+const getCategoryFallbackImage = (category: string): string => {
+  const lowerCategory = (category || '').toLowerCase();
+  
+  const imageMap: Record<string, string> = {
+    'restaurant': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+    'italian': 'https://images.unsplash.com/photo-1498579150354-977475b7ea0b?w=800',
+    'mexican': 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800',
+    'coffee': 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800',
+    'cafe': 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800',
+    'rv park': 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=800',
+    'campground': 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
+    'hotel': 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
+    'bar': 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800',
+    'shopping': 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800',
+    'gym': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800',
+    'spa': 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800',
+    'default': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+  };
+  
+  for (const [key, url] of Object.entries(imageMap)) {
+    if (lowerCategory.includes(key)) return url;
+  }
+  
+  return imageMap.default;
+};
+
 export default function SavedScreen({ navigation }: any) {
   const { user } = useAuth();
   const { data: favorites, isLoading, refetch } = useUserFavorites();
@@ -35,7 +62,7 @@ export default function SavedScreen({ navigation }: any) {
       })}
     >
       <Image
-        source={{ uri: item.coverImageUrl || 'https://via.placeholder.com/100' }}
+        source={{ uri: item.coverImageUrl || getCategoryFallbackImage(item.primaryCategory) }}
         style={styles.cardImage}
       />
       <View style={styles.cardContent}>

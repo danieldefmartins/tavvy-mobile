@@ -30,7 +30,6 @@ import { fetchPlaceSignals, getPlaceReviewCount, SignalAggregate } from '../lib/
 import { Colors } from '../constants/Colors';
 import AddYourTapCardEnhanced from '../components/AddYourTapCardEnhanced';
 import MomentumThermometer from '../components/MomentumThermometer';
-import SignalBar, { SIGNAL_COLORS } from '../components/SignalBar';
 import {
   // usePlaceTapStats,
   useUserGamification,
@@ -173,6 +172,63 @@ const getCategoryEmoji = (category: string): string => {
   return emojiMap.default;
 };
 
+// Get category-based fallback image URL when place has no photo
+const getCategoryFallbackImage = (category: string): string => {
+  const lowerCategory = (category || '').toLowerCase();
+  
+  // Category-specific Unsplash images (free to use)
+  const imageMap: Record<string, string> = {
+    'restaurant': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+    'italian': 'https://images.unsplash.com/photo-1498579150354-977475b7ea0b?w=800',
+    'mexican': 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800',
+    'asian': 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
+    'coffee': 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800',
+    'cafe': 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800',
+    'rv park': 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=800',
+    'campground': 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
+    'camping': 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
+    'hotel': 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
+    'resort': 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800',
+    'hospital': 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800',
+    'medical': 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800',
+    'airport': 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800',
+    'theme park': 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800',
+    'amusement': 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800',
+    'national park': 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800',
+    'park': 'https://images.unsplash.com/photo-1519331379826-f10be5486c6f?w=800',
+    'shopping': 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800',
+    'mall': 'https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?w=800',
+    'gym': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800',
+    'fitness': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800',
+    'spa': 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800',
+    'bar': 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800',
+    'nightclub': 'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=800',
+    'museum': 'https://images.unsplash.com/photo-1554907984-15263bfd63bd?w=800',
+    'zoo': 'https://images.unsplash.com/photo-1534567153574-2b12153a87f0?w=800',
+    'aquarium': 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
+    'beach': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
+    'gas station': 'https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=800',
+    'automotive': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=800',
+    'car': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=800',
+    'bakery': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800',
+    'pizza': 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800',
+    'sushi': 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800',
+    'seafood': 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800',
+    'steak': 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800',
+    'fast food': 'https://images.unsplash.com/photo-1561758033-d89a9ad46330?w=800',
+    'burger': 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800',
+    'taco': 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800',
+    'default': 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=800',
+  };
+  
+  // Find matching category
+  for (const [key, url] of Object.entries(imageMap)) {
+    if (lowerCategory.includes(key)) return url;
+  }
+  
+  return imageMap.default;
+};
+
 // Get price display based on category
 const getPriceDisplay = (place: Place): string | null => {
   const category = place.primaryCategory?.toLowerCase() || '';
@@ -238,6 +294,10 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   // NEW: Photo carousel state
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const carouselRef = useRef<FlatList>(null);
+
+  // Dark mode support
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   // Determine business type from place data
   const businessType = place ? mapGoogleCategoryToBusinessType(place.primaryCategory || 'default') : 'default';
@@ -321,10 +381,13 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
       try {
         setLoading(true);
         
-        // Check if placeId is a valid UUID (real data) or mock ID
+        // Check if placeId is a valid UUID or Foursquare ID (real data) or mock ID
         const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(placeId);
+        // Foursquare IDs are 24-character hex strings (may start with $ in some cases)
+        const isFoursquareId = /^\$?[0-9a-f]{24}$/i.test(placeId);
+        const isRealPlaceId = isValidUUID || isFoursquareId;
 
-        if (!isValidUUID) {
+        if (!isRealPlaceId) {
           // Mock data fallback for non-UUID IDs (e.g., "1", "2", "3")
           const mockPlace: Place = {
             id: placeId,
@@ -394,14 +457,23 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           return;
         }
 
-        // Fetch real place data from Supabase
+        // Fetch real place data from Supabase (using places_unified view for both TavvY and Foursquare places)
+        // Use limit(1) and maybeSingle() to handle potential duplicates in the view
         const { data: placeData, error: placeError } = await supabase
-          .from('places')
+          .from('places_unified')
           .select('*')
           .eq('id', placeId)
-          .single();
+          .limit(1)
+          .maybeSingle();
 
         if (placeError) throw placeError;
+        
+        // Handle case where place is not found
+        if (!placeData) {
+          setError('Place not found');
+          setLoading(false);
+          return;
+        }
 
           // Map database fields to Place interface
         const mappedPlace: Place = {
@@ -671,15 +743,6 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
     }
   };
 
-  // Map signal type to SignalBar type
-  const getSignalBarType = (type: 'best_for' | 'vibe' | 'heads_up'): 'positive' | 'neutral' | 'negative' => {
-    switch (type) {
-      case 'best_for': return 'positive';
-      case 'vibe': return 'neutral';
-      case 'heads_up': return 'negative';
-    }
-  };
-
   const renderSignalLine = (
     type: 'best_for' | 'vibe' | 'heads_up',
     categoryTitle: string,
@@ -690,11 +753,68 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
 
     const isExpanded = expandedSection === type;
     const hasMore = signalsList.length > 1;
-    const signalBarType = getSignalBarType(type);
+
+    // Use PRIMARY color for solid bar background
+    const bgColor = colors.primary;
+
+    // Render a single solid colored signal bar
+    const renderSolidSignalBar = (signal: SignalAggregate, index: number) => {
+      return (
+        <TouchableOpacity 
+          key={signal.signal_id || index}
+          activeOpacity={0.9}
+          onPress={() => hasMore && toggleSection(type)}
+          style={{
+            backgroundColor: bgColor,
+            borderRadius: 12,
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 8,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.1,
+            shadowRadius: 3,
+            elevation: 2,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+            <Text style={{ fontSize: 18, marginRight: 10 }}>{signal.icon}</Text>
+            <Text style={{ 
+              color: '#FFFFFF', 
+              fontSize: 16, 
+              fontWeight: '700',
+              flex: 1,
+            }}>
+              {signal.label}
+            </Text>
+            <Text style={{ 
+              color: '#FFFFFF', 
+              fontSize: 16, 
+              fontWeight: '600',
+              marginLeft: 8,
+            }}>
+              ×{signal.tap_total}
+            </Text>
+          </View>
+          
+          {index === 0 && hasMore && (
+            <Ionicons 
+              name={isExpanded ? 'chevron-up' : 'chevron-down'} 
+              size={20} 
+              color="#FFFFFF" 
+              style={{ marginLeft: 8 }}
+            />
+          )}
+        </TouchableOpacity>
+      );
+    };
 
     return (
       <View style={{
-        backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+        backgroundColor: '#FFFFFF',
         borderRadius: 16,
         marginBottom: 16,
         padding: 16,
@@ -708,37 +828,21 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
         <Text style={{ 
           fontSize: 18, 
           fontWeight: '700', 
-          color: isDark ? '#FFFFFF' : '#1F2937',
+          color: '#1F2937',
           marginBottom: 12,
         }}>
           {categoryTitle}
         </Text>
         
-        {/* Top Signal (Always Visible) - Using universal SignalBar */}
-        <SignalBar
-          label={signalsList[0].label}
-          tapCount={signalsList[0].tap_total}
-          type={signalBarType}
-          emoji={signalsList[0].icon}
-          size="full"
-          showChevron={hasMore}
-          isExpanded={isExpanded}
-          onPress={() => hasMore && toggleSection(type)}
-        />
+        {/* Top Signal (Always Visible) */}
+        {renderSolidSignalBar(signalsList[0], 0)}
         
         {/* Expanded Signals List - All stacked vertically */}
         {isExpanded && signalsList.length > 1 && (
           <View>
-            {signalsList.slice(1).map((signal, idx) => (
-              <SignalBar
-                key={signal.signal_id || idx}
-                label={signal.label}
-                tapCount={signal.tap_total}
-                type={signalBarType}
-                emoji={signal.icon}
-                size="full"
-              />
-            ))}
+            {signalsList.slice(1).map((signal, idx) => 
+              renderSolidSignalBar(signal, idx + 1)
+            )}
           </View>
         )}
       </View>
@@ -846,7 +950,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           {/* Photo Carousel */}
           <FlatList
             ref={carouselRef}
-            data={photos.length > 0 ? photos : [{ id: 'placeholder', url: 'https://via.placeholder.com/400x300' }]}
+            data={photos.length > 0 ? photos : [{ id: 'placeholder', url: getCategoryFallbackImage(place.primaryCategory) }]}
             renderItem={renderCarouselItem}
             keyExtractor={(item) => item.id}
             horizontal
@@ -869,6 +973,11 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           
           {/* Top Right Buttons */}
           <View style={styles.topRightButtons}>
+            <Image 
+              source={require('../assets/brand/logo-icon.png')} 
+              style={styles.headerLogoSmall}
+              resizeMode="contain"
+            />
             <TouchableOpacity style={styles.actionButton}>
               <Ionicons name="heart-outline" size={22} color="#000" />
             </TouchableOpacity>
@@ -903,6 +1012,9 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
 	          {/* Hero Text Overlay */}
 	          <View style={styles.heroTextContainer}>
                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 12}}>
+                  {place.logo_url && (
+                    <Image source={{ uri: place.logo_url }} style={styles.logoImage} />
+                  )}
                   <View style={{flex: 1}}>
                     <Text style={styles.placeName}>{place.name}</Text>
                     <View style={styles.heroSubtitle}>
@@ -1015,14 +1127,100 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           {/* Signals Tab (UPDATED) */}
           {activeTab === 'signals' && (
             <View style={styles.tabContent}>
-              {/* The Good - Blue */}
-              {renderSignalLine('best_for', 'The Good', signals.best_for, { primary: '#0A84FF', light: 'rgba(10, 132, 255, 0.15)', text: '#FFFFFF' })}
+              {/* Show signal bars OR empty state bars */}
+              {(signals.best_for?.length > 0 || signals.vibe?.length > 0 || signals.heads_up?.length > 0) ? (
+                <>
+                  {/* The Good - Blue */}
+                  {renderSignalLine('best_for', 'The Good', signals.best_for, { primary: '#0A84FF', light: 'rgba(10, 132, 255, 0.15)', text: '#FFFFFF' })}
 
-              {/* The Vibe - Gray/Purple */}
-              {renderSignalLine('vibe', 'The Vibe', signals.vibe, { primary: '#8E8E93', light: 'rgba(142, 142, 147, 0.15)', text: '#FFFFFF' })}
+                  {/* The Vibe - Gray/Purple */}
+                  {renderSignalLine('vibe', 'The Vibe', signals.vibe, { primary: '#8E8E93', light: 'rgba(142, 142, 147, 0.15)', text: '#FFFFFF' })}
 
-              {/* Heads Up - Orange */}
-              {renderSignalLine('heads_up', 'Heads Up', signals.heads_up, { primary: '#FF9500', light: 'rgba(255, 149, 0, 0.15)', text: '#FFFFFF' })}
+                  {/* Heads Up - Orange */}
+                  {renderSignalLine('heads_up', 'Heads Up', signals.heads_up, { primary: '#FF9500', light: 'rgba(255, 149, 0, 0.15)', text: '#FFFFFF' })}
+                </>
+              ) : (
+                /* Empty State Signal Bars - Show placeholder bars when no reviews exist */
+                <View style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 16,
+                  marginBottom: 16,
+                  padding: 16,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.06,
+                  shadowRadius: 8,
+                  elevation: 2,
+                }}>
+                  <Text style={{ 
+                    fontSize: 18, 
+                    fontWeight: '700', 
+                    color: '#1F2937',
+                    marginBottom: 16,
+                  }}>
+                    Community Signals
+                  </Text>
+                  
+                  {/* The Good - Blue Empty Bar */}
+                  <TouchableOpacity 
+                    onPress={() => navigation.navigate('AddReview', { placeId: place.id, placeName: place.name, placeCategory: place.primaryCategory })}
+                    activeOpacity={0.8}
+                    style={{
+                      backgroundColor: '#0A84FF',
+                      borderRadius: 12,
+                      paddingVertical: 14,
+                      paddingHorizontal: 16,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Ionicons name="thumbs-up" size={18} color="#FFFFFF" style={{ marginRight: 10 }} />
+                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600', fontStyle: 'italic', opacity: 0.9 }}>
+                      The Good · Be the first to tap!
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  {/* The Vibe - Gray Empty Bar */}
+                  <TouchableOpacity 
+                    onPress={() => navigation.navigate('AddReview', { placeId: place.id, placeName: place.name, placeCategory: place.primaryCategory })}
+                    activeOpacity={0.8}
+                    style={{
+                      backgroundColor: '#8E8E93',
+                      borderRadius: 12,
+                      paddingVertical: 14,
+                      paddingHorizontal: 16,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Ionicons name="sparkles" size={18} color="#FFFFFF" style={{ marginRight: 10 }} />
+                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600', fontStyle: 'italic', opacity: 0.9 }}>
+                      The Vibe · Be the first to tap!
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  {/* Heads Up - Orange Empty Bar */}
+                  <TouchableOpacity 
+                    onPress={() => navigation.navigate('AddReview', { placeId: place.id, placeName: place.name, placeCategory: place.primaryCategory })}
+                    activeOpacity={0.8}
+                    style={{
+                      backgroundColor: '#FF9500',
+                      borderRadius: 12,
+                      paddingVertical: 14,
+                      paddingHorizontal: 16,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Ionicons name="alert-circle" size={18} color="#FFFFFF" style={{ marginRight: 10 }} />
+                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600', fontStyle: 'italic', opacity: 0.9 }}>
+                      Heads Up · Be the first to tap!
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
               {/* Recent Momentum Thermometer */}
               {(signals.best_for?.length > 0 || signals.vibe?.length > 0 || signals.heads_up?.length > 0) && (
@@ -1081,9 +1279,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
                 />
               </View>
 
-              {(!signals.best_for?.length && !signals.vibe?.length && !signals.heads_up?.length) && (
-                <Text style={styles.emptyText}>No signals yet. Be the first to tap!</Text>
-              )}
+              {/* Empty state text removed - now using empty state signal bars above */}
             </View>
           )}
 
