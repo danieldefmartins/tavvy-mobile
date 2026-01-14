@@ -113,6 +113,33 @@ export const CATEGORY_EMOJI_MAP: Record<string, string> = {
   'campground': '⛺',
   'rv_park': '🚐',
   
+  // RV & Camping
+  'rv_camping': '🏕️',
+  'established_campground': '⛺',
+  'informal_campsite': '🏕️',
+  'wild_camping': '🌲',
+  'farm_camping': '🚜',
+  'rv_park_camp': '🚐',
+  'overnight_parking': '🅿️',
+  'dump_station': '🚿',
+  'propane_station': '🔥',
+  'water_fill_station': '💧',
+  'public_showers': '🚿',
+  'laundromat': '🧺',
+  'wifi_hotspot': '📶',
+  'picnic_area_camp': '🧺',
+  'restroom': '🚻',
+  
+  // Theme Park
+  'theme_park_ride': '🎢',
+  'theme_park_attraction': '🎪',
+  'theme_park_food': '🍿',
+  'theme_park_restroom': '🚻',
+  
+  // Government additions
+  'border_crossing': '🛂',
+  'checkpoint': '🛑',
+  
   // Shopping & Retail
   'shopping': '🛍️',
   'department_store': '🏬',

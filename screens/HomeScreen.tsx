@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,8 +16,10 @@ import {
   TouchableWithoutFeedback,
   Platform,
   Alert,
+  ImageBackground,
+  Modal,
 } from 'react-native';
-// Clipboard functionality - will show address in alert for now
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import MapLibreGL from '@maplibre/maplibre-react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,7 +35,7 @@ const { width, height } = Dimensions.get('window');
 // CONSTANTS
 // ============================================
 
-const MAP_PEEK_HEIGHT = height * 0.22; // 22% of screen for map peek
+const MAP_PEEK_HEIGHT = height * 0.22;
 
 // Map Styles Configuration
 const MAP_STYLES = {
@@ -57,8 +59,8 @@ const MAP_STYLES = {
   },
 };
 
-// Categories for filtering
-const categories = ['All', 'Restaurants', 'Cafes', 'Bars', 'Shopping'];
+// Categories for filtering - text only, no icons
+const categories = ['All', 'Restaurants', 'Cafes', 'Bars', 'Shopping', 'RV & Camping', 'Hotels'];
 
 // Searchable categories for autocomplete
 const SEARCHABLE_CATEGORIES = [
@@ -72,6 +74,21 @@ const SEARCHABLE_CATEGORIES = [
   { name: 'Services', icon: 'briefcase', type: 'category' },
   { name: 'Health', icon: 'fitness', type: 'category' },
   { name: 'Beauty', icon: 'sparkles', type: 'category' },
+  // RV & Camping
+  { name: 'RV & Camping', icon: 'bonfire', type: 'category' },
+  { name: 'Campgrounds', icon: 'bonfire', type: 'category' },
+  { name: 'RV Parks', icon: 'car', type: 'category' },
+  { name: 'Dump Stations', icon: 'water', type: 'category' },
+  { name: 'Propane', icon: 'flame', type: 'category' },
+  // Hotels & Lodging
+  { name: 'Hotels', icon: 'bed', type: 'category' },
+  // Theme Parks
+  { name: 'Theme Parks', icon: 'happy', type: 'category' },
+  { name: 'Rides', icon: 'rocket', type: 'category' },
+  // Amenities
+  { name: 'Restrooms', icon: 'water', type: 'category' },
+  { name: 'Showers', icon: 'water', type: 'category' },
+  { name: 'Laundromat', icon: 'shirt', type: 'category' },
 ];
 
 // Storage keys for user preferences
@@ -82,6 +99,67 @@ const STORAGE_KEYS = {
   PARKING_LOCATION: '@tavvy_parking_location',
   SAVED_LOCATIONS: '@tavvy_saved_locations',
 };
+
+// Category-specific filter configurations
+const CATEGORY_FILTERS: { [key: string]: {
+  cuisines?: { name: string; icon: string }[];
+  moreFilters: string[];
+}} = {
+  Restaurants: {
+    cuisines: [
+      { name: 'Any', icon: '' },
+      { name: 'American', icon: 'restaurant' },
+      { name: 'Barbecue', icon: 'flame' },
+      { name: 'Chinese', icon: 'restaurant' },
+      { name: 'French', icon: 'restaurant' },
+      { name: 'Hamburger', icon: 'fast-food' },
+      { name: 'Indian', icon: 'restaurant' },
+      { name: 'Italian', icon: 'pizza' },
+      { name: 'Japanese', icon: 'restaurant' },
+      { name: 'Mexican', icon: 'restaurant' },
+      { name: 'Pizza', icon: 'pizza' },
+      { name: 'Seafood', icon: 'fish' },
+      { name: 'Steak', icon: 'restaurant' },
+      { name: 'Sushi', icon: 'restaurant' },
+      { name: 'Thai', icon: 'restaurant' },
+    ],
+    moreFilters: ['Wheelchair accessible', 'Accepts reservations', 'Delivery', 'Beer', 'Wine', 'Takeout', 'Dine-in', 'Dinner', 'Lunch', 'Good for kids', 'Tourists', "Kids' menu", 'Vegetarian options'],
+  },
+  Cafes: {
+    cuisines: [
+      { name: 'Any', icon: '' },
+      { name: 'Coffee', icon: 'cafe' },
+      { name: 'Tea', icon: 'cafe' },
+      { name: 'Bakery', icon: 'cafe' },
+      { name: 'Dessert', icon: 'ice-cream' },
+    ],
+    moreFilters: ['Wheelchair accessible', 'WiFi', 'Outdoor seating', 'Takeout', 'Good for work', 'Pet friendly'],
+  },
+  Bars: {
+    cuisines: [
+      { name: 'Any', icon: '' },
+      { name: 'Sports Bar', icon: 'beer' },
+      { name: 'Wine Bar', icon: 'wine' },
+      { name: 'Cocktail Bar', icon: 'beer' },
+      { name: 'Pub', icon: 'beer' },
+      { name: 'Brewery', icon: 'beer' },
+    ],
+    moreFilters: ['Wheelchair accessible', 'Live music', 'Happy hour', 'Outdoor seating', 'Late night', 'Dancing'],
+  },
+  Shopping: {
+    moreFilters: ['Wheelchair accessible', 'Accepts credit cards', 'Parking', 'Returns accepted', 'Gift wrapping'],
+  },
+  Services: {
+    moreFilters: ['Wheelchair accessible', 'Accepts credit cards', 'By appointment', 'Walk-ins welcome', 'Online booking'],
+  },
+  default: {
+    moreFilters: ['Wheelchair accessible', 'Parking', 'Accepts credit cards'],
+  },
+};
+
+// Theme colors
+const BG = '#F9F7F2';
+const ACCENT = '#0F1233';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -138,13 +216,13 @@ interface AddressInfo {
 interface ParkingLocation {
   coordinates: [number, number];
   address?: string;
-  savedAt: number; // timestamp
+  savedAt: number;
   note?: string;
 }
 
 interface SavedLocation {
   id: string;
-  name: string; // e.g., "Home", "Work", "Gym"
+  name: string;
   coordinates: [number, number];
   address: string;
   icon: string;
@@ -165,58 +243,7 @@ interface GeocodingResult {
   };
 }
 
-// ============================================
-// MOCK DATA (for testing)
-// ============================================
 
-const MOCK_PLACES: Place[] = [
-  {
-    id: '1',
-    name: 'Ocean House',
-    address_line1: '123 Ocean Ave',
-    city: 'San Francisco',
-    state_region: 'CA',
-    category: 'Restaurants',
-    primary_category: 'Seafood',
-    latitude: 37.7749,
-    longitude: -122.4194,
-    current_status: 'Open',
-    phone: '415-555-0123',
-    website: 'https://oceanhouse.com',
-    signals: [
-      { bucket: 'Great Food', tap_total: 89 },
-      { bucket: 'Amazing Service', tap_total: 76 },
-      { bucket: 'Cozy', tap_total: 87 },
-      { bucket: 'Pricey', tap_total: 12 },
-    ],
-    photos: [
-      'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
-    ],
-  },
-  {
-    id: '2',
-    name: 'Blue Bottle Coffee',
-    address_line1: '66 Mint St',
-    city: 'San Francisco',
-    state_region: 'CA',
-    category: 'Cafes',
-    primary_category: 'Coffee',
-    latitude: 37.7849,
-    longitude: -122.4094,
-    current_status: 'Open',
-    phone: '415-555-0124',
-    website: 'https://bluebottlecoffee.com',
-    signals: [
-      { bucket: 'Great Coffee', tap_total: 124 },
-      { bucket: 'Excellent Pastries', tap_total: 98 },
-      { bucket: 'Cozy', tap_total: 89 },
-      { bucket: 'Pricey', tap_total: 45 },
-    ],
-    photos: [
-      'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800',
-    ],
-  },
-];
 
 // ============================================
 // MAIN COMPONENT
@@ -226,12 +253,12 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // Theme context for dark mode support
   const { theme, isDark } = useThemeContext();
   
-  // View mode: 'content' (default) or 'map' (search/swipe triggered)
-  const [viewMode, setViewMode] = useState<'content' | 'map'>('content');
+  // View mode: 'standard' (default) or 'map' (search/swipe triggered)
+  const [viewMode, setViewMode] = useState<'standard' | 'map'>('standard');
   
-  // Data states
-  const [places, setPlaces] = useState<Place[]>(MOCK_PLACES);
-  const [filteredPlaces, setFilteredPlaces] = useState<Place[]>(MOCK_PLACES);
+  // Data states - start with empty arrays, will be populated from database
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [filteredPlaces, setFilteredPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Search states
@@ -245,6 +272,31 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [searchedAddressName, setSearchedAddressName] = useState<string>('');
   const [searchedAddress, setSearchedAddress] = useState<AddressInfo | null>(null);
   
+  // Category results view states
+  const [showCategoryResults, setShowCategoryResults] = useState(false);
+  const [categoryResultsPlaces, setCategoryResultsPlaces] = useState<Place[]>([]);
+  const [isLoadingCategoryResults, setIsLoadingCategoryResults] = useState(false);
+  
+  // Filter modal states
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<{
+    cuisine: string;
+    priceMin: number;
+    priceMax: number;
+    rating: string;
+    tapCount: string;
+    hours: string;
+    moreFilters: string[];
+  }>({
+    cuisine: 'Any',
+    priceMin: 1,
+    priceMax: 100,
+    rating: 'any',
+    tapCount: 'Any',
+    hours: 'Any',
+    moreFilters: [],
+  });
+  
   // Location states
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [locationName, setLocationName] = useState<string>('');
@@ -254,7 +306,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   
   // Personalization states
   const [greeting, setGreeting] = useState('');
-  const [currentInsightIndex, setCurrentInsightIndex] = useState(0);
   
   // Parking and saved locations
   const [parkingLocation, setParkingLocation] = useState<ParkingLocation | null>(null);
@@ -279,7 +330,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     if (targetLocation && viewMode === 'map') {
       console.log('Moving camera to targetLocation:', targetLocation);
       
-      // Use multiple attempts with increasing delays to ensure map is ready
       const attempts = [100, 300, 600, 1000];
       const timeoutIds: NodeJS.Timeout[] = [];
       
@@ -310,7 +360,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     loadRecentSearches();
     loadParkingLocation();
     loadSavedLocations();
-    requestLocationPermission();  // This will call fetchPlaces with user location
+    requestLocationPermission();
   };
 
   const updateGreeting = () => {
@@ -404,7 +454,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     
     if (url) {
       Linking.openURL(url).catch(() => {
-        // Fallback to Google Maps web
         Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`);
       });
     }
@@ -478,10 +527,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         const coords: [number, number] = [location.coords.longitude, location.coords.latitude];
         setUserLocation(coords);
         
-        // Fetch places near user's location
         fetchPlaces(coords);
         
-        // Get location name
         const [address] = await Location.reverseGeocodeAsync({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
@@ -490,12 +537,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           setLocationName(`${address.city || ''}, ${address.region || ''}`);
         }
       } else {
-        // No location permission - fetch with default location
         fetchPlaces();
       }
     } catch (error) {
       console.log('Error getting location:', error);
-      // Fetch with default location on error
       fetchPlaces();
     }
   };
@@ -508,13 +553,15 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     try {
       setLoading(true);
 
-      // Use provided location, userLocation, or default to Austin, TX
-      const centerLng = location?.[0] || userLocation?.[0] || -97.7431;
-      const centerLat = location?.[1] || userLocation?.[1] || 30.2672;
+      // Default to San Francisco for simulator testing
+      const defaultLng = -122.4194; // San Francisco
+      const defaultLat = 37.7749;
       
-      // Create a bounding box (~10km radius) for fast indexed query
-      const latDelta = 0.1;  // ~11km
-      const lngDelta = 0.1;  // ~9km at this latitude
+      const centerLng = location?.[0] || userLocation?.[0] || defaultLng;
+      const centerLat = location?.[1] || userLocation?.[1] || defaultLat;
+      
+      const latDelta = 0.1;
+      const lngDelta = 0.1;
       
       const minLat = centerLat - latDelta;
       const maxLat = centerLat + latDelta;
@@ -523,27 +570,28 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
       console.log(`Fetching places near [${centerLng}, ${centerLat}]`);
 
-      // Query places within bounding box - much faster than scanning all 2.5M+ records
+      // Query from fsq_places_raw - the main Foursquare data table
       const { data: placesData, error: placesError } = await supabase
-        .from('places')
-        .select('id, name, lat, lng, latitude, longitude, address_line1, city, state_region, country, category, primary_category, fsq_category_labels, phone, phone_e164, website, website_url, cover_image_url, description, current_status, instagram_url')
-        .gte('lat', minLat)
-        .lte('lat', maxLat)
-        .gte('lng', minLng)
-        .lte('lng', maxLng)
-        .limit(200);  // Limit results for performance
+        .from('fsq_places_raw')
+        .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, postcode, tel, website, email, instagram, facebook_id, twitter, fsq_category_ids, fsq_category_labels, date_created, date_refreshed, date_closed')
+        .gte('latitude', minLat)
+        .lte('latitude', maxLat)
+        .gte('longitude', minLng)
+        .lte('longitude', maxLng)
+        .is('date_closed', null)
+        .limit(200);
 
       if (placesError) {
         console.warn('Supabase error:', placesError);
-        setPlaces(MOCK_PLACES);
-        setFilteredPlaces(MOCK_PLACES);
+        setPlaces([]);
+        setFilteredPlaces([]);
+        setLoading(false);
         return;
       }
 
       console.log('Fetched places from Supabase:', placesData?.length || 0);
 
       if (placesData && placesData.length > 0) {
-        // Try to fetch signal aggregates (may not exist for Foursquare places)
         const placeIds = placesData.map(p => p.id);
         
         let signalAggregates: any[] = [];
@@ -557,169 +605,145 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           console.log('No signal aggregates table or data');
         }
 
-        // Process places - normalize coordinates and category
         const processedPlaces = placesData
           .filter((place) => {
-            // Use lat/lng as primary (Foursquare), fallback to latitude/longitude
-            const lon = place.lng || place.longitude;
-            const lat = place.lat || place.latitude;
-            return typeof lon === 'number' && typeof lat === 'number' && 
-                   !isNaN(lon) && !isNaN(lat) && 
-                   lon !== 0 && lat !== 0;
+            return typeof place.longitude === 'number' && typeof place.latitude === 'number' && 
+                   !isNaN(place.longitude) && !isNaN(place.latitude) && 
+                   place.longitude !== 0 && place.latitude !== 0;
           })
           .map(place => {
-            // Get signals for this place
+            // Get signals for this place using fsq_place_id
             const placeSignals = signalAggregates
-              .filter(s => s.place_id === place.id)
+              .filter(s => s.place_id === place.fsq_place_id)
               .map(s => ({
                 bucket: s.signal_label || 'Unknown',
                 tap_total: s.total_taps || 0,
               }));
 
-            // Determine category from Foursquare data or existing category
-            let category = place.category || place.primary_category || 'Other';
-            if (place.fsq_category_labels && place.fsq_category_labels.length > 0) {
-              category = place.fsq_category_labels[0];
+            // Get category from fsq_category_labels - it's an array like ["Business > Hair Salon"]
+            let category = 'Other';
+            if (place.fsq_category_labels && Array.isArray(place.fsq_category_labels) && place.fsq_category_labels.length > 0) {
+              // Extract the last part of the category path (e.g., "Hair Salon" from "Business > Hair Salon")
+              const fullCategory = place.fsq_category_labels[0];
+              if (typeof fullCategory === 'string') {
+                const parts = fullCategory.split('>');
+                category = parts[parts.length - 1].trim();
+              }
             }
 
             return {
-              ...place,
-              // Normalize coordinates - ensure latitude/longitude are set for map
-              latitude: place.lat || place.latitude,
-              longitude: place.lng || place.longitude,
-              // Normalize category
+              id: place.fsq_place_id,
+              name: place.name,
+              latitude: place.latitude,
+              longitude: place.longitude,
+              address_line1: place.address || '',
+              city: place.locality || '',
+              state_region: place.region || '',
+              country: place.country || '',
               category: category,
-              // Normalize phone and website
-              phone: place.phone || place.phone_e164,
-              website: place.website || place.website_url,
-              // Signals and photos
+              phone: place.tel || '',
+              website: place.website || '',
+              instagram_url: place.instagram || '',
               signals: placeSignals,
-              photos: place.cover_image_url ? [place.cover_image_url] : [],
+              photos: [], // No photos column in fsq_places_raw
             };
           });
 
-        console.log('Processed places with valid coords:', processedPlaces.length);
-        setPlaces(processedPlaces);
-        setFilteredPlaces(processedPlaces);
+        setPlaces(processedPlaces as Place[]);
+        setFilteredPlaces(processedPlaces as Place[]);
       } else {
-        console.log('No places found in database');
-        setPlaces(MOCK_PLACES);
-        setFilteredPlaces(MOCK_PLACES);
+        console.log('No places found in database for this location');
+        setPlaces([]);
+        setFilteredPlaces([]);
       }
-    } catch (err) {
-      console.error('Error fetching places:', err);
-      setPlaces(MOCK_PLACES);
-      setFilteredPlaces(MOCK_PLACES);
+    } catch (error) {
+      console.error('Error fetching places:', error);
+      setPlaces([]);
+      setFilteredPlaces([]);
     } finally {
       setLoading(false);
     }
   };
 
   // ============================================
-  // SMART SEARCH & AUTOCOMPLETE
+  // SEARCH FUNCTIONS
   // ============================================
 
-  // Debounce timer for geocoding
-  const geocodeTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    if (searchQuery.trim().length > 0) {
-      generateSearchSuggestions(searchQuery);
-    } else {
+  const handleSearchInputChange = async (text: string) => {
+    setSearchQuery(text);
+    
+    if (text.trim().length === 0) {
       setSearchSuggestions([]);
-      setIsSearchingAddress(false);
+      return;
     }
-  }, [searchQuery, places, recentSearches]);
 
-  // Geocode address using Nominatim (OpenStreetMap)
-  const geocodeAbortRef = useRef<AbortController | null>(null);
-  
-  const geocodeAddress = async (query: string): Promise<SearchSuggestion[]> => {
-    // Cancel any pending request
-    if (geocodeAbortRef.current) {
-      geocodeAbortRef.current.abort();
-    }
-    
-    // Create new abort controller
-    geocodeAbortRef.current = new AbortController();
-    
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=4&addressdetails=1&countrycodes=us`,
-        {
-          headers: {
-            'User-Agent': 'TavvY-App/1.0',
-            'Accept': 'application/json',
-          },
-          signal: geocodeAbortRef.current.signal,
-        }
-      );
-      
-      if (!response.ok) return [];
-      
-      const results: GeocodingResult[] = await response.json();
-      
-      return results.map((result, index) => {
-        // Format a nice display name
-        const parts = result.display_name.split(', ');
-        const shortName = parts.slice(0, 3).join(', ');
-        
-        return {
-          id: `address-${index}-${result.lat}`,
-          type: 'address' as const,
-          title: shortName,
-          subtitle: result.type === 'house' ? 'Address' : 
-                   result.type === 'city' ? 'City' :
-                   result.type === 'state' ? 'State' : 'Location',
-          icon: 'map',
-          data: {
-            lat: parseFloat(result.lat),
-            lon: parseFloat(result.lon),
-            displayName: result.display_name,
-            road: result.address?.road,
-            city: result.address?.city || result.address?.town || result.address?.village,
-            state: result.address?.state,
-            country: result.address?.country,
-            postcode: result.address?.postcode,
-          },
-        };
-      });
-    } catch (error: any) {
-      // Don't log abort errors
-      if (error.name !== 'AbortError') {
-        console.log('Geocoding error:', error);
-      }
-      return [];
-    }
-  };
-
-  const generateSearchSuggestions = async (query: string) => {
     const suggestions: SearchSuggestion[] = [];
-    const queryLower = query.toLowerCase();
+    const query = text.toLowerCase();
 
-    // 1. Match places by name AND address
-    const matchingPlaces = places.filter(place =>
-      place.name.toLowerCase().includes(queryLower) ||
-      (place.address_line1 && place.address_line1.toLowerCase().includes(queryLower)) ||
-      (place.city && place.city.toLowerCase().includes(queryLower))
-    ).slice(0, 5);
+    // Search database for matching places
+    try {
+      const { data: searchResults, error } = await supabase
+        .from('fsq_places_raw')
+        .select('fsq_place_id, name, latitude, longitude, address, locality, region, fsq_category_labels')
+        .ilike('name', `%${text}%`)
+        .is('date_closed', null)
+        .limit(5);
 
-    matchingPlaces.forEach(place => {
-      suggestions.push({
-        id: `place-${place.id}`,
-        type: 'place',
-        title: place.name,
-        subtitle: `${place.category} • ${place.city || ''}`,
-        icon: 'location',
-        data: place,
+      if (!error && searchResults && searchResults.length > 0) {
+        searchResults.forEach(place => {
+          let category = 'Other';
+          if (place.fsq_category_labels && Array.isArray(place.fsq_category_labels) && place.fsq_category_labels.length > 0) {
+            const fullCategory = place.fsq_category_labels[0];
+            if (typeof fullCategory === 'string') {
+              const parts = fullCategory.split('>');
+              category = parts[parts.length - 1].trim();
+            }
+          }
+          
+          suggestions.push({
+            id: `place-${place.fsq_place_id}`,
+            type: 'place',
+            title: place.name,
+            subtitle: `${category} • ${place.locality || 'Nearby'}`,
+            icon: 'location',
+            data: {
+              id: place.fsq_place_id,
+              name: place.name,
+              latitude: place.latitude,
+              longitude: place.longitude,
+              address_line1: place.address || '',
+              city: place.locality || '',
+              category: category,
+              signals: [],
+              photos: [],
+            },
+          });
+        });
+      }
+    } catch (e) {
+      console.log('Search error:', e);
+      // Fallback to local search
+      const matchingPlaces = places
+        .filter(p => p.name.toLowerCase().includes(query))
+        .slice(0, 3);
+      
+      matchingPlaces.forEach(place => {
+        suggestions.push({
+          id: `place-${place.id}`,
+          type: 'place',
+          title: place.name,
+          subtitle: place.category,
+          icon: 'location',
+          data: place,
+        });
       });
-    });
+    }
 
-    // 2. Match categories
-    const matchingCategories = SEARCHABLE_CATEGORIES.filter(cat =>
-      cat.name.toLowerCase().includes(queryLower)
-    ).slice(0, 3);
-
+    // Add matching categories
+    const matchingCategories = SEARCHABLE_CATEGORIES
+      .filter(c => c.name.toLowerCase().includes(query))
+      .slice(0, 2);
+    
     matchingCategories.forEach(cat => {
       suggestions.push({
         id: `category-${cat.name}`,
@@ -731,28 +755,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       });
     });
 
-    // 3. Match locations (cities from places)
-    const cities = [...new Set(places.map(p => p.city).filter(Boolean))];
-    const matchingCities = cities.filter(city =>
-      city!.toLowerCase().includes(queryLower)
-    ).slice(0, 2);
-
-    matchingCities.forEach(city => {
-      suggestions.push({
-        id: `location-${city}`,
-        type: 'location',
-        title: city!,
-        subtitle: 'City',
-        icon: 'navigate',
-        data: { city },
-      });
-    });
-
-    // 4. Add matching recent searches
-    const matchingRecent = recentSearches.filter(search =>
-      search.toLowerCase().includes(queryLower) && search.toLowerCase() !== queryLower
-    ).slice(0, 2);
-
+    // Add recent searches
+    const matchingRecent = recentSearches
+      .filter(s => s.toLowerCase().includes(query))
+      .slice(0, 2);
+    
     matchingRecent.forEach(search => {
       suggestions.push({
         id: `recent-${search}`,
@@ -760,53 +767,56 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         title: search,
         subtitle: 'Recent search',
         icon: 'time',
-        data: { query: search },
       });
     });
 
-    // Set initial suggestions immediately
     setSearchSuggestions(suggestions);
 
-    // 5. Geocode address if query looks like an address (3+ chars, no exact place match)
-    if (query.length >= 3 && matchingPlaces.length < 3) {
-      // Clear previous timer
-      if (geocodeTimerRef.current) {
-        clearTimeout(geocodeTimerRef.current);
-      }
-      
-      // Debounce geocoding to avoid too many API calls
-      geocodeTimerRef.current = setTimeout(async () => {
-        setIsSearchingAddress(true);
-        const addressSuggestions = await geocodeAddress(query);
-        setIsSearchingAddress(false);
+    // Geocode address if query looks like an address
+    if (text.length > 5 && /\d/.test(text)) {
+      setIsSearchingAddress(true);
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&limit=3`
+        );
+        const results: GeocodingResult[] = await response.json();
         
-        if (addressSuggestions.length > 0) {
-          // Add address suggestions to existing ones
-          setSearchSuggestions(prev => {
-            // Filter out old address suggestions
-            const nonAddressSuggestions = prev.filter(s => s.type !== 'address');
-            return [...nonAddressSuggestions, ...addressSuggestions];
+        results.forEach((result, index) => {
+          suggestions.push({
+            id: `address-${index}`,
+            type: 'address',
+            title: result.display_name.split(',')[0],
+            subtitle: result.display_name,
+            icon: 'navigate',
+            data: result,
           });
-        }
-      }, 350); // 350ms debounce for faster response
+        });
+        
+        setSearchSuggestions([...suggestions]);
+      } catch (error) {
+        console.log('Geocoding error:', error);
+      } finally {
+        setIsSearchingAddress(false);
+      }
     }
-  };
-
-  const handleSearchInputChange = (text: string) => {
-    setSearchQuery(text);
-    // Don't switch to map mode - stay on content mode while typing
   };
 
   const handleSearchFocus = () => {
     setIsSearchFocused(true);
-    // Don't switch to map mode - stay on content mode
   };
 
   const handleSearchBlur = () => {
-    // Delay to allow suggestion tap to register
     setTimeout(() => {
       setIsSearchFocused(false);
     }, 200);
+  };
+
+  const handleSearchSubmit = () => {
+    if (searchQuery.trim()) {
+      saveRecentSearch(searchQuery.trim());
+      filterPlaces(searchQuery.trim());
+      switchToMapMode();
+    }
   };
 
   const handleSuggestionSelect = (suggestion: SearchSuggestion) => {
@@ -815,235 +825,342 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     
     switch (suggestion.type) {
       case 'place':
-        // Navigate directly to place details
-        saveRecentSearch(suggestion.title);
-        setSearchQuery('');
-        navigation.navigate('PlaceDetails', { placeId: suggestion.data.id });
-        break;
-        
-      case 'category':
-        // Go to map mode filtered by category
-        saveRecentSearch(suggestion.title);
-        setSelectedCategory(suggestion.title);
-        setSearchQuery('');
-        setViewMode('map');
-        break;
-        
-      case 'location':
-        // Go to map mode centered on location
-        saveRecentSearch(suggestion.title);
-        setSearchQuery(suggestion.title);
-        setViewMode('map');
-        break;
-        
-      case 'address':
-        // Go to map mode centered on geocoded address
-        console.log('ADDRESS SELECTED:', suggestion.title, suggestion.data);
-        const addressCoords: [number, number] = [suggestion.data.lon, suggestion.data.lat];
-        const addressName = suggestion.title;
-        
-        // Save to recent searches
-        saveRecentSearch(addressName);
-        
-        // Create full address info object
-        const addressInfo: AddressInfo = {
-          displayName: suggestion.data.displayName || addressName,
-          shortName: addressName,
-          coordinates: addressCoords,
-          road: suggestion.data.road,
-          city: suggestion.data.city,
-          state: suggestion.data.state,
-          country: suggestion.data.country,
-          postcode: suggestion.data.postcode,
-        };
-        
-        // Set all states before switching view mode
-        setSearchedAddressName(addressName);
-        setSearchQuery(addressName);
-        setTargetLocation(addressCoords);
-        setSearchedAddress(addressInfo);
-        
-        // Switch to map mode
-        setViewMode('map');
-        
-        console.log('States set - searchQuery:', addressName, 'targetLocation:', addressCoords);
-        break;
-        
-      case 'recent':
-        // Re-run the recent search - need to geocode if it looks like an address
-        const recentQuery = suggestion.data.query;
-        setSearchQuery(recentQuery);
-        
-        // Check if this looks like an address (contains numbers or common address words)
-        const looksLikeAddress = /\d/.test(recentQuery) || 
-          /\b(street|st|avenue|ave|road|rd|blvd|boulevard|drive|dr|lane|ln|way|court|ct)\b/i.test(recentQuery);
-        
-        if (looksLikeAddress) {
-          // Geocode the address and then navigate
-          setIsSearchingAddress(true);
-          geocodeAddress(recentQuery).then(results => {
-            setIsSearchingAddress(false);
-            if (results.length > 0) {
-              // Use the first result
-              const firstResult = results[0];
-              const coords: [number, number] = [firstResult.data.lon, firstResult.data.lat];
-              
-              const addressInfo: AddressInfo = {
-                displayName: firstResult.data.displayName || firstResult.title,
-                shortName: firstResult.title,
-                coordinates: coords,
-                road: firstResult.data.road,
-                city: firstResult.data.city,
-                state: firstResult.data.state,
-                country: firstResult.data.country,
-                postcode: firstResult.data.postcode,
-              };
-              
-              setSearchedAddressName(firstResult.title);
-              setSearchQuery(firstResult.title);
-              setTargetLocation(coords);
-              setSearchedAddress(addressInfo);
-              setViewMode('map');
-            } else {
-              // No geocoding results, just go to map
-              saveRecentSearch(recentQuery);
-              setViewMode('map');
-            }
-          });
+        // Navigate to map and center on the selected place
+        const place = suggestion.data;
+        if (place.latitude && place.longitude) {
+          setTargetLocation([place.longitude, place.latitude]);
+          setSelectedPlace(place);
+          setSearchQuery(place.name);
+          switchToMapMode();
         } else {
-          // Not an address, just search normally
-          saveRecentSearch(recentQuery);
-          setViewMode('map');
+          handlePlacePress(place);
         }
         break;
-    }
-  };
-
-  const handleSearchSubmit = (query?: string) => {
-    const searchTerm = query || searchQuery;
-    if (searchTerm.trim()) {
-      Keyboard.dismiss();
-      setIsSearchFocused(false);
-      saveRecentSearch(searchTerm.trim());
-      setViewMode('map');
+      case 'category':
+        handleCategorySelect(suggestion.data.name);
+        // Don't switch to map mode - show category results view instead
+        break;
+      case 'address':
+        const result = suggestion.data as GeocodingResult;
+        const coords: [number, number] = [parseFloat(result.lon), parseFloat(result.lat)];
+        setTargetLocation(coords);
+        setSearchedAddressName(suggestion.title);
+        setSearchedAddress({
+          displayName: result.display_name,
+          shortName: suggestion.title,
+          coordinates: coords,
+          road: result.address?.road,
+          city: result.address?.city,
+          state: result.address?.state,
+          country: result.address?.country,
+          postcode: result.address?.postcode,
+        });
+        setSearchQuery(suggestion.title);
+        switchToMapMode();
+        break;
+      case 'recent':
+        setSearchQuery(suggestion.title);
+        filterPlaces(suggestion.title);
+        switchToMapMode();
+        break;
     }
   };
 
   const clearSearch = () => {
     setSearchQuery('');
     setSearchSuggestions([]);
-    searchInputRef.current?.focus();
+    setTargetLocation(null);
+    setSearchedAddress(null);
+    setSearchedAddressName('');
+    setFilteredPlaces(places);
+  };
+
+  const filterPlaces = (query: string) => {
+    const q = query.toLowerCase();
+    const filtered = places.filter(place => 
+      place.name.toLowerCase().includes(q) ||
+      place.category?.toLowerCase().includes(q) ||
+      place.address_line1?.toLowerCase().includes(q)
+    );
+    setFilteredPlaces(filtered.length > 0 ? filtered : places);
   };
 
   // ============================================
-  // FILTER PLACES (for map mode)
+  // CATEGORY HANDLING
   // ============================================
 
-  useEffect(() => {
-    // Only filter when in map mode or when category/places change
-    if (viewMode === 'map' || selectedCategory !== 'All') {
-      filterPlaces();
-    }
-  }, [selectedCategory, places, viewMode]);
-  
-  // Separate effect for search query changes (debounced)
-  useEffect(() => {
-    if (viewMode === 'map' && searchQuery.trim()) {
-      const timer = setTimeout(() => {
-        filterPlaces();
-      }, 150);
-      return () => clearTimeout(timer);
-    }
-  }, [searchQuery]);
-
-  const filterPlaces = () => {
-    let filtered = places;
-
-    if (selectedCategory !== 'All') {
-      filtered = filtered.filter(
-        (place) =>
-          place.category?.toLowerCase() === selectedCategory.toLowerCase() ||
-          place.primary_category?.toLowerCase() === selectedCategory.toLowerCase()
-      );
-    }
-
-    if (searchQuery.trim() && viewMode === 'map') {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (place) =>
-          (place.name && place.name.toLowerCase().includes(query)) ||
-          (place.city && place.city.toLowerCase().includes(query)) ||
-          (place.category && place.category.toLowerCase().includes(query)) ||
-          (place.primary_category && place.primary_category.toLowerCase().includes(query)) ||
-          (place.address_line1 && place.address_line1.toLowerCase().includes(query)) ||
-          (place.state_region && place.state_region.toLowerCase().includes(query)) ||
-          (place.description && place.description.toLowerCase().includes(query))
-      );
-    }
-
-    setFilteredPlaces(filtered);
-  };
-
-  const handleSearchFromRecent = (query: string) => {
-    setSearchQuery(query);
-    setViewMode('map');
-  };
-
-  const handleCategorySelect = (category: string) => {
+  const handleCategorySelect = async (category: string) => {
     setSelectedCategory(category);
+    
+    if (category === 'All') {
+      setFilteredPlaces(places);
+      setShowCategoryResults(false);
+    } else {
+      // Show category results view with filter bottom sheet
+      setShowCategoryResults(true);
+      setIsLoadingCategoryResults(true);
+      
+      // Reset filters when changing category
+      setActiveFilters({
+        cuisine: 'Any',
+        priceMin: 1,
+        priceMax: 100,
+        rating: 'any',
+        tapCount: 'Any',
+        hours: 'Any',
+        moreFilters: [],
+      });
+      
+      // Fetch places for this category from database
+      await fetchCategoryPlaces(category);
+    }
+  };
+
+  const fetchCategoryPlaces = async (category: string, filters?: typeof activeFilters) => {
+    // Use default San Francisco location if userLocation is not available (for simulator)
+    const defaultLocation: [number, number] = [-122.4194, 37.7749]; // San Francisco
+    const locationToUse = userLocation || defaultLocation;
+
+    try {
+      const [centerLng, centerLat] = locationToUse;
+      const latDelta = 0.5; // Larger radius for category search (about 35 miles)
+      const lngDelta = 0.5;
+      
+      const minLat = centerLat - latDelta;
+      const maxLat = centerLat + latDelta;
+      const minLng = centerLng - lngDelta;
+      const maxLng = centerLng + lngDelta;
+
+      // Map user-friendly category names to Foursquare category patterns
+      const categoryMappings: { [key: string]: string[] } = {
+        'Restaurants': ['restaurant', 'dining', 'food', 'eatery', 'bistro', 'grill', 'kitchen'],
+        'Coffee Shops': ['coffee', 'café', 'cafe', 'tea', 'espresso', 'bakery'],
+        'Bars': ['bar', 'pub', 'nightclub', 'lounge', 'brewery', 'tavern', 'wine'],
+        'Contractors': ['contractor', 'construction', 'home service', 'repair', 'plumber', 'electrician'],
+        'Hotels': ['hotel', 'motel', 'inn', 'lodging', 'resort', 'hostel'],
+        'Shopping': ['shop', 'store', 'retail', 'mall', 'market', 'boutique'],
+        'Entertainment': ['entertainment', 'theater', 'cinema', 'museum', 'gallery', 'amusement', 'theme park'],
+        'Health': ['health', 'medical', 'doctor', 'hospital', 'clinic', 'pharmacy', 'dentist'],
+        'Beauty': ['beauty', 'salon', 'spa', 'hair', 'nail', 'barber'],
+        'Fitness': ['gym', 'fitness', 'yoga', 'sports', 'athletic'],
+        // RV & Camping
+        'RV & Camping': ['campground', 'rv park', 'camping', 'camper', 'caravan', 'motorhome', 'boondocking'],
+        'Campgrounds': ['campground', 'camping', 'campsite', 'tent', 'camp'],
+        'RV Parks': ['rv park', 'rv', 'motorhome', 'caravan', 'trailer park'],
+        'Dump Stations': ['dump station', 'sanitation', 'rv dump', 'sewage'],
+        'Propane': ['propane', 'lpg', 'gas refill'],
+        // Theme Parks
+        'Theme Parks': ['theme park', 'amusement park', 'water park', 'attraction'],
+        'Rides': ['ride', 'roller coaster', 'attraction'],
+        // Amenities
+        'Restrooms': ['restroom', 'bathroom', 'toilet', 'washroom', 'lavatory'],
+        'Showers': ['shower', 'bath house'],
+        'Laundromat': ['laundromat', 'laundry', 'coin laundry'],
+        // Government
+        'Border Crossings': ['border', 'customs', 'immigration', 'port of entry'],
+      };
+
+      // Get search patterns for this category (lowercase for matching)
+      const searchPatterns = categoryMappings[category] || [category.toLowerCase()];
+
+      console.log(`Fetching ${category} near [${centerLng}, ${centerLat}] with patterns:`, searchPatterns);
+
+      // Query all places in the area first, then filter locally
+      // This is more reliable than complex Supabase text queries
+      const { data: placesData, error } = await supabase
+        .from('fsq_places_raw')
+        .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, postcode, tel, website, email, instagram, facebook_id, twitter, fsq_category_ids, fsq_category_labels, date_created, date_refreshed, date_closed')
+        .gte('latitude', minLat)
+        .lte('latitude', maxLat)
+        .gte('longitude', minLng)
+        .lte('longitude', maxLng)
+        .is('date_closed', null)
+        .limit(500); // Get more results to filter locally
+
+      console.log('Raw query results:', placesData?.length || 0);
+
+      if (error) {
+        console.warn('Category search error:', error);
+        // Fallback to local filtering
+        const filtered = places.filter(place => 
+          place.category?.toLowerCase().includes(category.toLowerCase())
+        );
+        setCategoryResultsPlaces(filtered);
+        setIsLoadingCategoryResults(false);
+        return;
+      }
+
+      if (placesData && placesData.length > 0) {
+        // Filter places locally by category patterns
+        const filteredByCategory = placesData.filter((place) => {
+          // Check if any category label matches our search patterns
+          if (place.fsq_category_labels && Array.isArray(place.fsq_category_labels)) {
+            const categoryString = place.fsq_category_labels.join(' ').toLowerCase();
+            return searchPatterns.some(pattern => categoryString.includes(pattern));
+          }
+          // Also check the place name for category keywords
+          const nameLower = place.name?.toLowerCase() || '';
+          return searchPatterns.some(pattern => nameLower.includes(pattern));
+        });
+
+        console.log(`Filtered to ${filteredByCategory.length} ${category} places`);
+
+        const processedPlaces = filteredByCategory
+          .filter((place) => {
+            return typeof place.longitude === 'number' && typeof place.latitude === 'number' && 
+                   !isNaN(place.longitude) && !isNaN(place.latitude) && 
+                   place.longitude !== 0 && place.latitude !== 0;
+          })
+          .map(place => {
+            let placeCategory = 'Other';
+            if (place.fsq_category_labels && Array.isArray(place.fsq_category_labels) && place.fsq_category_labels.length > 0) {
+              const fullCategory = place.fsq_category_labels[0];
+              if (typeof fullCategory === 'string') {
+                const parts = fullCategory.split('>');
+                placeCategory = parts[parts.length - 1].trim();
+              }
+            }
+
+            return {
+              id: place.fsq_place_id,
+              name: place.name,
+              latitude: place.latitude,
+              longitude: place.longitude,
+              address_line1: place.address || '',
+              city: place.locality || '',
+              state_region: place.region || '',
+              country: place.country || '',
+              category: placeCategory,
+              phone: place.tel || '',
+              website: place.website || '',
+              instagram_url: place.instagram || '',
+              signals: [],
+              photos: [],
+              fsq_category_labels: place.fsq_category_labels, // Keep for debugging
+            };
+          })
+          .slice(0, 100); // Limit to 100 results
+
+        console.log(`Final processed places: ${processedPlaces.length}`);
+        setCategoryResultsPlaces(processedPlaces as Place[]);
+      } else {
+        // Fallback to local filtering if no results from database
+        const filtered = places.filter(place => 
+          place.category?.toLowerCase().includes(category.toLowerCase())
+        );
+        setCategoryResultsPlaces(filtered);
+      }
+    } catch (error) {
+      console.error('Error fetching category places:', error);
+      const filtered = places.filter(place => 
+        place.category?.toLowerCase().includes(category.toLowerCase())
+      );
+      setCategoryResultsPlaces(filtered);
+    } finally {
+      setIsLoadingCategoryResults(false);
+    }
+  };
+
+  const closeCategoryResults = () => {
+    setShowCategoryResults(false);
+    setSelectedCategory('All');
+    setCategoryResultsPlaces([]);
+  };
+
+  const applyFilters = () => {
+    setShowFilterModal(false);
+    // Re-fetch with filters applied
+    fetchCategoryPlaces(selectedCategory, activeFilters);
+  };
+
+  const clearFilters = () => {
+    setActiveFilters({
+      cuisine: 'Any',
+      priceMin: 1,
+      priceMax: 100,
+      rating: 'any',
+      tapCount: 'Any',
+      hours: 'Any',
+      moreFilters: [],
+    });
+  };
+
+  const toggleMoreFilter = (filter: string) => {
+    setActiveFilters(prev => ({
+      ...prev,
+      moreFilters: prev.moreFilters.includes(filter)
+        ? prev.moreFilters.filter(f => f !== filter)
+        : [...prev.moreFilters, filter],
+    }));
   };
 
   // ============================================
-  // VIEW MODE TRANSITIONS
+  // VIEW MODE SWITCHING
   // ============================================
 
   const switchToMapMode = () => {
-    Keyboard.dismiss();
-    setIsSearchFocused(false);
     setViewMode('map');
-  };
-
-  const switchToContentMode = () => {
-    setViewMode('content');
-    setSearchQuery('');
-    setIsSearchFocused(false);
-    setTargetLocation(null);
-    setSearchedAddressName('');
     setSearchedAddress(null);
+    setTargetLocation(null);
+  };
+
+  const switchToStandardMode = () => {
+    setViewMode('standard');
+    setSearchedAddress(null);
+    setTargetLocation(null);
   };
 
   // ============================================
-  // PLACE CARD HANDLERS
+  // PLACE HANDLING
   // ============================================
+
+  const handlePlacePress = (place: Place) => {
+    setSelectedPlace(place);
+    if (navigation?.navigate) {
+      navigation.navigate('PlaceDetails', { placeId: place.id });
+    }
+  };
 
   const handleMarkerPress = (place: Place) => {
     setSelectedPlace(place);
     bottomSheetRef.current?.snapToIndex(1);
   };
 
-  const handlePlacePress = async (place: Place) => {
-    navigation.navigate('PlaceDetails', { placeId: place.id });
-  };
+  // ============================================
+  // ACTION HANDLERS
+  // ============================================
 
-  const handleCall = (place: Place) => {
-    if (place.phone) {
-      Linking.openURL(`tel:${place.phone}`);
+  const handleCall = (phone?: string) => {
+    if (phone) {
+      Linking.openURL(`tel:${phone}`);
     }
   };
 
-  const handleWebsite = (place: Place) => {
-    if (place.website) {
-      Linking.openURL(place.website);
-    }
-  };
-
-  const handleShare = async (place: Place) => {
-    try {
-      await Share.share({
-        message: `Check out ${place.name} on TavvY!`,
+  const handleDirections = (place: Place) => {
+    const lat = place.latitude || place.lat;
+    const lon = place.longitude || place.lng;
+    if (lat && lon) {
+      const url = Platform.select({
+        ios: `maps://app?daddr=${lat},${lon}`,
+        android: `google.navigation:q=${lat},${lon}`,
       });
-    } catch (error) {
-      console.error('Error sharing:', error);
+      if (url) {
+        Linking.openURL(url).catch(() => {
+          Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`);
+        });
+      }
+    }
+  };
+
+  const handleWebsite = (website?: string) => {
+    if (website) {
+      Linking.openURL(website);
+    }
+  };
+
+  const handleSocial = (instagram?: string) => {
+    if (instagram) {
+      Linking.openURL(instagram);
     }
   };
 
@@ -1054,6 +1171,18 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const getSignalType = (bucket: string): 'positive' | 'neutral' | 'negative' => {
     const bucketLower = bucket.toLowerCase();
     
+    // Check for exact category names first
+    if (bucketLower === 'the good' || bucketLower.includes('the good')) {
+      return 'positive';
+    }
+    if (bucketLower === 'the vibe' || bucketLower.includes('the vibe')) {
+      return 'neutral';
+    }
+    if (bucketLower === 'heads up' || bucketLower.includes('heads up')) {
+      return 'negative';
+    }
+    
+    // Fallback to keyword detection for actual signal names
     if (bucketLower.includes('great') || bucketLower.includes('excellent') || 
         bucketLower.includes('amazing') || bucketLower.includes('affordable') ||
         bucketLower.includes('good') || bucketLower.includes('friendly') ||
@@ -1066,7 +1195,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         bucketLower.includes('crowded') || bucketLower.includes('loud') ||
         bucketLower.includes('slow') || bucketLower.includes('dirty') ||
         bucketLower.includes('rude') || bucketLower.includes('limited') ||
-        bucketLower.includes('wait') || bucketLower.includes('noisy')) {
+        bucketLower.includes('wait') || bucketLower.includes('noisy') ||
+        bucketLower.includes('heads')) {
       return 'negative';
     }
     
@@ -1075,9 +1205,68 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const getSignalColor = (bucket: string) => {
     const type = getSignalType(bucket);
-    if (type === 'positive') return '#0A84FF';
-    if (type === 'negative') return '#FF9500';
-    return '#8E8E93';
+    if (type === 'positive') return '#D9ECFF';
+    if (type === 'negative') return '#FBE6C8';
+    return '#EADCFB';
+  };
+
+  const getSignalIconColor = (bucket: string) => {
+    const type = getSignalType(bucket);
+    if (type === 'positive') return '#1E78FF';
+    if (type === 'negative') return '#F58A07';
+    return '#7A3DF0';
+  };
+
+  const getSignalIcon = (bucket: string): string => {
+    const type = getSignalType(bucket);
+    if (type === 'positive') return 'thumbs-up';
+    if (type === 'negative') return 'alert';
+    return 'trending-up';
+  };
+
+  // Generate display signals with fallbacks for missing categories
+  // Always returns exactly 4 signals: 2 "The Good" (top row), 1 "The Vibe" + 1 "Heads Up" (bottom row)
+  const getDisplaySignals = (signals: Signal[]): { bucket: string; tap_total: number; isEmpty: boolean }[] => {
+    const positive = signals?.filter(s => getSignalType(s.bucket) === 'positive') || [];
+    const neutral = signals?.filter(s => getSignalType(s.bucket) === 'neutral') || [];
+    const negative = signals?.filter(s => getSignalType(s.bucket) === 'negative') || [];
+
+    const result: { bucket: string; tap_total: number; isEmpty: boolean }[] = [];
+
+    // TOP ROW: 2 "The Good" (positive) signals
+    if (positive.length >= 2) {
+      result.push({ ...positive[0], isEmpty: false });
+      result.push({ ...positive[1], isEmpty: false });
+    } else if (positive.length === 1) {
+      result.push({ ...positive[0], isEmpty: false });
+      result.push({ bucket: 'The Good', tap_total: 0, isEmpty: true });
+    } else {
+      result.push({ bucket: 'The Good', tap_total: 0, isEmpty: true });
+      result.push({ bucket: 'The Good', tap_total: 0, isEmpty: true });
+    }
+
+    // BOTTOM ROW: 1 "The Vibe" (neutral) + 1 "Heads Up" (negative)
+    if (neutral.length > 0) {
+      result.push({ ...neutral[0], isEmpty: false });
+    } else {
+      result.push({ bucket: 'The Vibe', tap_total: 0, isEmpty: true });
+    }
+
+    if (negative.length > 0) {
+      result.push({ ...negative[0], isEmpty: false });
+    } else {
+      result.push({ bucket: 'Heads Up', tap_total: 0, isEmpty: true });
+    }
+
+    return result; // Always exactly 4 items
+  };
+
+  // Get the placeholder text for empty signal categories
+  const getEmptySignalText = (bucket: string): string => {
+    if (bucket === 'The Good') return 'No The Good taps yet';
+    if (bucket === 'The Vibe') return 'No The Vibe taps yet';
+    if (bucket === 'Heads Up') return 'No Heads Up taps yet';
+    return 'Be the first to rate it';
   };
 
   const sortSignalsForDisplay = (signals: Signal[]): Signal[] => {
@@ -1090,7 +1279,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     if (neutral.length > 0) result.push(neutral[0]);
     if (negative.length > 0) result.push(negative[0]);
     
-    return result;
+    return result.slice(0, 4);
   };
 
   const getMarkerColor = (category?: string) => {
@@ -1109,12 +1298,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // ============================================
 
   const renderSearchSuggestions = () => {
-    // Show suggestions when focused, even if empty (to show "Search for..." option)
     if (!isSearchFocused) {
       return null;
     }
 
-    // If no suggestions and no query, don't show anything
     if (searchSuggestions.length === 0 && searchQuery.trim().length === 0) {
       return null;
     }
@@ -1147,9 +1334,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               />
             </View>
             <View style={styles.suggestionTextContainer}>
-              <Text style={styles.suggestionTitle}>{suggestion.title}</Text>
+              <Text style={[styles.suggestionTitle, { color: isDark ? theme.text : '#000' }]}>{suggestion.title}</Text>
               {suggestion.subtitle && (
-                <Text style={styles.suggestionSubtitle}>{suggestion.subtitle}</Text>
+                <Text style={[styles.suggestionSubtitle, { color: isDark ? theme.textSecondary : '#8E8E93' }]}>{suggestion.subtitle}</Text>
               )}
             </View>
             <Ionicons
@@ -1160,20 +1347,18 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </TouchableOpacity>
         ))}
         
-        {/* Loading indicator for address search */}
         {isSearchingAddress && (
           <View style={styles.suggestionItem}>
             <View style={[styles.suggestionIconContainer, styles.suggestionIconAddress]}>
               <ActivityIndicator size="small" color="#AF52DE" />
             </View>
             <View style={styles.suggestionTextContainer}>
-              <Text style={styles.suggestionTitle}>Searching addresses...</Text>
-              <Text style={styles.suggestionSubtitle}>Looking up location</Text>
+              <Text style={[styles.suggestionTitle, { color: isDark ? theme.text : '#000' }]}>Searching addresses...</Text>
+              <Text style={[styles.suggestionSubtitle, { color: isDark ? theme.textSecondary : '#8E8E93' }]}>Looking up location</Text>
             </View>
           </View>
         )}
         
-        {/* Show "Search for..." option */}
         {searchQuery.trim().length > 0 && (
           <TouchableOpacity
             style={styles.suggestionItem}
@@ -1183,8 +1368,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <Ionicons name="search" size={18} color="#0A84FF" />
             </View>
             <View style={styles.suggestionTextContainer}>
-              <Text style={styles.suggestionTitle}>Search for "{searchQuery}"</Text>
-              <Text style={styles.suggestionSubtitle}>See all results on map</Text>
+              <Text style={[styles.suggestionTitle, { color: isDark ? theme.text : '#000' }]}>Search for "{searchQuery}"</Text>
+              <Text style={[styles.suggestionSubtitle, { color: isDark ? theme.textSecondary : '#8E8E93' }]}>See all results on map</Text>
             </View>
             <Ionicons name="arrow-forward" size={16} color="#C7C7CC" />
           </TouchableOpacity>
@@ -1193,109 +1378,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     );
   };
 
-  // ============================================
-  // RENDER: INSIGHTS SECTION
-  // ============================================
 
-  const renderInsightsSection = () => {
-    // Generate personalized insights based on user behavior
-    const insights = [
-      {
-        id: 'discover',
-        icon: 'compass',
-        iconColor: '#FF9500',
-        bgColor: isDark ? 'rgba(255, 149, 0, 0.15)' : '#FFF3E0',
-        title: 'Discover New Places',
-        subtitle: 'Explore highly-rated spots in your area',
-        action: () => switchToMapMode(),
-      },
-      {
-        id: 'trending',
-        icon: 'trending-up',
-        iconColor: '#34C759',
-        bgColor: isDark ? 'rgba(52, 199, 89, 0.15)' : '#E8F5E9',
-        title: 'Trending This Week',
-        subtitle: `${places.length} places getting attention nearby`,
-        action: () => switchToMapMode(),
-      },
-      {
-        id: 'tip',
-        icon: 'bulb',
-        iconColor: '#AF52DE',
-        bgColor: isDark ? 'rgba(175, 82, 222, 0.15)' : '#F3E5F5',
-        title: 'TavvY Tip',
-        subtitle: 'Tap signals to see what makes places special',
-        action: null,
-      },
-      {
-        id: 'parking',
-        icon: 'car',
-        iconColor: '#007AFF',
-        bgColor: isDark ? 'rgba(0, 122, 255, 0.15)' : '#E3F2FD',
-        title: parkingLocation ? 'Your Car is Saved' : 'Save Your Parking',
-        subtitle: parkingLocation 
-          ? `Parked ${getParkingDuration()} at ${parkingLocation.address || 'saved location'}`
-          : 'Never forget where you parked again',
-        action: parkingLocation ? navigateToParking : () => saveParkingLocation(),
-      },
-    ];
-
-    // Filter out parking insight if no parking and user hasn't used the feature
-    const filteredInsights = insights.filter(i => {
-      if (i.id === 'parking' && !parkingLocation) {
-        // Only show parking tip occasionally
-        return currentInsightIndex % 3 === 0;
-      }
-      return true;
-    });
-
-    const currentInsight = filteredInsights[currentInsightIndex % filteredInsights.length];
-
-    return (
-      <View style={styles.insightsSection}>
-        <TouchableOpacity
-          style={[styles.insightCard, { backgroundColor: currentInsight.bgColor }]}
-          onPress={currentInsight.action || undefined}
-          activeOpacity={currentInsight.action ? 0.7 : 1}
-        >
-          <View style={styles.insightIconContainer}>
-            <Ionicons name={currentInsight.icon as any} size={24} color={currentInsight.iconColor} />
-          </View>
-          <View style={styles.insightTextContainer}>
-            <Text style={[styles.insightTitle, { color: isDark ? theme.text : '#000' }]}>{currentInsight.title}</Text>
-            <Text style={[styles.insightSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>{currentInsight.subtitle}</Text>
-          </View>
-          {currentInsight.action && (
-            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
-          )}
-        </TouchableOpacity>
-        
-        {/* Dots indicator */}
-        <View style={styles.insightDotsContainer}>
-          {filteredInsights.map((_, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.insightDot,
-                index === currentInsightIndex % filteredInsights.length && styles.insightDotActive,
-              ]}
-              onPress={() => setCurrentInsightIndex(index)}
-            />
-          ))}
-        </View>
-      </View>
-    );
-  };
-
-  // Auto-rotate insights every 5 seconds (only in content mode)
-  useEffect(() => {
-    if (viewMode !== 'content') return;
-    
-    const timer = setInterval(() => {
-      setCurrentInsightIndex(prev => prev + 1);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [viewMode]);
 
   // ============================================
   // RENDER: ADDRESS INFO CARD
@@ -1318,7 +1401,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       }
     };
 
-    const handleDirections = () => {
+    const handleAddressDirections = () => {
       const [lon, lat] = searchedAddress.coordinates;
       const url = Platform.select({
         ios: `maps://app?daddr=${lat},${lon}`,
@@ -1333,14 +1416,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     };
 
     const handleCopyAddress = () => {
-      // Show address in alert - user can manually copy
-      // To enable clipboard: npx expo install expo-clipboard, then rebuild
       Alert.alert(
         'Address',
         searchedAddress.displayName,
-        [
-          { text: 'OK', style: 'default' },
-        ]
+        [{ text: 'OK', style: 'default' }]
       );
     };
 
@@ -1369,13 +1448,12 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       );
     };
 
-    // Calculate distance from user location
     const getDistance = (): string => {
       if (!userLocation) return '';
       const [lon1, lat1] = userLocation;
       const [lon2, lat2] = searchedAddress.coordinates;
       
-      const R = 3959; // Earth's radius in miles
+      const R = 3959;
       const dLat = (lat2 - lat1) * Math.PI / 180;
       const dLon = (lon2 - lon1) * Math.PI / 180;
       const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -1389,28 +1467,26 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       return `${distance.toFixed(1)} mi away`;
     };
 
-    // Get nearby places from our database
     const nearbyPlaces = places.filter(place => {
       const [lon, lat] = searchedAddress.coordinates;
       const placeLat = place.latitude || place.lat || 0;
       const placeLon = place.longitude || place.lng || 0;
       const distance = Math.sqrt(Math.pow(placeLat - lat, 2) + Math.pow(placeLon - lon, 2));
-      return distance < 0.01; // Roughly within 1km
+      return distance < 0.01;
     }).slice(0, 3);
 
     return (
       <View style={styles.addressCardContainer}>
-        {/* Address Header */}
         <View style={styles.addressCardHeader}>
           <View style={styles.addressIconContainer}>
             <Ionicons name="location" size={28} color="#AF52DE" />
           </View>
           <View style={styles.addressTextContainer}>
-            <Text style={styles.addressCardTitle} numberOfLines={2}>
+            <Text style={[styles.addressCardTitle, { color: isDark ? theme.text : '#000' }]} numberOfLines={2}>
               {searchedAddress.shortName}
             </Text>
             {searchedAddress.city && (
-              <Text style={styles.addressCardSubtitle}>
+              <Text style={[styles.addressCardSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
                 {searchedAddress.city}{searchedAddress.state ? `, ${searchedAddress.state}` : ''}
               </Text>
             )}
@@ -1420,54 +1496,51 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </View>
         </View>
 
-        {/* Quick Actions */}
         <View style={styles.addressActionsRow}>
-          <TouchableOpacity style={styles.addressActionButton} onPress={handleDirections}>
+          <TouchableOpacity style={styles.addressActionButton} onPress={handleAddressDirections}>
             <View style={[styles.addressActionIcon, { backgroundColor: '#007AFF' }]}>
               <Ionicons name="navigate" size={20} color="#fff" />
             </View>
-            <Text style={styles.addressActionText}>Directions</Text>
+            <Text style={[styles.addressActionText, { color: isDark ? theme.textSecondary : '#666' }]}>Directions</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.addressActionButton} onPress={handleShare}>
             <View style={[styles.addressActionIcon, { backgroundColor: '#34C759' }]}>
               <Ionicons name="share-outline" size={20} color="#fff" />
             </View>
-            <Text style={styles.addressActionText}>Share</Text>
+            <Text style={[styles.addressActionText, { color: isDark ? theme.textSecondary : '#666' }]}>Share</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.addressActionButton} onPress={handleSaveParking}>
             <View style={[styles.addressActionIcon, { backgroundColor: '#FF9500' }]}>
               <Ionicons name="car" size={20} color="#fff" />
             </View>
-            <Text style={styles.addressActionText}>Park Here</Text>
+            <Text style={[styles.addressActionText, { color: isDark ? theme.textSecondary : '#666' }]}>Park Here</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.addressActionButton} onPress={handleCopyAddress}>
             <View style={[styles.addressActionIcon, { backgroundColor: '#8E8E93' }]}>
               <Ionicons name="copy-outline" size={20} color="#fff" />
             </View>
-            <Text style={styles.addressActionText}>Copy</Text>
+            <Text style={[styles.addressActionText, { color: isDark ? theme.textSecondary : '#666' }]}>Copy</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Save Location Button */}
-        <TouchableOpacity style={styles.saveLocationButton} onPress={handleSaveLocation}>
+        <TouchableOpacity style={[styles.saveLocationButton, { backgroundColor: isDark ? theme.surface : '#F2F2F7' }]} onPress={handleSaveLocation}>
           <Ionicons name="bookmark-outline" size={20} color="#007AFF" />
           <Text style={styles.saveLocationText}>Save to My Places</Text>
         </TouchableOpacity>
 
-        {/* Nearby TavvY Places */}
         {nearbyPlaces.length > 0 && (
           <View style={styles.nearbySection}>
-            <Text style={styles.nearbySectionTitle}>Nearby on TavvY</Text>
+            <Text style={[styles.nearbySectionTitle, { color: isDark ? theme.text : '#000' }]}>Nearby on TavvY</Text>
             {nearbyPlaces.map((place) => (
               <TouchableOpacity
                 key={place.id}
                 style={styles.nearbyPlaceItem}
                 onPress={() => handlePlacePress(place)}
               >
-                <View style={styles.nearbyPlaceIcon}>
+                <View style={[styles.nearbyPlaceIcon, { backgroundColor: isDark ? theme.surface : '#F2F2F7' }]}>
                   <Ionicons
                     name={
                       place.category === 'Restaurants' ? 'restaurant' :
@@ -1475,12 +1548,12 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                       place.category === 'Bars' ? 'beer' : 'storefront'
                     }
                     size={16}
-                    color="#666"
+                    color={isDark ? theme.textSecondary : '#666'}
                   />
                 </View>
                 <View style={styles.nearbyPlaceInfo}>
-                  <Text style={styles.nearbyPlaceName}>{place.name}</Text>
-                  <Text style={styles.nearbyPlaceCategory}>{place.category}</Text>
+                  <Text style={[styles.nearbyPlaceName, { color: isDark ? theme.text : '#000' }]}>{place.name}</Text>
+                  <Text style={[styles.nearbyPlaceCategory, { color: isDark ? theme.textSecondary : '#666' }]}>{place.category}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
               </TouchableOpacity>
@@ -1488,10 +1561,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </View>
         )}
 
-        {/* Full Address */}
-        <View style={styles.fullAddressSection}>
-          <Text style={styles.fullAddressLabel}>Full Address</Text>
-          <Text style={styles.fullAddressText}>{searchedAddress.displayName}</Text>
+        <View style={[styles.fullAddressSection, { backgroundColor: isDark ? theme.surface : '#F9F9F9' }]}>
+          <Text style={[styles.fullAddressLabel, { color: isDark ? theme.textSecondary : '#8E8E93' }]}>Full Address</Text>
+          <Text style={[styles.fullAddressText, { color: isDark ? theme.text : '#333' }]}>{searchedAddress.displayName}</Text>
         </View>
       </View>
     );
@@ -1556,7 +1628,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   };
 
   // ============================================
-  // RENDER: PLACE CARD
+  // RENDER: PLACE CARD (for bottom sheet)
   // ============================================
 
   const renderPlaceCard = ({ item: place }: { item: Place }) => {
@@ -1576,66 +1648,69 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           placeAddress={fullAddress}
         />
         
-        {/* Signals - 2x2 Grid with fixed widths */}
-        {place.signals && place.signals.length > 0 && (
-          <View style={styles.signalsContainer}>
-            <View style={styles.signalsRow}>
-              {sortSignalsForDisplay(place.signals).slice(0, 2).map((signal, index) => (
-                <View
-                  key={index}
-                  style={[styles.signalPill, { backgroundColor: getSignalColor(signal.bucket) }]}
-                >
-                  <Text style={styles.signalText}>
-                    {signal.bucket} ×{signal.tap_total}
+        {/* Signals - Always show with fallbacks for empty categories */}
+        <View style={styles.signalsContainer}>
+          <View style={styles.signalsRow}>
+            {getDisplaySignals(place.signals).slice(0, 2).map((signal, index) => (
+              <View key={index} style={styles.signalPillWrapper}>
+                <View style={[styles.signalPill, { backgroundColor: getSignalColor(signal.bucket) }]}>
+                  <Ionicons 
+                    name={getSignalIcon(signal.bucket) as any} 
+                    size={12} 
+                    color={getSignalIconColor(signal.bucket)} 
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text style={[styles.signalText, signal.isEmpty && styles.signalTextEmpty]} numberOfLines={1}>
+                    {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
                   </Text>
+                </View>
+                {!signal.isEmpty && (
+                  <Text style={styles.signalTapCount}>x{signal.tap_total}</Text>
+                )}
+              </View>
+            ))}
+          </View>
+          {getDisplaySignals(place.signals).length > 2 && (
+            <View style={styles.signalsRow}>
+              {getDisplaySignals(place.signals).slice(2, 4).map((signal, index) => (
+                <View key={index} style={styles.signalPillWrapper}>
+                  <View style={[styles.signalPill, { backgroundColor: getSignalColor(signal.bucket) }]}>
+                    <Ionicons 
+                      name={getSignalIcon(signal.bucket) as any} 
+                      size={12} 
+                      color={getSignalIconColor(signal.bucket)} 
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={[styles.signalText, signal.isEmpty && styles.signalTextEmpty]} numberOfLines={1}>
+                      {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
+                    </Text>
+                  </View>
+                  {!signal.isEmpty && (
+                    <Text style={styles.signalTapCount}>x{signal.tap_total}</Text>
+                  )}
                 </View>
               ))}
             </View>
-            {sortSignalsForDisplay(place.signals).length > 2 && (
-              <View style={styles.signalsRow}>
-                {sortSignalsForDisplay(place.signals).slice(2, 4).map((signal, index) => (
-                  <View
-                    key={index}
-                    style={[styles.signalPill, { backgroundColor: getSignalColor(signal.bucket) }]}
-                  >
-                    <Text style={styles.signalText}>
-                      {signal.bucket} ×{signal.tap_total}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        )}
-        
-        {/* Meta info */}
-        <View style={styles.metaRow}>
-          <Text style={[styles.metaText, { color: isDark ? theme.textSecondary : '#666' }]}>{place.category}</Text>
-          <Text style={[styles.metaDot, { color: isDark ? theme.textSecondary : '#999' }]}>•</Text>
-          <Text style={[styles.metaText, { color: isDark ? theme.textSecondary : '#666' }]}>$$</Text>
-          <Text style={[styles.metaDot, { color: isDark ? theme.textSecondary : '#999' }]}>•</Text>
-          <Text style={[styles.metaText, { color: '#34C759' }]}>
-            {place.current_status || 'Open'}
-          </Text>
+          )}
         </View>
         
-        {/* Action buttons */}
-        <View style={[styles.actionRow, { borderTopColor: isDark ? theme.border : '#F2F2F7' }]}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleCall(place)}>
+        {/* Quick Actions */}
+        <View style={[styles.quickActions, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleCall(place.phone)}>
             <Ionicons name="call-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
             <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Call</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleWebsite(place)}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleDirections(place)}>
+            <Ionicons name="navigate-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
+            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Directions</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleSocial(place.instagram_url)}>
+            <Ionicons name="chatbubble-ellipses-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
+            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Social</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleWebsite(place.website)}>
             <Ionicons name="globe-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
             <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Website</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="images-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
-            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Photos</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleShare(place)}>
-            <Ionicons name="share-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
-            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Share</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -1643,105 +1718,69 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   };
 
   // ============================================
-  // RENDER: CONTENT MODE (Default Home Screen)
+  // RENDER: STANDARD MODE (New Layout Design)
   // ============================================
 
-  const renderContentMode = () => (
-    <View style={styles.contentModeContainer}>
-      {/* Map Peek at Top */}
-      <TouchableOpacity 
-        style={styles.mapPeekContainer}
-        onPress={switchToMapMode}
-        activeOpacity={0.9}
+  const cardWidth = Math.min(320, width * 0.78);
+
+  const renderStandardMode = () => (
+    <SafeAreaView style={[styles.safe, { backgroundColor: isDark ? theme.background : BG }]}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* @ts-ignore */}
-        <MapLibreGL.MapView
-          style={styles.mapPeek}
-          styleURL={MAP_STYLES[mapStyle].type === 'vector' ? (MAP_STYLES[mapStyle] as any).url : undefined}
-          logoEnabled={false}
-          attributionEnabled={false}
-          scrollEnabled={false}
-          pitchEnabled={false}
-          rotateEnabled={false}
-          zoomEnabled={false}
-        >
-          <MapLibreGL.Camera
-            zoomLevel={13}
-            centerCoordinate={userLocation || [-97.7431, 30.2672]}
-          />
-          
-          {MAP_STYLES[mapStyle].type === 'raster' && (
-            <MapLibreGL.RasterSource
-              id="raster-source-peek"
-              tileUrlTemplates={[MAP_STYLES[mapStyle].tileUrl!]}
-              tileSize={256}
+        {/* Segmented Control: Standard / Map - Moved higher */}
+        <View style={styles.segmentWrap}>
+          <View style={[styles.segment, { 
+            borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,18,51,0.12)', 
+            backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.65)' 
+          }]}>
+            <TouchableOpacity
+              style={[styles.segmentItem, viewMode === 'standard' && [styles.segmentItemActive, { backgroundColor: ACCENT }]]}
+              onPress={() => setViewMode('standard')}
+              activeOpacity={0.9}
             >
-              <MapLibreGL.RasterLayer
-                id="raster-layer-peek"
-                sourceID="raster-source-peek"
-                style={{ rasterOpacity: 1 }}
-              />
-            </MapLibreGL.RasterSource>
-          )}
-          
-          {userLocation && (
-            <MapLibreGL.PointAnnotation
-              id="user-location-peek"
-              coordinate={userLocation}
+              <Text style={[styles.segmentText, { color: viewMode === 'standard' ? '#fff' : (isDark ? theme.textSecondary : '#6B6B6B') }]}>Standard</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.segmentItem, viewMode === 'map' && [styles.segmentItemActive, { backgroundColor: ACCENT }]]}
+              onPress={switchToMapMode}
+              activeOpacity={0.9}
             >
-              <View style={styles.userLocationMarker}>
-                <View style={styles.userLocationDot} />
-              </View>
-            </MapLibreGL.PointAnnotation>
-          )}
-        </MapLibreGL.MapView>
-        
-        {/* Tap to expand overlay */}
-        <View style={styles.mapPeekOverlay}>
-          <Ionicons name="expand-outline" size={16} color="#007AFF" />
-          <Text style={styles.mapPeekText}>Tap to explore map</Text>
-        </View>
-      </TouchableOpacity>
-      
-      {/* Content Area */}
-      <View style={[styles.contentArea, { backgroundColor: isDark ? theme.background : '#fff' }]}>
-        {/* Header with centered logo */}
-        <View style={styles.contentHeader}>
-          {/* Centered Logo */}
-          <View style={styles.logoContainer}>
-            <Image 
-              source={isDark 
-                ? require('../assets/brand/logo-horizontal.png') 
-                : require('../assets/brand/tavvy-logo-Original-Transparent.png')} 
-              style={styles.headerLogo}
-              resizeMode="contain"
-            />
-          </View>
-          <View>
-            <Text style={[styles.greetingText, { color: isDark ? theme.textSecondary : '#8E8E93' }]}>{greeting}</Text>
-            <Text style={[styles.titleText, { color: isDark ? theme.text : '#000' }]}>What are you looking for?</Text>
+              <Text style={[styles.segmentText, { color: viewMode === 'map' ? '#fff' : (isDark ? theme.textSecondary : '#6B6B6B') }]}>Map</Text>
+            </TouchableOpacity>
           </View>
         </View>
-        
-        {/* Search Bar with Autocomplete */}
+
+        {/* Title - Smaller font for smaller screens */}
+        <Text style={[styles.title, { color: isDark ? theme.text : ACCENT }]}>
+          Find a place that fits{'\n'}your moment
+        </Text>
+
+        {/* Search Bar */}
         <View style={styles.searchWrapper}>
           <View style={[
-            styles.contentSearchBar,
-            { backgroundColor: isDark ? theme.surface : '#F2F2F7' },
-            isSearchFocused && styles.contentSearchBarFocused
+            styles.searchWrap, 
+            { 
+              borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,18,51,0.14)', 
+              backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#fff' 
+            },
+            isSearchFocused && styles.searchWrapFocused
           ]}>
-            <Ionicons name="search" size={20} color={isDark ? theme.textSecondary : '#8E8E93'} />
+            <Ionicons name="search" size={18} color={isDark ? theme.textSecondary : '#8A8A8A'} style={{ marginRight: 10 }} />
             <TextInput
               ref={searchInputRef}
-              style={[styles.contentSearchInput, { color: isDark ? theme.text : '#000' }]}
-              placeholder="Search places, categories..."
-              placeholderTextColor={isDark ? theme.textSecondary : '#8E8E93'}
               value={searchQuery}
               onChangeText={handleSearchInputChange}
+              placeholder="What are you in the mood for?"
+              placeholderTextColor={isDark ? 'rgba(255,255,255,0.35)' : '#A0A0A0'}
+              style={[styles.searchInput, { color: isDark ? theme.text : '#111' }]}
+              returnKeyType="search"
               onFocus={handleSearchFocus}
               onBlur={handleSearchBlur}
-              onSubmitEditing={() => handleSearchSubmit()}
-              returnKeyType="search"
+              onSubmitEditing={handleSearchSubmit}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={clearSearch}>
@@ -1753,164 +1792,180 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           {/* Search Suggestions Dropdown */}
           {renderSearchSuggestions()}
         </View>
-        
+
         {/* Only show rest of content when not focused on search */}
         {!isSearchFocused && (
           <>
-            {/* Category Chips */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.categoryScrollView}
-              contentContainerStyle={styles.categoryScrollContent}
-            >
-              {categories.map((category) => (
-                <TouchableOpacity
-                  key={category}
-                  style={[
-                    styles.categoryChip,
-                    { backgroundColor: isDark ? theme.surface : '#F2F2F7', borderColor: isDark ? theme.border : '#E5E5EA' },
-                    selectedCategory === category && styles.categoryChipActive,
-                  ]}
-                  onPress={() => {
-                    handleCategorySelect(category);
-                    if (category !== 'All') {
-                      switchToMapMode();
-                    }
-                  }}
-                >
-                  <Ionicons
-                    name={
-                      category === 'All' ? 'apps' :
-                      category === 'Restaurants' ? 'restaurant' :
-                      category === 'Cafes' ? 'cafe' :
-                      category === 'Bars' ? 'beer' : 'cart'
-                    }
-                    size={16}
-                    color={selectedCategory === category ? '#fff' : (isDark ? theme.textSecondary : '#666')}
-                    style={{ marginRight: 6 }}
-                  />
-                  <Text
+            {/* Category Pills - Text only, no icons, rounded */}
+            <View style={styles.categoriesRow}>
+              {categories.map((cat) => {
+                const active = selectedCategory === cat;
+                return (
+                  <TouchableOpacity
+                    key={cat}
                     style={[
-                      styles.categoryChipText,
-                      { color: isDark ? theme.text : '#333' },
-                      selectedCategory === category && styles.categoryChipTextActive,
+                      styles.catPill,
+                      {
+                        backgroundColor: active ? ACCENT : (isDark ? 'rgba(255,255,255,0.06)' : '#FDFBF6'),
+                        borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,18,51,0.14)',
+                      },
                     ]}
+                    onPress={() => handleCategorySelect(cat)}
+                    activeOpacity={0.9}
                   >
-                    {category}
-                  </Text>
+                    <Text 
+                      style={[
+                        styles.catText, 
+                        { color: active ? '#fff' : (isDark ? theme.text : '#1C1C1C') }
+                      ]} 
+                      numberOfLines={1}
+                    >
+                      {cat}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Hint Text */}
+            <Text style={[styles.hint, { color: isDark ? theme.textSecondary : '#666' }]}>
+              Signals are Tavvy reviews — compare places in seconds
+            </Text>
+
+            {/* Trending Near You Header */}
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111' }]}>Trending Near You</Text>
+              <TouchableOpacity onPress={switchToMapMode} activeOpacity={0.8}>
+                <Text style={[styles.seeAll, { color: ACCENT }]}>See All</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Trending Carousel */}
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={styles.trendingScroll}
+            >
+              {filteredPlaces.slice(0, 10).map((place) => (
+                <TouchableOpacity
+                  key={place.id}
+                  onPress={() => handlePlacePress(place)}
+                  activeOpacity={0.92}
+                  style={[styles.previewCard, { width: cardWidth, backgroundColor: isDark ? theme.surface : '#fff' }]}
+                >
+                  {/* Image with overlay */}
+                  <ImageBackground 
+                    source={{ uri: place.photos?.[0] || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800' }} 
+                    style={styles.previewImage} 
+                    imageStyle={styles.previewImageRadius}
+                  >
+                    <View style={styles.imageOverlay} />
+                    <Text style={styles.placeName} numberOfLines={1}>
+                      {place.name}
+                    </Text>
+                    <Text style={styles.placeMeta} numberOfLines={1}>
+                      {place.primary_category || place.category} • {place.city || 'Nearby'}
+                    </Text>
+                  </ImageBackground>
+
+                  {/* Actions Row */}
+                  <View style={[styles.actionsRow, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+                    <TouchableOpacity onPress={() => handleCall(place.phone)} style={styles.actionBtn} activeOpacity={0.8}>
+                      <Ionicons name="call-outline" size={18} color={isDark ? theme.textSecondary : '#666'} />
+                      <Text style={[styles.actionBtnText, { color: isDark ? theme.textSecondary : '#666' }]}>Call</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDirections(place)} style={styles.actionBtn} activeOpacity={0.8}>
+                      <Ionicons name="navigate-outline" size={18} color={isDark ? theme.textSecondary : '#666'} />
+                      <Text style={[styles.actionBtnText, { color: isDark ? theme.textSecondary : '#666' }]}>Directions</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleSocial(place.instagram_url)} style={styles.actionBtn} activeOpacity={0.8}>
+                      <Ionicons name="chatbubble-ellipses-outline" size={18} color={isDark ? theme.textSecondary : '#666'} />
+                      <Text style={[styles.actionBtnText, { color: isDark ? theme.textSecondary : '#666' }]}>Social</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleWebsite(place.website)} style={styles.actionBtn} activeOpacity={0.8}>
+                      <Ionicons name="globe-outline" size={18} color={isDark ? theme.textSecondary : '#666'} />
+                      <Text style={[styles.actionBtnText, { color: isDark ? theme.textSecondary : '#666' }]}>Website</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Signals Grid - Always show with fallbacks for empty categories */}
+                  <View style={[styles.signalsGrid, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+                    {getDisplaySignals(place.signals).map((signal, idx) => (
+                      <View key={`${place.id}-sig-${idx}`} style={styles.signalBadgeWrapper}>
+                        <View style={[styles.signalBadge, { backgroundColor: getSignalColor(signal.bucket) }]}>
+                          <Ionicons 
+                            name={getSignalIcon(signal.bucket) as any} 
+                            size={12} 
+                            color={getSignalIconColor(signal.bucket)} 
+                            style={{ marginRight: 4 }}
+                          />
+                          <Text style={[styles.signalLabel, signal.isEmpty && styles.signalLabelEmpty]} numberOfLines={1}>
+                            {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
+                          </Text>
+                        </View>
+                        {!signal.isEmpty && (
+                          <Text style={styles.signalCount}>x{signal.tap_total}</Text>
+                        )}
+                      </View>
+                    ))}
+                  </View>
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            
-            {/* Scrollable Content */}
-            <ScrollView 
-              style={styles.contentScrollView}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              {/* Insights Section - Rotating personalized content */}
-              {renderInsightsSection()}
-              
-              {/* Trending Near You */}
-              <View style={styles.contentSection}>
-                <View style={styles.sectionHeader}>
-                  <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>Trending Near You</Text>
-                  <TouchableOpacity onPress={switchToMapMode}>
-                    <Text style={styles.seeAllText}>See All</Text>
+
+            {/* Explore Categories */}
+            <View style={styles.exploreSection}>
+              <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000', marginBottom: 12 }]}>Explore</Text>
+              <View style={styles.exploreGrid}>
+                {['Restaurants', 'Cafes', 'Bars', 'Shopping', 'Entertainment', 'Services'].map((cat) => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.exploreItem, { backgroundColor: isDark ? theme.surface : '#F2F2F7' }]}
+                    onPress={() => {
+                      handleCategorySelect(cat);
+                      switchToMapMode();
+                    }}
+                  >
+                    <View style={[styles.exploreIconContainer, { backgroundColor: isDark ? 'rgba(10, 132, 255, 0.15)' : '#F2F7FF' }]}>
+                      <Ionicons
+                        name={
+                          cat === 'Restaurants' ? 'restaurant' :
+                          cat === 'Cafes' ? 'cafe' :
+                          cat === 'Bars' ? 'beer' :
+                          cat === 'Shopping' ? 'cart' :
+                          cat === 'Entertainment' ? 'film' : 'briefcase'
+                        }
+                        size={24}
+                        color="#0A84FF"
+                      />
+                    </View>
+                    <Text style={[styles.exploreText, { color: isDark ? theme.text : '#000' }]}>{cat}</Text>
                   </TouchableOpacity>
-                </View>
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.trendingScrollContent}
-                >
-                  {filteredPlaces.slice(0, 5).map((place) => (
-                    <TouchableOpacity
-                      key={place.id}
-                      style={[styles.trendingCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-                      onPress={() => handlePlacePress(place)}
-                    >
-                      {place.photos && place.photos[0] ? (
-                        <Image
-                          source={{ uri: place.photos[0] }}
-                          style={styles.trendingImage}
-                        />
-                      ) : (
-                        <View style={[styles.trendingImage, styles.placeholderPhoto]}>
-                          <Ionicons name="image-outline" size={32} color="#ccc" />
-                        </View>
-                      )}
-                      <Text style={[styles.trendingName, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>{place.name}</Text>
-                      <Text style={[styles.trendingCategory, { color: isDark ? theme.textSecondary : '#666' }]}>{place.category}</Text>
-                      {place.signals && place.signals.length > 0 && (
-                        <View style={styles.trendingSignalRow}>
-                          <Ionicons name="radio" size={12} color="#0A84FF" />
-                          <Text style={styles.trendingSignalText}>
-                            {place.signals.reduce((sum, s) => sum + s.tap_total, 0)} taps
-                          </Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                ))}
               </View>
-              
-              {/* Explore Categories */}
-              <View style={styles.contentSection}>
-                <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>Explore</Text>
-                <View style={styles.exploreGrid}>
-                  {['Restaurants', 'Cafes', 'Bars', 'Shopping', 'Entertainment', 'Services'].map((cat) => (
-                    <TouchableOpacity
-                      key={cat}
-                      style={styles.exploreItem}
-                      onPress={() => {
-                        handleCategorySelect(cat);
-                        switchToMapMode();
-                      }}
-                    >
-                      <View style={[styles.exploreIconContainer, { backgroundColor: isDark ? 'rgba(10, 132, 255, 0.15)' : '#F2F7FF' }]}>
-                        <Ionicons
-                          name={
-                            cat === 'Restaurants' ? 'restaurant' :
-                            cat === 'Cafes' ? 'cafe' :
-                            cat === 'Bars' ? 'beer' :
-                            cat === 'Shopping' ? 'cart' :
-                            cat === 'Entertainment' ? 'film' : 'briefcase'
-                          }
-                          size={24}
-                          color="#0A84FF"
-                        />
-                      </View>
-                      <Text style={[styles.exploreText, { color: isDark ? theme.text : '#000' }]}>{cat}</Text>
-                    </TouchableOpacity>
-                  ))}
+            </View>
+
+            {/* Did You Know */}
+            <View style={styles.didYouKnowSection}>
+              <View style={[styles.didYouKnowCard, { backgroundColor: isDark ? theme.surface : '#FFF9E6' }]}>
+                <View style={styles.didYouKnowIcon}>
+                  <Ionicons name="bulb" size={24} color="#FFD60A" />
+                </View>
+                <View style={styles.didYouKnowContent}>
+                  <Text style={[styles.didYouKnowTitle, { color: isDark ? theme.text : '#000' }]}>Did you know?</Text>
+                  <Text style={[styles.didYouKnowText, { color: isDark ? theme.textSecondary : '#666' }]}>
+                    TavvY uses tap-based signals instead of star ratings to give you honest, structured insights about places.
+                  </Text>
                 </View>
               </View>
-              
-              {/* Did You Know */}
-              <View style={styles.contentSection}>
-                <View style={[styles.didYouKnowCard, { backgroundColor: isDark ? theme.surface : '#FFF9E6' }]}>
-                  <View style={styles.didYouKnowIcon}>
-                    <Ionicons name="bulb" size={24} color="#FFD60A" />
-                  </View>
-                  <View style={styles.didYouKnowContent}>
-                    <Text style={[styles.didYouKnowTitle, { color: isDark ? theme.text : '#000' }]}>Did you know?</Text>
-                    <Text style={[styles.didYouKnowText, { color: isDark ? theme.textSecondary : '#666' }]}>
-                      TavvY uses tap-based signals instead of star ratings to give you 
-                      honest, structured insights about places.
-                    </Text>
-                  </View>
-                </View>
-              </View>
-              
-              {/* Bottom padding */}
-              <View style={{ height: 100 }} />
-            </ScrollView>
+            </View>
+
+            {/* Bottom padding */}
+            <View style={{ height: 100 }} />
           </>
         )}
-      </View>
-    </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 
   // ============================================
@@ -2009,7 +2064,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
         {filteredPlaces
           .filter((place) => {
-            // Validate coordinates are valid numbers
             const lon = place.longitude || place.lng;
             const lat = place.latitude || place.lat;
             return typeof lon === 'number' && typeof lat === 'number' && 
@@ -2050,7 +2104,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         {/* Back button */}
         <TouchableOpacity 
           style={[styles.backButton, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-          onPress={switchToContentMode}
+          onPress={switchToStandardMode}
         >
           <Ionicons name="arrow-back" size={24} color={isDark ? theme.text : '#000'} />
         </TouchableOpacity>
@@ -2069,7 +2123,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             value={searchQuery}
             onChangeText={(text) => {
               setSearchQuery(text);
-              // Clear target location if user starts typing something new
               if (targetLocation && text !== searchedAddressName) {
                 setTargetLocation(null);
                 setSearchedAddressName('');
@@ -2088,7 +2141,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         </View>
       </View>
       
-      {/* Category Filters */}
+      {/* Category Filters - Text only, rounded */}
       <View style={styles.mapCategoryOverlay}>
         <ScrollView
           horizontal
@@ -2105,17 +2158,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               ]}
               onPress={() => handleCategorySelect(category)}
             >
-              <Ionicons
-                name={
-                  category === 'All' ? 'star' :
-                  category === 'Restaurants' ? 'restaurant' :
-                  category === 'Cafes' ? 'cafe' :
-                  category === 'Bars' ? 'beer' : 'cart'
-                }
-                size={12}
-                color={selectedCategory === category ? '#fff' : (isDark ? theme.textSecondary : '#666')}
-                style={{ marginRight: 4 }}
-              />
               <Text
                 style={[
                   styles.mapCategoryChipText,
@@ -2141,7 +2183,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         enableContentPanningGesture={false}
       >
         {searchedAddress ? (
-          // Show Address Info Card when viewing a searched address
           <ScrollView 
             style={styles.addressCardScrollView}
             showsVerticalScrollIndicator={false}
@@ -2149,7 +2190,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             {renderAddressInfoCard()}
           </ScrollView>
         ) : (
-          // Show place cards for normal browsing
           <BottomSheetFlatList
             data={filteredPlaces}
             keyExtractor={(item) => item.id}
@@ -2175,7 +2215,292 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     );
   }
 
-  return viewMode === 'content' ? renderContentMode() : renderMapMode();
+  // Get filter config for current category
+  const filterConfig = CATEGORY_FILTERS[selectedCategory] || CATEGORY_FILTERS.default;
+
+  // Render category results view with filter bottom sheet
+  if (showCategoryResults) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: isDark ? theme.background : BG }]}>
+        {/* Category Results Header */}
+        <View style={[styles.categoryResultsHeader, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+          <View style={styles.categoryResultsTitleRow}>
+            <Text style={[styles.categoryResultsTitle, { color: isDark ? theme.text : '#000' }]}>{selectedCategory}</Text>
+            <TouchableOpacity onPress={closeCategoryResults} style={styles.categoryResultsClose}>
+              <Ionicons name="close" size={24} color={isDark ? theme.text : '#000'} />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Quick Filter Chips */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickFiltersRow}>
+            <TouchableOpacity 
+              style={[styles.filterChip, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}
+              onPress={() => setShowFilterModal(true)}
+            >
+              <Ionicons name="options-outline" size={16} color={isDark ? theme.text : '#333'} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[
+                styles.filterChip, 
+                { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' },
+                activeFilters.hours === 'Open now' && styles.filterChipActive
+              ]}
+              onPress={() => setActiveFilters(prev => ({ ...prev, hours: prev.hours === 'Open now' ? 'Any' : 'Open now' }))}
+            >
+              <Text style={[styles.filterChipText, { color: isDark ? theme.text : '#333' }]}>Open now</Text>
+            </TouchableOpacity>
+            {filterConfig.cuisines && (
+              <TouchableOpacity 
+                style={[
+                  styles.filterChip, 
+                  { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' },
+                  activeFilters.cuisine !== 'Any' && styles.filterChipActive
+                ]}
+                onPress={() => setShowFilterModal(true)}
+              >
+                <Text style={[styles.filterChipText, { color: isDark ? theme.text : '#333' }]}>
+                  {activeFilters.cuisine === 'Any' ? 'Cuisine' : activeFilters.cuisine}
+                </Text>
+                <Ionicons name="chevron-down" size={14} color={isDark ? theme.text : '#333'} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity 
+              style={[
+                styles.filterChip, 
+                { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' },
+                activeFilters.priceMax < 100 && styles.filterChipActive
+              ]}
+              onPress={() => setShowFilterModal(true)}
+            >
+              <Text style={[styles.filterChipText, { color: isDark ? theme.text : '#333' }]}>Price</Text>
+              <Ionicons name="chevron-down" size={14} color={isDark ? theme.text : '#333'} />
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+
+        {/* Results List */}
+        {isLoadingCategoryResults ? (
+          <View style={styles.categoryResultsLoading}>
+            <ActivityIndicator size="large" color="#0A84FF" />
+            <Text style={[styles.loadingText, { color: isDark ? theme.textSecondary : '#666' }]}>Finding {selectedCategory.toLowerCase()}...</Text>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={styles.categoryResultsList}>
+            {categoryResultsPlaces.length === 0 ? (
+              <View style={styles.noResultsContainer}>
+                <Ionicons name="search-outline" size={48} color={isDark ? theme.textSecondary : '#999'} />
+                <Text style={[styles.noResultsText, { color: isDark ? theme.textSecondary : '#666' }]}>No {selectedCategory.toLowerCase()} found nearby</Text>
+                <Text style={[styles.noResultsSubtext, { color: isDark ? theme.textSecondary : '#999' }]}>Try adjusting your filters or search in a different area</Text>
+              </View>
+            ) : (
+              categoryResultsPlaces.map((place) => (
+                <TouchableOpacity
+                  key={place.id}
+                  style={[styles.categoryResultCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+                  onPress={() => handlePlacePress(place)}
+                  activeOpacity={0.9}
+                >
+                  <View style={styles.categoryResultCardContent}>
+                    <Text style={[styles.categoryResultName, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>{place.name}</Text>
+                    <Text style={[styles.categoryResultMeta, { color: isDark ? theme.textSecondary : '#666' }]} numberOfLines={1}>
+                      {place.category} • {place.city || place.address_line1 || 'Nearby'}
+                    </Text>
+                    
+                    {/* Signal bars */}
+                    <View style={styles.categoryResultSignals}>
+                      {getDisplaySignals(place.signals).slice(0, 2).map((signal, idx) => (
+                        <View key={idx} style={[styles.categoryResultSignalBadge, { backgroundColor: getSignalColor(signal.bucket) }]}>
+                          <Text style={styles.categoryResultSignalText} numberOfLines={1}>
+                            {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={isDark ? theme.textSecondary : '#ccc'} />
+                </TouchableOpacity>
+              ))
+            )}
+          </ScrollView>
+        )}
+
+        {/* Filter Modal */}
+        <Modal
+          visible={showFilterModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowFilterModal(false)}
+        >
+          <SafeAreaView style={[styles.filterModalContainer, { backgroundColor: isDark ? theme.background : '#fff' }]}>
+            {/* Modal Header */}
+            <View style={[styles.filterModalHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee' }]}>
+              <Text style={[styles.filterModalTitle, { color: isDark ? theme.text : '#000' }]}>Filters</Text>
+              <TouchableOpacity onPress={() => setShowFilterModal(false)} style={styles.filterModalClose}>
+                <View style={[styles.filterModalCloseCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}>
+                  <Ionicons name="close" size={20} color={isDark ? theme.text : '#000'} />
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.filterModalContent}>
+              {/* Price Range */}
+              <View style={styles.filterSection}>
+                <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Price per person</Text>
+                <View style={styles.priceRangeContainer}>
+                  <Text style={[styles.priceRangeLabel, { color: isDark ? theme.text : '#000' }]}>
+                    ${activeFilters.priceMin}–${activeFilters.priceMax}+
+                  </Text>
+                </View>
+              </View>
+
+              {/* Tap Rating */}
+              <View style={styles.filterSection}>
+                <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Tap Rating</Text>
+                <View style={styles.moreFiltersWrap}>
+                  {[
+                    { key: 'any', label: 'Any' },
+                    { key: 'mostly_positive', label: 'Mostly Positive' },
+                    { key: 'highly_rated', label: 'Highly Rated' },
+                    { key: 'trending', label: 'Trending' },
+                    { key: 'no_heads_up', label: 'No Heads Up (3mo)' },
+                  ].map((option) => (
+                    <TouchableOpacity
+                      key={option.key}
+                      style={[
+                        styles.moreFilterChip,
+                        { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0', borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.2)' : '#ddd' },
+                        activeFilters.rating === option.key && styles.moreFilterChipActive
+                      ]}
+                      onPress={() => setActiveFilters(prev => ({ ...prev, rating: option.key }))}
+                    >
+                      <Text style={[
+                        styles.moreFilterChipText,
+                        { color: isDark ? theme.text : '#333' },
+                        activeFilters.rating === option.key && styles.moreFilterChipTextActive
+                      ]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Number of Taps */}
+              <View style={styles.filterSection}>
+                <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Number of taps</Text>
+                <View style={styles.filterOptionsRow}>
+                  {['Any', '50+', '100+', '500+'].map((count) => (
+                    <TouchableOpacity
+                      key={count}
+                      style={[
+                        styles.filterOption,
+                        { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
+                        activeFilters.tapCount === count && styles.filterOptionActive
+                      ]}
+                      onPress={() => setActiveFilters(prev => ({ ...prev, tapCount: count }))}
+                    >
+                      <Text style={[
+                        styles.filterOptionText,
+                        { color: isDark ? theme.text : '#000' },
+                        activeFilters.tapCount === count && styles.filterOptionTextActive
+                      ]}>{count}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Hours */}
+              <View style={styles.filterSection}>
+                <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Hours</Text>
+                <View style={styles.filterOptionsRow}>
+                  {['Any', 'Open now', 'Custom'].map((hours) => (
+                    <TouchableOpacity
+                      key={hours}
+                      style={[
+                        styles.filterOption,
+                        { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
+                        activeFilters.hours === hours && styles.filterOptionActive
+                      ]}
+                      onPress={() => setActiveFilters(prev => ({ ...prev, hours }))}
+                    >
+                      <Text style={[
+                        styles.filterOptionText,
+                        { color: isDark ? theme.text : '#000' },
+                        activeFilters.hours === hours && styles.filterOptionTextActive
+                      ]}>{hours}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Cuisine (if applicable) */}
+              {filterConfig.cuisines && (
+                <View style={styles.filterSection}>
+                  <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Cuisine</Text>
+                  <View style={styles.cuisineGrid}>
+                    {filterConfig.cuisines.map((cuisine) => (
+                      <TouchableOpacity
+                        key={cuisine.name}
+                        style={[
+                          styles.cuisineOption,
+                          { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
+                          activeFilters.cuisine === cuisine.name && styles.cuisineOptionActive
+                        ]}
+                        onPress={() => setActiveFilters(prev => ({ ...prev, cuisine: cuisine.name }))}
+                      >
+                        {cuisine.icon && <Ionicons name={cuisine.icon as any} size={20} color={isDark ? theme.text : '#333'} />}
+                        <Text style={[
+                          styles.cuisineOptionText,
+                          { color: isDark ? theme.text : '#000' },
+                          activeFilters.cuisine === cuisine.name && styles.cuisineOptionTextActive
+                        ]}>{cuisine.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* More Filters */}
+              <View style={styles.filterSection}>
+                <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>More filters</Text>
+                <View style={styles.moreFiltersWrap}>
+                  {filterConfig.moreFilters.map((filter) => (
+                    <TouchableOpacity
+                      key={filter}
+                      style={[
+                        styles.moreFilterChip,
+                        { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
+                        activeFilters.moreFilters.includes(filter) && styles.moreFilterChipActive
+                      ]}
+                      onPress={() => toggleMoreFilter(filter)}
+                    >
+                      <Text style={[
+                        styles.moreFilterChipText,
+                        { color: isDark ? theme.text : '#000' },
+                        activeFilters.moreFilters.includes(filter) && styles.moreFilterChipTextActive
+                      ]}>{filter}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </ScrollView>
+
+            {/* Bottom Buttons */}
+            <View style={[styles.filterModalButtons, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee' }]}>
+              <TouchableOpacity style={[styles.filterClearBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e8f4f8' }]} onPress={clearFilters}>
+                <Text style={[styles.filterClearBtnText, { color: '#0A84FF' }]}>Clear</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.filterApplyBtn} onPress={applyFilters}>
+                <Text style={styles.filterApplyBtnText}>Apply</Text>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
+    );
+  }
+
+  return viewMode === 'standard' ? renderStandardMode() : renderMapMode();
 }
 
 // ============================================
@@ -2196,118 +2521,302 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   
-  // Content Mode
-  contentModeContainer: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  mapPeekContainer: {
-    height: MAP_PEEK_HEIGHT,
-    overflow: 'hidden',
-  },
-  mapPeek: {
+  // Safe Area & Scroll
+  safe: { 
     flex: 1,
   },
-  mapPeekOverlay: {
-    position: 'absolute',
-    bottom: 8,
-    alignSelf: 'center',
+  scrollContent: {
+    paddingBottom: 18,
+  },
+
+  // Segmented Control - Moved higher
+  segmentWrap: {
+    paddingHorizontal: 18,
+    marginTop: 8, // Reduced from 28 to save space
+    marginBottom: 10,
+  },
+  segment: {
+    height: 44,
+    borderRadius: 18,
     flexDirection: 'row',
+    padding: 4,
+    borderWidth: 1,
+  },
+  segmentItem: {
+    flex: 1,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 16,
+  },
+  segmentItemActive: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: Platform.OS === 'ios' ? 0.15 : 0.0,
+    shadowRadius: 12,
+    elevation: 2,
   },
-  mapPeekText: {
-    color: '#333',
-    fontSize: 13,
-    fontWeight: '500',
-    marginLeft: 6,
-  },
-  contentArea: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: -20,
-    paddingTop: 20,
-  },
-  contentHeader: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  logoContainer: {
-  width: '100%',
-  alignItems: 'center',
-  justifyContent: 'center',
-  marginBottom: 8,
-},
-
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  headerLogo: {
-    // UPDATED: Full horizontal logo instead of icon
-    width: 190,
-    height: 60,
-    // borderRadius removed for horizontal logo
-  },
-  greetingText: {
+  segmentText: {
     fontSize: 14,
-    color: '#8E8E93',
-    marginBottom: 4,
-  },
-  titleText: {
-    fontSize: 28,
     fontWeight: '700',
-    color: '#000',
-    marginBottom: 8,
   },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+
+  // Title - Smaller for smaller screens
+  title: {
+    paddingHorizontal: 18,
+    marginTop: 6,
+    marginBottom: 14,
+    fontSize: 26, // Further reduced for smaller screens
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    lineHeight: 30,
   },
-  locationText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-  },
-  
+
   // Search
   searchWrapper: {
     position: 'relative',
     zIndex: 1000,
-    marginHorizontal: 20,
+    marginHorizontal: 18,
     marginBottom: 16,
   },
-  contentSearchBar: {
+  searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
-    borderRadius: 12,
+    height: 52, // Slightly reduced
+    borderRadius: 16,
+    borderWidth: 1,
     paddingHorizontal: 16,
-    paddingVertical: 12,
   },
-  contentSearchBarFocused: {
-    backgroundColor: '#fff',
+  searchWrapFocused: {
     borderWidth: 2,
     borderColor: '#0A84FF',
   },
-  contentSearchInput: {
+  searchInput: {
     flex: 1,
-    marginLeft: 8,
     fontSize: 16,
-    color: '#000',
+    fontWeight: '500',
   },
-  
+
+  // Categories - Text only, rounded pills
+  categoriesRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 18,
+    marginTop: 8,
+    gap: 8,
+  },
+  catPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 6, // Skinnier
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // Hint
+  hint: {
+    paddingHorizontal: 18,
+    marginTop: 12,
+    marginBottom: 14,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  // Section Header
+  sectionHeader: {
+    paddingHorizontal: 18,
+    marginTop: 8,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+  },
+  sectionTitle: {
+    fontSize: 22, // Further reduced
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  seeAll: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
+  // Trending Scroll
+  trendingScroll: {
+    paddingLeft: 18,
+    paddingRight: 10,
+    paddingBottom: 6,
+  },
+
+  // Preview Card
+  previewCard: {
+    borderRadius: 20,
+    marginRight: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 5,
+  },
+  previewImage: {
+    height: 160,
+    width: '100%',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+  },
+  previewImageRadius: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  placeName: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.3,
+  },
+  placeMeta: {
+    marginTop: 2,
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
+  },
+
+  // Actions Row
+  actionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  actionBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '24%',
+  },
+  actionBtnText: {
+    marginTop: 3,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+
+  // Signals Grid - Skinnier badges with x89 OUTSIDE on top-right
+  signalsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 10,
+    paddingBottom: 12,
+    gap: 6,
+  },
+  signalBadgeWrapper: {
+    width: '48%',
+    position: 'relative',
+  },
+  signalBadge: {
+    borderRadius: 10,
+    paddingVertical: 6, // Skinnier
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 32, // Skinnier
+  },
+  signalLabel: {
+    flex: 1,
+    fontSize: 11, // Smaller font for full text
+    fontWeight: '700',
+    color: '#111',
+  },
+  signalLabelEmpty: {
+    fontWeight: '500',
+    fontStyle: 'italic',
+    color: '#666',
+    fontSize: 10,
+  },
+  signalCount: {
+    position: 'absolute',
+    top: -6,
+    right: -4,
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#fff',
+    backgroundColor: '#333',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+
+  // Explore Section
+  exploreSection: {
+    paddingHorizontal: 18,
+    marginTop: 20,
+    marginBottom: 16,
+  },
+  exploreGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  exploreItem: {
+    width: (width - 56) / 3,
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  exploreIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  exploreText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  // Did You Know
+  didYouKnowSection: {
+    paddingHorizontal: 18,
+    marginTop: 8,
+  },
+  didYouKnowCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 16,
+    borderRadius: 16,
+  },
+  didYouKnowIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 214, 10, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  didYouKnowContent: {
+    flex: 1,
+  },
+  didYouKnowTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  didYouKnowText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+
   // Search Suggestions
   suggestionsContainer: {
     position: 'absolute',
@@ -2363,178 +2872,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   suggestionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
-    color: '#000',
   },
   suggestionSubtitle: {
     fontSize: 13,
-    color: '#8E8E93',
     marginTop: 2,
   },
-  
-  // Categories
-  categoryScrollView: {
-    marginBottom: 16,
-    maxHeight: 50,
-  },
-  categoryScrollContent: {
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F2F2F7',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-    height: 36,
-  },
-  categoryChipActive: {
-    backgroundColor: '#0A84FF',
-  },
-  categoryChipText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  categoryChipTextActive: {
-    color: '#fff',
-  },
-  contentScrollView: {
-    flex: 1,
-  },
-  contentSection: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#000',
-    marginBottom: 12,
-  },
-  seeAllText: {
-    fontSize: 14,
-    color: '#0A84FF',
-    fontWeight: '500',
-  },
-  recentSearchesRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  recentSearchChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F2F2F7',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-  },
-  recentSearchText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 6,
-  },
-  trendingScrollContent: {
-    paddingRight: 20,
-  },
-  trendingCard: {
-    width: 160,
-    marginRight: 12,
-  },
-  trendingImage: {
-    width: 160,
-    height: 120,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  trendingName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 2,
-  },
-  trendingCategory: {
-    fontSize: 13,
-    color: '#8E8E93',
-    marginBottom: 4,
-  },
-  trendingSignalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  trendingSignalText: {
-    fontSize: 12,
-    color: '#0A84FF',
-    marginLeft: 4,
-  },
-  exploreGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  exploreItem: {
-    width: (width - 52) / 3,
-    alignItems: 'center',
-    paddingVertical: 16,
-    backgroundColor: '#F2F2F7',
-    borderRadius: 12,
-  },
-  exploreIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#E8F4FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  exploreText: {
-    fontSize: 13,
-    color: '#000',
-    fontWeight: '500',
-  },
-  didYouKnowCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFBEB',
-    borderRadius: 16,
-    padding: 16,
-  },
-  didYouKnowIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFF3CD',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  didYouKnowContent: {
-    flex: 1,
-  },
-  didYouKnowTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 4,
-  },
-  didYouKnowText: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-  
+
   // Map Mode
   mapModeContainer: {
     flex: 1,
@@ -2544,39 +2889,38 @@ const styles = StyleSheet.create({
   },
   mapSearchOverlay: {
     position: 'absolute',
-    top: 60,
+    top: Platform.OS === 'ios' ? 60 : 20,
     left: 16,
     right: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    zIndex: 10,
   },
   backButton: {
-    width: 100,
-    height: 32,
+    width: 44,
+    height: 44,
     borderRadius: 22,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    justifyContent: 'center',
+    marginRight: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
   },
   mapSearchBar: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 24,
+    height: 44,
+    borderRadius: 22,
     paddingHorizontal: 16,
-    paddingVertical: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
   },
   mapSearchBarWithAddress: {
     borderWidth: 2,
@@ -2586,13 +2930,13 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 8,
     fontSize: 16,
-    color: '#000',
   },
   mapCategoryOverlay: {
     position: 'absolute',
-    top: 120,
+    top: Platform.OS === 'ios' ? 116 : 76,
     left: 0,
     right: 0,
+    zIndex: 10,
   },
   mapCategoryContent: {
     paddingHorizontal: 16,
@@ -2600,108 +2944,64 @@ const styles = StyleSheet.create({
   mapCategoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    marginRight: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   mapCategoryChipActive: {
     backgroundColor: '#0A84FF',
   },
   mapCategoryChipText: {
     fontSize: 13,
-    color: '#666',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   mapCategoryChipTextActive: {
     color: '#fff',
   },
-  
-  // Map markers
-  markerContainer: {
-    alignItems: 'center',
-  },
-  marker: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 5,
-  },
-  userLocationMarker: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 122, 255, 0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  userLocationDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#4285F4',
-    borderWidth: 3,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 4,
-  },
-  targetLocationMarker: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  
+
   // Bottom Sheet
   bottomSheetBackground: {
-    backgroundColor: '#F2F2F7',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 10,
   },
   bottomSheetHandle: {
-    backgroundColor: '#C7C7CC',
-    width: 36,
-    height: 5,
+    width: 40,
+    height: 4,
+    borderRadius: 2,
   },
   bottomSheetContent: {
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 100,
+    paddingBottom: 20,
   },
-  
-  // Place Card
+
+  // Place Card (for bottom sheet)
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
+    borderRadius: 16,
     marginBottom: 16,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowRadius: 12,
+    elevation: 4,
   },
   carouselContainer: {
     height: 180,
     position: 'relative',
   },
   carouselImage: {
-    width: width - 32,
+    width: width - 48,
     height: 180,
   },
   photo: {
@@ -2709,17 +3009,21 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   placeholderPhoto: {
+    width: '100%',
+    height: '100%',
     backgroundColor: '#F2F2F7',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   photoGradientOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 16,
-    paddingTop: 40,
+    height: 80,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   overlayPlaceName: {
     fontSize: 20,
@@ -2728,12 +3032,12 @@ const styles = StyleSheet.create({
   },
   overlayPlaceAddress: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.9)',
     marginTop: 2,
   },
   dotsContainer: {
     position: 'absolute',
-    bottom: 60,
+    bottom: 8,
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -2751,192 +3055,108 @@ const styles = StyleSheet.create({
   dotInactive: {
     backgroundColor: 'rgba(255,255,255,0.5)',
   },
+
+  // Signals Container (for bottom sheet cards)
   signalsContainer: {
     padding: 12,
+    paddingTop: 16, // Extra space for x89 badges
     gap: 8,
   },
   signalsRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 8,
+  },
+  signalPillWrapper: {
+    flex: 1,
+    position: 'relative',
   },
   signalPill: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 6, // Skinnier
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    minHeight: 32, // Skinnier
   },
   signalText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
+    flex: 1,
+    fontSize: 11, // Smaller for full text
+    fontWeight: '700',
+    color: '#111',
   },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-  },
-  metaText: {
-    fontSize: 14,
+  signalTextEmpty: {
+    fontWeight: '500',
+    fontStyle: 'italic',
     color: '#666',
+    fontSize: 10,
   },
-  metaDot: {
-    fontSize: 14,
-    color: '#C7C7CC',
-    marginHorizontal: 8,
+  signalTapCount: {
+    position: 'absolute',
+    top: -8,
+    right: -2,
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#fff',
+    backgroundColor: '#333',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
-  actionRow: {
+
+  // Quick Actions (for bottom sheet cards)
+  quickActions: {
     flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: '#F2F2F7',
   },
   actionButton: {
-    flex: 1,
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingHorizontal: 12,
   },
   actionText: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 11,
     marginTop: 4,
-  },
-  
-  // Address Card Styles
-  addressCardScrollView: {
-    flex: 1,
-  },
-  addressCardContainer: {
-    padding: 20,
-  },
-  addressCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 20,
-  },
-  addressIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#F3E8FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  addressTextContainer: {
-    flex: 1,
-  },
-  addressCardTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#000',
-    marginBottom: 4,
-  },
-  addressCardSubtitle: {
-    fontSize: 15,
-    color: '#666',
-    marginBottom: 2,
-  },
-  addressDistance: {
-    fontSize: 14,
-    color: '#0A84FF',
     fontWeight: '500',
   },
-  addressActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  addressActionButton: {
+
+  // Map Markers
+  markerContainer: {
     alignItems: 'center',
-    flex: 1,
   },
-  addressActionIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  addressActionText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
-  },
-  saveLocationButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F2F2F7',
-    paddingVertical: 14,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  saveLocationText: {
-    fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  nearbySection: {
-    marginBottom: 20,
-  },
-  nearbySectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 12,
-  },
-  nearbyPlaceItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
-  },
-  nearbyPlaceIcon: {
+  marker: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F2F2F7',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  nearbyPlaceInfo: {
-    flex: 1,
-  },
-  nearbyPlaceName: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#000',
-  },
-  nearbyPlaceCategory: {
-    fontSize: 13,
-    color: '#666',
-  },
-  fullAddressSection: {
-    backgroundColor: '#F9F9F9',
-    padding: 14,
+  userLocationMarker: {
+    width: 24,
+    height: 24,
     borderRadius: 12,
+    backgroundColor: 'rgba(0, 122, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  fullAddressLabel: {
-    fontSize: 12,
-    color: '#8E8E93',
-    fontWeight: '500',
-    marginBottom: 4,
-    textTransform: 'uppercase',
+  userLocationDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#007AFF',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
-  fullAddressText: {
-    fontSize: 14,
-    color: '#333',
-    lineHeight: 20,
+  targetLocationMarker: {
+    alignItems: 'center',
   },
-  
-  // Parking Marker Styles
   parkingMarker: {
     alignItems: 'center',
   },
@@ -2964,54 +3184,397 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
   },
-  
-  // Insights Section Styles
-  insightsSection: {
-    paddingHorizontal: 20,
+
+  // Address Card
+  addressCardScrollView: {
+    flex: 1,
+  },
+  addressCardContainer: {
+    padding: 20,
+  },
+  addressCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     marginBottom: 20,
   },
-  insightCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-  },
-  insightIconContainer: {
-    width: 100,
-    height: 32,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.8)',
+  addressIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#F3E8FF',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
   },
-  insightTextContainer: {
+  addressTextContainer: {
     flex: 1,
   },
-  insightTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
+  addressCardTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  addressCardSubtitle: {
+    fontSize: 15,
     marginBottom: 2,
   },
-  insightSubtitle: {
-    fontSize: 13,
-    color: '#666',
+  addressDistance: {
+    fontSize: 14,
+    color: '#0A84FF',
+    fontWeight: '500',
   },
-  insightDotsContainer: {
+  addressActionsRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  addressActionButton: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  addressActionIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
+    marginBottom: 6,
   },
-  insightDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#D1D1D6',
-    marginHorizontal: 4,
+  addressActionText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
-  insightDotActive: {
-    backgroundColor: '#007AFF',
-    width: 18,
+  saveLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  saveLocationText: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  nearbySection: {
+    marginBottom: 20,
+  },
+  nearbySectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  nearbyPlaceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+  },
+  nearbyPlaceIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  nearbyPlaceInfo: {
+    flex: 1,
+  },
+  nearbyPlaceName: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  nearbyPlaceCategory: {
+    fontSize: 13,
+  },
+  fullAddressSection: {
+    padding: 14,
+    borderRadius: 12,
+  },
+  fullAddressLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  fullAddressText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+
+  // Category Results View
+  categoryResultsHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  categoryResultsTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  categoryResultsTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  categoryResultsClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickFiltersRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingRight: 20,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 4,
+  },
+  filterChipActive: {
+    backgroundColor: '#0F1233',
+  },
+  filterChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  categoryResultsLoading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 100,
+  },
+  categoryResultsList: {
+    padding: 16,
+    gap: 12,
+  },
+  noResultsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 80,
+    paddingHorizontal: 40,
+  },
+  noResultsText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  noResultsSubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  categoryResultCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  categoryResultCardContent: {
+    flex: 1,
+  },
+  categoryResultName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  categoryResultMeta: {
+    fontSize: 13,
+    marginBottom: 8,
+  },
+  categoryResultSignals: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  categoryResultSignalBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  categoryResultSignalText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#333',
+  },
+
+  // Filter Modal
+  filterModalContainer: {
+    flex: 1,
+  },
+  filterModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  filterModalTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  filterModalClose: {
+    padding: 4,
+  },
+  filterModalCloseCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterModalContent: {
+    padding: 20,
+    paddingBottom: 100,
+  },
+  filterSection: {
+    marginBottom: 28,
+  },
+  filterSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  priceRangeContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  priceRangeLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  filterOptionsRow: {
+    flexDirection: 'row',
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  filterOption: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRightWidth: 1,
+    borderRightColor: '#ddd',
+  },
+  filterOptionActive: {
+    backgroundColor: '#e8e8e8',
+  },
+  filterOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  filterOptionTextActive: {
+    fontWeight: '700',
+  },
+  cuisineGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  cuisineOption: {
+    width: '25%',
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#ddd',
+  },
+  cuisineOptionActive: {
+    backgroundColor: '#e8e8e8',
+  },
+  cuisineOptionText: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  cuisineOptionTextActive: {
+    fontWeight: '700',
+  },
+  moreFiltersWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  moreFilterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  moreFilterChipActive: {
+    backgroundColor: '#0F1233',
+  },
+  moreFilterChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  moreFilterChipTextActive: {
+    color: '#fff',
+  },
+  filterModalButtons: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    padding: 16,
+    gap: 12,
+    borderTopWidth: 1,
+    backgroundColor: '#fff',
+  },
+  filterClearBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterClearBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  filterApplyBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0F8A8A',
+  },
+  filterApplyBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
