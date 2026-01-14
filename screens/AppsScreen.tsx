@@ -3,11 +3,10 @@
  * Tools & shortcuts dashboard
  * Path: screens/AppsScreen.tsx
  *
- * UPDATED:
- * - Added full-width header banner (#0f1233) that extends to the top
- * - Toggle moved 1 line ABOVE the logo, aligned right (prevents clipping)
- * - Keeps logo switching for light/dark
- * - Keeps ThemeToggle
+ * FIXED:
+ * - Toggle now matches HomeScreen's Standard/Map toggle EXACTLY (full-width, dark navy active, no icons)
+ * - Header banner extends to the very top of the screen (no SafeAreaView gap)
+ * - All app tiles preserved (Universes, Rides, RV & Camping, Atlas, Pros, etc.)
  */
 
 import React from 'react';
@@ -18,13 +17,16 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  Platform,
+  StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
-import ThemeToggle from '../components/ThemeToggle';
+
+// Match HomeScreen's ACCENT color exactly
+const ACCENT = '#0F1233';
 
 interface AppTile {
   id: string;
@@ -50,39 +52,49 @@ const APP_TILES: AppTile[] = [
     route: 'Home',
   },
   {
-    id: 'paths',
-    name: 'Paths',
-    icon: 'sign-direction',
-    iconType: 'material',
-    backgroundColor: '#EDE9FE',
-    backgroundColorDark: '#4C1D95',
-    iconColor: '#8B5CF6',
-    route: 'Explore',
+    id: 'universes',
+    name: 'Universes',
+    icon: 'planet',
+    iconType: 'ionicons',
+    backgroundColor: '#CCFBF1',
+    backgroundColorDark: '#134E4A',
+    iconColor: '#14B8A6',
+    route: 'Universes',
   },
   {
-    id: 'happening',
-    name: 'Happening',
-    icon: 'sparkles',
+    id: 'rides',
+    name: 'Rides',
+    icon: 'train',
     iconType: 'ionicons',
-    backgroundColor: '#FCE7F3',
-    backgroundColorDark: '#831843',
-    iconColor: '#EC4899',
-    route: 'Home',
+    backgroundColor: '#FEE2E2',
+    backgroundColorDark: '#7F1D1D',
+    iconColor: '#EF4444',
+    route: 'RidesBrowse',
   },
   {
-    id: 'map-lens',
-    name: 'Map Lens',
-    icon: 'scan-circle-outline',
+    id: 'rv-camping',
+    name: 'RV & Camping',
+    icon: 'bonfire',
     iconType: 'ionicons',
-    backgroundColor: '#D1FAE5',
-    backgroundColorDark: '#064E3B',
-    iconColor: '#10B981',
-    route: 'Home',
+    backgroundColor: '#FED7AA',
+    backgroundColorDark: '#7C2D12',
+    iconColor: '#EA580C',
+    route: 'RVCampingBrowse',
+  },
+  {
+    id: 'atlas',
+    name: 'Atlas',
+    icon: 'book',
+    iconType: 'ionicons',
+    backgroundColor: '#E0E7FF',
+    backgroundColorDark: '#312E81',
+    iconColor: '#4F46E5',
+    route: 'Atlas',
   },
   {
     id: 'pros',
     name: 'Pros',
-    icon: 'briefcase',
+    icon: 'construct',
     iconType: 'ionicons',
     backgroundColor: '#DBEAFE',
     backgroundColorDark: '#1E3A8A',
@@ -92,21 +104,21 @@ const APP_TILES: AppTile[] = [
   {
     id: 'saved',
     name: 'Saved',
-    icon: 'bookmark',
+    icon: 'heart',
     iconType: 'ionicons',
-    backgroundColor: '#FEE2E2',
-    backgroundColorDark: '#7F1D1D',
-    iconColor: '#EF4444',
+    backgroundColor: '#FCE7F3',
+    backgroundColorDark: '#831843',
+    iconColor: '#EC4899',
     route: 'Saved',
   },
   {
     id: 'account',
     name: 'Account',
-    icon: 'person-circle-outline',
+    icon: 'person',
     iconType: 'ionicons',
     backgroundColor: '#E5E7EB',
     backgroundColorDark: '#374151',
-    iconColor: '#374151',
+    iconColor: '#6B7280',
     route: 'Profile',
   },
   {
@@ -124,7 +136,7 @@ const APP_TILES: AppTile[] = [
 export default function AppsScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
-  const { theme, themeMode, isDark, setThemeMode } = useThemeContext();
+  const { theme, isDark, setThemeMode } = useThemeContext();
 
   const handleTilePress = (tile: AppTile) => {
     if (tile.route) {
@@ -138,10 +150,6 @@ export default function AppsScreen() {
 
   const handleProLogin = () => {
     navigation.navigate('Pros', { screen: 'ProsRegistration' });
-  };
-
-  const handleThemeChange = (mode: 'light' | 'dark' | 'system') => {
-    setThemeMode(mode);
   };
 
   const renderIcon = (tile: AppTile, size: number = 28) => {
@@ -199,36 +207,50 @@ export default function AppsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, dynamicStyles.container]} edges={['top']}>
+    <View style={[styles.container, dynamicStyles.container]}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* HEADER BANNER - Extends to very top of screen */}
+      <View style={styles.headerBanner}>
+        {/* Toggle - EXACTLY matching HomeScreen style (full-width, no icons) */}
+        <View style={styles.segmentWrap}>
+          <View style={[styles.segment, { 
+            borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,18,51,0.12)', 
+            backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.65)' 
+          }]}>
+            <TouchableOpacity
+              style={[styles.segmentItem, !isDark && [styles.segmentItemActive, { backgroundColor: ACCENT }]]}
+              onPress={() => setThemeMode('light')}
+              activeOpacity={0.9}
+            >
+              <Text style={[styles.segmentText, { color: !isDark ? '#fff' : (isDark ? theme.textSecondary : '#6B6B6B') }]}>Light</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.segmentItem, isDark && [styles.segmentItemActive, { backgroundColor: ACCENT }]]}
+              onPress={() => setThemeMode('dark')}
+              activeOpacity={0.9}
+            >
+              <Text style={[styles.segmentText, { color: isDark ? '#fff' : (isDark ? theme.textSecondary : '#6B6B6B') }]}>Dark</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Logo Row */}
+        <View style={styles.logoRow}>
+          <Image
+            source={require('../assets/brand/logo-horizontal.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
+        </View>
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* HEADER BANNER (FULL WIDTH) */}
-        <View style={styles.headerBanner}>
-          {/* Toggle Row (1 line ABOVE logo, aligned right) */}
-          <View style={styles.toggleRow}>
-            <ThemeToggle
-              currentMode={themeMode}
-              onModeChange={handleThemeChange}
-            />
-          </View>
-
-          {/* Logo Row */}
-          <View style={styles.logoRow}>
-            <Image
-              source={
-                isDark
-                  ? require('../assets/brand/logo-horizontal.png')
-                  : require('../assets/brand/logo-horizontal.png')
-              }
-              style={styles.headerLogo}
-              resizeMode="contain"
-            />
-          </View>
-        </View>
-
         {/* Title Section */}
         <View style={styles.header}>
           <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>Apps</Text>
@@ -283,7 +305,7 @@ export default function AppsScreen() {
         {/* Coming Soon */}
         <Text style={[styles.comingSoon, dynamicStyles.comingSoon]}>More tools coming soon</Text>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -299,36 +321,61 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
 
-  // Header banner background
+  // Header banner - extends to the very top of the screen
   headerBanner: {
     backgroundColor: '#0f1233',
-    paddingTop: 14,
-    paddingBottom: 10,
+    // Use platform-specific padding to account for status bar
+    paddingTop: Platform.OS === 'ios' ? 60 : (StatusBar.currentHeight || 24) + 16,
+    paddingBottom: 20,
   },
 
-  // Toggle row above logo (right aligned)
-  toggleRow: {
+  // Segment wrap - EXACTLY matching HomeScreen style
+  segmentWrap: {
+    paddingHorizontal: 18,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+
+  // Segment control - EXACTLY matching HomeScreen style
+  segment: {
+    height: 44,
+    borderRadius: 18,
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 20,
-    paddingBottom: 10,
+    padding: 4,
+    borderWidth: 1,
+  },
+  segmentItem: {
+    flex: 1,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentItemActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: Platform.OS === 'ios' ? 0.15 : 0.0,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  segmentText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 
-  // Logo row below toggle
+  // Logo row
   logoRow: {
-    paddingHorizontal: 20,
-    paddingTop: 2,
-    paddingBottom: 8,
+    paddingHorizontal: 18,
+    alignItems: 'flex-start',
   },
 
   headerLogo: {
-    width: 200,
-    height: 60,
+    width: 180,
+    height: 54,
   },
 
   header: {
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 16,
     paddingBottom: 20,
   },
   headerTitle: {
