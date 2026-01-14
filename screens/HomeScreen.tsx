@@ -28,6 +28,7 @@ import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThemeContext } from '../contexts/ThemeContext';
+import SignalBar, { getSignalTypeFromBucket, SIGNAL_COLORS } from '../components/SignalBar';
 
 const { width, height } = Dimensions.get('window');
 
@@ -570,10 +571,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
       console.log(`Fetching places near [${centerLng}, ${centerLat}]`);
 
-      // Query from both fsq_places_raw (Foursquare) and tavvy_places (user-added)
-      
-      // 1. Fetch from Foursquare data
-      const { data: fsqPlacesData, error: fsqError } = await supabase
+      // Query from fsq_places_raw - the main Foursquare data table
+      const { data: placesData, error: placesError } = await supabase
         .from('fsq_places_raw')
         .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, postcode, tel, website, email, instagram, facebook_id, twitter, fsq_category_ids, fsq_category_labels, date_created, date_refreshed, date_closed')
         .gte('latitude', minLat)
@@ -581,34 +580,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         .gte('longitude', minLng)
         .lte('longitude', maxLng)
         .is('date_closed', null)
-        .limit(150);
-      
-      // 2. Fetch from user-added places
-      const { data: tavvyPlacesData, error: tavvyError } = await supabase
-        .from('tavvy_places')
-        .select('id, name, latitude, longitude, address, city, region, country, postcode, phone, website, email, instagram, facebook, twitter, tavvy_category, tavvy_subcategory, photos, cover_image_url, created_at')
-        .gte('latitude', minLat)
-        .lte('latitude', maxLat)
-        .gte('longitude', minLng)
-        .lte('longitude', maxLng)
-        .eq('is_deleted', false)
-        .limit(50);
-      
-      // Combine both sources
-      const fsqPlaces = (fsqPlacesData || []).map(p => ({ ...p, source: 'foursquare' }));
-      const tavvyPlaces = (tavvyPlacesData || []).map(p => ({ 
-        ...p, 
-        source: 'user',
-        fsq_place_id: p.id, // Use id as the identifier
-        locality: p.city,
-        tel: p.phone,
-        fsq_category_labels: [p.tavvy_subcategory || p.tavvy_category || 'Other']
-      }));
-      
-      const placesData = [...fsqPlaces, ...tavvyPlaces];
-      const placesError = fsqError || tavvyError;
-      
-      console.log(`Fetched ${fsqPlaces.length} Foursquare places, ${tavvyPlaces.length} user-added places`);
+        .limit(200);
 
       if (placesError) {
         console.warn('Supabase error:', placesError);
@@ -1234,16 +1206,15 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const getSignalColor = (bucket: string) => {
     const type = getSignalType(bucket);
-    if (type === 'positive') return '#D9ECFF';
-    if (type === 'negative') return '#FBE6C8';
-    return '#EADCFB';
+    // Match PlaceDetailsScreen colors: Blue/Gray/Orange
+    if (type === 'positive') return '#0A84FF';  // Blue - The Good
+    if (type === 'negative') return '#FF9500';  // Orange - Heads Up
+    return '#8E8E93';  // Gray - The Vibe
   };
 
   const getSignalIconColor = (bucket: string) => {
-    const type = getSignalType(bucket);
-    if (type === 'positive') return '#1E78FF';
-    if (type === 'negative') return '#F58A07';
-    return '#7A3DF0';
+    // White icons for solid colored backgrounds
+    return '#FFFFFF';
   };
 
   const getSignalIcon = (bucket: string): string => {
@@ -1563,9 +1534,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         {nearbyPlaces.length > 0 && (
           <View style={styles.nearbySection}>
             <Text style={[styles.nearbySectionTitle, { color: isDark ? theme.text : '#000' }]}>Nearby on TavvY</Text>
-            {nearbyPlaces.map((place) => (
+            {nearbyPlaces.map((place, nearbyIndex) => (
               <TouchableOpacity
-                key={place.id}
+                key={`nearby-${place.id}-${nearbyIndex}`}
                 style={styles.nearbyPlaceItem}
                 onPress={() => handlePlacePress(place)}
               >
@@ -1677,50 +1648,38 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           placeAddress={fullAddress}
         />
         
-        {/* Signals - Always show with fallbacks for empty categories */}
+        {/* Signals - 2x2 Grid using universal SignalBar component */}
         <View style={styles.signalsContainer}>
+          {/* Row 1: Two "The Good" signals */}
           <View style={styles.signalsRow}>
             {getDisplaySignals(place.signals).slice(0, 2).map((signal, index) => (
-              <View key={index} style={styles.signalPillWrapper}>
-                <View style={[styles.signalPill, { backgroundColor: getSignalColor(signal.bucket) }]}>
-                  <Ionicons 
-                    name={getSignalIcon(signal.bucket) as any} 
-                    size={12} 
-                    color={getSignalIconColor(signal.bucket)} 
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text style={[styles.signalText, signal.isEmpty && styles.signalTextEmpty]} numberOfLines={1}>
-                    {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
-                  </Text>
-                </View>
-                {!signal.isEmpty && (
-                  <Text style={styles.signalTapCount}>x{signal.tap_total}</Text>
-                )}
+              <View key={`good-${index}`} style={styles.signalGridItem}>
+                <SignalBar
+                  label={signal.bucket}
+                  tapCount={signal.tap_total}
+                  type={getSignalTypeFromBucket(signal.bucket)}
+                  size="compact"
+                  isEmpty={signal.isEmpty}
+                  emptyText={getEmptySignalText(signal.bucket)}
+                />
               </View>
             ))}
           </View>
-          {getDisplaySignals(place.signals).length > 2 && (
-            <View style={styles.signalsRow}>
-              {getDisplaySignals(place.signals).slice(2, 4).map((signal, index) => (
-                <View key={index} style={styles.signalPillWrapper}>
-                  <View style={[styles.signalPill, { backgroundColor: getSignalColor(signal.bucket) }]}>
-                    <Ionicons 
-                      name={getSignalIcon(signal.bucket) as any} 
-                      size={12} 
-                      color={getSignalIconColor(signal.bucket)} 
-                      style={{ marginRight: 4 }}
-                    />
-                    <Text style={[styles.signalText, signal.isEmpty && styles.signalTextEmpty]} numberOfLines={1}>
-                      {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
-                    </Text>
-                  </View>
-                  {!signal.isEmpty && (
-                    <Text style={styles.signalTapCount}>x{signal.tap_total}</Text>
-                  )}
-                </View>
-              ))}
-            </View>
-          )}
+          {/* Row 2: One "The Vibe" + One "Heads Up" */}
+          <View style={styles.signalsRow}>
+            {getDisplaySignals(place.signals).slice(2, 4).map((signal, index) => (
+              <View key={`other-${index}`} style={styles.signalGridItem}>
+                <SignalBar
+                  label={signal.bucket}
+                  tapCount={signal.tap_total}
+                  type={getSignalTypeFromBucket(signal.bucket)}
+                  size="compact"
+                  isEmpty={signal.isEmpty}
+                  emptyText={getEmptySignalText(signal.bucket)}
+                />
+              </View>
+            ))}
+          </View>
         </View>
         
         {/* Quick Actions */}
@@ -1875,9 +1834,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               showsHorizontalScrollIndicator={false} 
               contentContainerStyle={styles.trendingScroll}
             >
-              {filteredPlaces.slice(0, 10).map((place) => (
+              {filteredPlaces.slice(0, 10).map((place, placeIndex) => (
                 <TouchableOpacity
-                  key={place.id}
+                  key={`trending-${place.id}-${placeIndex}`}
                   onPress={() => handlePlacePress(place)}
                   activeOpacity={0.92}
                   style={[styles.previewCard, { width: cardWidth, backgroundColor: isDark ? theme.surface : '#fff' }]}
@@ -1917,26 +1876,38 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                     </TouchableOpacity>
                   </View>
 
-                  {/* Signals Grid - Always show with fallbacks for empty categories */}
+                  {/* Signals Grid - 2x2 using universal SignalBar component */}
                   <View style={[styles.signalsGrid, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-                    {getDisplaySignals(place.signals).map((signal, idx) => (
-                      <View key={`${place.id}-sig-${idx}`} style={styles.signalBadgeWrapper}>
-                        <View style={[styles.signalBadge, { backgroundColor: getSignalColor(signal.bucket) }]}>
-                          <Ionicons 
-                            name={getSignalIcon(signal.bucket) as any} 
-                            size={12} 
-                            color={getSignalIconColor(signal.bucket)} 
-                            style={{ marginRight: 4 }}
+                    {/* Row 1: Two "The Good" signals */}
+                    <View style={styles.signalsRow}>
+                      {getDisplaySignals(place.signals).slice(0, 2).map((signal, idx) => (
+                        <View key={`${place.id}-good-${idx}`} style={styles.signalGridItem}>
+                          <SignalBar
+                            label={signal.bucket}
+                            tapCount={signal.tap_total}
+                            type={getSignalTypeFromBucket(signal.bucket)}
+                            size="compact"
+                            isEmpty={signal.isEmpty}
+                            emptyText={getEmptySignalText(signal.bucket)}
                           />
-                          <Text style={[styles.signalLabel, signal.isEmpty && styles.signalLabelEmpty]} numberOfLines={1}>
-                            {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
-                          </Text>
                         </View>
-                        {!signal.isEmpty && (
-                          <Text style={styles.signalCount}>x{signal.tap_total}</Text>
-                        )}
-                      </View>
-                    ))}
+                      ))}
+                    </View>
+                    {/* Row 2: One "The Vibe" + One "Heads Up" */}
+                    <View style={styles.signalsRow}>
+                      {getDisplaySignals(place.signals).slice(2, 4).map((signal, idx) => (
+                        <View key={`${place.id}-other-${idx}`} style={styles.signalGridItem}>
+                          <SignalBar
+                            label={signal.bucket}
+                            tapCount={signal.tap_total}
+                            type={getSignalTypeFromBucket(signal.bucket)}
+                            size="compact"
+                            isEmpty={signal.isEmpty}
+                            emptyText={getEmptySignalText(signal.bucket)}
+                          />
+                        </View>
+                      ))}
+                    </View>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -2099,9 +2070,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                    !isNaN(lon) && !isNaN(lat) && 
                    lon !== 0 && lat !== 0;
           })
-          .map((place) => (
+          .map((place, mapIndex) => (
           <MapLibreGL.PointAnnotation
-            key={place.id}
+            key={`map-${place.id}-${mapIndex}`}
             id={place.id}
             coordinate={[place.longitude || place.lng, place.latitude || place.lat]}
             onSelected={() => handleMarkerPress(place)}
@@ -2322,9 +2293,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 <Text style={[styles.noResultsSubtext, { color: isDark ? theme.textSecondary : '#999' }]}>Try adjusting your filters or search in a different area</Text>
               </View>
             ) : (
-              categoryResultsPlaces.map((place) => (
+              categoryResultsPlaces.map((place, catIndex) => (
                 <TouchableOpacity
-                  key={place.id}
+                  key={`category-${place.id}-${catIndex}`}
                   style={[styles.categoryResultCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
                   onPress={() => handlePlacePress(place)}
                   activeOpacity={0.9}
@@ -2335,15 +2306,38 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                       {place.category} • {place.city || place.address_line1 || 'Nearby'}
                     </Text>
                     
-                    {/* Signal bars */}
+                    {/* Signal bars - 2x2 grid using universal SignalBar component */}
                     <View style={styles.categoryResultSignals}>
-                      {getDisplaySignals(place.signals).slice(0, 2).map((signal, idx) => (
-                        <View key={idx} style={[styles.categoryResultSignalBadge, { backgroundColor: getSignalColor(signal.bucket) }]}>
-                          <Text style={styles.categoryResultSignalText} numberOfLines={1}>
-                            {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
-                          </Text>
-                        </View>
-                      ))}
+                      {/* Row 1: Two "The Good" signals */}
+                      <View style={styles.signalsRow}>
+                        {getDisplaySignals(place.signals).slice(0, 2).map((signal, idx) => (
+                          <View key={`cat-good-${idx}`} style={styles.signalGridItem}>
+                            <SignalBar
+                              label={signal.bucket}
+                              tapCount={signal.tap_total}
+                              type={getSignalTypeFromBucket(signal.bucket)}
+                              size="compact"
+                              isEmpty={signal.isEmpty}
+                              emptyText={getEmptySignalText(signal.bucket)}
+                            />
+                          </View>
+                        ))}
+                      </View>
+                      {/* Row 2: One "The Vibe" + One "Heads Up" */}
+                      <View style={styles.signalsRow}>
+                        {getDisplaySignals(place.signals).slice(2, 4).map((signal, idx) => (
+                          <View key={`cat-other-${idx}`} style={styles.signalGridItem}>
+                            <SignalBar
+                              label={signal.bucket}
+                              tapCount={signal.tap_total}
+                              type={getSignalTypeFromBucket(signal.bucket)}
+                              size="compact"
+                              isEmpty={signal.isEmpty}
+                              emptyText={getEmptySignalText(signal.bucket)}
+                            />
+                          </View>
+                        ))}
+                      </View>
                     </View>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color={isDark ? theme.textSecondary : '#ccc'} />
@@ -2761,12 +2755,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 11, // Smaller font for full text
     fontWeight: '700',
-    color: '#111',
+    color: '#FFFFFF',  // White text for solid colored backgrounds
   },
   signalLabelEmpty: {
-    fontWeight: '500',
-    fontStyle: 'italic',
-    color: '#666',
+    fontWeight: '600',
+    fontStyle: 'normal',
+    color: 'rgba(255, 255, 255, 0.9)',  // White with slight transparency for empty state
     fontSize: 10,
   },
   signalCount: {
@@ -3095,6 +3089,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  signalGridItem: {
+    flex: 1,
+  },
   signalPillWrapper: {
     flex: 1,
     position: 'relative',
@@ -3111,12 +3108,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 11, // Smaller for full text
     fontWeight: '700',
-    color: '#111',
+    color: '#FFFFFF',  // White text for solid colored backgrounds
   },
   signalTextEmpty: {
-    fontWeight: '500',
-    fontStyle: 'italic',
-    color: '#666',
+    fontWeight: '600',
+    fontStyle: 'normal',
+    color: 'rgba(255, 255, 255, 0.9)',  // White with slight transparency for empty state
     fontSize: 10,
   },
   signalTapCount: {
@@ -3443,7 +3440,7 @@ const styles = StyleSheet.create({
   categoryResultSignalText: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#333',
+    color: '#FFFFFF',  // White text for solid colored backgrounds
   },
 
   // Filter Modal

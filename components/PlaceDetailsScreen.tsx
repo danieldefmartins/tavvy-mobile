@@ -238,6 +238,10 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   // NEW: Photo carousel state
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const carouselRef = useRef<FlatList>(null);
+  
+  // Dark mode support
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   // Determine business type from place data
   const businessType = place ? mapGoogleCategoryToBusinessType(place.primaryCategory || 'default') : 'default';
