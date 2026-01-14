@@ -570,8 +570,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
       console.log(`Fetching places near [${centerLng}, ${centerLat}]`);
 
-      // Query from fsq_places_raw - the main Foursquare data table
-      const { data: placesData, error: placesError } = await supabase
+      // Query from both fsq_places_raw (Foursquare) and tavvy_places (user-added)
+      
+      // 1. Fetch from Foursquare data
+      const { data: fsqPlacesData, error: fsqError } = await supabase
         .from('fsq_places_raw')
         .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, postcode, tel, website, email, instagram, facebook_id, twitter, fsq_category_ids, fsq_category_labels, date_created, date_refreshed, date_closed')
         .gte('latitude', minLat)
@@ -579,7 +581,34 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         .gte('longitude', minLng)
         .lte('longitude', maxLng)
         .is('date_closed', null)
-        .limit(200);
+        .limit(150);
+      
+      // 2. Fetch from user-added places
+      const { data: tavvyPlacesData, error: tavvyError } = await supabase
+        .from('tavvy_places')
+        .select('id, name, latitude, longitude, address, city, region, country, postcode, phone, website, email, instagram, facebook, twitter, tavvy_category, tavvy_subcategory, photos, cover_image_url, created_at')
+        .gte('latitude', minLat)
+        .lte('latitude', maxLat)
+        .gte('longitude', minLng)
+        .lte('longitude', maxLng)
+        .eq('is_deleted', false)
+        .limit(50);
+      
+      // Combine both sources
+      const fsqPlaces = (fsqPlacesData || []).map(p => ({ ...p, source: 'foursquare' }));
+      const tavvyPlaces = (tavvyPlacesData || []).map(p => ({ 
+        ...p, 
+        source: 'user',
+        fsq_place_id: p.id, // Use id as the identifier
+        locality: p.city,
+        tel: p.phone,
+        fsq_category_labels: [p.tavvy_subcategory || p.tavvy_category || 'Other']
+      }));
+      
+      const placesData = [...fsqPlaces, ...tavvyPlaces];
+      const placesError = fsqError || tavvyError;
+      
+      console.log(`Fetched ${fsqPlaces.length} Foursquare places, ${tavvyPlaces.length} user-added places`);
 
       if (placesError) {
         console.warn('Supabase error:', placesError);

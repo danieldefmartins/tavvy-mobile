@@ -1,71 +1,252 @@
-import React, { useState } from 'react';
-import { Alert, View, TouchableOpacity, Text, StyleSheet, SafeAreaView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Alert, View, TouchableOpacity, Text, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import QuickFormEngine, { FormStep } from '../components/QuickFormEngine';
 import { useNavigation } from '@react-navigation/native';
 import { ScannedBusinessCard } from './BusinessCardScannerScreen';
+import { supabase } from '../lib/supabaseClient';
+import { PRIMARY_CATEGORIES, PrimaryCategory, SubCategory } from '../lib/categoryConfig';
 
-// Reordered Steps: Category First -> Name Second
-const ADD_PLACE_STEPS: FormStep[] = [
-  {
-    id: 'category',
-    title: "Category",
-    question: "What kind of place is it?",
-    type: 'select',
-    options: ['Restaurant', 'Cafe', 'Park', 'Hotel', 'Shop', 'Other'],
-    required: true,
-  },
-  {
-    id: 'name',
-    title: "Let's start",
-    question: "What is the name of this place?",
-    type: 'text',
-    placeholder: "e.g. Joe's Coffee",
-    required: true,
-  },
-  {
-    id: 'location',
-    title: "Location",
-    question: "Where is it located?",
-    type: 'location',
-  },
-  {
-    id: 'description',
-    title: "Details",
-    question: "Tell us a bit more about it (optional).",
-    type: 'text',
-    placeholder: "Great vibes, good wifi...",
-  },
-  {
-    id: 'photos',
-    title: "Photos",
-    question: "Add a photo to show the vibe.",
-    type: 'photo',
-  },
-];
+// Build category options from categoryConfig.ts
+const buildCategoryOptions = (): { primary: string[]; subcategories: { [key: string]: string[] } } => {
+  const primary: string[] = [];
+  const subcategories: { [key: string]: string[] } = {};
+  
+  PRIMARY_CATEGORIES.forEach((cat: PrimaryCategory) => {
+    primary.push(cat.name);
+    subcategories[cat.name] = cat.subcategories.map((sub: SubCategory) => sub.name);
+  });
+  
+  return { primary, subcategories };
+};
+
+const categoryOptions = buildCategoryOptions();
+
+// Dynamic form steps - subcategory step is added based on primary category selection
+const getFormSteps = (selectedCategory: string | null): FormStep[] => {
+  const steps: FormStep[] = [
+    {
+      id: 'category',
+      title: "Category",
+      question: "What kind of place is it?",
+      type: 'select',
+      options: categoryOptions.primary,
+      required: true,
+    },
+  ];
+  
+  // Add subcategory step if a primary category is selected and has subcategories
+  if (selectedCategory && categoryOptions.subcategories[selectedCategory]?.length > 0) {
+    steps.push({
+      id: 'subcategory',
+      title: "Subcategory",
+      question: `What type of ${selectedCategory.toLowerCase()}?`,
+      type: 'select',
+      options: categoryOptions.subcategories[selectedCategory],
+      required: false,
+    });
+  }
+  
+  // Add remaining steps
+  steps.push(
+    {
+      id: 'name',
+      title: "Let's start",
+      question: "What is the name of this place?",
+      type: 'text',
+      placeholder: "e.g. Joe's Coffee",
+      required: true,
+    },
+    {
+      id: 'location',
+      title: "Location",
+      question: "Where is it located?",
+      type: 'location',
+      required: true,
+    },
+    {
+      id: 'contact',
+      title: "Contact",
+      question: "How can people reach this place? (optional)",
+      type: 'contact', // Custom type for phone, website, email
+    },
+    {
+      id: 'description',
+      title: "Details",
+      question: "Tell us a bit more about it (optional).",
+      type: 'text',
+      placeholder: "Great vibes, good wifi...",
+    },
+    {
+      id: 'photos',
+      title: "Photos",
+      question: "Add a photo to show the vibe.",
+      type: 'photo',
+    }
+  );
+  
+  return steps;
+};
+
+// Helper to get category slug from name
+const getCategorySlug = (categoryName: string): string => {
+  const category = PRIMARY_CATEGORIES.find(cat => cat.name === categoryName);
+  return category?.slug || 'other';
+};
+
+const getSubcategorySlug = (categoryName: string, subcategoryName: string): string | null => {
+  const category = PRIMARY_CATEGORIES.find(cat => cat.name === categoryName);
+  if (!category) return null;
+  const subcategory = category.subcategories.find(sub => sub.name === subcategoryName);
+  return subcategory?.slug || null;
+};
 
 export default function AddPlaceScreen() {
   const navigation = useNavigation();
   const [initialData, setInitialData] = useState<any>(null);
   const [currentStepId, setCurrentStepId] = useState<string>('category');
-  const [previousStepId, setPreviousStepId] = useState<string | null>(null); // Track previous step for transition detection
+  const [previousStepId, setPreviousStepId] = useState<string | null>(null);
   const [showScanOption, setShowScanOption] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [formSteps, setFormSteps] = useState<FormStep[]>(getFormSteps(null));
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleComplete = (data: any) => {
-    console.log('Place Data:', data);
-    Alert.alert("Success!", "Place added successfully.", [
-      { text: "OK", onPress: () => navigation.goBack() }
-    ]);
+  // Update form steps when category changes
+  useEffect(() => {
+    setFormSteps(getFormSteps(selectedCategory));
+  }, [selectedCategory]);
+
+  const handleComplete = async (data: any) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    
+    try {
+      // Get the current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        Alert.alert("Error", "You must be logged in to add a place.");
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Parse location data
+      let latitude = null;
+      let longitude = null;
+      let address = null;
+      let city = null;
+      let region = null;
+      let country = null;
+      let postcode = null;
+      
+      if (data.location) {
+        // Location could be a string or an object with coordinates
+        if (typeof data.location === 'object') {
+          latitude = data.location.latitude;
+          longitude = data.location.longitude;
+          address = data.location.address;
+          city = data.location.city;
+          region = data.location.region;
+          country = data.location.country;
+          postcode = data.location.postcode;
+        } else {
+          address = data.location;
+        }
+      }
+      
+      // Parse contact data
+      let phone = null;
+      let email = null;
+      let website = null;
+      
+      if (data.contact) {
+        if (typeof data.contact === 'object') {
+          phone = data.contact.phone;
+          email = data.contact.email;
+          website = data.contact.website;
+        }
+      }
+      
+      // Parse photos
+      let photos: string[] = [];
+      let coverImage = null;
+      
+      if (data.photos) {
+        if (Array.isArray(data.photos)) {
+          photos = data.photos;
+          coverImage = photos[0];
+        } else if (typeof data.photos === 'string') {
+          photos = [data.photos];
+          coverImage = data.photos;
+        }
+      }
+      
+      // Prepare the place data for tavvy_places table
+      const placeData = {
+        name: data.name,
+        description: data.description || null,
+        tavvy_category: getCategorySlug(data.category),
+        tavvy_subcategory: data.subcategory ? getSubcategorySlug(data.category, data.subcategory) : null,
+        latitude,
+        longitude,
+        address,
+        city,
+        region,
+        country,
+        postcode,
+        phone,
+        email,
+        website,
+        photos,
+        cover_image_url: coverImage,
+        source: 'user',
+        created_by: user.id,
+      };
+      
+      console.log('Saving place to tavvy_places:', placeData);
+      
+      // Insert into tavvy_places table
+      const { data: insertedPlace, error: insertError } = await supabase
+        .from('tavvy_places')
+        .insert(placeData)
+        .select()
+        .single();
+      
+      if (insertError) {
+        console.error('Error inserting place:', insertError);
+        Alert.alert("Error", `Failed to add place: ${insertError.message}`);
+        setIsSubmitting(false);
+        return;
+      }
+      
+      console.log('Place added successfully:', insertedPlace);
+      
+      Alert.alert(
+        "Success!", 
+        "Place added successfully. Thank you for contributing!",
+        [{ text: "OK", onPress: () => navigation.goBack() }]
+      );
+      
+    } catch (error) {
+      console.error('Error adding place:', error);
+      Alert.alert("Error", "An unexpected error occurred. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleScanComplete = (data: ScannedBusinessCard) => {
     // Map scanned data to form fields
     const mappedData = {
-      category: selectedCategory, // Keep the selected category
+      category: selectedCategory,
       name: data.name,
-      location: data.address, 
-      description: `Phone: ${data.phone}${data.website ? `\nWebsite: ${data.website}` : ''}`,
+      location: data.address,
+      contact: {
+        phone: data.phone,
+        website: data.website,
+        email: data.email,
+      },
+      description: '',
     };
     
     setInitialData(mappedData);
@@ -83,10 +264,19 @@ export default function AddPlaceScreen() {
     } as never);
   };
 
-  const handleStepChange = (stepId: string) => {
-    // Show scan option ONLY when transitioning FROM 'category' TO 'name'
+  const handleStepChange = (stepId: string, formData?: any) => {
+    // Track category selection
+    if (formData?.category && formData.category !== selectedCategory) {
+      setSelectedCategory(formData.category);
+    }
+    
+    // Show scan option ONLY when transitioning FROM 'category' or 'subcategory' TO 'name'
     // and no data has been scanned yet
-    if (previousStepId === 'category' && stepId === 'name' && !initialData) {
+    const isTransitionToName = stepId === 'name' && 
+      (previousStepId === 'category' || previousStepId === 'subcategory') && 
+      !initialData;
+    
+    if (isTransitionToName) {
       setShowScanOption(true);
     }
     
@@ -94,9 +284,6 @@ export default function AddPlaceScreen() {
     setPreviousStepId(currentStepId);
     setCurrentStepId(stepId);
   };
-
-  // Track category when step changes - the form will have the category value
-  // before moving to the name step
 
   const skipScan = () => {
     setShowScanOption(false);
@@ -184,12 +371,11 @@ export default function AddPlaceScreen() {
       <QuickFormEngine
         formId="draft_add_place"
         title="New Place"
-        steps={ADD_PLACE_STEPS}
+        steps={formSteps}
         initialData={initialData}
         onComplete={handleComplete}
         onCancel={() => navigation.goBack()}
-        onStepChange={handleStepChange} 
-
+        onStepChange={handleStepChange}
       />
     </View>
   );

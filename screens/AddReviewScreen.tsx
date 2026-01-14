@@ -9,9 +9,10 @@ import {
   ActivityIndicator,
   SafeAreaView,
   Platform,
-  Dimensions
+  Dimensions,
+  useColorScheme
 } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { submitReview, updateReview, fetchUserReview, ReviewSignalTap } from '../lib/reviews';
 import { 
@@ -28,42 +29,81 @@ import { Ionicons } from '@expo/vector-icons';
 const { width } = Dimensions.get('window');
 
 type RootStackParamList = {
-  AddReview: { placeId?: string; placeName?: string };
+  AddReview: { 
+    placeId?: string; 
+    placeName?: string;
+    primaryCategory?: string;
+    subcategory?: string;
+  };
 };
 
 type AddReviewRouteProp = RouteProp<RootStackParamList, 'AddReview'>;
 
-// Wizard Steps Configuration
+// ============================================
+// DARK MODE THEME
+// ============================================
+const darkTheme = {
+  background: '#000000',
+  surface: '#1C1C1E',
+  surfaceElevated: '#2C2C2E',
+  text: '#FFFFFF',
+  textSecondary: '#8E8E93',
+  textTertiary: '#636366',
+  border: '#38383A',
+  // Step-specific backgrounds (dark mode)
+  stepBackgrounds: {
+    best_for: '#0A1628',
+    vibe: '#1A1A2E',
+    heads_up: '#1F1410',
+  },
+};
+
+const lightTheme = {
+  background: '#FFFFFF',
+  surface: '#FFFFFF',
+  surfaceElevated: '#F2F2F7',
+  text: '#111827',
+  textSecondary: '#6B7280',
+  textTertiary: '#9CA3AF',
+  border: '#E5E5EA',
+  // Step-specific backgrounds (light mode)
+  stepBackgrounds: {
+    best_for: '#E0F2FE',
+    vibe: '#F3E8FF',
+    heads_up: '#FEE2E2',
+  },
+};
+
+// ============================================
+// WIZARD STEPS CONFIGURATION
+// ============================================
 const STEPS = [
   {
     id: 'best_for' as const,
-    title: 'What did you like?',
-    subtitle: 'Tap the highlights.',
+    title: 'The Good',
+    subtitle: 'What did you like? Tap the highlights.',
     theme: 'positive',
     limit: 5,
-    gradient: ['#E0F2FE', '#FFFFFF'] as const,
     accent: '#0A84FF', // Apple Blue
-    solidColor: '#E0F2FE',
+    icon: 'thumbs-up',
   },
   {
     id: 'vibe' as const,
-    title: "How's the vibe?",
-    subtitle: 'Set the scene.',
+    title: 'The Vibe',
+    subtitle: "How's the atmosphere? Set the scene.",
     theme: 'vibe',
     limit: 5,
-    gradient: ['#F3E8FF', '#FFFFFF'] as const,
     accent: '#8E8E93', // Gray
-    solidColor: '#F3E8FF',
+    icon: 'sparkles',
   },
   {
     id: 'heads_up' as const,
-    title: 'Any heads up?',
-    subtitle: 'Help others prepare.',
+    title: 'Heads Up',
+    subtitle: 'Any warnings? Help others prepare.',
     theme: 'negative',
     limit: 2,
-    gradient: ['#FEE2E2', '#FFFFFF'] as const,
     accent: '#FF9500', // Orange
-    solidColor: '#FEE2E2',
+    icon: 'warning',
   }
 ] as const;
 
@@ -72,8 +112,14 @@ type StepId = typeof STEPS[number]['id'];
 export default function AddReviewScreen() {
   const route = useRoute<AddReviewRouteProp>();
   const navigation = useNavigation();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const theme = isDark ? darkTheme : lightTheme;
+  
   const placeId = route.params?.placeId;
   const placeName = route.params?.placeName || 'this place';
+  const primaryCategory = route.params?.primaryCategory;
+  const subcategory = route.params?.subcategory;
 
   // State
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -91,6 +137,125 @@ export default function AddReviewScreen() {
 
   const currentStep = STEPS[currentStepIndex];
   const isLastStep = currentStepIndex === STEPS.length - 1;
+
+  // Dynamic styles based on theme
+  const dynamicStyles = useMemo(() => StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.stepBackgrounds[currentStep.id],
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: theme.background,
+    },
+    loadingText: {
+      marginTop: 12,
+      fontSize: 16,
+      color: theme.textSecondary,
+    },
+    backButton: {
+      padding: 8,
+      borderRadius: 20,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+    },
+    stepIndicator: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.textSecondary,
+    },
+    stepTitle: {
+      fontSize: 34,
+      fontWeight: '800',
+      color: theme.text,
+      letterSpacing: -0.5,
+      marginBottom: 8,
+    },
+    stepSubtitle: {
+      fontSize: 18,
+      color: theme.textSecondary,
+      fontWeight: '500',
+    },
+    cardSurface: {
+      backgroundColor: theme.surface,
+      borderRadius: 24,
+      padding: 16,
+      minHeight: 200,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: isDark ? 0.3 : 0.05,
+      shadowRadius: 20,
+      elevation: 5,
+      borderWidth: isDark ? 1 : 0,
+      borderColor: theme.border,
+    },
+    emptyStateText: {
+      marginTop: 16,
+      fontSize: 16,
+      color: theme.textSecondary,
+      textAlign: 'center',
+    },
+    emptyStateSubtext: {
+      marginTop: 8,
+      fontSize: 14,
+      color: theme.textTertiary,
+      textAlign: 'center',
+    },
+    warningBox: {
+      flexDirection: 'row',
+      backgroundColor: isDark ? 'rgba(244, 63, 94, 0.15)' : '#FFF1F2',
+      borderColor: '#F43F5E',
+      borderWidth: 2,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 24,
+      alignItems: 'center',
+    },
+    warningText: {
+      flex: 1,
+      marginLeft: 12,
+      color: isDark ? '#FCA5A5' : '#991B1B',
+      fontSize: 14,
+      fontWeight: '500',
+      lineHeight: 20,
+    },
+    placeName: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.textSecondary,
+      marginBottom: 4,
+    },
+    categoryBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      alignSelf: 'flex-start',
+      marginBottom: 16,
+    },
+    categoryBadgeText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.textSecondary,
+      marginLeft: 6,
+    },
+    signalCount: {
+      fontSize: 12,
+      color: theme.textTertiary,
+      marginTop: 8,
+    },
+    progressBar: {
+      height: 4,
+      width: '100%',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+      borderRadius: 2,
+      marginBottom: 4,
+      overflow: 'hidden',
+    },
+  }), [theme, currentStep.id, isDark]);
 
   // Load signals and existing review
   useEffect(() => {
@@ -208,42 +373,40 @@ export default function AddReviewScreen() {
     }
   };
 
+  // Calculate selection counts for current step
+  const currentSignals: Signal[] = signals[currentStep.id] || [];
+  const currentSignalIds = currentSignals.map(s => s.id);
+  const currentSelectionCount = Object.keys(tapCounts).filter(
+    key => currentSignalIds.includes(key) && tapCounts[key] > 0
+  ).length;
+
+  // Total selections across all steps
+  const totalSelections = Object.keys(tapCounts).filter(key => tapCounts[key] > 0).length;
+
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={dynamicStyles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Loading signals...</Text>
+        <Text style={dynamicStyles.loadingText}>Loading signals...</Text>
       </View>
     );
   }
 
-  // Get signals for current step
-  const currentSignals: Signal[] = signals[currentStep.id] || [];
-
-  // Check if there are any signals to show
   const hasSignals = currentSignals.length > 0;
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
-      
-      {/* Dynamic Background (Solid Color Fallback) */}
-      <View 
-        style={[
-          StyleSheet.absoluteFill, 
-          { backgroundColor: currentStep.solidColor }
-        ]} 
-      />
+    <View style={dynamicStyles.container}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
 
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={28} color="#111827" />
+          <TouchableOpacity onPress={handleBack} style={dynamicStyles.backButton}>
+            <Ionicons name="arrow-back" size={28} color={theme.text} />
           </TouchableOpacity>
           
           <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
+            <View style={dynamicStyles.progressBar}>
               <View 
                 style={[
                   styles.progressFill, 
@@ -254,7 +417,7 @@ export default function AddReviewScreen() {
                 ]} 
               />
             </View>
-            <Text style={styles.stepIndicator}>
+            <Text style={dynamicStyles.stepIndicator}>
               Step {currentStepIndex + 1} of {STEPS.length}
             </Text>
           </View>
@@ -263,25 +426,43 @@ export default function AddReviewScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.titleContainer}>
-            <Text style={styles.stepTitle}>
-              {currentStep.title}
+          {/* Place Name Badge */}
+          <View style={dynamicStyles.categoryBadge}>
+            <Ionicons name="location" size={14} color={theme.textSecondary} />
+            <Text style={dynamicStyles.categoryBadgeText} numberOfLines={1}>
+              {placeName}
             </Text>
-            <Text style={styles.stepSubtitle}>{currentStep.subtitle}</Text>
+          </View>
+
+          <View style={styles.titleContainer}>
+            <View style={styles.titleRow}>
+              <View style={[styles.stepIconContainer, { backgroundColor: currentStep.accent }]}>
+                <Ionicons name={currentStep.icon as any} size={20} color="#FFFFFF" />
+              </View>
+              <Text style={dynamicStyles.stepTitle}>
+                {currentStep.title}
+              </Text>
+            </View>
+            <Text style={dynamicStyles.stepSubtitle}>{currentStep.subtitle}</Text>
+            
+            {/* Selection Counter */}
+            <Text style={dynamicStyles.signalCount}>
+              {currentSelectionCount} of {currentStep.limit} selected
+            </Text>
           </View>
           
           {/* Warning Box for Negative Step */}
           {currentStep.theme === 'negative' && (
-            <View style={styles.warningBox}>
-              <Ionicons name="alert-circle" size={24} color="#991B1B" />
-              <Text style={styles.warningText}>
+            <View style={dynamicStyles.warningBox}>
+              <Ionicons name="alert-circle" size={24} color={isDark ? '#FCA5A5' : '#991B1B'} />
+              <Text style={dynamicStyles.warningText}>
                 Note: Selecting these will lower the place's Vibe Score.
               </Text>
             </View>
           )}
 
           {/* White Card Surface */}
-          <View style={styles.cardSurface}>
+          <View style={dynamicStyles.cardSurface}>
             {hasSignals ? (
               <View style={styles.grid}>
                 {currentSignals.map(signal => (
@@ -298,11 +479,11 @@ export default function AddReviewScreen() {
               </View>
             ) : (
               <View style={styles.emptyState}>
-                <Ionicons name="information-circle-outline" size={48} color="#9CA3AF" />
-                <Text style={styles.emptyStateText}>
+                <Ionicons name="information-circle-outline" size={48} color={theme.textTertiary} />
+                <Text style={dynamicStyles.emptyStateText}>
                   No signals available for this category yet.
                 </Text>
-                <Text style={styles.emptyStateSubtext}>
+                <Text style={dynamicStyles.emptyStateSubtext}>
                   Tap "Next" to continue.
                 </Text>
               </View>
@@ -312,6 +493,18 @@ export default function AddReviewScreen() {
 
         {/* Floating Footer */}
         <View style={styles.footer}>
+          {/* Skip Button (optional for non-required steps) */}
+          {!isLastStep && (
+            <TouchableOpacity 
+              style={styles.skipButton}
+              onPress={handleNext}
+            >
+              <Text style={[styles.skipButtonText, { color: theme.textSecondary }]}>
+                Skip
+              </Text>
+            </TouchableOpacity>
+          )}
+          
           <TouchableOpacity 
             style={[styles.actionButton, { backgroundColor: currentStep.accent }]}
             onPress={handleNext}
@@ -320,9 +513,14 @@ export default function AddReviewScreen() {
             {isSubmitting ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={styles.actionButtonText}>
-                {isLastStep ? 'Submit Review' : 'Next'}
-              </Text>
+              <>
+                <Text style={styles.actionButtonText}>
+                  {isLastStep ? 'Submit Review' : 'Next'}
+                </Text>
+                {!isLastStep && (
+                  <Ionicons name="arrow-forward" size={20} color="white" style={{ marginLeft: 8 }} />
+                )}
+              </>
             )}
           </TouchableOpacity>
         </View>
@@ -332,23 +530,8 @@ export default function AddReviewScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
   safeArea: {
     flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
   },
   header: {
     flexDirection: 'row',
@@ -357,67 +540,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
-  backButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-  },
   progressContainer: {
     flex: 1,
     alignItems: 'center',
     marginHorizontal: 20,
   },
-  progressBar: {
-    height: 4,
-    width: '100%',
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 2,
-    marginBottom: 4,
-    overflow: 'hidden',
-  },
   progressFill: {
     height: '100%',
     borderRadius: 2,
   },
-  stepIndicator: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
   content: {
     paddingHorizontal: 20,
-    paddingBottom: 120,
+    paddingBottom: 140,
   },
   titleContainer: {
-    marginTop: 20,
     marginBottom: 24,
   },
-  stepTitle: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.5,
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 8,
   },
-  stepSubtitle: {
-    fontSize: 18,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  cardSurface: {
-    backgroundColor: 'white',
-    borderRadius: 24,
-    padding: 16,
-    minHeight: 200,
-    // Soft Shadow
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 20,
-    elevation: 5,
+  stepIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   grid: {
     flexDirection: 'row',
@@ -430,27 +580,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 40,
   },
-  emptyStateText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  emptyStateSubtext: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-  },
   footer: {
     position: 'absolute',
     bottom: 30,
     left: 20,
     right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  skipButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  skipButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   actionButton: {
+    flex: 1,
     height: 56,
     borderRadius: 28,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: "#000",
@@ -461,29 +613,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
-  },
-  warningBox: {
-    flexDirection: 'row',
-    backgroundColor: '#FFF1F2',
-    borderColor: '#F43F5E',
-    borderWidth: 2,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-    alignItems: 'center',
-    shadowColor: "#F43F5E",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  warningText: {
-    flex: 1,
-    marginLeft: 12,
-    color: '#991B1B',
-    fontSize: 14,
-    fontWeight: '500',
-    lineHeight: 20,
   },
   actionButtonText: {
     color: 'white',

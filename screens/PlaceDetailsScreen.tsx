@@ -14,6 +14,7 @@ import {
   NativeScrollEvent,
   Share,
   Modal,
+  useColorScheme,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MapLibreGL from '@maplibre/maplibre-react-native';
@@ -28,6 +29,7 @@ import { supabase } from '../lib/supabaseClient';
 import { fetchPlaceSignals, getPlaceReviewCount, SignalAggregate } from '../lib/reviews';
 import { Colors } from '../constants/Colors';
 import AddYourTapCardEnhanced from '../components/AddYourTapCardEnhanced';
+import MomentumThermometer from '../components/MomentumThermometer';
 import {
   // usePlaceTapStats,
   useUserGamification,
@@ -1052,14 +1054,52 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           {/* Signals Tab (UPDATED) */}
           {activeTab === 'signals' && (
             <View style={styles.tabContent}>
-              {/* The Good */}
-              {renderSignalLine('best_for', 'The Good', signals.best_for, Colors.positive)}
+              {/* The Good - Blue */}
+              {renderSignalLine('best_for', 'The Good', signals.best_for, { primary: '#0A84FF', light: 'rgba(10, 132, 255, 0.15)', text: '#FFFFFF' })}
 
-              {/* The Vibe */}
-              {renderSignalLine('vibe', 'The Vibe', signals.vibe, Colors.vibe)}
+              {/* The Vibe - Gray/Purple */}
+              {renderSignalLine('vibe', 'The Vibe', signals.vibe, { primary: '#8E8E93', light: 'rgba(142, 142, 147, 0.15)', text: '#FFFFFF' })}
 
-              {/* The Bad (Heads Up) */}
-              {renderSignalLine('heads_up', 'Heads Up', signals.heads_up, Colors.negative)}
+              {/* Heads Up - Orange */}
+              {renderSignalLine('heads_up', 'Heads Up', signals.heads_up, { primary: '#FF9500', light: 'rgba(255, 149, 0, 0.15)', text: '#FFFFFF' })}
+
+              {/* Recent Momentum Thermometer */}
+              {(signals.best_for?.length > 0 || signals.vibe?.length > 0 || signals.heads_up?.length > 0) && (
+                <View style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 16,
+                  marginBottom: 16,
+                  padding: 16,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.06,
+                  shadowRadius: 8,
+                  elevation: 2,
+                }}>
+                  <Text style={{ 
+                    fontSize: 18, 
+                    fontWeight: '700', 
+                    color: '#1F2937',
+                    marginBottom: 4,
+                  }}>
+                    Recent Momentum
+                  </Text>
+                  <Text style={{ 
+                    fontSize: 13, 
+                    color: '#6B7280',
+                    marginBottom: 16,
+                  }}>
+                    Last 3 Months
+                  </Text>
+                  <MomentumThermometer
+                    goodTaps={signals.best_for?.reduce((sum, s) => sum + (s.tap_total || 0), 0) || 0}
+                    vibeTaps={signals.vibe?.reduce((sum, s) => sum + (s.tap_total || 0), 0) || 0}
+                    headsUpTaps={signals.heads_up?.reduce((sum, s) => sum + (s.tap_total || 0), 0) || 0}
+                    showLabels={true}
+                    height={12}
+                  />
+                </View>
+              )}
 
               {/* Add Your Tap Card (Moved to Bottom) */}
               <View style={{ marginTop: 24 }}>

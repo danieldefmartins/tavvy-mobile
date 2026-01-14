@@ -233,21 +233,24 @@ export const Colors = {
   tabBarActive: brand.blue,
   tabBarInactive: brand.textSecondary,
 
-  // Review Semantic Themes
+  // Review Semantic Themes (TavvY Signal Colors)
+  // Blue = The Good (Positive)
+  // Purple/Gray = The Vibe (Neutral)
+  // Orange = Heads Up (Negative)
   positive: {
-    primary: palette.signalPros,
-    light: 'rgba(16, 185, 129, 0.15)',
-    text: palette.signalPros,
+    primary: '#0A84FF',  // Apple Blue
+    light: 'rgba(10, 132, 255, 0.15)',
+    text: '#FFFFFF',
   },
   vibe: {
-    primary: palette.signalUniverse,
-    light: 'rgba(14, 165, 233, 0.15)',
-    text: palette.signalUniverse,
+    primary: '#8E8E93',  // System Gray
+    light: 'rgba(142, 142, 147, 0.15)',
+    text: '#FFFFFF',
   },
   negative: {
-    primary: palette.signalCons,
-    light: 'rgba(245, 158, 11, 0.15)',
-    text: palette.signalCons,
+    primary: '#FF9500',  // Apple Orange
+    light: 'rgba(255, 149, 0, 0.15)',
+    text: '#FFFFFF',
   },
   
   // Brand colors for direct access
