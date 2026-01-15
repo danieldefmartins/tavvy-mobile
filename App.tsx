@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -10,6 +10,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider, useThemeContext } from './contexts/ThemeContext';
 import { Colors, darkTheme } from './constants/Colors';
+
+// Video Splash Screen
+import VideoSplashScreen from './components/VideoSplashScreen';
 
 // Signal System - Preload cache on app start
 import { preloadSignalLabels } from './hooks/useSignalLabels';
@@ -322,11 +325,18 @@ function AppContent() {
 // App Root
 // --------------------
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  const handleSplashFinish = () => {
+    setShowSplash(false);
+  };
+
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: darkTheme.background }}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <ThemeProvider>
+            {showSplash && <VideoSplashScreen onFinish={handleSplashFinish} />}
             <AppContent />
           </ThemeProvider>
         </AuthProvider>

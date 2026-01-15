@@ -88,6 +88,11 @@ export default function ProsHomeScreen() {
     navigation.navigate('ProsDashboard');
   };
 
+  // Navigate to the multi-step request flow
+  const handleStartProject = () => {
+    navigation.navigate('ProsRequestStep1');
+  };
+
   const remainingSpots = EARLY_ADOPTER_SPOTS_LEFT;
 
   // If user switches to Pro mode, show Pro options
@@ -340,6 +345,30 @@ export default function ProsHomeScreen() {
           </View>
         </LinearGradient>
 
+        {/* Start a Project CTA */}
+        <TouchableOpacity 
+          style={styles.startProjectButton}
+          onPress={handleStartProject}
+        >
+          <LinearGradient
+            colors={['#10B981', '#059669']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.startProjectGradient}
+          >
+            <View style={styles.startProjectContent}>
+              <View style={styles.startProjectIconContainer}>
+                <Ionicons name="add-circle" size={28} color="#FFFFFF" />
+              </View>
+              <View style={styles.startProjectTextContainer}>
+                <Text style={styles.startProjectTitle}>Start a Project</Text>
+                <Text style={styles.startProjectSubtitle}>Get quotes from multiple pros in minutes</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#FFFFFF" />
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
         {/* Browse by Service */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -349,18 +378,38 @@ export default function ProsHomeScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.categoriesGrid}>
-            {PROS_CATEGORIES.slice(0, 8).map((category) => (
+            {/* Display specific 9 featured services in alphabetical order */}
+            {[
+              PROS_CATEGORIES.find(c => c.slug === 'bathroom-remodeling'),
+              PROS_CATEGORIES.find(c => c.slug === 'electrician'),
+              PROS_CATEGORIES.find(c => c.slug === 'general-contractor'),
+              PROS_CATEGORIES.find(c => c.slug === 'home-remodeling'),
+              PROS_CATEGORIES.find(c => c.slug === 'house-cleaning'),
+              PROS_CATEGORIES.find(c => c.slug === 'kitchen-remodeling'),
+              PROS_CATEGORIES.find(c => c.slug === 'painting'),
+              PROS_CATEGORIES.find(c => c.slug === 'plumber'),
+              PROS_CATEGORIES.find(c => c.slug === 'pool-contractor'),
+            ].filter(Boolean).map((category) => (
               <ProsCategoryCard
-                key={category.id}
-                id={category.id}
-                name={category.name}
-                slug={category.slug}
-                icon={category.icon}
-                color={category.color}
-                onPress={() => handleCategoryPress(category.id, category.name)}
+                key={category!.id}
+                id={category!.id}
+                name={category!.name}
+                slug={category!.slug}
+                icon={category!.icon}
+                color={category!.color}
+                onPress={() => handleCategoryPress(category!.id, category!.name)}
               />
             ))}
           </View>
+          
+          {/* See More Link */}
+          <TouchableOpacity 
+            style={styles.seeMoreButton}
+            onPress={() => navigation.navigate('ProsBrowse')}
+          >
+            <Text style={styles.seeMoreText}>See all {PROS_CATEGORIES.length} services</Text>
+            <Ionicons name="chevron-forward" size={16} color={ProsColors.primary} />
+          </TouchableOpacity>
         </View>
 
         {/* Featured Pros */}
@@ -635,6 +684,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
   },
+  seeMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+    marginHorizontal: 16,
+  },
+  seeMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: ProsColors.primary,
+    marginRight: 4,
+  },
   featuredList: {
     paddingHorizontal: 16,
   },
@@ -813,5 +876,48 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '700',
     color: '#3B82F6',
+  },
+  // Start a Project CTA styles
+  startProjectButton: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  startProjectGradient: {
+    borderRadius: 16,
+    padding: 16,
+  },
+  startProjectContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  startProjectIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  startProjectTextContainer: {
+    flex: 1,
+  },
+  startProjectTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  startProjectSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
   },
 });

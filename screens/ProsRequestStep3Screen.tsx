@@ -1,3 +1,10 @@
+/**
+ * ProsRequestStep3Screen - Timeline Selection
+ * Install path: screens/ProsRequestStep3Screen.tsx
+ * 
+ * Step 3 of 5: Users select when they need the work done
+ */
+
 import React, { useState } from 'react';
 import {
   View,
@@ -16,7 +23,7 @@ type RouteParams = {
   categoryId: string;
   categoryName: string;
   description?: string;
-  timeline: string;
+  photos?: string[];
 };
 
 const ProgressBar = ({ progress }: { progress: number }) => (
@@ -32,28 +39,26 @@ export default function ProsRequestStep3Screen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   
-  const { categoryId, categoryName, description, timeline } = route.params;
+  const { categoryId, categoryName, description, photos } = route.params;
   
-  const [selectedBudget, setSelectedBudget] = useState<string | null>(null);
+  const [selectedTimeline, setSelectedTimeline] = useState<string | null>(null);
 
-  const budgets = [
-    { id: 'under-500', label: 'Under $500', icon: 'cash-outline' },
-    { id: '500-1000', label: '$500 - $1,000', icon: 'cash-outline' },
-    { id: '1000-5000', label: '$1,000 - $5,000', icon: 'wallet-outline' },
-    { id: '5000-10000', label: '$5,000 - $10,000', icon: 'wallet-outline' },
-    { id: 'over-10000', label: 'Over $10,000', icon: 'card-outline' },
-    { id: 'not-sure', label: 'Not sure yet', icon: 'help-circle-outline' },
+  const timelines = [
+    { id: 'urgent', label: 'Emergency / ASAP', sublabel: 'Within 24 hours', icon: 'alert-circle' },
+    { id: 'this-week', label: 'This week', sublabel: 'Within 7 days', icon: 'calendar' },
+    { id: 'this-month', label: 'This month', sublabel: 'Within 30 days', icon: 'calendar-outline' },
+    { id: 'flexible', label: 'Flexible', sublabel: 'No rush, just planning', icon: 'time' },
   ];
 
   const handleNext = () => {
-    if (!selectedBudget) return;
+    if (!selectedTimeline) return;
     
     navigation.navigate('ProsRequestStep4', {
       categoryId,
       categoryName,
       description,
-      timeline,
-      budget: selectedBudget,
+      photos,
+      timeline: selectedTimeline,
     });
   };
 
@@ -72,37 +77,55 @@ export default function ProsRequestStep3Screen() {
       </View>
 
       <View style={styles.progressWrapper}>
-        <ProgressBar progress={75} />
-        <Text style={styles.stepText}>Step 3 of 4</Text>
+        <ProgressBar progress={60} />
+        <Text style={styles.stepText}>Step 3 of 5</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.question}>What's your budget?</Text>
-        <Text style={styles.subtext}>This helps pros give you accurate quotes</Text>
+        <Text style={styles.question}>When do you need this done?</Text>
+        <Text style={styles.subtext}>Select your preferred timeline</Text>
 
-        <View style={styles.budgetGrid}>
-          {budgets.map((budget) => (
+        <View style={styles.optionsList}>
+          {timelines.map((timeline) => (
             <TouchableOpacity
-              key={budget.id}
+              key={timeline.id}
               style={[
-                styles.budgetCard,
-                selectedBudget === budget.id && styles.budgetCardSelected,
+                styles.optionCard,
+                selectedTimeline === timeline.id && styles.optionCardSelected,
               ]}
-              onPress={() => setSelectedBudget(budget.id)}
+              onPress={() => setSelectedTimeline(timeline.id)}
             >
-              <Ionicons
-                name={budget.icon as any}
-                size={24}
-                color={selectedBudget === budget.id ? ProsColors.primary : '#6B7280'}
-              />
-              <Text
+              <View
                 style={[
-                  styles.budgetLabel,
-                  selectedBudget === budget.id && styles.budgetLabelSelected,
+                  styles.optionIcon,
+                  selectedTimeline === timeline.id && styles.optionIconSelected,
                 ]}
               >
-                {budget.label}
-              </Text>
+                <Ionicons
+                  name={timeline.icon as any}
+                  size={24}
+                  color={selectedTimeline === timeline.id ? '#FFFFFF' : ProsColors.primary}
+                />
+              </View>
+              <View style={styles.optionText}>
+                <Text
+                  style={[
+                    styles.optionLabel,
+                    selectedTimeline === timeline.id && styles.optionLabelSelected,
+                  ]}
+                >
+                  {timeline.label}
+                </Text>
+                <Text style={styles.optionSublabel}>{timeline.sublabel}</Text>
+              </View>
+              <View
+                style={[
+                  styles.radioOuter,
+                  selectedTimeline === timeline.id && styles.radioOuterSelected,
+                ]}
+              >
+                {selectedTimeline === timeline.id && <View style={styles.radioInner} />}
+              </View>
             </TouchableOpacity>
           ))}
         </View>
@@ -112,10 +135,10 @@ export default function ProsRequestStep3Screen() {
         <TouchableOpacity
           style={[
             styles.nextButton,
-            !selectedBudget && styles.nextButtonDisabled,
+            !selectedTimeline && styles.nextButtonDisabled,
           ]}
           onPress={handleNext}
-          disabled={!selectedBudget}
+          disabled={!selectedTimeline}
         >
           <Text style={styles.nextButtonText}>Continue</Text>
           <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
@@ -198,34 +221,67 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 24,
   },
-  budgetGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  optionsList: {
     gap: 12,
   },
-  budgetCard: {
-    width: '47%',
+  optionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 16,
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
-    alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
-    gap: 8,
   },
-  budgetCardSelected: {
+  optionCardSelected: {
     borderColor: ProsColors.primary,
     backgroundColor: '#EFF6FF',
   },
-  budgetLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-    textAlign: 'center',
+  optionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#E0E7FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
   },
-  budgetLabelSelected: {
-    color: ProsColors.primary,
+  optionIconSelected: {
+    backgroundColor: ProsColors.primary,
+  },
+  optionText: {
+    flex: 1,
+  },
+  optionLabel: {
+    fontSize: 16,
     fontWeight: '600',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  optionLabelSelected: {
+    color: ProsColors.primary,
+  },
+  optionSublabel: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  radioOuter: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOuterSelected: {
+    borderColor: ProsColors.primary,
+  },
+  radioInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: ProsColors.primary,
   },
   footer: {
     padding: 20,
