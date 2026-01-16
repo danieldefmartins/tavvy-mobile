@@ -11,8 +11,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider, useThemeContext } from './contexts/ThemeContext';
 import { Colors, darkTheme } from './constants/Colors';
 
-// Video Splash Screen
-import VideoSplashScreen from './components/VideoSplashScreen';
+// Animated Splash Screen (replaces VideoSplashScreen)
+import AnimatedSplash from './components/AnimatedSplash';
 
 // Signal System - Preload cache on app start
 import { preloadSignalLabels } from './hooks/useSignalLabels';
@@ -327,7 +327,7 @@ function AppContent() {
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
 
-  const handleSplashFinish = () => {
+  const handleSplashComplete = () => {
     setShowSplash(false);
   };
 
@@ -336,8 +336,11 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <ThemeProvider>
-            {showSplash && <VideoSplashScreen onFinish={handleSplashFinish} />}
-            <AppContent />
+            {showSplash ? (
+              <AnimatedSplash onAnimationComplete={handleSplashComplete} />
+            ) : (
+              <AppContent />
+            )}
           </ThemeProvider>
         </AuthProvider>
       </QueryClientProvider>
