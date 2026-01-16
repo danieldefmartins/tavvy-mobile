@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import MapLibreGL from '@maplibre/maplibre-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
@@ -300,7 +301,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [locationName, setLocationName] = useState<string>('');
   
-  // Map states (map feature temporarily disabled)
+  // Map states
   const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('osm');
   
   // Personalization states
@@ -2185,77 +2186,132 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const renderMapMode = () => (
     <View style={styles.mapModeContainer}>
-      {/* Map temporarily disabled - showing list view instead */}
-      <View style={[styles.fullMap, { justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? theme.surface : '#f5f5f5', paddingTop: 60 }]}>
-        <View style={{ alignItems: 'center', marginBottom: 20 }}>
-          <Ionicons name="map-outline" size={48} color={isDark ? theme.textSecondary : '#999'} />
-          <Text style={{ color: isDark ? theme.textSecondary : '#666', marginTop: 12, fontSize: 16, fontWeight: '600' }}>Map Coming Soon</Text>
-          <Text style={{ color: isDark ? theme.textSecondary : '#888', marginTop: 4, fontSize: 14 }}>Browse places in list view below</Text>
-        </View>
+      {/* Full Map */}
+      {/* @ts-ignore - MapLibreGL types are incomplete */}
+      <MapLibreGL.MapView
+        key={mapStyle}
+        style={styles.fullMap}
+        // @ts-ignore
+        styleURL={MAP_STYLES[mapStyle].type === 'vector' ? (MAP_STYLES[mapStyle] as any).url : undefined}
+        logoEnabled={false}
+        attributionEnabled={false}
+        zoomEnabled={true}
+        scrollEnabled={true}
+        rotateEnabled={true}
+        pitchEnabled={true}
+      >
+        <MapLibreGL.Camera
+          ref={cameraRef}
+          defaultSettings={{
+            centerCoordinate: targetLocation || userLocation || [-97.7431, 30.2672],
+            zoomLevel: targetLocation ? 16 : 14,
+          }}
+          animationMode="flyTo"
+          animationDuration={800}
+          minZoomLevel={3}
+          maxZoomLevel={20}
+        />
         
-        {/* Show places as a scrollable list */}
-        <ScrollView 
-          style={{ flex: 1, width: '100%' }} 
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 200 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {filteredPlaces.length === 0 ? (
-            <View style={{ alignItems: 'center', paddingTop: 40 }}>
-              <Text style={{ color: isDark ? theme.textSecondary : '#666', fontSize: 14 }}>No places found nearby</Text>
+        {/* Target location marker (for address searches) */}
+        {targetLocation && (
+          <MapLibreGL.PointAnnotation
+            id="target-location"
+            coordinate={targetLocation}
+          >
+            <View style={styles.targetLocationMarker}>
+              <Ionicons name="location" size={32} color="#AF52DE" />
             </View>
-          ) : (
-            filteredPlaces.map((place, index) => (
-              <TouchableOpacity
-                key={`list-${place.id}-${index}`}
-                style={{
-                  backgroundColor: isDark ? theme.surface : '#fff',
-                  borderRadius: 12,
-                  padding: 16,
-                  marginBottom: 12,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 4,
-                  elevation: 3,
-                }}
-                onPress={() => handlePlacePress(place)}
+          </MapLibreGL.PointAnnotation>
+        )}
+
+        {/* Parking Location Marker */}
+        {parkingLocation && (
+          <MapLibreGL.PointAnnotation
+            id="parking-location"
+            coordinate={parkingLocation.coordinates}
+            onSelected={() => {
+              Alert.alert(
+                'Your Parked Car',
+                `Parked ${getParkingDuration()}\n${parkingLocation.address || 'Current Location'}`,
+                [
+                  { text: 'Navigate', onPress: navigateToParking },
+                  { text: 'Clear', onPress: clearParkingLocation, style: 'destructive' },
+                  { text: 'OK', style: 'cancel' },
+                ]
+              );
+            }}
+          >
+            <View style={styles.parkingMarker}>
+              <View style={styles.parkingMarkerInner}>
+                <Ionicons name="car" size={20} color="#fff" />
+              </View>
+              <Text style={styles.parkingMarkerTime}>{getParkingDuration()}</Text>
+            </View>
+          </MapLibreGL.PointAnnotation>
+        )}
+
+        {MAP_STYLES[mapStyle].type === 'raster' && (
+          <MapLibreGL.RasterSource
+            id="raster-source"
+            tileUrlTemplates={[(MAP_STYLES[mapStyle] as any).tileUrl]}
+            tileSize={256}
+          >
+            <MapLibreGL.RasterLayer
+              id="raster-layer"
+              sourceID="raster-source"
+              style={{ rasterOpacity: 1 }}
+            />
+          </MapLibreGL.RasterSource>
+        )}
+
+        {userLocation && (
+          <MapLibreGL.PointAnnotation
+            id="user-location"
+            coordinate={userLocation}
+          >
+            <View style={styles.userLocationMarker}>
+              <View style={styles.userLocationDot} />
+            </View>
+          </MapLibreGL.PointAnnotation>
+        )}
+
+        {filteredPlaces
+          .filter((place) => {
+            const lon = place.longitude || place.lng;
+            const lat = place.latitude || place.lat;
+            return typeof lon === 'number' && typeof lat === 'number' && 
+                   !isNaN(lon) && !isNaN(lat) && 
+                   lon !== 0 && lat !== 0;
+          })
+          .map((place, mapIndex) => (
+          <MapLibreGL.PointAnnotation
+            key={`map-${place.id}-${mapIndex}`}
+            id={`${place.id}-${mapIndex}`}
+            coordinate={[place.longitude || place.lng || 0, place.latitude || place.lat || 0]}
+            onSelected={() => handleMarkerPress(place)}
+          >
+            <View style={styles.markerContainer}>
+              <View
+                style={[
+                  styles.marker,
+                  { backgroundColor: getMarkerColor(place.category) },
+                ]}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    backgroundColor: getMarkerColor(place.category),
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    marginRight: 12,
-                  }}>
-                    <Ionicons
-                      name={
-                        place.category?.toLowerCase() === 'restaurants' ? 'restaurant' :
-                        place.category?.toLowerCase() === 'cafes' ? 'cafe' :
-                        place.category?.toLowerCase() === 'bars' ? 'beer' : 'location'
-                      }
-                      size={22}
-                      color="#fff"
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '600', color: isDark ? theme.text : '#000' }} numberOfLines={1}>
-                      {place.name}
-                    </Text>
-                    <Text style={{ fontSize: 13, color: isDark ? theme.textSecondary : '#666', marginTop: 2 }} numberOfLines={1}>
-                      {place.primary_category || place.category} {place.distance ? `• ${place.distance.toFixed(1)} mi` : ''}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color={isDark ? theme.textSecondary : '#ccc'} />
-                </View>
-              </TouchableOpacity>
-            ))
-          )}
-        </ScrollView>
-      </View>
-      
+                <Ionicons
+                  name={
+                    place.category?.toLowerCase() === 'restaurants' ? 'restaurant' :
+                    place.category?.toLowerCase() === 'cafes' ? 'cafe' :
+                    place.category?.toLowerCase() === 'bars' ? 'beer' : 'location'
+                  }
+                  size={20}
+                  color="#fff"
+                />
+              </View>
+            </View>
+          </MapLibreGL.PointAnnotation>
+        ))}
+      </MapLibreGL.MapView>
+
       {/* Search Overlay */}
       <View style={styles.mapSearchOverlay}>
         {/* Back button */}

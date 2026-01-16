@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
   useColorScheme,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import MapLibreGL from '@maplibre/maplibre-react-native';
 import { mapGoogleCategoryToBusinessType } from '../lib/businessTypeConfig';
 import {
   getCategoryEmoji as getCategoryEmojiFromConfig,
@@ -1570,24 +1571,30 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
             
             {place && (
               <View style={styles.popupMapContainer}>
-                {/* Map temporarily disabled - showing placeholder */}
-                <View style={[styles.popupMap, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' }]}>
-                  <View style={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: 30,
-                    backgroundColor: Colors.primary,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    marginBottom: 12,
-                  }}>
-                    <Ionicons name="location" size={32} color="#fff" />
-                  </View>
-                  <Text style={{ color: '#333', fontSize: 14, fontWeight: '600' }}>{place.name}</Text>
-                  <Text style={{ color: '#666', fontSize: 12, marginTop: 4, textAlign: 'center', paddingHorizontal: 20 }}>
-                    {place.addressLine1}{place.city ? `, ${place.city}` : ''}
-                  </Text>
-                </View>
+                {React.createElement(MapLibreGL.MapView as any, {
+                  style: styles.popupMap,
+                  styleURL: "https://tiles.openfreemap.org/styles/liberty",
+                  logoEnabled: false,
+                  attributionEnabled: false,
+                }, [
+                  React.createElement(MapLibreGL.Camera as any, {
+                    key: 'camera',
+                    zoomLevel: 15,
+                    centerCoordinate: [place.longitude, place.latitude],
+                    animationMode: "flyTo",
+                  }),
+                  React.createElement(MapLibreGL.PointAnnotation as any, {
+                    key: 'marker',
+                    id: "popup-marker",
+                    coordinate: [place.longitude, place.latitude],
+                  }, 
+                    <View style={styles.markerContainer}>
+                      <View style={[styles.marker, { backgroundColor: Colors.primary }]}>
+                        <Ionicons name="location" size={24} color="#fff" />
+                      </View>
+                    </View>
+                  )
+                ])}
               </View>
             )}
 
