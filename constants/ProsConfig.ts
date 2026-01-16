@@ -116,6 +116,16 @@ export const PROS_LEAD_STATUSES = [
   { value: 'cancelled', label: 'Cancelled', color: '#EF4444' },
 ] as const;
 
+// Lead status configuration (alias for backwards compatibility)
+export const LEAD_STATUS_CONFIG = {
+  new: { label: 'New', color: '#3B82F6' },
+  contacted: { label: 'Contacted', color: '#F59E0B' },
+  quoted: { label: 'Quoted', color: '#8B5CF6' },
+  hired: { label: 'Hired', color: '#10B981' },
+  completed: { label: 'Completed', color: '#22C55E' },
+  cancelled: { label: 'Cancelled', color: '#EF4444' },
+} as const;
+
 // Days of week for availability
 export const DAYS_OF_WEEK = [
   { value: 0, label: 'Sunday', short: 'Sun' },

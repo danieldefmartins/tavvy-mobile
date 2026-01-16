@@ -20,7 +20,7 @@ const BASE_CATEGORIES: PhotoCategory[] = [
 ];
 
 // Business-specific category extensions
-const BUSINESS_EXTENSIONS: Record<BusinessType, PhotoCategory[]> = {
+const BUSINESS_EXTENSIONS: Partial<Record<BusinessType, PhotoCategory[]>> & { default: PhotoCategory[] } = {
   restaurant: [
     { id: 'food', name: 'Food', icon: 'restaurant' },
     { id: 'drinks', name: 'Drinks', icon: 'wine' },

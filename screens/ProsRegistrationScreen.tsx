@@ -133,14 +133,13 @@ export default function ProsRegistrationScreen() {
       await register({
         businessName: formData.businessName,
         description: formData.description || undefined,
-        phone: formData.phone || undefined,
-        email: formData.email || undefined,
+        phone: formData.phone || '',
+        email: formData.email || '',
         city: formData.city,
         state: formData.state,
-        zipCode: formData.zipCode || undefined,
+        zipCode: formData.zipCode || '',
         categoryIds: formData.categoryIds,
-        primaryCategoryId: formData.primaryCategoryId || undefined,
-      });
+      } as any);
 
       // Subscribe to selected tier
       await subscribe(formData.selectedTier);

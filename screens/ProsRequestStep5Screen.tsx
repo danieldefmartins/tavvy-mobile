@@ -51,7 +51,7 @@ export default function ProsRequestStep5Screen() {
         description: description || `Request for ${categoryName} service.`,
         preferredDate: timeline,
         budget: budget,
-      });
+      } as any);
 
       Alert.alert('Success', 'Your request has been submitted successfully!');
       

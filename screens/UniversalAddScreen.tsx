@@ -763,9 +763,9 @@ export default function UniversalAddScreenV2() {
   
   // Start scanner
   const startScan = useCallback(() => {
-    navigation.navigate('BusinessCardScanner' as never, {
+    (navigation as any).navigate('BusinessCardScanner', {
       onScanComplete: handleScanComplete
-    } as never);
+    });
   }, [navigation, handleScanComplete]);
   
   // Skip scan and continue manually
@@ -803,7 +803,7 @@ export default function UniversalAddScreenV2() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, entrances.entrances, multiEntranceRequirement, navigation]);
+  }, [formData, entrances, multiEntranceRequirement, navigation]);
   
   // Handle cancel
   const handleCancel = useCallback(() => {

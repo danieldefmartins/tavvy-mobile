@@ -143,13 +143,13 @@ export default function ProsProfileScreen() {
 
             {/* Badges */}
             <View style={styles.badges}>
-              {pro.isInsured && (
+              {(pro as any).isInsured && (
                 <View style={styles.badge}>
                   <Ionicons name="shield-checkmark" size={14} color={ProsColors.primary} />
                   <Text style={styles.badgeText}>Insured</Text>
                 </View>
               )}
-              {pro.isLicensed && (
+              {(pro as any).isLicensed && (
                 <View style={styles.badge}>
                   <Ionicons name="document-text" size={14} color={ProsColors.primary} />
                   <Text style={styles.badgeText}>Licensed</Text>
@@ -241,10 +241,10 @@ export default function ProsProfileScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Business Hours</Text>
               {DAYS_OF_WEEK.map((day) => (
-                <View key={day} style={styles.hoursRow}>
-                  <Text style={styles.dayText}>{day}</Text>
+                <View key={day.value} style={styles.hoursRow}>
+                  <Text style={styles.dayText}>{day.label}</Text>
                   <Text style={styles.hoursText}>
-                    {day === 'Sunday' ? 'Closed' : '8:00 AM - 6:00 PM'}
+                    {day.label === 'Sunday' ? 'Closed' : '8:00 AM - 6:00 PM'}
                   </Text>
                 </View>
               ))}

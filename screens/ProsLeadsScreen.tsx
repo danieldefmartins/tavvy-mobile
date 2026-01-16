@@ -89,7 +89,7 @@ export default function ProsLeadsScreen() {
     <ProsLeadCard
       lead={item}
       onPress={() => handleLeadPress(item)}
-      onStatusChange={(status) => handleStatusChange(item.id, status)}
+      onStatusChange={(leadId, status) => handleStatusChange(leadId, status)}
     />
   );
 
@@ -142,7 +142,7 @@ export default function ProsLeadsScreen() {
         </View>
       ) : (
         <FlatList
-          data={filteredLeads}
+          data={filteredLeads as any}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderLead}
           contentContainerStyle={styles.leadsList}

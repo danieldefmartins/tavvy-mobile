@@ -1571,29 +1571,30 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
             
             {place && (
               <View style={styles.popupMapContainer}>
-                {/* @ts-ignore */}
-                <MapLibreGL.MapView
-                  style={styles.popupMap}
-                  styleURL="https://tiles.openfreemap.org/styles/liberty"
-                  logoEnabled={false}
-                  attributionEnabled={false}
-                >
-                  <MapLibreGL.Camera
-                    zoomLevel={15}
-                    centerCoordinate={[place.longitude, place.latitude]}
-                    animationMode="none"
-                  />
-                  <MapLibreGL.PointAnnotation
-                    id="popup-marker"
-                    coordinate={[place.longitude, place.latitude]}
-                  >
+                {React.createElement(MapLibreGL.MapView as any, {
+                  style: styles.popupMap,
+                  styleURL: "https://tiles.openfreemap.org/styles/liberty",
+                  logoEnabled: false,
+                  attributionEnabled: false,
+                }, [
+                  React.createElement(MapLibreGL.Camera as any, {
+                    key: 'camera',
+                    zoomLevel: 15,
+                    centerCoordinate: [place.longitude, place.latitude],
+                    animationMode: "flyTo",
+                  }),
+                  React.createElement(MapLibreGL.PointAnnotation as any, {
+                    key: 'marker',
+                    id: "popup-marker",
+                    coordinate: [place.longitude, place.latitude],
+                  }, 
                     <View style={styles.markerContainer}>
                       <View style={[styles.marker, { backgroundColor: Colors.primary }]}>
                         <Ionicons name="location" size={24} color="#fff" />
                       </View>
                     </View>
-                  </MapLibreGL.PointAnnotation>
-                </MapLibreGL.MapView>
+                  )
+                ])}
               </View>
             )}
 

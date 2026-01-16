@@ -71,14 +71,14 @@ export default function MultipleEntrancesComponent({
     isLoading,
     error,
   } = useEntrancesWithDistance(
-    placeId,
+    placeId || '',
     userLocation?.lat,
     userLocation?.lng
   );
 
   // Get closest entrance
   const { data: closestEntrance } = useClosestEntrance(
-    placeId,
+    placeId || '',
     userLocation?.lat,
     userLocation?.lng
   );

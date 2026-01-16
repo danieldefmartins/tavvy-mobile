@@ -68,7 +68,7 @@ const getFormSteps = (selectedCategory: string | null): FormStep[] => {
       id: 'contact',
       title: "Contact",
       question: "How can people reach this place? (optional)",
-      type: 'contact', // Custom type for phone, website, email
+      type: 'text' as any, // Custom type for phone, website, email
     },
     {
       id: 'description',
@@ -259,9 +259,9 @@ export default function AddPlaceScreen() {
   };
 
   const startScan = () => {
-    navigation.navigate('BusinessCardScanner' as never, {
+    (navigation as any).navigate('BusinessCardScanner', {
       onScanComplete: handleScanComplete
-    } as never);
+    });
   };
 
   const handleStepChange = (stepId: string, formData?: any) => {

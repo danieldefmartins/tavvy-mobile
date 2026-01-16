@@ -96,7 +96,7 @@ export default function ProsHomeScreen() {
   const remainingSpots = EARLY_ADOPTER_SPOTS_LEFT;
 
   // If user switches to Pro mode, show Pro options
-  if (viewMode === 'pro') {
+  if ((viewMode as string) === 'pro') {
     return (
       <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#FFFFFF' }]}>
         <StatusBar barStyle="light-content" />
@@ -124,20 +124,20 @@ export default function ProsHomeScreen() {
           {/* Mode Toggle */}
           <View style={[styles.modeToggleContainer, { backgroundColor: isDark ? theme.surface : '#F3F4F6' }]}>
             <TouchableOpacity
-              style={[styles.modeToggle, viewMode === 'user' && styles.modeToggleActive]}
+              style={[styles.modeToggle, (viewMode as string) === 'user' && styles.modeToggleActive]}
               onPress={() => setViewMode('user')}
             >
-              <Ionicons name="search" size={18} color={viewMode === 'user' ? '#fff' : (isDark ? theme.textSecondary : ProsColors.textSecondary)} />
-              <Text style={[styles.modeToggleText, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }, viewMode === 'user' && styles.modeToggleTextActive]}>
+              <Ionicons name="search" size={18} color={(viewMode as string) === 'user' ? '#fff' : (isDark ? theme.textSecondary : ProsColors.textSecondary)} />
+              <Text style={[styles.modeToggleText, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }, (viewMode as string) === 'user' && styles.modeToggleTextActive]}>
                 Find Pros
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modeToggle, viewMode === 'pro' && styles.modeToggleActive]}
+              style={[styles.modeToggle, (viewMode as string) === 'pro' && styles.modeToggleActive]}
               onPress={() => setViewMode('pro')}
             >
-              <Ionicons name="construct" size={18} color={viewMode === 'pro' ? '#fff' : (isDark ? theme.textSecondary : ProsColors.textSecondary)} />
-              <Text style={[styles.modeToggleText, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }, viewMode === 'pro' && styles.modeToggleTextActive]}>
+              <Ionicons name="construct" size={18} color={(viewMode as string) === 'pro' ? '#fff' : (isDark ? theme.textSecondary : ProsColors.textSecondary)} />
+              <Text style={[styles.modeToggleText, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }, (viewMode as string) === 'pro' && styles.modeToggleTextActive]}>
                 I'm a Pro
               </Text>
             </TouchableOpacity>
@@ -258,20 +258,20 @@ export default function ProsHomeScreen() {
         {/* Mode Toggle */}
         <View style={[styles.modeToggleContainer, { backgroundColor: isDark ? theme.surface : '#F3F4F6' }]}>
           <TouchableOpacity
-            style={[styles.modeToggle, viewMode === 'user' && styles.modeToggleActive]}
+            style={[styles.modeToggle, (viewMode as string) === 'user' && styles.modeToggleActive]}
             onPress={() => setViewMode('user')}
           >
-            <Ionicons name="search" size={18} color={viewMode === 'user' ? '#fff' : (isDark ? theme.textSecondary : ProsColors.textSecondary)} />
-            <Text style={[styles.modeToggleText, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }, viewMode === 'user' && styles.modeToggleTextActive]}>
+            <Ionicons name="search" size={18} color={(viewMode as string) === 'user' ? '#fff' : (isDark ? theme.textSecondary : ProsColors.textSecondary)} />
+            <Text style={[styles.modeToggleText, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }, (viewMode as string) === 'user' && styles.modeToggleTextActive]}>
               Find Pros
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.modeToggle, viewMode === 'pro' && styles.modeToggleActive]}
+            style={[styles.modeToggle, (viewMode as string) === 'pro' && styles.modeToggleActive]}
             onPress={() => setViewMode('pro')}
           >
-            <Ionicons name="construct" size={18} color={viewMode === 'pro' ? '#fff' : (isDark ? theme.textSecondary : ProsColors.textSecondary)} />
-            <Text style={[styles.modeToggleText, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }, viewMode === 'pro' && styles.modeToggleTextActive]}>
+            <Ionicons name="construct" size={18} color={(viewMode as string) === 'pro' ? '#fff' : (isDark ? theme.textSecondary : ProsColors.textSecondary)} />
+            <Text style={[styles.modeToggleText, { color: isDark ? theme.textSecondary : ProsColors.textSecondary }, (viewMode as string) === 'pro' && styles.modeToggleTextActive]}>
               I'm a Pro
             </Text>
           </TouchableOpacity>

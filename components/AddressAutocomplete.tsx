@@ -311,7 +311,7 @@ export function AddressAutocomplete({
       <View style={[
         styles.inputContainer,
         isFocused && styles.inputContainerFocused,
-        error && styles.inputContainerError,
+        error ? styles.inputContainerError : undefined,
         disabled && styles.inputContainerDisabled,
       ]}>
         <Ionicons 

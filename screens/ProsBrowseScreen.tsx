@@ -86,9 +86,9 @@ export default function ProsBrowseScreen() {
 
   const renderPro = ({ item }: { item: Pro }) => (
     <ProsProviderCard
-      pro={item}
-      onPress={handleProPress}
-      onMessagePress={handleMessagePress}
+      provider={item as any}
+      onPress={() => handleProPress(item.slug)}
+      onMessagePress={() => handleMessagePress(item.id)}
     />
   );
 
@@ -256,7 +256,7 @@ export default function ProsBrowseScreen() {
       </View>
 
       <FlatList
-        data={pros}
+        data={pros as any}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPro}
         ListHeaderComponent={renderHeader}

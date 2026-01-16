@@ -57,11 +57,11 @@ export default function ProsRequestStep1Screen() {
 
   // Build services list from PROS_CATEGORIES + Other option
   const allServices = useMemo(() => {
-    const services = PROS_CATEGORIES.map(cat => ({
-      id: cat.id,
-      name: cat.name,
-      icon: cat.icon,
-      color: cat.color,
+    const services: { id: number; name: string; icon: string; color: string }[] = PROS_CATEGORIES.map(cat => ({
+      id: cat.id as number,
+      name: cat.name as string,
+      icon: cat.icon as string,
+      color: cat.color as string,
     }));
     
     // Add "Other" option at the end
