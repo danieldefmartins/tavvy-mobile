@@ -33,7 +33,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseClient';
 
 // Import category components
 import { CategorySelector } from '../components/CategorySelector';
