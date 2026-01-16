@@ -303,6 +303,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   
   // Map states
   const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('osm');
+  const [mapError, setMapError] = useState<boolean>(false);
   
   // Personalization states
   const [greeting, setGreeting] = useState('');
@@ -2186,8 +2187,20 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const renderMapMode = () => (
     <View style={styles.mapModeContainer}>
-      {/* Full Map */}
-      {/* @ts-ignore - MapLibreGL types are incomplete */}
+      {/* Full Map with Error Handling */}
+      {mapError ? (
+        <View style={[styles.fullMap, { justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? theme.surface : '#f0f0f0' }]}>
+          <Ionicons name="map-outline" size={48} color={isDark ? theme.textSecondary : '#999'} />
+          <Text style={{ color: isDark ? theme.textSecondary : '#666', marginTop: 12, fontSize: 16 }}>Map unavailable</Text>
+          <TouchableOpacity 
+            onPress={() => setMapError(false)} 
+            style={{ marginTop: 16, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: theme.primary, borderRadius: 8 }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+      /* @ts-ignore - MapLibreGL types are incomplete */
       <MapLibreGL.MapView
         key={mapStyle}
         style={styles.fullMap}
@@ -2197,6 +2210,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         attributionEnabled={false}
         zoomEnabled={true}
         scrollEnabled={true}
+        onDidFailLoadingMap={() => setMapError(true)}
         rotateEnabled={true}
         pitchEnabled={true}
       >
@@ -2311,6 +2325,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </MapLibreGL.PointAnnotation>
         ))}
       </MapLibreGL.MapView>
+      )}
 
       {/* Search Overlay */}
       <View style={styles.mapSearchOverlay}>
