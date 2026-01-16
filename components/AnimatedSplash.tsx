@@ -26,7 +26,12 @@ const AnimatedSplash: React.FC<AnimatedSplashProps> = ({ onAnimationComplete }) 
   useEffect(() => {
     // Hide the native splash screen immediately
     const hideSplash = async () => {
-      await SplashScreen.hideAsync();
+      try {
+        await SplashScreen.hideAsync();
+      } catch (e) {
+        // Ignore error if splash screen was already hidden or not shown
+        console.log('Splash screen already hidden');
+      }
     };
     hideSplash();
 
