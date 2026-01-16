@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import MapLibreGL from '@maplibre/maplibre-react-native';
+// MapLibre is loaded lazily to prevent crashes on app startup
+let MapLibreGL: any = null;
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
@@ -304,6 +305,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // Map states
   const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('osm');
   const [mapError, setMapError] = useState<boolean>(false);
+  const [mapLibreReady, setMapLibreReady] = useState<boolean>(false);
+  const [mapLibreLoading, setMapLibreLoading] = useState<boolean>(false);
   
   // Personalization states
   const [greeting, setGreeting] = useState('');
@@ -325,6 +328,39 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   useEffect(() => {
     initializeApp();
   }, []);
+
+  // Lazy load MapLibre when map view is needed
+  useEffect(() => {
+    const loadMapLibre = async () => {
+      if (viewMode === 'map' && !mapLibreReady && !mapLibreLoading) {
+        setMapLibreLoading(true);
+        try {
+          console.log('🗺️ Loading MapLibre...');
+          const module = await import('@maplibre/maplibre-react-native');
+          MapLibreGL = module.default;
+          
+          // Initialize MapLibre
+          MapLibreGL.setAccessToken(null);
+          
+          try {
+            await MapLibreGL.setConnected(true);
+          } catch (e) {
+            console.log('MapLibre setConnected warning:', e);
+          }
+          
+          console.log('✅ MapLibre loaded successfully');
+          setMapLibreReady(true);
+        } catch (error) {
+          console.error('❌ MapLibre loading failed:', error);
+          setMapError(true);
+        } finally {
+          setMapLibreLoading(false);
+        }
+      }
+    };
+    
+    loadMapLibre();
+  }, [viewMode, mapLibreReady, mapLibreLoading]);
 
   // Handle camera movement when targetLocation changes
   useEffect(() => {
@@ -2193,13 +2229,21 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           <Ionicons name="map-outline" size={48} color={isDark ? theme.textSecondary : '#999'} />
           <Text style={{ color: isDark ? theme.textSecondary : '#666', marginTop: 12, fontSize: 16 }}>Map unavailable</Text>
           <TouchableOpacity 
-            onPress={() => setMapError(false)} 
+            onPress={() => {
+              setMapError(false);
+              setMapLibreReady(false);
+            }} 
             style={{ marginTop: 16, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: theme.primary, borderRadius: 8 }}
           >
             <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
           </TouchableOpacity>
         </View>
-      ) : (
+      ) : !mapLibreReady || mapLibreLoading ? (
+        <View style={[styles.fullMap, { justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? theme.surface : '#f0f0f0' }]}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={{ color: isDark ? theme.textSecondary : '#666', marginTop: 12, fontSize: 16 }}>Loading map...</Text>
+        </View>
+      ) : MapLibreGL ? (
       /* @ts-ignore - MapLibreGL types are incomplete */
       <MapLibreGL.MapView
         key={mapStyle}
@@ -2325,6 +2369,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </MapLibreGL.PointAnnotation>
         ))}
       </MapLibreGL.MapView>
+      ) : (
+        <View style={[styles.fullMap, { justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? theme.surface : '#f0f0f0' }]}>
+          <Ionicons name="map-outline" size={48} color={isDark ? theme.textSecondary : '#999'} />
+          <Text style={{ color: isDark ? theme.textSecondary : '#666', marginTop: 12, fontSize: 16 }}>Map unavailable</Text>
+        </View>
       )}
 
       {/* Search Overlay */}

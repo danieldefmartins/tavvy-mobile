@@ -1,8 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import MapLibreGL from '@maplibre/maplibre-react-native';
-
-// Initialize MapLibre - MUST be done before any MapView is rendered
-MapLibreGL.setAccessToken(null); // MapLibre doesn't require an access token
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -330,24 +326,6 @@ function AppContent() {
 // --------------------
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [mapReady, setMapReady] = useState(false);
-
-  // Initialize MapLibre on app start
-  useEffect(() => {
-    const initMapLibre = async () => {
-      try {
-        // Ensure MapLibre is properly initialized
-        await MapLibreGL.setConnected(true);
-        setMapReady(true);
-        console.log('✅ MapLibre initialized');
-      } catch (error) {
-        console.error('MapLibre initialization error:', error);
-        // Still allow app to run even if MapLibre fails
-        setMapReady(true);
-      }
-    };
-    initMapLibre();
-  }, []);
 
   const handleSplashComplete = () => {
     setShowSplash(false);
