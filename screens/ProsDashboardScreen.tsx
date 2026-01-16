@@ -56,8 +56,8 @@ export default function ProsDashboardScreen() {
     setRefreshing(false);
   };
 
-  const newLeadsCount = leads.filter(l => l.status === 'new').length;
-  const unreadMessagesCount = conversations.reduce((sum, c) => sum + c.conversation.providerUnread, 0);
+  const newLeadsCount = leads.filter(l => (l.status as string) === 'new' || (l.status as string) === 'pending').length;
+  const unreadMessagesCount = conversations.reduce((sum, c) => sum + ((c as any).conversation?.providerUnread || 0), 0);
 
   if (profileLoading && !profile) {
     return (
@@ -89,7 +89,7 @@ export default function ProsDashboardScreen() {
     );
   }
 
-  const rating = parseFloat(profile.averageRating) || 0;
+  const rating = parseFloat(profile.averageRating as any) || 0;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -116,8 +116,8 @@ export default function ProsDashboardScreen() {
           onPress={() => navigation.navigate('ProsEditProfileScreen')}
         >
           <View style={styles.profileHeader}>
-            {profile.logoUrl ? (
-              <Image source={{ uri: profile.logoUrl }} style={styles.profileLogo} />
+            {(profile as any).logoUrl ? (
+              <Image source={{ uri: (profile as any).logoUrl }} style={styles.profileLogo} />
             ) : (
               <View style={styles.profileLogoPlaceholder}>
                 <Ionicons name="business" size={28} color={ProsColors.textMuted} />
@@ -144,8 +144,8 @@ export default function ProsDashboardScreen() {
         {/* Subscription Status */}
         <ProsSubscriptionStatusBanner
           tier={subscription?.tier || null}
-          status={subscription?.status || null}
-          earlyAdopterNumber={subscription?.earlyAdopterNumber || undefined}
+          status={(subscription?.status as any) || null}
+          earlyAdopterNumber={(subscription as any)?.earlyAdopterNumber || undefined}
           expiresAt={subscription?.endDate}
           onUpgrade={() => navigation.navigate('ProsPricingScreen')}
         />
@@ -238,7 +238,7 @@ export default function ProsDashboardScreen() {
             leads.slice(0, 3).map((lead) => (
               <ProsLeadCardCompact
                 key={lead.id}
-                lead={lead}
+                lead={lead as any}
                 onPress={() => navigation.navigate('ProsLeadDetailScreen', { leadId: lead.id })}
               />
             ))

@@ -28,4 +28,3 @@ const styles = StyleSheet.create({
   text: { fontSize: 16, marginBottom: 10 },
   hint: { fontSize: 14, opacity: 0.7, lineHeight: 20 },
 });
-TS

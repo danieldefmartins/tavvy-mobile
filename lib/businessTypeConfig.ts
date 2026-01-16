@@ -34,6 +34,20 @@ export type BusinessType =
   | 'airport'
   | 'theme_park'
   | 'national_park'
+  | 'state_park'
+  | 'shopping_mall'
+  | 'stadium'
+  | 'arena'
+  | 'university'
+  | 'convention_center'
+  | 'resort'
+  | 'zoo'
+  | 'aquarium'
+  | 'museum'
+  | 'warehouse'
+  | 'distribution_center'
+  | 'marina'
+  | 'botanical_garden'
   | 'hospital'
   | 'default';
 
@@ -566,6 +580,76 @@ export function getCheckInTypes(businessType: BusinessType): CheckInType[] {
       { id: 'visited_patient', label: 'Visited Patient', icon: 'people', color: '#3b82f6' },
       { id: 'emergency_visit', label: 'Emergency Visit', icon: 'alert', color: '#ef4444' },
     ],
+    state_park: [
+      { id: 'hiked', label: 'Hiked', icon: 'walk', color: '#10b981' },
+      { id: 'camped', label: 'Camped', icon: 'bonfire', color: '#3b82f6' },
+      { id: 'drove_through', label: 'Drove Through', icon: 'car', color: '#6b7280' },
+    ],
+    shopping_mall: [
+      { id: 'shopped_here', label: 'Shopped Here', icon: 'cart', color: '#10b981' },
+      { id: 'browsed_only', label: 'Browsed Only', icon: 'eye', color: '#3b82f6' },
+      { id: 'passed_by', label: 'Passed By', icon: 'walk', color: '#6b7280' },
+    ],
+    stadium: [
+      { id: 'attended_event', label: 'Attended Event', icon: 'ticket', color: '#10b981' },
+      { id: 'toured', label: 'Toured', icon: 'walk', color: '#3b82f6' },
+      { id: 'passed_by', label: 'Passed By', icon: 'eye', color: '#6b7280' },
+    ],
+    arena: [
+      { id: 'attended_event', label: 'Attended Event', icon: 'ticket', color: '#10b981' },
+      { id: 'toured', label: 'Toured', icon: 'walk', color: '#3b82f6' },
+      { id: 'passed_by', label: 'Passed By', icon: 'eye', color: '#6b7280' },
+    ],
+    university: [
+      { id: 'attended', label: 'Attended', icon: 'school', color: '#10b981' },
+      { id: 'visited', label: 'Visited', icon: 'walk', color: '#3b82f6' },
+      { id: 'passed_by', label: 'Passed By', icon: 'eye', color: '#6b7280' },
+    ],
+    convention_center: [
+      { id: 'attended_event', label: 'Attended Event', icon: 'ticket', color: '#10b981' },
+      { id: 'exhibited', label: 'Exhibited', icon: 'briefcase', color: '#3b82f6' },
+      { id: 'passed_by', label: 'Passed By', icon: 'eye', color: '#6b7280' },
+    ],
+    resort: [
+      { id: 'stayed_here', label: 'Stayed Here', icon: 'bed', color: '#10b981' },
+      { id: 'used_amenities', label: 'Used Amenities', icon: 'fitness', color: '#3b82f6' },
+      { id: 'passed_by', label: 'Passed By', icon: 'eye', color: '#6b7280' },
+    ],
+    zoo: [
+      { id: 'visited', label: 'Visited', icon: 'paw', color: '#10b981' },
+      { id: 'member', label: 'Member', icon: 'card', color: '#3b82f6' },
+      { id: 'passed_by', label: 'Passed By', icon: 'eye', color: '#6b7280' },
+    ],
+    aquarium: [
+      { id: 'visited', label: 'Visited', icon: 'fish', color: '#10b981' },
+      { id: 'member', label: 'Member', icon: 'card', color: '#3b82f6' },
+      { id: 'passed_by', label: 'Passed By', icon: 'eye', color: '#6b7280' },
+    ],
+    museum: [
+      { id: 'visited', label: 'Visited', icon: 'location', color: '#10b981' },
+      { id: 'member', label: 'Member', icon: 'card', color: '#3b82f6' },
+      { id: 'passed_by', label: 'Passed By', icon: 'eye', color: '#6b7280' },
+    ],
+    warehouse: [
+      { id: 'shopped_here', label: 'Shopped Here', icon: 'cart', color: '#10b981' },
+      { id: 'picked_up', label: 'Picked Up', icon: 'cube', color: '#3b82f6' },
+      { id: 'passed_by', label: 'Passed By', icon: 'eye', color: '#6b7280' },
+    ],
+    distribution_center: [
+      { id: 'picked_up', label: 'Picked Up', icon: 'cube', color: '#10b981' },
+      { id: 'delivered', label: 'Delivered', icon: 'car', color: '#3b82f6' },
+      { id: 'passed_by', label: 'Passed By', icon: 'eye', color: '#6b7280' },
+    ],
+    marina: [
+      { id: 'docked', label: 'Docked', icon: 'boat', color: '#10b981' },
+      { id: 'used_amenities', label: 'Used Amenities', icon: 'water', color: '#3b82f6' },
+      { id: 'passed_by', label: 'Passed By', icon: 'eye', color: '#6b7280' },
+    ],
+    botanical_garden: [
+      { id: 'visited', label: 'Visited', icon: 'leaf', color: '#10b981' },
+      { id: 'member', label: 'Member', icon: 'card', color: '#3b82f6' },
+      { id: 'passed_by', label: 'Passed By', icon: 'eye', color: '#6b7280' },
+    ],
     default: [
       { id: 'visited', label: 'Visited', icon: 'checkmark-circle', color: '#10b981' },
       { id: 'used_service', label: 'Used Service', icon: 'hand-right', color: '#3b82f6' },
@@ -686,6 +770,76 @@ export function getSuggestedSignals(businessType: BusinessType) {
       positive: ['Caring Staff', 'Clean', 'Modern', 'Short Wait', 'Good Communication'],
       neutral: ['Busy', 'Teaching Hospital', 'Specialized', 'General', 'Large'],
       negative: ['Long Wait', 'Poor Communication', 'Understaffed', 'Confusing Layout', 'Expensive'],
+    },
+    state_park: {
+      positive: ['Beautiful', 'Well Maintained', 'Great Trails', 'Wildlife', 'Peaceful'],
+      neutral: ['Remote', 'Seasonal', 'Popular', 'Wilderness', 'Developed'],
+      negative: ['Crowded', 'Limited Facilities', 'Difficult Access', 'Expensive Fees', 'Poor Cell Service'],
+    },
+    shopping_mall: {
+      positive: ['Great Selection', 'Clean', 'Good Food Court', 'Easy Parking', 'Family-Friendly'],
+      neutral: ['Busy', 'Large', 'Indoor', 'Chain Stores', 'Modern'],
+      negative: ['Crowded', 'Expensive', 'Hard to Navigate', 'Limited Parking', 'Noisy'],
+    },
+    stadium: {
+      positive: ['Great Views', 'Clean', 'Good Food', 'Easy Access', 'Fun Atmosphere'],
+      neutral: ['Large', 'Outdoor', 'Indoor', 'Historic', 'Modern'],
+      negative: ['Expensive', 'Crowded', 'Long Lines', 'Bad Seats', 'Poor Parking'],
+    },
+    arena: {
+      positive: ['Great Views', 'Clean', 'Good Food', 'Easy Access', 'Fun Atmosphere'],
+      neutral: ['Large', 'Indoor', 'Multi-Purpose', 'Historic', 'Modern'],
+      negative: ['Expensive', 'Crowded', 'Long Lines', 'Bad Seats', 'Poor Parking'],
+    },
+    university: {
+      positive: ['Beautiful Campus', 'Good Facilities', 'Friendly', 'Well Maintained', 'Historic'],
+      neutral: ['Large', 'Small', 'Urban', 'Rural', 'Research Focused'],
+      negative: ['Hard to Navigate', 'Limited Parking', 'Crowded', 'Expensive', 'Poor Signage'],
+    },
+    convention_center: {
+      positive: ['Spacious', 'Clean', 'Good Facilities', 'Easy Access', 'Modern'],
+      neutral: ['Large', 'Downtown', 'Multi-Purpose', 'Busy', 'Corporate'],
+      negative: ['Expensive', 'Crowded', 'Poor Food', 'Hard to Navigate', 'Limited Parking'],
+    },
+    resort: {
+      positive: ['Beautiful', 'Great Amenities', 'Relaxing', 'Friendly Staff', 'Good Food'],
+      neutral: ['All-Inclusive', 'Family-Friendly', 'Adults Only', 'Beachfront', 'Mountain'],
+      negative: ['Expensive', 'Crowded', 'Overrated', 'Poor Service', 'Dated'],
+    },
+    zoo: {
+      positive: ['Great Animals', 'Clean', 'Educational', 'Family-Friendly', 'Well Maintained'],
+      neutral: ['Large', 'Small', 'Outdoor', 'Seasonal', 'Conservation Focused'],
+      negative: ['Expensive', 'Crowded', 'Hot', 'Long Walks', 'Poor Animal Care'],
+    },
+    aquarium: {
+      positive: ['Amazing Exhibits', 'Clean', 'Educational', 'Family-Friendly', 'Interactive'],
+      neutral: ['Large', 'Small', 'Indoor', 'Conservation Focused', 'Modern'],
+      negative: ['Expensive', 'Crowded', 'Small Tanks', 'Long Lines', 'Overrated'],
+    },
+    museum: {
+      positive: ['Fascinating Exhibits', 'Clean', 'Educational', 'Well Curated', 'Interactive'],
+      neutral: ['Large', 'Small', 'Art', 'History', 'Science'],
+      negative: ['Expensive', 'Crowded', 'Boring', 'Poor Layout', 'Limited Exhibits'],
+    },
+    warehouse: {
+      positive: ['Great Selection', 'Good Prices', 'Clean', 'Well Organized', 'Bulk Options'],
+      neutral: ['Large', 'Membership Required', 'Busy', 'Basic', 'Industrial'],
+      negative: ['Crowded', 'Long Lines', 'Hard to Navigate', 'Limited Selection', 'Overwhelming'],
+    },
+    distribution_center: {
+      positive: ['Efficient', 'Clean', 'Well Organized', 'Friendly Staff', 'Fast Service'],
+      neutral: ['Large', 'Industrial', 'Busy', 'Appointment Only', 'Commercial'],
+      negative: ['Confusing', 'Long Wait', 'Poor Signage', 'Limited Hours', 'Hard to Find'],
+    },
+    marina: {
+      positive: ['Beautiful', 'Clean', 'Good Facilities', 'Friendly Staff', 'Safe'],
+      neutral: ['Large', 'Small', 'Full Service', 'Basic', 'Seasonal'],
+      negative: ['Expensive', 'Crowded', 'Poor Facilities', 'Limited Space', 'Rough Water'],
+    },
+    botanical_garden: {
+      positive: ['Beautiful', 'Peaceful', 'Well Maintained', 'Educational', 'Great Photos'],
+      neutral: ['Large', 'Small', 'Seasonal', 'Indoor', 'Outdoor'],
+      negative: ['Expensive', 'Crowded', 'Hot', 'Limited Shade', 'Poor Signage'],
     },
     default: {
       positive: ['Great Experience', 'Friendly Staff', 'Clean', 'Good Value', 'Recommended'],
@@ -885,6 +1039,76 @@ export function getConditionalFields(businessType: BusinessType) {
     ],
     retail: [],
     attraction: [],
+    state_park: [
+      { field: 'trails', label: 'Trail Miles', type: 'number' },
+      { field: 'camping', label: 'Camping Available', type: 'boolean' },
+      { field: 'visitorCenter', label: 'Visitor Center', type: 'boolean' },
+      { field: 'entranceFee', label: 'Entrance Fee Required', type: 'boolean' },
+    ],
+    shopping_mall: [
+      { field: 'stores', label: 'Number of Stores', type: 'number' },
+      { field: 'foodCourt', label: 'Food Court', type: 'boolean' },
+      { field: 'parking', label: 'Free Parking', type: 'boolean' },
+    ],
+    stadium: [
+      { field: 'capacity', label: 'Seating Capacity', type: 'number' },
+      { field: 'parking', label: 'Parking Available', type: 'boolean' },
+      { field: 'concessions', label: 'Concessions', type: 'boolean' },
+    ],
+    arena: [
+      { field: 'capacity', label: 'Seating Capacity', type: 'number' },
+      { field: 'parking', label: 'Parking Available', type: 'boolean' },
+      { field: 'concessions', label: 'Concessions', type: 'boolean' },
+    ],
+    university: [
+      { field: 'enrollment', label: 'Enrollment', type: 'number' },
+      { field: 'publicPrivate', label: 'Public/Private', type: 'select' },
+      { field: 'housing', label: 'On-Campus Housing', type: 'boolean' },
+    ],
+    convention_center: [
+      { field: 'sqft', label: 'Square Footage', type: 'number' },
+      { field: 'meetingRooms', label: 'Meeting Rooms', type: 'number' },
+      { field: 'parking', label: 'Parking Available', type: 'boolean' },
+    ],
+    resort: [
+      { field: 'rooms', label: 'Number of Rooms', type: 'number' },
+      { field: 'pool', label: 'Pool', type: 'boolean' },
+      { field: 'spa', label: 'Spa', type: 'boolean' },
+      { field: 'allInclusive', label: 'All-Inclusive', type: 'boolean' },
+    ],
+    zoo: [
+      { field: 'animals', label: 'Number of Species', type: 'number' },
+      { field: 'exhibits', label: 'Exhibits', type: 'multiselect' },
+      { field: 'pettingZoo', label: 'Petting Zoo', type: 'boolean' },
+    ],
+    aquarium: [
+      { field: 'tanks', label: 'Number of Tanks', type: 'number' },
+      { field: 'touchTank', label: 'Touch Tank', type: 'boolean' },
+      { field: 'shows', label: 'Shows/Presentations', type: 'boolean' },
+    ],
+    museum: [
+      { field: 'type', label: 'Museum Type', type: 'select' },
+      { field: 'exhibits', label: 'Current Exhibits', type: 'multiselect' },
+      { field: 'guidedTours', label: 'Guided Tours', type: 'boolean' },
+    ],
+    warehouse: [
+      { field: 'membershipRequired', label: 'Membership Required', type: 'boolean' },
+      { field: 'bulkItems', label: 'Bulk Items', type: 'boolean' },
+    ],
+    distribution_center: [
+      { field: 'appointmentRequired', label: 'Appointment Required', type: 'boolean' },
+      { field: 'publicAccess', label: 'Public Access', type: 'boolean' },
+    ],
+    marina: [
+      { field: 'slips', label: 'Number of Slips', type: 'number' },
+      { field: 'fuel', label: 'Fuel Available', type: 'boolean' },
+      { field: 'boatRamp', label: 'Boat Ramp', type: 'boolean' },
+    ],
+    botanical_garden: [
+      { field: 'acres', label: 'Acres', type: 'number' },
+      { field: 'greenhouse', label: 'Greenhouse', type: 'boolean' },
+      { field: 'guidedTours', label: 'Guided Tours', type: 'boolean' },
+    ],
     default: [],
   };
 

@@ -22,9 +22,10 @@ export interface ScannedBusinessCard {
   address: string;
   phone: string;
   website?: string;
+  email?: string;
 }
 
-export default function BusinessCardScannerScreen({ navigation, route }: BusinessCardScannerScreenProps) {
+export default function BusinessCardScannerScreen({ navigation, route }: any) {
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
   const cameraRef = useRef<CameraView>(null);

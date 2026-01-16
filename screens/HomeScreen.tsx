@@ -313,7 +313,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   
   // Refs
-  const cameraRef = useRef<MapLibreGL.Camera>(null);
+  const cameraRef = useRef<any>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const searchInputRef = useRef<TextInput>(null);
 
@@ -621,7 +621,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       console.log('Fetched places from Supabase:', placesData?.length || 0);
 
       if (placesData && placesData.length > 0) {
-        const placeIds = placesData.map(p => p.id);
+        const placeIds = placesData.map((p: any) => p.id);
         
         let signalAggregates: any[] = [];
         try {
@@ -1252,7 +1252,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   };
 
   // Get category-based fallback image URL when place has no photo
-  const getCategoryFallbackImage = (category: string): string => {
+  const getCategoryFallbackImage = (category: string | undefined): string => {
     const lowerCategory = (category || '').toLowerCase();
     
     const imageMap: Record<string, string> = {
@@ -1290,7 +1290,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   // Generate display signals with fallbacks for missing categories
   // Always returns exactly 4 signals: 2 "The Good" (top row), 1 "The Vibe" + 1 "Heads Up" (bottom row)
-  const getDisplaySignals = (signals: Signal[]): { bucket: string; tap_total: number; isEmpty: boolean }[] => {
+  const getDisplaySignals = (signals: Signal[] | undefined): { bucket: string; tap_total: number; isEmpty: boolean }[] => {
     const positive = signals?.filter(s => getSignalType(s.bucket) === 'positive') || [];
     const neutral = signals?.filter(s => getSignalType(s.bucket) === 'neutral') || [];
     const negative = signals?.filter(s => getSignalType(s.bucket) === 'negative') || [];
@@ -2187,10 +2187,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const renderMapMode = () => (
     <View style={styles.mapModeContainer}>
       {/* Full Map */}
-      {/* @ts-ignore */}
+      {/* @ts-ignore - MapLibreGL types are incomplete */}
       <MapLibreGL.MapView
         key={mapStyle}
         style={styles.fullMap}
+        // @ts-ignore
         styleURL={MAP_STYLES[mapStyle].type === 'vector' ? (MAP_STYLES[mapStyle] as any).url : undefined}
         logoEnabled={false}
         attributionEnabled={false}
@@ -2252,7 +2253,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         {MAP_STYLES[mapStyle].type === 'raster' && (
           <MapLibreGL.RasterSource
             id="raster-source"
-            tileUrlTemplates={[MAP_STYLES[mapStyle].tileUrl!]}
+            tileUrlTemplates={[(MAP_STYLES[mapStyle] as any).tileUrl]}
             tileSize={256}
           >
             <MapLibreGL.RasterLayer
@@ -2286,7 +2287,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           <MapLibreGL.PointAnnotation
             key={`map-${place.id}-${mapIndex}`}
             id={`${place.id}-${mapIndex}`}
-            coordinate={[place.longitude || place.lng, place.latitude || place.lat]}
+            coordinate={[place.longitude || place.lng || 0, place.latitude || place.lat || 0]}
             onSelected={() => handleMarkerPress(place)}
           >
             <View style={styles.markerContainer}>

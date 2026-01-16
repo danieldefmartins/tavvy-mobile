@@ -43,7 +43,7 @@ import {
 } from '../lib/categoryConfig';
 
 // Import entrance hook
-import { useEntrances } from '../hooks/useEntrances';
+import { useLocalEntrances, LocalEntrance } from '../hooks/useEntrances';
 
 // Import business card scanner types
 import { ScannedBusinessCard } from './BusinessCardScannerScreen';
@@ -547,7 +547,7 @@ export default function UniversalAddScreenV2() {
   const [scannedData, setScannedData] = useState<ScannedBusinessCard | null>(null);
   
   // Entrances hook
-  const entrances = useEntrances();
+  const { entrances, addEntrance, updateEntrance, removeEntrance } = useLocalEntrances();
   
   // Determine steps based on content type
   const steps = useMemo((): Step[] => {
@@ -693,7 +693,7 @@ export default function UniversalAddScreenV2() {
         break;
         
       case 'entrances':
-        if (multiEntranceRequirement === 'always' && entrances.entrances.length === 0) {
+        if (multiEntranceRequirement === 'always' && entrances.length === 0) {
           newErrors.entrances = 'At least one entrance is required';
         }
         break;
@@ -701,7 +701,7 @@ export default function UniversalAddScreenV2() {
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData, multiEntranceRequirement, entrances.entrances]);
+  }, [formData, multiEntranceRequirement, entrances]);
   
   // Navigate to next step
   const goToNextStep = useCallback(() => {
@@ -782,7 +782,7 @@ export default function UniversalAddScreenV2() {
       // Prepare submission data
       const submissionData = {
         ...formData,
-        entrances: multiEntranceRequirement !== 'never' ? entrances.entrances : [],
+        entrances: multiEntranceRequirement !== 'never' ? entrances : [],
       };
       
       console.log('Submitting:', submissionData);
@@ -1046,7 +1046,7 @@ export default function UniversalAddScreenV2() {
                 : 'Does this place have multiple entrances? Add them here (optional).'}
             </Text>
             
-            {multiEntranceRequirement === 'always' && entrances.entrances.length === 0 && (
+            {multiEntranceRequirement === 'always' && entrances.length === 0 && (
               <View style={styles.warningCard}>
                 <Ionicons
                   name="warning"
@@ -1064,10 +1064,10 @@ export default function UniversalAddScreenV2() {
             )}
             
             <MultipleEntrancesComponent
-              entrances={entrances.entrances}
-              onAddEntrance={entrances.addEntrance}
-              onUpdateEntrance={entrances.updateEntrance}
-              onRemoveEntrance={entrances.removeEntrance}
+              entrances={entrances}
+              onAddEntrance={addEntrance}
+              onUpdateEntrance={updateEntrance}
+              onRemoveEntrance={removeEntrance}
             />
             
             {errors.entrances && (

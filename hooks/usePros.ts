@@ -23,7 +23,7 @@ import {
 // Helper for calling Supabase Edge Functions
 async function invokeFunction<T>(
   functionName: string,
-  body?: Record<string, unknown>
+  body?: Record<string, unknown> | object
 ): Promise<T> {
   const { data, error } = await supabase.functions.invoke(functionName, {
     body: body || {},

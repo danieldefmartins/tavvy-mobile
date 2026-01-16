@@ -127,7 +127,7 @@ export function ProsProviderCard({ provider, onPress, onMessagePress, style }: P
               <Text style={styles.badgeText}>{(provider as any).yearsInBusiness}+ yrs</Text>
             </View>
           )}
-          {provider.isInsured && (
+          {(provider as any).isInsured && (
             <View style={styles.badge}>
               <Ionicons name="shield-checkmark" size={12} color={ProsColors.primary} />
               <Text style={styles.badgeText}>Insured</Text>

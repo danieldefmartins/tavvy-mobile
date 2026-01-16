@@ -26,14 +26,40 @@ import {
 } from '../hooks/useEntrances';
 
 interface MultipleEntrancesComponentProps {
-  placeId: string;
-  placeName: string;
+  placeId?: string;
+  placeName?: string;
+  // Edit mode props (for new places)
+  entrances?: LocalEntrance[];
+  onAddEntrance?: (entrance: Omit<LocalEntrance, 'id' | 'sort_order'>) => void;
+  onUpdateEntrance?: (id: string, updates: Partial<LocalEntrance>) => void;
+  onRemoveEntrance?: (id: string) => void;
+}
+
+// Local entrance type for edit mode
+interface LocalEntrance {
+  id: string;
+  label: string;
+  lat: number;
+  lng: number;
+  address_line1?: string;
+  city?: string;
+  state_region?: string;
+  postal_code?: string;
+  country_code?: string;
+  is_main: boolean;
+  sort_order: number;
 }
 
 export default function MultipleEntrancesComponent({
   placeId,
   placeName,
+  entrances: editEntrances,
+  onAddEntrance,
+  onUpdateEntrance,
+  onRemoveEntrance,
 }: MultipleEntrancesComponentProps) {
+  // Determine if we're in edit mode (for new places) or display mode (for existing places)
+  const isEditMode = !!onAddEntrance;
   const [userLocation, setUserLocation] = useState<{
     lat: number;
     lng: number;

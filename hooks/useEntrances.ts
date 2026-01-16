@@ -4,6 +4,7 @@
  * This hook provides access to place entrances from your existing place_entrances table
  */
 
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 
@@ -286,3 +287,57 @@ export function getEntranceColor(label: string): string {
   
   return '#6B7280'; // Default gray
 }
+
+
+/**
+ * Local entrances state management for new places (before saving to database)
+ * Used in UniversalAddScreen when creating a new place
+ */
+export interface LocalEntrance {
+  id: string;
+  label: string;
+  lat: number;
+  lng: number;
+  address_line1?: string;
+  city?: string;
+  state_region?: string;
+  postal_code?: string;
+  country_code?: string;
+  is_main: boolean;
+  sort_order: number;
+}
+
+export function useLocalEntrances() {
+  const [entrances, setEntrances] = React.useState<LocalEntrance[]>([]);
+
+  const addEntrance = React.useCallback((entrance: Omit<LocalEntrance, 'id' | 'sort_order'>) => {
+    const newEntrance: LocalEntrance = {
+      ...entrance,
+      id: `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      sort_order: entrances.length,
+    };
+    setEntrances(prev => [...prev, newEntrance]);
+    return newEntrance;
+  }, [entrances.length]);
+
+  const updateEntrance = React.useCallback((id: string, updates: Partial<LocalEntrance>) => {
+    setEntrances(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+  }, []);
+
+  const removeEntrance = React.useCallback((id: string) => {
+    setEntrances(prev => prev.filter(e => e.id !== id));
+  }, []);
+
+  const clearEntrances = React.useCallback(() => {
+    setEntrances([]);
+  }, []);
+
+  return {
+    entrances,
+    addEntrance,
+    updateEntrance,
+    removeEntrance,
+    clearEntrances,
+  };
+}
+

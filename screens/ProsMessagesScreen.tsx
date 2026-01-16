@@ -50,18 +50,18 @@ function ConversationList({
   onRefresh: () => void;
 }) {
   const renderConversation = ({ item }: { item: ProConversationWithDetails }) => {
-    const otherParty = item.provider || item.user;
-    const unreadCount = item.conversation.userUnread + item.conversation.providerUnread;
-    const lastMessageTime = new Date(item.conversation.lastMessageAt);
+    const otherParty = (item as any).provider || (item as any).user;
+    const unreadCount = ((item as any).conversation?.userUnread || 0) + ((item as any).conversation?.providerUnread || 0);
+    const lastMessageTime = new Date((item as any).conversation?.lastMessageAt || (item as any).lastMessageAt || (item as any).lastMessage?.createdAt || Date.now());
 
     return (
       <TouchableOpacity
         style={styles.conversationItem}
         onPress={() => onSelectConversation(item)}
       >
-        {otherParty?.logoUrl || otherParty?.avatarUrl ? (
+        {(otherParty as any)?.logoUrl || (otherParty as any)?.avatarUrl ? (
           <Image
-            source={{ uri: otherParty.logoUrl || otherParty.avatarUrl }}
+            source={{ uri: (otherParty as any).logoUrl || (otherParty as any).avatarUrl }}
             style={styles.conversationAvatar}
           />
         ) : (
@@ -72,7 +72,7 @@ function ConversationList({
         <View style={styles.conversationContent}>
           <View style={styles.conversationHeader}>
             <Text style={styles.conversationName} numberOfLines={1}>
-              {otherParty?.businessName || otherParty?.name || 'Unknown'}
+              {(otherParty as any)?.businessName || (otherParty as any)?.name || 'Unknown'}
             </Text>
             <Text style={styles.conversationTime}>
               {lastMessageTime.toLocaleDateString()}
@@ -273,17 +273,17 @@ export default function ProsMessagesScreen() {
     // If we have a proId but no conversationId, we might need to start a new conversation
     if (proId && !initialConversationId) {
       // Check if conversation already exists
-      const existingConv = conversations.find(c => c.provider?.id === proId);
+      const existingConv = conversations.find(c => (c as any).provider?.id === proId);
       if (existingConv) {
-        setSelectedConversation(existingConv);
-        setActiveConversationId(existingConv.conversation.id);
+        setSelectedConversation(existingConv as any);
+        setActiveConversationId((existingConv as any).conversation?.id || (existingConv as any).id);
       }
     }
   }, [proId, conversations]);
 
   const handleSelectConversation = (conv: ProConversationWithDetails) => {
     setSelectedConversation(conv);
-    setActiveConversationId(conv.conversation.id);
+    setActiveConversationId((conv as any).conversation?.id || (conv as any).id);
   };
 
   const handleBack = () => {
@@ -297,8 +297,8 @@ export default function ProsMessagesScreen() {
 
   // Show chat view if we have an active conversation
   if (activeConversationId && selectedConversation) {
-    const otherPartyName = selectedConversation.provider?.businessName || 
-                          selectedConversation.user?.name || 
+    const otherPartyName = (selectedConversation as any).provider?.businessName || 
+                          (selectedConversation as any).user?.name || 
                           proName || 
                           'Unknown';
     
@@ -325,7 +325,7 @@ export default function ProsMessagesScreen() {
       </View>
 
       <ConversationList
-        conversations={conversations}
+        conversations={conversations as any}
         loading={loading}
         onSelectConversation={handleSelectConversation}
         onRefresh={fetchConversations}

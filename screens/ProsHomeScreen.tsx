@@ -53,7 +53,7 @@ export default function ProsHomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [location, setLocation] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [viewMode, setViewMode] = useState<'user' | 'pro'>('user');
+  const [viewMode, setViewMode] = useState<string>('user');
 
   // Use sample data for now
   const featuredPros = SAMPLE_PROS.slice(0, 6);
@@ -440,6 +440,7 @@ export default function ProsHomeScreen() {
 
         {/* Pro CTA */}
         <ProsSubscriptionBanner
+          earlyAdopterCount={0}
           onPress={handleProSignup}
         />
 

@@ -349,7 +349,7 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
         <View style={styles.fieldContainer}>
           {renderLabel()}
           {field.icon ? (
-            <View style={[styles.inputWithIcon, error && styles.inputError]}>
+            <View style={[styles.inputWithIcon, error ? styles.inputError : undefined]}>
               <Ionicons
                 name={field.icon as any}
                 size={20}
@@ -375,8 +375,8 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
             <TextInput
               style={[
                 styles.input,
-                error && styles.inputError,
-                disabled && styles.inputDisabled,
+                error ? styles.inputError : undefined,
+                disabled ? styles.inputDisabled : undefined,
               ]}
               value={value || ''}
               onChangeText={onChange}
@@ -402,8 +402,8 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
           <TextInput
             style={[
               styles.input,
-              error && styles.inputError,
-              disabled && styles.inputDisabled,
+              error ? styles.inputError : undefined,
+              disabled ? styles.inputDisabled : undefined,
             ]}
             value={value?.toString() || ''}
             onChangeText={(text) => {
@@ -427,8 +427,8 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
             style={[
               styles.input,
               styles.textArea,
-              error && styles.inputError,
-              disabled && styles.inputDisabled,
+              error ? styles.inputError : undefined,
+              disabled ? styles.inputDisabled : undefined,
             ]}
             value={value || ''}
             onChangeText={onChange}
@@ -598,8 +598,8 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
           <TextInput
             style={[
               styles.input,
-              error && styles.inputError,
-              disabled && styles.inputDisabled,
+              error ? styles.inputError : undefined,
+              disabled ? styles.inputDisabled : undefined,
             ]}
             value={value || ''}
             onChangeText={onChange}
