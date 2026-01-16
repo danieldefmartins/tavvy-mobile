@@ -18,8 +18,7 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Tavvy to use your location to show nearby places."
         }
-      ],
-      "@maplibre/maplibre-react-native"
+      ]
     ],
     "ios": {
       "supportsTablet": true,

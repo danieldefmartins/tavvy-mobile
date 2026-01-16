@@ -17,8 +17,7 @@ import {
   useColorScheme,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-// MapLibre is loaded lazily to prevent crashes on app startup
-let MapLibreGL: any = null;
+// MapLibre DISABLED - causing crashes on iOS
 import { mapGoogleCategoryToBusinessType } from '../lib/businessTypeConfig';
 import {
   getCategoryEmoji as getCategoryEmojiFromConfig,
@@ -374,37 +373,28 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   const { hasTapped, userSignals } = useHasUserTapped(place?.id || '');
   const { quickTap } = useTap();
 
-  // Lazy load MapLibre when address modal is opened
+  // MapLibre DISABLED - causing crashes on iOS
+  // TODO: Re-enable when MapLibre native module issue is resolved
+  /*
   useEffect(() => {
     const loadMapLibre = async () => {
       if (showAddressModal && !mapLibreReady && !mapLibreLoading) {
         setMapLibreLoading(true);
         try {
-          console.log('🗺️ Loading MapLibre for PlaceDetails...');
           const module = await import('@maplibre/maplibre-react-native');
           MapLibreGL = module.default;
-          
-          // Initialize MapLibre
           MapLibreGL.setAccessToken(null);
-          
-          try {
-            await MapLibreGL.setConnected(true);
-          } catch (e) {
-            console.log('MapLibre setConnected warning:', e);
-          }
-          
-          console.log('✅ MapLibre loaded successfully for PlaceDetails');
           setMapLibreReady(true);
         } catch (error) {
-          console.error('❌ MapLibre loading failed:', error);
+          console.error('MapLibre loading failed:', error);
         } finally {
           setMapLibreLoading(false);
         }
       }
     };
-    
     loadMapLibre();
   }, [showAddressModal, mapLibreReady, mapLibreLoading]);
+  */
 
   // Fetch place data
   useEffect(() => {
@@ -1608,42 +1598,24 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
             
             {place && (
               <View style={styles.popupMapContainer}>
-                {!mapLibreReady || mapLibreLoading ? (
-                  <View style={[styles.popupMap, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f0f0' }]}>
-                    <ActivityIndicator size="large" color={Colors.primary} />
-                    <Text style={{ color: '#666', marginTop: 12, fontSize: 14 }}>Loading map...</Text>
+                {/* Map temporarily disabled - showing placeholder */}
+                <View style={[styles.popupMap, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' }]}>
+                  <View style={{
+                    width: 60,
+                    height: 60,
+                    borderRadius: 30,
+                    backgroundColor: Colors.primary,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginBottom: 12,
+                  }}>
+                    <Ionicons name="location" size={32} color="#fff" />
                   </View>
-                ) : MapLibreGL ? (
-                  React.createElement(MapLibreGL.MapView as any, {
-                    style: styles.popupMap,
-                    styleURL: "https://tiles.openfreemap.org/styles/liberty",
-                    logoEnabled: false,
-                    attributionEnabled: false,
-                  }, [
-                    React.createElement(MapLibreGL.Camera as any, {
-                      key: 'camera',
-                      zoomLevel: 15,
-                      centerCoordinate: [place.longitude, place.latitude],
-                      animationMode: "flyTo",
-                    }),
-                    React.createElement(MapLibreGL.PointAnnotation as any, {
-                      key: 'marker',
-                      id: "popup-marker",
-                      coordinate: [place.longitude, place.latitude],
-                    }, 
-                      <View style={styles.markerContainer}>
-                        <View style={[styles.marker, { backgroundColor: Colors.primary }]}>
-                          <Ionicons name="location" size={24} color="#fff" />
-                        </View>
-                      </View>
-                    )
-                  ])
-                ) : (
-                  <View style={[styles.popupMap, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f0f0' }]}>
-                    <Ionicons name="map-outline" size={48} color="#999" />
-                    <Text style={{ color: '#666', marginTop: 12, fontSize: 14 }}>Map unavailable</Text>
-                  </View>
-                )}
+                  <Text style={{ color: '#333', fontSize: 14, fontWeight: '600' }}>{place.name}</Text>
+                  <Text style={{ color: '#666', fontSize: 12, marginTop: 4, textAlign: 'center', paddingHorizontal: 20 }}>
+                    {place.addressLine1}{place.city ? `, ${place.city}` : ''}
+                  </Text>
+                </View>
               </View>
             )}
 
