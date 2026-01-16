@@ -2,14 +2,18 @@
  * TavvY Universal Add Screen V2
  * 
  * A comprehensive "Add" screen that integrates:
- * - Content type selection (Place, Service Business, City, Universe)
+ * - Content type selection (Place or Business, City, Universe)
  * - Full category system with 22 primary categories and 300+ subcategories
  * - Dynamic form fields based on selected category
  * - Multi-entrance support for applicable categories
  * - Business card scanner integration
+ * - City search with duplicate validation
  * - "Other" category with custom input
  * 
- * Path: screens/UniversalAddScreenV2.tsx
+ * Path: screens/UniversalAddScreen.tsx
+ * 
+ * UPDATED: Merged Place + Service Business into "Place or Business"
+ * UPDATED: Added city search with Nominatim API and duplicate checking
  */
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
@@ -24,9 +28,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { supabase } from '../lib/supabase';
 
 // Import category components
 import { CategorySelector } from '../components/CategorySelector';
@@ -69,6 +76,12 @@ interface FormData {
   postal_code: string;
   country: string;
   
+  // City-specific fields
+  cityDisplayName: string;
+  cityLatitude: number | null;
+  cityLongitude: number | null;
+  cityOsmId: string;
+  
   // Contact
   phone_e164: string;
   website_url: string;
@@ -84,8 +97,31 @@ interface FormData {
   description: string;
   established_date: string;
   
+  // Service business flag
+  hasPhysicalLocation: boolean;
+  
   // Dynamic fields based on category
   [key: string]: any;
+}
+
+interface CitySearchResult {
+  place_id: number;
+  osm_id: number;
+  osm_type: string;
+  display_name: string;
+  name: string;
+  lat: string;
+  lon: string;
+  type: string;
+  addresstype: string;
+  address: {
+    city?: string;
+    town?: string;
+    village?: string;
+    state?: string;
+    country?: string;
+    country_code?: string;
+  };
 }
 
 // ============================================
@@ -93,7 +129,7 @@ interface FormData {
 // ============================================
 
 const initialFormData: FormData = {
-  contentType: 'place',
+  contentType: 'place_or_business',
   primaryCategory: '',
   subcategory: null,
   customCategory: '',
@@ -103,6 +139,10 @@ const initialFormData: FormData = {
   state_region: '',
   postal_code: '',
   country: 'US',
+  cityDisplayName: '',
+  cityLatitude: null,
+  cityLongitude: null,
+  cityOsmId: '',
   phone_e164: '',
   website_url: '',
   email: '',
@@ -112,13 +152,14 @@ const initialFormData: FormData = {
   tiktok_url: '',
   description: '',
   established_date: '',
+  hasPhysicalLocation: true,
 };
 
 // ============================================
 // STEP DEFINITIONS
 // ============================================
 
-type Step = 'content_type' | 'category' | 'basic_info' | 'details' | 'entrances' | 'photos';
+type Step = 'content_type' | 'category' | 'city_search' | 'basic_info' | 'details' | 'entrances' | 'photos';
 
 const STEP_CONFIG: Record<Step, { title: string; description: string }> = {
   content_type: {
@@ -128,6 +169,10 @@ const STEP_CONFIG: Record<Step, { title: string; description: string }> = {
   category: {
     title: 'Select a Category',
     description: 'Choose the category that best describes this place or business.',
+  },
+  city_search: {
+    title: 'Search for a City',
+    description: 'Find and select the city you want to add.',
   },
   basic_info: {
     title: 'Basic Information',
@@ -273,6 +318,157 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
     lineHeight: 16,
+  },
+  
+  // City search styles
+  citySearchContainer: {
+    marginBottom: 16,
+  },
+  citySearchInput: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#111827',
+  },
+  citySearchInputFocused: {
+    borderColor: '#6366F1',
+    backgroundColor: '#FFFFFF',
+  },
+  cityResultsContainer: {
+    marginTop: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    maxHeight: 300,
+  },
+  cityResultItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  cityResultItemLast: {
+    borderBottomWidth: 0,
+  },
+  cityResultName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  cityResultLocation: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  citySearchLoading: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  citySearchNoResults: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  citySearchNoResultsText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  selectedCityCard: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  selectedCityIcon: {
+    marginRight: 12,
+  },
+  selectedCityContent: {
+    flex: 1,
+  },
+  selectedCityName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#166534',
+    marginBottom: 2,
+  },
+  selectedCityLocation: {
+    fontSize: 14,
+    color: '#15803D',
+  },
+  selectedCityClear: {
+    padding: 8,
+  },
+  cityExistsWarning: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  cityExistsIcon: {
+    marginRight: 12,
+    marginTop: 2,
+  },
+  cityExistsContent: {
+    flex: 1,
+  },
+  cityExistsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#92400E',
+    marginBottom: 4,
+  },
+  cityExistsText: {
+    fontSize: 14,
+    color: '#B45309',
+    lineHeight: 20,
+  },
+  
+  // Physical location toggle
+  physicalLocationContainer: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  physicalLocationLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  physicalLocationOptions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  physicalLocationOption: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+  },
+  physicalLocationOptionSelected: {
+    borderColor: '#6366F1',
+    backgroundColor: '#EEF2FF',
+  },
+  physicalLocationOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  physicalLocationOptionTextSelected: {
+    color: '#4F46E5',
   },
   
   // Category info card
@@ -546,17 +742,25 @@ export default function UniversalAddScreenV2() {
   const [showScanOption, setShowScanOption] = useState(false);
   const [scannedData, setScannedData] = useState<ScannedBusinessCard | null>(null);
   
+  // City search state
+  const [citySearchQuery, setCitySearchQuery] = useState('');
+  const [citySearchResults, setCitySearchResults] = useState<CitySearchResult[]>([]);
+  const [isCitySearching, setIsCitySearching] = useState(false);
+  const [citySearchFocused, setCitySearchFocused] = useState(false);
+  const [selectedCity, setSelectedCity] = useState<CitySearchResult | null>(null);
+  const [cityExists, setCityExists] = useState(false);
+  
   // Entrances hook
   const { entrances, addEntrance, updateEntrance, removeEntrance } = useLocalEntrances();
   
   // Determine steps based on content type
   const steps = useMemo((): Step[] => {
-    const baseSteps: Step[] = ['content_type', 'category', 'basic_info', 'details'];
-    
-    // Cities and Universes don't need categories in the same way
+    // Cities have a special flow with city search
     if (formData.contentType === 'city') {
-      return ['content_type', 'basic_info', 'details', 'photos'];
+      return ['content_type', 'city_search', 'details', 'photos'];
     }
+    
+    const baseSteps: Step[] = ['content_type', 'category', 'basic_info', 'details'];
     
     // Check if multi-entrance is needed
     const multiEntranceReq = shouldShowMultipleEntrances(
@@ -608,6 +812,112 @@ export default function UniversalAddScreenV2() {
     };
   }, [formData.primaryCategory, formData.subcategory]);
   
+  // City search with debounce
+  useEffect(() => {
+    if (citySearchQuery.length < 2) {
+      setCitySearchResults([]);
+      return;
+    }
+    
+    const timeoutId = setTimeout(async () => {
+      setIsCitySearching(true);
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?` +
+          `q=${encodeURIComponent(citySearchQuery)}&` +
+          `format=json&` +
+          `addressdetails=1&` +
+          `featuretype=city&` +
+          `limit=10`,
+          {
+            headers: {
+              'User-Agent': 'TavvY-App/1.0',
+            },
+          }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Filter to only include cities, towns, villages
+          const cities = data.filter((item: CitySearchResult) => 
+            ['city', 'town', 'village', 'municipality'].includes(item.type) ||
+            ['city', 'town', 'village', 'municipality'].includes(item.addresstype)
+          );
+          setCitySearchResults(cities);
+        }
+      } catch (error) {
+        console.error('City search error:', error);
+      } finally {
+        setIsCitySearching(false);
+      }
+    }, 300);
+    
+    return () => clearTimeout(timeoutId);
+  }, [citySearchQuery]);
+  
+  // Check if city already exists in database
+  const checkCityExists = useCallback(async (osmId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('tavvy_cities')
+        .select('id, name')
+        .eq('osm_id', osmId)
+        .single();
+      
+      if (data && !error) {
+        setCityExists(true);
+        return true;
+      }
+      setCityExists(false);
+      return false;
+    } catch (error) {
+      setCityExists(false);
+      return false;
+    }
+  }, []);
+  
+  // Handle city selection
+  const handleCitySelect = useCallback(async (city: CitySearchResult) => {
+    setSelectedCity(city);
+    setCitySearchQuery('');
+    setCitySearchResults([]);
+    
+    // Extract city name and location
+    const cityName = city.address?.city || city.address?.town || city.address?.village || city.name;
+    const state = city.address?.state || '';
+    const country = city.address?.country || '';
+    
+    setFormData(prev => ({
+      ...prev,
+      name: cityName,
+      cityDisplayName: city.display_name,
+      cityLatitude: parseFloat(city.lat),
+      cityLongitude: parseFloat(city.lon),
+      cityOsmId: `${city.osm_type}${city.osm_id}`,
+      state_region: state,
+      country: country,
+    }));
+    
+    // Check if city already exists
+    await checkCityExists(`${city.osm_type}${city.osm_id}`);
+  }, [checkCityExists]);
+  
+  // Clear selected city
+  const clearSelectedCity = useCallback(() => {
+    setSelectedCity(null);
+    setCityExists(false);
+    setFormData(prev => ({
+      ...prev,
+      name: '',
+      cityDisplayName: '',
+      cityLatitude: null,
+      cityLongitude: null,
+      cityOsmId: '',
+      state_region: '',
+      country: '',
+    }));
+  }, []);
+  
   // Handle field change
   const handleFieldChange = useCallback((field: string, value: any) => {
     setFormData(prev => ({
@@ -634,6 +944,11 @@ export default function UniversalAddScreenV2() {
       subcategory: null,
       customCategory: '',
     }));
+    // Reset city search state when changing content type
+    setSelectedCity(null);
+    setCityExists(false);
+    setCitySearchQuery('');
+    setCitySearchResults([]);
   }, []);
   
   // Handle primary category change
@@ -662,6 +977,14 @@ export default function UniversalAddScreenV2() {
     }));
   }, []);
   
+  // Handle physical location toggle
+  const handlePhysicalLocationChange = useCallback((hasLocation: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      hasPhysicalLocation: hasLocation,
+    }));
+  }, []);
+  
   // Validate current step
   const validateStep = useCallback((step: Step): boolean => {
     const newErrors: Record<string, string> = {};
@@ -680,14 +1003,24 @@ export default function UniversalAddScreenV2() {
         }
         break;
         
+      case 'city_search':
+        if (!selectedCity) {
+          newErrors.city = 'Please select a city';
+        }
+        if (cityExists) {
+          newErrors.city = 'This city already exists in TavvY';
+        }
+        break;
+        
       case 'basic_info':
         if (!formData.name?.trim()) {
           newErrors.name = 'Name is required';
         }
-        if (formData.contentType !== 'service_business' && !formData.address_line1?.trim()) {
+        // Only require address for places with physical location
+        if (formData.hasPhysicalLocation && !formData.address_line1?.trim()) {
           newErrors.address_line1 = 'Address is required';
         }
-        if (formData.contentType !== 'service_business' && !formData.city?.trim()) {
+        if (formData.hasPhysicalLocation && !formData.city?.trim()) {
           newErrors.city = 'City is required';
         }
         break;
@@ -701,7 +1034,7 @@ export default function UniversalAddScreenV2() {
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData, multiEntranceRequirement, entrances]);
+  }, [formData, multiEntranceRequirement, entrances, selectedCity, cityExists]);
   
   // Navigate to next step
   const goToNextStep = useCallback(() => {
@@ -711,9 +1044,9 @@ export default function UniversalAddScreenV2() {
     
     const nextIndex = currentStepIndex + 1;
     if (nextIndex < steps.length) {
-      // Show scan option when moving from category to basic_info for Place or Service Business
+      // Show scan option when moving from category to basic_info for Place or Business
       if (currentStep === 'category' && 
-          (formData.contentType === 'place' || formData.contentType === 'service_business') &&
+          formData.contentType === 'place_or_business' &&
           !scannedData) {
         setShowScanOption(true);
         return;
@@ -787,8 +1120,12 @@ export default function UniversalAddScreenV2() {
       
       console.log('Submitting:', submissionData);
       
-      // TODO: Submit to Supabase
-      // const { data, error } = await supabase.from('places').insert(submissionData);
+      // TODO: Submit to Supabase based on content type
+      // if (formData.contentType === 'city') {
+      //   await supabase.from('tavvy_cities').insert(...)
+      // } else {
+      //   await supabase.from('tavvy_places').insert(...)
+      // }
       
       let message = 'Entry added successfully!';
       if (formData.contentType === 'universe') message = 'Universe request sent!';
@@ -807,7 +1144,7 @@ export default function UniversalAddScreenV2() {
   
   // Handle cancel
   const handleCancel = useCallback(() => {
-    if (formData.name || formData.address_line1) {
+    if (formData.name || formData.address_line1 || selectedCity) {
       Alert.alert(
         'Discard Changes?',
         'You have unsaved changes. Are you sure you want to discard them?',
@@ -819,7 +1156,7 @@ export default function UniversalAddScreenV2() {
     } else {
       navigation.goBack();
     }
-  }, [formData, navigation]);
+  }, [formData, selectedCity, navigation]);
   
   // Check if can proceed to next step
   const canProceed = useMemo(() => {
@@ -829,12 +1166,14 @@ export default function UniversalAddScreenV2() {
       case 'category':
         if (formData.contentType === 'city') return true;
         return !!formData.primaryCategory;
+      case 'city_search':
+        return !!selectedCity && !cityExists;
       case 'basic_info':
         return !!formData.name?.trim();
       default:
         return true;
     }
-  }, [currentStep, formData]);
+  }, [currentStep, formData, selectedCity, cityExists]);
   
   // Render scan option screen
   if (showScanOption) {
@@ -959,6 +1298,45 @@ export default function UniversalAddScreenV2() {
             <Text style={styles.stepTitle}>{stepConfig.title}</Text>
             <Text style={styles.stepDescription}>{stepConfig.description}</Text>
             
+            {/* Physical location toggle for Place or Business */}
+            {formData.contentType === 'place_or_business' && (
+              <View style={styles.physicalLocationContainer}>
+                <Text style={styles.physicalLocationLabel}>
+                  Does this have a physical location customers can visit?
+                </Text>
+                <View style={styles.physicalLocationOptions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.physicalLocationOption,
+                      formData.hasPhysicalLocation && styles.physicalLocationOptionSelected,
+                    ]}
+                    onPress={() => handlePhysicalLocationChange(true)}
+                  >
+                    <Text style={[
+                      styles.physicalLocationOptionText,
+                      formData.hasPhysicalLocation && styles.physicalLocationOptionTextSelected,
+                    ]}>
+                      Yes
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.physicalLocationOption,
+                      !formData.hasPhysicalLocation && styles.physicalLocationOptionSelected,
+                    ]}
+                    onPress={() => handlePhysicalLocationChange(false)}
+                  >
+                    <Text style={[
+                      styles.physicalLocationOptionText,
+                      !formData.hasPhysicalLocation && styles.physicalLocationOptionTextSelected,
+                    ]}>
+                      No (Service Business)
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+            
             <CategorySelector
               contentType={formData.contentType}
               onContentTypeChange={handleContentTypeChange}
@@ -977,6 +1355,118 @@ export default function UniversalAddScreenV2() {
             )}
             {errors.customCategory && (
               <Text style={styles.errorText}>{errors.customCategory}</Text>
+            )}
+          </View>
+        );
+        
+      case 'city_search':
+        return (
+          <View style={styles.stepSection}>
+            <Text style={styles.stepTitle}>{stepConfig.title}</Text>
+            <Text style={styles.stepDescription}>{stepConfig.description}</Text>
+            
+            {/* City search input */}
+            {!selectedCity && (
+              <View style={styles.citySearchContainer}>
+                <TextInput
+                  style={[
+                    styles.citySearchInput,
+                    citySearchFocused && styles.citySearchInputFocused,
+                  ]}
+                  placeholder="Search for a city..."
+                  placeholderTextColor="#9CA3AF"
+                  value={citySearchQuery}
+                  onChangeText={setCitySearchQuery}
+                  onFocus={() => setCitySearchFocused(true)}
+                  onBlur={() => setCitySearchFocused(false)}
+                  autoCapitalize="words"
+                />
+                
+                {/* Search results */}
+                {(isCitySearching || citySearchResults.length > 0 || (citySearchQuery.length >= 2 && !isCitySearching)) && (
+                  <View style={styles.cityResultsContainer}>
+                    {isCitySearching ? (
+                      <View style={styles.citySearchLoading}>
+                        <ActivityIndicator size="small" color="#6366F1" />
+                      </View>
+                    ) : citySearchResults.length > 0 ? (
+                      <ScrollView style={{ maxHeight: 280 }}>
+                        {citySearchResults.map((city, index) => (
+                          <TouchableOpacity
+                            key={`${city.osm_type}${city.osm_id}`}
+                            style={[
+                              styles.cityResultItem,
+                              index === citySearchResults.length - 1 && styles.cityResultItemLast,
+                            ]}
+                            onPress={() => handleCitySelect(city)}
+                          >
+                            <Text style={styles.cityResultName}>
+                              {city.address?.city || city.address?.town || city.address?.village || city.name}
+                            </Text>
+                            <Text style={styles.cityResultLocation}>
+                              {[city.address?.state, city.address?.country].filter(Boolean).join(', ')}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    ) : (
+                      <View style={styles.citySearchNoResults}>
+                        <Text style={styles.citySearchNoResultsText}>No cities found</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
+            
+            {/* Selected city display */}
+            {selectedCity && (
+              <>
+                <View style={styles.selectedCityCard}>
+                  <Ionicons
+                    name="business"
+                    size={24}
+                    color="#166534"
+                    style={styles.selectedCityIcon}
+                  />
+                  <View style={styles.selectedCityContent}>
+                    <Text style={styles.selectedCityName}>
+                      {selectedCity.address?.city || selectedCity.address?.town || selectedCity.address?.village || selectedCity.name}
+                    </Text>
+                    <Text style={styles.selectedCityLocation}>
+                      {[selectedCity.address?.state, selectedCity.address?.country].filter(Boolean).join(', ')}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.selectedCityClear}
+                    onPress={clearSelectedCity}
+                  >
+                    <Ionicons name="close-circle" size={24} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
+                
+                {/* City exists warning */}
+                {cityExists && (
+                  <View style={styles.cityExistsWarning}>
+                    <Ionicons
+                      name="warning"
+                      size={24}
+                      color="#92400E"
+                      style={styles.cityExistsIcon}
+                    />
+                    <View style={styles.cityExistsContent}>
+                      <Text style={styles.cityExistsTitle}>City Already Exists</Text>
+                      <Text style={styles.cityExistsText}>
+                        This city has already been added to TavvY. You can search for it and add reviews instead.
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </>
+            )}
+            
+            {errors.city && (
+              <Text style={styles.errorText}>{errors.city}</Text>
             )}
           </View>
         );
@@ -1014,6 +1504,7 @@ export default function UniversalAddScreenV2() {
               onChange={handleFieldChange}
               errors={errors}
               disabled={isSubmitting}
+              hideAddressFields={!formData.hasPhysicalLocation}
             />
           </View>
         );
