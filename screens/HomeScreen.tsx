@@ -21,8 +21,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-// MapLibre DISABLED - causing crashes on iOS
-// TODO: Re-enable once MapLibre native module issue is resolved
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
@@ -302,12 +300,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [locationName, setLocationName] = useState<string>('');
   
-  // Map states - MapLibre DISABLED due to iOS crash
+  // Map states (map feature temporarily disabled)
   const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('osm');
-  const [mapError, setMapError] = useState<boolean>(true); // Always show error - MapLibre disabled
-  const [mapLibreReady, setMapLibreReady] = useState<boolean>(false);
-  const [mapLibreLoading, setMapLibreLoading] = useState<boolean>(false);
-  const mapDisabled = true; // Flag to disable all map functionality
   
   // Personalization states
   const [greeting, setGreeting] = useState('');
@@ -329,37 +323,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   useEffect(() => {
     initializeApp();
   }, []);
-
-  // MapLibre DISABLED - causing crashes on iOS
-  // TODO: Re-enable lazy loading once native module issue is resolved
-  /*
-  useEffect(() => {
-    const loadMapLibre = async () => {
-      if (viewMode === 'map' && !mapLibreReady && !mapLibreLoading) {
-        setMapLibreLoading(true);
-        try {
-          console.log('🗺️ Loading MapLibre...');
-          const module = await import('@maplibre/maplibre-react-native');
-          MapLibreGL = module.default;
-          MapLibreGL.setAccessToken(null);
-          try {
-            await MapLibreGL.setConnected(true);
-          } catch (e) {
-            console.log('MapLibre setConnected warning:', e);
-          }
-          console.log('✅ MapLibre loaded successfully');
-          setMapLibreReady(true);
-        } catch (error) {
-          console.error('❌ MapLibre loading failed:', error);
-          setMapError(true);
-        } finally {
-          setMapLibreLoading(false);
-        }
-      }
-    };
-    loadMapLibre();
-  }, [viewMode, mapLibreReady, mapLibreLoading]);
-  */
 
   // Handle camera movement when targetLocation changes
   useEffect(() => {

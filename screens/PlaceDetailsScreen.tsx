@@ -17,7 +17,6 @@ import {
   useColorScheme,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-// MapLibre DISABLED - causing crashes on iOS
 import { mapGoogleCategoryToBusinessType } from '../lib/businessTypeConfig';
 import {
   getCategoryEmoji as getCategoryEmojiFromConfig,
@@ -291,10 +290,6 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [navDestination, setNavDestination] = useState<{lat: number, lng: number, name: string} | null>(null);
   
-  // MapLibre lazy loading state
-  const [mapLibreReady, setMapLibreReady] = useState(false);
-  const [mapLibreLoading, setMapLibreLoading] = useState(false);
-  
   // NEW: Photo carousel state
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const carouselRef = useRef<FlatList>(null);
@@ -372,29 +367,6 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   const { gamification } = useUserGamification();
   const { hasTapped, userSignals } = useHasUserTapped(place?.id || '');
   const { quickTap } = useTap();
-
-  // MapLibre DISABLED - causing crashes on iOS
-  // TODO: Re-enable when MapLibre native module issue is resolved
-  /*
-  useEffect(() => {
-    const loadMapLibre = async () => {
-      if (showAddressModal && !mapLibreReady && !mapLibreLoading) {
-        setMapLibreLoading(true);
-        try {
-          const module = await import('@maplibre/maplibre-react-native');
-          MapLibreGL = module.default;
-          MapLibreGL.setAccessToken(null);
-          setMapLibreReady(true);
-        } catch (error) {
-          console.error('MapLibre loading failed:', error);
-        } finally {
-          setMapLibreLoading(false);
-        }
-      }
-    };
-    loadMapLibre();
-  }, [showAddressModal, mapLibreReady, mapLibreLoading]);
-  */
 
   // Fetch place data
   useEffect(() => {
