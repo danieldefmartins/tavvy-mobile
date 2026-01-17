@@ -304,10 +304,24 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
           <AddressAutocomplete
             value={value || ''}
             onSelect={(address, details) => {
+              // Set the full address
               onChange(address);
-              // Auto-fill related fields if available
-              if (details.city && allValues.city === '') {
-                // Note: Parent component should handle setting city/state/postal
+              
+              // Auto-fill related fields
+              if (details.city) {
+                onChange('city', details.city);
+              }
+              if (details.state) {
+                onChange('state', details.state);
+              }
+              if (details.postalCode) {
+                onChange('postal_code', details.postalCode);
+              }
+              if (details.street) {
+                onChange('street_address', details.street);
+              }
+              if (details.streetNumber) {
+                onChange('street_number', details.streetNumber);
               }
             }}
             onChange={onChange}
@@ -328,7 +342,19 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
           <AddressAutocomplete
             value={value || ''}
             onSelect={(area, details) => {
+              // Set the service area
               onChange(area);
+              
+              // Auto-fill related location fields if available
+              if (details.city) {
+                onChange('service_area_city', details.city);
+              }
+              if (details.state) {
+                onChange('service_area_state', details.state);
+              }
+              if (details.country) {
+                onChange('service_area_country', details.country);
+              }
             }}
             onChange={onChange}
             placeholder={field.placeholder || 'Enter city or region...'}
@@ -349,7 +375,7 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
         <View style={styles.fieldContainer}>
           {renderLabel()}
           {field.icon ? (
-            <View style={[styles.inputWithIcon, error ? styles.inputError : undefined]}>
+            <View style={[styles.inputWithIcon, error && styles.inputError]}>
               <Ionicons
                 name={field.icon as any}
                 size={20}
@@ -375,8 +401,8 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
             <TextInput
               style={[
                 styles.input,
-                error ? styles.inputError : undefined,
-                disabled ? styles.inputDisabled : undefined,
+                error && styles.inputError,
+                disabled && styles.inputDisabled,
               ]}
               value={value || ''}
               onChangeText={onChange}
@@ -402,8 +428,8 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
           <TextInput
             style={[
               styles.input,
-              error ? styles.inputError : undefined,
-              disabled ? styles.inputDisabled : undefined,
+              error && styles.inputError,
+              disabled && styles.inputDisabled,
             ]}
             value={value?.toString() || ''}
             onChangeText={(text) => {
@@ -427,8 +453,8 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
             style={[
               styles.input,
               styles.textArea,
-              error ? styles.inputError : undefined,
-              disabled ? styles.inputDisabled : undefined,
+              error && styles.inputError,
+              disabled && styles.inputDisabled,
             ]}
             value={value || ''}
             onChangeText={onChange}
@@ -598,8 +624,8 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
           <TextInput
             style={[
               styles.input,
-              error ? styles.inputError : undefined,
-              disabled ? styles.inputDisabled : undefined,
+              error && styles.inputError,
+              disabled && styles.inputDisabled,
             ]}
             value={value || ''}
             onChangeText={onChange}

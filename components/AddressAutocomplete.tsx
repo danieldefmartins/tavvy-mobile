@@ -311,7 +311,7 @@ export function AddressAutocomplete({
       <View style={[
         styles.inputContainer,
         isFocused && styles.inputContainerFocused,
-        error ? styles.inputContainerError : undefined,
+        error && styles.inputContainerError,
         disabled && styles.inputContainerDisabled,
       ]}>
         <Ionicons 
@@ -356,10 +356,11 @@ export function AddressAutocomplete({
         <View style={styles.suggestionsContainer}>
           <FlatList
             data={suggestions}
-            keyExtractor={(item) => item.place_id.toString()}
             renderItem={renderSuggestionItem}
+            keyExtractor={(item) => item.place_id.toString()}
             keyboardShouldPersistTaps="handled"
-            scrollEnabled={suggestions.length > 3}
+            scrollEnabled={false}
+            nestedScrollEnabled={false}
             style={styles.suggestionsList}
           />
           
@@ -444,16 +445,18 @@ const styles = StyleSheet.create({
     marginTop: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-    maxHeight: 250,
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 8,
+    maxHeight: 300,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    zIndex: 1001,
   },
   suggestionsList: {
-    maxHeight: 200,
+    maxHeight: 250,
+    scrollEnabled: false,
   },
   suggestionItem: {
     flexDirection: 'row',
