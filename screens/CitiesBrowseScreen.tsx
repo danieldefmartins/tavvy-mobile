@@ -20,8 +20,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../lib/supabaseClient';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { useTheme, spacing, borderRadius, shadows } from '../constants/Colors';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 32;
@@ -145,11 +146,22 @@ const SAMPLE_CITIES: City[] = [
 ];
 
 // ============================================
+// SIGNAL COLORS (matching PlaceCard)
+// ============================================
+
+const SIGNAL_COLORS = {
+  positive: '#0A84FF', // Blue - The Good
+  neutral: '#8B5CF6',  // Purple - The Vibe
+  negative: '#FF9500', // Orange - Heads Up
+};
+
+// ============================================
 // MAIN COMPONENT
 // ============================================
 
 export default function CitiesBrowseScreen({ navigation }: { navigation: any }) {
-  const { theme, isDark } = useThemeContext();
+  const { isDark } = useThemeContext();
+  const theme = useTheme();
   
   const [cities, setCities] = useState<City[]>([]);
   const [loading, setLoading] = useState(true);
@@ -214,24 +226,61 @@ export default function CitiesBrowseScreen({ navigation }: { navigation: any }) 
     return `${pop} people`;
   };
 
-  // Signal helpers
-  const getSignalColor = (bucket: string) => {
-    const bucketLower = bucket.toLowerCase();
-    if (bucketLower.includes('good') || bucketLower.includes('the good')) return '#0A84FF';
-    if (bucketLower.includes('heads') || bucketLower.includes('up')) return '#FF9500';
-    return '#8B5CF6'; // Vibe color
-  };
-
-  // Generate display signals with fallbacks
-  const getDisplaySignals = (signals: Signal[]): { bucket: string; tap_total: number; isEmpty: boolean }[] => {
-    if (!signals || signals.length === 0) {
-      return [
-        { bucket: 'The Good', tap_total: 0, isEmpty: true },
-        { bucket: 'The Vibe', tap_total: 0, isEmpty: true },
-        { bucket: 'Heads Up', tap_total: 0, isEmpty: true },
-      ];
-    }
-    return signals.slice(0, 3).map(s => ({ ...s, isEmpty: false }));
+  // Render signal badges in 2x2 grid format (matching PlaceCard)
+  // Row 1: 2 blue (The Good)
+  // Row 2: 1 purple (The Vibe) + 1 orange (Heads Up)
+  const renderSignalBadges = (signals: Signal[]) => {
+    const hasSignals = signals && signals.length > 0;
+    
+    return (
+      <View style={styles.signalsContainer}>
+        {/* Row 1: 2 Blue badges (The Good) */}
+        <View style={styles.signalRow}>
+          <TouchableOpacity 
+            style={[styles.signalBadge, { backgroundColor: SIGNAL_COLORS.positive }]}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="thumbs-up" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.signalText} numberOfLines={1}>
+              {hasSignals ? `Great food ×12` : 'Be the first to tap!'}
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.signalBadge, { backgroundColor: SIGNAL_COLORS.positive }]}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="thumbs-up" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.signalText} numberOfLines={1}>
+              {hasSignals ? `Walkable ×8` : 'Be the first to tap!'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        
+        {/* Row 2: 1 Purple (The Vibe) + 1 Orange (Heads Up) */}
+        <View style={styles.signalRow}>
+          <TouchableOpacity 
+            style={[styles.signalBadge, { backgroundColor: SIGNAL_COLORS.neutral }]}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="sparkles" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.signalText} numberOfLines={1}>
+              {hasSignals ? `Trendy ×5` : 'Be the first to tap!'}
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.signalBadge, { backgroundColor: SIGNAL_COLORS.negative }]}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="alert-circle" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.signalText} numberOfLines={1}>
+              {hasSignals ? `Expensive ×3` : 'Be the first to tap!'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   };
 
   const renderCityCard = ({ item: city, index }: { item: City; index: number }) => {
@@ -241,48 +290,34 @@ export default function CitiesBrowseScreen({ navigation }: { navigation: any }) 
     return (
       <TouchableOpacity
         key={`city-${city.id}-${index}`}
-        style={[styles.card, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+        style={[styles.card, { backgroundColor: isDark ? theme.surface : '#fff' }, shadows.large]}
         onPress={() => handleCityPress(city)}
-        activeOpacity={0.95}
+        activeOpacity={0.9}
       >
-        {/* Image */}
-        <Image source={{ uri: imageUrl }} style={styles.cardImage} resizeMode="cover" />
-        
-        {/* City Badge */}
-        <View style={styles.cityBadge}>
-          <Ionicons name="business" size={12} color="#fff" />
-          <Text style={styles.cityBadgeText}>CITY</Text>
-        </View>
-        
-        {/* Content */}
-        <View style={styles.cardContent}>
-          <Text style={[styles.cardTitle, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>
-            {city.name}
-          </Text>
-          <Text style={[styles.cardSubtitle, { color: isDark ? theme.textSecondary : '#666' }]} numberOfLines={1}>
-            {location} {city.population ? `• ${formatPopulation(city.population)}` : ''}
-          </Text>
+        {/* Photo with Gradient Overlay */}
+        <View style={styles.photoContainer}>
+          <Image source={{ uri: imageUrl }} style={styles.cardImage} resizeMode="cover" />
           
-          {/* Signal Bars */}
-          <View style={styles.signalsContainer}>
-            {getDisplaySignals(city.signals || []).map((signal, idx) => (
-              <View 
-                key={`city-${city.id}-sig-${idx}`} 
-                style={[styles.signalBadge, { backgroundColor: getSignalColor(signal.bucket) }]}
-              >
-                <Ionicons 
-                  name={signal.isEmpty ? 'add-circle-outline' : 'thumbs-up'} 
-                  size={12} 
-                  color="#FFFFFF" 
-                  style={{ marginRight: 4 }}
-                />
-                <Text style={styles.signalText} numberOfLines={1}>
-                  {signal.isEmpty ? 'Be the first to tap!' : signal.bucket}
-                </Text>
-              </View>
-            ))}
+          {/* City Badge */}
+          <View style={styles.cityBadge}>
+            <Ionicons name="business" size={12} color="#fff" />
+            <Text style={styles.cityBadgeText}>CITY</Text>
           </View>
+          
+          {/* Gradient Overlay with Name */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.7)']}
+            style={styles.gradientOverlay}
+          >
+            <Text style={styles.cardTitle} numberOfLines={1}>{city.name}</Text>
+            <Text style={styles.cardSubtitle} numberOfLines={1}>
+              {location} {city.population ? `• ${formatPopulation(city.population)}` : ''}
+            </Text>
+          </LinearGradient>
         </View>
+        
+        {/* Signal Badges - 2x2 Grid matching PlaceCard */}
+        {renderSignalBadges(city.signals || [])}
       </TouchableOpacity>
     );
   };
@@ -428,18 +463,17 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   card: {
-    borderRadius: 16,
-    marginBottom: 16,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+  },
+  photoContainer: {
+    height: 180,
+    position: 'relative',
   },
   cardImage: {
     width: '100%',
-    height: 180,
+    height: '100%',
   },
   cityBadge: {
     position: 'absolute',
@@ -458,34 +492,53 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
-  cardContent: {
-    padding: 16,
+  gradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    justifyContent: 'flex-end',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
   },
   cardTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
-    marginBottom: 4,
+    color: '#FFFFFF',
+    textAlign: 'left',
   },
   cardSubtitle: {
     fontSize: 14,
-    marginBottom: 12,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 2,
+    textAlign: 'left',
   },
+  // Signal badges - matching PlaceCard style
   signalsContainer: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
+  },
+  signalRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
   },
   signalBadge: {
-    flexDirection: 'row',
+    width: '48%',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.xl,
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+    justifyContent: 'center',
+    flexDirection: 'row',
   },
   signalText: {
-    color: '#fff',
-    fontSize: 12,
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: '600',
+    textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,

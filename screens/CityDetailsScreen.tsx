@@ -10,11 +10,11 @@ import { fetchPlaceSignals, SignalAggregate } from '../lib/reviews';
 
 const { width } = Dimensions.get('window');
 
-// Category colors matching the universal review system
+// Category colors matching the universal review system (same as PlaceDetailsScreen)
 const CATEGORY_COLORS = {
-  best_for: '#0A84FF',
-  vibe: '#8B5CF6',
-  heads_up: '#FF9500',
+  best_for: '#0A84FF',  // Blue - The Good
+  vibe: '#8B5CF6',      // Purple - The Vibe
+  heads_up: '#FF9500',  // Orange - Heads Up
 };
 
 interface CityData {
@@ -50,7 +50,8 @@ export default function CityDetailsScreen() {
     heads_up: SignalAggregate[];
   }>({ best_for: [], vibe: [], heads_up: [] });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('Signals');
+  const [activeTab, setActiveTab] = useState('Reviews');
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   useEffect(() => {
     loadCityData();
@@ -63,58 +64,35 @@ export default function CityDetailsScreen() {
     }
 
     try {
-      // Fetch city details from database
-      const { data: cityData, error: cityError } = await supabase
-        .from('places')
-        .select('*')
-        .eq('id', params.cityId)
-        .single();
-
-      if (cityError) {
-        console.error('Error fetching city:', cityError);
-      }
-
-      if (cityData) {
-        setCity({
-          id: cityData.id,
-          name: cityData.name || params.cityName || 'Unknown City',
-          location: cityData.state || cityData.region || '',
-          country: cityData.country || 'USA',
-          population: cityData.population ? `${(cityData.population / 1000000).toFixed(1)}M population` : undefined,
-          image: cityData.cover_image_url || 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800',
-          primaryCategory: cityData.category_slug || cityData.primary_category || 'city',
-          stats: {
-            signals: '0',
-            universes: '0',
-            places: '0',
-            photos: '0',
-          },
-        });
-      } else {
-        // Fallback for when city is not in database yet
-        setCity({
-          id: params.cityId,
-          name: params.cityName || 'City',
-          location: '',
-          country: '',
-          image: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800',
-          primaryCategory: 'city',
-          stats: {
-            signals: '0',
-            universes: '0',
-            places: '0',
-            photos: '0',
-          },
-        });
-      }
+      // For sample cities, use fallback data
+      // TODO: Fetch from database when cities table is created
+      setCity({
+        id: params.cityId,
+        name: params.cityName || 'City',
+        location: '',
+        country: '',
+        image: getCityImage(params.cityName || ''),
+        primaryCategory: 'city',
+        stats: {
+          signals: '0',
+          universes: '0',
+          places: '0',
+          photos: '0',
+        },
+      });
 
       // Fetch signals using the universal review system
-      const signalData = await fetchPlaceSignals(params.cityId);
-      setSignals({
-        best_for: signalData.best_for || [],
-        vibe: signalData.vibe || [],
-        heads_up: signalData.heads_up || [],
-      });
+      try {
+        const signalData = await fetchPlaceSignals(params.cityId);
+        setSignals({
+          best_for: signalData.best_for || [],
+          vibe: signalData.vibe || [],
+          heads_up: signalData.heads_up || [],
+        });
+      } catch (signalError) {
+        console.log('No signals found for city, using empty state');
+        setSignals({ best_for: [], vibe: [], heads_up: [] });
+      }
 
     } catch (error) {
       console.error('Error loading city data:', error);
@@ -123,12 +101,26 @@ export default function CityDetailsScreen() {
     }
   };
 
-  // Format score for display (x + amount format)
-  const formatScore = (score: number): string => {
-    if (score >= 1000) {
-      return `x${(score / 1000).toFixed(1)}k`;
-    }
-    return `x${Math.round(score)}`;
+  // Get city image based on name
+  const getCityImage = (name: string): string => {
+    const cityImages: Record<string, string> = {
+      'Orlando': 'https://images.unsplash.com/photo-1575089976121-8ed7b2a54265?w=800',
+      'Miami': 'https://images.unsplash.com/photo-1506966953602-c20cc11f75e3?w=800',
+      'New York City': 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800',
+      'Los Angeles': 'https://images.unsplash.com/photo-1534190760961-74e8c1c5c3da?w=800',
+      'Chicago': 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?w=800',
+      'Austin': 'https://images.unsplash.com/photo-1531218150217-54595bc2b934?w=800',
+      'Denver': 'https://images.unsplash.com/photo-1619856699906-09e1f58c98b1?w=800',
+      'Seattle': 'https://images.unsplash.com/photo-1502175353174-a7a70e73b362?w=800',
+      'Nashville': 'https://images.unsplash.com/photo-1587475656908-5fa696d9e1b6?w=800',
+      'San Francisco': 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800',
+    };
+    return cityImages[name] || 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800';
+  };
+
+  // Toggle section expansion (matching PlaceDetailsScreen)
+  const toggleSection = (section: string) => {
+    setExpandedSection(expandedSection === section ? null : section);
   };
 
   // Navigate to the universal AddReview screen (same as PlaceDetailsScreen)
@@ -139,6 +131,118 @@ export default function CityDetailsScreen() {
       placeName: city.name, 
       placeCategory: city.primaryCategory 
     } as never);
+  };
+
+  // Render signal bar (matching PlaceDetailsScreen exactly)
+  const renderSignalBar = (
+    type: 'best_for' | 'vibe' | 'heads_up',
+    categoryTitle: string,
+    signalsList: SignalAggregate[],
+    bgColor: string,
+    iconName: string
+  ) => {
+    const isExpanded = expandedSection === type;
+    const hasMore = signalsList && signalsList.length > 1;
+    const hasSignals = signalsList && signalsList.length > 0;
+
+    // Render a single solid colored signal bar
+    const renderSolidSignalBar = (signal: SignalAggregate, index: number) => {
+      return (
+        <TouchableOpacity 
+          key={signal.signal_id || index}
+          activeOpacity={0.9}
+          onPress={() => hasMore && toggleSection(type)}
+          style={{
+            backgroundColor: bgColor,
+            borderRadius: 12,
+            paddingVertical: 14,
+            paddingHorizontal: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 8,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.1,
+            shadowRadius: 3,
+            elevation: 2,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+            <Text style={{ fontSize: 18, marginRight: 10 }}>{signal.icon || '📍'}</Text>
+            <Text style={{ 
+              color: '#FFFFFF', 
+              fontSize: 16, 
+              fontWeight: '700',
+              flex: 1,
+            }}>
+              {signal.label}
+            </Text>
+            <Text style={{ 
+              color: '#FFFFFF', 
+              fontSize: 16, 
+              fontWeight: '600',
+              marginLeft: 8,
+            }}>
+              ×{signal.tap_total || signal.current_score || 0}
+            </Text>
+          </View>
+          
+          {index === 0 && hasMore && (
+            <Ionicons 
+              name={isExpanded ? 'chevron-up' : 'chevron-down'} 
+              size={20} 
+              color="#FFFFFF" 
+              style={{ marginLeft: 8 }}
+            />
+          )}
+        </TouchableOpacity>
+      );
+    };
+
+    // Empty state bar (matching PlaceDetailsScreen)
+    const renderEmptyBar = () => (
+      <TouchableOpacity 
+        onPress={handleAddReview}
+        activeOpacity={0.8}
+        style={{
+          backgroundColor: bgColor,
+          borderRadius: 12,
+          paddingVertical: 14,
+          paddingHorizontal: 16,
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginBottom: 8,
+        }}
+      >
+        <Ionicons name={iconName as any} size={18} color="#FFFFFF" style={{ marginRight: 10 }} />
+        <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600', fontStyle: 'italic', opacity: 0.9 }}>
+          {categoryTitle} · Be the first to tap!
+        </Text>
+      </TouchableOpacity>
+    );
+
+    return (
+      <View style={{ marginBottom: 8 }}>
+        {hasSignals ? (
+          <>
+            {/* Top Signal (Always Visible) */}
+            {renderSolidSignalBar(signalsList[0], 0)}
+            
+            {/* Expanded Signals List */}
+            {isExpanded && signalsList.length > 1 && (
+              <View>
+                {signalsList.slice(1).map((signal, idx) => 
+                  renderSolidSignalBar(signal, idx + 1)
+                )}
+              </View>
+            )}
+          </>
+        ) : (
+          renderEmptyBar()
+        )}
+      </View>
+    );
   };
 
   if (loading) {
@@ -160,8 +264,6 @@ export default function CityDetailsScreen() {
       </View>
     );
   }
-
-  const totalSignals = signals.best_for.length + signals.vibe.length + signals.heads_up.length;
 
   return (
     <View style={styles.container}>
@@ -196,152 +298,97 @@ export default function CityDetailsScreen() {
               <Text style={styles.badgeText}>CITY</Text>
             </View>
             <Text style={styles.cityName}>{city.name}</Text>
-            <View style={styles.locationRow}>
-              {city.country && <Text style={styles.locationText}>🌍 {city.location ? `${city.location}, ${city.country}` : city.country}</Text>}
-              {city.population && (
-                <>
-                  <Text style={styles.dot}>•</Text>
-                  <Ionicons name="people" size={14} color="#9CA3AF" />
-                  <Text style={styles.locationText}>{city.population}</Text>
-                </>
-              )}
-            </View>
           </View>
         </View>
 
-        {/* Stats Row */}
-        <View style={styles.statsContainer}>
-          <StatItem value={city.stats.signals} label="Signals" icon="star" color="#F59E0B" />
-          <StatItem value={city.stats.universes} label="Universes" icon="planet" color="#6366F1" />
-          <StatItem value={city.stats.places} label="Places" icon="location" color="#EF4444" />
-          <StatItem value={city.stats.photos} label="Photos" icon="camera" color="#10B981" />
+        {/* Quick Info Bar (matching PlaceDetailsScreen) */}
+        <View style={styles.quickInfoBar}>
+          <TouchableOpacity style={styles.quickInfoItem}>
+            <Text style={styles.quickInfoIcon}>🕐</Text>
+            <Text style={styles.quickInfoLabel}>Open</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.quickInfoDivider} />
+          
+          <TouchableOpacity style={styles.quickInfoItem}>
+            <Text style={styles.quickInfoIcon}>📞</Text>
+            <Text style={styles.quickInfoValue}>Call</Text>
+            <Text style={styles.quickInfoSub}>Business</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.quickInfoDivider} />
+          
+          <TouchableOpacity style={styles.quickInfoItem}>
+            <Text style={styles.quickInfoIcon}>📷</Text>
+            <Text style={styles.quickInfoValue}>0</Text>
+            <Text style={styles.quickInfoSub}>Photos</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.quickInfoDivider} />
+          
+          <TouchableOpacity style={styles.quickInfoItem}>
+            <Text style={styles.quickInfoIcon}>🚗</Text>
+            <Text style={styles.quickInfoValue}>{'< 1 min'}</Text>
+            <Text style={styles.quickInfoSub}>Drive</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Tabs */}
+        {/* Tabs (matching PlaceDetailsScreen) */}
         <View style={styles.tabsContainer}>
-          <TabItem label="Signals" active={activeTab === 'Signals'} onPress={() => setActiveTab('Signals')} />
-          <TabItem label="Explore" active={activeTab === 'Explore'} onPress={() => setActiveTab('Explore')} />
-          <TabItem label="Photos" active={activeTab === 'Photos'} onPress={() => setActiveTab('Photos')} />
-          <TabItem label="Info" active={activeTab === 'Info'} onPress={() => setActiveTab('Info')} />
+          {['Reviews', 'Info', 'Photos'].map((tab) => (
+            <TouchableOpacity 
+              key={tab}
+              style={[styles.tabItem, activeTab === tab && styles.activeTab]} 
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>{tab}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Signals Section */}
-        {activeTab === 'Signals' && (
+        {/* Reviews Tab (matching PlaceDetailsScreen layout) */}
+        {activeTab === 'Reviews' && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📊 What people say about {city.name}</Text>
-            
-            {/* The Good (Best For) */}
-            <SignalGroup 
-              title="👍 THE GOOD" 
-              icon="thumbs-up" 
-              color={CATEGORY_COLORS.best_for}
-              onPress={handleAddReview}
-            >
-              {signals.best_for.length > 0 ? (
-                signals.best_for.map(s => (
-                  <SignalPill 
-                    key={s.signal_id} 
-                    label={s.label || s.signal_id} 
-                    score={s.current_score}
-                    color={CATEGORY_COLORS.best_for}
-                    icon={s.icon}
-                    isGhost={s.is_ghost}
-                  />
-                ))
-              ) : (
-                <TouchableOpacity onPress={handleAddReview}>
-                  <Text style={styles.emptyText}>No The Good taps yet. Be the first!</Text>
-                </TouchableOpacity>
-              )}
-            </SignalGroup>
+            {/* Community Signals Card (matching PlaceDetailsScreen) */}
+            <View style={styles.signalsCard}>
+              <Text style={styles.signalsCardTitle}>Community Signals</Text>
+              
+              {/* The Good - Blue */}
+              {renderSignalBar('best_for', 'The Good', signals.best_for, CATEGORY_COLORS.best_for, 'thumbs-up')}
+              
+              {/* The Vibe - Purple */}
+              {renderSignalBar('vibe', 'The Vibe', signals.vibe, CATEGORY_COLORS.vibe, 'sparkles')}
+              
+              {/* Heads Up - Orange */}
+              {renderSignalBar('heads_up', 'Heads Up', signals.heads_up, CATEGORY_COLORS.heads_up, 'alert-circle')}
+            </View>
 
-            {/* The Vibe */}
-            <SignalGroup 
-              title="✨ THE VIBE" 
-              icon="sparkles" 
-              color={CATEGORY_COLORS.vibe}
-              onPress={handleAddReview}
-            >
-              {signals.vibe.length > 0 ? (
-                signals.vibe.map(s => (
-                  <SignalPill 
-                    key={s.signal_id} 
-                    label={s.label || s.signal_id} 
-                    score={s.current_score}
-                    color={CATEGORY_COLORS.vibe}
-                    icon={s.icon}
-                    isGhost={s.is_ghost}
-                  />
-                ))
-              ) : (
-                <TouchableOpacity onPress={handleAddReview}>
-                  <Text style={styles.emptyText}>No The Vibe taps yet. Be the first!</Text>
-                </TouchableOpacity>
-              )}
-            </SignalGroup>
-
-            {/* Heads Up */}
-            <SignalGroup 
-              title="⚠️ HEADS UP" 
-              icon="warning" 
-              color={CATEGORY_COLORS.heads_up}
-              onPress={handleAddReview}
-            >
-              {signals.heads_up.length > 0 ? (
-                signals.heads_up.map(s => (
-                  <SignalPill 
-                    key={s.signal_id} 
-                    label={s.label || s.signal_id} 
-                    score={s.current_score}
-                    color={CATEGORY_COLORS.heads_up}
-                    icon={s.icon}
-                    isGhost={s.is_ghost}
-                  />
-                ))
-              ) : (
-                <TouchableOpacity onPress={handleAddReview}>
-                  <Text style={styles.emptyText}>No Heads Up taps yet. Be the first!</Text>
-                </TouchableOpacity>
-              )}
-            </SignalGroup>
-
-            {/* Add Your Tap CTA */}
-            <View style={styles.addTapContainer}>
-              <Text style={styles.addTapText}>Help our community and leave your review</Text>
-              <TouchableOpacity style={styles.addTapButton} onPress={handleAddReview}>
-                <Ionicons name="add" size={20} color="white" />
-                <Text style={styles.addTapButtonText}>Add Your Tap</Text>
-              </TouchableOpacity>
+            {/* Been Here CTA (matching PlaceDetailsScreen) */}
+            <View style={styles.beenHereCard}>
+              <Text style={styles.beenHereTitle}>Been here?</Text>
+              <Text style={styles.beenHereSubtitle}>Share your experience to help others.</Text>
             </View>
           </View>
         )}
 
-        {/* Explore Tab Placeholder */}
-        {activeTab === 'Explore' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🗺️ Explore {city.name}</Text>
-            <Text style={styles.emptyText}>Places in this city coming soon...</Text>
-          </View>
-        )}
-
-        {/* Photos Tab Placeholder */}
-        {activeTab === 'Photos' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📷 Photos of {city.name}</Text>
-            <Text style={styles.emptyText}>Photos coming soon...</Text>
-          </View>
-        )}
-
-        {/* Info Tab Placeholder */}
+        {/* Info Tab */}
         {activeTab === 'Info' && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>ℹ️ About {city.name}</Text>
+            <Text style={styles.sectionTitle}>About {city.name}</Text>
             <Text style={styles.emptyText}>City information coming soon...</Text>
+          </View>
+        )}
+
+        {/* Photos Tab */}
+        {activeTab === 'Photos' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Photos of {city.name}</Text>
+            <Text style={styles.emptyText}>Photos coming soon...</Text>
           </View>
         )}
       </ScrollView>
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button (matching PlaceDetailsScreen) */}
       <View style={styles.fabContainer}>
         <TouchableOpacity 
           style={styles.fab} 
@@ -354,59 +401,15 @@ export default function CityDetailsScreen() {
   );
 }
 
-// Components
-const StatItem = ({ value, label, icon, color }: any) => (
-  <View style={styles.statItem}>
-    <Ionicons name={icon} size={20} color={color} style={{ marginBottom: 4 }} />
-    <Text style={styles.statValue}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
-  </View>
-);
-
-const TabItem = ({ label, active, onPress }: any) => (
-  <TouchableOpacity style={[styles.tabItem, active && styles.activeTab]} onPress={onPress}>
-    <Text style={[styles.tabText, active && styles.activeTabText]}>{label}</Text>
-  </TouchableOpacity>
-);
-
-const SignalGroup = ({ title, icon, color, children, onPress }: any) => (
-  <View style={styles.signalGroup}>
-    <TouchableOpacity style={styles.groupHeader} onPress={onPress}>
-      <Ionicons name={icon} size={14} color={color} />
-      <Text style={styles.groupTitle}>{title}</Text>
-    </TouchableOpacity>
-    <View style={styles.pillContainer}>{children}</View>
-  </View>
-);
-
-const SignalPill = ({ label, score, color, icon, isGhost }: any) => {
-  // Format score as "x + amount"
-  const formatScore = (score: number): string => {
-    if (score >= 1000) {
-      return `x${(score / 1000).toFixed(1)}k`;
-    }
-    return `x${Math.round(score)}`;
-  };
-
-  return (
-    <View style={[styles.pill, { backgroundColor: `${color}20`, opacity: isGhost ? 0.6 : 1 }]}>
-      {icon && <Text style={styles.pillIcon}>{icon}</Text>}
-      <Text style={[styles.pillText, { color: '#1F2937' }]}>{label}</Text>
-      <View style={[styles.scoreBadge, { backgroundColor: `${color}40` }]}>
-        <Text style={[styles.scoreText, { color: '#1F2937' }]}>{formatScore(score)}</Text>
-      </View>
-    </View>
-  );
-};
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: '#F2F2F7',
   },
   loadingContainer: {
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'white',
   },
   loadingText: {
     marginTop: 16,
@@ -478,48 +481,56 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: 'white',
+  },
+  // Quick Info Bar (matching PlaceDetailsScreen)
+  quickInfoBar: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  quickInfoItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickInfoIcon: {
+    fontSize: 20,
     marginBottom: 4,
   },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  locationText: {
-    color: '#D1D5DB',
+  quickInfoLabel: {
     fontSize: 14,
+    fontWeight: '600',
+    color: '#34C759',
   },
-  dot: {
-    color: '#D1D5DB',
+  quickInfoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
   },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: Colors.text,
-  },
-  statLabel: {
-    fontSize: 12,
+  quickInfoSub: {
+    fontSize: 11,
     color: '#6B7280',
+    marginTop: 2,
   },
+  quickInfoDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#E5E7EB',
+  },
+  // Tabs (matching PlaceDetailsScreen)
   tabsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#E5E7EB',
   },
   tabItem: {
     paddingVertical: 16,
-    marginRight: 24,
+    marginRight: 32,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
@@ -527,97 +538,68 @@ const styles = StyleSheet.create({
     borderBottomColor: '#EF4444',
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#6B7280',
     fontWeight: '600',
   },
   activeTabText: {
     color: '#EF4444',
   },
+  // Section
   section: {
-    padding: 20,
+    padding: 16,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 16,
   },
-  signalGroup: {
-    marginBottom: 24,
+  // Signals Card (matching PlaceDetailsScreen)
+  signalsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  groupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
+  signalsCardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 16,
   },
-  groupTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
+  // Been Here Card (matching PlaceDetailsScreen)
+  beenHereCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  beenHereTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  beenHereSubtitle: {
+    fontSize: 14,
     color: '#6B7280',
-    letterSpacing: 1,
-  },
-  pillContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    gap: 8,
-  },
-  pillIcon: {
-    fontSize: 14,
-  },
-  pillText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  scoreBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  scoreText: {
-    fontSize: 10,
-    fontWeight: 'bold',
   },
   emptyText: {
     color: '#9CA3AF',
     fontSize: 14,
     fontStyle: 'italic',
   },
-  addTapContainer: {
-    marginTop: 16,
-    padding: 16,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  addTapText: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 12,
-  },
-  addTapButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2DD4BF',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 24,
-    gap: 8,
-  },
-  addTapButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  // FAB (matching PlaceDetailsScreen)
   fabContainer: {
     position: 'absolute',
     bottom: 30,
