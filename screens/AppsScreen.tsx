@@ -253,6 +253,13 @@ export default function AppsScreen() {
             style={styles.headerLogo}
             resizeMode="contain"
           />
+          <TouchableOpacity
+            style={styles.helpButton}
+            onPress={() => navigation.navigate('HelpSupport')}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="help-circle-outline" size={26} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -375,7 +382,17 @@ const styles = StyleSheet.create({
   // Logo row
   logoRow: {
     paddingHorizontal: 18,
-    alignItems: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  helpButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   headerLogo: {

@@ -30,6 +30,7 @@ import { fetchPlaceSignals, getPlaceReviewCount, SignalAggregate } from '../lib/
 import { Colors } from '../constants/Colors';
 import AddYourTapCardEnhanced from '../components/AddYourTapCardEnhanced';
 import MomentumThermometer from '../components/MomentumThermometer';
+import ReviewReportModal from '../components/ReviewReportModal';
 import {
   // usePlaceTapStats,
   useUserGamification,
@@ -294,6 +295,10 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   // NEW: Photo carousel state
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const carouselRef = useRef<FlatList>(null);
+  
+  // Review Report Modal state (Apple compliance)
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportingSignalId, setReportingSignalId] = useState<string | null>(null);
 
   // Dark mode support
   const colorScheme = useColorScheme();
@@ -808,6 +813,19 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
               style={{ marginLeft: 8 }}
             />
           )}
+          
+          {/* Report Button (Apple Compliance) */}
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation();
+              setReportingSignalId(signal.signal_id);
+              setShowReportModal(true);
+            }}
+            style={{ marginLeft: 8, padding: 4 }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="ellipsis-horizontal" size={18} color="rgba(255,255,255,0.7)" />
+          </TouchableOpacity>
         </TouchableOpacity>
       );
     };
@@ -1650,6 +1668,17 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           </View>
         </View>
       </Modal>
+
+      {/* Review Report Modal (Apple Compliance) */}
+      <ReviewReportModal
+        visible={showReportModal}
+        onClose={() => {
+          setShowReportModal(false);
+          setReportingSignalId(null);
+        }}
+        reviewId={reportingSignalId || ''}
+        placeId={placeId || ''}
+      />
     </View>
   );
 }

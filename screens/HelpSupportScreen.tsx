@@ -20,9 +20,9 @@ interface HelpItem {
 }
 
 export default function HelpSupportScreen({ navigation }: any) {
-  const SUPPORT_EMAIL = 'support@tavvy.app';
-  const PRIVACY_POLICY_URL = 'https://tavvy.app/privacy';
-  const TERMS_URL = 'https://tavvy.app/terms';
+  const SUPPORT_EMAIL = 'support@tavvy.com';
+  const PRIVACY_POLICY_URL = 'https://tavvy.com/privacy';
+  const TERMS_URL = 'https://tavvy.com/terms';
 
   const handleEmailSupport = async () => {
     const subject = encodeURIComponent('TavvY App Support Request');

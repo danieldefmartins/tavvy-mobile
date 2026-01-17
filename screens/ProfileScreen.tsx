@@ -165,7 +165,10 @@ export default function ProfileScreen({ navigation }: any) {
           <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('HelpSupport')}
+        >
           <View style={styles.menuIconContainer}>
             <Ionicons name="help-circle-outline" size={22} color="#374151" />
           </View>

@@ -49,6 +49,10 @@ import SavedScreen from './screens/SavedScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
 
+// ========== APPLE COMPLIANCE SCREENS ==========
+import CommunityGuidelinesScreen from './screens/CommunityGuidelinesScreen';
+import HelpSupportScreen from './screens/HelpSupportScreen';
+
 // ========== PROS SCREENS (NEW) ==========
 import ProsHomeScreen from './screens/ProsHomeScreen';
 import ProsBrowseScreen from './screens/ProsBrowseScreen';
@@ -179,6 +183,10 @@ function AppsStack() {
       <MenuStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
       <MenuStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
       <MenuStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
+      
+      {/* Apple Compliance Screens */}
+      <MenuStackNav.Screen name="HelpSupport" component={HelpSupportScreen} />
+      <MenuStackNav.Screen name="CommunityGuidelines" component={CommunityGuidelinesScreen} />
     </MenuStackNav.Navigator>
   );
 }
