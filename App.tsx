@@ -71,6 +71,7 @@ import ProsProjectStatusScreen from './screens/ProsProjectStatusScreen';
 import RidesBrowseScreen from './screens/RidesBrowseScreen';
 import RVCampingBrowseScreen from './screens/RVCampingBrowseScreen';
 import CitiesBrowseScreen from './screens/CitiesBrowseScreen';
+import RideDetailsScreen from './screens/RideDetailsScreen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -110,6 +111,7 @@ function HomeStack() {
       <HomeStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
       {/* Browse Screens */}
       <HomeStackNav.Screen name="RidesBrowse" component={RidesBrowseScreen} />
+      <HomeStackNav.Screen name="RideDetails" component={RideDetailsScreen} />
       <HomeStackNav.Screen name="RVCampingBrowse" component={RVCampingBrowseScreen} />
       <HomeStackNav.Screen name="CitiesBrowse" component={CitiesBrowseScreen} />
       {/* Business Card Scanner - accessible from AddPlaceScreen */}
@@ -156,6 +158,8 @@ function AppsStack() {
       
       {/* Browse Screens accessible from Apps */}
       <MenuStackNav.Screen name="CitiesBrowse" component={CitiesBrowseScreen} />
+      <MenuStackNav.Screen name="RidesBrowse" component={RidesBrowseScreen} />
+      <MenuStackNav.Screen name="RideDetails" component={RideDetailsScreen} />
       <MenuStackNav.Screen name="CityDetails" component={CityDetailsScreen} />
       <MenuStackNav.Screen name="AddReview" component={AddReviewScreen} />
       <MenuStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />

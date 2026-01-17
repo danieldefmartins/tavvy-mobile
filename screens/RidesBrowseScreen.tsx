@@ -20,8 +20,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabaseClient';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { useTheme, spacing, borderRadius, shadows } from '../constants/Colors';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 32;
@@ -41,6 +43,7 @@ interface Place {
   longitude?: number;
   photos?: string[];
   signals?: Signal[];
+  parkName?: string;
 }
 
 interface Signal {
@@ -51,11 +54,89 @@ interface Signal {
 type SortOption = 'popular' | 'recent' | 'nearby';
 
 // ============================================
+// SIGNAL COLORS (matching PlaceCard)
+// ============================================
+
+const SIGNAL_COLORS = {
+  positive: '#0A84FF', // Blue - The Good
+  neutral: '#8B5CF6',  // Purple - The Vibe
+  negative: '#FF9500', // Orange - Heads Up
+};
+
+// ============================================
+// SAMPLE RIDES DATA
+// ============================================
+
+const SAMPLE_RIDES: Place[] = [
+  { 
+    id: 'ride-velocicoaster', 
+    name: 'VelociCoaster', 
+    category: 'Roller Coaster', 
+    city: 'Orlando', 
+    state_region: 'FL',
+    parkName: 'Islands of Adventure',
+    photos: ['https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800'],
+    signals: [] 
+  },
+  { 
+    id: 'ride-hagrids', 
+    name: "Hagrid's Magical Creatures", 
+    category: 'Family Ride', 
+    city: 'Orlando', 
+    state_region: 'FL',
+    parkName: 'Islands of Adventure',
+    photos: ['https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800'],
+    signals: [] 
+  },
+  { 
+    id: 'ride-avatar', 
+    name: 'Avatar Flight of Passage', 
+    category: 'Immersive', 
+    city: 'Orlando', 
+    state_region: 'FL',
+    parkName: "Disney's Animal Kingdom",
+    photos: ['https://images.unsplash.com/photo-1566552881560-0be862a7c445?w=800'],
+    signals: [] 
+  },
+  { 
+    id: 'ride-guardians', 
+    name: 'Guardians of the Galaxy: Cosmic Rewind', 
+    category: 'Roller Coaster', 
+    city: 'Orlando', 
+    state_region: 'FL',
+    parkName: 'EPCOT',
+    photos: ['https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800'],
+    signals: [] 
+  },
+  { 
+    id: 'ride-pirates', 
+    name: 'Pirates of the Caribbean', 
+    category: 'Classic', 
+    city: 'Anaheim', 
+    state_region: 'CA',
+    parkName: 'Disneyland',
+    photos: ['https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800'],
+    signals: [] 
+  },
+  { 
+    id: 'ride-space', 
+    name: 'Space Mountain', 
+    category: 'Thrill Ride', 
+    city: 'Orlando', 
+    state_region: 'FL',
+    parkName: 'Magic Kingdom',
+    photos: ['https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800'],
+    signals: [] 
+  },
+];
+
+// ============================================
 // MAIN COMPONENT
 // ============================================
 
 export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
-  const { theme, isDark } = useThemeContext();
+  const { isDark } = useThemeContext();
+  const theme = useTheme();
   
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,74 +159,18 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
     try {
       if (offset === 0) setLoading(true);
 
-      // Query places with ride-related categories
-      const { data: placesData, error } = await supabase
-        .from('fsq_places_raw')
-        .select('fsq_place_id, name, latitude, longitude, address, locality, region, fsq_category_labels')
-        .is('date_closed', null)
-        .limit(100);
-
-      if (error) {
-        console.error('Error loading rides:', error);
-        setPlaces(getSampleRides());
-        return;
-      }
-
-      if (placesData) {
-        // Filter for ride-related categories
-        const filteredPlaces = placesData.filter(p => {
-          if (!p.fsq_category_labels) return false;
-          const labels = Array.isArray(p.fsq_category_labels) 
-            ? p.fsq_category_labels.join(' ').toLowerCase() 
-            : '';
-          return RIDE_CATEGORIES.some(cat => labels.includes(cat.toLowerCase()));
-        }).map(p => ({
-          id: p.fsq_place_id,
-          name: p.name,
-          category: extractCategory(p.fsq_category_labels),
-          address_line1: p.address,
-          city: p.locality,
-          state_region: p.region,
-          latitude: p.latitude,
-          longitude: p.longitude,
-          photos: [],
-          signals: [],
-        }));
-
-        if (filteredPlaces.length > 0) {
-          setPlaces(filteredPlaces);
-        } else {
-          // Use sample data if no rides found
-          setPlaces(getSampleRides());
-        }
-        setHasMore(filteredPlaces.length === 100);
-      }
+      // For now, use sample rides data
+      // TODO: Query from database when rides are added
+      setPlaces(SAMPLE_RIDES);
+      
     } catch (error) {
       console.error('Error loading rides:', error);
-      setPlaces(getSampleRides());
+      setPlaces(SAMPLE_RIDES);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
-
-  const extractCategory = (labels: any): string => {
-    if (!labels || !Array.isArray(labels) || labels.length === 0) return 'Attraction';
-    const fullCategory = labels[0];
-    if (typeof fullCategory === 'string') {
-      const parts = fullCategory.split('>');
-      return parts[parts.length - 1].trim();
-    }
-    return 'Attraction';
-  };
-
-  const getSampleRides = (): Place[] => [
-    { id: 'ride1', name: 'Space Mountain', category: 'Thrill Ride', city: 'Orlando', state_region: 'FL', photos: [], signals: [] },
-    { id: 'ride2', name: 'Hagrid\'s Magical Creatures', category: 'Family Ride', city: 'Orlando', state_region: 'FL', photos: [], signals: [] },
-    { id: 'ride3', name: 'Avatar Flight of Passage', category: 'Immersive', city: 'Orlando', state_region: 'FL', photos: [], signals: [] },
-    { id: 'ride4', name: 'Guardians of the Galaxy', category: 'Thrill Ride', city: 'Orlando', state_region: 'FL', photos: [], signals: [] },
-    { id: 'ride5', name: 'Pirates of the Caribbean', category: 'Classic', city: 'Anaheim', state_region: 'CA', photos: [], signals: [] },
-  ];
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -153,7 +178,11 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
   }, [sortBy]);
 
   const handlePlacePress = (place: Place) => {
-    navigation.navigate('PlaceDetails', { placeId: place.id });
+    navigation.navigate('RideDetails', { 
+      rideId: place.id, 
+      rideName: place.name,
+      parkName: place.parkName,
+    });
   };
 
   // Get category-based fallback image
@@ -172,84 +201,100 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
     return 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800';
   };
 
-  // Signal helpers
-  const getSignalType = (bucket: string): 'positive' | 'neutral' | 'negative' => {
-    const bucketLower = bucket.toLowerCase();
-    if (bucketLower.includes('good') || bucketLower.includes('great') || bucketLower.includes('the good')) {
-      return 'positive';
-    }
-    if (bucketLower.includes('heads') || bucketLower.includes('wait') || bucketLower.includes('crowded')) {
-      return 'negative';
-    }
-    return 'neutral';
-  };
-
-  const getSignalColor = (bucket: string) => {
-    const type = getSignalType(bucket);
-    if (type === 'positive') return '#0A84FF';
-    if (type === 'negative') return '#FF9500';
-    return '#8E8E93';
-  };
-
-  const getEmptySignalText = (bucket: string) => 'Be the first to tap!';
-
-  // Generate display signals with fallbacks
-  const getDisplaySignals = (signals: Signal[]): { bucket: string; tap_total: number; isEmpty: boolean }[] => {
-    if (!signals || signals.length === 0) {
-      return [
-        { bucket: 'The Good', tap_total: 0, isEmpty: true },
-        { bucket: 'The Vibe', tap_total: 0, isEmpty: true },
-        { bucket: 'Heads Up', tap_total: 0, isEmpty: true },
-      ];
-    }
-    return signals.slice(0, 3).map(s => ({ ...s, isEmpty: false }));
+  // Render signal badges in 2x2 grid format (matching PlaceCard)
+  // Row 1: 2 blue (The Good)
+  // Row 2: 1 purple (The Vibe) + 1 orange (Heads Up)
+  const renderSignalBadges = (signals: Signal[]) => {
+    const hasSignals = signals && signals.length > 0;
+    
+    return (
+      <View style={styles.signalsContainer}>
+        {/* Row 1: 2 Blue badges (The Good) */}
+        <View style={styles.signalRow}>
+          <TouchableOpacity 
+            style={[styles.signalBadge, { backgroundColor: SIGNAL_COLORS.positive }]}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="thumbs-up" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.signalText} numberOfLines={1}>
+              {hasSignals ? `Thrilling ×12` : 'Be the first to tap!'}
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.signalBadge, { backgroundColor: SIGNAL_COLORS.positive }]}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="thumbs-up" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.signalText} numberOfLines={1}>
+              {hasSignals ? `Smooth ×8` : 'Be the first to tap!'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        
+        {/* Row 2: 1 Purple (The Vibe) + 1 Orange (Heads Up) */}
+        <View style={styles.signalRow}>
+          <TouchableOpacity 
+            style={[styles.signalBadge, { backgroundColor: SIGNAL_COLORS.neutral }]}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="sparkles" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.signalText} numberOfLines={1}>
+              {hasSignals ? `Immersive ×5` : 'Be the first to tap!'}
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.signalBadge, { backgroundColor: SIGNAL_COLORS.negative }]}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="alert-circle" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.signalText} numberOfLines={1}>
+              {hasSignals ? `Long lines ×3` : 'Be the first to tap!'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   };
 
   const renderPlaceCard = ({ item: place, index }: { item: Place; index: number }) => {
     const imageUrl = place.photos && place.photos.length > 0 
       ? place.photos[0] 
       : getCategoryFallbackImage(place.category);
-    const location = [place.city, place.state_region].filter(Boolean).join(', ') || 'Unknown Location';
+    const location = place.parkName || [place.city, place.state_region].filter(Boolean).join(', ') || 'Unknown Location';
 
     return (
       <TouchableOpacity
         key={`ride-${place.id}-${index}`}
-        style={[styles.card, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+        style={[styles.card, { backgroundColor: isDark ? theme.surface : '#fff' }, shadows.large]}
         onPress={() => handlePlacePress(place)}
-        activeOpacity={0.95}
+        activeOpacity={0.9}
       >
-        {/* Image */}
-        <Image source={{ uri: imageUrl }} style={styles.cardImage} resizeMode="cover" />
-        
-        {/* Content */}
-        <View style={styles.cardContent}>
-          <Text style={[styles.cardTitle, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>
-            {place.name}
-          </Text>
-          <Text style={[styles.cardSubtitle, { color: isDark ? theme.textSecondary : '#666' }]} numberOfLines={1}>
-            {place.category} • {location}
-          </Text>
+        {/* Photo with Gradient Overlay */}
+        <View style={styles.photoContainer}>
+          <Image source={{ uri: imageUrl }} style={styles.cardImage} resizeMode="cover" />
           
-          {/* Signal Bars */}
-          <View style={styles.signalsContainer}>
-            {getDisplaySignals(place.signals || []).map((signal, idx) => (
-              <View 
-                key={`ride-${place.id}-sig-${idx}`} 
-                style={[styles.signalBadge, { backgroundColor: getSignalColor(signal.bucket) }]}
-              >
-                <Ionicons 
-                  name={signal.isEmpty ? 'add-circle-outline' : 'thumbs-up'} 
-                  size={12} 
-                  color="#FFFFFF" 
-                  style={{ marginRight: 4 }}
-                />
-                <Text style={styles.signalText} numberOfLines={1}>
-                  {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
-                </Text>
-              </View>
-            ))}
+          {/* Ride Badge */}
+          <View style={styles.rideBadge}>
+            <Ionicons name="rocket" size={12} color="#fff" />
+            <Text style={styles.rideBadgeText}>RIDE</Text>
           </View>
+          
+          {/* Gradient Overlay with Name */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.7)']}
+            style={styles.gradientOverlay}
+          >
+            <Text style={styles.cardTitle} numberOfLines={1}>{place.name}</Text>
+            <Text style={styles.cardSubtitle} numberOfLines={1}>
+              {place.category} • {location}
+            </Text>
+          </LinearGradient>
         </View>
+        
+        {/* Signal Badges - 2x2 Grid matching PlaceCard */}
+        {renderSignalBadges(place.signals || [])}
       </TouchableOpacity>
     );
   };
@@ -284,9 +329,9 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
             >
               <Text style={[
                 styles.sortButtonText,
-                { color: sortBy === option ? '#fff' : (isDark ? theme.text : '#000') }
+                { color: sortBy === option ? '#fff' : (isDark ? theme.textSecondary : '#666') }
               ]}>
-                {option === 'popular' ? 'Most Popular' : option === 'recent' ? 'Recently Added' : 'Nearby'}
+                {option === 'popular' ? '🔥 Popular' : option === 'recent' ? '🆕 Recent' : '📍 Nearby'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -309,16 +354,21 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0A84FF" />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#0A84FF"
+              colors={['#0A84FF']}
+            />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="rocket-outline" size={48} color={isDark ? theme.textSecondary : '#ccc'} />
-              <Text style={[styles.emptyTitle, { color: isDark ? theme.text : '#000' }]}>
+              <Ionicons name="rocket-outline" size={64} color={isDark ? theme.textSecondary : '#ccc'} />
+              <Text style={[styles.emptyText, { color: isDark ? theme.textSecondary : '#666' }]}>
                 No rides found
               </Text>
-              <Text style={[styles.emptySubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
-                Be the first to add a theme park ride!
+              <Text style={[styles.emptySubtext, { color: isDark ? theme.textTertiary : '#999' }]}>
+                Check back soon for more rides to explore
               </Text>
             </View>
           }
@@ -342,21 +392,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 8,
+    marginRight: 8,
   },
   headerTitleContainer: {
     flex: 1,
-    marginLeft: 8,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
   },
   headerSubtitle: {
@@ -389,6 +435,88 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  listContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  card: {
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
+  },
+  photoContainer: {
+    height: 180,
+    position: 'relative',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  rideBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0A84FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    gap: 4,
+  },
+  rideBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    justifyContent: 'flex-end',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  cardTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'left',
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 2,
+    textAlign: 'left',
+  },
+  // Signal badges - matching PlaceCard style
+  signalsContainer: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
+  },
+  signalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  signalBadge: {
+    width: '48%',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  signalText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -396,67 +524,20 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 14,
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  card: {
-    borderRadius: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-    overflow: 'hidden',
-  },
-  cardImage: {
-    width: '100%',
-    height: 180,
-  },
-  cardContent: {
-    padding: 16,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    marginBottom: 12,
-  },
-  signalsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  signalBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  signalText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 16,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 60,
+    paddingTop: 100,
   },
-  emptyTitle: {
+  emptyText: {
     fontSize: 18,
     fontWeight: '600',
     marginTop: 16,
   },
-  emptySubtitle: {
+  emptySubtext: {
     fontSize: 14,
     marginTop: 8,
     textAlign: 'center',
