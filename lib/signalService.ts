@@ -164,6 +164,9 @@ export const CATEGORY_SIGNAL_PREFIXES: Record<string, string[]> = {
   
   // Other/Generic
   other: ['generic_'],
+  
+  // Cities (metropolitan areas)
+  city: ['city_', 'generic_'],
 };
 
 /**
@@ -324,6 +327,20 @@ export async function fetchSignalsForPlace(placeId: string): Promise<SignalsByCa
         tavvyPlace.primary_category,
         tavvyPlace.subcategory
       );
+    }
+    
+    // Fallback: Try places table (for cities and other entities)
+    const { data: simplePlace } = await supabase
+      .from('places')
+      .select('primary_category, category_slug')
+      .eq('id', placeId)
+      .maybeSingle();
+    
+    if (simplePlace) {
+      const category = simplePlace.category_slug || simplePlace.primary_category;
+      if (category) {
+        return await getSignalsForCategory(category);
+      }
     }
     
     // Default: Return generic signals for all categories

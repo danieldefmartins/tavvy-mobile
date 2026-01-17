@@ -1,49 +1,167 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Colors } from '../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
+import { supabase } from '../lib/supabaseClient';
+import { fetchPlaceSignals, SignalAggregate } from '../lib/reviews';
 
 const { width } = Dimensions.get('window');
 
-// Mock Data for Orlando
-const CITY_DATA = {
-  id: 'orlando',
-  name: 'Orlando, FL',
-  location: 'Florida, USA',
-  population: '2.1M population',
-  image: 'https://images.unsplash.com/photo-1597466599360-3b9775841fea?w=800', // Orlando skyline
-  stats: {
-    signals: '45.2k',
-    universes: '12',
-    places: '2.4k',
-    photos: '18k',
-  },
-  signals: {
-    best_for: [
-      { id: 'family', label: 'Family Trips', score: 8.2, color: '#2DD4BF' },
-      { id: 'parks', label: 'Theme Parks', score: 7.5, color: '#2DD4BF' },
-      { id: 'weather', label: 'Great Weather', score: 5.1, color: '#2DD4BF' },
-    ],
-    vibe: [
-      { id: 'touristy', label: 'Touristy', score: 4.3, color: '#E879F9' },
-      { id: 'tropical', label: 'Tropical', score: 3.8, color: '#E879F9' },
-    ],
-    heads_up: [
-      { id: 'car', label: 'Need a Car', score: 3.2, color: '#FB923C' },
-      { id: 'hot', label: 'Hot Summers', score: 2.8, color: '#FB923C' },
-      { id: 'crowded', label: 'Crowded', score: 2.1, color: '#FB923C' },
-    ],
-  },
+// Category colors matching the universal review system
+const CATEGORY_COLORS = {
+  best_for: '#0A84FF',
+  vibe: '#8B5CF6',
+  heads_up: '#FF9500',
 };
+
+interface CityData {
+  id: string;
+  name: string;
+  location: string;
+  country: string;
+  population?: string;
+  image: string;
+  primaryCategory: string;
+  stats: {
+    signals: string;
+    universes: string;
+    places: string;
+    photos: string;
+  };
+}
+
+interface RouteParams {
+  cityId: string;
+  cityName?: string;
+}
 
 export default function CityDetailsScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  // In a real app, use route.params.cityId to fetch data
-  const city = CITY_DATA;
+  const params = route.params as RouteParams;
+  
+  const [city, setCity] = useState<CityData | null>(null);
+  const [signals, setSignals] = useState<{
+    best_for: SignalAggregate[];
+    vibe: SignalAggregate[];
+    heads_up: SignalAggregate[];
+  }>({ best_for: [], vibe: [], heads_up: [] });
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('Signals');
+
+  useEffect(() => {
+    loadCityData();
+  }, [params?.cityId]);
+
+  const loadCityData = async () => {
+    if (!params?.cityId) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Fetch city details from database
+      const { data: cityData, error: cityError } = await supabase
+        .from('places')
+        .select('*')
+        .eq('id', params.cityId)
+        .single();
+
+      if (cityError) {
+        console.error('Error fetching city:', cityError);
+      }
+
+      if (cityData) {
+        setCity({
+          id: cityData.id,
+          name: cityData.name || params.cityName || 'Unknown City',
+          location: cityData.state || cityData.region || '',
+          country: cityData.country || 'USA',
+          population: cityData.population ? `${(cityData.population / 1000000).toFixed(1)}M population` : undefined,
+          image: cityData.cover_image_url || 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800',
+          primaryCategory: cityData.category_slug || cityData.primary_category || 'city',
+          stats: {
+            signals: '0',
+            universes: '0',
+            places: '0',
+            photos: '0',
+          },
+        });
+      } else {
+        // Fallback for when city is not in database yet
+        setCity({
+          id: params.cityId,
+          name: params.cityName || 'City',
+          location: '',
+          country: '',
+          image: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800',
+          primaryCategory: 'city',
+          stats: {
+            signals: '0',
+            universes: '0',
+            places: '0',
+            photos: '0',
+          },
+        });
+      }
+
+      // Fetch signals using the universal review system
+      const signalData = await fetchPlaceSignals(params.cityId);
+      setSignals({
+        best_for: signalData.best_for || [],
+        vibe: signalData.vibe || [],
+        heads_up: signalData.heads_up || [],
+      });
+
+    } catch (error) {
+      console.error('Error loading city data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Format score for display (x + amount format)
+  const formatScore = (score: number): string => {
+    if (score >= 1000) {
+      return `x${(score / 1000).toFixed(1)}k`;
+    }
+    return `x${Math.round(score)}`;
+  };
+
+  // Navigate to the universal AddReview screen (same as PlaceDetailsScreen)
+  const handleAddReview = () => {
+    if (!city) return;
+    navigation.navigate('AddReview' as never, { 
+      placeId: city.id, 
+      placeName: city.name, 
+      placeCategory: city.primaryCategory 
+    } as never);
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#EF4444" />
+        <Text style={styles.loadingText}>Loading city...</Text>
+      </View>
+    );
+  }
+
+  if (!city) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <Text style={styles.loadingText}>City not found</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={{ color: '#EF4444', marginTop: 16 }}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const totalSignals = signals.best_for.length + signals.vibe.length + signals.heads_up.length;
 
   return (
     <View style={styles.container}>
@@ -79,10 +197,14 @@ export default function CityDetailsScreen() {
             </View>
             <Text style={styles.cityName}>{city.name}</Text>
             <View style={styles.locationRow}>
-              <Text style={styles.locationText}>🇺🇸 {city.location}</Text>
-              <Text style={styles.dot}>•</Text>
-              <Ionicons name="people" size={14} color="#9CA3AF" />
-              <Text style={styles.locationText}>{city.population}</Text>
+              {city.country && <Text style={styles.locationText}>🌍 {city.location ? `${city.location}, ${city.country}` : city.country}</Text>}
+              {city.population && (
+                <>
+                  <Text style={styles.dot}>•</Text>
+                  <Ionicons name="people" size={14} color="#9CA3AF" />
+                  <Text style={styles.locationText}>{city.population}</Text>
+                </>
+              )}
             </View>
           </View>
         </View>
@@ -97,35 +219,133 @@ export default function CityDetailsScreen() {
 
         {/* Tabs */}
         <View style={styles.tabsContainer}>
-          <TabItem label="Signals" active />
-          <TabItem label="Explore" />
-          <TabItem label="Photos" />
-          <TabItem label="Info" />
+          <TabItem label="Signals" active={activeTab === 'Signals'} onPress={() => setActiveTab('Signals')} />
+          <TabItem label="Explore" active={activeTab === 'Explore'} onPress={() => setActiveTab('Explore')} />
+          <TabItem label="Photos" active={activeTab === 'Photos'} onPress={() => setActiveTab('Photos')} />
+          <TabItem label="Info" active={activeTab === 'Info'} onPress={() => setActiveTab('Info')} />
         </View>
 
         {/* Signals Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📊 What people say about Orlando</Text>
-          
-          <SignalGroup title="👍 BEST FOR" icon="thumbs-up" color="#F59E0B">
-            {city.signals.best_for.map(s => <SignalPill key={s.id} {...s} />)}
-          </SignalGroup>
+        {activeTab === 'Signals' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>📊 What people say about {city.name}</Text>
+            
+            {/* The Good (Best For) */}
+            <SignalGroup 
+              title="👍 THE GOOD" 
+              icon="thumbs-up" 
+              color={CATEGORY_COLORS.best_for}
+              onPress={handleAddReview}
+            >
+              {signals.best_for.length > 0 ? (
+                signals.best_for.map(s => (
+                  <SignalPill 
+                    key={s.signal_id} 
+                    label={s.label || s.signal_id} 
+                    score={s.current_score}
+                    color={CATEGORY_COLORS.best_for}
+                    icon={s.icon}
+                    isGhost={s.is_ghost}
+                  />
+                ))
+              ) : (
+                <TouchableOpacity onPress={handleAddReview}>
+                  <Text style={styles.emptyText}>No The Good taps yet. Be the first!</Text>
+                </TouchableOpacity>
+              )}
+            </SignalGroup>
 
-          <SignalGroup title="✨ VIBE" icon="sparkles" color="#E879F9">
-            {city.signals.vibe.map(s => <SignalPill key={s.id} {...s} />)}
-          </SignalGroup>
+            {/* The Vibe */}
+            <SignalGroup 
+              title="✨ THE VIBE" 
+              icon="sparkles" 
+              color={CATEGORY_COLORS.vibe}
+              onPress={handleAddReview}
+            >
+              {signals.vibe.length > 0 ? (
+                signals.vibe.map(s => (
+                  <SignalPill 
+                    key={s.signal_id} 
+                    label={s.label || s.signal_id} 
+                    score={s.current_score}
+                    color={CATEGORY_COLORS.vibe}
+                    icon={s.icon}
+                    isGhost={s.is_ghost}
+                  />
+                ))
+              ) : (
+                <TouchableOpacity onPress={handleAddReview}>
+                  <Text style={styles.emptyText}>No The Vibe taps yet. Be the first!</Text>
+                </TouchableOpacity>
+              )}
+            </SignalGroup>
 
-          <SignalGroup title="⚠️ HEADS UP" icon="warning" color="#F59E0B">
-            {city.signals.heads_up.map(s => <SignalPill key={s.id} {...s} />)}
-          </SignalGroup>
-        </View>
+            {/* Heads Up */}
+            <SignalGroup 
+              title="⚠️ HEADS UP" 
+              icon="warning" 
+              color={CATEGORY_COLORS.heads_up}
+              onPress={handleAddReview}
+            >
+              {signals.heads_up.length > 0 ? (
+                signals.heads_up.map(s => (
+                  <SignalPill 
+                    key={s.signal_id} 
+                    label={s.label || s.signal_id} 
+                    score={s.current_score}
+                    color={CATEGORY_COLORS.heads_up}
+                    icon={s.icon}
+                    isGhost={s.is_ghost}
+                  />
+                ))
+              ) : (
+                <TouchableOpacity onPress={handleAddReview}>
+                  <Text style={styles.emptyText}>No Heads Up taps yet. Be the first!</Text>
+                </TouchableOpacity>
+              )}
+            </SignalGroup>
+
+            {/* Add Your Tap CTA */}
+            <View style={styles.addTapContainer}>
+              <Text style={styles.addTapText}>Help our community and leave your review</Text>
+              <TouchableOpacity style={styles.addTapButton} onPress={handleAddReview}>
+                <Ionicons name="add" size={20} color="white" />
+                <Text style={styles.addTapButtonText}>Add Your Tap</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Explore Tab Placeholder */}
+        {activeTab === 'Explore' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>🗺️ Explore {city.name}</Text>
+            <Text style={styles.emptyText}>Places in this city coming soon...</Text>
+          </View>
+        )}
+
+        {/* Photos Tab Placeholder */}
+        {activeTab === 'Photos' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>📷 Photos of {city.name}</Text>
+            <Text style={styles.emptyText}>Photos coming soon...</Text>
+          </View>
+        )}
+
+        {/* Info Tab Placeholder */}
+        {activeTab === 'Info' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>ℹ️ About {city.name}</Text>
+            <Text style={styles.emptyText}>City information coming soon...</Text>
+          </View>
+        )}
       </ScrollView>
 
       {/* Floating Action Button */}
       <View style={styles.fabContainer}>
         <TouchableOpacity 
           style={styles.fab} 
-          onPress={() => navigation.navigate('RateCity', { cityId: city.id })}
+          onPress={handleAddReview}
         >
           <Ionicons name="add" size={32} color="white" />
         </TouchableOpacity>
@@ -143,35 +363,55 @@ const StatItem = ({ value, label, icon, color }: any) => (
   </View>
 );
 
-const TabItem = ({ label, active }: any) => (
-  <View style={[styles.tabItem, active && styles.activeTab]}>
+const TabItem = ({ label, active, onPress }: any) => (
+  <TouchableOpacity style={[styles.tabItem, active && styles.activeTab]} onPress={onPress}>
     <Text style={[styles.tabText, active && styles.activeTabText]}>{label}</Text>
-  </View>
+  </TouchableOpacity>
 );
 
-const SignalGroup = ({ title, icon, color, children }: any) => (
+const SignalGroup = ({ title, icon, color, children, onPress }: any) => (
   <View style={styles.signalGroup}>
-    <View style={styles.groupHeader}>
+    <TouchableOpacity style={styles.groupHeader} onPress={onPress}>
       <Ionicons name={icon} size={14} color={color} />
       <Text style={styles.groupTitle}>{title}</Text>
-    </View>
+    </TouchableOpacity>
     <View style={styles.pillContainer}>{children}</View>
   </View>
 );
 
-const SignalPill = ({ label, score, color }: any) => (
-  <View style={[styles.pill, { backgroundColor: `${color}20` }]}>
-    <Text style={[styles.pillText, { color: '#1F2937' }]}>{label}</Text>
-    <View style={[styles.scoreBadge, { backgroundColor: `${color}40` }]}>
-      <Text style={[styles.scoreText, { color: '#1F2937' }]}>x{score}k</Text>
+const SignalPill = ({ label, score, color, icon, isGhost }: any) => {
+  // Format score as "x + amount"
+  const formatScore = (score: number): string => {
+    if (score >= 1000) {
+      return `x${(score / 1000).toFixed(1)}k`;
+    }
+    return `x${Math.round(score)}`;
+  };
+
+  return (
+    <View style={[styles.pill, { backgroundColor: `${color}20`, opacity: isGhost ? 0.6 : 1 }]}>
+      {icon && <Text style={styles.pillIcon}>{icon}</Text>}
+      <Text style={[styles.pillText, { color: '#1F2937' }]}>{label}</Text>
+      <View style={[styles.scoreBadge, { backgroundColor: `${color}40` }]}>
+        <Text style={[styles.scoreText, { color: '#1F2937' }]}>{formatScore(score)}</Text>
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'white',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    color: '#6B7280',
+    fontSize: 16,
   },
   heroContainer: {
     height: 300,
@@ -331,6 +571,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     gap: 8,
   },
+  pillIcon: {
+    fontSize: 14,
+  },
   pillText: {
     fontSize: 14,
     fontWeight: '600',
@@ -343,6 +586,37 @@ const styles = StyleSheet.create({
   scoreText: {
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  emptyText: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
+  addTapContainer: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  addTapText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 12,
+  },
+  addTapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2DD4BF',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    gap: 8,
+  },
+  addTapButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   fabContainer: {
     position: 'absolute',
