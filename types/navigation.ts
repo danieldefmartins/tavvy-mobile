@@ -71,6 +71,51 @@ export type RootStackParamList = {
   ProsServices: undefined;
   ProsPricing: undefined;
   ProsSettings: undefined;
+  
+  // Multi-step request form screens
+  ProsRequestStep1: {
+    categoryId?: string;
+    categoryName?: string;
+  };
+  ProsRequestStep2Photo: {
+    categoryId: string;
+    categoryName: string;
+    description?: string;
+  };
+  ProsRequestStep2: {
+    categoryId: string;
+    categoryName: string;
+    description?: string;
+  };
+  ProsRequestStep3: {
+    categoryId: string;
+    categoryName: string;
+    description?: string;
+    timeline?: string;
+    budget?: string;
+  };
+  ProsRequestStep4: {
+    categoryId: string;
+    categoryName: string;
+    description?: string;
+    timeline?: string;
+    budget?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+  };
+  ProsRequestStep5: {
+    categoryId: string;
+    categoryName: string;
+    description?: string;
+    timeline?: string;
+    budget?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+  };
 };
 
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;

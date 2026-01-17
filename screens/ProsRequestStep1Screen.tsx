@@ -2,8 +2,9 @@
  * ProsRequestStep1Screen - Service Category Selection
  * Install path: screens/ProsRequestStep1Screen.tsx
  * 
- * Step 1 of 5: Users select a service category from all 35+ options
+ * Step 2 of 6: Users select a service category from dynamic Supabase data
  * Includes search functionality and "Other" option
+ * Receives customer information from Step 0
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -17,15 +18,22 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { ProsColors, PROS_CATEGORIES } from '../constants/ProsConfig';
+import { ProsColors } from '../constants/ProsConfig';
+import { useProsServiceCategories, ServiceCategory } from '../hooks/useProsServiceCategories';
 
 type RouteParams = {
-  categoryId?: string;
-  categoryName?: string;
+  customerInfo?: {
+    fullName: string;
+    email: string;
+    phone: string;
+    privacyPreference: 'share' | 'app_only';
+  };
 };
 
 const ProgressBar = ({ progress }: { progress: number }) => (
@@ -41,39 +49,33 @@ export default function ProsRequestStep1Screen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   
-  const { categoryId, categoryName } = route.params || {};
+  const { customerInfo } = route.params || {};
   
-  const [selectedService, setSelectedService] = useState<number | string | null>(
-    categoryId ? parseInt(categoryId) : null
-  );
+  // Fetch categories from Supabase
+  const { data: categories = [], isLoading, error } = useProsServiceCategories();
+  
+  const [selectedService, setSelectedService] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    if (categoryId) {
-      setSelectedService(parseInt(categoryId));
-    }
-  }, [categoryId]);
-
-  // Build services list from PROS_CATEGORIES + Other option
+  // Build services list from fetched categories + Other option
   const allServices = useMemo(() => {
-    const services: { id: number; name: string; icon: string; color: string }[] = PROS_CATEGORIES.map(cat => ({
-      id: cat.id as number,
-      name: cat.name as string,
-      icon: cat.icon as string,
-      color: cat.color as string,
+    const services: (ServiceCategory & { color?: string })[] = categories.map((cat) => ({
+      ...cat,
+      color: ProsColors.primary, // Use primary color for all, can be customized per category
     }));
     
     // Add "Other" option at the end
     services.push({
-      id: 999,
+      id: 'other',
+      slug: 'other',
       name: 'Other',
       icon: 'ellipsis-horizontal',
       color: '#6B7280',
-    });
+    } as any);
     
     return services;
-  }, []);
+  }, [categories]);
 
   // Filter services based on search query
   const filteredServices = useMemo(() => {
@@ -88,20 +90,65 @@ export default function ProsRequestStep1Screen() {
   }, [allServices, searchQuery]);
 
   const handleNext = () => {
-    if (!selectedService) return;
+    if (!selectedService) {
+      Alert.alert('Please Select', 'Please select a service category to continue.');
+      return;
+    }
+
+    if (!customerInfo) {
+      Alert.alert('Error', 'Customer information is missing. Please start over.');
+      return;
+    }
     
     const selectedCategory = allServices.find(s => s.id === selectedService);
     
-    navigation.navigate('ProsRequestStep2Photo', {
-      categoryId: String(selectedService),
-      categoryName: categoryName || selectedCategory?.name || 'Service',
+    navigation.navigate('ProsRequestStep2', {
+      customerInfo,
+      categoryId: selectedService,
+      categoryName: selectedCategory?.name || 'Service',
       description,
     });
   };
 
   const handleClose = () => {
-    navigation.goBack();
+    Alert.alert(
+      'Cancel Request',
+      'Are you sure you want to cancel? Your progress will not be saved.',
+      [
+        { text: 'Keep Going', onPress: () => {} },
+        { text: 'Cancel', onPress: () => navigation.goBack(), style: 'destructive' },
+      ]
+    );
   };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={ProsColors.primary} />
+          <Text style={styles.loadingText}>Loading services...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={48} color="#EF4444" />
+          <Text style={styles.errorText}>Failed to load services</Text>
+          <Text style={styles.errorSubtext}>Please try again later</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.retryButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -118,8 +165,8 @@ export default function ProsRequestStep1Screen() {
         </View>
 
         <View style={styles.progressWrapper}>
-          <ProgressBar progress={20} />
-          <Text style={styles.stepText}>Step 1 of 5</Text>
+          <ProgressBar progress={33} />
+          <Text style={styles.stepText}>Step 2 of 6</Text>
         </View>
 
         <View style={styles.content}>
@@ -236,6 +283,45 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#EF4444',
+    marginTop: 12,
+  },
+  errorSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 4,
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: ProsColors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   header: {
     flexDirection: 'row',
