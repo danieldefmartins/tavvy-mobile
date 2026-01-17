@@ -318,7 +318,7 @@ export default function ProsHomeScreen() {
           {/* Start a Project CTA */}
           <TouchableOpacity 
             style={styles.startProjectButton}
-            onPress={() => navigation.navigate('ProsRequestStep1', { categoryId: null, categoryName: null })}
+            onPress={() => navigation.navigate('ProsRequestStep1')}
           >
             <Ionicons name="rocket" size={20} color="#FFFFFF" />
             <Text style={styles.startProjectButtonText}>Start a Project</Text>
