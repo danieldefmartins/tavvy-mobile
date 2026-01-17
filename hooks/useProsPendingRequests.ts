@@ -1,11 +1,6 @@
 /**
- * useProsPendingRequests Hook (FINAL)
+ * useProsPendingRequests Hook (FIXED FINAL)
  * Handles auto-saving, resuming, and final creation of service requests.
- * 
- * FIXED: 
- * - Matches 'project_requests' table for final submission.
- * - Matches 'pending_service_requests' for progress saving.
- * - Removes mandatory auth check for anonymous submissions.
  */
 
 import { useState, useCallback } from 'react';
@@ -24,16 +19,12 @@ export function useProsPendingRequests() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * Create a new finalized service request (lead)
-   */
   const createRequest = async (requestData: any) => {
     setLoading(true);
     setError(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Use the table name we confirmed: 'project_requests'
       const { data, error: insertError } = await supabase
         .from('project_requests')
         .insert({
@@ -67,14 +58,11 @@ export function useProsPendingRequests() {
     }
   };
 
-  /**
-   * Save progress (Line 92 in your screenshot)
-   */
   const saveProgress = useCallback(async (categoryId: string, step: number, formData: any) => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null; // Don't save progress for anonymous users yet
+      if (!user) return null;
 
       const { data, error } = await supabase
         .from('pending_service_requests')
@@ -125,7 +113,8 @@ export function useProsPendingRequests() {
     }
   }, []);
 
-  const deletePendingRequest = useCallback(async (categoryId: string) => {
+  // RENAME THIS TO MATCH THE SCREEN'S EXPECTATION
+  const deleteProgress = useCallback(async (categoryId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -146,6 +135,6 @@ export function useProsPendingRequests() {
     createRequest,
     saveProgress,
     getPendingRequest,
-    deletePendingRequest
+    deleteProgress // EXPORT AS deleteProgress
   };
 }
