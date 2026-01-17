@@ -1133,8 +1133,8 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
                   {/* The Good - Blue */}
                   {renderSignalLine('best_for', 'The Good', signals.best_for, { primary: '#0A84FF', light: 'rgba(10, 132, 255, 0.15)', text: '#FFFFFF' })}
 
-                  {/* The Vibe - Gray/Purple */}
-                  {renderSignalLine('vibe', 'The Vibe', signals.vibe, { primary: '#8E8E93', light: 'rgba(142, 142, 147, 0.15)', text: '#FFFFFF' })}
+                  {/* The Vibe - Purple */}
+                  {renderSignalLine('vibe', 'The Vibe', signals.vibe, { primary: '#8B5CF6', light: 'rgba(139, 92, 246, 0.15)', text: '#FFFFFF' })}
 
                   {/* Heads Up - Orange */}
                   {renderSignalLine('heads_up', 'Heads Up', signals.heads_up, { primary: '#FF9500', light: 'rgba(255, 149, 0, 0.15)', text: '#FFFFFF' })}
@@ -1181,12 +1181,12 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
                     </Text>
                   </TouchableOpacity>
                   
-                  {/* The Vibe - Gray Empty Bar */}
+                  {/* The Vibe - Purple Empty Bar */}
                   <TouchableOpacity 
                     onPress={() => navigation.navigate('AddReview', { placeId: place.id, placeName: place.name, placeCategory: place.primaryCategory })}
                     activeOpacity={0.8}
                     style={{
-                      backgroundColor: '#8E8E93',
+                      backgroundColor: '#8B5CF6',
                       borderRadius: 12,
                       paddingVertical: 14,
                       paddingHorizontal: 16,

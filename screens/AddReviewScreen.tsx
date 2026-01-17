@@ -93,7 +93,7 @@ const STEPS = [
     subtitle: "How's the atmosphere? Set the scene.",
     theme: 'vibe',
     limit: 5,
-    accent: '#8E8E93', // Gray
+    accent: '#8B5CF6', // Purple
     icon: 'sparkles',
   },
   {

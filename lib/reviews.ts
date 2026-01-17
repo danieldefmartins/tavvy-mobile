@@ -115,7 +115,7 @@ export const CATEGORY_COLORS = {
     text: '#FFFFFF',
   },
   vibe: {
-    bg: '#8E8E93',
+    bg: '#8B5CF6',  // Purple
     text: '#FFFFFF',
   },
   heads_up: {

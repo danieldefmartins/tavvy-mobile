@@ -8,7 +8,7 @@
  * 
  * COLORS (Single source of truth):
  * - The Good (positive): Blue #0A84FF
- * - The Vibe (neutral): Gray #8E8E93
+ * - The Vibe (neutral): Purple #8B5CF6
  * - Heads Up (negative): Orange #FF9500
  */
 
@@ -41,7 +41,7 @@ export const SIGNAL_COLORS = {
     icon: '#FFFFFF',
   },
   neutral: {
-    background: '#8E8E93',  // Gray - The Vibe
+    background: '#8B5CF6',  // Purple - The Vibe
     text: '#FFFFFF',
     icon: '#FFFFFF',
   },

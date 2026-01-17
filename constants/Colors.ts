@@ -243,8 +243,8 @@ export const Colors = {
     text: '#FFFFFF',
   },
   vibe: {
-    primary: '#8E8E93',  // System Gray
-    light: 'rgba(142, 142, 147, 0.15)',
+    primary: '#8B5CF6',  // Purple
+    light: 'rgba(139, 92, 246, 0.15)',
     text: '#FFFFFF',
   },
   negative: {

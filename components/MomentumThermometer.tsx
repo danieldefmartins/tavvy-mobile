@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, useColorScheme } from 'react-native';
 // Colors are hardcoded for consistency:
 // Blue (#0A84FF) = The Good
-// Gray (#8E8E93) = The Vibe  
+// Purple (#8B5CF6) = The Vibe  
 // Orange (#FF9500) = Heads Up
 
 interface MomentumThermometerProps {
@@ -129,7 +129,7 @@ export default function MomentumThermometer({
           </View>
           
           <View style={styles.labelItem}>
-            <View style={[styles.labelDot, { backgroundColor: '#8E8E93' }]} />
+            <View style={[styles.labelDot, { backgroundColor: '#8B5CF6' }]} />
             <View style={styles.labelTextContainer}>
               <Text style={[styles.labelTitle, isDark && styles.labelTitleDark]}>
                 The Vibe
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0A84FF',  // Apple Blue - The Good
   },
   segmentVibe: {
-    backgroundColor: '#8E8E93',  // System Gray - The Vibe
+    backgroundColor: '#8B5CF6',  // Purple - The Vibe
   },
   segmentHeadsUp: {
     backgroundColor: '#FF9500',  // Apple Orange - Heads Up

@@ -93,7 +93,7 @@ export function useSignalLabels() {
     const signalType = getSignalType(signalId);
     if (signalType === 'best_for') return '#0A84FF';
     if (signalType === 'heads_up') return '#FF9500';
-    return '#8E8E93';
+    return '#8B5CF6'; // Purple - The Vibe
   }, [labels, getSignalType]);
 
   const getEmoji = useCallback((signalId: string): string => {
@@ -144,7 +144,7 @@ export function getSignalColorSync(signalId: string): string {
   // Fallback based on signal type
   if (signal?.signal_type === 'best_for') return '#0A84FF';
   if (signal?.signal_type === 'heads_up') return '#FF9500';
-  return '#8E8E93';
+  return '#8B5CF6'; // Purple - The Vibe
 }
 
 /**
