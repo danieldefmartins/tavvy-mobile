@@ -1,8 +1,8 @@
 /**
- * ProsRequestStep4Screen - Budget Selection (was Step 3)
+ * ProsRequestStep4Screen - Location & Timeline
  * Install path: screens/ProsRequestStep4Screen.tsx
  * 
- * Step 4 of 5: Users select their budget range
+ * Step 5 of 6: Users provide their location and preferred timeline
  */
 
 import React, { useState } from 'react';
@@ -12,19 +12,29 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
   SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { ProsColors } from '../constants/ProsConfig';
+import { useProsPendingRequests } from '../hooks/useProsPendingRequests';
 
 type RouteParams = {
+  customerInfo: {
+    fullName: string;
+    email: string;
+    phone: string;
+    privacyPreference: 'share' | 'app_only';
+  };
   categoryId: string;
   categoryName: string;
-  description?: string;
-  photos?: string[];
-  timeline: string;
+  description: string;
+  dynamicAnswers?: Record<string, any>;
 };
 
 const ProgressBar = ({ progress }: { progress: number }) => (
@@ -40,96 +50,188 @@ export default function ProsRequestStep4Screen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   
-  const { categoryId, categoryName, description, photos, timeline } = route.params;
+  const { customerInfo, categoryId, categoryName, description, dynamicAnswers } = route.params;
+  const { saveProgress } = useProsPendingRequests();
   
-  const [selectedBudget, setSelectedBudget] = useState<string | null>(null);
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zipCode, setZipCode] = useState('');
+  const [selectedTimeline, setSelectedTimeline] = useState<string | null>(null);
 
-  const budgets = [
-    { id: 'under-500', label: 'Under $500', icon: 'cash-outline' },
-    { id: '500-1000', label: '$500 - $1,000', icon: 'cash-outline' },
-    { id: '1000-5000', label: '$1,000 - $5,000', icon: 'wallet-outline' },
-    { id: '5000-10000', label: '$5,000 - $10,000', icon: 'wallet-outline' },
-    { id: 'over-10000', label: 'Over $10,000', icon: 'card-outline' },
-    { id: 'not-sure', label: 'Not sure yet', icon: 'help-circle-outline' },
+  const timelines = [
+    { id: 'urgent', label: 'Emergency / ASAP', sublabel: 'Within 24 hours', icon: 'alert-circle' },
+    { id: 'this_week', label: 'This week', sublabel: 'Within 7 days', icon: 'calendar' },
+    { id: 'this_month', label: 'This month', sublabel: 'Within 30 days', icon: 'calendar-outline' },
+    { id: 'flexible', label: 'Flexible', sublabel: 'No rush, just planning', icon: 'time' },
   ];
 
-  const handleNext = () => {
-    if (!selectedBudget) return;
+  const handleNext = async () => {
+    if (!city || !state || !zipCode) {
+      Alert.alert('Missing Info', 'Please provide your city, state, and zip code.');
+      return;
+    }
+    if (!selectedTimeline) {
+      Alert.alert('Missing Info', 'Please select a timeline for your project.');
+      return;
+    }
     
-    navigation.navigate('ProsRequestStep5', {
+    const formData = {
+      customerInfo,
       categoryId,
       categoryName,
       description,
-      photos,
-      timeline,
-      budget: selectedBudget,
-    });
+      dynamicAnswers,
+      address,
+      city,
+      state,
+      zipCode,
+      timeline: selectedTimeline,
+    };
+
+    // Auto-save progress
+    await saveProgress(categoryId, 4, formData);
+
+    navigation.navigate('ProsRequestStep2Photo', formData);
   };
 
   const handleBack = () => {
     navigation.goBack();
   };
 
+  const handleClose = () => {
+    Alert.alert(
+      'Cancel Request',
+      'Are you sure you want to cancel? Your progress will not be saved.',
+      [
+        { text: 'Keep Going', onPress: () => {} },
+        { text: 'Cancel', onPress: () => navigation.navigate('ProsHome'), style: 'destructive' },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#374151" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Request Service</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      <View style={styles.progressWrapper}>
-        <ProgressBar progress={80} />
-        <Text style={styles.stepText}>Step 4 of 5</Text>
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.question}>What's your budget?</Text>
-        <Text style={styles.subtext}>This helps pros give you accurate quotes</Text>
-
-        <View style={styles.budgetGrid}>
-          {budgets.map((budget) => (
-            <TouchableOpacity
-              key={budget.id}
-              style={[
-                styles.budgetCard,
-                selectedBudget === budget.id && styles.budgetCardSelected,
-              ]}
-              onPress={() => setSelectedBudget(budget.id)}
-            >
-              <Ionicons
-                name={budget.icon as any}
-                size={24}
-                color={selectedBudget === budget.id ? ProsColors.primary : '#6B7280'}
-              />
-              <Text
-                style={[
-                  styles.budgetLabel,
-                  selectedBudget === budget.id && styles.budgetLabelSelected,
-                ]}
-              >
-                {budget.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      <KeyboardAvoidingView 
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#374151" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Location & Timing</Text>
+          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color="#374151" />
+          </TouchableOpacity>
         </View>
-      </ScrollView>
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.nextButton,
-            !selectedBudget && styles.nextButtonDisabled,
-          ]}
-          onPress={handleNext}
-          disabled={!selectedBudget}
+        <View style={styles.progressWrapper}>
+          <ProgressBar progress={67} />
+          <Text style={styles.stepText}>Step 5 of 6: Logistics</Text>
+        </View>
+
+        <ScrollView 
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
         >
-          <Text style={styles.nextButtonText}>Continue</Text>
-          <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
+          <Text style={styles.sectionTitle}>Where is the project located?</Text>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Street Address (Optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="123 Main St"
+              value={address}
+              onChangeText={setAddress}
+            />
+          </View>
+          
+          <View style={styles.row}>
+            <View style={[styles.inputGroup, { flex: 2 }]}>
+              <Text style={styles.label}>City</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Miami"
+                value={city}
+                onChangeText={setCity}
+              />
+            </View>
+            <View style={[styles.inputGroup, { flex: 1 }]}>
+              <Text style={styles.label}>State</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="FL"
+                value={state}
+                onChangeText={setState}
+                autoCapitalize="characters"
+                maxLength={2}
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Zip Code</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="33101"
+              value={zipCode}
+              onChangeText={setZipCode}
+              keyboardType="numeric"
+              maxLength={5}
+            />
+          </View>
+
+          <Text style={[styles.sectionTitle, { marginTop: 24 }]}>When do you need this done?</Text>
+          <View style={styles.timelineGrid}>
+            {timelines.map((t) => (
+              <TouchableOpacity
+                key={t.id}
+                style={[
+                  styles.timelineCard,
+                  selectedTimeline === t.id && styles.timelineCardSelected
+                ]}
+                onPress={() => setSelectedTimeline(t.id)}
+              >
+                <Ionicons 
+                  name={t.icon as any} 
+                  size={24} 
+                  color={selectedTimeline === t.id ? ProsColors.primary : '#6B7280'} 
+                />
+                <View style={styles.timelineText}>
+                  <Text style={[
+                    styles.timelineLabel,
+                    selectedTimeline === t.id && styles.timelineLabelSelected
+                  ]}>
+                    {t.label}
+                  </Text>
+                  <Text style={styles.timelineSublabel}>{t.sublabel}</Text>
+                </View>
+                <View style={[
+                  styles.radio,
+                  selectedTimeline === t.id && styles.radioSelected
+                ]}>
+                  {selectedTimeline === t.id && <View style={styles.radioInner} />}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[
+              styles.nextButton,
+              (!city || !state || !zipCode || !selectedTimeline) && styles.nextButtonDisabled,
+            ]}
+            onPress={handleNext}
+            disabled={!city || !state || !zipCode || !selectedTimeline}
+          >
+            <Text style={styles.nextButtonText}>Continue</Text>
+            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -138,6 +240,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  keyboardView: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -149,10 +254,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 4,
+  },
+  closeButton: {
+    padding: 4,
   },
   headerTitle: {
     fontSize: 18,
@@ -194,47 +299,89 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
   },
-  question: {
-    fontSize: 24,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#111827',
+    marginBottom: 20,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4B5563',
     marginBottom: 8,
   },
-  subtext: {
-    fontSize: 15,
-    color: '#6B7280',
-    marginBottom: 24,
+  input: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: '#111827',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  budgetGrid: {
+  row: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 12,
   },
-  budgetCard: {
-    width: '47%',
+  timelineGrid: {
+    gap: 12,
+  },
+  timelineCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 16,
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  budgetCardSelected: {
+  timelineCardSelected: {
     borderColor: ProsColors.primary,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: `${ProsColors.primary}10`,
   },
-  budgetLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-    textAlign: 'center',
+  timelineText: {
+    flex: 1,
+    marginLeft: 12,
   },
-  budgetLabelSelected: {
-    color: ProsColors.primary,
+  timelineLabel: {
+    fontSize: 16,
     fontWeight: '600',
+    color: '#374151',
+  },
+  timelineLabelSelected: {
+    color: ProsColors.primary,
+  },
+  timelineSublabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  radio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioSelected: {
+    borderColor: ProsColors.primary,
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: ProsColors.primary,
   },
   footer: {
     padding: 20,

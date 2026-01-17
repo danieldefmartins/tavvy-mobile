@@ -2,10 +2,11 @@
  * ProsRequestStep2PhotoScreen - Photo Upload Step
  * Install path: screens/ProsRequestStep2PhotoScreen.tsx
  * 
- * Step 2 of 5: Users can upload photos of their project
+ * Step 6 of 6: Users can upload photos of their project
+ * Enhanced with contextual prompts based on service category and technical details.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,17 +17,33 @@ import {
   SafeAreaView,
   Alert,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { ProsColors } from '../constants/ProsConfig';
+import { useProsPendingRequests } from '../hooks/useProsPendingRequests';
+import { supabase } from '../lib/supabaseClient';
+import { decode } from 'base64-arraybuffer';
 
 type RouteParams = {
+  customerInfo: {
+    fullName: string;
+    email: string;
+    phone: string;
+    privacyPreference: 'share' | 'app_only';
+  };
   categoryId: string;
   categoryName: string;
-  description?: string;
+  description: string;
+  dynamicAnswers?: Record<string, any>;
+  address?: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  timeline: string;
 };
 
 const ProgressBar = ({ progress }: { progress: number }) => (
@@ -42,10 +59,49 @@ export default function ProsRequestStep2PhotoScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   
-  const { categoryId, categoryName, description } = route.params;
+  const { 
+    customerInfo, 
+    categoryId, 
+    categoryName, 
+    description, 
+    dynamicAnswers,
+    address,
+    city,
+    state,
+    zipCode,
+    timeline
+  } = route.params;
   
+  const { saveProgress } = useProsPendingRequests();
   const [photos, setPhotos] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const MAX_PHOTOS = 5;
+
+  // Contextual Photo Prompts based on Category and Answers
+  const contextualPrompt = useMemo(() => {
+    const branch = dynamicAnswers ? Object.values(dynamicAnswers)[0] : '';
+    
+    if (categoryName === 'Electrician') {
+      if (branch === 'EV Charger Installation') return "Pro Tip: Take a photo of your electrical panel and the area where you want the charger installed.";
+      if (branch === 'Panel Upgrade') return "Pro Tip: A clear photo of your current electrical panel (with the door open) is essential for an accurate bid.";
+      return "Pro Tip: Photos of the specific outlet, fixture, or panel issue help electricians diagnose the problem remotely.";
+    }
+    
+    if (categoryName === 'Plumber') {
+      if (branch === 'Water Heater') return "Pro Tip: Take a photo of the manufacturer's label on your current water heater and the surrounding piping.";
+      return "Pro Tip: Show the leak or the fixture that needs repair. Close-ups of the pipe connections are very helpful.";
+    }
+    
+    if (categoryName === 'Pool Contractor') {
+      return "Pro Tip: Take a wide shot of the pool and a photo of the equipment pad (pump/filter). Also show the backyard access path.";
+    }
+    
+    if (categoryName === 'Roofing') {
+      return "Pro Tip: Photos of the roof from the ground and any visible interior water damage help roofers assess the urgency.";
+    }
+
+    return "Photos help pros understand your project better and provide more accurate quotes (optional).";
+  }, [categoryName, dynamicAnswers]);
 
   const requestPermission = async () => {
     if (Platform.OS !== 'web') {
@@ -61,6 +117,28 @@ export default function ProsRequestStep2PhotoScreen() {
     return true;
   };
 
+  const uploadToSupabase = async (uri: string) => {
+    try {
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+      const filePath = `project-photos/${fileName}`;
+
+      // In a real app, you'd convert the URI to a blob or base64
+      // For this implementation, we'll simulate the upload and return a mock URL
+      // or use the actual Supabase upload logic if the environment supports it.
+      
+      // const response = await fetch(uri);
+      // const blob = await response.blob();
+      // const { data, error } = await supabase.storage.from('project-photos').upload(filePath, blob);
+      
+      // For now, we'll use the local URI and handle the actual upload during final submission
+      // or return the public URL if uploaded successfully.
+      return uri; 
+    } catch (error) {
+      console.error('Upload error:', error);
+      return uri;
+    }
+  };
+
   const pickImage = async () => {
     if (photos.length >= MAX_PHOTOS) {
       Alert.alert('Limit Reached', `You can upload up to ${MAX_PHOTOS} photos.`);
@@ -74,7 +152,7 @@ export default function ProsRequestStep2PhotoScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       selectionLimit: MAX_PHOTOS - photos.length,
-      quality: 0.8,
+      quality: 0.7,
     });
 
     if (!result.canceled && result.assets) {
@@ -99,7 +177,7 @@ export default function ProsRequestStep2PhotoScreen() {
     }
 
     const result = await ImagePicker.launchCameraAsync({
-      quality: 0.8,
+      quality: 0.7,
     });
 
     if (!result.canceled && result.assets) {
@@ -111,17 +189,47 @@ export default function ProsRequestStep2PhotoScreen() {
     setPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleNext = () => {
-    navigation.navigate('ProsRequestStep3', {
-      categoryId,
-      categoryName,
-      description,
-      photos,
-    });
+  const handleNext = async () => {
+    setIsUploading(true);
+    try {
+      const formData = {
+        customerInfo,
+        categoryId,
+        categoryName,
+        description,
+        dynamicAnswers,
+        address,
+        city,
+        state,
+        zipCode,
+        timeline,
+        photos,
+      };
+
+      // Auto-save progress
+      await saveProgress(categoryId, 5, formData);
+
+      navigation.navigate('ProsRequestStep5', formData);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save photos. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleBack = () => {
     navigation.goBack();
+  };
+
+  const handleClose = () => {
+    Alert.alert(
+      'Cancel Request',
+      'Are you sure you want to cancel? Your progress will not be saved.',
+      [
+        { text: 'Keep Going', onPress: () => {} },
+        { text: 'Cancel', onPress: () => navigation.navigate('ProsHome'), style: 'destructive' },
+      ]
+    );
   };
 
   return (
@@ -130,20 +238,23 @@ export default function ProsRequestStep2PhotoScreen() {
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#374151" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Request Service</Text>
-        <View style={{ width: 40 }} />
+        <Text style={styles.headerTitle}>Add Photos</Text>
+        <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+          <Ionicons name="close" size={24} color="#374151" />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.progressWrapper}>
-        <ProgressBar progress={40} />
-        <Text style={styles.stepText}>Step 2 of 5</Text>
+        <ProgressBar progress={83} />
+        <Text style={styles.stepText}>Step 6 of 6: Visuals</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.question}>Add photos of your project</Text>
-        <Text style={styles.subtext}>
-          Photos help pros understand your project better and provide more accurate quotes (optional)
-        </Text>
+        <View style={styles.contextBox}>
+          <Ionicons name="bulb-outline" size={20} color={ProsColors.primary} />
+          <Text style={styles.contextText}>{contextualPrompt}</Text>
+        </View>
 
         {/* Photo Grid */}
         <View style={styles.photoGrid}>
@@ -186,7 +297,7 @@ export default function ProsRequestStep2PhotoScreen() {
 
         {/* Tips */}
         <View style={styles.tipsContainer}>
-          <Text style={styles.tipsTitle}>Photo Tips</Text>
+          <Text style={styles.tipsTitle}>Contractor Tips</Text>
           <View style={styles.tip}>
             <Ionicons name="checkmark-circle" size={18} color="#10B981" />
             <Text style={styles.tipText}>Show the area that needs work</Text>
@@ -203,17 +314,22 @@ export default function ProsRequestStep2PhotoScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.skipButton} onPress={handleNext}>
-          <Text style={styles.skipButtonText}>
-            {photos.length === 0 ? 'Skip for now' : 'Continue'}
-          </Text>
+        <TouchableOpacity 
+          style={[styles.nextButton, isUploading && styles.nextButtonDisabled]} 
+          onPress={handleNext}
+          disabled={isUploading}
+        >
+          {isUploading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <>
+              <Text style={styles.nextButtonText}>
+                {photos.length === 0 ? 'Skip for now' : `Continue with ${photos.length} photo${photos.length !== 1 ? 's' : ''}`}
+              </Text>
+              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+            </>
+          )}
         </TouchableOpacity>
-        {photos.length > 0 && (
-          <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-            <Text style={styles.nextButtonText}>Continue with {photos.length} photo{photos.length !== 1 ? 's' : ''}</Text>
-            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        )}
       </View>
     </SafeAreaView>
   );
@@ -234,10 +350,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 4,
+  },
+  closeButton: {
+    padding: 4,
   },
   headerTitle: {
     fontSize: 18,
@@ -285,13 +401,24 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#111827',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  subtext: {
-    fontSize: 15,
-    color: '#6B7280',
+  contextBox: {
+    flexDirection: 'row',
+    backgroundColor: '#F0F9FF',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
     marginBottom: 24,
-    lineHeight: 22,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  contextText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0369A1',
+    lineHeight: 20,
+    fontWeight: '500',
   },
   photoGrid: {
     flexDirection: 'row',
@@ -387,16 +514,6 @@ const styles = StyleSheet.create({
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
-    gap: 12,
-  },
-  skipButton: {
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  skipButtonText: {
-    fontSize: 15,
-    color: '#6B7280',
-    fontWeight: '500',
   },
   nextButton: {
     backgroundColor: ProsColors.primary,
@@ -406,6 +523,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
+  },
+  nextButtonDisabled: {
+    backgroundColor: '#9CA3AF',
   },
   nextButtonText: {
     color: '#FFFFFF',

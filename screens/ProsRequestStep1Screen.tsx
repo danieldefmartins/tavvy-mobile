@@ -7,7 +7,7 @@
  * Receives customer information from Step 0
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { ProsColors } from '../constants/ProsConfig';
 import { useProsServiceCategories, ServiceCategory } from '../hooks/useProsServiceCategories';
+import { useProsPendingRequests } from '../hooks/useProsPendingRequests';
 
 type RouteParams = {
   customerInfo?: {
@@ -48,6 +49,7 @@ const ProgressBar = ({ progress }: { progress: number }) => (
 export default function ProsRequestStep1Screen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
+  const { saveProgress } = useProsPendingRequests();
   
   const { customerInfo } = route.params || {};
   
@@ -89,7 +91,7 @@ export default function ProsRequestStep1Screen() {
     );
   }, [allServices, searchQuery]);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!selectedService) {
       Alert.alert('Please Select', 'Please select a service category to continue.');
       return;
@@ -102,12 +104,19 @@ export default function ProsRequestStep1Screen() {
     
     const selectedCategory = allServices.find(s => s.id === selectedService);
     
-    navigation.navigate('ProsRequestStep2', {
+    const formData = {
       customerInfo,
       categoryId: selectedService,
       categoryName: selectedCategory?.name || 'Service',
       description,
-    });
+    };
+
+    // Auto-save progress
+    if (selectedService !== 'other') {
+      await saveProgress(selectedService, 1, formData);
+    }
+    
+    navigation.navigate('ProsRequestStep2', formData);
   };
 
   const handleClose = () => {
@@ -210,15 +219,15 @@ export default function ProsRequestStep1Screen() {
                   <View
                     style={[
                       styles.serviceIcon,
-                      { backgroundColor: `${service.color}20` },
+                      { backgroundColor: `${service.color || ProsColors.primary}20` },
                       selectedService === service.id && styles.serviceIconSelected,
-                      selectedService === service.id && { backgroundColor: service.color },
+                      selectedService === service.id && { backgroundColor: service.color || ProsColors.primary },
                     ]}
                   >
                     <Ionicons
                       name={service.icon as any}
                       size={22}
-                      color={selectedService === service.id ? '#FFFFFF' : service.color}
+                      color={selectedService === service.id ? '#FFFFFF' : (service.color || ProsColors.primary)}
                     />
                   </View>
                   <Text
@@ -498,20 +507,21 @@ const styles = StyleSheet.create({
     borderTopColor: '#E5E7EB',
   },
   nextButton: {
-    backgroundColor: ProsColors.primary,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    backgroundColor: ProsColors.primary,
+    borderRadius: 8,
     gap: 8,
   },
   nextButtonDisabled: {
-    backgroundColor: '#D1D5DB',
+    opacity: 0.5,
   },
   nextButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

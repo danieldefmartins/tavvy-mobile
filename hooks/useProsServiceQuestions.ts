@@ -4,6 +4,7 @@
  * 
  * This enables a Yelp/Thumbtack-style progressive questioning system
  * where questions are tailored to the specific service category.
+ * Supports two-tier architecture (Tier 1 -> Tier 2) via parent_question_id.
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -16,7 +17,9 @@ export type ServiceQuestion = {
   question_type: 'single_choice' | 'multiple_choice' | 'text' | 'number';
   options?: string[] | null;
   order: number;
-  required: boolean;
+  is_required: boolean;
+  parent_question_id?: string | null;
+  conditional_logic?: any | null;
 };
 
 /**
@@ -31,7 +34,7 @@ export function useProsServiceQuestions(categoryId?: string) {
 
       const { data, error } = await supabase
         .from('service_category_questions')
-        .select('id, category_id, question_text, question_type, options, order, required')
+        .select('id, category_id, question_text, question_type, options, "order", is_required, parent_question_id, conditional_logic')
         .eq('category_id', categoryId)
         .order('order', { ascending: true });
 
@@ -63,7 +66,7 @@ export function useProsServiceQuestion(questionId?: string) {
 
       const { data, error } = await supabase
         .from('service_category_questions')
-        .select('id, category_id, question_text, question_type, options, order, required')
+        .select('id, category_id, question_text, question_type, options, "order", is_required, parent_question_id, conditional_logic')
         .eq('id', questionId)
         .single();
 

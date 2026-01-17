@@ -1,8 +1,9 @@
 /**
- * ProsRequestStep3Screen - Timeline Selection
+ * ProsRequestStep3Screen - Project Description
  * Install path: screens/ProsRequestStep3Screen.tsx
  * 
- * Step 3 of 5: Users select when they need the work done
+ * Step 4 of 6: Users provide a detailed description of their project
+ * Receives dynamic answers from Step 2
  */
 
 import React, { useState } from 'react';
@@ -12,18 +13,29 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
   SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { ProsColors } from '../constants/ProsConfig';
+import { useProsPendingRequests } from '../hooks/useProsPendingRequests';
 
 type RouteParams = {
+  customerInfo: {
+    fullName: string;
+    email: string;
+    phone: string;
+    privacyPreference: 'share' | 'app_only';
+  };
   categoryId: string;
   categoryName: string;
   description?: string;
-  photos?: string[];
+  dynamicAnswers?: Record<string, any>;
 };
 
 const ProgressBar = ({ progress }: { progress: number }) => (
@@ -39,111 +51,125 @@ export default function ProsRequestStep3Screen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   
-  const { categoryId, categoryName, description, photos } = route.params;
+  const { customerInfo, categoryId, categoryName, description: initialDescription, dynamicAnswers } = route.params;
+  const { saveProgress } = useProsPendingRequests();
   
-  const [selectedTimeline, setSelectedTimeline] = useState<string | null>(null);
+  const [description, setDescription] = useState(initialDescription || '');
 
-  const timelines = [
-    { id: 'urgent', label: 'Emergency / ASAP', sublabel: 'Within 24 hours', icon: 'alert-circle' },
-    { id: 'this-week', label: 'This week', sublabel: 'Within 7 days', icon: 'calendar' },
-    { id: 'this-month', label: 'This month', sublabel: 'Within 30 days', icon: 'calendar-outline' },
-    { id: 'flexible', label: 'Flexible', sublabel: 'No rush, just planning', icon: 'time' },
-  ];
-
-  const handleNext = () => {
-    if (!selectedTimeline) return;
+  const handleNext = async () => {
+    if (description.trim().length < 10) {
+      Alert.alert('More Detail Needed', 'Please provide a bit more detail (at least 10 characters) so pros can give you an accurate bid.');
+      return;
+    }
     
-    navigation.navigate('ProsRequestStep4', {
+    const formData = {
+      customerInfo,
       categoryId,
       categoryName,
       description,
-      photos,
-      timeline: selectedTimeline,
-    });
+      dynamicAnswers,
+    };
+
+    // Auto-save progress
+    await saveProgress(categoryId, 3, formData);
+
+    navigation.navigate('ProsRequestStep4', formData);
   };
 
   const handleBack = () => {
     navigation.goBack();
   };
 
+  const handleClose = () => {
+    Alert.alert(
+      'Cancel Request',
+      'Are you sure you want to cancel? Your progress will not be saved.',
+      [
+        { text: 'Keep Going', onPress: () => {} },
+        { text: 'Cancel', onPress: () => navigation.navigate('ProsHome'), style: 'destructive' },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#374151" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Request Service</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      <View style={styles.progressWrapper}>
-        <ProgressBar progress={60} />
-        <Text style={styles.stepText}>Step 3 of 5</Text>
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.question}>When do you need this done?</Text>
-        <Text style={styles.subtext}>Select your preferred timeline</Text>
-
-        <View style={styles.optionsList}>
-          {timelines.map((timeline) => (
-            <TouchableOpacity
-              key={timeline.id}
-              style={[
-                styles.optionCard,
-                selectedTimeline === timeline.id && styles.optionCardSelected,
-              ]}
-              onPress={() => setSelectedTimeline(timeline.id)}
-            >
-              <View
-                style={[
-                  styles.optionIcon,
-                  selectedTimeline === timeline.id && styles.optionIconSelected,
-                ]}
-              >
-                <Ionicons
-                  name={timeline.icon as any}
-                  size={24}
-                  color={selectedTimeline === timeline.id ? '#FFFFFF' : ProsColors.primary}
-                />
-              </View>
-              <View style={styles.optionText}>
-                <Text
-                  style={[
-                    styles.optionLabel,
-                    selectedTimeline === timeline.id && styles.optionLabelSelected,
-                  ]}
-                >
-                  {timeline.label}
-                </Text>
-                <Text style={styles.optionSublabel}>{timeline.sublabel}</Text>
-              </View>
-              <View
-                style={[
-                  styles.radioOuter,
-                  selectedTimeline === timeline.id && styles.radioOuterSelected,
-                ]}
-              >
-                {selectedTimeline === timeline.id && <View style={styles.radioInner} />}
-              </View>
-            </TouchableOpacity>
-          ))}
+      <KeyboardAvoidingView 
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#374151" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Project Details</Text>
+          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color="#374151" />
+          </TouchableOpacity>
         </View>
-      </ScrollView>
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.nextButton,
-            !selectedTimeline && styles.nextButtonDisabled,
-          ]}
-          onPress={handleNext}
-          disabled={!selectedTimeline}
+        <View style={styles.progressWrapper}>
+          <ProgressBar progress={50} />
+          <Text style={styles.stepText}>Step 4 of 6: Description</Text>
+        </View>
+
+        <ScrollView 
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
         >
-          <Text style={styles.nextButtonText}>Continue</Text>
-          <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
+          <Text style={styles.question}>Describe what you need done</Text>
+          <Text style={styles.subtext}>
+            Be as precise as possible. Mention specific issues, dimensions, or preferences to help pros provide accurate bids.
+          </Text>
+
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.descriptionInput}
+              placeholder="E.g., I have a 15,000 gallon in-ground pool with a saltwater system. The pump is making a loud grinding noise and water isn't circulating properly..."
+              placeholderTextColor="#9CA3AF"
+              multiline
+              numberOfLines={8}
+              value={description}
+              onChangeText={setDescription}
+              textAlignVertical="top"
+              autoFocus
+            />
+            <Text style={styles.charCount}>
+              {description.length} characters (minimum 10)
+            </Text>
+          </View>
+
+          <View style={styles.tipsContainer}>
+            <Text style={styles.tipsTitle}>Tips for a better bid:</Text>
+            <View style={styles.tipItem}>
+              <Ionicons name="checkmark-circle" size={18} color={ProsColors.primary} />
+              <Text style={styles.tipText}>Mention the age of the system/appliance</Text>
+            </View>
+            <View style={styles.tipItem}>
+              <Ionicons name="checkmark-circle" size={18} color={ProsColors.primary} />
+              <Text style={styles.tipText}>Describe any previous repair attempts</Text>
+            </View>
+            <View style={styles.tipItem}>
+              <Ionicons name="checkmark-circle" size={18} color={ProsColors.primary} />
+              <Text style={styles.tipText}>Specify if it's an emergency or routine work</Text>
+            </View>
+          </View>
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[
+              styles.nextButton,
+              description.trim().length < 10 && styles.nextButtonDisabled,
+            ]}
+            onPress={handleNext}
+            disabled={description.trim().length < 10}
+          >
+            <Text style={styles.nextButtonText}>Continue</Text>
+            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -152,6 +178,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  keyboardView: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -163,10 +192,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 4,
+  },
+  closeButton: {
+    padding: 4,
   },
   headerTitle: {
     fontSize: 18,
@@ -208,7 +237,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 20,
+    paddingVertical: 24,
   },
   question: {
     fontSize: 24,
@@ -219,69 +251,50 @@ const styles = StyleSheet.create({
   subtext: {
     fontSize: 15,
     color: '#6B7280',
+    lineHeight: 22,
     marginBottom: 24,
   },
-  optionsList: {
-    gap: 12,
+  inputWrapper: {
+    marginBottom: 24,
   },
-  optionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
+  descriptionInput: {
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  optionCardSelected: {
-    borderColor: ProsColors.primary,
-    backgroundColor: '#EFF6FF',
-  },
-  optionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#E0E7FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  optionIconSelected: {
-    backgroundColor: ProsColors.primary,
-  },
-  optionText: {
-    flex: 1,
-  },
-  optionLabel: {
+    padding: 16,
     fontSize: 16,
-    fontWeight: '600',
     color: '#111827',
-    marginBottom: 2,
+    minHeight: 180,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    textAlignVertical: 'top',
   },
-  optionLabelSelected: {
-    color: ProsColors.primary,
+  charCount: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 8,
+    textAlign: 'right',
   },
-  optionSublabel: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  radioOuter: {
-    width: 24,
-    height: 24,
+  tipsContainer: {
+    backgroundColor: '#F3F4F6',
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
+    padding: 16,
+    marginBottom: 24,
+  },
+  tipsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  tipItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 8,
+    gap: 8,
   },
-  radioOuterSelected: {
-    borderColor: ProsColors.primary,
-  },
-  radioInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: ProsColors.primary,
+  tipText: {
+    fontSize: 14,
+    color: '#4B5563',
   },
   footer: {
     padding: 20,
