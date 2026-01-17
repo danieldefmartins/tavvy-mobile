@@ -92,6 +92,16 @@ const APP_TILES: AppTile[] = [
     route: 'Atlas',
   },
   {
+    id: 'cities',
+    name: 'Cities',
+    icon: 'business',
+    iconType: 'ionicons',
+    backgroundColor: '#FEE2E2',
+    backgroundColorDark: '#991B1B',
+    iconColor: '#EF4444',
+    route: 'CitiesBrowse',
+  },
+  {
     id: 'pros',
     name: 'Pros',
     icon: 'construct',
