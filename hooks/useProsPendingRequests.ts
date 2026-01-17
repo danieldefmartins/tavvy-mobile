@@ -1,7 +1,11 @@
 /**
- * useProsPendingRequests Hook
+ * useProsPendingRequests Hook (FIXED)
  * Handles auto-saving, resuming, and final creation of service requests.
- * Install path: hooks/useProsPendingRequests.ts
+ * 
+ * CHANGES:
+ * 1. Removed mandatory auth check to allow anonymous submissions.
+ * 2. Updated table name to 'project_requests' to match database.
+ * 3. Added support for anonymous tracking fields.
  */
 
 import { useState, useCallback } from 'react';
@@ -24,50 +28,68 @@ export function useProsPendingRequests() {
    * Create a new finalized service request (lead)
    */
   const createRequest = async (requestData: {
-    category_id: string;
-    zip_code: string;
+    categoryId: string;
+    zipCode: string;
     city: string;
     state: string;
     description: string;
-    dynamic_answers: any;
+    dynamicAnswers: any;
     photos?: string[];
+    customerName?: string;
+    customerEmail?: string;
+    customerPhone?: string;
+    privacyPreference?: string;
+    isAnonymousSubmission?: boolean;
+    contactInfoApproved?: boolean;
   }) => {
     setLoading(true);
     setError(null);
     try {
+      // Get current user if available, but don't block if not
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
 
       // Calculate complexity using the database function (optional, won't block submission)
       let complexityData = { level: 'Standard', score: 0, factors: [] };
       try {
         const { data, error: complexityError } = await supabase
-          .rpc('calculate_job_complexity', { dynamic_answers: requestData.dynamic_answers });
+          .rpc('calculate_job_complexity', { dynamic_answers: requestData.dynamicAnswers });
         if (!complexityError && data) complexityData = data;
       } catch (err) {
         console.error('Complexity calculation error (non-blocking):', err);
       }
 
+      // Use 'project_requests' as the primary table name
       const { data, error: insertError } = await supabase
-        .from('leads')
+        .from('project_requests')
         .insert({
-          user_id: user.id,
-          category_id: requestData.category_id,
-          zip_code: requestData.zip_code,
+          user_id: user?.id || null, // Optional user_id
+          category_id: requestData.categoryId,
+          zip_code: requestData.zipCode,
           city: requestData.city,
           state: requestData.state,
           description: requestData.description,
-          dynamic_answers: requestData.dynamic_answers,
+          dynamic_answers: requestData.dynamicAnswers,
           photos: requestData.photos || [],
           complexity_data: complexityData || { level: 'Standard', score: 0, factors: [] },
-          status: 'pending'
+          status: 'pending',
+          // Anonymous tracking fields
+          customer_name: requestData.customerName,
+          customer_email: requestData.customerEmail,
+          customer_phone: requestData.customerPhone,
+          privacy_preference: requestData.privacyPreference,
+          is_anonymous_submission: requestData.isAnonymousSubmission ?? true,
+          contact_info_approved: requestData.contactInfoApproved ?? false,
         })
         .select()
         .single();
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Insert error details:', insertError);
+        throw insertError;
+      }
       return data;
     } catch (err: any) {
+      console.error('Submission error:', err);
       setError(err.message);
       throw err;
     } finally {
@@ -134,12 +156,16 @@ export function useProsPendingRequests() {
     }
   }, []);
 
-  const deletePendingRequest = useCallback(async (id: string) => {
+  const deletePendingRequest = useCallback(async (categoryId: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { error } = await supabase
         .from('pending_service_requests')
         .delete()
-        .eq('id', id);
+        .eq('user_id', user.id)
+        .eq('category_id', categoryId);
       if (error) throw error;
     } catch (err) {
       console.error('Error deleting pending request:', err);
