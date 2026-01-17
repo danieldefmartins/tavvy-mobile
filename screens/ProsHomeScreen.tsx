@@ -24,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
 
 import { 
   ProsColors, 
@@ -41,7 +42,7 @@ import { Pro } from '../lib/ProsTypes';
 
 const { width } = Dimensions.get('window');
 
-type NavigationProp = NativeStackNavigationProp<any>;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function ProsHomeScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -320,8 +321,23 @@ export default function ProsHomeScreen() {
             style={styles.startProjectButton}
             onPress={() => navigation.navigate('ProsRequestStep1')}
           >
-            <Ionicons name="rocket" size={20} color="#FFFFFF" />
-            <Text style={styles.startProjectButtonText}>Start a Project</Text>
+            <LinearGradient
+              colors={['#10B981', '#059669']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.startProjectGradient}
+            >
+              <View style={styles.startProjectContent}>
+                <View style={styles.startProjectIconContainer}>
+                  <Ionicons name="add-circle" size={28} color="#FFFFFF" />
+                </View>
+                <View style={styles.startProjectTextContainer}>
+                  <Text style={styles.startProjectTitle}>Start a Project</Text>
+                  <Text style={styles.startProjectSubtitle}>Get quotes from multiple pros in minutes</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={24} color="#FFFFFF" />
+              </View>
+            </LinearGradient>
           </TouchableOpacity>
         </LinearGradient>
 
@@ -801,25 +817,47 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
   },
+  // Start a Project CTA styles
   startProjectButton: {
-    backgroundColor: ProsColors.primary,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  startProjectGradient: {
+    borderRadius: 16,
+    padding: 16,
+  },
+  startProjectContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    marginTop: 20,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  startProjectButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  startProjectIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  startProjectTextContainer: {
+    flex: 1,
+  },
+  startProjectTitle: {
+    fontSize: 18,
     fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  startProjectSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
   },
 });
