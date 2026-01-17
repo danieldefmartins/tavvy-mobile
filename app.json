@@ -16,7 +16,20 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Tavvy to use your location to show nearby places."
+          "locationWhenInUsePermission": "Tavvy uses your location to show nearby places and let you review locations around you."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Tavvy uses the camera so you can add photos to reviews and places."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Tavvy allows you to select photos to add to reviews and experiences.",
+          "cameraPermission": "Tavvy uses the camera so you can add photos to reviews and places."
         }
       ],
       "@maplibre/maplibre-react-native"
@@ -26,8 +39,10 @@
       "bundleIdentifier": "com.360.tavvy",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSLocationWhenInUseUsageDescription": "Tavvy needs your location to show nearby places on the map.",
-        "NSLocationAlwaysUsageDescription": "Tavvy needs your location to show nearby places.",
+        "NSLocationWhenInUseUsageDescription": "Tavvy uses your location to show nearby places and let you review locations around you.",
+        "NSCameraUsageDescription": "Tavvy uses the camera so you can add photos to reviews and places.",
+        "NSPhotoLibraryUsageDescription": "Tavvy allows you to select photos to add to reviews and experiences.",
+        "NSPhotoLibraryAddUsageDescription": "Tavvy saves photos you upload with your permission.",
         "UIStatusBarStyle": "UIStatusBarStyleLightContent"
       }
     },
