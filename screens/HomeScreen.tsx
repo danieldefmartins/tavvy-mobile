@@ -1256,28 +1256,83 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     const lowerCategory = (category || '').toLowerCase();
     
     const imageMap: Record<string, string> = {
+      // Restaurants & Dining
       'restaurant': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+      'dining': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
       'italian': 'https://images.unsplash.com/photo-1498579150354-977475b7ea0b?w=800',
       'mexican': 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800',
       'asian': 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
+      'chinese': 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
+      'japanese': 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800',
+      'thai': 'https://images.unsplash.com/photo-1559314809-0d155014e29e?w=800',
+      'indian': 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=800',
+      'american': 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=800',
+      'seafood': 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800',
+      'steakhouse': 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800',
+      'bbq': 'https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=800',
+      'grill': 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800',
+      // Cafes & Coffee
       'coffee': 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800',
       'cafe': 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800',
-      'rv park': 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=800',
-      'campground': 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
-      'camping': 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
-      'hotel': 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
-      'resort': 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800',
-      'bar': 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800',
-      'nightclub': 'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=800',
-      'shopping': 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800',
-      'mall': 'https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?w=800',
-      'gym': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800',
-      'spa': 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800',
+      'tea': 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=800',
       'bakery': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800',
+      'dessert': 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=800',
+      'ice cream': 'https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?w=800',
+      // Fast Food
       'pizza': 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800',
       'sushi': 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800',
       'burger': 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800',
       'taco': 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800',
+      'fast food': 'https://images.unsplash.com/photo-1561758033-d89a9ad46330?w=800',
+      'sandwich': 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=800',
+      // Bars & Nightlife
+      'bar': 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800',
+      'pub': 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800',
+      'nightclub': 'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=800',
+      'lounge': 'https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=800',
+      'brewery': 'https://images.unsplash.com/photo-1559526324-593bc073d938?w=800',
+      'wine': 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=800',
+      // Accommodation
+      'hotel': 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
+      'resort': 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800',
+      'motel': 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
+      'hostel': 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=800',
+      'rv park': 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=800',
+      'campground': 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
+      'camping': 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
+      // Shopping
+      'shopping': 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800',
+      'store': 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800',
+      'mall': 'https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?w=800',
+      'boutique': 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=800',
+      'grocery': 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800',
+      'supermarket': 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=800',
+      // Health & Wellness
+      'gym': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800',
+      'fitness': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800',
+      'spa': 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800',
+      'salon': 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800',
+      'beauty': 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800',
+      'medical': 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800',
+      'hospital': 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800',
+      'pharmacy': 'https://images.unsplash.com/photo-1576602976047-174e57a47881?w=800',
+      // Entertainment
+      'entertainment': 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800',
+      'theater': 'https://images.unsplash.com/photo-1503095396549-807759245b35?w=800',
+      'cinema': 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800',
+      'museum': 'https://images.unsplash.com/photo-1554907984-15263bfd63bd?w=800',
+      'gallery': 'https://images.unsplash.com/photo-1531243269054-5ebf6f34081e?w=800',
+      'theme park': 'https://images.unsplash.com/photo-1513889961551-628c1e5e2ee9?w=800',
+      'amusement': 'https://images.unsplash.com/photo-1513889961551-628c1e5e2ee9?w=800',
+      // Services
+      'bank': 'https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?w=800',
+      'gas station': 'https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=800',
+      'gas': 'https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=800',
+      'auto': 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=800',
+      'car wash': 'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?w=800',
+      'parking': 'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=800',
+      // Other
+      'other': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
       'default': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
     };
     
@@ -1346,13 +1401,101 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const getMarkerColor = (category?: string) => {
     if (!category) return '#007AFF';
+    const lowerCat = category.toLowerCase();
     const colors: Record<string, string> = {
+      // Dining
       restaurants: '#FF6B6B',
+      restaurant: '#FF6B6B',
+      dining: '#FF6B6B',
+      food: '#FF6B6B',
+      // Cafes
       cafes: '#4ECDC4',
+      cafe: '#4ECDC4',
+      coffee: '#4ECDC4',
+      bakery: '#4ECDC4',
+      // Bars
       bars: '#FFD93D',
+      bar: '#FFD93D',
+      pub: '#FFD93D',
+      nightclub: '#9B59B6',
+      // Shopping
       shopping: '#95E1D3',
+      store: '#95E1D3',
+      mall: '#95E1D3',
+      // Hotels
+      hotels: '#3498DB',
+      hotel: '#3498DB',
+      resort: '#3498DB',
+      // Entertainment
+      entertainment: '#E74C3C',
+      theater: '#E74C3C',
+      cinema: '#E74C3C',
+      museum: '#E74C3C',
+      // Health
+      health: '#2ECC71',
+      gym: '#2ECC71',
+      fitness: '#2ECC71',
+      spa: '#2ECC71',
+      // Services
+      services: '#F39C12',
+      gas: '#F39C12',
+      bank: '#F39C12',
     };
-    return colors[category.toLowerCase()] || '#007AFF';
+    // Check for partial matches
+    for (const [key, color] of Object.entries(colors)) {
+      if (lowerCat.includes(key)) return color;
+    }
+    return '#007AFF';
+  };
+
+  // Get category-specific icon for map markers
+  const getMarkerIcon = (category?: string): string => {
+    if (!category) return 'location';
+    const lowerCat = category.toLowerCase();
+    const icons: Record<string, string> = {
+      // Dining
+      restaurants: 'restaurant',
+      restaurant: 'restaurant',
+      dining: 'restaurant',
+      food: 'restaurant',
+      // Cafes
+      cafes: 'cafe',
+      cafe: 'cafe',
+      coffee: 'cafe',
+      bakery: 'cafe',
+      // Bars
+      bars: 'beer',
+      bar: 'beer',
+      pub: 'beer',
+      nightclub: 'musical-notes',
+      // Shopping
+      shopping: 'bag',
+      store: 'bag',
+      mall: 'bag',
+      // Hotels
+      hotels: 'bed',
+      hotel: 'bed',
+      resort: 'bed',
+      // Entertainment
+      entertainment: 'film',
+      theater: 'film',
+      cinema: 'film',
+      museum: 'business',
+      // Health
+      health: 'fitness',
+      gym: 'fitness',
+      fitness: 'fitness',
+      spa: 'flower',
+      // Services
+      services: 'construct',
+      gas: 'car',
+      bank: 'card',
+    };
+    // Check for partial matches
+    for (const [key, icon] of Object.entries(icons)) {
+      if (lowerCat.includes(key)) return icon;
+    }
+    return 'location';
   };
 
   // ============================================
@@ -2275,7 +2418,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </MapLibreGL.PointAnnotation>
         )}
 
-        {filteredPlaces
+        {/* Only show map markers when a category filter is selected (not 'All') or when there's a search query */}
+        {/* This prevents showing ALL places on the map which would be too cluttered */}
+        {(selectedCategory !== 'All' || searchQuery.trim().length > 0) && 
+          Array.from(new Map(filteredPlaces.map(p => [p.id, p])).values())
           .filter((place) => {
             const lon = place.longitude || place.lng;
             const lat = place.latitude || place.lat;
@@ -2283,6 +2429,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                    !isNaN(lon) && !isNaN(lat) && 
                    lon !== 0 && lat !== 0;
           })
+          .slice(0, 50) // Limit to 50 markers for performance
           .map((place, mapIndex) => (
           <MapLibreGL.PointAnnotation
             key={`map-${place.id}-${mapIndex}`}
@@ -2294,15 +2441,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <View
                 style={[
                   styles.marker,
-                  { backgroundColor: getMarkerColor(place.category) },
+                  { backgroundColor: getMarkerColor(place.category || place.primary_category) },
                 ]}
               >
                 <Ionicons
-                  name={
-                    place.category?.toLowerCase() === 'restaurants' ? 'restaurant' :
-                    place.category?.toLowerCase() === 'cafes' ? 'cafe' :
-                    place.category?.toLowerCase() === 'bars' ? 'beer' : 'location'
-                  }
+                  name={getMarkerIcon(place.category || place.primary_category) as any}
                   size={20}
                   color="#fff"
                 />
@@ -2498,7 +2641,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <Text style={[styles.loadingText, { color: isDark ? theme.textSecondary : '#666' }]}>Finding {selectedCategory.toLowerCase()}...</Text>
           </View>
         ) : (
-          <ScrollView contentContainerStyle={styles.categoryResultsList}>
+          <ScrollView contentContainerStyle={styles.categoryGridContainer}>
             {categoryResultsPlaces.length === 0 ? (
               <View style={styles.noResultsContainer}>
                 <Ionicons name="search-outline" size={48} color={isDark ? theme.textSecondary : '#999'} />
@@ -2506,33 +2649,56 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 <Text style={[styles.noResultsSubtext, { color: isDark ? theme.textSecondary : '#999' }]}>Try adjusting your filters or search in a different area</Text>
               </View>
             ) : (
-              categoryResultsPlaces.map((place, catIndex) => (
-                <TouchableOpacity
-                  key={`category-${place.id}-${catIndex}`}
-                  style={[styles.categoryResultCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-                  onPress={() => handlePlacePress(place)}
-                  activeOpacity={0.9}
-                >
-                  <View style={styles.categoryResultCardContent}>
-                    <Text style={[styles.categoryResultName, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>{place.name}</Text>
-                    <Text style={[styles.categoryResultMeta, { color: isDark ? theme.textSecondary : '#666' }]} numberOfLines={1}>
-                      {place.category} • {place.city || place.address_line1 || 'Nearby'}
-                    </Text>
-                    
-                    {/* Signal bars */}
-                    <View style={styles.categoryResultSignals}>
-                      {getDisplaySignals(place.signals).slice(0, 2).map((signal, idx) => (
-                        <View key={`cat-${catIndex}-${place.id}-sig-${idx}`} style={[styles.categoryResultSignalBadge, { backgroundColor: getSignalColor(signal.bucket) }]}>
-                          <Text style={styles.categoryResultSignalText} numberOfLines={1}>
-                            {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color={isDark ? theme.textSecondary : '#ccc'} />
-                </TouchableOpacity>
-              ))
+              <View style={styles.categoryGrid}>
+                {categoryResultsPlaces.map((place, catIndex) => {
+                  const cardWidth = (width - 48) / 2; // 2 columns with padding
+                  return (
+                    <TouchableOpacity
+                      key={`category-grid-${place.id}-${catIndex}`}
+                      style={[styles.categoryGridCard, { width: cardWidth, backgroundColor: isDark ? theme.surface : '#fff' }]}
+                      onPress={() => handlePlacePress(place)}
+                      activeOpacity={0.92}
+                    >
+                      {/* Image with overlay */}
+                      <ImageBackground 
+                        source={{ uri: place.photos?.[0] || getCategoryFallbackImage(place.category || place.primary_category) }} 
+                        style={styles.categoryGridImage} 
+                        imageStyle={styles.categoryGridImageRadius}
+                      >
+                        <View style={styles.imageOverlay} />
+                        <Text style={styles.categoryGridPlaceName} numberOfLines={1}>
+                          {place.name}
+                        </Text>
+                        <Text style={styles.categoryGridPlaceMeta} numberOfLines={1}>
+                          {place.primary_category || place.category} • {place.city || 'Nearby'}
+                        </Text>
+                      </ImageBackground>
+
+                      {/* Signals Grid - 2x2 */}
+                      <View style={[styles.categoryGridSignals, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+                        {getDisplaySignals(place.signals).map((signal, idx) => (
+                          <View key={`cat-grid-${catIndex}-${place.id}-sig-${idx}`} style={styles.categoryGridSignalWrapper}>
+                            <View style={[styles.categoryGridSignalBadge, { backgroundColor: getSignalColor(signal.bucket) }]}>
+                              <Ionicons 
+                                name={getSignalIcon(signal.bucket) as any} 
+                                size={10} 
+                                color={getSignalIconColor(signal.bucket)} 
+                                style={{ marginRight: 3 }}
+                              />
+                              <Text style={[styles.categoryGridSignalText, signal.isEmpty && styles.categoryGridSignalTextEmpty]} numberOfLines={1}>
+                                {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
+                              </Text>
+                            </View>
+                            {!signal.isEmpty && (
+                              <Text style={styles.categoryGridSignalCount}>x{signal.tap_total}</Text>
+                            )}
+                          </View>
+                        ))}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             )}
           </ScrollView>
         )}
@@ -3628,6 +3794,93 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#FFFFFF', // White text on solid colored backgrounds
+  },
+
+  // Category Grid (2x2 place cards)
+  categoryGridContainer: {
+    padding: 16,
+  },
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  categoryGridCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    marginBottom: 4,
+  },
+  categoryGridImage: {
+    height: 120,
+    width: '100%',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 10,
+    paddingBottom: 8,
+  },
+  categoryGridImageRadius: {
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  categoryGridPlaceName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.2,
+  },
+  categoryGridPlaceMeta: {
+    marginTop: 1,
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
+  },
+  categoryGridSignals: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 8,
+    gap: 4,
+  },
+  categoryGridSignalWrapper: {
+    width: '48%',
+    position: 'relative',
+  },
+  categoryGridSignalBadge: {
+    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 26,
+  },
+  categoryGridSignalText: {
+    flex: 1,
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  categoryGridSignalTextEmpty: {
+    fontWeight: '500',
+    fontStyle: 'italic',
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 8,
+  },
+  categoryGridSignalCount: {
+    position: 'absolute',
+    top: -5,
+    right: -2,
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#fff',
+    backgroundColor: '#333',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 6,
+    overflow: 'hidden',
   },
 
   // Filter Modal

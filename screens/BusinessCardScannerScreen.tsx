@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
@@ -22,48 +22,72 @@ export interface ScannedBusinessCard {
   address: string;
   phone: string;
   website?: string;
-  email?: string;
 }
 
-export default function BusinessCardScannerScreen({ navigation, route }: any) {
+export default function BusinessCardScannerScreen({ navigation, route }: BusinessCardScannerScreenProps) {
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   const cameraRef = useRef<CameraView>(null);
 
-  const handleScan = async () => {
-    if (cameraRef.current && !isScanning) {
-      setIsScanning(true);
-      try {
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
-          skipProcessing: true,
-        });
-
-        // Simulate OCR Processing (In production, send to Google Cloud Vision API)
-        setTimeout(() => {
-          const mockData: ScannedBusinessCard = {
-            name: "The Coffee House",
-            address: "123 Main St, Seattle, WA 98101",
-            phone: "(206) 555-0123",
-            website: "www.coffeehouse.com"
-          };
-
-          setIsScanning(false);
-          
-          if (route.params?.onScanComplete) {
-            route.params.onScanComplete(mockData);
-            navigation.goBack();
-          } else {
-            Alert.alert("Scanned Data", JSON.stringify(mockData, null, 2));
-          }
-        }, 2000);
-
-      } catch (error) {
-        setIsScanning(false);
-        Alert.alert('Error', 'Failed to scan card');
-      }
-    }
+  const handleCameraReady = () => {
+    setCameraReady(true);
   };
+
+  const handleScan = async () => {
+    if (!cameraRef.current) {
+      Alert.alert('Error', 'Camera reference not available');
+      return;
+    }
+
+    if (!cameraReady) {
+      Alert.alert('Error', 'Camera is not ready yet. Please wait a moment.');
+      return;
+    }
+
+    if (isScanning) {
+      return;
+    }
+
+    setIsScanning(true);
+    try {
+      console.log('Attempting to take picture...');
+      
+      // Add a small delay to ensure camera is fully ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        skipProcessing: true,
+      });
+
+      console.log('Photo taken successfully:', photo.uri);
+
+      // Simulate OCR Processing (In production, send to Google Cloud Vision API)
+      setTimeout(() => {
+        const mockData: ScannedBusinessCard = {
+          name: "The Coffee House",
+          address: "123 Main St, Seattle, WA 98101",
+          phone: "(206) 555-0123",
+          website: "www.coffeehouse.com"
+        };
+
+        setIsScanning(false);
+        
+        if (route.params?.onScanComplete) {
+          route.params.onScanComplete(mockData);
+          navigation.goBack();
+        } else {
+          Alert.alert("Scanned Data", JSON.stringify(mockData, null, 2));
+        }
+      }, 2000);
+    } catch (error) {
+      setIsScanning(false);
+      console.error('Camera error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      Alert.alert('Error', `Failed to scan card: ${errorMessage}`);
+    }
+  }
 
   if (!permission) {
     return <View style={styles.container}><ActivityIndicator size="large" color="#2DD4BF" /></View>;
@@ -89,6 +113,7 @@ export default function BusinessCardScannerScreen({ navigation, route }: any) {
         style={styles.camera} 
         facing="back"
         ref={cameraRef}
+        onCameraReady={handleCameraReady}
       >
         <View style={styles.overlay}>
           <View style={styles.header}>
@@ -116,16 +141,25 @@ export default function BusinessCardScannerScreen({ navigation, route }: any) {
             <Text style={styles.instructionText}>
               Align business card within the frame
             </Text>
+            {!cameraReady && (
+              <Text style={styles.readyingText}>Initializing camera...</Text>
+            )}
           </View>
 
           <View style={styles.footer}>
             <TouchableOpacity 
               onPress={handleScan} 
-              style={[styles.captureButton, isScanning && styles.captureButtonDisabled]}
-              disabled={isScanning}
+              style={[
+                styles.captureButton, 
+                (isScanning || !cameraReady) && styles.captureButtonDisabled
+              ]}
+              disabled={isScanning || !cameraReady}
             >
               <View style={styles.captureInner} />
             </TouchableOpacity>
+            {!cameraReady && (
+              <Text style={styles.readyingButtonText}>Camera initializing...</Text>
+            )}
           </View>
         </View>
       </CameraView>
@@ -214,6 +248,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.8,
   },
+  readyingText: {
+    color: '#2DD4BF',
+    marginTop: 10,
+    fontSize: 12,
+    opacity: 0.6,
+  },
   footer: {
     paddingBottom: 50,
     alignItems: 'center',
@@ -234,6 +274,12 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     backgroundColor: '#fff',
+  },
+  readyingButtonText: {
+    color: '#2DD4BF',
+    marginTop: 8,
+    fontSize: 12,
+    opacity: 0.6,
   },
   closeButton: {
     backgroundColor: '#2DD4BF',
