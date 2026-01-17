@@ -14,12 +14,12 @@ export type ServiceCategory = {
   slug: string;
   name: string;
   icon?: string | null;
-  sort?: number | null;
+  order?: number | null;
 };
 
 /**
  * Fetch all service categories from Supabase
- * Categories are sorted by the 'sort' field for consistent ordering
+ * Categories are sorted by the 'order' field for consistent ordering
  */
 export function useProsServiceCategories() {
   return useQuery({
@@ -27,8 +27,8 @@ export function useProsServiceCategories() {
     queryFn: async (): Promise<ServiceCategory[]> => {
       const { data, error } = await supabase
         .from('service_categories')
-        .select('id, slug, name, icon, sort')
-        .order('sort', { ascending: true })
+        .select('id, slug, name, icon, "order"')
+        .order('order', { ascending: true })
         .order('name', { ascending: true });
 
       if (error) {
@@ -54,7 +54,7 @@ export function useProsServiceCategoryBySlug(slug?: string) {
 
       const { data, error } = await supabase
         .from('service_categories')
-        .select('id, slug, name, icon, sort')
+        .select('id, slug, name, icon, "order"')
         .eq('slug', slug)
         .single();
 
@@ -82,7 +82,7 @@ export function useProsServiceCategoryById(id?: string) {
 
       const { data, error } = await supabase
         .from('service_categories')
-        .select('id, slug, name, icon, sort')
+        .select('id, slug, name, icon, "order"')
         .eq('id', id)
         .single();
 

@@ -1,15 +1,20 @@
+/**
+ * useCategories Hook
+ * Fetches service categories from Supabase service_categories table.
+ * 
+ * Updated to use direct Supabase client for reliability.
+ */
+
 import { useState, useEffect } from 'react';
-import { PROS_API_URL } from '../constants/ProsConfig';
+import { supabase } from '../lib/supabaseClient';
 
 export interface Category {
-  id: number;
+  id: string;
   name: string;
   slug: string;
-  description: string;
-  icon: string;
-  color: string;
-  display_order: number;
-  is_active: boolean;
+  description?: string;
+  icon?: string;
+  order?: number;
 }
 
 export const useCategories = () => {
@@ -23,19 +28,16 @@ export const useCategories = () => {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(`${PROS_API_URL}/functions/v1/pros-categories-list`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+        const { data, error: supabaseError } = await supabase
+          .from('service_categories')
+          .select('id, name, slug, description, icon, "order"')
+          .order('order', { ascending: true });
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch categories: ${response.statusText}`);
+        if (supabaseError) {
+          throw supabaseError;
         }
 
-        const data = await response.json();
-        setCategories(data);
+        setCategories(data || []);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         setError(errorMessage);

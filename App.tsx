@@ -58,12 +58,14 @@ import ProsRegistrationScreen from './screens/ProsRegistrationScreen';
 import ProsMessagesScreen from './screens/ProsMessagesScreen';
 import ProsRequestQuoteScreen from './screens/ProsRequestQuoteScreen';
 import ProsLeadsScreen from './screens/ProsLeadsScreen';
+import ProsRequestStep0Screen from './screens/ProsRequestStep0Screen';
 import ProsRequestStep1Screen from './screens/ProsRequestStep1Screen';
 import ProsRequestStep2PhotoScreen from './screens/ProsRequestStep2PhotoScreen';
 import ProsRequestStep2Screen from './screens/ProsRequestStep2Screen';
 import ProsRequestStep3Screen from './screens/ProsRequestStep3Screen';
 import ProsRequestStep4Screen from './screens/ProsRequestStep4Screen';
 import ProsRequestStep5Screen from './screens/ProsRequestStep5Screen';
+import ProsProjectStatusScreen from './screens/ProsProjectStatusScreen';
 
 // ========== BROWSE SCREENS ==========
 import RidesBrowseScreen from './screens/RidesBrowseScreen';
@@ -200,12 +202,14 @@ function ProsStack() {
         options={{ presentation: 'modal' }}
       />
       <ProsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
+      <ProsStackNav.Screen name="ProsRequestStep0" component={ProsRequestStep0Screen} />
       <ProsStackNav.Screen name="ProsRequestStep1" component={ProsRequestStep1Screen} />
       <ProsStackNav.Screen name="ProsRequestStep2Photo" component={ProsRequestStep2PhotoScreen} />
       <ProsStackNav.Screen name="ProsRequestStep2" component={ProsRequestStep2Screen} />
       <ProsStackNav.Screen name="ProsRequestStep3" component={ProsRequestStep3Screen} />
       <ProsStackNav.Screen name="ProsRequestStep4" component={ProsRequestStep4Screen} />
       <ProsStackNav.Screen name="ProsRequestStep5" component={ProsRequestStep5Screen} />
+      <ProsStackNav.Screen name="ProsProjectStatus" component={ProsProjectStatusScreen} />
     </ProsStackNav.Navigator>
   );
 }

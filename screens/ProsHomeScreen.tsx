@@ -38,6 +38,7 @@ import { ProsCategoryCard, ProsCategoryScroll } from '../components/ProsCategory
 import { ProsProviderCard } from '../components/ProsProviderCard';
 import { useSearchPros } from '../hooks/usePros';
 import { useCategories } from '../hooks/useCategories';
+import { useProsPendingRequests } from '../hooks/useProsPendingRequests';
 import { Pro } from '../lib/ProsTypes';
 
 const { width } = Dimensions.get('window');
@@ -53,11 +54,31 @@ export default function ProsHomeScreen() {
 
   const { pros, loading, searchPros } = useSearchPros();
   const { categories, loading: categoriesLoading, error: categoriesError } = useCategories();
+  const { getPendingRequest } = useProsPendingRequests();
+  const [pendingRequest, setPendingRequest] = useState<any>(null);
 
   useEffect(() => {
     // Load initial pros near user
     searchPros({ limit: 6 });
+    
+    // Check for pending requests
+    checkPendingRequest();
   }, []);
+
+  const checkPendingRequest = async () => {
+    const pending = await getPendingRequest();
+    if (pending) {
+      setPendingRequest(pending);
+    }
+  };
+
+  const handleResume = () => {
+    if (!pendingRequest) return;
+    
+    const stepName = `ProsRequestStep${pendingRequest.step}`;
+    navigation.navigate(stepName as any, pendingRequest.form_data);
+    setPendingRequest(null);
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -76,10 +97,7 @@ export default function ProsHomeScreen() {
     // Try to find category from fetched categories first, then fall back to hardcoded
     const category = categories.find(c => c.slug === slug) || PROS_CATEGORIES.find(c => c.slug === slug);
     if (category) {
-      navigation.navigate('ProsRequestStep1', { 
-        categoryId: category.id.toString(), 
-        categoryName: category.name 
-      });
+      navigation.navigate('ProsRequestStep0');
     }
   };
 
@@ -255,6 +273,19 @@ export default function ProsHomeScreen() {
           colors={[ProsColors.heroBg, '#FFFFFF']}
           style={styles.heroSection}
         >
+          {/* Resume Pending Project Banner */}
+          {pendingRequest && (
+            <TouchableOpacity style={styles.resumeBanner} onPress={handleResume}>
+              <View style={styles.resumeContent}>
+                <Ionicons name="time" size={20} color="#FFFFFF" />
+                <View style={styles.resumeTextContainer}>
+                  <Text style={styles.resumeTitle}>Continue your request?</Text>
+                  <Text style={styles.resumeSubtitle}>You have an unfinished project for {pendingRequest.form_data.categoryName || 'a service'}.</Text>
+                </View>
+                <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
+          )}
           {/* Early Adopter Badge */}
           {remainingSpots > 0 && (
             <TouchableOpacity style={styles.earlyAdopterBadge} onPress={handleProSignup}>
@@ -319,7 +350,7 @@ export default function ProsHomeScreen() {
           {/* Start a Project CTA */}
           <TouchableOpacity 
             style={styles.startProjectButton}
-            onPress={() => navigation.navigate('ProsRequestStep1')}
+            onPress={() => navigation.navigate('ProsRequestStep0')}
           >
             <LinearGradient
               colors={['#10B981', '#059669']}
@@ -816,6 +847,34 @@ const styles = StyleSheet.create({
   earlyAdopterNote: {
     fontSize: 12,
     color: '#6B7280',
+  },
+  resumeBanner: {
+    backgroundColor: ProsColors.primary,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  resumeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  resumeTextContainer: {
+    flex: 1,
+  },
+  resumeTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  resumeSubtitle: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 12,
   },
   // Start a Project CTA styles
   startProjectButton: {

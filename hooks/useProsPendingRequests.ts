@@ -38,11 +38,15 @@ export function useProsPendingRequests() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Calculate complexity using the database function
-      const { data: complexityData, error: complexityError } = await supabase
-        .rpc('calculate_job_complexity', { dynamic_answers: requestData.dynamic_answers });
-
-      if (complexityError) console.error('Complexity calculation error:', complexityError);
+      // Calculate complexity using the database function (optional, won't block submission)
+      let complexityData = { level: 'Standard', score: 0, factors: [] };
+      try {
+        const { data, error: complexityError } = await supabase
+          .rpc('calculate_job_complexity', { dynamic_answers: requestData.dynamic_answers });
+        if (!complexityError && data) complexityData = data;
+      } catch (err) {
+        console.error('Complexity calculation error (non-blocking):', err);
+      }
 
       const { data, error: insertError } = await supabase
         .from('leads')

@@ -1,8 +1,9 @@
 /**
- * Pros Messages Screen
+ * ProsMessagesScreen - Real-Time Chat Interface
  * Install path: screens/ProsMessagesScreen.tsx
  * 
  * Messaging interface for communication between users and pros.
+ * Powered by Supabase Realtime.
  */
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -13,546 +14,256 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { ProsColors } from '../constants/ProsConfig';
-import { useProsConversations, useProsMessages, useProsStartConversation } from '../hooks/usePros';
-import { ProConversationWithDetails, ProMessage } from '../lib/ProsTypes';
+import { useTavvyChat } from '../hooks/useTavvyChat';
+import { supabase } from '../lib/supabaseClient';
 
-type RouteParams = {
-  ProsMessagesScreen: {
-    conversationId?: number;
-    proId?: number;
-    proName?: string;
-  };
-};
-
-type NavigationProp = NativeStackNavigationProp<any>;
-
-// Conversation List View
-function ConversationList({
-  conversations,
-  loading,
-  onSelectConversation,
-  onRefresh,
-}: {
-  conversations: ProConversationWithDetails[];
-  loading: boolean;
-  onSelectConversation: (conv: ProConversationWithDetails) => void;
-  onRefresh: () => void;
-}) {
-  const renderConversation = ({ item }: { item: ProConversationWithDetails }) => {
-    const otherParty = (item as any).provider || (item as any).user;
-    const unreadCount = ((item as any).conversation?.userUnread || 0) + ((item as any).conversation?.providerUnread || 0);
-    const lastMessageTime = new Date((item as any).conversation?.lastMessageAt || (item as any).lastMessageAt || (item as any).lastMessage?.createdAt || Date.now());
-
-    return (
-      <TouchableOpacity
-        style={styles.conversationItem}
-        onPress={() => onSelectConversation(item)}
-      >
-        {(otherParty as any)?.logoUrl || (otherParty as any)?.avatarUrl ? (
-          <Image
-            source={{ uri: (otherParty as any).logoUrl || (otherParty as any).avatarUrl }}
-            style={styles.conversationAvatar}
-          />
-        ) : (
-          <View style={styles.conversationAvatarPlaceholder}>
-            <Ionicons name="person" size={24} color={ProsColors.textMuted} />
-          </View>
-        )}
-        <View style={styles.conversationContent}>
-          <View style={styles.conversationHeader}>
-            <Text style={styles.conversationName} numberOfLines={1}>
-              {(otherParty as any)?.businessName || (otherParty as any)?.name || 'Unknown'}
-            </Text>
-            <Text style={styles.conversationTime}>
-              {lastMessageTime.toLocaleDateString()}
-            </Text>
-          </View>
-          <View style={styles.conversationFooter}>
-            <Text style={styles.conversationPreview} numberOfLines={1}>
-              {item.lastMessage?.content || 'No messages yet'}
-            </Text>
-            {unreadCount > 0 && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  if (loading && conversations.length === 0) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={ProsColors.primary} />
-      </View>
-    );
-  }
-
-  if (conversations.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Ionicons name="chatbubbles-outline" size={64} color={ProsColors.textMuted} />
-        <Text style={styles.emptyTitle}>No messages yet</Text>
-        <Text style={styles.emptyText}>
-          Start a conversation by contacting a pro or receiving a lead request.
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <FlatList
-      data={conversations}
-      keyExtractor={(item) => item.conversation.id.toString()}
-      renderItem={renderConversation}
-      contentContainerStyle={styles.conversationList}
-      showsVerticalScrollIndicator={false}
-    />
-  );
-}
-
-// Chat View
-function ChatView({
-  conversationId,
-  otherPartyName,
-  onBack,
-}: {
-  conversationId: number;
-  otherPartyName: string;
-  onBack: () => void;
-}) {
-  const flatListRef = useRef<FlatList>(null);
-  const [messageText, setMessageText] = useState('');
-  const [sending, setSending] = useState(false);
-
-  const { messages, loading, fetchMessages, sendMessage } = useProsMessages(conversationId);
-
-  useEffect(() => {
-    fetchMessages();
-  }, [conversationId]);
-
-  const handleSend = async () => {
-    if (!messageText.trim() || sending) return;
-
-    setSending(true);
-    try {
-      await sendMessage(messageText.trim());
-      setMessageText('');
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    } catch (error) {
-      console.error('Failed to send message:', error);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const renderMessage = ({ item, index }: { item: ProMessage; index: number }) => {
-    const isOwn = item.senderType === 'user'; // Adjust based on current user context
-    const showDate = index === 0 || 
-      new Date(messages[index - 1]?.createdAt).toDateString() !== new Date(item.createdAt).toDateString();
-
-    return (
-      <>
-        {showDate && (
-          <View style={styles.dateSeparator}>
-            <Text style={styles.dateSeparatorText}>
-              {new Date(item.createdAt).toLocaleDateString()}
-            </Text>
-          </View>
-        )}
-        <View style={[styles.messageContainer, isOwn && styles.messageContainerOwn]}>
-          <View style={[styles.messageBubble, isOwn && styles.messageBubbleOwn]}>
-            <Text style={[styles.messageText, isOwn && styles.messageTextOwn]}>
-              {item.content}
-            </Text>
-            <Text style={[styles.messageTime, isOwn && styles.messageTimeOwn]}>
-              {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </Text>
-          </View>
-        </View>
-      </>
-    );
-  };
-
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1 }}
-      keyboardVerticalOffset={0}
-    >
-      {/* Chat Header */}
-      <View style={styles.chatHeader}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={ProsColors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.chatHeaderTitle} numberOfLines={1}>
-          {otherPartyName}
-        </Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      {/* Messages */}
-      {loading && messages.length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={ProsColors.primary} />
-        </View>
-      ) : (
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderMessage}
-          contentContainerStyle={styles.messagesList}
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-        />
-      )}
-
-      {/* Input */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.messageInput}
-          placeholder="Type a message..."
-          placeholderTextColor={ProsColors.textMuted}
-          value={messageText}
-          onChangeText={setMessageText}
-          multiline
-          maxLength={1000}
-        />
-        <TouchableOpacity
-          style={[styles.sendButton, !messageText.trim() && styles.sendButtonDisabled]}
-          onPress={handleSend}
-          disabled={!messageText.trim() || sending}
-        >
-          {sending ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Ionicons name="send" size={20} color="#FFFFFF" />
-          )}
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
-  );
-}
-
-// Main Component
 export default function ProsMessagesScreen() {
-  const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<RouteProp<RouteParams, 'ProsMessagesScreen'>>();
-  
-  const initialConversationId = route.params?.conversationId;
-  const proId = route.params?.proId;
-  const proName = route.params?.proName;
+  const navigation = useNavigation();
+  const route = useRoute<any>();
+  const { conversationId: initialId, proId, proName } = route.params || {};
 
-  const [selectedConversation, setSelectedConversation] = useState<ProConversationWithDetails | null>(null);
-  const [activeConversationId, setActiveConversationId] = useState<number | null>(initialConversationId || null);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(initialId || null);
+  const [messageText, setMessageText] = useState('');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const flatListRef = useRef<FlatList>(null);
 
-  const { conversations, loading, fetchConversations } = useProsConversations();
-  const { startConversation, loading: startingConversation } = useProsStartConversation();
+  const { 
+    messages, 
+    conversations, 
+    loading, 
+    fetchConversations, 
+    fetchMessages, 
+    sendMessage,
+    startConversation 
+  } = useTavvyChat(activeConversationId || undefined);
 
   useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setCurrentUserId(data.user?.id || null);
+    });
     fetchConversations();
   }, []);
 
   useEffect(() => {
-    // If we have a proId but no conversationId, we might need to start a new conversation
-    if (proId && !initialConversationId) {
-      // Check if conversation already exists
-      const existingConv = conversations.find(c => (c as any).provider?.id === proId);
-      if (existingConv) {
-        setSelectedConversation(existingConv as any);
-        setActiveConversationId((existingConv as any).conversation?.id || (existingConv as any).id);
-      }
-    }
-  }, [proId, conversations]);
-
-  const handleSelectConversation = (conv: ProConversationWithDetails) => {
-    setSelectedConversation(conv);
-    setActiveConversationId((conv as any).conversation?.id || (conv as any).id);
-  };
-
-  const handleBack = () => {
     if (activeConversationId) {
-      setSelectedConversation(null);
-      setActiveConversationId(null);
-    } else {
-      navigation.goBack();
+      fetchMessages(activeConversationId);
+    }
+  }, [activeConversationId]);
+
+  useEffect(() => {
+    if (proId && !activeConversationId) {
+      handleStartNewChat();
+    }
+  }, [proId]);
+
+  const handleStartNewChat = async () => {
+    try {
+      const id = await startConversation(proId);
+      setActiveConversationId(id);
+    } catch (error) {
+      console.error('Failed to start conversation:', error);
     }
   };
 
-  // Show chat view if we have an active conversation
-  if (activeConversationId && selectedConversation) {
-    const otherPartyName = (selectedConversation as any).provider?.businessName || 
-                          (selectedConversation as any).user?.name || 
-                          proName || 
-                          'Unknown';
+  const handleSend = async () => {
+    if (!messageText.trim() || !activeConversationId) return;
     
+    const text = messageText.trim();
+    setMessageText('');
+    
+    try {
+      // Determine if sender is pro or user (simplified for this view)
+      const senderType = 'user'; 
+      await sendMessage(activeConversationId, text, senderType);
+      flatListRef.current?.scrollToEnd({ animated: true });
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
+  };
+
+  const renderConversationItem = ({ item }: { item: any }) => {
+    const otherParty = item.pro?.business_name || 'Customer';
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <ChatView
-          conversationId={activeConversationId}
-          otherPartyName={otherPartyName}
-          onBack={handleBack}
+      <TouchableOpacity 
+        style={styles.conversationItem}
+        onPress={() => setActiveConversationId(item.id)}
+      >
+        <View style={styles.avatarPlaceholder}>
+          <Ionicons name="person" size={24} color="#9CA3AF" />
+        </View>
+        <View style={styles.conversationInfo}>
+          <Text style={styles.conversationName}>{otherParty}</Text>
+          <Text style={styles.lastMessage} numberOfLines={1}>
+            Tap to view messages
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+      </TouchableOpacity>
+    );
+  };
+
+  const renderMessageItem = ({ item }: { item: any }) => {
+    const isOwn = item.sender_id === currentUserId;
+    return (
+      <View style={[styles.messageWrapper, isOwn ? styles.ownMessageWrapper : styles.otherMessageWrapper]}>
+        <View style={[styles.messageBubble, isOwn ? styles.ownBubble : styles.otherBubble]}>
+          <Text style={[styles.messageText, isOwn ? styles.ownMessageText : styles.otherMessageText]}>
+            {item.content}
+          </Text>
+          <Text style={styles.messageTime}>
+            {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  if (!activeConversationId) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Messages</Text>
+        </View>
+        <FlatList
+          data={conversations}
+          renderItem={renderConversationItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="chatbubbles-outline" size={64} color="#D1D5DB" />
+              <Text style={styles.emptyText}>No conversations yet.</Text>
+            </View>
+          }
         />
       </SafeAreaView>
     );
   }
 
-  // Show conversation list
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={ProsColors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Messages</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <View style={styles.chatHeader}>
+          <TouchableOpacity onPress={() => setActiveConversationId(null)}>
+            <Ionicons name="arrow-back" size={24} color="#374151" />
+          </TouchableOpacity>
+          <Text style={styles.chatTitle}>{proName || 'Chat'}</Text>
+          <View style={{ width: 24 }} />
+        </View>
 
-      <ConversationList
-        conversations={conversations as any}
-        loading={loading}
-        onSelectConversation={handleSelectConversation}
-        onRefresh={fetchConversations}
-      />
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessageItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.messagesContent}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+        />
+
+        <View style={styles.inputArea}>
+          <TextInput
+            style={styles.input}
+            placeholder="Type a message..."
+            value={messageText}
+            onChangeText={setMessageText}
+            multiline
+          />
+          <TouchableOpacity 
+            style={[styles.sendButton, !messageText.trim() && styles.sendDisabled]}
+            onPress={handleSend}
+            disabled={!messageText.trim()}
+          >
+            <Ionicons name="send" size={20} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: ProsColors.borderLight,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: ProsColors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  conversationList: {
-    paddingVertical: 8,
-  },
+  container: { flex: 1, backgroundColor: '#FFF' },
+  header: { padding: 20, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
+  listContent: { padding: 16 },
   conversationItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: ProsColors.borderLight,
+    padding: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    marginBottom: 12,
   },
-  conversationAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: ProsColors.sectionBg,
-  },
-  conversationAvatarPlaceholder: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: ProsColors.sectionBg,
+  avatarPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#E5E7EB',
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  conversationContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  conversationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  conversationName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-    flex: 1,
-    marginRight: 8,
-  },
-  conversationTime: {
-    fontSize: 12,
-    color: ProsColors.textMuted,
-  },
-  conversationFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  conversationPreview: {
-    fontSize: 14,
-    color: ProsColors.textSecondary,
-    flex: 1,
-    marginRight: 8,
-  },
-  unreadBadge: {
-    backgroundColor: ProsColors.primary,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  unreadBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  // Chat styles
+  conversationInfo: { flex: 1, marginLeft: 12 },
+  conversationName: { fontSize: 16, fontWeight: '600', color: '#111827' },
+  lastMessage: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+  emptyState: { alignItems: 'center', marginTop: 100 },
+  emptyText: { marginTop: 12, color: '#9CA3AF', fontSize: 16 },
   chatHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: ProsColors.borderLight,
+    borderBottomColor: '#F3F4F6',
   },
-  chatHeaderTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-    flex: 1,
-    textAlign: 'center',
-  },
-  messagesList: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  dateSeparator: {
-    alignItems: 'center',
-    marginVertical: 16,
-  },
-  dateSeparatorText: {
-    fontSize: 12,
-    color: ProsColors.textMuted,
-    backgroundColor: ProsColors.sectionBg,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  messageContainer: {
-    marginBottom: 8,
-    alignItems: 'flex-start',
-  },
-  messageContainerOwn: {
-    alignItems: 'flex-end',
-  },
-  messageBubble: {
-    maxWidth: '80%',
-    backgroundColor: ProsColors.sectionBg,
-    borderRadius: 16,
-    borderBottomLeftRadius: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  messageBubbleOwn: {
-    backgroundColor: ProsColors.primary,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 4,
-  },
-  messageText: {
-    fontSize: 15,
-    color: ProsColors.textPrimary,
-    lineHeight: 20,
-  },
-  messageTextOwn: {
-    color: '#FFFFFF',
-  },
-  messageTime: {
-    fontSize: 11,
-    color: ProsColors.textMuted,
-    marginTop: 4,
-    alignSelf: 'flex-end',
-  },
-  messageTimeOwn: {
-    color: 'rgba(255, 255, 255, 0.7)',
-  },
-  inputContainer: {
+  chatTitle: { fontSize: 18, fontWeight: '600', color: '#111827' },
+  messagesContent: { padding: 16, paddingBottom: 32 },
+  messageWrapper: { marginBottom: 16, flexDirection: 'row' },
+  ownMessageWrapper: { justifyContent: 'flex-end' },
+  otherMessageWrapper: { justifyContent: 'flex-start' },
+  messageBubble: { maxWidth: '80%', padding: 12, borderRadius: 16 },
+  ownBubble: { backgroundColor: ProsColors.primary, borderBottomRightRadius: 4 },
+  otherBubble: { backgroundColor: '#F3F4F6', borderBottomLeftRadius: 4 },
+  messageText: { fontSize: 15, lineHeight: 20 },
+  ownMessageText: { color: '#FFF' },
+  otherMessageText: { color: '#111827' },
+  messageTime: { fontSize: 10, color: 'rgba(0,0,0,0.3)', marginTop: 4, alignSelf: 'flex-end' },
+  inputArea: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    alignItems: 'center',
+    padding: 12,
     borderTopWidth: 1,
-    borderTopColor: ProsColors.borderLight,
-    backgroundColor: '#FFFFFF',
+    borderTopColor: '#F3F4F6',
+    backgroundColor: '#FFF',
   },
-  messageInput: {
+  input: {
     flex: 1,
-    backgroundColor: ProsColors.sectionBg,
+    backgroundColor: '#F9FAFB',
     borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: ProsColors.textPrimary,
+    paddingVertical: 8,
     maxHeight: 100,
-    marginRight: 8,
+    fontSize: 15,
   },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: ProsColors.primary,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
   },
-  sendButtonDisabled: {
-    backgroundColor: ProsColors.textMuted,
-  },
+  sendDisabled: { opacity: 0.5 },
 });
