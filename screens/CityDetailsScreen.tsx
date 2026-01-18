@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   useColorScheme,
   Dimensions,
-  Linking,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -63,6 +63,13 @@ interface SignalData {
   headsUp: SignalItem[];
 }
 
+interface InfoPopupData {
+  title: string;
+  value: string;
+  description: string;
+  icon: string;
+}
+
 const DEFAULT_SIGNALS: SignalData = {
   theGood: [],
   theVibe: [],
@@ -82,6 +89,7 @@ export default function CityDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'reviews' | 'info' | 'photos'>('reviews');
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [infoPopup, setInfoPopup] = useState<InfoPopupData | null>(null);
 
   const loadCity = useCallback(async () => {
     if (!cityId) return;
@@ -112,7 +120,6 @@ export default function CityDetailsScreen() {
         }
       } catch (signalError) {
         console.error('Error loading signals:', signalError);
-        // Keep default empty signals
       }
     } catch (error) {
       console.error('Error loading city:', error);
@@ -136,6 +143,53 @@ export default function CityDetailsScreen() {
     setExpandedSection(expandedSection === section ? null : section);
   };
 
+  const showInfoPopup = (type: 'population' | 'airport' | 'walkScore' | 'costIndex') => {
+    if (!city) return;
+
+    const popupData: Record<string, InfoPopupData> = {
+      population: {
+        title: 'Population',
+        value: formatPopulation(city.population),
+        description: `This city has an estimated population of ${city.population?.toLocaleString() || 'unknown'} residents. Population size affects everything from job opportunities and housing costs to traffic and cultural diversity.`,
+        icon: 'people',
+      },
+      airport: {
+        title: 'Airport Code',
+        value: city.airport_code || 'N/A',
+        description: city.airport_code 
+          ? `${city.airport_code} is the primary airport code for this city. Use this code when booking flights or searching for travel deals.`
+          : 'No major airport code available for this city. You may need to fly into a nearby city.',
+        icon: 'airplane',
+      },
+      walkScore: {
+        title: 'Walk Score',
+        value: city.walkability_score?.toString() || 'N/A',
+        description: city.walkability_score
+          ? `A walk score of ${city.walkability_score} out of 100. ${
+              city.walkability_score >= 90 ? "Walker's Paradise - daily errands don't require a car." :
+              city.walkability_score >= 70 ? "Very Walkable - most errands can be done on foot." :
+              city.walkability_score >= 50 ? "Somewhat Walkable - some errands can be done on foot." :
+              "Car-Dependent - most errands require a car."
+            }`
+          : 'Walk score data not available for this city.',
+        icon: 'walk',
+      },
+      costIndex: {
+        title: 'Cost of Living Index',
+        value: city.cost_of_living_index?.toString() || '100',
+        description: `A cost index of ${city.cost_of_living_index || 100} compared to the national average of 100. ${
+          (city.cost_of_living_index || 100) > 120 ? "This city is significantly more expensive than average." :
+          (city.cost_of_living_index || 100) > 100 ? "This city is somewhat more expensive than average." :
+          (city.cost_of_living_index || 100) === 100 ? "This city has average living costs." :
+          "This city is more affordable than average."
+        }`,
+        icon: 'cash',
+      },
+    };
+
+    setInfoPopup(popupData[type]);
+  };
+
   const renderSignalBar = (
     type: 'good' | 'vibe' | 'headsUp',
     label: string,
@@ -143,7 +197,6 @@ export default function CityDetailsScreen() {
     signalItems: SignalItem[] | undefined | null,
     color: string
   ) => {
-    // FIXED: Add null/undefined check for signalItems
     const safeSignals = signalItems || [];
     const hasSignals = safeSignals.length > 0;
     const isExpanded = expandedSection === type;
@@ -212,8 +265,6 @@ export default function CityDetailsScreen() {
     );
   }
 
-  const location = [city.state, city.country].filter(Boolean).join(', ');
-
   return (
     <View style={[styles.container, isDark && styles.containerDark]}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -254,39 +305,39 @@ export default function CityDetailsScreen() {
           <Text style={styles.heroTitle}>{city.name}</Text>
         </View>
 
-        {/* Quick Info Bar */}
+        {/* Quick Info Bar - Now Tappable */}
         <View style={[styles.quickInfoBar, isDark && styles.quickInfoBarDark]}>
-          <View style={styles.quickInfoItem}>
+          <TouchableOpacity style={styles.quickInfoItem} onPress={() => showInfoPopup('population')}>
             <Ionicons name="people" size={20} color="#3B82F6" />
             <Text style={[styles.quickInfoValue, isDark && styles.textDark]}>
               {formatPopulation(city.population)}
             </Text>
             <Text style={[styles.quickInfoLabel, isDark && styles.textMutedDark]}>Population</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.quickInfoDivider} />
-          <View style={styles.quickInfoItem}>
+          <TouchableOpacity style={styles.quickInfoItem} onPress={() => showInfoPopup('airport')}>
             <Ionicons name="airplane" size={20} color="#3B82F6" />
             <Text style={[styles.quickInfoValue, isDark && styles.textDark]}>
               {city.airport_code || 'N/A'}
             </Text>
             <Text style={[styles.quickInfoLabel, isDark && styles.textMutedDark]}>Airport</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.quickInfoDivider} />
-          <View style={styles.quickInfoItem}>
+          <TouchableOpacity style={styles.quickInfoItem} onPress={() => showInfoPopup('walkScore')}>
             <Ionicons name="walk" size={20} color="#3B82F6" />
             <Text style={[styles.quickInfoValue, isDark && styles.textDark]}>
               {city.walkability_score || 'N/A'}
             </Text>
             <Text style={[styles.quickInfoLabel, isDark && styles.textMutedDark]}>Walk Score</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.quickInfoDivider} />
-          <View style={styles.quickInfoItem}>
+          <TouchableOpacity style={styles.quickInfoItem} onPress={() => showInfoPopup('costIndex')}>
             <Ionicons name="cash" size={20} color="#3B82F6" />
             <Text style={[styles.quickInfoValue, isDark && styles.textDark]}>
               {city.cost_of_living_index || 100}
             </Text>
             <Text style={[styles.quickInfoLabel, isDark && styles.textMutedDark]}>Cost Index</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Tabs */}
@@ -399,6 +450,40 @@ export default function CityDetailsScreen() {
         <Ionicons name="add" size={28} color="#FFF" />
         <Text style={styles.fabText}>Tap</Text>
       </TouchableOpacity>
+
+      {/* Info Popup Modal */}
+      <Modal
+        visible={infoPopup !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setInfoPopup(null)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setInfoPopup(null)}
+        >
+          <View style={[styles.modalContent, isDark && styles.modalContentDark]}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIconContainer}>
+                <Ionicons name={infoPopup?.icon as any} size={24} color="#3B82F6" />
+              </View>
+              <Text style={[styles.modalTitle, isDark && styles.textDark]}>
+                {infoPopup?.title}
+              </Text>
+              <TouchableOpacity onPress={() => setInfoPopup(null)} style={styles.modalCloseButton}>
+                <Ionicons name="close" size={24} color={isDark ? '#9CA3AF' : '#6B7280'} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.modalValue, isDark && styles.textDark]}>
+              {infoPopup?.value}
+            </Text>
+            <Text style={[styles.modalDescription, isDark && styles.textMutedDark]}>
+              {infoPopup?.description}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -716,5 +801,62 @@ const styles = StyleSheet.create({
   },
   textMutedDark: {
     color: '#9CA3AF',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalContentDark: {
+    backgroundColor: '#1F2937',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    flex: 1,
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalValue: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#3B82F6',
+    marginBottom: 12,
+  },
+  modalDescription: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: '#4B5563',
   },
 });
