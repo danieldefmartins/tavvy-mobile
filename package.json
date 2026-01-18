@@ -50,7 +50,7 @@
     "react-native-url-polyfill": "^2.0.0"
   },
   "devDependencies": {
-    "@types/react": "~19.0.0",
+    "@types/react": "^19.1.0",
     "babel-preset-expo": "~13.0.0",
     "patch-package": "^8.0.1",
     "postinstall-postinstall": "^2.1.0",
