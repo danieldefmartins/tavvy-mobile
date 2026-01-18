@@ -59,7 +59,7 @@ const APP_TILES: AppTile[] = [
     backgroundColor: '#CCFBF1',
     backgroundColorDark: '#134E4A',
     iconColor: '#14B8A6',
-    route: 'Universes',
+    route: 'Explore',
   },
   {
     id: 'rides',
