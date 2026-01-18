@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -151,6 +152,7 @@ const MOCK_REALTORS = [
 type NavigationProp = NativeStackNavigationProp<any>;
 
 export default function RealtorsBrowseScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('all');

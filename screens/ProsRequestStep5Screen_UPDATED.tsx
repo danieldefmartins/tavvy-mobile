@@ -32,6 +32,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { ProsColors } from '../constants/ProsConfig';
 import { useProsPendingRequests } from '../hooks/useProsPendingRequests';
+import { useTranslation } from 'react-i18next';
 
 type RouteParams = {
   customerInfo: {
@@ -62,6 +63,7 @@ const ProgressBar = ({ progress }: { progress: number }) => (
 );
 
 export default function ProsRequestStep5Screen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   

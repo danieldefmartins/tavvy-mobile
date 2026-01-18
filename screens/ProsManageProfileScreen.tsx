@@ -22,8 +22,10 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ProsColors } from '../constants/ProsConfig';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 export default function ProsManageProfileScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

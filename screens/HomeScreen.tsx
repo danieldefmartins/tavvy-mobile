@@ -28,6 +28,7 @@ import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get('window');
 
@@ -250,6 +251,7 @@ interface GeocodingResult {
 // ============================================
 
 export default function HomeScreen({ navigation }: { navigation: any }) {
+  const { t } = useTranslation();
   // Theme context for dark mode support
   const { theme, isDark } = useThemeContext();
   

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient'; // Optional: Remove if not installed
 
 const { width } = Dimensions.get('window');
@@ -40,6 +41,7 @@ const getCategoryFallbackImage = (category: string): string => {
 };
 
 export default function UniverseLandingScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState('Places');
   const [activeZone, setActiveZone] = useState('All Zones');

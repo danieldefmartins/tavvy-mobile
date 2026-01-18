@@ -160,6 +160,7 @@ function AppsStack() {
       <MenuStackNav.Screen name="CitiesBrowse" component={CitiesBrowseScreen} />
       <MenuStackNav.Screen name="RidesBrowse" component={RidesBrowseScreen} />
       <MenuStackNav.Screen name="RideDetails" component={RideDetailsScreen} />
+      <MenuStackNav.Screen name="RVCampingBrowse" component={RVCampingBrowseScreen} />
       <MenuStackNav.Screen name="CityDetails" component={CityDetailsScreen} />
       <MenuStackNav.Screen name="AddReview" component={AddReviewScreen} />
       <MenuStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
@@ -286,7 +287,7 @@ function TabNavigator() {
 }
 
 // --------------------
-// TavvY Navigation Theme
+// Tavvy Navigation Theme
 // --------------------
 const TavvyDarkTheme = {
   ...DarkTheme,

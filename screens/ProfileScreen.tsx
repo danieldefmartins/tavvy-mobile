@@ -68,7 +68,7 @@ export default function ProfileScreen({ navigation }: any) {
       setLoading(true);
       await signOut();
     } catch (error) {
-      Alert.alert(t('common.error'), t('errors.somethingWentWrong'));
+      Alert.alert('Error', 'Failed to sign out');
     } finally {
       setLoading(false);
     }
@@ -96,14 +96,14 @@ export default function ProfileScreen({ navigation }: any) {
               style={styles.primaryButton}
               onPress={() => navigation.navigate('Login')}
             >
-              <Text style={styles.primaryButtonText}>{t('auth.login')}</Text>
+              <Text style={styles.primaryButtonText}>Log In</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.secondaryButton}
               onPress={() => navigation.navigate('SignUp')}
             >
-              <Text style={styles.secondaryButtonText}>{t('auth.signUp')}</Text>
+              <Text style={styles.secondaryButtonText}>Create Account</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -127,7 +127,7 @@ export default function ProfileScreen({ navigation }: any) {
         <Text style={styles.userEmail}>{user.email}</Text>
         
         <TouchableOpacity style={styles.editProfileButton}>
-          <Text style={styles.editProfileText}>{t('profile.editProfile')}</Text>
+          <Text style={styles.editProfileText}>Edit Profile</Text>
         </TouchableOpacity>
       </View>
 
@@ -140,12 +140,12 @@ export default function ProfileScreen({ navigation }: any) {
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{stats.savedPlaces}</Text>
-          <Text style={styles.statLabel}>{t('navigation.saved')}</Text>
+          <Text style={styles.statLabel}>Saved</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{stats.reviews}</Text>
-          <Text style={styles.statLabel}>{t('places.reviews')}</Text>
+          <Text style={styles.statLabel}>Reviews</Text>
         </View>
       </View>
 
@@ -155,7 +155,7 @@ export default function ProfileScreen({ navigation }: any) {
           <View style={styles.menuIconContainer}>
             <Ionicons name="settings-outline" size={22} color="#374151" />
           </View>
-          <Text style={styles.menuText}>{t('navigation.settings')}</Text>
+          <Text style={styles.menuText}>Settings</Text>
           <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
         </TouchableOpacity>
 
@@ -163,7 +163,7 @@ export default function ProfileScreen({ navigation }: any) {
           <View style={styles.menuIconContainer}>
             <Ionicons name="notifications-outline" size={22} color="#374151" />
           </View>
-          <Text style={styles.menuText}>{t('settings.notifications')}</Text>
+          <Text style={styles.menuText}>Notifications</Text>
           <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
         </TouchableOpacity>
 
@@ -174,7 +174,7 @@ export default function ProfileScreen({ navigation }: any) {
           <View style={styles.menuIconContainer}>
             <Ionicons name="help-circle-outline" size={22} color="#374151" />
           </View>
-          <Text style={styles.menuText}>{t('settings.helpSupport')}</Text>
+          <Text style={styles.menuText}>Help & Support</Text>
           <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
         </TouchableOpacity>
       </View>
@@ -188,7 +188,7 @@ export default function ProfileScreen({ navigation }: any) {
         {loading ? (
           <ActivityIndicator color={Colors.error} />
         ) : (
-          <Text style={styles.signOutText}>{t('auth.signOut')}</Text>
+          <Text style={styles.signOutText}>Sign Out</Text>
         )}
       </TouchableOpacity>
 

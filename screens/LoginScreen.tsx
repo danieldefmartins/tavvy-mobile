@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -15,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 export default function LoginScreen({ navigation }: any) {
   const { t } = useTranslation();
@@ -83,13 +83,13 @@ export default function LoginScreen({ navigation }: any) {
             resizeMode="contain"
           />
           <Text style={[styles.logo, dynamicStyles.logo]}>tavvy</Text>
-          <Text style={[styles.subtitle, dynamicStyles.subtitle]}>{t('auth.welcomeBack')}</Text>
+          <Text style={[styles.subtitle, dynamicStyles.subtitle]}>Welcome back!</Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, dynamicStyles.label]}>{t('auth.email')}</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Email</Text>
             <TextInput
               style={[styles.input, dynamicStyles.input]}
               placeholder="your@email.com"
@@ -103,7 +103,7 @@ export default function LoginScreen({ navigation }: any) {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, dynamicStyles.label]}>{t('auth.password')}</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Password</Text>
             <View style={styles.passwordContainer}>
               <TextInput
                 style={[styles.input, styles.passwordInput, dynamicStyles.input]}
@@ -135,20 +135,20 @@ export default function LoginScreen({ navigation }: any) {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.loginButtonText}>{t('auth.login')}</Text>
+              <Text style={styles.loginButtonText}>Log In</Text>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={[styles.forgotPasswordText, dynamicStyles.forgotPasswordText]}>{t('auth.forgotPassword')}</Text>
+            <Text style={[styles.forgotPasswordText, dynamicStyles.forgotPasswordText]}>Forgot Password?</Text>
           </TouchableOpacity>
         </View>
 
         {/* Sign Up Link */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, dynamicStyles.footerText]}>{t('auth.noAccount')}</Text>
+          <Text style={[styles.footerText, dynamicStyles.footerText]}>Don't have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-            <Text style={[styles.signUpLink, dynamicStyles.signUpLink]}>{t('auth.signUp')}</Text>
+            <Text style={[styles.signUpLink, dynamicStyles.signUpLink]}>Sign Up</Text>
           </TouchableOpacity>
         </View>
       </View>

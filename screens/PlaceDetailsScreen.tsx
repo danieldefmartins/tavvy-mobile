@@ -31,6 +31,7 @@ import { Colors } from '../constants/Colors';
 import AddYourTapCardEnhanced from '../components/AddYourTapCardEnhanced';
 import MomentumThermometer from '../components/MomentumThermometer';
 import ReviewReportModal from '../components/ReviewReportModal';
+import { useTranslation } from 'react-i18next';
 import {
   // usePlaceTapStats,
   useUserGamification,
@@ -273,6 +274,7 @@ const getDriveTime = (distanceMiles: number): string => {
 };
 
 export default function PlaceDetailScreen({ route, navigation }: any) {
+  const { t } = useTranslation();
   // ===== STATE DECLARATIONS =====
   const { placeId } = route?.params || {};
   const [place, setPlace] = useState<Place | null>(null);

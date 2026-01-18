@@ -27,6 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ProsColors } from '../constants/ProsConfig';
 import { useProsServiceCategories, ServiceCategory } from '../hooks/useProsServiceCategories';
 import { useProsPendingRequests } from '../hooks/useProsPendingRequests';
+import { useTranslation } from 'react-i18next';
 
 type RouteParams = {
   customerInfo?: {
@@ -47,6 +48,7 @@ const ProgressBar = ({ progress }: { progress: number }) => (
 );
 
 export default function ProsRequestStep1Screen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   const { saveProgress } = useProsPendingRequests();

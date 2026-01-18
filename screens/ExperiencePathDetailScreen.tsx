@@ -5,9 +5,9 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 export default function ExperiencePathDetailScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { t } = useTranslation();
   const pathName = route.params?.pathName || 'Experience Path';
 
   return (

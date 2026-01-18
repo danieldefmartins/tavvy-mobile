@@ -1,8 +1,10 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, FlatList, ActivityIndicator, Keyboard } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 export default function ProsRequestStep4Screen({ navigation, route }: any) {
+  const { t } = useTranslation();
   // SAFE PARAMETER HANDLING: Prevent crash if route.params or requestData is undefined
   const params = route.params || {};
   const requestData = params.requestData || {};

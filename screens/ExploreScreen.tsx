@@ -7,9 +7,9 @@ import { Colors } from '../constants/Colors';
 import { useTranslation } from 'react-i18next';
 
 const FILTERS = [
-  { id: 'all', label: t('common.all') },
-  { id: 'universe', label: t('universe.universes') },
-  { id: 'city', label: t('cities.cities') },
+  { id: 'all', label: 'All' },
+  { id: 'universe', label: 'Universes' },
+  { id: 'city', label: 'Cities' },
   { id: 'airport', label: 'Airports' },
 ];
 
@@ -42,10 +42,10 @@ export default function ExploreScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>{t('navigation.explore')}</Text>
+        <Text style={styles.title}>Explore</Text>
         <TouchableOpacity style={styles.searchButton}>
           <Ionicons name="search" size={20} color="#6B7280" />
-          <Text style={styles.searchText}>{t('atlas.searchAtlas')}</Text>
+          <Text style={styles.searchText}>Search cities, universes...</Text>
         </TouchableOpacity>
       </View>
 

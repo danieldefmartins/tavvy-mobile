@@ -25,6 +25,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 import {
   getFeaturedArticle,
   getTrendingArticles,
@@ -34,7 +35,6 @@ import {
   type AtlasUniverse,
   type AtlasCategory,
 } from '../lib/atlas';
-import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -165,9 +165,9 @@ const MOCK_UNIVERSES = [
 ];
 
 export default function AtlasHomeScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { theme, isDark } = useThemeContext();
-  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
 
   const [featuredArticle, setFeaturedArticle] = useState<AtlasArticle | null>(
@@ -227,7 +227,7 @@ export default function AtlasHomeScreen() {
         <SafeAreaView>
           {/* Header Content */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>{t('atlas.atlas')}</Text>
+            <Text style={styles.headerTitle}>Atlas</Text>
 
             <TouchableOpacity
               onPress={() => navigation.navigate('AtlasSearch', {})}
@@ -328,42 +328,37 @@ export default function AtlasHomeScreen() {
                 </Text>
 
                 <View style={styles.trendingFooter}>
+                  <View
+                    style={[
+                      styles.categoryBadge,
+                      { backgroundColor: article.category?.color || '#14b8a6' },
+                    ]}
+                  >
+                    <Text style={styles.categoryBadgeText}>
+                      {article.category?.name.toUpperCase()}
+                    </Text>
+                  </View>
+
                   <View style={styles.trendingStatsRow}>
-                    <Ionicons
-                      name="time-outline"
-                      size={12}
-                      color={isDark ? theme.textMuted : '#6B7280'}
-                      style={{ marginRight: 4 }}
-                    />
+                    <Ionicons name="heart" size={14} color="#EF4444" style={{ marginRight: 4 }} />
                     <Text
                       style={[
                         styles.trendingStatsText,
-                        { color: isDark ? theme.textMuted : '#6B7280' },
+                        { color: isDark ? theme.textSecondary : '#6B7280' },
+                      ]}
+                    >
+                      {formatNumber(article.love_count)}
+                    </Text>
+                    <Text style={[styles.trendingDot, { color: isDark ? theme.border : '#D1D5DB' }]}>
+                      •
+                    </Text>
+                    <Text
+                      style={[
+                        styles.trendingStatsText,
+                        { color: isDark ? theme.textSecondary : '#6B7280' },
                       ]}
                     >
                       {article.read_time_minutes} min read
-                    </Text>
-                    <Text
-                      style={[
-                        styles.trendingDot,
-                        { color: isDark ? theme.border : '#D1D5DB' },
-                      ]}
-                    >
-                      •
-                    </Text>
-                    <Ionicons
-                      name="eye-outline"
-                      size={12}
-                      color={isDark ? theme.textMuted : '#6B7280'}
-                      style={{ marginRight: 4 }}
-                    />
-                    <Text
-                      style={[
-                        styles.trendingStatsText,
-                        { color: isDark ? theme.textMuted : '#6B7280' },
-                      ]}
-                    >
-                      {formatNumber(article.view_count)}
                     </Text>
                   </View>
                 </View>
@@ -381,45 +376,36 @@ export default function AtlasHomeScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.universesScroll}
+            style={styles.universesScroll}
+            contentContainerStyle={{ paddingRight: 20, paddingLeft: 20 }}
           >
-            {universes.map((universe, index) => (
+            {universes.map((universe) => (
               <TouchableOpacity
                 key={universe.id}
                 style={[
                   styles.universeCard,
-                  {
-                    backgroundColor: isDark ? theme.surface : '#fff',
-                    marginLeft: index === 0 ? 20 : 0,
-                  },
+                  { backgroundColor: isDark ? theme.surface : '#fff' },
                 ]}
                 activeOpacity={0.8}
                 onPress={() =>
-                  navigation.navigate('UniverseDetail', { universe })
+                  navigation.navigate('UniverseDetail', { universeId: universe.id, universe })
                 }
               >
-                <Image
-                  source={{ uri: universe.thumbnail_image_url }}
-                  style={styles.universeImage}
-                />
-                <View
-                  style={[
-                    styles.universeInfo,
-                    { backgroundColor: isDark ? theme.surface : '#fff' },
-                  ]}
-                >
+                <Image source={{ uri: universe.thumbnail_image_url }} style={styles.universeImage} />
+                <View style={styles.universeInfo}>
                   <Text
                     style={[
                       styles.universeName,
                       { color: isDark ? theme.text : '#111827' },
                     ]}
+                    numberOfLines={1}
                   >
                     {universe.name}
                   </Text>
                   <Text
                     style={[
                       styles.universePlaces,
-                      { color: isDark ? theme.textMuted : '#6B7280' },
+                      { color: isDark ? theme.textSecondary : '#6B7280' },
                     ]}
                   >
                     {universe.place_count} places
@@ -429,6 +415,8 @@ export default function AtlasHomeScreen() {
             ))}
           </ScrollView>
         </View>
+
+        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );
@@ -443,71 +431,74 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#fff',
   },
-  // New Solid Header
+
+  // FULL WIDTH SOLID HEADER - NO rounded corners
   headerGradient: {
-    backgroundColor: '#0f1233', // Solid color
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-    // No bottom border
+    backgroundColor: '#0f1233',
+    paddingBottom: 14,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    height: 56, // Standard header height
+    paddingTop: Platform.OS === 'android' ? 12 : 8,
+    height: 44,
   },
   headerTitle: {
-    color: '#fff',
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '800',
+    color: '#fff',
     letterSpacing: -0.5,
   },
   searchButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
-  // ScrollView
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingTop: 20,
+    paddingBottom: 20,
   },
 
-  // Featured Card - Floating
+  // Featured Card
   featuredCard: {
     marginHorizontal: 20,
-    marginTop: 20,
-    borderRadius: 16,
-    backgroundColor: '#fff',
+    height: 240,
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#1F2937',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 5,
-    height: width * 0.8,
+    shadowRadius: 16,
+    elevation: 6,
+    marginBottom: 8,
   },
   featuredImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 16,
+    resizeMode: 'cover',
   },
   featuredOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    borderRadius: 16,
-    padding: 20,
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.25)',
     justifyContent: 'space-between',
+    padding: 20,
   },
   featuredBadge: {
-    backgroundColor: '#E53E3E',
+    backgroundColor: '#F59E0B',
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 6,
     alignSelf: 'flex-start',
     marginTop: 4,

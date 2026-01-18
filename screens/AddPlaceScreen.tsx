@@ -1,4 +1,3 @@
-'''
 import React, { useState, useEffect } from 'react';
 import { Alert, View, TouchableOpacity, Text, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,11 +24,11 @@ const buildCategoryOptions = (): { primary: string[]; subcategories: { [key: str
 const categoryOptions = buildCategoryOptions();
 
 // Dynamic form steps - subcategory step is added based on primary category selection
-const getFormSteps = (selectedCategory: string | null, t: any): FormStep[] => {
+const getFormSteps = (selectedCategory: string | null): FormStep[] => {
   const steps: FormStep[] = [
     {
       id: 'category',
-      title: t('add.category'),
+      title: "Category",
       question: "What kind of place is it?",
       type: 'select',
       options: categoryOptions.primary,
@@ -81,7 +80,7 @@ const getFormSteps = (selectedCategory: string | null, t: any): FormStep[] => {
     },
     {
       id: 'photos',
-      title: t('places.photos'),
+      title: "Photos",
       question: "Add a photo to show the vibe.",
       type: 'photo',
     }
@@ -111,13 +110,13 @@ export default function AddPlaceScreen() {
   const [previousStepId, setPreviousStepId] = useState<string | null>(null);
   const [showScanOption, setShowScanOption] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [formSteps, setFormSteps] = useState<FormStep[]>(getFormSteps(null, t));
+  const [formSteps, setFormSteps] = useState<FormStep[]>(getFormSteps(null));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Update form steps when category changes
   useEffect(() => {
-    setFormSteps(getFormSteps(selectedCategory, t));
-  }, [selectedCategory, t]);
+    setFormSteps(getFormSteps(selectedCategory));
+  }, [selectedCategory]);
 
   const handleComplete = async (data: any) => {
     if (isSubmitting) return;
@@ -128,7 +127,7 @@ export default function AddPlaceScreen() {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
-        Alert.alert(t('common.error'), "You must be logged in to add a place.");
+        Alert.alert("Error", "You must be logged in to add a place.");
         setIsSubmitting(false);
         return;
       }
@@ -217,7 +216,7 @@ export default function AddPlaceScreen() {
       
       if (insertError) {
         console.error('Error inserting place:', insertError);
-        Alert.alert(t('common.error'), t('errors.somethingWentWrong', { message: insertError.message }));
+        Alert.alert("Error", `Failed to add place: ${insertError.message}`);
         setIsSubmitting(false);
         return;
       }
@@ -225,14 +224,14 @@ export default function AddPlaceScreen() {
       console.log('Place added successfully:', insertedPlace);
       
       Alert.alert(
-        t('success.success'), 
+        "Success!", 
         "Place added successfully. Thank you for contributing!",
-        [{ text: t('common.done'), onPress: () => navigation.goBack() }]
+        [{ text: "OK", onPress: () => navigation.goBack() }]
       );
       
     } catch (error) {
       console.error('Error adding place:', error);
-      Alert.alert(t('common.error'), t('errors.somethingWentWrong'));
+      Alert.alert("Error", "An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -257,7 +256,7 @@ export default function AddPlaceScreen() {
     Alert.alert(
       "Card Scanned!", 
       "Form has been pre-filled with business card details. Review and edit as needed.",
-      [{ text: t('common.done') }]
+      [{ text: "OK" }]
     );
   };
 
@@ -301,7 +300,7 @@ export default function AddPlaceScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{t('places.addPlace')}</Text>
+          <Text style={styles.headerTitle}>Add Place</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -320,63 +319,67 @@ export default function AddPlaceScreen() {
             Scan it to auto-fill the form with name, address, phone, and website.
           </Text>
 
-          <TouchableOpacity style={styles.scanButton} onPress={startScan}>
-            <Ionicons name="camera-outline" size={24} color="#fff" />
-            <Text style={styles.scanButtonText}>Scan Business Card</Text>
+          {/* Scan Card Option */}
+          <TouchableOpacity style={styles.scanCard} onPress={startScan}>
+            <View style={styles.scanIconContainer}>
+              <Ionicons name="camera" size={32} color="#fff" />
+            </View>
+            <View style={styles.scanCardContent}>
+              <Text style={styles.scanCardTitle}>Scan Business Card</Text>
+              <Text style={styles.scanCardDescription}>
+                Take a photo and we'll extract the details
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#2DD4BF" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.skipButton} onPress={skipScan}>
-            <Text style={styles.skipButtonText}>Skip & Enter Manually</Text>
+          {/* Manual Entry Option */}
+          <TouchableOpacity style={styles.manualCard} onPress={skipScan}>
+            <View style={styles.manualIconContainer}>
+              <Ionicons name="create-outline" size={28} color="#666" />
+            </View>
+            <View style={styles.scanCardContent}>
+              <Text style={styles.manualCardTitle}>Enter Manually</Text>
+              <Text style={styles.scanCardDescription}>
+                Type in the place details yourself
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#999" />
           </TouchableOpacity>
+
+          {/* Tips */}
+          <View style={styles.tipsContainer}>
+            <Text style={styles.tipsTitle}>Tips for scanning:</Text>
+            <View style={styles.tipRow}>
+              <Ionicons name="checkmark-circle" size={16} color="#2DD4BF" />
+              <Text style={styles.tipText}>Good lighting helps accuracy</Text>
+            </View>
+            <View style={styles.tipRow}>
+              <Ionicons name="checkmark-circle" size={16} color="#2DD4BF" />
+              <Text style={styles.tipText}>Hold the card flat and steady</Text>
+            </View>
+            <View style={styles.tipRow}>
+              <Ionicons name="checkmark-circle" size={16} color="#2DD4BF" />
+              <Text style={styles.tipText}>Make sure text is readable</Text>
+            </View>
+          </View>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <QuickFormEngine
-      steps={formSteps}
-      onComplete={handleComplete}
-      onStepChange={handleStepChange}
-      initialData={initialData}
-      isSubmitting={isSubmitting}
-      headerRightAction={showScanOption ? undefined : () => {}}
-      headerRightIcon={showScanOption ? undefined : 'camera-outline'}
-      headerRightText={showScanOption ? undefined : 'Scan'}
-      onHeaderRightPress={showScanOption ? undefined : startScan}
-      headerTitle={t('places.addPlace')}
-      finalButtonText={t('places.addPlace')}
-      renderCustomStep={(step, data, onDataChange) => {
-        if (step.id === 'contact') {
-          return (
-            <View>
-              <Text style={styles.question}>{step.question}</Text>
-              {/* Custom fields for phone, website, email */}
-            </View>
-          );
-        }
-        if (step.id === 'name') {
-          return (
-            <View>
-              <Text style={styles.question}>{step.question}</Text>
-              {/* Your custom name input component */}
-              <View style={styles.tipsContainer}>
-                <Text style={styles.tipsTitle}>Tips for a great entry:</Text>
-                <View style={styles.tipRow}>
-                  <Ionicons name="checkmark-circle-outline" size={18} color="#4CAF50" />
-                  <Text style={styles.tipText}>Use the official business name.</Text>
-                </View>
-                <View style={styles.tipRow}>
-                  <Ionicons name="close-circle-outline" size={18} color="#F44336" />
-                  <Text style={styles.tipText}>Avoid adding extra details or keywords.</Text>
-                </View>
-              </View>
-            </View>
-          );
-        }
-        return null;
-      }}
-    />
+    <View style={{ flex: 1 }}>
+      <QuickFormEngine
+        formId="draft_add_place"
+        title="New Place"
+        steps={formSteps}
+        initialData={initialData}
+        onComplete={handleComplete}
+        onCancel={() => navigation.goBack()}
+        onStepChange={handleStepChange}
+      />
+    </View>
   );
 }
 
@@ -392,89 +395,112 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
   },
   backButton: {
     padding: 8,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
     color: '#333',
   },
   progressContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
   progressBar: {
-    height: 8,
-    backgroundColor: '#eee',
-    borderRadius: 4,
-    overflow: 'hidden',
+    height: 4,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 2,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#007AFF',
+    backgroundColor: '#2DD4BF',
+    borderRadius: 2,
   },
   content: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 32,
   },
   stepLabel: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: '#888',
+    fontWeight: '600',
+    color: '#2DD4BF',
     letterSpacing: 1,
     marginBottom: 8,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 12,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
-    textAlign: 'center',
+    lineHeight: 22,
     marginBottom: 32,
-    lineHeight: 24,
   },
-  scanButton: {
+  scanCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#007AFF',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 30,
+    backgroundColor: '#f8fffe',
+    borderWidth: 2,
+    borderColor: '#2DD4BF',
+    borderRadius: 16,
+    padding: 16,
     marginBottom: 16,
-    width: '100%',
   },
-  scanButtonText: {
-    color: '#fff',
-    fontSize: 18,
+  scanIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#2DD4BF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  scanCardContent: {
+    flex: 1,
+  },
+  scanCardTitle: {
+    fontSize: 17,
     fontWeight: '600',
-    marginLeft: 12,
+    color: '#1a1a1a',
+    marginBottom: 4,
   },
-  skipButton: {
-    padding: 12,
+  scanCardDescription: {
+    fontSize: 14,
+    color: '#666',
   },
-  skipButtonText: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontWeight: '500',
+  manualCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f9f9f9',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 32,
   },
-  question: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 24,
+  manualIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  manualCardTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 4,
   },
   tipsContainer: {
-    marginTop: 24,
     backgroundColor: '#f9f9f9',
     borderRadius: 12,
     padding: 16,
@@ -496,4 +522,3 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 });
-'''

@@ -24,8 +24,8 @@ import {
 } from '../lib/atlas';
 
 export default function AtlasSearchScreen() {
-  const navigation = useNavigation();
   const { t } = useTranslation();
+  const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<AtlasArticle[]>([]);
   const [loading, setLoading] = useState(false);
@@ -72,7 +72,7 @@ export default function AtlasSearchScreen() {
         <View style={styles.searchBarContainer}>
           <TextInput
             style={styles.searchInput}
-            placeholder={t('atlas.searchAtlas')}
+            placeholder="Search articles, universes, places..."
             value={searchQuery}
             onChangeText={setSearchQuery}
             onSubmitEditing={handleSearch}
@@ -101,7 +101,7 @@ export default function AtlasSearchScreen() {
             {/* Results Count */}
             <View style={styles.resultsHeader}>
               <Text style={styles.resultsCount}>
-                {t('atlas.resultsFound', { count: results.length, query: searchQuery })}
+                {results.length} results for "{searchQuery}"
               </Text>
             </View>
 
@@ -129,7 +129,7 @@ export default function AtlasSearchScreen() {
                           { backgroundColor: article.category?.color || '#14b8a6' },
                         ]}
                       >
-                        <Text style={styles.resultBadgeText}>{t('atlas.articles').toUpperCase()}</Text>
+                        <Text style={styles.resultBadgeText}>ARTICLE</Text>
                       </View>
                       <Text style={styles.resultTitle} numberOfLines={2}>
                         {article.title}
@@ -145,7 +145,7 @@ export default function AtlasSearchScreen() {
                         </Text>
                         <Text style={styles.resultDot}>•</Text>
                         <Text style={styles.resultReadTime}>
-                          {t('atlas.readTime', { minutes: article.read_time_minutes })}
+                          {article.read_time_minutes} min read
                         </Text>
                         <Text style={styles.resultDot}>•</Text>
                         <Text style={styles.resultLoves}>
@@ -159,9 +159,9 @@ export default function AtlasSearchScreen() {
             ) : (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyIcon}>🔍</Text>
-                <Text style={styles.emptyTitle}>{t('atlas.noResults')}</Text>
+                <Text style={styles.emptyTitle}>No results found</Text>
                 <Text style={styles.emptyText}>
-                  {t('atlas.tryDifferentKeywords')}
+                  Try different keywords or browse categories
                 </Text>
               </View>
             )}
@@ -169,9 +169,9 @@ export default function AtlasSearchScreen() {
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🗺️</Text>
-            <Text style={styles.emptyTitle}>{t('atlas.searchAtlas')}</Text>
+            <Text style={styles.emptyTitle}>Search Tavvy Atlas</Text>
             <Text style={styles.emptyText}>
-              {t('atlas.findArticles')}
+              Find articles, guides, and universes
             </Text>
           </View>
         )}

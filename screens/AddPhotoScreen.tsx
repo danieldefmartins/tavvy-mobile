@@ -1,4 +1,4 @@
-'''import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,7 +35,7 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
           setCapturedImage(photo.uri);
         }
       } catch (error) {
-        Alert.alert(t('common.error'), t('errors.somethingWentWrong'));
+        Alert.alert('Error', 'Failed to take picture');
       }
     }
   };
@@ -54,8 +54,8 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
   };
 
   const handleSave = () => {
-    Alert.alert(t('success.success'), t('success.requestSubmitted'), [
-      { text: t('common.done'), onPress: () => navigation.goBack() }
+    Alert.alert('Success', 'Photo added successfully!', [
+      { text: 'OK', onPress: () => navigation.goBack() }
     ]);
   };
 
@@ -70,12 +70,12 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
   if (!permission.granted) {
     return (
       <View style={styles.container}>
-        <Text style={styles.message}>{t('errors.cameraPermission')}</Text>
+        <Text style={styles.message}>No access to camera</Text>
         <TouchableOpacity onPress={requestPermission} style={styles.backButtonLarge}>
-          <Text style={styles.backButtonText}>{t('common.grantPermission')}</Text>
+          <Text style={styles.backButtonText}>Grant Permission</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButtonLarge, { marginTop: 12, backgroundColor: '#666' }]}>
-          <Text style={styles.backButtonText}>{t('common.back')}</Text>
+          <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -94,10 +94,10 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
             </View>
             <View style={styles.previewFooter}>
               <TouchableOpacity onPress={handleRetake} style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>{t('common.retake')}</Text>
+                <Text style={styles.secondaryButtonText}>Retake</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleSave} style={styles.primaryButton}>
-                <Text style={styles.primaryButtonText}>{t('places.usePhoto')}</Text>
+                <Text style={styles.primaryButtonText}>Use Photo</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -114,7 +114,7 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
               <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
                 <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
-              <Text style={styles.cameraTitle}>{placeName || t('places.addPhoto')}</Text>
+              <Text style={styles.cameraTitle}>{placeName || 'Add Photo'}</Text>
               <TouchableOpacity 
                 onPress={() => setFacing(facing === 'back' ? 'front' : 'back')} 
                 style={styles.iconButton}
@@ -275,4 +275,3 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 });
-'''

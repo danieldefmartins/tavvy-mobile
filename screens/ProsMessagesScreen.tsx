@@ -21,8 +21,10 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { ProsColors } from '../constants/ProsConfig';
 import { useTavvyChat } from '../hooks/useTavvyChat';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 export default function ProsMessagesScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<any>();
   const { conversationId: initialId, leadId, customerName } = route.params || {};

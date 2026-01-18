@@ -26,10 +26,10 @@ import {
 type SortOption = 'popular' | 'recent' | 'most_loved';
 
 export default function CategoryBrowseScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { category } = route.params as { category: AtlasCategory };
-  const { t } = useTranslation();
 
   const [articles, setArticles] = useState<AtlasArticle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,13 +83,13 @@ export default function CategoryBrowseScreen() {
   const getSortLabel = (sort: SortOption): string => {
     switch (sort) {
       case 'popular':
-        return t('atlas.mostPopular');
+        return 'Most Popular';
       case 'recent':
-        return t('atlas.mostRecent');
+        return 'Most Recent';
       case 'most_loved':
-        return t('atlas.mostLoved');
+        return 'Most Loved';
       default:
-        return t('atlas.sortBy');
+        return 'Sort By';
     }
   };
 
@@ -112,7 +112,7 @@ export default function CategoryBrowseScreen() {
         <Text style={styles.categoryIcon}>{category.icon}</Text>
         <Text style={styles.categoryDescription}>{category.description}</Text>
         <Text style={styles.categoryStats}>
-          {t('atlas.articlesAvailable', { count: articles.length })}
+          {articles.length} articles available
         </Text>
       </View>
 
@@ -129,7 +129,7 @@ export default function CategoryBrowseScreen() {
                 sortBy === 'popular' && styles.sortChipTextActive,
               ]}
             >
-              {t('atlas.mostPopular')}
+              Most Popular
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -142,7 +142,7 @@ export default function CategoryBrowseScreen() {
                 sortBy === 'recent' && styles.sortChipTextActive,
               ]}
             >
-              {t('atlas.mostRecent')}
+              Most Recent
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -155,7 +155,7 @@ export default function CategoryBrowseScreen() {
                 sortBy === 'most_loved' && styles.sortChipTextActive,
               ]}
             >
-              {t('atlas.mostLoved')}
+              Most Loved
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -196,12 +196,12 @@ export default function CategoryBrowseScreen() {
               />
               <View style={styles.featuredOverlay}>
                 <View style={styles.featuredBadge}>
-                  <Text style={styles.featuredBadgeText}>{t('atlas.featured')}</Text>
+                  <Text style={styles.featuredBadgeText}>FEATURED</Text>
                 </View>
                 <Text style={styles.featuredTitle}>{articles[0].title}</Text>
                 <View style={styles.featuredMeta}>
                   <Text style={styles.featuredReadTime}>
-                    {t('atlas.minRead', { count: articles[0].read_time_minutes })}
+                    {articles[0].read_time_minutes} min read
                   </Text>
                   <Text style={styles.featuredDot}>•</Text>
                   <Text style={styles.featuredLoves}>
@@ -234,7 +234,7 @@ export default function CategoryBrowseScreen() {
                   </Text>
                   <View style={styles.articleMeta}>
                     <Text style={styles.articleReadTime}>
-                      {t('atlas.min', { count: article.read_time_minutes })}
+                      {article.read_time_minutes} min
                     </Text>
                     <Text style={styles.articleDot}>•</Text>
                     <Text style={styles.articleLoves}>
@@ -252,7 +252,7 @@ export default function CategoryBrowseScreen() {
               style={[styles.loadMoreButton, { backgroundColor: category.color }]}
               onPress={loadMore}
             >
-              <Text style={styles.loadMoreText}>{t('common.loadMore')}</Text>
+              <Text style={styles.loadMoreText}>Load more</Text>
             </TouchableOpacity>
           )}
 

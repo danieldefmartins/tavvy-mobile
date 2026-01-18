@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get('window');
 const COLUMN_COUNT = 3;
@@ -43,6 +44,7 @@ interface PlacePhotosScreenProps {
 }
 
 export default function PlacePhotosScreen({ route, navigation }: PlacePhotosScreenProps) {
+  const { t } = useTranslation();
   const { placeId, placeName, photos: initialPhotos } = route.params;
   
   const [photos, setPhotos] = useState<PlacePhoto[]>(initialPhotos || []);

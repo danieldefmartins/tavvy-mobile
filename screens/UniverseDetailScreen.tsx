@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import {
   getArticlesByUniverse,
   getSubUniverses,
@@ -51,6 +52,7 @@ const getCategoryFallbackImage = (category: string): string => {
 };
 
 export default function UniverseDetailScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { universe } = route.params as { universe: AtlasUniverse };

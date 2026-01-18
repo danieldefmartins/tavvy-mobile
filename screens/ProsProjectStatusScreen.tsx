@@ -4,11 +4,13 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { ProsColors } from '../constants/ProsConfig';
+import { useTranslation } from 'react-i18next';
 
 type RouteParams = { projectId: string; categoryName: string; timeline: string; budget: string; proCount: number };
 type ProResponse = { id: string; name: string; company: string; rating: number; reviews: number; estimate: string; responseTime: string; status: 'pending' | 'responded' | 'hired' };
 
 export default function ProsProjectStatusScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   const { projectId, categoryName, timeline, budget, proCount } = route.params;

@@ -21,12 +21,14 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProsColors } from '../constants/ProsConfig';
 import { ProsLeadCard } from '../components/ProsLeadCard';
 import { useProjectRequests, ProjectRequest } from '../hooks/useProjectRequests';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
 type FilterStatus = 'all' | 'pending' | 'contacted' | 'quoted' | 'won' | 'lost';
 
 export default function ProsLeadsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('all');

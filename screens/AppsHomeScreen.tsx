@@ -23,78 +23,78 @@ type AppItem = {
   comingSoon?: boolean;
 };
 
+const apps: AppItem[] = [
+  {
+    id: 'quick-finds',
+    name: 'Quick Finds',
+    icon: 'flash',
+    color: '#F59E0B',
+    bgColor: '#FEF3C7',
+    route: 'QuickFinds',
+    comingSoon: true,
+  },
+  {
+    id: 'paths',
+    name: 'Paths',
+    icon: 'git-branch',
+    color: '#6366F1',
+    bgColor: '#E0E7FF',
+    comingSoon: true,
+  },
+  {
+    id: 'happening',
+    name: 'Happening',
+    icon: 'sparkles',
+    color: '#EC4899',
+    bgColor: '#FCE7F3',
+    comingSoon: true,
+  },
+  {
+    id: 'map-lens',
+    name: 'Map Lens',
+    icon: 'scan',
+    color: '#10B981',
+    bgColor: '#D1FAE5',
+    comingSoon: true,
+  },
+  {
+    id: 'pros',
+    name: 'Pros',
+    icon: 'briefcase',
+    color: '#3B82F6',
+    bgColor: '#DBEAFE',
+    route: 'ProsHome',
+  },
+  {
+    id: 'saved',
+    name: 'Saved',
+    icon: 'bookmark',
+    color: '#F87171',
+    bgColor: '#FEE2E2',
+    route: 'SavedMain',
+  },
+  {
+    id: 'account',
+    name: 'Account',
+    icon: 'person',
+    color: '#6B7280',
+    bgColor: '#E5E7EB',
+    route: 'ProfileMain',
+  },
+  {
+    id: 'create',
+    name: 'Create',
+    icon: 'add-circle',
+    color: '#10B981',
+    bgColor: '#D1FAE5',
+    route: 'UniversalAdd',
+  },
+];
+
 export default function AppsHomeScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const [loginMode, setLoginMode] = useState<'personal' | 'pro'>('personal');
-  const { t } = useTranslation();
-
-  const apps: AppItem[] = [
-    {
-      id: 'quick-finds',
-      name: t('home.quickFinds'),
-      icon: 'flash',
-      color: '#F59E0B',
-      bgColor: '#FEF3C7',
-      route: 'QuickFinds',
-      comingSoon: true,
-    },
-    {
-      id: 'paths',
-      name: 'Paths',
-      icon: 'git-branch',
-      color: '#6366F1',
-      bgColor: '#E0E7FF',
-      comingSoon: true,
-    },
-    {
-      id: 'happening',
-      name: 'Happening',
-      icon: 'sparkles',
-      color: '#EC4899',
-      bgColor: '#FCE7F3',
-      comingSoon: true,
-    },
-    {
-      id: 'map-lens',
-      name: 'Map Lens',
-      icon: 'scan',
-      color: '#10B981',
-      bgColor: '#D1FAE5',
-      comingSoon: true,
-    },
-    {
-      id: 'pros',
-      name: t('navigation.pros'),
-      icon: 'briefcase',
-      color: '#3B82F6',
-      bgColor: '#DBEAFE',
-      route: 'ProsHome',
-    },
-    {
-      id: 'saved',
-      name: t('navigation.saved'),
-      icon: 'bookmark',
-      color: '#F87171',
-      bgColor: '#FEE2E2',
-      route: 'SavedMain',
-    },
-    {
-      id: 'account',
-      name: t('profile.profile'),
-      icon: 'person',
-      color: '#6B7280',
-      bgColor: '#E5E7EB',
-      route: 'ProfileMain',
-    },
-    {
-      id: 'create',
-      name: 'Create',
-      icon: 'add-circle',
-      color: '#10B981',
-      bgColor: '#D1FAE5',
-      route: 'UniversalAdd',
-    },
-  ];
 
   const handleAppPress = (app: AppItem) => {
     if (app.comingSoon) {
@@ -111,7 +111,7 @@ export default function AppsHomeScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>{t('navigation.apps')}</Text>
+          <Text style={styles.title}>Apps</Text>
           <Text style={styles.subtitle}>Tools & shortcuts</Text>
         </View>
 
@@ -268,14 +268,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 30,
   },
-});
-});
-});
-});
-});
-});
-});
-});
-});
-});
 });

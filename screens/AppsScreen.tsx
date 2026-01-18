@@ -7,6 +7,7 @@
  * - Toggle now matches HomeScreen's Standard/Map toggle EXACTLY (full-width, dark navy active, no icons)
  * - Header banner extends to the very top of the screen (no SafeAreaView gap)
  * - All app tiles preserved (Universes, Rides, RV & Camping, Atlas, Pros, etc.)
+ * - NAVIGATION FIX: Properly handles cross-tab navigation using navigation.getParent()
  */
 
 import React from 'react';
@@ -24,7 +25,6 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
-import { useTranslation } from 'react-i18next';
 
 // Match HomeScreen's ACCENT color exactly
 const ACCENT = '#0F1233';
@@ -39,28 +39,32 @@ interface AppTile {
   iconColor: string;
   route?: string;
   params?: object;
+  isTab?: boolean; // Flag to indicate if this navigates to a different tab
+  tabName?: string; // The actual tab name to navigate to
 }
 
 const APP_TILES: AppTile[] = [
   {
     id: 'quick-finds',
-    name: "t('home.quickFinds')',
+    name: 'Quick Finds',
     icon: 'flash',
     iconType: 'ionicons',
     backgroundColor: '#FEF3C7',
     backgroundColorDark: '#78350F',
     iconColor: '#F59E0B',
-    route: 'Home',
+    isTab: true,
+    tabName: 'Home',
   },
   {
     id: 'universes',
-    name: "t('universe.universes')',
+    name: 'Universes',
     icon: 'planet',
     iconType: 'ionicons',
     backgroundColor: '#CCFBF1',
     backgroundColorDark: '#134E4A',
     iconColor: '#14B8A6',
-    route: 'Universes',
+    isTab: true,
+    tabName: 'Explore',
   },
   {
     id: 'rides',
@@ -84,17 +88,18 @@ const APP_TILES: AppTile[] = [
   },
   {
     id: 'atlas',
-    name: "t('atlas.atlas')',
+    name: 'Atlas',
     icon: 'book',
     iconType: 'ionicons',
     backgroundColor: '#E0E7FF',
     backgroundColorDark: '#312E81',
     iconColor: '#4F46E5',
-    route: 'Atlas',
+    isTab: true,
+    tabName: 'Atlas',
   },
   {
     id: 'cities',
-    name: "t('cities.cities')',
+    name: 'Cities',
     icon: 'business',
     iconType: 'ionicons',
     backgroundColor: '#FEE2E2',
@@ -104,23 +109,24 @@ const APP_TILES: AppTile[] = [
   },
   {
     id: 'pros',
-    name: "t('navigation.pros')',
+    name: 'Pros',
     icon: 'construct',
     iconType: 'ionicons',
     backgroundColor: '#DBEAFE',
     backgroundColorDark: '#1E3A8A',
     iconColor: '#3B82F6',
-    route: 'Pros',
+    isTab: true,
+    tabName: 'Pros',
   },
   {
     id: 'saved',
-    name: "t('navigation.saved')',
+    name: 'Saved',
     icon: 'heart',
     iconType: 'ionicons',
     backgroundColor: '#FCE7F3',
     backgroundColorDark: '#831843',
     iconColor: '#EC4899',
-    route: 'Saved',
+    route: 'SavedMain',
   },
   {
     id: 'account',
@@ -130,7 +136,7 @@ const APP_TILES: AppTile[] = [
     backgroundColor: '#E5E7EB',
     backgroundColorDark: '#374151',
     iconColor: '#6B7280',
-    route: 'Profile',
+    route: 'ProfileMain',
   },
   {
     id: 'create',
@@ -148,20 +154,35 @@ export default function AppsScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
   const { theme, isDark, setThemeMode } = useThemeContext();
-  const { t } = useTranslation();
 
   const handleTilePress = (tile: AppTile) => {
-    if (tile.route) {
+    if (tile.isTab && tile.tabName) {
+      // Navigate to a different tab using getParent to access the tab navigator
+      const tabNavigator = navigation.getParent();
+      if (tabNavigator) {
+        tabNavigator.navigate(tile.tabName);
+      } else {
+        // Fallback: try direct navigation
+        navigation.navigate(tile.tabName);
+      }
+    } else if (tile.route) {
+      // Navigate within the current stack
       navigation.navigate(tile.route, tile.params || {});
     }
   };
 
   const handlePersonalLogin = () => {
-    navigation.navigate('Profile', { screen: 'Login' });
+    navigation.navigate('Login');
   };
 
   const handleProLogin = () => {
-    navigation.navigate('Pros', { screen: 'ProsRegistration' });
+    // Navigate to Pros tab, then to ProsRegistration screen
+    const tabNavigator = navigation.getParent();
+    if (tabNavigator) {
+      tabNavigator.navigate('Pros', { screen: 'ProsRegistration' });
+    } else {
+      navigation.navigate('Pros', { screen: 'ProsRegistration' });
+    }
   };
 
   const renderIcon = (tile: AppTile, size: number = 28) => {
@@ -265,7 +286,7 @@ export default function AppsScreen() {
       >
         {/* Title Section */}
         <View style={styles.header}>
-          <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>{t('navigation.apps')}</Text>
+          <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>Apps</Text>
           <Text style={[styles.headerSubtitle, dynamicStyles.headerSubtitle]}>Tools & shortcuts</Text>
         </View>
 
@@ -309,7 +330,7 @@ export default function AppsScreen() {
               >
                 {renderIcon(tile)}
               </View>
-              <Text style={[styles.tileName, dynamicStyles.tileName]}>{tile.name.startsWith('t(') ? t(tile.name.slice(3, -2)) : tile.name}</Text>
+              <Text style={[styles.tileName, dynamicStyles.tileName]}>{tile.name}</Text>
             </TouchableOpacity>
           ))}
         </View>

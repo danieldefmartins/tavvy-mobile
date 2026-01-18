@@ -1,4 +1,3 @@
-
 /**
  * Experience Paths Screen
  * Install path: screens/ExperiencePathsScreen.tsx
@@ -213,14 +212,14 @@ export default function ExperiencePathsScreen() {
       <View style={styles.featuredContent}>
         <View style={styles.featuredBadge}>
           <Ionicons name="star" size={12} color="#FFFFFF" />
-          <Text style={styles.featuredBadgeText}>{t('experiencePaths.popular', 'Popular')}</Text>
+          <Text style={styles.featuredBadgeText}>Popular</Text>
         </View>
         <Text style={styles.featuredTitle}>{item.title}</Text>
         <View style={styles.featuredMeta}>
           <Ionicons name="time-outline" size={14} color="#FFFFFF" />
           <Text style={styles.featuredMetaText}>{item.duration}</Text>
           <Ionicons name="flag-outline" size={14} color="#FFFFFF" style={{ marginLeft: 12 }} />
-          <Text style={styles.featuredMetaText}>{t('experiencePaths.stops', '{{count}} stops', { count: item.stops })}</Text>
+          <Text style={styles.featuredMetaText}>{item.stops} stops</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -257,7 +256,7 @@ export default function ExperiencePathsScreen() {
             </View>
           ))}
           {item.steps.length > 3 && (
-            <Text style={styles.moreSteps}>{t('experiencePaths.more', '+{{count}} more', { count: item.steps.length - 3 })}</Text>
+            <Text style={styles.moreSteps}>+{item.steps.length - 3} more</Text>
           )}
         </View>
 
@@ -269,7 +268,7 @@ export default function ExperiencePathsScreen() {
           <View style={styles.pathMeta}>
             <Ionicons name="people-outline" size={14} color={ExperienceColors.textLight} />
             <Text style={styles.pathMetaText}>
-              {t('experiencePaths.completed', '{{count}} completed', { count: item.completions > 1000 ? `${(item.completions / 1000).toFixed(1)}k` : item.completions })}
+              {item.completions > 1000 ? `${(item.completions / 1000).toFixed(1)}k` : item.completions} completed
             </Text>
           </View>
         </View>
@@ -295,36 +294,30 @@ export default function ExperiencePathsScreen() {
                 style={styles.headerLogo}
                 resizeMode="contain"
               />
-              <Text style={styles.headerTitle}>{t('experiencePaths.experiences', 'Experiences')}</Text>
+              <Text style={styles.headerTitle}>Experiences</Text>
             </View>
-            <View style={styles.headerRight} />
+            <TouchableOpacity style={styles.searchButton}>
+              <Ionicons name="search" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
         </SafeAreaView>
       </LinearGradient>
 
-      <ScrollView style={styles.contentContainer}>
-        {/* Featured Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('experiencePaths.featuredPaths', 'Featured Paths')}</Text>
-          <FlatList
-            data={featuredPaths}
-            renderItem={renderFeaturedPath}
-            keyExtractor={item => item.id}
-            horizontal
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Category Pills */}
+        <View style={styles.categoriesContainer}>
+          <ScrollView 
+            horizontal 
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.featuredListContent}
-            snapToInterval={width - 60 + 16}
-            decelerationRate="fast"
-          />
-        </View>
-
-        {/* Categories Section */}
-        <View style={styles.categoryContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
-            {CATEGORIES.map(category => (
+            contentContainerStyle={styles.categoriesScroll}
+          >
+            {CATEGORIES.map((category) => (
               <TouchableOpacity
                 key={category.id}
-                style={[styles.categoryChip, selectedCategory === category.id && styles.categoryChipActive]}
+                style={[
+                  styles.categoryPill,
+                  selectedCategory === category.id && styles.categoryPillActive,
+                ]}
                 onPress={() => setSelectedCategory(category.id)}
               >
                 <Ionicons 
@@ -332,30 +325,47 @@ export default function ExperiencePathsScreen() {
                   size={16} 
                   color={selectedCategory === category.id ? '#FFFFFF' : ExperienceColors.primary} 
                 />
-                <Text style={[styles.categoryText, selectedCategory === category.id && styles.categoryTextActive]}>
-                  {t(`experiencePaths.${category.id}`, category.name)}
+                <Text style={[
+                  styles.categoryPillText,
+                  selectedCategory === category.id && styles.categoryPillTextActive,
+                ]}>
+                  {category.name}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
 
-        {/* All Paths Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('experiencePaths.allExperiencePaths', 'All Experience Paths')}</Text>
-          {filteredPaths.length > 0 ? (
+        {/* Featured Paths */}
+        {selectedCategory === 'all' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Popular Paths</Text>
             <FlatList
-              data={filteredPaths}
-              renderItem={renderPathCard}
-              keyExtractor={item => item.id}
-              scrollEnabled={false} // Use parent ScrollView
-              contentContainerStyle={{ paddingBottom: 32 }}
+              data={featuredPaths}
+              renderItem={renderFeaturedPath}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.featuredList}
             />
-          ) : (
+          </View>
+        )}
+
+        {/* All Paths */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            {selectedCategory === 'all' ? 'All Experience Paths' : CATEGORIES.find(c => c.id === selectedCategory)?.name}
+          </Text>
+          {filteredPaths.map((path) => (
+            <View key={path.id}>
+              {renderPathCard({ item: path })}
+            </View>
+          ))}
+          {filteredPaths.length === 0 && (
             <View style={styles.emptyState}>
-              <Ionicons name="map-outline" size={48} color={ExperienceColors.textMuted} />
-              <Text style={styles.emptyStateText}>{t('experiencePaths.noPathsAvailable', 'No paths available for this category.')}</Text>
-              <Text style={styles.emptyStateSubtext}>{t('experiencePaths.checkBackLater', 'Check back later or select another category.')}</Text>
+              <Ionicons name="compass-outline" size={48} color={ExperienceColors.textMuted} />
+              <Text style={styles.emptyStateText}>No paths found</Text>
+              <Text style={styles.emptyStateSubtext}>Check back later for new experiences</Text>
             </View>
           )}
         </View>
@@ -370,19 +380,21 @@ const styles = StyleSheet.create({
     backgroundColor: ExperienceColors.background,
   },
   headerGradient: {
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingBottom: 16,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   backButton: {
-    padding: 8,
-    marginLeft: -8,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitleContainer: {
     flexDirection: 'row',
@@ -390,113 +402,103 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerLogo: {
-    width: 28,
-    height: 28,
+    width: 80,
+    height: 24,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
-  headerRight: {
-    width: 40, // to balance the back button
+  searchButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  contentContainer: {
-    flex: 1,
+  categoriesContainer: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
-  section: {
-    marginTop: 24,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: ExperienceColors.text,
-    marginHorizontal: 16,
-    marginBottom: 16,
-  },
-  featuredListContent: {
+  categoriesScroll: {
     paddingHorizontal: 16,
-    paddingRight: 32,
+    paddingVertical: 12,
   },
-  categoryContainer: {
-    marginTop: 16,
-  },
-  categoryScroll: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  categoryChip: {
+  categoryPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    gap: 8,
+    backgroundColor: '#EDE9FE',
+    marginRight: 8,
   },
-  categoryChipActive: {
+  categoryPillActive: {
     backgroundColor: ExperienceColors.primary,
-    borderColor: ExperienceColors.primary,
   },
-  categoryText: {
+  categoryPillText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
     color: ExperienceColors.primary,
   },
-  categoryTextActive: {
+  categoryPillTextActive: {
     color: '#FFFFFF',
   },
+  section: {
+    paddingVertical: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: ExperienceColors.text,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  featuredList: {
+    paddingHorizontal: 16,
+  },
   featuredCard: {
-    width: width - 80,
-    height: (width - 80) * 0.6,
-    borderRadius: 20,
-    marginRight: 16,
-    backgroundColor: ExperienceColors.cardBg,
+    width: width * 0.8,
+    height: 200,
+    borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    marginRight: 12,
   },
   featuredImage: {
     width: '100%',
     height: '100%',
   },
   featuredGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '70%',
+    ...StyleSheet.absoluteFillObject,
   },
   featuredContent: {
     position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
   },
   featuredBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignSelf: 'flex-start',
+    gap: 4,
+    backgroundColor: ExperienceColors.primary,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    alignSelf: 'flex-start',
     marginBottom: 8,
-    gap: 4,
   },
   featuredBadgeText: {
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontSize: 11,
+    fontWeight: '600',
     color: '#FFFFFF',
   },
   featuredTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 8,
   },

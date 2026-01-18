@@ -22,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabaseClient';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 32;
@@ -56,6 +57,7 @@ type FilterOption = 'all' | 'rv_park' | 'campground' | 'dump_station';
 // ============================================
 
 export default function RVCampingBrowseScreen({ navigation }: { navigation: any }) {
+  const { t } = useTranslation();
   const { theme, isDark } = useThemeContext();
   
   const [places, setPlaces] = useState<Place[]>([]);

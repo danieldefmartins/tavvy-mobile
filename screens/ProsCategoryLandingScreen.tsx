@@ -11,6 +11,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { ProsColors } from '../constants/ProsConfig';
+import { useTranslation } from 'react-i18next';
 
 type RouteParams = {
   categoryId: string;
@@ -18,6 +19,7 @@ type RouteParams = {
 };
 
 export default function ProsCategoryLandingScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   

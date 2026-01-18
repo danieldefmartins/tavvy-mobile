@@ -27,10 +27,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
 export default function UniverseDiscoveryScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { theme, isDark } = useThemeContext();
   const [activeCategory, setActiveCategory] = useState('All');

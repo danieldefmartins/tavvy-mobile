@@ -161,9 +161,9 @@ const SIGNAL_COLORS = {
 // ============================================
 
 export default function CitiesBrowseScreen({ navigation }: { navigation: any }) {
+  const { t } = useTranslation();
   const { isDark } = useThemeContext();
   const theme = useTheme();
-  const { t } = useTranslation();
   
   const [cities, setCities] = useState<City[]>([]);
   const [loading, setLoading] = useState(true);
@@ -318,79 +318,87 @@ export default function CitiesBrowseScreen({ navigation }: { navigation: any }) 
           </LinearGradient>
         </View>
         
-        {/* Signal Badges */}
+        {/* Signal Badges - 2x2 Grid matching PlaceCard */}
         {renderSignalBadges(city.signals || [])}
       </TouchableOpacity>
     );
   };
 
-  const renderHeader = () => (
-    <View style={styles.headerContainer}>
-      <Text style={[styles.headerTitle, { color: theme.text }]}>{t('cities.cities')}</Text>
-      <View style={styles.sortContainer}>
-        <TouchableOpacity 
-          style={[styles.sortButton, sortBy === 'popular' && styles.sortButtonActive, { backgroundColor: isDark ? theme.surface : '#F0F0F0' }]}
-          onPress={() => setSortBy('popular')}
-        >
-          <Text style={[styles.sortButtonText, { color: theme.text }]}>Popular</Text>
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? theme.background : '#F2F2F7' }]}>
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color={isDark ? theme.text : '#000'} />
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.sortButton, sortBy === 'alphabetical' && styles.sortButtonActive, { backgroundColor: isDark ? theme.surface : '#F0F0F0' }]}
-          onPress={() => setSortBy('alphabetical')}
-        >
-          <Text style={[styles.sortButtonText, { color: theme.text }]}>Alphabetical</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.sortButton, sortBy === 'nearby' && styles.sortButtonActive, { backgroundColor: isDark ? theme.surface : '#F0F0F0' }]}
-          onPress={() => setSortBy('nearby')}
-        >
-          <Text style={[styles.sortButtonText, { color: theme.text }]}>Nearby</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  if (loading && !refreshing) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={[styles.loadingText, { color: theme.text }]}>{t('common.loading')}</Text>
-      </View>
-    );
-  }
-
-  if (!cities.length) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        {renderHeader()}
-        <View style={styles.emptyContainer}>
-          <Ionicons name="map-outline" size={64} color={theme.text} />
-          <Text style={[styles.emptyText, { color: theme.text }]}>No cities found.</Text>
-          <Text style={[styles.emptySubtext, { color: theme.textMuted }]}>
-            Try a different filter or check back later.
+        <View style={styles.headerTitleContainer}>
+          <Text style={[styles.headerTitle, { color: isDark ? theme.text : '#000' }]}>🏙️ Cities</Text>
+          <Text style={[styles.headerSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
+            Discover and review cities around the world
           </Text>
         </View>
-      </SafeAreaView>
-    );
-  }
+      </View>
 
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <FlatList
-        data={cities}
-        renderItem={renderCityCard}
-        keyExtractor={(item, index) => `city-${item.id}-${index}`}
-        ListHeaderComponent={renderHeader}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContentContainer}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.primary}
-          />
-        }
-      />
+      {/* Sort Options */}
+      <View style={[styles.sortContainer, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortScroll}>
+          {(['popular', 'alphabetical', 'nearby'] as SortOption[]).map((option) => (
+            <TouchableOpacity
+              key={option}
+              style={[
+                styles.sortButton,
+                sortBy === option && styles.sortButtonActive,
+                { backgroundColor: sortBy === option ? '#EF4444' : (isDark ? theme.background : '#F2F2F7') }
+              ]}
+              onPress={() => setSortBy(option)}
+            >
+              <Text style={[
+                styles.sortButtonText,
+                { color: sortBy === option ? '#fff' : (isDark ? theme.textSecondary : '#666') }
+              ]}>
+                {option === 'popular' ? '🔥 Popular' : option === 'alphabetical' ? '🔤 A-Z' : '📍 Nearby'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Cities List */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#EF4444" />
+          <Text style={[styles.loadingText, { color: isDark ? theme.textSecondary : '#666' }]}>
+            Loading cities...
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={cities}
+          renderItem={renderCityCard}
+          keyExtractor={(item, index) => `city-list-${item.id}-${index}`}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#EF4444"
+              colors={['#EF4444']}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="business-outline" size={64} color={isDark ? theme.textSecondary : '#ccc'} />
+              <Text style={[styles.emptyText, { color: isDark ? theme.textSecondary : '#666' }]}>
+                No cities found
+              </Text>
+              <Text style={[styles.emptySubtext, { color: isDark ? theme.textTertiary : '#999' }]}>
+                Check back soon for more cities to explore
+              </Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -403,46 +411,69 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  headerContainer: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  headerTitleContainer: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
   },
   sortContainer: {
-    flexDirection: 'row',
-    marginTop: spacing.lg,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  sortScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
   },
   sortButton: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.lg,
-    marginRight: spacing.md,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
   },
   sortButtonActive: {
-    // No specific active style, text color changes
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sortButtonText: {
+    fontSize: 14,
     fontWeight: '600',
   },
-  listContentContainer: {
-    paddingBottom: spacing.lg,
+  listContent: {
+    padding: 16,
+    paddingBottom: 100,
   },
   card: {
-    marginHorizontal: 16,
-    marginBottom: 24,
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
     overflow: 'hidden',
   },
   photoContainer: {
-    width: CARD_WIDTH,
-    height: 220,
+    height: 180,
+    position: 'relative',
   },
   cardImage: {
-    ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
   },
@@ -452,20 +483,23 @@ const styles = StyleSheet.create({
     left: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingVertical: 4,
+    backgroundColor: '#EF4444',
     paddingHorizontal: 8,
-    borderRadius: borderRadius.md,
+    paddingVertical: 4,
+    borderRadius: 4,
+    gap: 4,
   },
   cityBadgeText: {
     color: '#fff',
     fontSize: 10,
-    fontWeight: '700',
-    marginLeft: 4,
-    letterSpacing: 0.5,
+    fontWeight: 'bold',
   },
   gradientOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 100,
     justifyContent: 'flex-end',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,

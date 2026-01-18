@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../constants/Colors';
+import { useTranslation } from 'react-i18next';
 // import * as ImagePicker from 'expo-image-picker'; // Disabled for now
 
 // Wizard Steps
@@ -15,6 +16,7 @@ const STEPS = [
 ];
 
 export default function RequestUniverseScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [currentStep, setCurrentStep] = useState(0);
   const [data, setData] = useState({

@@ -1,4 +1,3 @@
-'''
 import React from 'react';
 import {
   View,
@@ -45,7 +44,7 @@ export default function HelpSupportScreen({ navigation }: any) {
       }
     } catch (error) {
       Alert.alert(
-        t('common.error'),
+        'Error',
         `Please email us at ${SUPPORT_EMAIL}`,
         [{ text: 'OK' }]
       );
@@ -58,10 +57,10 @@ export default function HelpSupportScreen({ navigation }: any) {
       if (canOpen) {
         await Linking.openURL(url);
       } else {
-        Alert.alert(t('common.error'), `Unable to open ${title}`);
+        Alert.alert('Error', `Unable to open ${title}`);
       }
     } catch (error) {
-      Alert.alert(t('common.error'), `Unable to open ${title}`);
+      Alert.alert('Error', `Unable to open ${title}`);
     }
   };
 
@@ -80,9 +79,9 @@ export default function HelpSupportScreen({ navigation }: any) {
     },
     {
       icon: 'shield-outline',
-      title: t('settings.privacyPolicy'),
+      title: 'Privacy Policy',
       description: 'How we protect your data',
-      action: () => handleOpenURL(PRIVACY_POLICY_URL, t('settings.privacyPolicy')),
+      action: () => handleOpenURL(PRIVACY_POLICY_URL, 'Privacy Policy'),
     },
     {
       icon: 'reader-outline',
@@ -121,7 +120,7 @@ export default function HelpSupportScreen({ navigation }: any) {
         >
           <Ionicons name="chevron-back" size={24} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('settings.helpSupport')}</Text>
+        <Text style={styles.headerTitle}>Help & Support</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -373,4 +372,3 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
 });
-'''

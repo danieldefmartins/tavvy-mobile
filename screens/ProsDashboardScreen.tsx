@@ -19,19 +19,19 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useTranslation } from 'react-i18next';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ProsColors } from '../constants/ProsConfig';
 import { ProsSubscriptionStatusBanner } from '../components/ProsSubscriptionBanner';
 import { ProsLeadCardCompact } from '../components/ProsLeadCard';
 import { useProDashboard, useProsLeads, useProsSubscription, useProsConversations } from '../hooks/usePros';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
 export default function ProsDashboardScreen() {
-  const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation();
+  const navigation = useNavigation<NavigationProp>();
   const [refreshing, setRefreshing] = useState(false);
 
   const { profile, loading: profileLoading, fetchProfile } = useProDashboard();
@@ -103,7 +103,7 @@ export default function ProsDashboardScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>{t('pros.dashboard')}</Text>
+          <Text style={styles.headerTitle}>Dashboard</Text>
           <TouchableOpacity
             style={styles.settingsButton}
             onPress={() => navigation.navigate('ProsSettingsScreen')}
@@ -135,7 +135,7 @@ export default function ProsDashboardScreen() {
               <View style={styles.profileRating}>
                 <Ionicons name="star" size={14} color="#F59E0B" />
                 <Text style={styles.ratingText}>
-                  {rating > 0 ? rating.toFixed(1) : t('common.new')} • {profile.totalReviews} {t('places.reviews')}
+                  {rating > 0 ? rating.toFixed(1) : 'New'} • {profile.totalReviews} reviews
                 </Text>
               </View>
             </View>
@@ -162,7 +162,7 @@ export default function ProsDashboardScreen() {
               <Ionicons name="document-text" size={24} color={ProsColors.primary} />
             </View>
             <Text style={styles.statValue}>{newLeadsCount}</Text>
-            <Text style={styles.statLabel}>{t('pros.leads')}</Text>
+            <Text style={styles.statLabel}>New Leads</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -173,7 +173,7 @@ export default function ProsDashboardScreen() {
               <Ionicons name="chatbubbles" size={24} color={ProsColors.secondary} />
             </View>
             <Text style={styles.statValue}>{unreadMessagesCount}</Text>
-            <Text style={styles.statLabel}>{t('pros.messages')}</Text>
+            <Text style={styles.statLabel}>Unread Messages</Text>
           </TouchableOpacity>
 
           <View style={styles.statCard}>
@@ -181,7 +181,7 @@ export default function ProsDashboardScreen() {
               <Ionicons name="star" size={24} color={ProsColors.success} />
             </View>
             <Text style={styles.statValue}>{profile.totalReviews}</Text>
-            <Text style={styles.statLabel}>{t('places.reviews')}</Text>
+            <Text style={styles.statLabel}>Reviews</Text>
           </View>
 
           <View style={styles.statCard}>
@@ -202,7 +202,7 @@ export default function ProsDashboardScreen() {
               onPress={() => navigation.navigate('ProsEditProfileScreen')}
             >
               <Ionicons name="person-outline" size={22} color={ProsColors.primary} />
-              <Text style={styles.quickActionText}>{t('profile.editProfile')}</Text>
+              <Text style={styles.quickActionText}>Edit Profile</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickAction}
@@ -231,9 +231,9 @@ export default function ProsDashboardScreen() {
         {/* Recent Leads */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('pros.leads')}</Text>
+            <Text style={styles.sectionTitle}>Recent Leads</Text>
             <TouchableOpacity onPress={() => navigation.navigate('ProsLeadsScreen')}>
-              <Text style={styles.viewAllText}>{t('common.seeAll')}</Text>
+              <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
           {leads.length > 0 ? (

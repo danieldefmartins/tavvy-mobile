@@ -1,4 +1,3 @@
-'''
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,9 +5,9 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 
 export default function HappeningNowDetailScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { t } = useTranslation();
   const eventName = route.params?.eventName || 'Event';
 
   return (
@@ -86,4 +85,3 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
-'''
