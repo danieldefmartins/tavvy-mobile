@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import {
   getArticlesByCategory,
   type AtlasCategory,
@@ -28,6 +29,7 @@ export default function CategoryBrowseScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { category } = route.params as { category: AtlasCategory };
+  const { t } = useTranslation();
 
   const [articles, setArticles] = useState<AtlasArticle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,13 +83,13 @@ export default function CategoryBrowseScreen() {
   const getSortLabel = (sort: SortOption): string => {
     switch (sort) {
       case 'popular':
-        return 'Most Popular';
+        return t('atlas.mostPopular');
       case 'recent':
-        return 'Most Recent';
+        return t('atlas.mostRecent');
       case 'most_loved':
-        return 'Most Loved';
+        return t('atlas.mostLoved');
       default:
-        return 'Sort By';
+        return t('atlas.sortBy');
     }
   };
 
@@ -110,7 +112,7 @@ export default function CategoryBrowseScreen() {
         <Text style={styles.categoryIcon}>{category.icon}</Text>
         <Text style={styles.categoryDescription}>{category.description}</Text>
         <Text style={styles.categoryStats}>
-          {articles.length} articles available
+          {t('atlas.articlesAvailable', { count: articles.length })}
         </Text>
       </View>
 
@@ -127,7 +129,7 @@ export default function CategoryBrowseScreen() {
                 sortBy === 'popular' && styles.sortChipTextActive,
               ]}
             >
-              Most Popular
+              {t('atlas.mostPopular')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -140,7 +142,7 @@ export default function CategoryBrowseScreen() {
                 sortBy === 'recent' && styles.sortChipTextActive,
               ]}
             >
-              Most Recent
+              {t('atlas.mostRecent')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -153,7 +155,7 @@ export default function CategoryBrowseScreen() {
                 sortBy === 'most_loved' && styles.sortChipTextActive,
               ]}
             >
-              Most Loved
+              {t('atlas.mostLoved')}
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -194,12 +196,12 @@ export default function CategoryBrowseScreen() {
               />
               <View style={styles.featuredOverlay}>
                 <View style={styles.featuredBadge}>
-                  <Text style={styles.featuredBadgeText}>FEATURED</Text>
+                  <Text style={styles.featuredBadgeText}>{t('atlas.featured')}</Text>
                 </View>
                 <Text style={styles.featuredTitle}>{articles[0].title}</Text>
                 <View style={styles.featuredMeta}>
                   <Text style={styles.featuredReadTime}>
-                    {articles[0].read_time_minutes} min read
+                    {t('atlas.minRead', { count: articles[0].read_time_minutes })}
                   </Text>
                   <Text style={styles.featuredDot}>•</Text>
                   <Text style={styles.featuredLoves}>
@@ -232,7 +234,7 @@ export default function CategoryBrowseScreen() {
                   </Text>
                   <View style={styles.articleMeta}>
                     <Text style={styles.articleReadTime}>
-                      {article.read_time_minutes} min
+                      {t('atlas.min', { count: article.read_time_minutes })}
                     </Text>
                     <Text style={styles.articleDot}>•</Text>
                     <Text style={styles.articleLoves}>
@@ -250,7 +252,7 @@ export default function CategoryBrowseScreen() {
               style={[styles.loadMoreButton, { backgroundColor: category.color }]}
               onPress={loadMore}
             >
-              <Text style={styles.loadMoreText}>Load more</Text>
+              <Text style={styles.loadMoreText}>{t('common.loadMore')}</Text>
             </TouchableOpacity>
           )}
 

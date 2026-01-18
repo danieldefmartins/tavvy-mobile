@@ -1,12 +1,14 @@
-import React from 'react';
+'''import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, TouchableWithoutFeedback } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../constants/Colors';
 import { BlurView } from 'expo-blur'; // Optional: for glass effect if available, otherwise fallback to view
+import { useTranslation } from 'react-i18next';
 
 export default function ActionMenuScreen({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const navigation = useNavigation();
+  const { t } = useTranslation();
 
   const handleAction = (action: string) => {
     onClose(); // Close menu first
@@ -33,33 +35,33 @@ export default function ActionMenuScreen({ visible, onClose }: { visible: boolea
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
           <View style={styles.menuContainer}>
-            <Text style={styles.menuTitle}>Create New</Text>
+            <Text style={styles.menuTitle}>{t('add.addNew')}</Text>
             
             <MenuItem 
               icon="planet" 
               color="#8B5CF6" 
-              title="Universe" 
-              subtitle="Request a new community"
+              title={t('universe.universe')} 
+              subtitle={t('universe.requestUniverse')}
               onPress={() => handleAction('universe')} 
             />
             <MenuItem 
               icon="location" 
               color="#EF4444" 
-              title="Place" 
+              title={t('places.addPlace')} 
               subtitle="Add a missing spot"
               onPress={() => handleAction('place')} 
             />
             <MenuItem 
               icon="business" 
               color="#10B981" 
-              title="City" 
+              title={t('cities.cities')} 
               subtitle="Expand to a new area"
               onPress={() => handleAction('city')} 
             />
             <MenuItem 
               icon="star" 
               color="#F59E0B" 
-              title="Review" 
+              title={t('reviews.writeReview')} 
               subtitle="Rate a place you visited"
               onPress={() => handleAction('review')} 
             />
@@ -127,4 +129,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
   },
-});
+});'''

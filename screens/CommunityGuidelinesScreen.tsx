@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
+import { useTranslation } from 'react-i18next';
 
 interface GuidelineSection {
   icon: keyof typeof Ionicons.glyphMap;
@@ -55,6 +56,7 @@ const guidelines: GuidelineSection[] = [
 ];
 
 export default function CommunityGuidelinesScreen({ navigation }: any) {
+  const { t } = useTranslation();
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -288,5 +290,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     fontSize: 12,
     color: Colors.textSecondary,
+  },
+});
   },
 });

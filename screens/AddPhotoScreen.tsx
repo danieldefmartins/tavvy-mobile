@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+'''import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useTranslation } from 'react-i18next';
 
 interface AddPhotoScreenProps {
   route: {
@@ -15,6 +16,7 @@ interface AddPhotoScreenProps {
 }
 
 export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProps) {
+  const { t } = useTranslation();
   const { placeName } = route?.params || {};
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('back');
@@ -33,7 +35,7 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
           setCapturedImage(photo.uri);
         }
       } catch (error) {
-        Alert.alert('Error', 'Failed to take picture');
+        Alert.alert(t('common.error'), t('errors.somethingWentWrong'));
       }
     }
   };
@@ -52,8 +54,8 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
   };
 
   const handleSave = () => {
-    Alert.alert('Success', 'Photo added successfully!', [
-      { text: 'OK', onPress: () => navigation.goBack() }
+    Alert.alert(t('success.success'), t('success.requestSubmitted'), [
+      { text: t('common.done'), onPress: () => navigation.goBack() }
     ]);
   };
 
@@ -68,12 +70,12 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
   if (!permission.granted) {
     return (
       <View style={styles.container}>
-        <Text style={styles.message}>No access to camera</Text>
+        <Text style={styles.message}>{t('errors.cameraPermission')}</Text>
         <TouchableOpacity onPress={requestPermission} style={styles.backButtonLarge}>
-          <Text style={styles.backButtonText}>Grant Permission</Text>
+          <Text style={styles.backButtonText}>{t('common.grantPermission')}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButtonLarge, { marginTop: 12, backgroundColor: '#666' }]}>
-          <Text style={styles.backButtonText}>Go Back</Text>
+          <Text style={styles.backButtonText}>{t('common.back')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -92,10 +94,10 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
             </View>
             <View style={styles.previewFooter}>
               <TouchableOpacity onPress={handleRetake} style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>Retake</Text>
+                <Text style={styles.secondaryButtonText}>{t('common.retake')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleSave} style={styles.primaryButton}>
-                <Text style={styles.primaryButtonText}>Use Photo</Text>
+                <Text style={styles.primaryButtonText}>{t('places.usePhoto')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -112,7 +114,7 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
               <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
                 <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
-              <Text style={styles.cameraTitle}>{placeName || 'Add Photo'}</Text>
+              <Text style={styles.cameraTitle}>{placeName || t('places.addPhoto')}</Text>
               <TouchableOpacity 
                 onPress={() => setFacing(facing === 'back' ? 'front' : 'back')} 
                 style={styles.iconButton}
@@ -273,3 +275,4 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 });
+'''

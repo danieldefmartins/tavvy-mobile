@@ -24,6 +24,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 // Match HomeScreen's ACCENT color exactly
 const ACCENT = '#0F1233';
@@ -43,7 +44,7 @@ interface AppTile {
 const APP_TILES: AppTile[] = [
   {
     id: 'quick-finds',
-    name: 'Quick Finds',
+    name: "t('home.quickFinds')',
     icon: 'flash',
     iconType: 'ionicons',
     backgroundColor: '#FEF3C7',
@@ -53,7 +54,7 @@ const APP_TILES: AppTile[] = [
   },
   {
     id: 'universes',
-    name: 'Universes',
+    name: "t('universe.universes')',
     icon: 'planet',
     iconType: 'ionicons',
     backgroundColor: '#CCFBF1',
@@ -83,7 +84,7 @@ const APP_TILES: AppTile[] = [
   },
   {
     id: 'atlas',
-    name: 'Atlas',
+    name: "t('atlas.atlas')',
     icon: 'book',
     iconType: 'ionicons',
     backgroundColor: '#E0E7FF',
@@ -93,7 +94,7 @@ const APP_TILES: AppTile[] = [
   },
   {
     id: 'cities',
-    name: 'Cities',
+    name: "t('cities.cities')',
     icon: 'business',
     iconType: 'ionicons',
     backgroundColor: '#FEE2E2',
@@ -103,7 +104,7 @@ const APP_TILES: AppTile[] = [
   },
   {
     id: 'pros',
-    name: 'Pros',
+    name: "t('navigation.pros')',
     icon: 'construct',
     iconType: 'ionicons',
     backgroundColor: '#DBEAFE',
@@ -113,7 +114,7 @@ const APP_TILES: AppTile[] = [
   },
   {
     id: 'saved',
-    name: 'Saved',
+    name: "t('navigation.saved')',
     icon: 'heart',
     iconType: 'ionicons',
     backgroundColor: '#FCE7F3',
@@ -147,6 +148,7 @@ export default function AppsScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
   const { theme, isDark, setThemeMode } = useThemeContext();
+  const { t } = useTranslation();
 
   const handleTilePress = (tile: AppTile) => {
     if (tile.route) {
@@ -263,7 +265,7 @@ export default function AppsScreen() {
       >
         {/* Title Section */}
         <View style={styles.header}>
-          <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>Apps</Text>
+          <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>{t('navigation.apps')}</Text>
           <Text style={[styles.headerSubtitle, dynamicStyles.headerSubtitle]}>Tools & shortcuts</Text>
         </View>
 
@@ -307,7 +309,7 @@ export default function AppsScreen() {
               >
                 {renderIcon(tile)}
               </View>
-              <Text style={[styles.tileName, dynamicStyles.tileName]}>{tile.name}</Text>
+              <Text style={[styles.tileName, dynamicStyles.tileName]}>{tile.name.startsWith('t(') ? t(tile.name.slice(3, -2)) : tile.name}</Text>
             </TouchableOpacity>
           ))}
         </View>

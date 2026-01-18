@@ -1,3 +1,4 @@
+'''
 import React from 'react';
 import {
   View,
@@ -11,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
+import { useTranslation } from 'react-i18next';
 
 interface HelpItem {
   icon: keyof typeof Ionicons.glyphMap;
@@ -20,6 +22,7 @@ interface HelpItem {
 }
 
 export default function HelpSupportScreen({ navigation }: any) {
+  const { t } = useTranslation();
   const SUPPORT_EMAIL = 'support@tavvy.com';
   const PRIVACY_POLICY_URL = 'https://tavvy.com/privacy';
   const TERMS_URL = 'https://tavvy.com/terms';
@@ -42,7 +45,7 @@ export default function HelpSupportScreen({ navigation }: any) {
       }
     } catch (error) {
       Alert.alert(
-        'Error',
+        t('common.error'),
         `Please email us at ${SUPPORT_EMAIL}`,
         [{ text: 'OK' }]
       );
@@ -55,10 +58,10 @@ export default function HelpSupportScreen({ navigation }: any) {
       if (canOpen) {
         await Linking.openURL(url);
       } else {
-        Alert.alert('Error', `Unable to open ${title}`);
+        Alert.alert(t('common.error'), `Unable to open ${title}`);
       }
     } catch (error) {
-      Alert.alert('Error', `Unable to open ${title}`);
+      Alert.alert(t('common.error'), `Unable to open ${title}`);
     }
   };
 
@@ -77,9 +80,9 @@ export default function HelpSupportScreen({ navigation }: any) {
     },
     {
       icon: 'shield-outline',
-      title: 'Privacy Policy',
+      title: t('settings.privacyPolicy'),
       description: 'How we protect your data',
-      action: () => handleOpenURL(PRIVACY_POLICY_URL, 'Privacy Policy'),
+      action: () => handleOpenURL(PRIVACY_POLICY_URL, t('settings.privacyPolicy')),
     },
     {
       icon: 'reader-outline',
@@ -118,7 +121,7 @@ export default function HelpSupportScreen({ navigation }: any) {
         >
           <Ionicons name="chevron-back" size={24} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Help & Support</Text>
+        <Text style={styles.headerTitle}>{t('settings.helpSupport')}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -370,3 +373,4 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
 });
+'''

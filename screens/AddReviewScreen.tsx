@@ -1,4 +1,4 @@
-import { StatusBar } from 'expo-status-bar';
+'''import { StatusBar } from 'expo-status-bar';
 import { 
   StyleSheet, 
   Text, 
@@ -25,6 +25,7 @@ import {
 import PulseCard from '../components/PulseCard';
 import { Colors } from '../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -74,42 +75,41 @@ const lightTheme = {
   },
 };
 
-// ============================================
-// WIZARD STEPS CONFIGURATION
-// ============================================
-const STEPS = [
-  {
-    id: 'best_for' as const,
-    title: 'The Good',
-    subtitle: 'What did you like? Tap the highlights.',
-    theme: 'positive',
-    limit: 5,
-    accent: '#0A84FF', // Apple Blue
-    icon: 'thumbs-up',
-  },
-  {
-    id: 'vibe' as const,
-    title: 'The Vibe',
-    subtitle: "How's the atmosphere? Set the scene.",
-    theme: 'vibe',
-    limit: 5,
-    accent: '#8B5CF6', // Purple
-    icon: 'sparkles',
-  },
-  {
-    id: 'heads_up' as const,
-    title: 'Heads Up',
-    subtitle: 'Any warnings? Help others prepare.',
-    theme: 'negative',
-    limit: 2,
-    accent: '#FF9500', // Orange
-    icon: 'warning',
-  }
-] as const;
-
-type StepId = typeof STEPS[number]['id'];
-
 export default function AddReviewScreen() {
+  const { t } = useTranslation();
+
+  const STEPS = [
+    {
+      id: 'best_for' as const,
+      title: t('signals.theGood'),
+      subtitle: 'What did you like? Tap the highlights.',
+      theme: 'positive',
+      limit: 5,
+      accent: '#0A84FF', // Apple Blue
+      icon: 'thumbs-up',
+    },
+    {
+      id: 'vibe' as const,
+      title: t('signals.theVibe'),
+      subtitle: "How's the atmosphere? Set the scene.",
+      theme: 'vibe',
+      limit: 5,
+      accent: '#8B5CF6', // Purple
+      icon: 'sparkles',
+    },
+    {
+      id: 'heads_up' as const,
+      title: t('signals.watchOut'),
+      subtitle: 'Any warnings? Help others prepare.',
+      theme: 'negative',
+      limit: 2,
+      accent: '#FF9500', // Orange
+      icon: 'warning',
+    }
+  ] as const;
+
+  type StepId = typeof STEPS[number]['id'];
+
   const route = useRoute<AddReviewRouteProp>();
   const navigation = useNavigation();
   const colorScheme = useColorScheme();
@@ -117,7 +117,7 @@ export default function AddReviewScreen() {
   const theme = isDark ? darkTheme : lightTheme;
   
   const placeId = route.params?.placeId;
-  const placeName = route.params?.placeName || 'this place';
+  const placeName = route.params?.placeName || t('places.thisPlace');
   const primaryCategory = route.params?.primaryCategory;
   const subcategory = route.params?.subcategory;
 
@@ -306,7 +306,7 @@ export default function AddReviewScreen() {
     // Logic:
     // 1. If tapping a new item (currentCount === 0) AND we hit the limit -> Block it
     if (currentCount === 0 && currentCategorySelectionCount >= currentStep.limit) {
-      Alert.alert('Limit Reached', `You can only select ${currentStep.limit} items for this section.`);
+      Alert.alert(t('common.limitReached'), t('common.limitReachedMessage', { limit: currentStep.limit }));
       return;
     }
 
@@ -342,7 +342,7 @@ export default function AddReviewScreen() {
 
     const selectedCount = Object.keys(tapCounts).length;
     if (selectedCount === 0) {
-      Alert.alert('Empty Review', 'Please select at least one signal before submitting.');
+      Alert.alert(t('reviews.emptyReview'), t('reviews.emptyReviewMessage'));
       return;
     }
 
@@ -364,143 +364,101 @@ export default function AddReviewScreen() {
 
     if (result.success) {
       Alert.alert(
-        'Success! 🎉',
-        `You reviewed ${placeName}!`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        t('success.success'),
+        t('reviews.reviewSuccessMessage', { placeName }),
+        [
+          { text: t('common.done'), onPress: () => navigation.goBack() },
+        ],
+        { cancelable: false }
       );
     } else {
-      Alert.alert('Error', 'Failed to save review. Please try again.');
+      Alert.alert(
+        t('errors.somethingWentWrong'),
+        result.error || t('errors.unknownError'),
+        [{ text: t('common.retry'), onPress: handleSubmit }, { text: t('common.cancel'), style: 'cancel' }]
+      );
     }
   };
-
-  // Calculate selection counts for current step
-  const currentSignals: Signal[] = signals[currentStep.id] || [];
-  const currentSignalIds = currentSignals.map(s => s.id);
-  const currentSelectionCount = Object.keys(tapCounts).filter(
-    key => currentSignalIds.includes(key) && tapCounts[key] > 0
-  ).length;
-
-  // Total selections across all steps
-  const totalSelections = Object.keys(tapCounts).filter(key => tapCounts[key] > 0).length;
 
   if (isLoading) {
     return (
       <View style={dynamicStyles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={dynamicStyles.loadingText}>Loading signals...</Text>
+        <ActivityIndicator size="large" color={Colors.light.tint} />
+        <Text style={dynamicStyles.loadingText}>{t('common.loading')}</Text>
       </View>
     );
   }
 
-  const hasSignals = currentSignals.length > 0;
+  const currentSignals = signals[currentStep.id];
 
   return (
     <View style={dynamicStyles.container}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={dynamicStyles.backButton}>
-            <Ionicons name="arrow-back" size={28} color={theme.text} />
+            <Ionicons name={currentStepIndex > 0 ? 'arrow-back' : 'close'} size={22} color={theme.text} />
           </TouchableOpacity>
-          
           <View style={styles.progressContainer}>
-            <View style={dynamicStyles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { 
-                    width: `${((currentStepIndex + 1) / STEPS.length) * 100}%`,
-                    backgroundColor: currentStep.accent 
-                  }
-                ]} 
-              />
-            </View>
             <Text style={dynamicStyles.stepIndicator}>
-              Step {currentStepIndex + 1} of {STEPS.length}
+              {t('common.step', { current: currentStepIndex + 1, total: STEPS.length })}
             </Text>
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { 
+                width: `${((currentStepIndex + 1) / STEPS.length) * 100}%`,
+                backgroundColor: currentStep.accent,
+              }]} />
+            </View>
           </View>
-          
-          <View style={{ width: 40 }} /> 
+          <View style={{ width: 40 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Place Name Badge */}
-          <View style={dynamicStyles.categoryBadge}>
-            <Ionicons name="location" size={14} color={theme.textSecondary} />
-            <Text style={dynamicStyles.categoryBadgeText} numberOfLines={1}>
-              {placeName}
-            </Text>
-          </View>
-
+        {/* Content */}
+        <ScrollView contentContainerStyle={styles.content}>
+          {/* Title */}
           <View style={styles.titleContainer}>
+            <Text style={dynamicStyles.placeName}>{placeName}</Text>
             <View style={styles.titleRow}>
               <View style={[styles.stepIconContainer, { backgroundColor: currentStep.accent }]}>
-                <Ionicons name={currentStep.icon as any} size={20} color="#FFFFFF" />
+                <Ionicons name={currentStep.icon} size={20} color="white" />
               </View>
-              <Text style={dynamicStyles.stepTitle}>
-                {currentStep.title}
-              </Text>
+              <Text style={dynamicStyles.stepTitle}>{currentStep.title}</Text>
             </View>
             <Text style={dynamicStyles.stepSubtitle}>{currentStep.subtitle}</Text>
-            
-            {/* Selection Counter */}
-            <Text style={dynamicStyles.signalCount}>
-              {currentSelectionCount} of {currentStep.limit} selected
-            </Text>
           </View>
-          
-          {/* Warning Box for Negative Step */}
-          {currentStep.theme === 'negative' && (
-            <View style={dynamicStyles.warningBox}>
-              <Ionicons name="alert-circle" size={24} color={isDark ? '#FCA5A5' : '#991B1B'} />
-              <Text style={dynamicStyles.warningText}>
-                Note: Selecting these will lower the place's Vibe Score.
-              </Text>
+
+          {/* Signals Grid */}
+          {currentSignals.length > 0 ? (
+            <View style={styles.grid}>
+              {currentSignals.map((signal) => (
+                <PulseCard 
+                  key={signal.id} 
+                  signal={signal} 
+                  onTap={() => handleTap(signal.id)}
+                  tapCount={tapCounts[signal.id] || 0}
+                  theme={theme}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="cloud-offline-outline" size={48} color={theme.textTertiary} />
+              <Text style={dynamicStyles.emptyStateText}>{t('signals.noSignalsFound')}</Text>
+              <Text style={dynamicStyles.emptyStateSubtext}>{t('signals.noSignalsFoundMessage')}</Text>
             </View>
           )}
-
-          {/* White Card Surface */}
-          <View style={dynamicStyles.cardSurface}>
-            {hasSignals ? (
-              <View style={styles.grid}>
-                {currentSignals.map(signal => (
-                  <PulseCard
-                    key={signal.id}
-                    label={signal.label}
-                    icon={signal.icon_emoji}
-                    intensity={tapCounts[signal.id] || 0}
-                    onTap={() => handleTap(signal.id)}
-                    theme={currentStep.theme as any}
-                    disabled={false}
-                  />
-                ))}
-              </View>
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="information-circle-outline" size={48} color={theme.textTertiary} />
-                <Text style={dynamicStyles.emptyStateText}>
-                  No signals available for this category yet.
-                </Text>
-                <Text style={dynamicStyles.emptyStateSubtext}>
-                  Tap "Next" to continue.
-                </Text>
-              </View>
-            )}
-          </View>
         </ScrollView>
 
-        {/* Floating Footer */}
+        {/* Footer */}
         <View style={styles.footer}>
-          {/* Skip Button (optional for non-required steps) */}
           {!isLastStep && (
             <TouchableOpacity 
               style={styles.skipButton}
-              onPress={handleNext}
+              onPress={() => setCurrentStepIndex(prev => prev + 1)}
             >
               <Text style={[styles.skipButtonText, { color: theme.textSecondary }]}>
-                Skip
+                {t('common.skip')}
               </Text>
             </TouchableOpacity>
           )}
@@ -515,7 +473,7 @@ export default function AddReviewScreen() {
             ) : (
               <>
                 <Text style={styles.actionButtonText}>
-                  {isLastStep ? 'Submit Review' : 'Next'}
+                  {isLastStep ? t('reviews.submitReview') : t('common.next')}
                 </Text>
                 {!isLastStep && (
                   <Ionicons name="arrow-forward" size={20} color="white" style={{ marginLeft: 8 }} />
@@ -620,3 +578,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+'''

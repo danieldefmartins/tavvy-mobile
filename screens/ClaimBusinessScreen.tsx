@@ -4,15 +4,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../constants/Colors';
+import { useTranslation } from 'react-i18next';
 
 export default function ClaimBusinessScreen() {
   const navigation = useNavigation();
+  const { t } = useTranslation();
 
   const handleClaim = () => {
     Alert.alert(
-      "Claim Request Sent",
+      t('success.requestSubmitted'),
       "Thanks for claiming this business! Our team will verify your details and get back to you shortly.",
-      [{ text: "OK", onPress: () => navigation.goBack() }]
+      [{ text: t('common.done'), onPress: () => navigation.goBack() }]
     );
   };
 
@@ -22,7 +24,7 @@ export default function ClaimBusinessScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Claim Business</Text>
+        <Text style={styles.headerTitle}>{t('places.claimBusiness')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -36,13 +38,13 @@ export default function ClaimBusinessScreen() {
         </Text>
 
         <View style={styles.form}>
-          <Text style={styles.label}>Business Name</Text>
+          <Text style={styles.label}>{t('add.businessName')}</Text>
           <TextInput style={styles.input} placeholder="e.g. Joe's Coffee" />
 
           <Text style={styles.label}>Your Role</Text>
           <TextInput style={styles.input} placeholder="e.g. Owner, Manager" />
 
-          <Text style={styles.label}>Business Email</Text>
+          <Text style={styles.label}>{t('auth.email')}</Text>
           <TextInput style={styles.input} placeholder="you@business.com" keyboardType="email-address" />
 
           <Text style={styles.label}>Phone Number</Text>
@@ -50,7 +52,7 @@ export default function ClaimBusinessScreen() {
         </View>
 
         <TouchableOpacity style={styles.submitButton} onPress={handleClaim}>
-          <Text style={styles.submitButtonText}>Submit Claim</Text>
+          <Text style={styles.submitButtonText}>{t('places.claimBusiness')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

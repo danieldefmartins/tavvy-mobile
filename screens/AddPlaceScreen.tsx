@@ -1,3 +1,4 @@
+'''
 import React, { useState, useEffect } from 'react';
 import { Alert, View, TouchableOpacity, Text, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { ScannedBusinessCard } from './BusinessCardScannerScreen';
 import { supabase } from '../lib/supabaseClient';
 import { PRIMARY_CATEGORIES, PrimaryCategory, SubCategory } from '../lib/categoryConfig';
+import { useTranslation } from 'react-i18next';
 
 // Build category options from categoryConfig.ts
 const buildCategoryOptions = (): { primary: string[]; subcategories: { [key: string]: string[] } } => {
@@ -23,11 +25,11 @@ const buildCategoryOptions = (): { primary: string[]; subcategories: { [key: str
 const categoryOptions = buildCategoryOptions();
 
 // Dynamic form steps - subcategory step is added based on primary category selection
-const getFormSteps = (selectedCategory: string | null): FormStep[] => {
+const getFormSteps = (selectedCategory: string | null, t: any): FormStep[] => {
   const steps: FormStep[] = [
     {
       id: 'category',
-      title: "Category",
+      title: t('add.category'),
       question: "What kind of place is it?",
       type: 'select',
       options: categoryOptions.primary,
@@ -79,7 +81,7 @@ const getFormSteps = (selectedCategory: string | null): FormStep[] => {
     },
     {
       id: 'photos',
-      title: "Photos",
+      title: t('places.photos'),
       question: "Add a photo to show the vibe.",
       type: 'photo',
     }
@@ -102,19 +104,20 @@ const getSubcategorySlug = (categoryName: string, subcategoryName: string): stri
 };
 
 export default function AddPlaceScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [initialData, setInitialData] = useState<any>(null);
   const [currentStepId, setCurrentStepId] = useState<string>('category');
   const [previousStepId, setPreviousStepId] = useState<string | null>(null);
   const [showScanOption, setShowScanOption] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [formSteps, setFormSteps] = useState<FormStep[]>(getFormSteps(null));
+  const [formSteps, setFormSteps] = useState<FormStep[]>(getFormSteps(null, t));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Update form steps when category changes
   useEffect(() => {
-    setFormSteps(getFormSteps(selectedCategory));
-  }, [selectedCategory]);
+    setFormSteps(getFormSteps(selectedCategory, t));
+  }, [selectedCategory, t]);
 
   const handleComplete = async (data: any) => {
     if (isSubmitting) return;
@@ -125,7 +128,7 @@ export default function AddPlaceScreen() {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
-        Alert.alert("Error", "You must be logged in to add a place.");
+        Alert.alert(t('common.error'), "You must be logged in to add a place.");
         setIsSubmitting(false);
         return;
       }
@@ -214,7 +217,7 @@ export default function AddPlaceScreen() {
       
       if (insertError) {
         console.error('Error inserting place:', insertError);
-        Alert.alert("Error", `Failed to add place: ${insertError.message}`);
+        Alert.alert(t('common.error'), t('errors.somethingWentWrong', { message: insertError.message }));
         setIsSubmitting(false);
         return;
       }
@@ -222,14 +225,14 @@ export default function AddPlaceScreen() {
       console.log('Place added successfully:', insertedPlace);
       
       Alert.alert(
-        "Success!", 
+        t('success.success'), 
         "Place added successfully. Thank you for contributing!",
-        [{ text: "OK", onPress: () => navigation.goBack() }]
+        [{ text: t('common.done'), onPress: () => navigation.goBack() }]
       );
       
     } catch (error) {
       console.error('Error adding place:', error);
-      Alert.alert("Error", "An unexpected error occurred. Please try again.");
+      Alert.alert(t('common.error'), t('errors.somethingWentWrong'));
     } finally {
       setIsSubmitting(false);
     }
@@ -254,7 +257,7 @@ export default function AddPlaceScreen() {
     Alert.alert(
       "Card Scanned!", 
       "Form has been pre-filled with business card details. Review and edit as needed.",
-      [{ text: "OK" }]
+      [{ text: t('common.done') }]
     );
   };
 
@@ -298,7 +301,7 @@ export default function AddPlaceScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add Place</Text>
+          <Text style={styles.headerTitle}>{t('places.addPlace')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -317,67 +320,63 @@ export default function AddPlaceScreen() {
             Scan it to auto-fill the form with name, address, phone, and website.
           </Text>
 
-          {/* Scan Card Option */}
-          <TouchableOpacity style={styles.scanCard} onPress={startScan}>
-            <View style={styles.scanIconContainer}>
-              <Ionicons name="camera" size={32} color="#fff" />
-            </View>
-            <View style={styles.scanCardContent}>
-              <Text style={styles.scanCardTitle}>Scan Business Card</Text>
-              <Text style={styles.scanCardDescription}>
-                Take a photo and we'll extract the details
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#2DD4BF" />
+          <TouchableOpacity style={styles.scanButton} onPress={startScan}>
+            <Ionicons name="camera-outline" size={24} color="#fff" />
+            <Text style={styles.scanButtonText}>Scan Business Card</Text>
           </TouchableOpacity>
 
-          {/* Manual Entry Option */}
-          <TouchableOpacity style={styles.manualCard} onPress={skipScan}>
-            <View style={styles.manualIconContainer}>
-              <Ionicons name="create-outline" size={28} color="#666" />
-            </View>
-            <View style={styles.scanCardContent}>
-              <Text style={styles.manualCardTitle}>Enter Manually</Text>
-              <Text style={styles.scanCardDescription}>
-                Type in the place details yourself
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#999" />
+          <TouchableOpacity style={styles.skipButton} onPress={skipScan}>
+            <Text style={styles.skipButtonText}>Skip & Enter Manually</Text>
           </TouchableOpacity>
-
-          {/* Tips */}
-          <View style={styles.tipsContainer}>
-            <Text style={styles.tipsTitle}>Tips for scanning:</Text>
-            <View style={styles.tipRow}>
-              <Ionicons name="checkmark-circle" size={16} color="#2DD4BF" />
-              <Text style={styles.tipText}>Good lighting helps accuracy</Text>
-            </View>
-            <View style={styles.tipRow}>
-              <Ionicons name="checkmark-circle" size={16} color="#2DD4BF" />
-              <Text style={styles.tipText}>Hold the card flat and steady</Text>
-            </View>
-            <View style={styles.tipRow}>
-              <Ionicons name="checkmark-circle" size={16} color="#2DD4BF" />
-              <Text style={styles.tipText}>Make sure text is readable</Text>
-            </View>
-          </View>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <QuickFormEngine
-        formId="draft_add_place"
-        title="New Place"
-        steps={formSteps}
-        initialData={initialData}
-        onComplete={handleComplete}
-        onCancel={() => navigation.goBack()}
-        onStepChange={handleStepChange}
-      />
-    </View>
+    <QuickFormEngine
+      steps={formSteps}
+      onComplete={handleComplete}
+      onStepChange={handleStepChange}
+      initialData={initialData}
+      isSubmitting={isSubmitting}
+      headerRightAction={showScanOption ? undefined : () => {}}
+      headerRightIcon={showScanOption ? undefined : 'camera-outline'}
+      headerRightText={showScanOption ? undefined : 'Scan'}
+      onHeaderRightPress={showScanOption ? undefined : startScan}
+      headerTitle={t('places.addPlace')}
+      finalButtonText={t('places.addPlace')}
+      renderCustomStep={(step, data, onDataChange) => {
+        if (step.id === 'contact') {
+          return (
+            <View>
+              <Text style={styles.question}>{step.question}</Text>
+              {/* Custom fields for phone, website, email */}
+            </View>
+          );
+        }
+        if (step.id === 'name') {
+          return (
+            <View>
+              <Text style={styles.question}>{step.question}</Text>
+              {/* Your custom name input component */}
+              <View style={styles.tipsContainer}>
+                <Text style={styles.tipsTitle}>Tips for a great entry:</Text>
+                <View style={styles.tipRow}>
+                  <Ionicons name="checkmark-circle-outline" size={18} color="#4CAF50" />
+                  <Text style={styles.tipText}>Use the official business name.</Text>
+                </View>
+                <View style={styles.tipRow}>
+                  <Ionicons name="close-circle-outline" size={18} color="#F44336" />
+                  <Text style={styles.tipText}>Avoid adding extra details or keywords.</Text>
+                </View>
+              </View>
+            </View>
+          );
+        }
+        return null;
+      }}
+    />
   );
 }
 
@@ -393,112 +392,89 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#eee',
   },
   backButton: {
     padding: 8,
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '600',
     color: '#333',
   },
   progressContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
   },
   progressBar: {
-    height: 4,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 2,
+    height: 8,
+    backgroundColor: '#eee',
+    borderRadius: 4,
+    overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#2DD4BF',
-    borderRadius: 2,
+    backgroundColor: '#007AFF',
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
   },
   stepLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#2DD4BF',
+    fontWeight: 'bold',
+    color: '#888',
     letterSpacing: 1,
     marginBottom: 8,
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: 8,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 12,
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
-    lineHeight: 22,
+    textAlign: 'center',
     marginBottom: 32,
+    lineHeight: 24,
   },
-  scanCard: {
+  scanButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fffe',
-    borderWidth: 2,
-    borderColor: '#2DD4BF',
-    borderRadius: 16,
-    padding: 16,
+    justifyContent: 'center',
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 30,
     marginBottom: 16,
+    width: '100%',
   },
-  scanIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: '#2DD4BF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  scanCardContent: {
-    flex: 1,
-  },
-  scanCardTitle: {
-    fontSize: 17,
+  scanButtonText: {
+    color: '#fff',
+    fontSize: 18,
     fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 4,
+    marginLeft: 12,
   },
-  scanCardDescription: {
-    fontSize: 14,
-    color: '#666',
+  skipButton: {
+    padding: 12,
   },
-  manualCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f9f9f9',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 32,
+  skipButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '500',
   },
-  manualIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  manualCardTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 4,
+  question: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 24,
   },
   tipsContainer: {
+    marginTop: 24,
     backgroundColor: '#f9f9f9',
     borderRadius: 12,
     padding: 16,
@@ -520,3 +496,4 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 });
+'''

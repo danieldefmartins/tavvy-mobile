@@ -4,11 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../constants/Colors';
+import { useTranslation } from 'react-i18next';
 
 const FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'universe', label: 'Universes' },
-  { id: 'city', label: 'Cities' },
+  { id: 'all', label: t('common.all') },
+  { id: 'universe', label: t('universe.universes') },
+  { id: 'city', label: t('cities.cities') },
   { id: 'airport', label: 'Airports' },
 ];
 
@@ -19,6 +20,7 @@ const MOCK_DATA = [
 ];
 
 export default function ExploreScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [activeFilter, setActiveFilter] = useState('all');
 
@@ -40,10 +42,10 @@ export default function ExploreScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Explore</Text>
+        <Text style={styles.title}>{t('navigation.explore')}</Text>
         <TouchableOpacity style={styles.searchButton}>
           <Ionicons name="search" size={20} color="#6B7280" />
-          <Text style={styles.searchText}>Search cities, universes...</Text>
+          <Text style={styles.searchText}>{t('atlas.searchAtlas')}</Text>
         </TouchableOpacity>
       </View>
 

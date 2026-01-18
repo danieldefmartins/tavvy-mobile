@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient';
 import {
   getRelatedArticles,
@@ -34,6 +35,7 @@ import {
 export default function ArticleDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const { t } = useTranslation();
   const { article: initialArticle } = route.params as { article: AtlasArticle };
 
   const [article, setArticle] = useState<AtlasArticle>(initialArticle);
@@ -128,7 +130,7 @@ export default function ArticleDetailScreen() {
       }
     } catch (error) {
       console.error('Error handling reaction:', error);
-      Alert.alert('Error', 'Failed to save reaction. Please try again.');
+      Alert.alert(t('common.error'), 'Failed to save reaction. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -152,7 +154,7 @@ export default function ArticleDetailScreen() {
       }
     } catch (error) {
       console.error('Error saving article:', error);
-      Alert.alert('Error', 'Failed to save article. Please try again.');
+      Alert.alert(t('common.error'), 'Failed to save article. Please try again.');
     }
   };
 
@@ -256,7 +258,7 @@ export default function ArticleDetailScreen() {
           {/* Related Articles */}
           {relatedArticles.length > 0 && (
             <View style={styles.relatedSection}>
-              <Text style={styles.relatedTitle}>Related in Atlas</Text>
+              <Text style={styles.relatedTitle}>{t('atlas.articles')}</Text>
               <View style={styles.relatedGrid}>
                 {relatedArticles.map((related) => (
                   <TouchableOpacity
@@ -317,6 +319,7 @@ const styles = StyleSheet.create({
   backIcon: {
     color: '#fff',
     fontSize: 24,
+    fontWeight: 'bold',
   },
   saveButton: {
     position: 'absolute',
@@ -330,158 +333,146 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveIcon: {
-    fontSize: 24,
+    fontSize: 20,
   },
   content: {
     padding: 20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    backgroundColor: '#fff',
+    marginTop: -20,
   },
   categoryBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
     alignSelf: 'flex-start',
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 15,
     marginBottom: 12,
   },
   categoryText: {
     color: '#fff',
-    fontSize: 12,
     fontWeight: 'bold',
+    fontSize: 12,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
+    lineHeight: 36,
     marginBottom: 16,
   },
   authorSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   authorAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
   },
-  authorInfo: {
-    justifyContent: 'center',
-  },
+  authorInfo: {},
   authorName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111',
-    marginBottom: 2,
+    fontWeight: 'bold',
+    fontSize: 15,
   },
   authorMeta: {
-    fontSize: 14,
     color: '#666',
-    fontWeight: '500',
+    fontSize: 13,
   },
   statsBar: {
     flexDirection: 'row',
+    justifyContent: 'space-around',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: 24,
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#F3F4F6',
-    marginBottom: 24,
+    borderColor: '#eee',
+    marginBottom: 20,
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
   },
   statText: {
-    fontSize: 15,
-    color: '#4B5563',
-    fontWeight: '500',
+    marginLeft: 6,
+    fontSize: 14,
+    color: '#333',
   },
   reactionButtons: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 32,
+    justifyContent: 'space-around',
+    marginBottom: 24,
   },
   reactionButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 30,
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
+    marginHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
   loveButton: {
-    backgroundColor: '#4DB6AC', // Teal color from mockup
-  },
-  notForMeButton: {
-    backgroundColor: '#E5E7EB', // Light gray
+    backgroundColor: '#FEE2E2',
+    borderColor: '#FCA5A5',
+    borderWidth: 1,
   },
   loveButtonText: {
+    color: '#DC2626',
+    fontWeight: 'bold',
     fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
+  },
+  notForMeButton: {
+    backgroundColor: '#E5E7EB',
+    borderColor: '#D1D5DB',
+    borderWidth: 1,
   },
   notForMeButtonText: {
+    color: '#4B5563',
+    fontWeight: 'bold',
     fontSize: 16,
-    fontWeight: '700',
-    color: '#9CA3AF', // Gray text
   },
   body: {
     fontSize: 17,
     lineHeight: 28,
     color: '#333',
-    marginBottom: 32,
+    textAlign: 'justify',
   },
   relatedSection: {
     marginTop: 32,
-    paddingTop: 32,
     borderTopWidth: 1,
-    borderColor: '#e5e5e5',
+    borderTopColor: '#eee',
+    paddingTop: 24,
   },
   relatedTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 16,
-    color: '#000',
   },
   relatedGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -6,
+    justifyContent: 'space-between',
   },
   relatedCard: {
     width: '48%',
-    margin: '1%',
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginBottom: 16,
   },
   relatedImage: {
     width: '100%',
-    height: 120,
+    height: 110,
+    borderRadius: 12,
+    marginBottom: 8,
   },
   relatedCardTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-    padding: 12,
-    paddingBottom: 4,
+    fontSize: 15,
+    fontWeight: 'bold',
+    lineHeight: 20,
   },
   relatedMeta: {
     fontSize: 12,
     color: '#666',
-    paddingHorizontal: 12,
-    paddingBottom: 12,
+    marginTop: 4,
   },
 });
