@@ -1,8 +1,7 @@
-'''import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 const CARD_ASPECT_RATIO = 1.586;
@@ -26,7 +25,6 @@ export interface ScannedBusinessCard {
 }
 
 export default function BusinessCardScannerScreen({ navigation, route }: BusinessCardScannerScreenProps) {
-  const { t } = useTranslation();
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
@@ -38,12 +36,12 @@ export default function BusinessCardScannerScreen({ navigation, route }: Busines
 
   const handleScan = async () => {
     if (!cameraRef.current) {
-      Alert.alert(t('common.error'), 'Camera reference not available');
+      Alert.alert('Error', 'Camera reference not available');
       return;
     }
 
     if (!cameraReady) {
-      Alert.alert(t('common.error'), 'Camera is not ready yet. Please wait a moment.');
+      Alert.alert('Error', 'Camera is not ready yet. Please wait a moment.');
       return;
     }
 
@@ -87,7 +85,7 @@ export default function BusinessCardScannerScreen({ navigation, route }: Busines
       setIsScanning(false);
       console.error('Camera error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      Alert.alert(t('common.error'), `Failed to scan card: ${errorMessage}`);
+      Alert.alert('Error', `Failed to scan card: ${errorMessage}`);
     }
   }
 
@@ -103,7 +101,7 @@ export default function BusinessCardScannerScreen({ navigation, route }: Busines
           <Text style={styles.closeButtonText}>Grant Permission</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.closeButton, { marginTop: 12, backgroundColor: '#666' }]}>
-          <Text style={styles.closeButtonText}>{t('common.close')}</Text>
+          <Text style={styles.closeButtonText}>Close</Text>
         </TouchableOpacity>
       </View>
     );
@@ -294,4 +292,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-'''
