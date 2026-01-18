@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseClient';
 
 interface City {
   id: string;
