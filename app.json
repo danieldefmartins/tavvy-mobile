@@ -32,7 +32,8 @@
           "cameraPermission": "Tavvy uses the camera so you can add photos to reviews and places."
         }
       ],
-      "@maplibre/maplibre-react-native"
+      "@maplibre/maplibre-react-native",
+      "expo-localization"
     ],
     "ios": {
       "supportsTablet": true,

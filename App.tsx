@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { I18nManager } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -10,6 +11,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider, useThemeContext } from './contexts/ThemeContext';
 import { Colors, darkTheme } from './constants/Colors';
+
+// ========== i18n IMPORT (NEW) ==========
+import './i18n'; // Initialize i18n
+import { loadSavedLanguage, isRTL } from './i18n';
 
 // Animated Splash Screen (replaces VideoSplashScreen)
 import AnimatedSplash from './components/AnimatedSplash';
@@ -48,6 +53,9 @@ import ProfileScreen from './screens/ProfileScreen';
 import SavedScreen from './screens/SavedScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
+
+// ========== SETTINGS SCREEN (NEW) ==========
+import SettingsScreen from './screens/SettingsScreen';
 
 // ========== APPLE COMPLIANCE SCREENS ==========
 import CommunityGuidelinesScreen from './screens/CommunityGuidelinesScreen';
@@ -160,6 +168,9 @@ function AppsStack() {
       {/* Auth */}
       <MenuStackNav.Screen name="Login" component={LoginScreen} />
       <MenuStackNav.Screen name="SignUp" component={SignUpScreen} />
+
+      {/* ========== SETTINGS SCREEN (NEW) ========== */}
+      <MenuStackNav.Screen name="Settings" component={SettingsScreen} />
 
       {/* Shared screens accessible from menu */}
       <MenuStackNav.Screen name="RateCity" component={RateCityScreen} />
@@ -354,6 +365,29 @@ function AppContent() {
     };
 
     initializeSignalSystem();
+  }, []);
+
+  // ========== i18n INITIALIZATION (NEW) ==========
+  useEffect(() => {
+    const initializeI18n = async () => {
+      try {
+        // Load saved language preference
+        await loadSavedLanguage();
+        
+        // Handle RTL layout for Arabic
+        const rtl = isRTL();
+        if (rtl !== I18nManager.isRTL) {
+          I18nManager.allowRTL(rtl);
+          I18nManager.forceRTL(rtl);
+          // Note: App may need to reload for RTL changes to take full effect
+        }
+        console.log('✅ i18n system initialized');
+      } catch (error) {
+        console.error('Error initializing i18n:', error);
+      }
+    };
+
+    initializeI18n();
   }, []);
 
   return (
