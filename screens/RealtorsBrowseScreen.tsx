@@ -3,6 +3,7 @@
  * Install path: screens/RealtorsBrowseScreen.tsx
  * 
  * Browse and search for real estate agents in your area.
+ * Uses TavvY's signal-based review system.
  */
 import React, { useState, useCallback } from 'react';
 import {
@@ -40,6 +41,13 @@ const RealtorColors = {
   gradientEnd: '#2D5A8A',
 };
 
+// TavvY Signal Colors
+const SignalColors = {
+  theGood: '#3B82F6',      // Blue - positive
+  theVibe: '#8B5CF6',      // Purple - vibe
+  headsUp: '#F97316',      // Orange - heads up
+};
+
 // Specialties for filtering
 const SPECIALTIES = [
   { id: 'all', name: 'All', icon: 'grid-outline' },
@@ -50,7 +58,7 @@ const SPECIALTIES = [
   { id: 'commercial', name: 'Commercial', icon: 'business-outline' },
 ];
 
-// Mock realtors data
+// Mock realtors data with signals
 const MOCK_REALTORS = [
   {
     id: '1',
@@ -58,13 +66,17 @@ const MOCK_REALTORS = [
     title: 'Licensed Real Estate Agent',
     company: 'Prestige Realty Group',
     photo: 'https://randomuser.me/api/portraits/women/44.jpg',
-    rating: 4.9,
-    reviewCount: 127,
     yearsExperience: 12,
     transactionsClosed: 450,
     specialties: ['Luxury Homes', 'First-Time Buyers'],
     areas: ['Downtown', 'Westside'],
     verified: true,
+    // TavvY Signals
+    signals: {
+      theGood: ['Responsive', 'Knowledgeable'],
+      theVibe: null,
+      headsUp: null,
+    },
   },
   {
     id: '2',
@@ -72,13 +84,16 @@ const MOCK_REALTORS = [
     title: 'Broker Associate',
     company: 'Elite Properties',
     photo: 'https://randomuser.me/api/portraits/men/32.jpg',
-    rating: 4.8,
-    reviewCount: 98,
     yearsExperience: 8,
     transactionsClosed: 280,
     specialties: ['Investment Properties', 'Commercial'],
     areas: ['Financial District', 'Midtown'],
     verified: true,
+    signals: {
+      theGood: null,
+      theVibe: null,
+      headsUp: null,
+    },
   },
   {
     id: '3',
@@ -86,41 +101,50 @@ const MOCK_REALTORS = [
     title: 'Real Estate Consultant',
     company: 'HomeFirst Realty',
     photo: 'https://randomuser.me/api/portraits/women/68.jpg',
-    rating: 4.7,
-    reviewCount: 156,
     yearsExperience: 15,
     transactionsClosed: 520,
     specialties: ['Relocation', 'First-Time Buyers'],
     areas: ['Suburbs', 'Lakefront'],
     verified: true,
+    signals: {
+      theGood: ['Patient', 'Great Negotiator'],
+      theVibe: ['Professional'],
+      headsUp: null,
+    },
   },
   {
     id: '4',
     name: 'James Wilson',
     title: 'Senior Real Estate Agent',
-    company: 'Century Homes',
+    company: 'Cityscape Realty',
     photo: 'https://randomuser.me/api/portraits/men/75.jpg',
-    rating: 4.9,
-    reviewCount: 203,
     yearsExperience: 20,
-    transactionsClosed: 750,
+    transactionsClosed: 680,
     specialties: ['Luxury Homes', 'Investment Properties'],
-    areas: ['Hillside', 'Waterfront'],
+    areas: ['Uptown', 'Historic District'],
     verified: true,
+    signals: {
+      theGood: null,
+      theVibe: null,
+      headsUp: null,
+    },
   },
   {
     id: '5',
     name: 'Amanda Foster',
     title: 'Realtor',
-    company: 'Urban Living Realty',
+    company: 'NextHome Partners',
     photo: 'https://randomuser.me/api/portraits/women/90.jpg',
-    rating: 4.6,
-    reviewCount: 67,
     yearsExperience: 5,
     transactionsClosed: 120,
-    specialties: ['First-Time Buyers', 'Condos'],
-    areas: ['Downtown', 'Arts District'],
+    specialties: ['First-Time Buyers', 'Relocation'],
+    areas: ['East Side', 'University District'],
     verified: false,
+    signals: {
+      theGood: ['Friendly', 'Quick Responses'],
+      theVibe: ['Energetic'],
+      headsUp: ['New to Area'],
+    },
   },
 ];
 
@@ -129,10 +153,9 @@ type NavigationProp = NativeStackNavigationProp<any>;
 export default function RealtorsBrowseScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [searchQuery, setSearchQuery] = useState('');
-  const [location, setLocation] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('all');
-  const [loading, setLoading] = useState(false);
   const [realtors, setRealtors] = useState(MOCK_REALTORS);
+  const [loading, setLoading] = useState(false);
 
   const handleBack = () => {
     navigation.goBack();
@@ -140,14 +163,16 @@ export default function RealtorsBrowseScreen() {
 
   const handleSearch = useCallback(() => {
     setLoading(true);
-    // Simulate search - in production, this would call an API
+    // Simulate API call
     setTimeout(() => {
       let filtered = MOCK_REALTORS;
       
-      if (searchQuery) {
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
         filtered = filtered.filter(r => 
-          r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          r.company.toLowerCase().includes(searchQuery.toLowerCase())
+          r.name.toLowerCase().includes(query) ||
+          r.company.toLowerCase().includes(query) ||
+          r.areas.some(a => a.toLowerCase().includes(query))
         );
       }
       
@@ -171,7 +196,6 @@ export default function RealtorsBrowseScreen() {
 
   const handleSpecialtySelect = (id: string) => {
     setSelectedSpecialty(id);
-    // Trigger search when specialty changes
     setTimeout(handleSearch, 100);
   };
 
@@ -180,6 +204,38 @@ export default function RealtorsBrowseScreen() {
       realtorId: realtor.id,
       realtorName: realtor.name,
     });
+  };
+
+  // Signal Bar Component
+  const SignalBar = ({ 
+    type, 
+    label, 
+    hasSignals 
+  }: { 
+    type: 'theGood' | 'theVibe' | 'headsUp'; 
+    label: string;
+    hasSignals: boolean;
+  }) => {
+    const colors = {
+      theGood: SignalColors.theGood,
+      theVibe: SignalColors.theVibe,
+      headsUp: SignalColors.headsUp,
+    };
+
+    const icons = {
+      theGood: 'thumbs-up',
+      theVibe: 'sparkles',
+      headsUp: 'alert-circle',
+    };
+
+    return (
+      <View style={[styles.signalBar, { backgroundColor: colors[type] }]}>
+        <Ionicons name={icons[type] as any} size={14} color="#FFFFFF" />
+        <Text style={styles.signalBarText}>
+          {hasSignals ? label : 'Be the first to tap!'}
+        </Text>
+      </View>
+    );
   };
 
   const renderRealtorCard = ({ item }: { item: typeof MOCK_REALTORS[0] }) => (
@@ -204,14 +260,6 @@ export default function RealtorsBrowseScreen() {
 
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
-          <View style={styles.ratingContainer}>
-            <Ionicons name="star" size={14} color={RealtorColors.secondary} />
-            <Text style={styles.ratingText}>{item.rating}</Text>
-          </View>
-          <Text style={styles.statLabel}>{item.reviewCount} reviews</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
           <Text style={styles.statValue}>{item.yearsExperience}</Text>
           <Text style={styles.statLabel}>Years Exp.</Text>
         </View>
@@ -235,16 +283,34 @@ export default function RealtorsBrowseScreen() {
         <Text style={styles.areasText}>{item.areas.join(' • ')}</Text>
       </View>
 
-      <View style={styles.cardActions}>
-        <TouchableOpacity 
-          style={styles.contactButton}
-          onPress={() => handleRealtorPress(item)}
-        >
-          <Text style={styles.contactButtonText}>View Profile</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.messageButton}>
-          <Ionicons name="chatbubble-outline" size={20} color={RealtorColors.primary} />
-        </TouchableOpacity>
+      {/* TavvY Signal Bars - 2 blue on first row, purple + orange on second row */}
+      <View style={styles.signalBarsContainer}>
+        {/* First Row - 2 Blue (The Good) bars */}
+        <View style={styles.signalRow}>
+          <SignalBar 
+            type="theGood" 
+            label={item.signals.theGood?.[0] || ''} 
+            hasSignals={!!item.signals.theGood?.[0]} 
+          />
+          <SignalBar 
+            type="theGood" 
+            label={item.signals.theGood?.[1] || ''} 
+            hasSignals={!!item.signals.theGood?.[1]} 
+          />
+        </View>
+        {/* Second Row - Purple (The Vibe) + Orange (Heads Up) */}
+        <View style={styles.signalRow}>
+          <SignalBar 
+            type="theVibe" 
+            label={item.signals.theVibe?.[0] || ''} 
+            hasSignals={!!item.signals.theVibe} 
+          />
+          <SignalBar 
+            type="headsUp" 
+            label={item.signals.headsUp?.[0] || ''} 
+            hasSignals={!!item.signals.headsUp} 
+          />
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -339,13 +405,6 @@ export default function RealtorsBrowseScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="people-outline" size={64} color={RealtorColors.textMuted} />
-              <Text style={styles.emptyText}>No realtors found</Text>
-              <Text style={styles.emptySubtext}>Try adjusting your search or filters</Text>
-            </View>
-          }
           ListHeaderComponent={
             <Text style={styles.resultsCount}>
               {realtors.length} {realtors.length === 1 ? 'Realtor' : 'Realtors'} Found
@@ -500,40 +559,30 @@ const styles = StyleSheet.create({
   },
   realtorCompany: {
     fontSize: 13,
-    color: RealtorColors.primary,
+    color: RealtorColors.textMuted,
     marginTop: 2,
   },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     paddingVertical: 12,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: RealtorColors.border,
     marginBottom: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
   },
   statItem: {
     alignItems: 'center',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  ratingText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: RealtorColors.text,
+    flex: 1,
   },
   statValue: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: RealtorColors.text,
   },
   statLabel: {
     fontSize: 12,
-    color: RealtorColors.textLight,
+    color: RealtorColors.textMuted,
     marginTop: 2,
   },
   statDivider: {
@@ -568,45 +617,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: RealtorColors.textLight,
   },
-  cardActions: {
+  // TavvY Signal Bars
+  signalBarsContainer: {
+    gap: 8,
+  },
+  signalRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
-  contactButton: {
+  signalBar: {
     flex: 1,
-    backgroundColor: RealtorColors.primary,
-    paddingVertical: 12,
-    borderRadius: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
-  contactButtonText: {
-    fontSize: 15,
+  signalBarText: {
+    fontSize: 13,
     fontWeight: '600',
     color: '#FFFFFF',
-  },
-  messageButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: RealtorColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: RealtorColors.text,
-    marginTop: 16,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: RealtorColors.textLight,
-    marginTop: 4,
   },
 });

@@ -298,39 +298,78 @@ export default function RealtorDetailScreen() {
     </View>
   );
 
+  // TavvY Signal Colors
+  const SignalColors = {
+    theGood: '#3B82F6',      // Blue - positive
+    theVibe: '#8B5CF6',      // Purple - vibe
+    headsUp: '#F97316',      // Orange - heads up
+  };
+
+  // Community Signal Bar Component
+  const CommunitySignalBar = ({ 
+    type, 
+    label, 
+    icon,
+    hasSignals 
+  }: { 
+    type: 'theGood' | 'theVibe' | 'headsUp'; 
+    label: string;
+    icon: string;
+    hasSignals: boolean;
+  }) => {
+    const colors = {
+      theGood: SignalColors.theGood,
+      theVibe: SignalColors.theVibe,
+      headsUp: SignalColors.headsUp,
+    };
+
+    return (
+      <View style={[styles.communitySignalBar, { backgroundColor: colors[type] }]}>
+        <Ionicons name={icon as any} size={18} color="#FFFFFF" />
+        <Text style={styles.communitySignalText}>
+          {label} · {hasSignals ? 'View signals' : 'Be the first to tap!'}
+        </Text>
+      </View>
+    );
+  };
+
   const renderReviewsTab = () => (
     <View style={styles.tabContent}>
-      {realtor.reviews.length > 0 ? (
-        <>
-          <View style={styles.reviewsSummary}>
-            <Text style={styles.reviewsRating}>{realtor.rating}</Text>
-            {renderStars(realtor.rating, 20)}
-            <Text style={styles.reviewsCount}>{realtor.reviewCount} reviews</Text>
-          </View>
+      {/* Community Signals Section */}
+      <View style={styles.signalsCard}>
+        <Text style={styles.signalsTitle}>Community Signals</Text>
+        
+        <CommunitySignalBar 
+          type="theGood" 
+          label="The Good" 
+          icon="thumbs-up"
+          hasSignals={false} 
+        />
+        
+        <CommunitySignalBar 
+          type="theVibe" 
+          label="The Vibe" 
+          icon="sparkles"
+          hasSignals={false} 
+        />
+        
+        <CommunitySignalBar 
+          type="headsUp" 
+          label="Heads Up" 
+          icon="alert-circle"
+          hasSignals={false} 
+        />
+      </View>
 
-          {realtor.reviews.map((review: any) => (
-            <View key={review.id} style={styles.reviewCard}>
-              <View style={styles.reviewHeader}>
-                <Text style={styles.reviewAuthor}>{review.author}</Text>
-                <Text style={styles.reviewDate}>{review.date}</Text>
-              </View>
-              {renderStars(review.rating, 14)}
-              <Text style={styles.reviewText}>{review.text}</Text>
-            </View>
-          ))}
-
-          <TouchableOpacity style={styles.seeAllButton}>
-            <Text style={styles.seeAllButtonText}>See All Reviews</Text>
-            <Ionicons name="arrow-forward" size={16} color={RealtorColors.primary} />
-          </TouchableOpacity>
-        </>
-      ) : (
-        <View style={styles.emptyState}>
-          <Ionicons name="chatbubbles-outline" size={48} color={RealtorColors.textMuted} />
-          <Text style={styles.emptyStateText}>No reviews yet</Text>
-          <Text style={styles.emptyStateSubtext}>Be the first to leave a review</Text>
-        </View>
-      )}
+      {/* Been here? CTA */}
+      <View style={styles.ctaCard}>
+        <Text style={styles.ctaTitle}>Worked with {realtor.name.split(' ')[0]}?</Text>
+        <Text style={styles.ctaSubtitle}>Share your experience to help others.</Text>
+        <TouchableOpacity style={styles.ctaButton}>
+          <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.ctaButtonText}>Add Your Review</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -819,5 +858,74 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: RealtorColors.textLight,
     marginTop: 4,
+  },
+  // Community Signals Styles
+  signalsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  signalsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: RealtorColors.text,
+    marginBottom: 16,
+  },
+  communitySignalBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  communitySignalText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  // CTA Card Styles
+  ctaCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  ctaTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: RealtorColors.text,
+    marginBottom: 4,
+  },
+  ctaSubtitle: {
+    fontSize: 14,
+    color: RealtorColors.textLight,
+    marginBottom: 16,
+  },
+  ctaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: RealtorColors.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  ctaButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
