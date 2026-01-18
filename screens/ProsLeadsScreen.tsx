@@ -1,8 +1,6 @@
 /**
- * Pros Leads Screen
+ * Pros Leads Screen - Updated for Project Requests
  * Install path: screens/ProsLeadsScreen.tsx
- * 
- * Lead management screen for service providers.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -20,52 +18,51 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { ProsColors, LEAD_STATUS_CONFIG } from '../constants/ProsConfig';
+import { ProsColors } from '../constants/ProsConfig';
 import { ProsLeadCard } from '../components/ProsLeadCard';
-import { useProsLeads } from '../hooks/usePros';
-import { ProLead } from '../lib/ProsTypes';
+import { useProjectRequests, ProjectRequest } from '../hooks/useProjectRequests';
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
-type FilterStatus = 'all' | 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
+type FilterStatus = 'all' | 'pending' | 'contacted' | 'quoted' | 'won' | 'lost';
 
 export default function ProsLeadsScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('all');
 
-  const { leads, loading, fetchLeads, updateLeadStatus } = useProsLeads();
+  const { requests, loading, fetchProjectRequests } = useProjectRequests();
 
   useEffect(() => {
-    fetchLeads();
-  }, []);
+    fetchProjectRequests();
+  }, [fetchProjectRequests]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchLeads();
+    await fetchProjectRequests();
     setRefreshing(false);
   };
 
-  const filteredLeads = activeFilter === 'all'
-    ? leads
-    : leads.filter(lead => lead.status === activeFilter);
+  const filteredRequests = activeFilter === 'all'
+    ? requests
+    : requests.filter(req => req.status === activeFilter);
 
-  const handleLeadPress = (lead: ProLead) => {
-    navigation.navigate('ProsLeadDetailScreen', { leadId: lead.id });
+  const handleLeadPress = (request: ProjectRequest) => {
+    // Navigate to detail screen - passing the whole request object
+    navigation.navigate('ProsLeadDetailScreen', { leadId: request.id, lead: request });
   };
 
-  const handleStatusChange = async (leadId: number, newStatus: string) => {
-    try {
-      await updateLeadStatus(leadId, newStatus);
-    } catch (error) {
-      console.error('Failed to update lead status:', error);
-    }
+  const handleMessagePress = (request: ProjectRequest) => {
+    navigation.navigate('ProsMessages', { 
+      leadId: request.id,
+      customerName: request.customer_name 
+    });
   };
 
   const renderFilterTab = (status: FilterStatus, label: string) => {
     const count = status === 'all' 
-      ? leads.length 
-      : leads.filter(l => l.status === status).length;
+      ? requests.length 
+      : requests.filter(r => r.status === status).length;
 
     return (
       <TouchableOpacity
@@ -85,13 +82,33 @@ export default function ProsLeadsScreen() {
     );
   };
 
-  const renderLead = ({ item }: { item: ProLead }) => (
-    <ProsLeadCard
-      lead={item}
-      onPress={() => handleLeadPress(item)}
-      onStatusChange={(leadId, status) => handleStatusChange(leadId, status)}
-    />
-  );
+  const renderLead = ({ item }: { item: ProjectRequest }) => {
+    // Map ProjectRequest to the format expected by ProsLeadCard
+    const mappedLead = {
+      id: item.id,
+      title: item.description || 'Project Request',
+      description: item.description,
+      status: item.status as any,
+      city: item.city,
+      state: item.state,
+      zipCode: item.zip_code,
+      createdAt: item.created_at,
+      phone: item.contact_info_approved ? item.customer_phone : null,
+      email: item.contact_info_approved ? item.customer_email : null,
+      user: {
+        name: item.customer_name,
+        avatarUrl: null
+      }
+    };
+
+    return (
+      <ProsLeadCard
+        lead={mappedLead as any}
+        onPress={() => handleLeadPress(item)}
+        onMessagePress={() => handleMessagePress(item)}
+      />
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -110,7 +127,7 @@ export default function ProsLeadsScreen() {
           horizontal
           data={[
             { status: 'all' as FilterStatus, label: 'All' },
-            { status: 'new' as FilterStatus, label: 'New' },
+            { status: 'pending' as FilterStatus, label: 'New' },
             { status: 'contacted' as FilterStatus, label: 'Contacted' },
             { status: 'quoted' as FilterStatus, label: 'Quoted' },
             { status: 'won' as FilterStatus, label: 'Won' },
@@ -124,11 +141,11 @@ export default function ProsLeadsScreen() {
       </View>
 
       {/* Leads List */}
-      {loading && leads.length === 0 ? (
+      {loading && requests.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={ProsColors.primary} />
         </View>
-      ) : filteredLeads.length === 0 ? (
+      ) : filteredRequests.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="document-text-outline" size={64} color={ProsColors.textMuted} />
           <Text style={styles.emptyTitle}>
@@ -142,8 +159,8 @@ export default function ProsLeadsScreen() {
         </View>
       ) : (
         <FlatList
-          data={filteredLeads as any}
-          keyExtractor={(item) => item.id.toString()}
+          data={filteredRequests}
+          keyExtractor={(item) => item.id}
           renderItem={renderLead}
           contentContainerStyle={styles.leadsList}
           showsVerticalScrollIndicator={false}

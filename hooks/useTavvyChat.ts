@@ -1,8 +1,6 @@
 /**
- * useTavvyChat - Real-Time Messaging Hook
- * Install path: hooks/useTavvyChat.ts
- * 
- * Handles real-time messaging between users and pros using Supabase Realtime.
+ * useTavvyChat - Updated Real-Time Messaging Hook
+ * Handles messaging between users and pros, linked to project requests.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -21,15 +19,17 @@ export function useTavvyChat(conversationId?: string) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Fetch conversations where user is either customer or pro
       const { data, error } = await supabase
         .from('conversations')
         .select(`
           *,
-          pro:pros(id, business_name, user_id),
-          user:auth.users(id, email)
+          project_request:project_requests(id, description, customer_name),
+          pro:auth.users!pro_id(id, email),
+          customer:auth.users!customer_id(id, email)
         `)
-        .or(`user_id.eq.${user.id},pro_id.in.(select id from pros where user_id = '${user.id}')`)
-        .order('last_message_at', { ascending: false });
+        .or(`customer_id.eq.${user.id},pro_id.eq.${user.id}`)
+        .order('updated_at', { ascending: false });
 
       if (error) throw error;
       setConversations(data || []);
@@ -60,7 +60,7 @@ export function useTavvyChat(conversationId?: string) {
   }, []);
 
   // Send a new message
-  const sendMessage = async (id: string, content: string, senderType: 'user' | 'pro') => {
+  const sendMessage = async (id: string, content: string, senderType: 'customer' | 'pro') => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -77,6 +77,13 @@ export function useTavvyChat(conversationId?: string) {
         .single();
 
       if (error) throw error;
+      
+      // Update conversation timestamp
+      await supabase
+        .from('conversations')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', id);
+
       return data;
     } catch (err: any) {
       setError(err.message);
@@ -84,28 +91,31 @@ export function useTavvyChat(conversationId?: string) {
     }
   };
 
-  // Start a new conversation
-  const startConversation = async (proId: string, leadId?: string) => {
+  // Start a new conversation linked to a project request
+  const startConversation = async (proId: string, customerId: string, leadId?: string, bidId?: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      // Check if conversation already exists
-      const { data: existing } = await supabase
+      // Check if conversation already exists for this lead and pro
+      let query = supabase
         .from('conversations')
         .select('id')
-        .eq('user_id', user.id)
         .eq('pro_id', proId)
-        .maybeSingle();
+        .eq('customer_id', customerId);
+      
+      if (leadId) {
+        query = query.eq('project_request_id', leadId);
+      }
+
+      const { data: existing } = await query.maybeSingle();
 
       if (existing) return existing.id;
 
       const { data, error } = await supabase
         .from('conversations')
         .insert({
-          user_id: user.id,
           pro_id: proId,
-          lead_id: leadId
+          customer_id: customerId,
+          project_request_id: leadId,
+          project_bid_id: bidId
         })
         .select()
         .single();
@@ -130,7 +140,11 @@ export function useTavvyChat(conversationId?: string) {
         table: 'messages',
         filter: `conversation_id=eq.${conversationId}`
       }, (payload) => {
-        setMessages((prev) => [...prev, payload.new]);
+        setMessages((prev) => {
+          // Avoid duplicates
+          if (prev.find(m => m.id === payload.new.id)) return prev;
+          return [...prev, payload.new];
+        });
       })
       .subscribe();
 

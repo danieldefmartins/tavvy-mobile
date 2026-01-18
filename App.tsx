@@ -73,6 +73,10 @@ import ProsProjectStatusScreen from './screens/ProsProjectStatusScreen';
 
 // ========== BROWSE SCREENS ==========
 import RidesBrowseScreen from './screens/RidesBrowseScreen';
+import HappeningNowScreen from './screens/HappeningNowScreen';
+import ExperiencePathsScreen from './screens/ExperiencePathsScreen';
+import RealtorsBrowseScreen from './screens/RealtorsBrowseScreen';
+import RealtorDetailScreen from './screens/RealtorDetailScreen';
 import RVCampingBrowseScreen from './screens/RVCampingBrowseScreen';
 import CitiesBrowseScreen from './screens/CitiesBrowseScreen';
 import RideDetailsScreen from './screens/RideDetailsScreen';
@@ -187,6 +191,12 @@ function AppsStack() {
       {/* Apple Compliance Screens */}
       <MenuStackNav.Screen name="HelpSupport" component={HelpSupportScreen} />
       <MenuStackNav.Screen name="CommunityGuidelines" component={CommunityGuidelinesScreen} />
+      
+      {/* New App Tiles */}
+      <MenuStackNav.Screen name="HappeningNow" component={HappeningNowScreen} />
+      <MenuStackNav.Screen name="ExperiencePaths" component={ExperiencePathsScreen} />
+      <MenuStackNav.Screen name="RealtorsBrowse" component={RealtorsBrowseScreen} />
+      <MenuStackNav.Screen name="RealtorDetail" component={RealtorDetailScreen} />
     </MenuStackNav.Navigator>
   );
 }

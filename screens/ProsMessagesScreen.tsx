@@ -1,9 +1,6 @@
 /**
- * ProsMessagesScreen - Real-Time Chat Interface
+ * ProsMessagesScreen - Updated for Project Requests
  * Install path: screens/ProsMessagesScreen.tsx
- * 
- * Messaging interface for communication between users and pros.
- * Powered by Supabase Realtime.
  */
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -28,11 +25,12 @@ import { supabase } from '../lib/supabaseClient';
 export default function ProsMessagesScreen() {
   const navigation = useNavigation();
   const route = useRoute<any>();
-  const { conversationId: initialId, proId, proName } = route.params || {};
+  const { conversationId: initialId, leadId, customerName } = route.params || {};
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(initialId || null);
   const [messageText, setMessageText] = useState('');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [userType, setUserType] = useState<'customer' | 'pro'>('customer');
   const flatListRef = useRef<FlatList>(null);
 
   const { 
@@ -46,28 +44,60 @@ export default function ProsMessagesScreen() {
   } = useTavvyChat(activeConversationId || undefined);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setCurrentUserId(data.user?.id || null);
-    });
+    const setup = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+        // In a real app, you'd check a 'profiles' table for the role
+        // For now, we'll assume if they are on the Pros tab, they might be a pro
+        // This is simplified logic
+        setUserType('pro'); 
+      }
+    };
+    setup();
     fetchConversations();
-  }, []);
+  }, [fetchConversations]);
 
   useEffect(() => {
     if (activeConversationId) {
       fetchMessages(activeConversationId);
     }
-  }, [activeConversationId]);
+  }, [activeConversationId, fetchMessages]);
 
+  // If we came from a lead and don't have a conversation yet, start one
   useEffect(() => {
-    if (proId && !activeConversationId) {
+    if (leadId && !activeConversationId && currentUserId) {
       handleStartNewChat();
     }
-  }, [proId]);
+  }, [leadId, currentUserId]);
 
   const handleStartNewChat = async () => {
     try {
-      const id = await startConversation(proId);
-      setActiveConversationId(id);
+      // For a pro starting a chat from a lead:
+      // We need the customer's user ID. 
+      // Note: This requires the customer to have signed up.
+      // If they haven't signed up yet, the pro can't message them yet.
+      
+      // Fetch the project request to get the customer's email
+      const { data: request } = await supabase
+        .from('project_requests')
+        .select('customer_email')
+        .eq('id', leadId)
+        .single();
+      
+      if (request?.customer_email) {
+        // Find the user ID for this email
+        const { data: userData } = await supabase
+          .from('profiles') // Assuming a profiles table exists
+          .select('id')
+          .eq('email', request.customer_email)
+          .maybeSingle();
+        
+        if (userData?.id) {
+          const id = await startConversation(currentUserId!, userData.id, leadId);
+          setActiveConversationId(id);
+        }
+      }
     } catch (error) {
       console.error('Failed to start conversation:', error);
     }
@@ -80,9 +110,7 @@ export default function ProsMessagesScreen() {
     setMessageText('');
     
     try {
-      // Determine if sender is pro or user (simplified for this view)
-      const senderType = 'user'; 
-      await sendMessage(activeConversationId, text, senderType);
+      await sendMessage(activeConversationId, text, userType);
       flatListRef.current?.scrollToEnd({ animated: true });
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -90,7 +118,9 @@ export default function ProsMessagesScreen() {
   };
 
   const renderConversationItem = ({ item }: { item: any }) => {
-    const otherParty = item.pro?.business_name || 'Customer';
+    const otherParty = item.project_request?.customer_name || 'Customer';
+    const projectTitle = item.project_request?.description || 'Project';
+    
     return (
       <TouchableOpacity 
         style={styles.conversationItem}
@@ -101,9 +131,7 @@ export default function ProsMessagesScreen() {
         </View>
         <View style={styles.conversationInfo}>
           <Text style={styles.conversationName}>{otherParty}</Text>
-          <Text style={styles.lastMessage} numberOfLines={1}>
-            Tap to view messages
-          </Text>
+          <Text style={styles.projectTitle} numberOfLines={1}>{projectTitle}</Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
       </TouchableOpacity>
@@ -141,6 +169,7 @@ export default function ProsMessagesScreen() {
             <View style={styles.emptyState}>
               <Ionicons name="chatbubbles-outline" size={64} color="#D1D5DB" />
               <Text style={styles.emptyText}>No conversations yet.</Text>
+              <Text style={styles.emptySubText}>Leads you respond to will appear here.</Text>
             </View>
           }
         />
@@ -159,7 +188,7 @@ export default function ProsMessagesScreen() {
           <TouchableOpacity onPress={() => setActiveConversationId(null)}>
             <Ionicons name="arrow-back" size={24} color="#374151" />
           </TouchableOpacity>
-          <Text style={styles.chatTitle}>{proName || 'Chat'}</Text>
+          <Text style={styles.chatTitle}>{customerName || 'Chat'}</Text>
           <View style={{ width: 24 }} />
         </View>
 
@@ -216,9 +245,10 @@ const styles = StyleSheet.create({
   },
   conversationInfo: { flex: 1, marginLeft: 12 },
   conversationName: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  lastMessage: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-  emptyState: { alignItems: 'center', marginTop: 100 },
-  emptyText: { marginTop: 12, color: '#9CA3AF', fontSize: 16 },
+  projectTitle: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+  emptyState: { alignItems: 'center', marginTop: 100, paddingHorizontal: 40 },
+  emptyText: { marginTop: 12, color: '#9CA3AF', fontSize: 18, fontWeight: '600' },
+  emptySubText: { marginTop: 8, color: '#9CA3AF', fontSize: 14, textAlign: 'center' },
   chatHeader: {
     flexDirection: 'row',
     alignItems: 'center',
