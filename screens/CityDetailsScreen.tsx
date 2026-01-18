@@ -51,11 +51,23 @@ interface City {
   is_active: boolean;
 }
 
-interface SignalData {
-  theGood: Array<{ label: string; taps: number; icon: string }>;
-  theVibe: Array<{ label: string; taps: number; icon: string }>;
-  headsUp: Array<{ label: string; taps: number; icon: string }>;
+interface SignalItem {
+  label: string;
+  taps: number;
+  icon: string;
 }
+
+interface SignalData {
+  theGood: SignalItem[];
+  theVibe: SignalItem[];
+  headsUp: SignalItem[];
+}
+
+const DEFAULT_SIGNALS: SignalData = {
+  theGood: [],
+  theVibe: [],
+  headsUp: [],
+};
 
 export default function CityDetailsScreen() {
   const navigation = useNavigation<any>();
@@ -66,7 +78,7 @@ export default function CityDetailsScreen() {
   const { cityId, cityName } = route.params || {};
 
   const [city, setCity] = useState<City | null>(null);
-  const [signals, setSignals] = useState<SignalData>({ theGood: [], theVibe: [], headsUp: [] });
+  const [signals, setSignals] = useState<SignalData>(DEFAULT_SIGNALS);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'reviews' | 'info' | 'photos'>('reviews');
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
@@ -89,8 +101,19 @@ export default function CityDetailsScreen() {
       setCity(data);
 
       // Load signals for this city
-      const signalData = await fetchPlaceSignals(cityId);
-      setSignals(signalData);
+      try {
+        const signalData = await fetchPlaceSignals(cityId);
+        if (signalData) {
+          setSignals({
+            theGood: signalData.theGood || [],
+            theVibe: signalData.theVibe || [],
+            headsUp: signalData.headsUp || [],
+          });
+        }
+      } catch (signalError) {
+        console.error('Error loading signals:', signalError);
+        // Keep default empty signals
+      }
     } catch (error) {
       console.error('Error loading city:', error);
     } finally {
@@ -117,13 +140,15 @@ export default function CityDetailsScreen() {
     type: 'good' | 'vibe' | 'headsUp',
     label: string,
     icon: string,
-    signals: Array<{ label: string; taps: number; icon: string }>,
+    signalItems: SignalItem[] | undefined | null,
     color: string
   ) => {
-    const hasSignals = signals.length > 0;
+    // FIXED: Add null/undefined check for signalItems
+    const safeSignals = signalItems || [];
+    const hasSignals = safeSignals.length > 0;
     const isExpanded = expandedSection === type;
     const displayText = hasSignals
-      ? signals.slice(0, 3).map(s => s.label).join(', ')
+      ? safeSignals.slice(0, 3).map(s => s.label).join(', ')
       : 'Be the first to tap!';
 
     return (
@@ -293,9 +318,9 @@ export default function CityDetailsScreen() {
                   Community Signals
                 </Text>
 
-                {renderSignalBar('good', 'The Good', 'thumbs-up', signals.theGood, '#3B82F6')}
-                {renderSignalBar('vibe', 'The Vibe', 'sparkles', signals.theVibe, '#8B5CF6')}
-                {renderSignalBar('headsUp', 'Heads Up', 'alert-circle', signals.headsUp, '#F97316')}
+                {renderSignalBar('good', 'The Good', 'thumbs-up', signals?.theGood, '#3B82F6')}
+                {renderSignalBar('vibe', 'The Vibe', 'sparkles', signals?.theVibe, '#8B5CF6')}
+                {renderSignalBar('headsUp', 'Heads Up', 'alert-circle', signals?.headsUp, '#F97316')}
               </View>
 
               {/* Been Here CTA */}
