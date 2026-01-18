@@ -59,7 +59,7 @@ const APP_TILES: AppTile[] = [
     backgroundColor: '#CCFBF1',
     backgroundColorDark: '#134E4A',
     iconColor: '#14B8A6',
-    route: 'Explore',
+    route: 'Universes',
   },
   {
     id: 'rides',
@@ -100,36 +100,6 @@ const APP_TILES: AppTile[] = [
     backgroundColorDark: '#991B1B',
     iconColor: '#EF4444',
     route: 'CitiesBrowse',
-  },
-  {
-    id: 'happening-now',
-    name: 'Happening Now',
-    icon: 'sparkles',
-    iconType: 'ionicons',
-    backgroundColor: '#FEE2E2',
-    backgroundColorDark: '#9F1239',
-    iconColor: '#FF2D55',
-    route: 'HappeningNow',
-  },
-  {
-    id: 'experiences',
-    name: 'Experiences',
-    icon: 'compass',
-    iconType: 'ionicons',
-    backgroundColor: '#EDE9FE',
-    backgroundColorDark: '#4C1D95',
-    iconColor: '#5856D6',
-    route: 'ExperiencePaths',
-  },
-  {
-    id: 'realtors',
-    name: 'Realtors',
-    icon: 'home',
-    iconType: 'ionicons',
-    backgroundColor: '#DBEAFE',
-    backgroundColorDark: '#1E3A5F',
-    iconColor: '#1E3A5F',
-    route: 'RealtorsBrowse',
   },
   {
     id: 'pros',
@@ -283,13 +253,6 @@ export default function AppsScreen() {
             style={styles.headerLogo}
             resizeMode="contain"
           />
-          <TouchableOpacity
-            style={styles.helpButton}
-            onPress={() => navigation.navigate('HelpSupport')}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="help-circle-outline" size={26} color="#FFFFFF" />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -412,17 +375,7 @@ const styles = StyleSheet.create({
   // Logo row
   logoRow: {
     paddingHorizontal: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  helpButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
 
   headerLogo: {
