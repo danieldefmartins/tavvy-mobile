@@ -2050,7 +2050,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   <TouchableOpacity
                     key={ride.id}
                     style={[styles.featureCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-                    onPress={() => navigation.navigate('PlaceDetails', { placeId: ride.id })}
+                    onPress={() => navigation.navigate('RideDetails', { placeId: ride.id })}
                     activeOpacity={0.9}
                   >
                     <Image source={{ uri: ride.image }} style={styles.featureCardImage} />
@@ -2089,7 +2089,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   <TouchableOpacity
                     key={camp.id}
                     style={[styles.featureCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-                    onPress={() => navigation.navigate('PlaceDetails', { placeId: camp.id })}
+                    onPress={() => navigation.navigate('RideDetails', { placeId: camp.id })}
                     activeOpacity={0.9}
                   >
                     <Image source={{ uri: camp.image }} style={styles.featureCardImage} />
