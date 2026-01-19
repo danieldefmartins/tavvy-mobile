@@ -1,14 +1,15 @@
 // ============================================================================
-// ATLAS HOME SCREEN (UPDATED - FULL WIDTH SOLID HEADER)
+// ATLAS HOME SCREEN v2.0
 // ============================================================================
 // Features:
-// - FULL WIDTH SOLID HEADER: No rounded corners, edge-to-edge banner (#0f1233)
-// - White logo + "Atlas" section name
-// - Elegant floating cards with soft shadows
-// - NOW CONNECTED TO SUPABASE - Fetches real data from atlas_articles table
+// - Category filter chips (All, Local Guides, Owner Spotlights, etc.)
+// - Featured article hero card with gradient overlay
+// - Article grid layout (2 columns)
+// - Trending section
+// - Matches mockup design with teal/green accent colors
 // ============================================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -21,59 +22,106 @@ import {
   StatusBar,
   Platform,
   SafeAreaView,
+  RefreshControl,
+  FlatList,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeContext } from '../contexts/ThemeContext';
 import {
   getFeaturedArticle,
   getTrendingArticles,
-  getFeaturedUniverses,
   getCategories,
+  getArticlesByCategory,
   type AtlasArticle,
-  type AtlasUniverse,
   type AtlasCategory,
 } from '../lib/atlas';
 
 const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - 48) / 2; // 2 columns with padding
+
+// Tavvy brand colors
+const TEAL_PRIMARY = '#0D9488';
+const TEAL_LIGHT = '#5EEAD4';
+const TEAL_BG = '#F0FDFA';
 
 // Default placeholder images
 const PLACEHOLDER_ARTICLE = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800';
 const PLACEHOLDER_AVATAR = 'https://via.placeholder.com/100';
 
+// Category filter options
+const FILTER_OPTIONS = [
+  { id: 'all', name: 'All', slug: 'all' },
+  { id: 'local-guides', name: 'Local Guides', slug: 'local-guides' },
+  { id: 'owner-spotlights', name: 'Owner Spotlights', slug: 'owner-spotlights' },
+  { id: 'tavvy-tips', name: 'Tavvy Tips', slug: 'tavvy-tips' },
+  { id: 'food-drink', name: 'Food & Drink', slug: 'food-drink' },
+  { id: 'services', name: 'Services', slug: 'services' },
+];
+
 export default function AtlasHomeScreen() {
   const navigation = useNavigation();
   const { theme, isDark } = useThemeContext();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState('all');
 
-  // Real data from Supabase (initialized as null/empty)
+  // Data states
   const [featuredArticle, setFeaturedArticle] = useState<AtlasArticle | null>(null);
+  const [articles, setArticles] = useState<AtlasArticle[]>([]);
   const [trendingArticles, setTrendingArticles] = useState<AtlasArticle[]>([]);
-  const [universes, setUniverses] = useState<AtlasUniverse[]>([]);
+  const [categories, setCategories] = useState<AtlasCategory[]>([]);
 
   useEffect(() => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    loadFilteredArticles();
+  }, [selectedFilter]);
+
   const loadData = async () => {
     setLoading(true);
     try {
-      // Fetch all data from Supabase in parallel
-      const [featured, trending, featuredUniverses] = await Promise.all([
+      const [featured, trending, cats] = await Promise.all([
         getFeaturedArticle(),
-        getTrendingArticles(5),
-        getFeaturedUniverses(5),
+        getTrendingArticles(10),
+        getCategories(),
       ]);
 
       setFeaturedArticle(featured);
       setTrendingArticles(trending);
-      setUniverses(featuredUniverses);
+      setCategories(cats);
+      setArticles(trending);
     } catch (error) {
       console.error('Error loading Atlas data:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const loadFilteredArticles = async () => {
+    if (selectedFilter === 'all') {
+      setArticles(trendingArticles);
+      return;
+    }
+
+    try {
+      const category = categories.find(c => c.slug === selectedFilter);
+      if (category) {
+        const filtered = await getArticlesByCategory(category.id, { limit: 20 });
+        setArticles(filtered);
+      }
+    } catch (error) {
+      console.error('Error loading filtered articles:', error);
+    }
+  };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, []);
 
   const formatNumber = (num: number): string => {
     if (num >= 1000) {
@@ -82,25 +130,194 @@ export default function AtlasHomeScreen() {
     return num.toString();
   };
 
-  // Empty state component
-  const EmptyState = ({ message, icon }: { message: string; icon: string }) => (
-    <View style={styles.emptyState}>
-      <Ionicons name={icon as any} size={48} color="#9CA3AF" />
-      <Text style={[styles.emptyStateText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-        {message}
-      </Text>
-    </View>
-  );
+  const navigateToArticle = (article: AtlasArticle) => {
+    // Check if it's an owner spotlight article
+    if (article.article_template_type === 'owner_spotlight') {
+      navigation.navigate('OwnerSpotlight', { article });
+    } else {
+      navigation.navigate('ArticleDetail', { article });
+    }
+  };
+
+  // Render category filter chip
+  const renderFilterChip = (filter: typeof FILTER_OPTIONS[0]) => {
+    const isSelected = selectedFilter === filter.slug;
+    return (
+      <TouchableOpacity
+        key={filter.id}
+        style={[
+          styles.filterChip,
+          isSelected ? styles.filterChipSelected : styles.filterChipUnselected,
+        ]}
+        onPress={() => setSelectedFilter(filter.slug)}
+        activeOpacity={0.7}
+      >
+        <Text
+          style={[
+            styles.filterChipText,
+            isSelected ? styles.filterChipTextSelected : styles.filterChipTextUnselected,
+          ]}
+        >
+          {filter.name}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  // Render featured article hero card
+  const renderFeaturedArticle = () => {
+    if (!featuredArticle) return null;
+
+    return (
+      <TouchableOpacity
+        style={styles.featuredCard}
+        activeOpacity={0.95}
+        onPress={() => navigateToArticle(featuredArticle)}
+      >
+        <Image
+          source={{ uri: featuredArticle.cover_image_url || PLACEHOLDER_ARTICLE }}
+          style={styles.featuredImage}
+        />
+        <View style={styles.featuredOverlay}>
+          {/* Category badge */}
+          <View style={styles.featuredBadge}>
+            <Text style={styles.featuredBadgeText}>
+              {featuredArticle.category?.name || 'Local Guides'}
+            </Text>
+          </View>
+
+          {/* Article info */}
+          <View style={styles.featuredContent}>
+            <Text style={styles.featuredTitle} numberOfLines={2}>
+              {featuredArticle.title}
+            </Text>
+
+            <View style={styles.featuredMeta}>
+              <Image
+                source={{ uri: featuredArticle.author_avatar_url || PLACEHOLDER_AVATAR }}
+                style={styles.featuredAuthorAvatar}
+              />
+              <View>
+                <Text style={styles.featuredAuthorName}>
+                  {featuredArticle.author_name || 'Tavvy Team'}
+                </Text>
+                <Text style={styles.featuredReadTime}>
+                  {featuredArticle.read_time_minutes} min read
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // Render article card for grid
+  const renderArticleCard = (article: AtlasArticle, index: number) => {
+    const isLeftCard = index % 2 === 0;
+    return (
+      <TouchableOpacity
+        key={article.id}
+        style={[
+          styles.articleCard,
+          { marginLeft: isLeftCard ? 0 : 8, marginRight: isLeftCard ? 8 : 0 },
+        ]}
+        activeOpacity={0.9}
+        onPress={() => navigateToArticle(article)}
+      >
+        <Image
+          source={{ uri: article.cover_image_url || PLACEHOLDER_ARTICLE }}
+          style={styles.articleCardImage}
+        />
+        <View style={styles.articleCardContent}>
+          <Text style={styles.articleCardTitle} numberOfLines={2}>
+            {article.title}
+          </Text>
+          <View style={styles.articleCardMeta}>
+            <Image
+              source={{ uri: article.author_avatar_url || PLACEHOLDER_AVATAR }}
+              style={styles.articleCardAvatar}
+            />
+            <View style={styles.articleCardMetaText}>
+              <Text style={styles.articleCardAuthor} numberOfLines={1}>
+                {article.author_name || 'Tavvy Team'}
+              </Text>
+              <Text style={styles.articleCardReadTime}>
+                {article.read_time_minutes} min read
+              </Text>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // Render article grid (2 columns)
+  const renderArticleGrid = () => {
+    // Skip the first article if it's the featured one
+    const gridArticles = articles.filter(a => a.id !== featuredArticle?.id);
+    const rows = [];
+    
+    for (let i = 0; i < gridArticles.length; i += 2) {
+      const row = (
+        <View key={i} style={styles.articleRow}>
+          {renderArticleCard(gridArticles[i], 0)}
+          {gridArticles[i + 1] && renderArticleCard(gridArticles[i + 1], 1)}
+        </View>
+      );
+      rows.push(row);
+    }
+    
+    return rows;
+  };
+
+  // Render trending section
+  const renderTrendingSection = () => {
+    if (trendingArticles.length === 0) return null;
+
+    return (
+      <View style={styles.trendingSection}>
+        <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111827' }]}>
+          Trending
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.trendingScroll}
+        >
+          {trendingArticles.slice(0, 5).map((article) => (
+            <TouchableOpacity
+              key={article.id}
+              style={styles.trendingCard}
+              activeOpacity={0.9}
+              onPress={() => navigateToArticle(article)}
+            >
+              <Image
+                source={{ uri: article.cover_image_url || PLACEHOLDER_ARTICLE }}
+                style={styles.trendingImage}
+              />
+              <View style={styles.trendingContent}>
+                <Text style={styles.trendingTitle} numberOfLines={2}>
+                  {article.title}
+                </Text>
+                <View style={styles.trendingMeta}>
+                  <Ionicons name="heart" size={12} color="#EF4444" />
+                  <Text style={styles.trendingLoves}>
+                    {formatNumber(article.love_count || 0)}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
 
   if (loading) {
     return (
-      <View
-        style={[
-          styles.loadingContainer,
-          { backgroundColor: isDark ? theme.background : '#fff' },
-        ]}
-      >
-        <ActivityIndicator size="large" color="#2DD4BF" />
+      <View style={[styles.loadingContainer, { backgroundColor: isDark ? theme.background : '#fff' }]}>
+        <ActivityIndicator size="large" color={TEAL_PRIMARY} />
         <Text style={[styles.loadingText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
           Loading articles...
         </Text>
@@ -109,223 +326,63 @@ export default function AtlasHomeScreen() {
   }
 
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: isDark ? theme.background : '#F9FAFB' },
-      ]}
-    >
-      <StatusBar barStyle="light-content" />
+    <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F9FAFB' }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
-      {/* FULL WIDTH SOLID HEADER - NO rounded corners */}
-      <View style={styles.headerGradient}>
-        <SafeAreaView>
-          {/* Header Content */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Atlas</Text>
+      {/* Header */}
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AtlasSearch', {})}
+            style={styles.searchButton}
+          >
+            <Ionicons name="search" size={24} color={isDark ? '#fff' : '#374151'} />
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => navigation.navigate('AtlasSearch', {})}
-              style={styles.searchButton}
-            >
-              <Ionicons name="search" size={22} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </View>
+          <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#111827' }]}>
+            Atlas
+          </Text>
+
+          <TouchableOpacity style={styles.profileButton}>
+            <Image
+              source={{ uri: PLACEHOLDER_AVATAR }}
+              style={styles.profileAvatar}
+            />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
 
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={TEAL_PRIMARY}
+          />
+        }
       >
-        {/* Featured Article - Floating Card */}
-        {featuredArticle ? (
-          <TouchableOpacity
-            style={styles.featuredCard}
-            activeOpacity={0.95}
-            onPress={() =>
-              navigation.navigate('ArticleDetail', {
-                article: featuredArticle,
-              })
-            }
-          >
-            <Image
-              source={{ uri: featuredArticle.cover_image_url || PLACEHOLDER_ARTICLE }}
-              style={styles.featuredImage}
-            />
-            <View style={styles.featuredOverlay}>
-              <View style={styles.featuredBadge}>
-                <Text style={styles.featuredBadgeText}>FEATURED</Text>
-              </View>
+        {/* Category Filters */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filtersContainer}
+          contentContainerStyle={styles.filtersContent}
+        >
+          {FILTER_OPTIONS.map(renderFilterChip)}
+        </ScrollView>
 
-              <View style={styles.featuredTextContainer}>
-                <Text style={styles.featuredTitle}>{featuredArticle.title}</Text>
+        {/* Featured Article */}
+        {renderFeaturedArticle()}
 
-                <View style={styles.featuredMeta}>
-                  <Image
-                    source={{
-                      uri: featuredArticle.author_avatar_url || PLACEHOLDER_AVATAR,
-                    }}
-                    style={styles.featuredAuthorAvatar}
-                  />
-                  <Text style={styles.featuredAuthor}>
-                    {featuredArticle.author_name || 'Tavvy Team'}
-                  </Text>
-                  <Text style={styles.featuredDot}>•</Text>
-                  <Ionicons
-                    name="time-outline"
-                    size={14}
-                    color="#E5E7EB"
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text style={styles.featuredReadTime}>
-                    {featuredArticle.read_time_minutes} min read
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.featuredEmptyCard}>
-            <EmptyState message="No featured articles yet. Check back soon!" icon="newspaper-outline" />
-          </View>
-        )}
-
-        {/* Trending Now */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111827' }]}>
-            Trending Now
-          </Text>
-
-          {trendingArticles.length > 0 ? (
-            trendingArticles.map((article) => (
-              <TouchableOpacity
-                key={article.id}
-                style={[
-                  styles.trendingCard,
-                  {
-                    backgroundColor: isDark ? theme.surface : '#fff',
-                    borderColor: isDark ? theme.border : '#F3F4F6',
-                  },
-                ]}
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate('ArticleDetail', { article })}
-              >
-                <Image 
-                  source={{ uri: article.cover_image_url || PLACEHOLDER_ARTICLE }} 
-                  style={styles.trendingImage} 
-                />
-
-                <View style={styles.trendingContent}>
-                  <Text
-                    style={[
-                      styles.trendingTitle,
-                      { color: isDark ? theme.text : '#1F2937' },
-                    ]}
-                    numberOfLines={2}
-                  >
-                    {article.title}
-                  </Text>
-
-                  <View style={styles.trendingFooter}>
-                    <View
-                      style={[
-                        styles.categoryBadge,
-                        { backgroundColor: article.category?.color || '#14b8a6' },
-                      ]}
-                    >
-                      <Text style={styles.categoryBadgeText}>
-                        {(article.category?.name || 'GENERAL').toUpperCase()}
-                      </Text>
-                    </View>
-
-                    <View style={styles.trendingStatsRow}>
-                      <Ionicons name="heart" size={14} color="#EF4444" style={{ marginRight: 4 }} />
-                      <Text
-                        style={[
-                          styles.trendingStatsText,
-                          { color: isDark ? theme.textSecondary : '#6B7280' },
-                        ]}
-                      >
-                        {formatNumber(article.love_count || 0)}
-                      </Text>
-                      <Text style={[styles.trendingDot, { color: isDark ? theme.border : '#D1D5DB' }]}>
-                        •
-                      </Text>
-                      <Text
-                        style={[
-                          styles.trendingStatsText,
-                          { color: isDark ? theme.textSecondary : '#6B7280' },
-                        ]}
-                      >
-                        {article.read_time_minutes} min read
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))
-          ) : (
-            <EmptyState message="No trending articles yet" icon="trending-up-outline" />
-          )}
+        {/* Article Grid */}
+        <View style={styles.gridContainer}>
+          {renderArticleGrid()}
         </View>
 
-        {/* Explore Universes */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111827' }]}>
-            Explore Universes
-          </Text>
-
-          {universes.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.universesScroll}
-              contentContainerStyle={{ paddingRight: 20, paddingLeft: 20 }}
-            >
-              {universes.map((universe) => (
-                <TouchableOpacity
-                  key={universe.id}
-                  style={[
-                    styles.universeCard,
-                    { backgroundColor: isDark ? theme.surface : '#fff' },
-                  ]}
-                  activeOpacity={0.8}
-                  onPress={() =>
-                    navigation.navigate('UniverseDetail', { universeId: universe.id, universe })
-                  }
-                >
-                  <Image 
-                    source={{ uri: universe.thumbnail_image_url || PLACEHOLDER_ARTICLE }} 
-                    style={styles.universeImage} 
-                  />
-                  <View style={styles.universeInfo}>
-                    <Text
-                      style={[
-                        styles.universeName,
-                        { color: isDark ? theme.text : '#111827' },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {universe.name}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.universePlaces,
-                        { color: isDark ? theme.textSecondary : '#6B7280' },
-                      ]}
-                    >
-                      {universe.place_count} places
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          ) : (
-            <EmptyState message="No universes to explore yet" icon="planet-outline" />
-          )}
-        </View>
+        {/* Trending Section */}
+        {renderTrendingSection()}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -338,79 +395,91 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  safeArea: {
+    backgroundColor: 'transparent',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
   },
 
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
-  },
-  emptyStateText: {
-    marginTop: 12,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-
-  featuredEmptyCard: {
-    marginHorizontal: 20,
-    height: 200,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-
-  // FULL WIDTH SOLID HEADER - NO rounded corners
-  headerGradient: {
-    backgroundColor: '#0f1233',
-    paddingBottom: 14,
-  },
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 12 : 8,
-    height: 44,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#fff',
+    fontSize: 24,
+    fontWeight: '700',
     letterSpacing: -0.5,
   },
   searchButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  profileButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  profileAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+
+  // Filters
+  filtersContainer: {
+    marginBottom: 16,
+  },
+  filtersContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+    flexDirection: 'row',
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  filterChipSelected: {
+    backgroundColor: TEAL_PRIMARY,
+  },
+  filterChipUnselected: {
+    backgroundColor: '#E5E7EB',
+  },
+  filterChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  filterChipTextSelected: {
+    color: '#fff',
+  },
+  filterChipTextUnselected: {
+    color: '#374151',
   },
 
   scrollView: {
     flex: 1,
   },
-  scrollContent: {
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
 
   // Featured Card
   featuredCard: {
-    marginHorizontal: 20,
-    height: 240,
+    marginHorizontal: 16,
+    height: 280,
     borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: '#1F2937',
@@ -419,7 +488,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 6,
-    marginBottom: 8,
+    marginBottom: 16,
   },
   featuredImage: {
     width: '100%',
@@ -428,30 +497,30 @@ const styles = StyleSheet.create({
   },
   featuredOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'space-between',
-    padding: 20,
+    padding: 16,
   },
   featuredBadge: {
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginTop: 4,
+    backgroundColor: TEAL_PRIMARY,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignSelf: 'flex-end',
   },
   featuredBadgeText: {
     color: '#fff',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    fontSize: 12,
+    fontWeight: '600',
   },
-  featuredTextContainer: {},
+  featuredContent: {
+    marginTop: 'auto',
+  },
   featuredTitle: {
     fontSize: 24,
     fontWeight: '800',
     color: '#fff',
-    marginBottom: 10,
+    marginBottom: 12,
     lineHeight: 30,
     textShadowColor: 'rgba(0,0,0,0.4)',
     textShadowOffset: { width: 0, height: 2 },
@@ -462,139 +531,131 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   featuredAuthorAvatar: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    marginRight: 8,
-    borderWidth: 1.5,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 10,
+    borderWidth: 2,
     borderColor: '#fff',
   },
-  featuredAuthor: {
+  featuredAuthorName: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
-  featuredDot: {
-    color: 'rgba(255,255,255,0.7)',
-    marginHorizontal: 8,
-  },
   featuredReadTime: {
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(255,255,255,0.8)',
     fontSize: 12,
-    fontWeight: '500',
+    marginTop: 2,
   },
 
-  // Sections
-  section: {
-    marginTop: 28,
-    paddingHorizontal: 0,
+  // Article Grid
+  gridContainer: {
+    paddingHorizontal: 16,
+  },
+  articleRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  articleCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  articleCardImage: {
+    width: '100%',
+    height: 120,
+    resizeMode: 'cover',
+  },
+  articleCardContent: {
+    padding: 12,
+  },
+  articleCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  articleCardMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  articleCardAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  articleCardMetaText: {
+    flex: 1,
+  },
+  articleCardAuthor: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  articleCardReadTime: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 1,
+  },
+
+  // Trending Section
+  trendingSection: {
+    marginTop: 24,
+    paddingBottom: 16,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '800',
     marginBottom: 14,
-    paddingHorizontal: 20,
-    color: '#111827',
+    paddingHorizontal: 16,
     letterSpacing: -0.5,
   },
-
-  // Trending Cards
+  trendingScroll: {
+    paddingHorizontal: 16,
+  },
   trendingCard: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 14,
+    width: 160,
     backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 1,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-  },
-  trendingImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 10,
-    backgroundColor: '#E5E7EB',
-  },
-  trendingContent: {
-    flex: 1,
-    paddingLeft: 14,
-    paddingVertical: 2,
-    justifyContent: 'space-between',
-  },
-  trendingTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
-    lineHeight: 22,
-    marginBottom: 6,
-  },
-  trendingFooter: {},
-  categoryBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 5,
-    marginBottom: 6,
-  },
-  categoryBadgeText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  trendingStatsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  trendingStatsText: {
-    fontSize: 11,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  trendingDot: {
-    color: '#D1D5DB',
-    marginHorizontal: 6,
-  },
-
-  // Universe Cards
-  universesScroll: {
-    marginHorizontal: 0,
-  },
-  universeCard: {
-    width: 150,
-    marginRight: 14,
-    borderRadius: 14,
-    backgroundColor: '#fff',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginRight: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
     elevation: 2,
-    marginBottom: 8,
   },
-  universeImage: {
+  trendingImage: {
     width: '100%',
-    height: 110,
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
+    height: 100,
+    resizeMode: 'cover',
   },
-  universeInfo: {
+  trendingContent: {
     padding: 10,
-    borderBottomLeftRadius: 14,
-    borderBottomRightRadius: 14,
   },
-  universeName: {
-    fontSize: 14,
-    fontWeight: '700',
+  trendingTitle: {
+    fontSize: 13,
+    fontWeight: '600',
     color: '#111827',
-    marginBottom: 2,
+    lineHeight: 18,
+    marginBottom: 6,
   },
-  universePlaces: {
-    fontSize: 12,
+  trendingMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  trendingLoves: {
+    fontSize: 11,
     color: '#6B7280',
+    marginLeft: 4,
   },
 });

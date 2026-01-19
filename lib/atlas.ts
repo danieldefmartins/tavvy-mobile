@@ -1,8 +1,8 @@
 // ============================================================================
-// TAVVY ATLAS - DATA LIBRARY
+// TAVVY ATLAS v2.0 - DATA LIBRARY
 // ============================================================================
 // This file contains all data fetching and mutation functions for Atlas
-// Place this file in: lib/atlas.ts
+// Updated to support block-based content and new article types
 // ============================================================================
 
 import { supabase } from './supabaseClient';
@@ -41,6 +41,12 @@ export interface AtlasUniverse {
   published_at: string;
 }
 
+// Content block types for v2.0
+export interface ContentBlock {
+  type: string;
+  [key: string]: any;
+}
+
 export interface AtlasArticle {
   id: string;
   title: string;
@@ -62,6 +68,17 @@ export interface AtlasArticle {
   status: 'draft' | 'published' | 'archived';
   created_at: string;
   published_at: string;
+  // v2.0 fields
+  content_blocks?: ContentBlock[];
+  article_template_type?: 'city_guide' | 'owner_spotlight' | 'tavvy_tips' | 'general';
+  section_images?: { url: string; alt?: string; caption?: string }[];
+  cover_image_alt?: string;
+  cover_image_caption?: string;
+  author_bio?: string;
+  primary_place_id?: string;
+  canonical_url?: string;
+  seo_keywords?: string[];
+  linked_place_ids?: string[];
   // Joined data
   category?: AtlasCategory;
   universe?: AtlasUniverse;
@@ -73,6 +90,19 @@ export interface ArticleReaction {
   user_id: string;
   reaction_type: 'love' | 'not_for_me';
   created_at: string;
+}
+
+// Place data for PlaceCardBlock
+export interface PlaceData {
+  id: string;
+  name: string;
+  category: string;
+  rating?: number;
+  review_count?: number;
+  photos?: string[];
+  address?: string;
+  city?: string;
+  state?: string;
 }
 
 // ============================================================================
@@ -87,6 +117,20 @@ export async function getCategories(): Promise<AtlasCategory[]> {
 
   if (error) throw error;
   return data || [];
+}
+
+export async function getCategoryBySlug(slug: string): Promise<AtlasCategory | null> {
+  const { data, error } = await supabase
+    .from('atlas_categories')
+    .select('*')
+    .eq('slug', slug)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw error;
+  }
+  return data;
 }
 
 // ============================================================================
@@ -115,7 +159,7 @@ export async function getUniverseBySlug(slug: string): Promise<AtlasUniverse | n
     .single();
 
   if (error) {
-    if (error.code === 'PGRST116') return null; // Not found
+    if (error.code === 'PGRST116') return null;
     throw error;
   }
   return data;
@@ -212,6 +256,26 @@ export async function getArticleBySlug(slug: string): Promise<AtlasArticle | nul
   return data;
 }
 
+export async function getArticleById(id: string): Promise<AtlasArticle | null> {
+  const { data, error } = await supabase
+    .from('atlas_articles')
+    .select(`
+      *,
+      category:atlas_categories(*),
+      universe:atlas_universes(*)
+    `)
+    .eq('id', id)
+    .eq('status', 'published')
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw error;
+  }
+
+  return data;
+}
+
 export async function getArticlesByCategory(
   categoryId: string,
   options: {
@@ -243,6 +307,43 @@ export async function getArticlesByCategory(
   query = query.range(offset, offset + limit - 1);
 
   const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getArticlesByCategorySlug(
+  categorySlug: string,
+  options: {
+    limit?: number;
+    offset?: number;
+    sortBy?: 'popular' | 'recent' | 'most_loved';
+  } = {}
+): Promise<AtlasArticle[]> {
+  const category = await getCategoryBySlug(categorySlug);
+  if (!category) return [];
+  return getArticlesByCategory(category.id, options);
+}
+
+export async function getArticlesByTemplateType(
+  templateType: string,
+  options: {
+    limit?: number;
+    offset?: number;
+  } = {}
+): Promise<AtlasArticle[]> {
+  const { limit = 20, offset = 0 } = options;
+
+  const { data, error } = await supabase
+    .from('atlas_articles')
+    .select(`
+      *,
+      category:atlas_categories(*)
+    `)
+    .eq('article_template_type', templateType)
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
   if (error) throw error;
   return data || [];
 }
@@ -288,6 +389,7 @@ export async function searchArticles(
   filters: {
     categoryId?: string;
     universeId?: string;
+    templateType?: string;
   } = {}
 ): Promise<AtlasArticle[]> {
   let supabaseQuery = supabase
@@ -308,9 +410,43 @@ export async function searchArticles(
     supabaseQuery = supabaseQuery.eq('universe_id', filters.universeId);
   }
 
+  if (filters.templateType) {
+    supabaseQuery = supabaseQuery.eq('article_template_type', filters.templateType);
+  }
+
   supabaseQuery = supabaseQuery.order('love_count', { ascending: false }).limit(50);
 
   const { data, error } = await supabaseQuery;
+  if (error) throw error;
+  return data || [];
+}
+
+// ============================================================================
+// PLACES (for PlaceCardBlock)
+// ============================================================================
+
+export async function getPlaceById(placeId: string): Promise<PlaceData | null> {
+  const { data, error } = await supabase
+    .from('places')
+    .select('id, name, category, rating, review_count, photos, address, city, state')
+    .eq('id', placeId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw error;
+  }
+  return data;
+}
+
+export async function getPlacesByIds(placeIds: string[]): Promise<PlaceData[]> {
+  if (placeIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('places')
+    .select('id, name, category, rating, review_count, photos, address, city, state')
+    .in('id', placeIds);
+
   if (error) throw error;
   return data || [];
 }
@@ -442,12 +578,45 @@ export async function getUniversePlaces(universeId: string): Promise<any[]> {
 }
 
 // ============================================================================
+// OWNER SPOTLIGHTS
+// ============================================================================
+
+export async function getOwnerSpotlights(limit = 10): Promise<AtlasArticle[]> {
+  return getArticlesByTemplateType('owner_spotlight', { limit });
+}
+
+export async function getArticlesByAuthor(
+  authorId: string,
+  options: {
+    limit?: number;
+    offset?: number;
+  } = {}
+): Promise<AtlasArticle[]> {
+  const { limit = 20, offset = 0 } = options;
+
+  const { data, error } = await supabase
+    .from('atlas_articles')
+    .select(`
+      *,
+      category:atlas_categories(*)
+    `)
+    .eq('author_id', authorId)
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw error;
+  return data || [];
+}
+
+// ============================================================================
 // EXPORT ALL
 // ============================================================================
 
 export default {
   // Categories
   getCategories,
+  getCategoryBySlug,
   
   // Universes
   getFeaturedUniverses,
@@ -459,10 +628,17 @@ export default {
   getFeaturedArticle,
   getTrendingArticles,
   getArticleBySlug,
+  getArticleById,
   getArticlesByCategory,
+  getArticlesByCategorySlug,
+  getArticlesByTemplateType,
   getArticlesByUniverse,
   getRelatedArticles,
   searchArticles,
+  
+  // Places
+  getPlaceById,
+  getPlacesByIds,
   
   // Reactions
   getUserReaction,
@@ -477,4 +653,8 @@ export default {
   
   // Universe Places
   getUniversePlaces,
+  
+  // Owner Spotlights
+  getOwnerSpotlights,
+  getArticlesByAuthor,
 };

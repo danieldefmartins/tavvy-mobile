@@ -1,8 +1,8 @@
 // ============================================================================
-// ARTICLE DETAIL SCREEN
+// ARTICLE DETAIL SCREEN v2.0
 // ============================================================================
-// Full article reading experience with reactions
-// Place this file in: screens/ArticleDetailScreen.tsx
+// Full article reading experience with block-based content
+// Matches mockup design with author info, place cards, and content blocks
 // ============================================================================
 
 import React, { useEffect, useState } from 'react';
@@ -15,10 +15,16 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Share,
+  Dimensions,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabaseClient';
+import { useThemeContext } from '../contexts/ThemeContext';
 import {
   getRelatedArticles,
   getUserReaction,
@@ -27,16 +33,39 @@ import {
   isArticleSaved,
   saveArticle,
   unsaveArticle,
+  getArticleBySlug,
   type AtlasArticle,
   type ArticleReaction,
 } from '../lib/atlas';
+import { ContentBlockRenderer, ContentBlock } from '../components/atlas';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Tavvy brand colors
+const TEAL_PRIMARY = '#0D9488';
+const TEAL_LIGHT = '#5EEAD4';
+
+// Placeholder images
+const PLACEHOLDER_AVATAR = 'https://via.placeholder.com/100';
+const PLACEHOLDER_ARTICLE = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800';
+
+// Extended article type with new fields
+interface ExtendedAtlasArticle extends AtlasArticle {
+  content_blocks?: ContentBlock[];
+  article_template_type?: string;
+  author_bio?: string;
+  cover_image_caption?: string;
+}
 
 export default function ArticleDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { article: initialArticle } = route.params as { article: AtlasArticle };
+  const insets = useSafeAreaInsets();
+  const { theme, isDark } = useThemeContext();
+  
+  const { article: initialArticle } = route.params as { article: ExtendedAtlasArticle };
 
-  const [article, setArticle] = useState<AtlasArticle>(initialArticle);
+  const [article, setArticle] = useState<ExtendedAtlasArticle>(initialArticle);
   const [relatedArticles, setRelatedArticles] = useState<AtlasArticle[]>([]);
   const [userReaction, setUserReaction] = useState<ArticleReaction | null>(null);
   const [isSaved, setIsSaved] = useState(false);
@@ -45,22 +74,17 @@ export default function ArticleDetailScreen() {
 
   useEffect(() => {
     loadData();
+    incrementViewCount();
   }, [article.id]);
 
   const loadData = async () => {
     try {
       // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       setUserId(user?.id || null);
 
       // Load related articles
-      const related = await getRelatedArticles(
-        article.id,
-        article.category_id,
-        4
-      );
+      const related = await getRelatedArticles(article.id, article.category_id, 4);
       setRelatedArticles(related);
 
       // Load user reaction if logged in
@@ -76,61 +100,14 @@ export default function ArticleDetailScreen() {
     }
   };
 
-  const handleReaction = async (reactionType: 'love' | 'not_for_me') => {
-    if (!userId) {
-      Alert.alert('Sign in required', 'Please sign in to react to articles');
-      return;
-    }
-
+  const incrementViewCount = async () => {
     try {
-      setLoading(true);
-
-      // If same reaction, remove it
-      if (userReaction?.reaction_type === reactionType) {
-        await removeReaction(article.id, userId);
-        setUserReaction(null);
-
-        // Update local counts
-        if (reactionType === 'love') {
-          setArticle({ ...article, love_count: article.love_count - 1 });
-        } else {
-          setArticle({ ...article, not_for_me_count: article.not_for_me_count - 1 });
-        }
-      } else {
-        // Add or update reaction
-        await addReaction(article.id, userId, reactionType);
-        setUserReaction({ ...userReaction!, reaction_type: reactionType });
-
-        // Update local counts
-        if (reactionType === 'love') {
-          const newLoveCount = article.love_count + 1;
-          const newNotForMeCount =
-            userReaction?.reaction_type === 'not_for_me'
-              ? article.not_for_me_count - 1
-              : article.not_for_me_count;
-          setArticle({
-            ...article,
-            love_count: newLoveCount,
-            not_for_me_count: newNotForMeCount,
-          });
-        } else {
-          const newNotForMeCount = article.not_for_me_count + 1;
-          const newLoveCount =
-            userReaction?.reaction_type === 'love'
-              ? article.love_count - 1
-              : article.love_count;
-          setArticle({
-            ...article,
-            love_count: newLoveCount,
-            not_for_me_count: newNotForMeCount,
-          });
-        }
-      }
+      await supabase
+        .from('atlas_articles')
+        .update({ view_count: (article.view_count || 0) + 1 })
+        .eq('id', article.id);
     } catch (error) {
-      console.error('Error handling reaction:', error);
-      Alert.alert('Error', 'Failed to save reaction. Please try again.');
-    } finally {
-      setLoading(false);
+      console.error('Error incrementing view count:', error);
     }
   };
 
@@ -144,15 +121,61 @@ export default function ArticleDetailScreen() {
       if (isSaved) {
         await unsaveArticle(article.id, userId);
         setIsSaved(false);
-        setArticle({ ...article, save_count: article.save_count - 1 });
+        setArticle({ ...article, save_count: (article.save_count || 0) - 1 });
       } else {
         await saveArticle(article.id, userId);
         setIsSaved(true);
-        setArticle({ ...article, save_count: article.save_count + 1 });
+        setArticle({ ...article, save_count: (article.save_count || 0) + 1 });
       }
     } catch (error) {
       console.error('Error saving article:', error);
       Alert.alert('Error', 'Failed to save article. Please try again.');
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        title: article.title,
+        message: `Check out "${article.title}" on Tavvy Atlas`,
+        url: `https://tavvy.app/atlas/${article.slug}`,
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
+  const handleReaction = async (reactionType: 'love' | 'not_for_me') => {
+    if (!userId) {
+      Alert.alert('Sign in required', 'Please sign in to react to articles');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      if (userReaction?.reaction_type === reactionType) {
+        await removeReaction(article.id, userId);
+        setUserReaction(null);
+        if (reactionType === 'love') {
+          setArticle({ ...article, love_count: (article.love_count || 0) - 1 });
+        }
+      } else {
+        await addReaction(article.id, userId, reactionType);
+        setUserReaction({ ...userReaction!, reaction_type: reactionType });
+        if (reactionType === 'love') {
+          const newLoveCount = (article.love_count || 0) + 1;
+          const newNotForMeCount = userReaction?.reaction_type === 'not_for_me'
+            ? (article.not_for_me_count || 0) - 1
+            : article.not_for_me_count || 0;
+          setArticle({ ...article, love_count: newLoveCount, not_for_me_count: newNotForMeCount });
+        }
+      }
+    } catch (error) {
+      console.error('Error handling reaction:', error);
+      Alert.alert('Error', 'Failed to save reaction. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -163,129 +186,191 @@ export default function ArticleDetailScreen() {
     return num.toString();
   };
 
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  };
+
+  // Parse content blocks from article
+  const contentBlocks: ContentBlock[] = article.content_blocks || [];
+
+  // If no content blocks, create a simple paragraph from legacy content
+  const displayBlocks: ContentBlock[] = contentBlocks.length > 0 
+    ? contentBlocks 
+    : article.content 
+      ? [{ type: 'paragraph', text: article.content }]
+      : [];
+
   return (
-    <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Hero Image */}
-        <View style={styles.heroContainer}>
-          <Image source={{ uri: article.cover_image_url }} style={styles.heroImage} />
+    <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#fff' }]}>
+      <StatusBar barStyle="dark-content" />
+      
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
+        {/* Header with back button and actions */}
+        <View style={[styles.headerBar, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity
-            style={styles.backButton}
+            style={styles.headerButton}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.backIcon}>←</Text>
+            <Ionicons name="arrow-back" size={24} color="#374151" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveIcon}>{isSaved ? '🔖' : '📑'}</Text>
-          </TouchableOpacity>
+
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={handleSave}
+            >
+              <Ionicons 
+                name={isSaved ? 'bookmark' : 'bookmark-outline'} 
+                size={24} 
+                color={isSaved ? TEAL_PRIMARY : '#374151'} 
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={handleShare}
+            >
+              <Ionicons name="share-outline" size={24} color="#374151" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Cover Image */}
+        <View style={styles.coverImageContainer}>
+          <Image
+            source={{ uri: article.cover_image_url || PLACEHOLDER_ARTICLE }}
+            style={styles.coverImage}
+            resizeMode="cover"
+          />
         </View>
 
         {/* Article Content */}
-        <View style={styles.content}>
-          {/* Category Badge */}
-          {article.category && (
-            <View
-              style={[
-                styles.categoryBadge,
-                { backgroundColor: article.category.color },
-              ]}
-            >
-              <Text style={styles.categoryText}>
-                {article.category.name.toUpperCase()}
+        <View style={styles.contentContainer}>
+          {/* Title */}
+          <Text style={[styles.title, { color: isDark ? theme.text : '#111827' }]}>
+            {article.title}
+          </Text>
+
+          {/* Author Section */}
+          <View style={styles.authorSection}>
+            <Image
+              source={{ uri: article.author_avatar_url || PLACEHOLDER_AVATAR }}
+              style={styles.authorAvatar}
+            />
+            <View style={styles.authorInfo}>
+              <Text style={[styles.authorName, { color: isDark ? theme.text : '#111827' }]}>
+                {article.author_name || 'Tavvy Team'}
+              </Text>
+              <Text style={styles.authorRole}>
+                {article.author_bio || 'Local Guide Writer'}
               </Text>
             </View>
+            <TouchableOpacity style={styles.followButton}>
+              <Text style={styles.followButtonText}>Follow</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Meta Info */}
+          <View style={styles.metaSection}>
+            <View style={styles.metaItem}>
+              <Ionicons name="time-outline" size={16} color="#6B7280" />
+              <Text style={styles.metaText}>
+                {article.read_time_minutes} min read
+              </Text>
+            </View>
+            <Text style={styles.metaDot}>•</Text>
+            <Text style={styles.metaText}>
+              {formatDate(article.published_at)}
+            </Text>
+            <View style={styles.metaSpacer} />
+            <View style={styles.metaItem}>
+              <Ionicons name="eye-outline" size={16} color="#6B7280" />
+              <Text style={styles.metaText}>
+                {formatNumber(article.view_count || 0)} views
+              </Text>
+            </View>
+          </View>
+
+          {/* Divider */}
+          <View style={styles.divider} />
+
+          {/* Excerpt */}
+          {article.excerpt && (
+            <Text style={styles.excerpt}>{article.excerpt}</Text>
           )}
 
-          {/* Title */}
-          <Text style={styles.title}>{article.title}</Text>
+          {/* Content Blocks */}
+          <ContentBlockRenderer blocks={displayBlocks} />
 
-          {/* Author Info */}
-          <View style={styles.authorSection}>
-            {article.author_avatar_url && (
-              <Image
-                source={{ uri: article.author_avatar_url }}
-                style={styles.authorAvatar}
-              />
-            )}
-            <View style={styles.authorInfo}>
-              <Text style={styles.authorName}>By {article.author_name}</Text>
-              <Text style={styles.authorMeta}>
-                {article.read_time_minutes} min read • {new Date(article.published_at).toLocaleDateString()}
-              </Text>
+          {/* Reaction Section */}
+          <View style={styles.reactionSection}>
+            <Text style={styles.reactionTitle}>Did you find this helpful?</Text>
+            <View style={styles.reactionButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.reactionButton,
+                  userReaction?.reaction_type === 'love' && styles.reactionButtonActive,
+                ]}
+                onPress={() => handleReaction('love')}
+                disabled={loading}
+              >
+                <Ionicons 
+                  name={userReaction?.reaction_type === 'love' ? 'heart' : 'heart-outline'} 
+                  size={20} 
+                  color={userReaction?.reaction_type === 'love' ? '#fff' : TEAL_PRIMARY} 
+                />
+                <Text style={[
+                  styles.reactionButtonText,
+                  userReaction?.reaction_type === 'love' && styles.reactionButtonTextActive,
+                ]}>
+                  Love it ({formatNumber(article.love_count || 0)})
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
-
-          {/* Stats Bar - Clean Line Design */}
-          <View style={styles.statsBar}>
-            <View style={styles.statItem}>
-              <Ionicons name="eye-outline" size={18} color="#666" />
-              <Text style={styles.statText}>{formatNumber(article.view_count)} reads</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Ionicons name="heart" size={18} color="#EF4444" />
-              <Text style={styles.statText}>{formatNumber(article.love_count)}</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Ionicons name="bookmark" size={18} color="#9CA3AF" />
-              <Text style={styles.statText}>{formatNumber(article.save_count)} saves</Text>
-            </View>
-          </View>
-
-          {/* Reaction Buttons - Colorful & Rounded */}
-          <View style={styles.reactionButtons}>
-            <TouchableOpacity
-              style={[styles.reactionButton, styles.loveButton]}
-              onPress={() => handleReaction('love')}
-              disabled={loading}
-            >
-              <Text style={styles.loveButtonText}>Love it ❤️</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.reactionButton, styles.notForMeButton]}
-              onPress={() => handleReaction('not_for_me')}
-              disabled={loading}
-            >
-              <Text style={styles.notForMeButtonText}>Not for me 💔</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Article Body */}
-          <Text style={styles.body}>{article.content}</Text>
 
           {/* Related Articles */}
           {relatedArticles.length > 0 && (
             <View style={styles.relatedSection}>
-              <Text style={styles.relatedTitle}>Related in Atlas</Text>
-              <View style={styles.relatedGrid}>
+              <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111827' }]}>
+                Related Articles
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.relatedScroll}
+              >
                 {relatedArticles.map((related) => (
                   <TouchableOpacity
                     key={related.id}
                     style={styles.relatedCard}
-                    onPress={() =>
-                      navigation.navigate('ArticleDetail', {
-                        article: related,
-                      })
-                    }
+                    onPress={() => navigation.push('ArticleDetail', { article: related })}
                   >
                     <Image
-                      source={{ uri: related.cover_image_url }}
+                      source={{ uri: related.cover_image_url || PLACEHOLDER_ARTICLE }}
                       style={styles.relatedImage}
                     />
-                    <Text style={styles.relatedCardTitle} numberOfLines={2}>
-                      {related.title}
-                    </Text>
-                    <Text style={styles.relatedMeta}>
-                      {related.read_time_minutes} min read
-                    </Text>
+                    <View style={styles.relatedContent}>
+                      <Text style={styles.relatedTitle} numberOfLines={2}>
+                        {related.title}
+                      </Text>
+                      <Text style={styles.relatedMeta}>
+                        {related.read_time_minutes} min read
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
-              </View>
+              </ScrollView>
             </View>
           )}
         </View>
-
-        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
@@ -296,192 +381,229 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  heroContainer: {
-    position: 'relative',
+
+  // Header
+  headerBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    zIndex: 10,
+    backgroundColor: 'rgba(255,255,255,0.95)',
   },
-  heroImage: {
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  // Cover Image
+  coverImageContainer: {
+    marginTop: 80,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  coverImage: {
     width: '100%',
-    height: 300,
+    height: 220,
+    backgroundColor: '#E5E7EB',
   },
-  backButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+
+  // Content
+  contentContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
-  backIcon: {
-    color: '#fff',
-    fontSize: 24,
-  },
-  saveButton: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  saveIcon: {
-    fontSize: 24,
-  },
-  content: {
-    padding: 20,
-  },
-  categoryBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginBottom: 12,
-  },
-  categoryText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
+
+  // Title
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 16,
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#111827',
+    lineHeight: 34,
+    marginBottom: 20,
   },
+
+  // Author Section
   authorSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   authorAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#E5E7EB',
   },
   authorInfo: {
-    justifyContent: 'center',
+    flex: 1,
+    marginLeft: 12,
   },
   authorName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111',
-    marginBottom: 2,
-  },
-  authorMeta: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  statsBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: 24,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#F3F4F6',
-    marginBottom: 24,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  statText: {
     fontSize: 15,
-    color: '#4B5563',
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#111827',
+  },
+  authorRole: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  followButton: {
+    backgroundColor: TEAL_PRIMARY,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  followButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // Meta Section
+  metaSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaText: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginLeft: 4,
+  },
+  metaDot: {
+    color: '#D1D5DB',
+    marginHorizontal: 8,
+  },
+  metaSpacer: {
+    flex: 1,
+  },
+
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 16,
+  },
+
+  // Excerpt
+  excerpt: {
+    fontSize: 17,
+    lineHeight: 26,
+    color: '#374151',
+    marginBottom: 16,
+    fontStyle: 'italic',
+  },
+
+  // Reaction Section
+  reactionSection: {
+    marginTop: 32,
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  reactionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 16,
   },
   reactionButtons: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 32,
+    gap: 12,
   },
   reactionButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: TEAL_PRIMARY,
+    gap: 8,
   },
-  loveButton: {
-    backgroundColor: '#4DB6AC', // Teal color from mockup
+  reactionButtonActive: {
+    backgroundColor: TEAL_PRIMARY,
   },
-  notForMeButton: {
-    backgroundColor: '#E5E7EB', // Light gray
+  reactionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: TEAL_PRIMARY,
   },
-  loveButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
+  reactionButtonTextActive: {
     color: '#fff',
   },
-  notForMeButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#9CA3AF', // Gray text
-  },
-  body: {
-    fontSize: 17,
-    lineHeight: 28,
-    color: '#333',
-    marginBottom: 32,
-  },
+
+  // Related Section
   relatedSection: {
     marginTop: 32,
-    paddingTop: 32,
+    paddingTop: 24,
     borderTopWidth: 1,
-    borderColor: '#e5e5e5',
+    borderTopColor: '#E5E7EB',
   },
-  relatedTitle: {
+  sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: '#111827',
     marginBottom: 16,
-    color: '#000',
   },
-  relatedGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -6,
+  relatedScroll: {
+    paddingRight: 20,
   },
   relatedCard: {
-    width: '48%',
-    margin: '1%',
-    borderRadius: 12,
-    overflow: 'hidden',
+    width: 200,
     backgroundColor: '#fff',
+    borderRadius: 12,
+    marginRight: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+    overflow: 'hidden',
   },
   relatedImage: {
     width: '100%',
     height: 120,
+    backgroundColor: '#E5E7EB',
   },
-  relatedCardTitle: {
+  relatedContent: {
+    padding: 12,
+  },
+  relatedTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
-    padding: 12,
-    paddingBottom: 4,
+    color: '#111827',
+    lineHeight: 20,
+    marginBottom: 6,
   },
   relatedMeta: {
     fontSize: 12,
-    color: '#666',
-    paddingHorizontal: 12,
-    paddingBottom: 12,
+    color: '#6B7280',
   },
 });

@@ -41,6 +41,7 @@ import ArticleDetailScreen from './screens/ArticleDetailScreen';
 import UniverseDetailScreen from './screens/UniverseDetailScreen';
 import CategoryBrowseScreen from './screens/CategoryBrowseScreen';
 import AtlasSearchScreen from './screens/AtlasSearchScreen';
+import OwnerSpotlightScreen from './screens/OwnerSpotlightScreen';
 
 import MenuScreen from './screens/MenuScreen';
 import AppsScreen from './screens/AppsScreen';
@@ -132,9 +133,11 @@ function AtlasStack() {
     <AtlasStackNav.Navigator screenOptions={{ headerShown: false }}>
       <AtlasStackNav.Screen name="AtlasMain" component={AtlasHomeScreen} />
       <AtlasStackNav.Screen name="ArticleDetail" component={ArticleDetailScreen} />
+      <AtlasStackNav.Screen name="OwnerSpotlight" component={OwnerSpotlightScreen} />
       <AtlasStackNav.Screen name="UniverseDetail" component={UniverseDetailScreen} />
       <AtlasStackNav.Screen name="CategoryBrowse" component={CategoryBrowseScreen} />
       <AtlasStackNav.Screen name="AtlasSearch" component={AtlasSearchScreen} />
+      <AtlasStackNav.Screen name="PlaceDetails" component={PlaceDetailsScreen} />
     </AtlasStackNav.Navigator>
   );
 }
