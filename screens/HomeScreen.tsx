@@ -1992,32 +1992,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <Text style={[styles.sectionSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
                 Theme park experiences reviewed by the community
               </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-                {[
-                  { id: 'ride1', name: 'Space Mountain', universe: 'Magic Kingdom', signals: 234, type: 'Thrill', image: 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=400' },
-                  { id: 'ride2', name: 'Hagrid\'s Motorbike', universe: 'Universal Orlando', signals: 456, type: 'Family', image: 'https://images.unsplash.com/photo-1566552881560-0be862a7c445?w=400' },
-                  { id: 'ride3', name: 'Avatar Flight', universe: 'Animal Kingdom', signals: 312, type: 'Immersive', image: 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=400' },
-                ].map((ride) => (
-                  <TouchableOpacity
-                    key={ride.id}
-                    style={[styles.featureCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-                    onPress={() => navigation.navigate('PlaceDetails', { placeId: ride.id })}
-                    activeOpacity={0.9}
-                  >
-                    <Image source={{ uri: ride.image }} style={styles.featureCardImage} />
-                    <View style={styles.featureCardContent}>
-                      <Text style={[styles.featureCardTitle, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>{ride.name}</Text>
-                      <Text style={[styles.featureCardSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>{ride.universe}</Text>
-                      <View style={styles.featureCardMeta}>
-                        <View style={[styles.featureCardBadge, { backgroundColor: '#E8F4FD' }]}>
-                          <Text style={[styles.featureCardBadgeText, { color: '#0A84FF' }]}>✨ {ride.type}</Text>
-                        </View>
-                        <Text style={[styles.featureCardSignals, { color: isDark ? theme.textSecondary : '#888' }]}>×{ride.signals}</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              <TouchableOpacity
+                style={[styles.emptyFeatureCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+                onPress={() => navigation.navigate('RidesBrowse')}
+                activeOpacity={0.9}
+              >
+                <Ionicons name="rocket-outline" size={32} color={isDark ? theme.textSecondary : '#ccc'} />
+                <Text style={[styles.emptyFeatureText, { color: isDark ? theme.textSecondary : '#666' }]}>Explore rides & attractions</Text>
+              </TouchableOpacity>
             </View>
 
             {/* ===== RV & CAMPING SECTION ===== */}
@@ -2031,32 +2013,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <Text style={[styles.sectionSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
                 Campgrounds and RV parks with real traveler insights
               </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-                {[
-                  { id: 'camp1', name: 'Fort Wilderness', location: 'Orlando, FL', signals: 189, type: 'Full Hookups', image: 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=400' },
-                  { id: 'camp2', name: 'Yosemite Pines', location: 'Groveland, CA', signals: 234, type: 'Scenic', image: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400' },
-                  { id: 'camp3', name: 'KOA Yellowstone', location: 'West Yellowstone, MT', signals: 156, type: 'Family', image: 'https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=400' },
-                ].map((camp) => (
-                  <TouchableOpacity
-                    key={camp.id}
-                    style={[styles.featureCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-                    onPress={() => navigation.navigate('PlaceDetails', { placeId: camp.id })}
-                    activeOpacity={0.9}
-                  >
-                    <Image source={{ uri: camp.image }} style={styles.featureCardImage} />
-                    <View style={styles.featureCardContent}>
-                      <Text style={[styles.featureCardTitle, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>{camp.name}</Text>
-                      <Text style={[styles.featureCardSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>{camp.location}</Text>
-                      <View style={styles.featureCardMeta}>
-                        <View style={[styles.featureCardBadge, { backgroundColor: '#E8F8E8' }]}>
-                          <Text style={[styles.featureCardBadgeText, { color: '#34C759' }]}>⛺ {camp.type}</Text>
-                        </View>
-                        <Text style={[styles.featureCardSignals, { color: isDark ? theme.textSecondary : '#888' }]}>×{camp.signals}</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              <TouchableOpacity
+                style={[styles.emptyFeatureCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+                onPress={() => navigation.navigate('RVCampingBrowse')}
+                activeOpacity={0.9}
+              >
+                <Ionicons name="bonfire-outline" size={32} color={isDark ? theme.textSecondary : '#ccc'} />
+                <Text style={[styles.emptyFeatureText, { color: isDark ? theme.textSecondary : '#666' }]}>Explore RV parks & campgrounds</Text>
+              </TouchableOpacity>
             </View>
 
             {/* ===== TOP CONTRIBUTORS SECTION ===== */}
@@ -4033,5 +3997,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#0A84FF',
     marginRight: 6,
+  },
+  emptyFeatureCard: {
+    width: width - 32,
+    height: 120,
+    borderRadius: 16,
+    marginTop: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  emptyFeatureText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 12,
   },
 });

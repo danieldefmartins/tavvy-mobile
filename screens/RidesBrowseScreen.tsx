@@ -35,10 +35,11 @@ const CARD_WIDTH = width - 32;
 interface Place {
   id: string;
   name: string;
-  category: string;
-  address_line1?: string;
+  description?: string;
+  tavvy_category?: string;
+  tavvy_subcategory?: string;
   city?: string;
-  state_region?: string;
+  region?: string;
   latitude?: number;
   longitude?: number;
   photos?: string[];
@@ -64,70 +65,13 @@ const SIGNAL_COLORS = {
 };
 
 // ============================================
-// SAMPLE RIDES DATA
+// RIDE CATEGORIES
 // ============================================
 
-const SAMPLE_RIDES: Place[] = [
-  { 
-    id: 'ride-velocicoaster', 
-    name: 'VelociCoaster', 
-    category: 'Roller Coaster', 
-    city: 'Orlando', 
-    state_region: 'FL',
-    parkName: 'Islands of Adventure',
-    photos: ['https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800'],
-    signals: [] 
-  },
-  { 
-    id: 'ride-hagrids', 
-    name: "Hagrid's Magical Creatures", 
-    category: 'Family Ride', 
-    city: 'Orlando', 
-    state_region: 'FL',
-    parkName: 'Islands of Adventure',
-    photos: ['https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800'],
-    signals: [] 
-  },
-  { 
-    id: 'ride-avatar', 
-    name: 'Avatar Flight of Passage', 
-    category: 'Immersive', 
-    city: 'Orlando', 
-    state_region: 'FL',
-    parkName: "Disney's Animal Kingdom",
-    photos: ['https://images.unsplash.com/photo-1566552881560-0be862a7c445?w=800'],
-    signals: [] 
-  },
-  { 
-    id: 'ride-guardians', 
-    name: 'Guardians of the Galaxy: Cosmic Rewind', 
-    category: 'Roller Coaster', 
-    city: 'Orlando', 
-    state_region: 'FL',
-    parkName: 'EPCOT',
-    photos: ['https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800'],
-    signals: [] 
-  },
-  { 
-    id: 'ride-pirates', 
-    name: 'Pirates of the Caribbean', 
-    category: 'Classic', 
-    city: 'Anaheim', 
-    state_region: 'CA',
-    parkName: 'Disneyland',
-    photos: ['https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800'],
-    signals: [] 
-  },
-  { 
-    id: 'ride-space', 
-    name: 'Space Mountain', 
-    category: 'Thrill Ride', 
-    city: 'Orlando', 
-    state_region: 'FL',
-    parkName: 'Magic Kingdom',
-    photos: ['https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800'],
-    signals: [] 
-  },
+const RIDE_CATEGORIES = [
+  'Attraction', 'Ride', 'Roller Coaster', 'Theme Park Ride',
+  'Water Ride', 'Dark Ride', 'Thrill Ride', 'Family Ride',
+  'Spinner', 'Show', 'Experience', 'Interactive'
 ];
 
 // ============================================
@@ -144,13 +88,6 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
   const [sortBy, setSortBy] = useState<SortOption>('popular');
   const [hasMore, setHasMore] = useState(true);
 
-  // Categories to filter for rides/attractions
-  const RIDE_CATEGORIES = [
-    'Theme Park', 'Amusement Park', 'Attraction', 'Theme Park Ride', 
-    'Roller Coaster', 'Water Park', 'Amusement Ride', 'Carnival',
-    'Fairground', 'Fun Park'
-  ];
-
   useEffect(() => {
     loadPlaces();
   }, [sortBy]);
@@ -159,13 +96,75 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
     try {
       if (offset === 0) setLoading(true);
 
-      // For now, use sample rides data
-      // TODO: Query from database when rides are added
-      setPlaces(SAMPLE_RIDES);
+      // Query places that are rides/attractions from atlas_universe_places
+      const { data: placesData, error } = await supabase
+        .from('places')
+        .select(`
+          id,
+          name,
+          description,
+          tavvy_category,
+          tavvy_subcategory,
+          city,
+          region,
+          latitude,
+          longitude
+        `)
+        .eq('source_type', 'tavvy_curated')
+        .or(RIDE_CATEGORIES.map(cat => `tavvy_category.ilike.%${cat}%`).join(','))
+        .limit(50);
+
+      if (error) {
+        console.error('Error loading rides:', error);
+        // Try alternative query - get all curated places
+        const { data: fallbackData } = await supabase
+          .from('places')
+          .select('*')
+          .eq('source_type', 'tavvy_curated')
+          .limit(50);
+        
+        if (fallbackData && fallbackData.length > 0) {
+          setPlaces(fallbackData.map(p => ({
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            tavvy_category: p.tavvy_category,
+            tavvy_subcategory: p.tavvy_subcategory,
+            city: p.city,
+            region: p.region,
+            latitude: p.latitude,
+            longitude: p.longitude,
+            photos: [],
+            signals: [],
+          })));
+        } else {
+          setPlaces([]);
+        }
+        return;
+      }
+
+      if (placesData && placesData.length > 0) {
+        setPlaces(placesData.map(p => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          tavvy_category: p.tavvy_category,
+          tavvy_subcategory: p.tavvy_subcategory,
+          city: p.city,
+          region: p.region,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          photos: [],
+          signals: [],
+        })));
+        setHasMore(placesData.length === 50);
+      } else {
+        setPlaces([]);
+      }
       
     } catch (error) {
       console.error('Error loading rides:', error);
-      setPlaces(SAMPLE_RIDES);
+      setPlaces([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -181,7 +180,7 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
     navigation.navigate('RideDetails', { 
       rideId: place.id, 
       rideName: place.name,
-      parkName: place.parkName,
+      parkName: place.parkName || place.city,
     });
   };
 
@@ -198,12 +197,13 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
     if (lowerCategory.includes('family') || lowerCategory.includes('kid')) {
       return 'https://images.unsplash.com/photo-1566552881560-0be862a7c445?w=800';
     }
+    if (lowerCategory.includes('dark') || lowerCategory.includes('indoor')) {
+      return 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800';
+    }
     return 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800';
   };
 
   // Render signal badges in 2x2 grid format (matching PlaceCard)
-  // Row 1: 2 blue (The Good)
-  // Row 2: 1 purple (The Vibe) + 1 orange (Heads Up)
   const renderSignalBadges = (signals: Signal[]) => {
     const hasSignals = signals && signals.length > 0;
     
@@ -217,7 +217,7 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
           >
             <Ionicons name="thumbs-up" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
             <Text style={styles.signalText} numberOfLines={1}>
-              {hasSignals ? `Thrilling ×12` : 'Be the first to tap!'}
+              {hasSignals ? `Thrilling ×${signals[0]?.tap_total || 0}` : 'Be the first to tap!'}
             </Text>
           </TouchableOpacity>
           
@@ -227,7 +227,7 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
           >
             <Ionicons name="thumbs-up" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
             <Text style={styles.signalText} numberOfLines={1}>
-              {hasSignals ? `Smooth ×8` : 'Be the first to tap!'}
+              {hasSignals ? `Smooth ×${signals[1]?.tap_total || 0}` : 'Be the first to tap!'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -240,7 +240,7 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
           >
             <Ionicons name="sparkles" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
             <Text style={styles.signalText} numberOfLines={1}>
-              {hasSignals ? `Immersive ×5` : 'Be the first to tap!'}
+              {hasSignals ? `Immersive ×${signals[2]?.tap_total || 0}` : 'Be the first to tap!'}
             </Text>
           </TouchableOpacity>
           
@@ -250,7 +250,7 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
           >
             <Ionicons name="alert-circle" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
             <Text style={styles.signalText} numberOfLines={1}>
-              {hasSignals ? `Long lines ×3` : 'Be the first to tap!'}
+              {hasSignals ? `Long lines ×${signals[3]?.tap_total || 0}` : 'Be the first to tap!'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -261,8 +261,9 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
   const renderPlaceCard = ({ item: place, index }: { item: Place; index: number }) => {
     const imageUrl = place.photos && place.photos.length > 0 
       ? place.photos[0] 
-      : getCategoryFallbackImage(place.category);
-    const location = place.parkName || [place.city, place.state_region].filter(Boolean).join(', ') || 'Unknown Location';
+      : getCategoryFallbackImage(place.tavvy_category || '');
+    const location = place.parkName || [place.city, place.region].filter(Boolean).join(', ') || 'Theme Park';
+    const category = place.tavvy_subcategory || place.tavvy_category || 'Attraction';
 
     return (
       <TouchableOpacity
@@ -288,7 +289,7 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
           >
             <Text style={styles.cardTitle} numberOfLines={1}>{place.name}</Text>
             <Text style={styles.cardSubtitle} numberOfLines={1}>
-              {place.category} • {location}
+              {category} • {location}
             </Text>
           </LinearGradient>
         </View>
@@ -365,10 +366,10 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
             <View style={styles.emptyContainer}>
               <Ionicons name="rocket-outline" size={64} color={isDark ? theme.textSecondary : '#ccc'} />
               <Text style={[styles.emptyText, { color: isDark ? theme.textSecondary : '#666' }]}>
-                No rides found
+                No rides found yet
               </Text>
               <Text style={[styles.emptySubtext, { color: isDark ? theme.textTertiary : '#999' }]}>
-                Check back soon for more rides to explore
+                Check back soon for rides and attractions to explore
               </Text>
             </View>
           }

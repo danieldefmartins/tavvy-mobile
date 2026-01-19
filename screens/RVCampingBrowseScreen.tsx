@@ -81,7 +81,7 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
     try {
       if (offset === 0) setLoading(true);
 
-      // Query places with RV-related categories
+      // Query places with RV-related categories from fsq_places_raw
       const { data: placesData, error } = await supabase
         .from('fsq_places_raw')
         .select('fsq_place_id, name, latitude, longitude, address, locality, region, fsq_category_labels')
@@ -90,7 +90,7 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
 
       if (error) {
         console.error('Error loading RV places:', error);
-        setPlaces(getSampleCamping());
+        setPlaces([]);
         return;
       }
 
@@ -117,17 +117,14 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
           signals: [],
         }));
 
-        if (filteredPlaces.length > 0) {
-          setPlaces(filteredPlaces);
-        } else {
-          // Use sample data if no places found
-          setPlaces(getSampleCamping());
-        }
+        setPlaces(filteredPlaces);
         setHasMore(filteredPlaces.length === 100);
+      } else {
+        setPlaces([]);
       }
     } catch (error) {
       console.error('Error loading RV places:', error);
-      setPlaces(getSampleCamping());
+      setPlaces([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -143,14 +140,6 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
     }
     return 'Campground';
   };
-
-  const getSampleCamping = (): Place[] => [
-    { id: 'camp1', name: 'Fort Wilderness Resort', category: 'RV Park', city: 'Orlando', state_region: 'FL', photos: [], signals: [] },
-    { id: 'camp2', name: 'Yosemite Pines RV Resort', category: 'Campground', city: 'Groveland', state_region: 'CA', photos: [], signals: [] },
-    { id: 'camp3', name: 'KOA Yellowstone', category: 'Campground', city: 'West Yellowstone', state_region: 'MT', photos: [], signals: [] },
-    { id: 'camp4', name: 'Grand Canyon RV Park', category: 'RV Park', city: 'Williams', state_region: 'AZ', photos: [], signals: [] },
-    { id: 'camp5', name: 'Zion River Resort', category: 'RV Park', city: 'Virgin', state_region: 'UT', photos: [], signals: [] },
-  ];
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -359,10 +348,10 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
             <View style={styles.emptyContainer}>
               <Ionicons name="bonfire-outline" size={48} color={isDark ? theme.textSecondary : '#ccc'} />
               <Text style={[styles.emptyTitle, { color: isDark ? theme.text : '#000' }]}>
-                No camping spots found
+                No camping spots found yet
               </Text>
               <Text style={[styles.emptySubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
-                Be the first to add an RV park or campground!
+                Check back soon for RV parks and campgrounds!
               </Text>
             </View>
           }
