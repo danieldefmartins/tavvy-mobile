@@ -116,24 +116,53 @@ export default function UniverseDiscoveryScreen() {
       if (activeCategory !== 'All') {
         const selectedCat = categories.find(c => c.name === activeCategory);
         if (selectedCat) {
-          // For category filter, still use the curated parks but filter by category
-          popularQuery = supabase
-            .from('atlas_universes')
-            .select('*')
-            .in('id', FEATURED_PARK_IDS)
-            .eq('status', 'published')
-            .eq('category_id', selectedCat.id)
-            .order('place_count', { ascending: false })
-            .limit(5);
-          
-          nearbyQuery = supabase
-            .from('atlas_universes')
-            .select('*')
-            .in('id', FEATURED_PARK_IDS)
-            .eq('status', 'published')
-            .eq('category_id', selectedCat.id)
-            .order('place_count', { ascending: false })
-            .limit(4);
+          // Check if this is Theme Parks category - show our curated parks
+          if (activeCategory === 'Theme Parks') {
+            popularQuery = supabase
+              .from('atlas_universes')
+              .select('*')
+              .in('id', FEATURED_PARK_IDS)
+              .eq('status', 'published')
+              .eq('category_id', selectedCat.id)
+              .order('place_count', { ascending: false })
+              .limit(5);
+            
+            nearbyQuery = supabase
+              .from('atlas_universes')
+              .select('*')
+              .in('id', FEATURED_PARK_IDS)
+              .eq('status', 'published')
+              .eq('category_id', selectedCat.id)
+              .order('place_count', { ascending: false })
+              .limit(4);
+          } else {
+            // For other categories, show all universes in that category
+            popularQuery = supabase
+              .from('atlas_universes')
+              .select('*')
+              .eq('status', 'published')
+              .eq('category_id', selectedCat.id)
+              .order('place_count', { ascending: false })
+              .limit(5);
+            
+            nearbyQuery = supabase
+              .from('atlas_universes')
+              .select('*')
+              .eq('status', 'published')
+              .eq('category_id', selectedCat.id)
+              .order('place_count', { ascending: false })
+              .limit(4);
+            
+            // For non-Theme Parks categories, don't show featured
+            featuredQuery = supabase
+              .from('atlas_universes')
+              .select('*')
+              .eq('status', 'published')
+              .eq('category_id', selectedCat.id)
+              .eq('is_featured', true)
+              .order('place_count', { ascending: false })
+              .limit(1);
+          }
         }
       }
 
@@ -144,9 +173,14 @@ export default function UniverseDiscoveryScreen() {
         nearbyQuery,
       ]);
 
-      // Set featured universe
+      // Set featured universe - handle both single result and array result
       if (featuredResult.data) {
-        setFeaturedUniverse(featuredResult.data);
+        // If it's an array (from non-Theme Parks query), take the first item
+        if (Array.isArray(featuredResult.data)) {
+          setFeaturedUniverse(featuredResult.data[0] || null);
+        } else {
+          setFeaturedUniverse(featuredResult.data);
+        }
       } else {
         setFeaturedUniverse(null);
       }

@@ -74,6 +74,7 @@ export default function UniverseLandingScreen() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [activeTab, setActiveTab] = useState('Places');
   const [activeZone, setActiveZone] = useState('All Zones');
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   useEffect(() => {
     if (universeId) {
@@ -150,8 +151,68 @@ export default function UniverseLandingScreen() {
     ...subUniverses.map(su => su.name)
   ];
 
-  // Filter places by zone if needed
-  const filteredPlaces = places; // For now, show all places
+  // Get the selected sub-universe ID for filtering
+  const getSelectedZoneId = (): string | null => {
+    if (activeZone === 'All Zones') return null;
+    const selectedSub = subUniverses.find(su => su.name === activeZone);
+    return selectedSub?.id || null;
+  };
+
+  // Load places when zone changes
+  useEffect(() => {
+    loadPlacesForZone();
+  }, [activeZone, universeId]);
+
+  const loadPlacesForZone = async () => {
+    try {
+      const zoneId = getSelectedZoneId();
+      const targetUniverseId = zoneId || universeId;
+
+      // Fetch places linked to the target universe
+      const { data: placesData, error: placesError } = await supabase
+        .from('atlas_universe_places')
+        .select(`
+          place:places(
+            id,
+            name,
+            tavvy_category,
+            tavvy_subcategory,
+            total_signals,
+            thumbnail_url
+          )
+        `)
+        .eq('universe_id', targetUniverseId)
+        .order('display_order', { ascending: true });
+
+      if (!placesError && placesData) {
+        const extractedPlaces = placesData
+          .map((item: any) => item.place)
+          .filter(Boolean);
+        setPlaces(extractedPlaces);
+      }
+    } catch (error) {
+      console.error('Error loading places for zone:', error);
+    }
+  };
+
+  // Filter places by category (Dining, Restrooms, etc.)
+  const filteredPlaces = activeCategory
+    ? places.filter(p => {
+        const cat = (p.tavvy_category || '').toLowerCase();
+        switch (activeCategory) {
+          case 'Dining':
+            return cat === 'restaurant' || cat === 'dining' || cat === 'food';
+          case 'Restrooms':
+            return cat === 'restroom' || cat === 'bathroom' || cat === 'facilities';
+          case 'Entrances':
+            return cat === 'entrance' || cat === 'gate' || cat === 'entry';
+          case 'Parking':
+            return cat === 'parking' || cat === 'garage';
+          default:
+            return true;
+        }
+      })
+    : places;
 
   // Format large numbers
   function formatNumber(num: number): string {
@@ -319,9 +380,23 @@ export default function UniverseLandingScreen() {
             { icon: 'water-outline', label: "Restrooms" },
             { icon: 'car-outline', label: "Parking" }
           ].map((action, i) => (
-            <TouchableOpacity key={i} style={styles.actionButton}>
-              <Ionicons name={action.icon as any} size={24} color="#374151" />
-              <Text style={styles.actionLabel}>{action.label}</Text>
+            <TouchableOpacity 
+              key={i} 
+              style={[
+                styles.actionButton,
+                activeCategory === action.label && styles.actionButtonActive
+              ]}
+              onPress={() => setActiveCategory(activeCategory === action.label ? null : action.label)}
+            >
+              <Ionicons 
+                name={action.icon as any} 
+                size={24} 
+                color={activeCategory === action.label ? '#06B6D4' : '#374151'} 
+              />
+              <Text style={[
+                styles.actionLabel,
+                activeCategory === action.label && styles.actionLabelActive
+              ]}>{action.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -653,6 +728,14 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 6,
     fontWeight: '500',
+  },
+  actionButtonActive: {
+    backgroundColor: '#ECFEFF',
+    borderWidth: 2,
+    borderColor: '#06B6D4',
+  },
+  actionLabelActive: {
+    color: '#06B6D4',
   },
   placesSection: {
     paddingHorizontal: 16,
