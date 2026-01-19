@@ -124,7 +124,7 @@ export default function UniverseMapScreen() {
   const bottomSheetRef = useRef<BottomSheet>(null);
 
   // Bottom sheet snap points
-  const snapPoints = useMemo(() => [60, '35%', '55%'], []);
+  const snapPoints = useMemo(() => [60, '30%', '45%'], []);
 
   // Default center (center of US)
   const defaultCenter: [number, number] = [-98.5795, 39.8283];
@@ -631,6 +631,7 @@ export default function UniverseMapScreen() {
         ref={bottomSheetRef}
         index={1}
         snapPoints={snapPoints}
+        topInset={Platform.OS === 'ios' ? 180 : 160}
         backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
         handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
         enablePanDownToClose={false}
