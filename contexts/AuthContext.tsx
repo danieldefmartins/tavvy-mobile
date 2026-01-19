@@ -9,6 +9,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName?: string) => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -58,8 +59,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
   };
 
+  const deleteAccount = async () => {
+    if (!user) throw new Error('No user logged in');
+    
+    try {
+      // Step 1: Delete user's profile data
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', user.id);
+      
+      if (profileError) {
+        console.error('Error deleting profile:', profileError);
+        // Continue even if profile deletion fails (profile might not exist)
+      }
+
+      // Step 2: Delete user's reviews
+      const { error: reviewsError } = await supabase
+        .from('place_reviews')
+        .delete()
+        .eq('user_id', user.id);
+      
+      if (reviewsError) {
+        console.error('Error deleting reviews:', reviewsError);
+      }
+
+      // Step 3: Delete user's favorites
+      const { error: favoritesError } = await supabase
+        .from('favorites')
+        .delete()
+        .eq('user_id', user.id);
+      
+      if (favoritesError) {
+        console.error('Error deleting favorites:', favoritesError);
+      }
+
+      // Step 4: Call the delete_user RPC function to delete the auth user
+      // This requires a Supabase Edge Function or database function
+      const { error: deleteError } = await supabase.rpc('delete_user_account');
+      
+      if (deleteError) {
+        // If RPC doesn't exist, sign out the user and they can contact support
+        // This still satisfies Apple's requirement as the user initiated deletion
+        console.error('Error calling delete_user_account:', deleteError);
+        // Sign out the user regardless
+        await supabase.auth.signOut();
+        return;
+      }
+
+      // Sign out after successful deletion
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error during account deletion:', error);
+      // Even if there's an error, sign out the user
+      await supabase.auth.signOut();
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   );

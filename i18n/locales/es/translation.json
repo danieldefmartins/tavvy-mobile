@@ -72,7 +72,15 @@
     "signInToView": "Inicia sesión para ver lugares guardados",
     "signUpToUnlock": "Regístrate para desbloquear:",
     "tavvyMember": "Miembro de Tavvy",
-    "tavvyExplorer": "Explorador TavvY"
+    "tavvyExplorer": "Explorador TavvY",
+    "deleteAccount": "Eliminar cuenta",
+    "deleteAccountWarning": "¿Estás seguro de que deseas eliminar tu cuenta? Esto eliminará permanentemente todos tus datos, reseñas y lugares guardados. Esta acción no se puede deshacer.",
+    "deleteAccountFinal": "Confirmación final",
+    "deleteAccountFinalWarning": "Esta es tu última oportunidad para cancelar. Una vez eliminada, tu cuenta y todos los datos asociados se eliminarán permanentemente y no se podrán recuperar.",
+    "deleteAccountConfirm": "Eliminar mi cuenta",
+    "accountDeleted": "Cuenta eliminada",
+    "accountDeletedMessage": "Tu cuenta ha sido eliminada exitosamente. Lamentamos verte partir.",
+    "deleteAccountError": "Hubo un problema al eliminar tu cuenta. Has cerrado sesión. Por favor contacta a soporte si necesitas más ayuda."
   },
   "home": {
     "greeting": {

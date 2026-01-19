@@ -14,6 +14,8 @@ import {
   ScrollView,
   SafeAreaView,
   Switch,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,9 +28,10 @@ import { AutoTranslateToggle } from '../components/ReviewTranslation';
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { t } = useTranslation();
-  const { user, signOut } = useAuth();
+  const { user, signOut, deleteAccount } = useAuth();
   const { theme, isDark, toggleTheme } = useThemeContext();
   const [autoTranslate, setAutoTranslate] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Dynamic styles based on theme
   const dynamicStyles = {
@@ -65,6 +68,75 @@ export default function SettingsScreen() {
       navigation.navigate('AppsMain' as never);
     } catch (error) {
       console.error('Error signing out:', error);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    // First confirmation
+    Alert.alert(
+      t('auth.deleteAccount'),
+      t('auth.deleteAccountWarning'),
+      [
+        {
+          text: t('common.cancel'),
+          style: 'cancel',
+        },
+        {
+          text: t('common.continue'),
+          style: 'destructive',
+          onPress: () => confirmDeleteAccount(),
+        },
+      ]
+    );
+  };
+
+  const confirmDeleteAccount = () => {
+    // Second confirmation for extra safety
+    Alert.alert(
+      t('auth.deleteAccountFinal'),
+      t('auth.deleteAccountFinalWarning'),
+      [
+        {
+          text: t('common.cancel'),
+          style: 'cancel',
+        },
+        {
+          text: t('auth.deleteAccountConfirm'),
+          style: 'destructive',
+          onPress: () => executeDeleteAccount(),
+        },
+      ]
+    );
+  };
+
+  const executeDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteAccount();
+      Alert.alert(
+        t('auth.accountDeleted'),
+        t('auth.accountDeletedMessage'),
+        [
+          {
+            text: t('common.ok'),
+            onPress: () => navigation.navigate('AppsMain' as never),
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      Alert.alert(
+        t('common.error'),
+        t('auth.deleteAccountError'),
+        [
+          {
+            text: t('common.ok'),
+            onPress: () => navigation.navigate('AppsMain' as never),
+          },
+        ]
+      );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -205,13 +277,30 @@ export default function SettingsScreen() {
             </Text>
             <View style={[styles.sectionContent, { backgroundColor: theme.surface }]}>
               <TouchableOpacity 
-                style={styles.settingRow}
+                style={[styles.settingRow, styles.settingRowBorder]}
                 onPress={handleSignOut}
               >
                 <View style={styles.settingLeft}>
                   <Ionicons name="log-out" size={22} color="#FF3B30" />
                   <Text style={[styles.settingLabel, dynamicStyles.dangerText]}>
                     {t('auth.signOut')}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.settingRow}
+                onPress={handleDeleteAccount}
+                disabled={isDeleting}
+              >
+                <View style={styles.settingLeft}>
+                  {isDeleting ? (
+                    <ActivityIndicator size="small" color="#FF3B30" />
+                  ) : (
+                    <Ionicons name="trash" size={22} color="#FF3B30" />
+                  )}
+                  <Text style={[styles.settingLabel, dynamicStyles.dangerText]}>
+                    {t('auth.deleteAccount')}
                   </Text>
                 </View>
               </TouchableOpacity>

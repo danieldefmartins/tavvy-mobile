@@ -72,7 +72,15 @@
     "signInToView": "Sign in to view saved places",
     "signUpToUnlock": "Sign up to unlock:",
     "tavvyMember": "Tavvy Member",
-    "tavvyExplorer": "TavvY Explorer"
+    "tavvyExplorer": "TavvY Explorer",
+    "deleteAccount": "Delete Account",
+    "deleteAccountWarning": "Are you sure you want to delete your account? This will permanently remove all your data, reviews, and saved places. This action cannot be undone.",
+    "deleteAccountFinal": "Final Confirmation",
+    "deleteAccountFinalWarning": "This is your last chance to cancel. Once deleted, your account and all associated data will be permanently removed and cannot be recovered.",
+    "deleteAccountConfirm": "Delete My Account",
+    "accountDeleted": "Account Deleted",
+    "accountDeletedMessage": "Your account has been successfully deleted. We are sorry to see you go.",
+    "deleteAccountError": "There was an issue deleting your account. You have been signed out. Please contact support if you need further assistance."
   },
   "home": {
     "greeting": {
