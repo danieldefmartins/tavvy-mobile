@@ -1,15 +1,3 @@
-/**
- * TavvY Internationalization (i18n) Configuration
- * 
- * Supports 17 languages with:
- * - Auto-detection of device language
- * - Manual override in settings
- * - Persistent language preference
- * - RTL support for Arabic
- * 
- * File: src/i18n/index.ts
- */
-
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import * as Localization from 'expo-localization';
@@ -81,12 +69,26 @@ const resources = {
 
 // Get the best matching language from device locale
 const getDeviceLanguage = (): string => {
-  const deviceLocale = Localization.locale;
-  const languageCode = deviceLocale.split('-')[0].toLowerCase();
-  
-  // Check if we support this language
-  const isSupported = SUPPORTED_LANGUAGES.some(lang => lang.code === languageCode);
-  return isSupported ? languageCode : 'en';
+  try {
+    // Handle both old and new expo-localization API
+    const deviceLocale = Localization.locale || 
+                         (Localization.getLocales && Localization.getLocales()[0]?.languageCode) ||
+                         'en';
+    
+    // Safely handle the locale string
+    if (!deviceLocale || typeof deviceLocale !== 'string') {
+      return 'en';
+    }
+    
+    const languageCode = deviceLocale.split('-')[0].toLowerCase();
+    
+    // Check if we support this language
+    const isSupported = SUPPORTED_LANGUAGES.some(lang => lang.code === languageCode);
+    return isSupported ? languageCode : 'en';
+  } catch (error) {
+    console.log('Error getting device language:', error);
+    return 'en';
+  }
 };
 
 // Initialize i18next

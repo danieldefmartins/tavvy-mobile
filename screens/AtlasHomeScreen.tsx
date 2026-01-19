@@ -25,6 +25,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 import {
   getFeaturedArticle,
   getTrendingArticles,
@@ -42,6 +43,7 @@ const PLACEHOLDER_ARTICLE = 'https://images.unsplash.com/photo-1506905925346-21b
 const PLACEHOLDER_AVATAR = 'https://via.placeholder.com/100';
 
 export default function AtlasHomeScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { theme, isDark } = useThemeContext();
   const [loading, setLoading] = useState(true);

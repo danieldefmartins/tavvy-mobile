@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useProsPendingRequests } from '../hooks/useProsPendingRequests';
+import { useTranslation } from 'react-i18next';
 
 export default function ProsRequestStep5Screen({ navigation, route }: any) {
+  const { t } = useTranslation();
   const { requestData } = route.params || { requestData: {} };
   const { createRequest, loading } = useProsPendingRequests();
   const [showSuccessModal, setShowSuccessModal] = useState(false);

@@ -4,10 +4,8 @@
  * 
  * Browse and search for real estate agents in your area.
  * Uses TavvY's signal-based review system.
- * 
- * NOW CONNECTED TO SUPABASE - Fetches real data from pro_providers table
  */
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -25,7 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
-import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -61,159 +59,149 @@ const SPECIALTIES = [
   { id: 'commercial', name: 'Commercial', icon: 'business-outline' },
 ];
 
-// Default placeholder image
-const PLACEHOLDER_PHOTO = 'https://via.placeholder.com/150?text=No+Photo';
-
-// Realtor type from Supabase
-interface Realtor {
-  id: string;
-  name: string;
-  title: string;
-  company: string;
-  photo: string;
-  yearsExperience: number;
-  transactionsClosed: number;
-  specialties: string[];
-  areas: string[];
-  verified: boolean;
-  signals: {
-    theGood: string[] | null;
-    theVibe: string[] | null;
-    headsUp: string[] | null;
-  };
-}
+// Mock realtors data with signals
+const MOCK_REALTORS = [
+  {
+    id: '1',
+    name: 'Sarah Mitchell',
+    title: 'Licensed Real Estate Agent',
+    company: 'Prestige Realty Group',
+    photo: 'https://randomuser.me/api/portraits/women/44.jpg',
+    yearsExperience: 12,
+    transactionsClosed: 450,
+    specialties: ['Luxury Homes', 'First-Time Buyers'],
+    areas: ['Downtown', 'Westside'],
+    verified: true,
+    // TavvY Signals
+    signals: {
+      theGood: ['Responsive', 'Knowledgeable'],
+      theVibe: null,
+      headsUp: null,
+    },
+  },
+  {
+    id: '2',
+    name: 'Michael Chen',
+    title: 'Broker Associate',
+    company: 'Elite Properties',
+    photo: 'https://randomuser.me/api/portraits/men/32.jpg',
+    yearsExperience: 8,
+    transactionsClosed: 280,
+    specialties: ['Investment Properties', 'Commercial'],
+    areas: ['Financial District', 'Midtown'],
+    verified: true,
+    signals: {
+      theGood: null,
+      theVibe: null,
+      headsUp: null,
+    },
+  },
+  {
+    id: '3',
+    name: 'Emily Rodriguez',
+    title: 'Real Estate Consultant',
+    company: 'HomeFirst Realty',
+    photo: 'https://randomuser.me/api/portraits/women/68.jpg',
+    yearsExperience: 15,
+    transactionsClosed: 520,
+    specialties: ['Relocation', 'First-Time Buyers'],
+    areas: ['Suburbs', 'Lakefront'],
+    verified: true,
+    signals: {
+      theGood: ['Patient', 'Great Negotiator'],
+      theVibe: ['Professional'],
+      headsUp: null,
+    },
+  },
+  {
+    id: '4',
+    name: 'James Wilson',
+    title: 'Senior Real Estate Agent',
+    company: 'Cityscape Realty',
+    photo: 'https://randomuser.me/api/portraits/men/75.jpg',
+    yearsExperience: 20,
+    transactionsClosed: 680,
+    specialties: ['Luxury Homes', 'Investment Properties'],
+    areas: ['Uptown', 'Historic District'],
+    verified: true,
+    signals: {
+      theGood: null,
+      theVibe: null,
+      headsUp: null,
+    },
+  },
+  {
+    id: '5',
+    name: 'Amanda Foster',
+    title: 'Realtor',
+    company: 'NextHome Partners',
+    photo: 'https://randomuser.me/api/portraits/women/90.jpg',
+    yearsExperience: 5,
+    transactionsClosed: 120,
+    specialties: ['First-Time Buyers', 'Relocation'],
+    areas: ['East Side', 'University District'],
+    verified: false,
+    signals: {
+      theGood: ['Friendly', 'Quick Responses'],
+      theVibe: ['Energetic'],
+      headsUp: ['New to Area'],
+    },
+  },
+];
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
 export default function RealtorsBrowseScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('all');
-  const [realtors, setRealtors] = useState<Realtor[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [initialLoading, setInitialLoading] = useState(true);
-
-  // Load realtors on mount
-  useEffect(() => {
-    loadRealtors();
-  }, []);
-
-  // Reload when specialty changes
-  useEffect(() => {
-    if (!initialLoading) {
-      handleSearch();
-    }
-  }, [selectedSpecialty]);
-
-  const loadRealtors = async () => {
-    setLoading(true);
-    try {
-      // Fetch realtors from pro_providers table where provider_type = 'realtor'
-      const { data, error } = await supabase
-        .from('pro_providers')
-        .select('*')
-        .eq('provider_type', 'realtor')
-        .eq('is_active', true)
-        .order('is_verified', { ascending: false })
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching realtors:', error);
-        setRealtors([]);
-      } else {
-        // Transform data to match the expected format
-        const transformedRealtors = (data || []).map(transformRealtorData);
-        setRealtors(transformedRealtors);
-      }
-    } catch (error) {
-      console.error('Error loading realtors:', error);
-      setRealtors([]);
-    } finally {
-      setLoading(false);
-      setInitialLoading(false);
-    }
-  };
-
-  // Transform Supabase data to component format
-  const transformRealtorData = (row: any): Realtor => {
-    return {
-      id: row.id,
-      name: row.display_name || row.business_name || 'Unknown',
-      title: row.title || 'Real Estate Agent',
-      company: row.company_name || row.brokerage || '',
-      photo: row.profile_image_url || row.photo_url || PLACEHOLDER_PHOTO,
-      yearsExperience: row.years_experience || 0,
-      transactionsClosed: row.transactions_closed || row.total_transactions || 0,
-      specialties: row.specialties || [],
-      areas: row.service_areas || row.areas_served || [],
-      verified: row.is_verified || false,
-      signals: {
-        theGood: row.signals_good || null,
-        theVibe: row.signals_vibe || null,
-        headsUp: row.signals_headsup || null,
-      },
-    };
-  };
+  const [realtors, setRealtors] = useState(MOCK_REALTORS);
+  const [loading, setLoading] = useState(false);
 
   const handleBack = () => {
     navigation.goBack();
   };
 
-  const handleSearch = useCallback(async () => {
+  const handleSearch = useCallback(() => {
     setLoading(true);
-    try {
-      let query = supabase
-        .from('pro_providers')
-        .select('*')
-        .eq('provider_type', 'realtor')
-        .eq('is_active', true);
-
-      // Apply search filter
+    // Simulate API call
+    setTimeout(() => {
+      let filtered = MOCK_REALTORS;
+      
       if (searchQuery.trim()) {
-        const searchTerm = `%${searchQuery.trim()}%`;
-        query = query.or(`display_name.ilike.${searchTerm},business_name.ilike.${searchTerm},company_name.ilike.${searchTerm}`);
+        const query = searchQuery.toLowerCase();
+        filtered = filtered.filter(r => 
+          r.name.toLowerCase().includes(query) ||
+          r.company.toLowerCase().includes(query) ||
+          r.areas.some(a => a.toLowerCase().includes(query))
+        );
       }
-
-      // Apply specialty filter
+      
       if (selectedSpecialty !== 'all') {
         const specialtyMap: { [key: string]: string } = {
-          'luxury': 'Luxury',
-          'first-time': 'First-Time',
-          'investment': 'Investment',
+          'luxury': 'Luxury Homes',
+          'first-time': 'First-Time Buyers',
+          'investment': 'Investment Properties',
           'relocation': 'Relocation',
           'commercial': 'Commercial',
         };
-        const specialtyTerm = specialtyMap[selectedSpecialty];
-        if (specialtyTerm) {
-          query = query.contains('specialties', [specialtyTerm]);
-        }
+        filtered = filtered.filter(r => 
+          r.specialties.some(s => s.includes(specialtyMap[selectedSpecialty] || ''))
+        );
       }
-
-      query = query
-        .order('is_verified', { ascending: false })
-        .order('created_at', { ascending: false });
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error searching realtors:', error);
-        setRealtors([]);
-      } else {
-        const transformedRealtors = (data || []).map(transformRealtorData);
-        setRealtors(transformedRealtors);
-      }
-    } catch (error) {
-      console.error('Error in search:', error);
-    } finally {
+      
+      setRealtors(filtered);
       setLoading(false);
-    }
+    }, 500);
   }, [searchQuery, selectedSpecialty]);
 
   const handleSpecialtySelect = (id: string) => {
     setSelectedSpecialty(id);
+    setTimeout(handleSearch, 100);
   };
 
-  const handleRealtorPress = (realtor: Realtor) => {
+  const handleRealtorPress = (realtor: typeof MOCK_REALTORS[0]) => {
     navigation.navigate('RealtorDetail', { 
       realtorId: realtor.id,
       realtorName: realtor.name,
@@ -252,20 +240,7 @@ export default function RealtorsBrowseScreen() {
     );
   };
 
-  // Empty state component
-  const EmptyState = () => (
-    <View style={styles.emptyState}>
-      <Ionicons name="people-outline" size={64} color={RealtorColors.textMuted} />
-      <Text style={styles.emptyStateTitle}>No Realtors Found</Text>
-      <Text style={styles.emptyStateText}>
-        {searchQuery.trim() 
-          ? 'Try adjusting your search or filters'
-          : 'Be the first realtor to join Tavvy!'}
-      </Text>
-    </View>
-  );
-
-  const renderRealtorCard = ({ item }: { item: Realtor }) => (
+  const renderRealtorCard = ({ item }: { item: typeof MOCK_REALTORS[0] }) => (
     <TouchableOpacity 
       style={styles.realtorCard}
       onPress={() => handleRealtorPress(item)}
@@ -297,22 +272,18 @@ export default function RealtorsBrowseScreen() {
         </View>
       </View>
 
-      {item.specialties.length > 0 && (
-        <View style={styles.specialtiesRow}>
-          {item.specialties.slice(0, 2).map((specialty, index) => (
-            <View key={index} style={styles.specialtyTag}>
-              <Text style={styles.specialtyText}>{specialty}</Text>
-            </View>
-          ))}
-        </View>
-      )}
+      <View style={styles.specialtiesRow}>
+        {item.specialties.slice(0, 2).map((specialty, index) => (
+          <View key={index} style={styles.specialtyTag}>
+            <Text style={styles.specialtyText}>{specialty}</Text>
+          </View>
+        ))}
+      </View>
 
-      {item.areas.length > 0 && (
-        <View style={styles.areasRow}>
-          <Ionicons name="location-outline" size={14} color={RealtorColors.textLight} />
-          <Text style={styles.areasText}>{item.areas.join(' • ')}</Text>
-        </View>
-      )}
+      <View style={styles.areasRow}>
+        <Ionicons name="location-outline" size={14} color={RealtorColors.textLight} />
+        <Text style={styles.areasText}>{item.areas.join(' • ')}</Text>
+      </View>
 
       {/* TavvY Signal Bars - 2 blue on first row, purple + orange on second row */}
       <View style={styles.signalBarsContainer}>
@@ -383,10 +354,7 @@ export default function RealtorsBrowseScreen() {
                 returnKeyType="search"
               />
               {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => {
-                  setSearchQuery('');
-                  loadRealtors();
-                }}>
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
                   <Ionicons name="close-circle" size={20} color={RealtorColors.textMuted} />
                 </TouchableOpacity>
               )}
@@ -431,10 +399,7 @@ export default function RealtorsBrowseScreen() {
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={RealtorColors.primary} />
-          <Text style={styles.loadingText}>Loading realtors...</Text>
         </View>
-      ) : realtors.length === 0 ? (
-        <EmptyState />
       ) : (
         <FlatList
           data={realtors}
@@ -545,29 +510,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: RealtorColors.textMuted,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: RealtorColors.text,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    color: RealtorColors.textMuted,
-    textAlign: 'center',
-  },
   listContent: {
     padding: 16,
   },
@@ -597,7 +539,6 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     marginRight: 16,
-    backgroundColor: '#E5E7EB',
   },
   realtorInfo: {
     flex: 1,

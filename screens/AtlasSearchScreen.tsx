@@ -17,12 +17,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import {
   searchArticles,
   type AtlasArticle,
 } from '../lib/atlas';
 
 export default function AtlasSearchScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<AtlasArticle[]>([]);

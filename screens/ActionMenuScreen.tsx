@@ -3,12 +3,14 @@ import { View, Text, TouchableOpacity, StyleSheet, Modal, TouchableWithoutFeedba
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../constants/Colors';
+import { useTranslation } from 'react-i18next';
 import { BlurView } from 'expo-blur'; // Optional: for glass effect if available, otherwise fallback to view
 
 export default function ActionMenuScreen({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const navigation = useNavigation();
 
   const handleAction = (action: string) => {
+  const { t } = useTranslation();
     onClose(); // Close menu first
     switch (action) {
       case 'universe':

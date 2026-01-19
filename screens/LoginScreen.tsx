@@ -14,8 +14,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 export default function LoginScreen({ navigation }: any) {
+  const { t } = useTranslation();
   const { signIn } = useAuth();
   const { theme } = useThemeContext();
   const [email, setEmail] = useState('');

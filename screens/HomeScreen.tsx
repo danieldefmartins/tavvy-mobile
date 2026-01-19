@@ -28,17 +28,13 @@ import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThemeContext } from '../contexts/ThemeContext';
-import { fetchPlacesInBounds, PlaceCard, getPlaceIdForNavigation } from '../lib/placeService';
-import { searchSuggestions as searchPlaceSuggestions } from '../lib/searchService';
+import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get('window');
 
 // ============================================
 // CONSTANTS
 // ============================================
-
-// Debug flag for place fetching - set to true to see metrics
-const DEBUG_PLACES = false;
 
 const MAP_PEEK_HEIGHT = height * 0.22;
 
@@ -255,6 +251,7 @@ interface GeocodingResult {
 // ============================================
 
 export default function HomeScreen({ navigation }: { navigation: any }) {
+  const { t } = useTranslation();
   // Theme context for dark mode support
   const { theme, isDark } = useThemeContext();
   
@@ -575,29 +572,58 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
       console.log(`Fetching places near [${centerLng}, ${centerLat}]`);
 
-      // Use centralized placeService with hybrid strategy:
-      // 1. Query canonical `places` table first (fast path)
-      // 2. Fallback to `fsq_places_raw` if results < threshold
-      const result = await fetchPlacesInBounds({
-        bounds: { minLat, maxLat, minLng, maxLng },
-        limit: 150,
-        fallbackThreshold: 40,
-      });
+      // Query from both fsq_places_raw (Foursquare) and tavvy_places (user-added)
+      
+      // 1. Fetch from Foursquare data
+      const { data: fsqPlacesData, error: fsqError } = await supabase
+        .from('fsq_places_raw')
+        .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, postcode, tel, website, email, instagram, facebook_id, twitter, fsq_category_ids, fsq_category_labels, date_created, date_refreshed, date_closed')
+        .gte('latitude', minLat)
+        .lte('latitude', maxLat)
+        .gte('longitude', minLng)
+        .lte('longitude', maxLng)
+        .is('date_closed', null)
+        .limit(150);
+      
+      // 2. Fetch from user-added places
+      const { data: tavvyPlacesData, error: tavvyError } = await supabase
+        .from('tavvy_places')
+        .select('id, name, latitude, longitude, address, city, region, country, postcode, phone, website, email, instagram, facebook, twitter, tavvy_category, tavvy_subcategory, photos, cover_image_url, created_at')
+        .gte('latitude', minLat)
+        .lte('latitude', maxLat)
+        .gte('longitude', minLng)
+        .lte('longitude', maxLng)
+        .eq('is_deleted', false)
+        .limit(50);
+      
+      // Combine both sources
+      const fsqPlaces = (fsqPlacesData || []).map(p => ({ ...p, source: 'foursquare' }));
+      const tavvyPlaces = (tavvyPlacesData || []).map(p => ({ 
+        ...p, 
+        source: 'user',
+        fsq_place_id: p.id, // Use id as the identifier
+        locality: p.city,
+        tel: p.phone,
+        fsq_category_labels: [p.tavvy_subcategory || p.tavvy_category || 'Other']
+      }));
+      
+      const placesData = [...fsqPlaces, ...tavvyPlaces];
+      const placesError = fsqError || tavvyError;
+      
+      console.log(`Fetched ${fsqPlaces.length} Foursquare places, ${tavvyPlaces.length} user-added places`);
 
-      // Debug logging (only when DEBUG_PLACES is true)
-      if (DEBUG_PLACES) {
-        console.log(`[DEBUG] Places fetched: ${result.places.length}`);
-        console.log(`[DEBUG] From canonical: ${result.metrics.fromPlaces}`);
-        console.log(`[DEBUG] From fsq_raw: ${result.metrics.fromFsqRaw}`);
-        console.log(`[DEBUG] Fallback triggered: ${result.metrics.fallbackTriggered}`);
-        console.log(`[DEBUG] Total time: ${result.metrics.totalTime}ms`);
+      if (placesError) {
+        console.warn('Supabase error:', placesError);
+        setPlaces([]);
+        setFilteredPlaces([]);
+        setLoading(false);
+        return;
       }
 
-      console.log(`Fetched ${result.places.length} places (${result.metrics.fromPlaces} canonical, ${result.metrics.fromFsqRaw} fsq_raw)`);
+      console.log('Fetched places from Supabase:', placesData?.length || 0);
 
-      if (result.places.length > 0) {
-        // Get signal aggregates for the places
-        const placeIds = result.places.map(p => p.source_id);
+      if (placesData && placesData.length > 0) {
+        const placeIds = placesData.map((p: any) => p.id);
         
         let signalAggregates: any[] = [];
         try {
@@ -610,38 +636,47 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           console.log('No signal aggregates table or data');
         }
 
-        // Map PlaceCard[] to existing Place[] shape for UI compatibility
-        const processedPlaces = result.places
+        const processedPlaces = placesData
           .filter((place) => {
             return typeof place.longitude === 'number' && typeof place.latitude === 'number' && 
                    !isNaN(place.longitude) && !isNaN(place.latitude) && 
                    place.longitude !== 0 && place.latitude !== 0;
           })
           .map(place => {
-            // Get signals for this place
+            // Get signals for this place using fsq_place_id
             const placeSignals = signalAggregates
-              .filter(s => s.place_id === place.source_id)
+              .filter(s => s.place_id === place.fsq_place_id)
               .map(s => ({
                 bucket: s.signal_label || 'Unknown',
                 tap_total: s.total_taps || 0,
               }));
 
-            // Map PlaceCard to existing Place interface
+            // Get category from fsq_category_labels - it's an array like ["Business > Hair Salon"]
+            let category = 'Other';
+            if (place.fsq_category_labels && Array.isArray(place.fsq_category_labels) && place.fsq_category_labels.length > 0) {
+              // Extract the last part of the category path (e.g., "Hair Salon" from "Business > Hair Salon")
+              const fullCategory = place.fsq_category_labels[0];
+              if (typeof fullCategory === 'string') {
+                const parts = fullCategory.split('>');
+                category = parts[parts.length - 1].trim();
+              }
+            }
+
             return {
-              id: place.source_id, // Use source_id for navigation (fsq_id or tavvy place id)
+              id: place.fsq_place_id,
               name: place.name,
               latitude: place.latitude,
               longitude: place.longitude,
               address_line1: place.address || '',
-              city: place.city || '',
+              city: place.locality || '',
               state_region: place.region || '',
               country: place.country || '',
-              category: place.category || 'Other',
-              phone: place.phone || '',
+              category: category,
+              phone: place.tel || '',
               website: place.website || '',
               instagram_url: place.instagram || '',
               signals: placeSignals,
-              photos: place.photos || [],
+              photos: [], // No photos column in fsq_places_raw
             };
           });
 
@@ -676,26 +711,40 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     const suggestions: SearchSuggestion[] = [];
     const query = text.toLowerCase();
 
-    // Search database for matching places using centralized searchService
+    // Search database for matching places
     try {
-      const searchResults = await searchPlaceSuggestions(text, 5);
+      const { data: searchResults, error } = await supabase
+        .from('fsq_places_raw')
+        .select('fsq_place_id, name, latitude, longitude, address, locality, region, fsq_category_labels')
+        .ilike('name', `%${text}%`)
+        .is('date_closed', null)
+        .limit(5);
 
-      if (searchResults && searchResults.length > 0) {
+      if (!error && searchResults && searchResults.length > 0) {
         searchResults.forEach(place => {
+          let category = 'Other';
+          if (place.fsq_category_labels && Array.isArray(place.fsq_category_labels) && place.fsq_category_labels.length > 0) {
+            const fullCategory = place.fsq_category_labels[0];
+            if (typeof fullCategory === 'string') {
+              const parts = fullCategory.split('>');
+              category = parts[parts.length - 1].trim();
+            }
+          }
+          
           suggestions.push({
-            id: `place-${place.source_id}`,
+            id: `place-${place.fsq_place_id}`,
             type: 'place',
             title: place.name,
-            subtitle: `${place.category || 'Other'} • ${place.city || 'Nearby'}`,
+            subtitle: `${category} • ${place.locality || 'Nearby'}`,
             icon: 'location',
             data: {
-              id: place.source_id,
+              id: place.fsq_place_id,
               name: place.name,
               latitude: place.latitude,
               longitude: place.longitude,
               address_line1: place.address || '',
-              city: place.city || '',
-              category: place.category || 'Other',
+              city: place.locality || '',
+              category: category,
               signals: [],
               photos: [],
             },
@@ -1992,14 +2041,32 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <Text style={[styles.sectionSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
                 Theme park experiences reviewed by the community
               </Text>
-              <TouchableOpacity
-                style={[styles.emptyFeatureCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-                onPress={() => navigation.navigate('RidesBrowse')}
-                activeOpacity={0.9}
-              >
-                <Ionicons name="rocket-outline" size={32} color={isDark ? theme.textSecondary : '#ccc'} />
-                <Text style={[styles.emptyFeatureText, { color: isDark ? theme.textSecondary : '#666' }]}>Explore rides & attractions</Text>
-              </TouchableOpacity>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
+                {[
+                  { id: 'ride1', name: 'Space Mountain', universe: 'Magic Kingdom', signals: 234, type: 'Thrill', image: 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=400' },
+                  { id: 'ride2', name: 'Hagrid\'s Motorbike', universe: 'Universal Orlando', signals: 456, type: 'Family', image: 'https://images.unsplash.com/photo-1566552881560-0be862a7c445?w=400' },
+                  { id: 'ride3', name: 'Avatar Flight', universe: 'Animal Kingdom', signals: 312, type: 'Immersive', image: 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=400' },
+                ].map((ride) => (
+                  <TouchableOpacity
+                    key={ride.id}
+                    style={[styles.featureCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+                    onPress={() => navigation.navigate('RideDetails', { placeId: ride.id })}
+                    activeOpacity={0.9}
+                  >
+                    <Image source={{ uri: ride.image }} style={styles.featureCardImage} />
+                    <View style={styles.featureCardContent}>
+                      <Text style={[styles.featureCardTitle, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>{ride.name}</Text>
+                      <Text style={[styles.featureCardSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>{ride.universe}</Text>
+                      <View style={styles.featureCardMeta}>
+                        <View style={[styles.featureCardBadge, { backgroundColor: '#E8F4FD' }]}>
+                          <Text style={[styles.featureCardBadgeText, { color: '#0A84FF' }]}>✨ {ride.type}</Text>
+                        </View>
+                        <Text style={[styles.featureCardSignals, { color: isDark ? theme.textSecondary : '#888' }]}>×{ride.signals}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
 
             {/* ===== RV & CAMPING SECTION ===== */}
@@ -2013,14 +2080,32 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <Text style={[styles.sectionSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
                 Campgrounds and RV parks with real traveler insights
               </Text>
-              <TouchableOpacity
-                style={[styles.emptyFeatureCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-                onPress={() => navigation.navigate('RVCampingBrowse')}
-                activeOpacity={0.9}
-              >
-                <Ionicons name="bonfire-outline" size={32} color={isDark ? theme.textSecondary : '#ccc'} />
-                <Text style={[styles.emptyFeatureText, { color: isDark ? theme.textSecondary : '#666' }]}>Explore RV parks & campgrounds</Text>
-              </TouchableOpacity>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
+                {[
+                  { id: 'camp1', name: 'Fort Wilderness', location: 'Orlando, FL', signals: 189, type: 'Full Hookups', image: 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=400' },
+                  { id: 'camp2', name: 'Yosemite Pines', location: 'Groveland, CA', signals: 234, type: 'Scenic', image: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400' },
+                  { id: 'camp3', name: 'KOA Yellowstone', location: 'West Yellowstone, MT', signals: 156, type: 'Family', image: 'https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=400' },
+                ].map((camp) => (
+                  <TouchableOpacity
+                    key={camp.id}
+                    style={[styles.featureCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+                    onPress={() => navigation.navigate('RideDetails', { placeId: camp.id })}
+                    activeOpacity={0.9}
+                  >
+                    <Image source={{ uri: camp.image }} style={styles.featureCardImage} />
+                    <View style={styles.featureCardContent}>
+                      <Text style={[styles.featureCardTitle, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>{camp.name}</Text>
+                      <Text style={[styles.featureCardSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>{camp.location}</Text>
+                      <View style={styles.featureCardMeta}>
+                        <View style={[styles.featureCardBadge, { backgroundColor: '#E8F8E8' }]}>
+                          <Text style={[styles.featureCardBadgeText, { color: '#34C759' }]}>⛺ {camp.type}</Text>
+                        </View>
+                        <Text style={[styles.featureCardSignals, { color: isDark ? theme.textSecondary : '#888' }]}>×{camp.signals}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
 
             {/* ===== TOP CONTRIBUTORS SECTION ===== */}
@@ -3997,23 +4082,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#0A84FF',
     marginRight: 6,
-  },
-  emptyFeatureCard: {
-    width: width - 32,
-    height: 120,
-    borderRadius: 16,
-    marginTop: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  emptyFeatureText: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 12,
   },
 });

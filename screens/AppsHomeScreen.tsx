@@ -11,6 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
+import { useTranslation } from 'react-i18next';
 
 type AppItem = {
   id: string;
@@ -91,6 +92,7 @@ const apps: AppItem[] = [
 ];
 
 export default function AppsHomeScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const [loginMode, setLoginMode] = useState<'personal' | 'pro'>('personal');
 

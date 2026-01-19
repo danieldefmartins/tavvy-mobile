@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../constants/Colors';
+import { useTranslation } from 'react-i18next';
 
 const FILTERS = [
   { id: 'all', label: 'All' },
@@ -19,6 +20,7 @@ const MOCK_DATA = [
 ];
 
 export default function ExploreScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [activeFilter, setActiveFilter] = useState('all');
 

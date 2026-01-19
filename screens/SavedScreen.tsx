@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useUserFavorites, FavoriteWithPlace } from '../hooks/useFavorite';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 // Get category-based fallback image URL when place has no photo
 const getCategoryFallbackImage = (category: string): string => {
@@ -43,6 +44,7 @@ const getCategoryFallbackImage = (category: string): string => {
 };
 
 export default function SavedScreen({ navigation }: any) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { data: favorites, isLoading, refetch } = useUserFavorites();
   const [refreshing, setRefreshing] = useState(false);

@@ -19,6 +19,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 import {
   getRelatedArticles,
   getUserReaction,
@@ -32,6 +33,7 @@ import {
 } from '../lib/atlas';
 
 export default function ArticleDetailScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { article: initialArticle } = route.params as { article: AtlasArticle };

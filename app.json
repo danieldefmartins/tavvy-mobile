@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -34,7 +34,13 @@
       ],
       "@maplibre/maplibre-react-native",
       "expo-localization",
-      "./plugins/withPodfileFix"
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.360.tavvy",
+          "enableGooglePay": true
+        }
+      ]
     ],
     "ios": {
       "supportsTablet": true,

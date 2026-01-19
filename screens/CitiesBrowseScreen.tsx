@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useTheme, spacing, borderRadius, shadows } from '../constants/Colors';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 32;
@@ -160,6 +161,7 @@ const SIGNAL_COLORS = {
 // ============================================
 
 export default function CitiesBrowseScreen({ navigation }: { navigation: any }) {
+  const { t } = useTranslation();
   const { isDark } = useThemeContext();
   const theme = useTheme();
   

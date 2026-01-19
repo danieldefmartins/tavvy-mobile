@@ -54,6 +54,7 @@ import { useLocalEntrances, LocalEntrance } from '../hooks/useEntrances';
 
 // Import business card scanner types
 import { ScannedBusinessCard } from './BusinessCardScannerScreen';
+import { useTranslation } from 'react-i18next';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -728,6 +729,7 @@ const styles = StyleSheet.create({
 // ============================================
 
 export default function UniversalAddScreenV2() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   
   // Form state

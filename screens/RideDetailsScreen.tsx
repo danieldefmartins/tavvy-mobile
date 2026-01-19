@@ -24,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { fetchPlaceSignals, SignalAggregate } from '../lib/reviews';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -125,6 +126,7 @@ const SAMPLE_RIDES: Record<string, RideData> = {
 };
 
 export default function RideDetailsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const params = route.params as RouteParams;

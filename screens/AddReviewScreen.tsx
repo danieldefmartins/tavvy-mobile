@@ -25,6 +25,7 @@ import {
 import PulseCard from '../components/PulseCard';
 import { Colors } from '../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -110,6 +111,7 @@ const STEPS = [
 type StepId = typeof STEPS[number]['id'];
 
 export default function AddReviewScreen() {
+  const { t } = useTranslation();
   const route = useRoute<AddReviewRouteProp>();
   const navigation = useNavigation();
   const colorScheme = useColorScheme();

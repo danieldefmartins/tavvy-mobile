@@ -25,10 +25,12 @@ import { ProsColors } from '../constants/ProsConfig';
 import { ProsSubscriptionStatusBanner } from '../components/ProsSubscriptionBanner';
 import { ProsLeadCardCompact } from '../components/ProsLeadCard';
 import { useProDashboard, useProsLeads, useProsSubscription, useProsConversations } from '../hooks/usePros';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
 export default function ProsDashboardScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const [refreshing, setRefreshing] = useState(false);
 

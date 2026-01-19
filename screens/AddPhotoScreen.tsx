@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, ActivityIndicat
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useTranslation } from 'react-i18next';
 
 interface AddPhotoScreenProps {
   route: {
@@ -15,6 +16,7 @@ interface AddPhotoScreenProps {
 }
 
 export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProps) {
+  const { t } = useTranslation();
   const { placeName } = route?.params || {};
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('back');

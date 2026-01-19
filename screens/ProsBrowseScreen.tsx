@@ -25,6 +25,7 @@ import { ProsColors, PROS_CATEGORIES } from '../constants/ProsConfig';
 import { ProsProviderCard } from '../components/ProsProviderCard';
 import { useSearchPros } from '../hooks/usePros';
 import { Pro } from '../lib/ProsTypes';
+import { useTranslation } from 'react-i18next';
 
 type RouteParams = {
   ProsBrowseScreen: {
@@ -37,6 +38,7 @@ type RouteParams = {
 type NavigationProp = NativeStackNavigationProp<any>;
 
 export default function ProsBrowseScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp<RouteParams, 'ProsBrowseScreen'>>();
   

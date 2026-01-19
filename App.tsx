@@ -72,6 +72,10 @@ import RidesBrowseScreen from './screens/RidesBrowseScreen';
 import RVCampingBrowseScreen from './screens/RVCampingBrowseScreen';
 import CitiesBrowseScreen from './screens/CitiesBrowseScreen';
 import RideDetailsScreen from './screens/RideDetailsScreen';
+import RealtorsBrowseScreen from './screens/RealtorsBrowseScreen';
+import RealtorDetailScreen from './screens/RealtorDetailScreen';
+import HappeningNowScreen from './screens/HappeningNowScreen';
+import ExperiencePathsScreen from './screens/ExperiencePathsScreen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -163,6 +167,14 @@ function AppsStack() {
       <MenuStackNav.Screen name="CityDetails" component={CityDetailsScreen} />
       <MenuStackNav.Screen name="AddReview" component={AddReviewScreen} />
       <MenuStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
+      
+      {/* Realtors */}
+      <MenuStackNav.Screen name="RealtorsBrowse" component={RealtorsBrowseScreen} />
+      <MenuStackNav.Screen name="RealtorDetail" component={RealtorDetailScreen} />
+      
+      {/* Happening Now & Experiences */}
+      <MenuStackNav.Screen name="HappeningNow" component={HappeningNowScreen} />
+      <MenuStackNav.Screen name="ExperiencePaths" component={ExperiencePathsScreen} />
       
       {/* Create functionality moved to Menu */}
       <MenuStackNav.Screen name="UniversalAdd" component={UniversalAddScreen} />

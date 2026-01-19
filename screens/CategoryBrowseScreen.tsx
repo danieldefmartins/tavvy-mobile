@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import {
   getArticlesByCategory,
   type AtlasCategory,
@@ -25,6 +26,7 @@ import {
 type SortOption = 'popular' | 'recent' | 'most_loved';
 
 export default function CategoryBrowseScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { category } = route.params as { category: AtlasCategory };

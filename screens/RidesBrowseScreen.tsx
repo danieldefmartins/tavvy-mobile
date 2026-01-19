@@ -24,6 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabaseClient';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useTheme, spacing, borderRadius, shadows } from '../constants/Colors';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 32;
@@ -79,6 +80,7 @@ const RIDE_CATEGORIES = [
 // ============================================
 
 export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
+  const { t } = useTranslation();
   const { isDark } = useThemeContext();
   const theme = useTheme();
   
