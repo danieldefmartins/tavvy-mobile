@@ -69,13 +69,44 @@ export default function ArticleDetailScreen() {
   const [relatedArticles, setRelatedArticles] = useState<AtlasArticle[]>([]);
   const [userReaction, setUserReaction] = useState<ArticleReaction | null>(null);
   const [isSaved, setIsSaved] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadData();
-    incrementViewCount();
-  }, [article.id]);
+    loadFullArticle();
+  }, [initialArticle.id]);
+
+  // Fetch full article data to ensure content_blocks are loaded
+  const loadFullArticle = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch full article with content_blocks
+      const { data: fullArticle, error } = await supabase
+        .from('atlas_articles')
+        .select(`
+          *,
+          category:atlas_categories(*),
+          universe:atlas_universes(*)
+        `)
+        .eq('id', initialArticle.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching full article:', error);
+      } else if (fullArticle) {
+        setArticle(fullArticle);
+      }
+
+      // Load other data
+      await loadData();
+      await incrementViewCount();
+    } catch (error) {
+      console.error('Error loading full article:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -198,12 +229,27 @@ export default function ArticleDetailScreen() {
   // Parse content blocks from article
   const contentBlocks: ContentBlock[] = article.content_blocks || [];
 
+  // Debug logging
+  console.log('Article ID:', article.id);
+  console.log('Content blocks count:', contentBlocks.length);
+  console.log('Has content_blocks field:', 'content_blocks' in article);
+
   // If no content blocks, create a simple paragraph from legacy content
   const displayBlocks: ContentBlock[] = contentBlocks.length > 0 
     ? contentBlocks 
     : article.content 
       ? [{ type: 'paragraph', text: article.content }]
       : [];
+
+  // Show loading state while fetching full article
+  if (loading && displayBlocks.length === 0) {
+    return (
+      <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#fff', justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={TEAL_PRIMARY} />
+        <Text style={{ marginTop: 12, color: '#6B7280' }}>Loading article...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#fff' }]}>
