@@ -191,6 +191,7 @@ function UniverseStack() {
     <UniverseStackNav.Navigator screenOptions={{ headerShown: false }}>
       <UniverseStackNav.Screen name="UniverseDiscovery" component={UniverseDiscoveryScreen} />
       <UniverseStackNav.Screen name="UniverseLanding" component={UniverseLandingScreen} />
+      <UniverseStackNav.Screen name="PlaceDetails" component={PlaceDetailsScreen} />
     </UniverseStackNav.Navigator>
   );
 }
