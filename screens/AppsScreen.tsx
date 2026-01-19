@@ -1,13 +1,13 @@
 /**
  * AppsScreen.tsx
- * Tools & shortcuts dashboard with Tavvy-style icons
+ * Tools & shortcuts dashboard with Tavvy-style large icons
  * Path: screens/AppsScreen.tsx
  *
  * Features:
- * - Bigger, more prominent icons with Tavvy cyan accent
- * - Clean, modern grid layout
- * - Fixed navigation routes
- * - Removed duplicate tiles
+ * - Large, prominent app icons (iOS-style)
+ * - Tavvy cyan accent throughout
+ * - Clean 3-column grid
+ * - Vibrant gradient-style backgrounds
  */
 
 import React from 'react';
@@ -20,11 +20,16 @@ import {
   Image,
   Platform,
   StatusBar,
+  Dimensions,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
+
+const { width } = Dimensions.get('window');
+const TILE_SIZE = (width - 64) / 3; // 3 columns with padding
 
 // Tavvy brand colors
 const ACCENT = '#0F1233';
@@ -35,9 +40,7 @@ interface AppTile {
   name: string;
   icon: string;
   iconType: 'ionicons' | 'material';
-  backgroundColor: string;
-  backgroundColorDark: string;
-  iconColor: string;
+  gradientColors: [string, string];
   route?: string;
   params?: object;
 }
@@ -48,9 +51,7 @@ const APP_TILES: AppTile[] = [
     name: 'Quick Finds',
     icon: 'flash',
     iconType: 'ionicons',
-    backgroundColor: '#FEF3C7',
-    backgroundColorDark: '#78350F',
-    iconColor: '#F59E0B',
+    gradientColors: ['#FCD34D', '#F59E0B'],
     route: 'Home',
   },
   {
@@ -58,9 +59,7 @@ const APP_TILES: AppTile[] = [
     name: 'Universes',
     icon: 'planet',
     iconType: 'ionicons',
-    backgroundColor: '#CCFBF1',
-    backgroundColorDark: '#134E4A',
-    iconColor: '#14B8A6',
+    gradientColors: ['#5EEAD4', '#14B8A6'],
     route: 'Explore',
   },
   {
@@ -68,9 +67,7 @@ const APP_TILES: AppTile[] = [
     name: 'Rides',
     icon: 'train',
     iconType: 'ionicons',
-    backgroundColor: '#FEE2E2',
-    backgroundColorDark: '#7F1D1D',
-    iconColor: '#EF4444',
+    gradientColors: ['#FCA5A5', '#EF4444'],
     route: 'RidesBrowse',
   },
   {
@@ -78,9 +75,7 @@ const APP_TILES: AppTile[] = [
     name: 'RV & Camping',
     icon: 'bonfire',
     iconType: 'ionicons',
-    backgroundColor: '#FED7AA',
-    backgroundColorDark: '#7C2D12',
-    iconColor: '#EA580C',
+    gradientColors: ['#FDBA74', '#EA580C'],
     route: 'RVCampingBrowse',
   },
   {
@@ -88,9 +83,7 @@ const APP_TILES: AppTile[] = [
     name: 'Atlas',
     icon: 'book',
     iconType: 'ionicons',
-    backgroundColor: '#E0E7FF',
-    backgroundColorDark: '#312E81',
-    iconColor: '#4F46E5',
+    gradientColors: ['#A5B4FC', '#6366F1'],
     route: 'Atlas',
   },
   {
@@ -98,9 +91,7 @@ const APP_TILES: AppTile[] = [
     name: 'Cities',
     icon: 'business',
     iconType: 'ionicons',
-    backgroundColor: '#DBEAFE',
-    backgroundColorDark: '#1E3A8A',
-    iconColor: '#3B82F6',
+    gradientColors: ['#93C5FD', '#3B82F6'],
     route: 'CitiesBrowse',
   },
   {
@@ -108,9 +99,7 @@ const APP_TILES: AppTile[] = [
     name: 'Happening Now',
     icon: 'sparkles',
     iconType: 'ionicons',
-    backgroundColor: '#FCE7F3',
-    backgroundColorDark: '#9F1239',
-    iconColor: '#EC4899',
+    gradientColors: ['#F9A8D4', '#EC4899'],
     route: 'HappeningNow',
   },
   {
@@ -118,9 +107,7 @@ const APP_TILES: AppTile[] = [
     name: 'Experiences',
     icon: 'compass',
     iconType: 'ionicons',
-    backgroundColor: '#EDE9FE',
-    backgroundColorDark: '#4C1D95',
-    iconColor: '#8B5CF6',
+    gradientColors: ['#C4B5FD', '#8B5CF6'],
     route: 'ExperiencePaths',
   },
   {
@@ -128,9 +115,7 @@ const APP_TILES: AppTile[] = [
     name: 'Realtors',
     icon: 'home',
     iconType: 'ionicons',
-    backgroundColor: '#CFFAFE',
-    backgroundColorDark: '#164E63',
-    iconColor: '#0891B2',
+    gradientColors: ['#67E8F9', '#06B6D4'],
     route: 'RealtorsBrowse',
   },
   {
@@ -138,9 +123,7 @@ const APP_TILES: AppTile[] = [
     name: 'Pros',
     icon: 'construct',
     iconType: 'ionicons',
-    backgroundColor: '#DBEAFE',
-    backgroundColorDark: '#1E3A8A',
-    iconColor: '#3B82F6',
+    gradientColors: ['#60A5FA', '#2563EB'],
     route: 'Pros',
   },
   {
@@ -148,9 +131,7 @@ const APP_TILES: AppTile[] = [
     name: 'Saved',
     icon: 'heart',
     iconType: 'ionicons',
-    backgroundColor: '#FEE2E2',
-    backgroundColorDark: '#991B1B',
-    iconColor: '#EF4444',
+    gradientColors: ['#FB7185', '#E11D48'],
     route: 'Saved',
   },
   {
@@ -158,9 +139,7 @@ const APP_TILES: AppTile[] = [
     name: 'Account',
     icon: 'person',
     iconType: 'ionicons',
-    backgroundColor: '#F3F4F6',
-    backgroundColorDark: '#374151',
-    iconColor: '#6B7280',
+    gradientColors: ['#9CA3AF', '#4B5563'],
     route: 'ProfileMain',
   },
   {
@@ -168,9 +147,7 @@ const APP_TILES: AppTile[] = [
     name: 'Create',
     icon: 'add-circle',
     iconType: 'ionicons',
-    backgroundColor: '#D1FAE5',
-    backgroundColorDark: '#064E3B',
-    iconColor: '#10B981',
+    gradientColors: ['#6EE7B7', '#10B981'],
     route: 'UniversalAdd',
   },
   {
@@ -178,9 +155,7 @@ const APP_TILES: AppTile[] = [
     name: 'Help',
     icon: 'help-circle',
     iconType: 'ionicons',
-    backgroundColor: '#E0E7FF',
-    backgroundColorDark: '#312E81',
-    iconColor: '#6366F1',
+    gradientColors: ['#818CF8', '#4F46E5'],
     route: 'HelpSupport',
   },
 ];
@@ -204,15 +179,13 @@ export default function AppsScreen() {
     navigation.navigate('Pros', { screen: 'ProsRegistration' });
   };
 
-  const renderIcon = (tile: AppTile, size: number = 36) => {
-    const iconColor = isDark ? '#FFFFFF' : tile.iconColor;
-
+  const renderIcon = (tile: AppTile) => {
     if (tile.iconType === 'material') {
       return (
         <MaterialCommunityIcons
           name={tile.icon as any}
-          size={size}
-          color={iconColor}
+          size={42}
+          color="#FFFFFF"
         />
       );
     }
@@ -220,8 +193,8 @@ export default function AppsScreen() {
     return (
       <Ionicons
         name={tile.icon as any}
-        size={size}
-        color={iconColor}
+        size={42}
+        color="#FFFFFF"
       />
     );
   };
@@ -235,19 +208,6 @@ export default function AppsScreen() {
       color: isDark ? theme.text : '#111827',
     },
     headerSubtitle: {
-      color: isDark ? theme.textSecondary : '#6B7280',
-    },
-    loginButton: {
-      backgroundColor: isDark ? theme.surface : '#fff',
-      borderColor: isDark ? TAVVY_CYAN : TAVVY_CYAN,
-    },
-    loginButtonText: {
-      color: isDark ? TAVVY_CYAN : TAVVY_CYAN,
-    },
-    proLoginButton: {
-      borderColor: isDark ? theme.border : '#D1D5DB',
-    },
-    proLoginText: {
       color: isDark ? theme.textSecondary : '#6B7280',
     },
     tileName: {
@@ -320,42 +280,42 @@ export default function AppsScreen() {
         {!user && (
           <View style={styles.loginButtons}>
             <TouchableOpacity
-              style={[styles.loginButton, dynamicStyles.loginButton]}
+              style={[styles.loginButton, { borderColor: TAVVY_CYAN, backgroundColor: isDark ? theme.surface : '#fff' }]}
               onPress={handlePersonalLogin}
             >
-              <Ionicons name="person-outline" size={18} color={TAVVY_CYAN} />
-              <Text style={[styles.loginButtonText, dynamicStyles.loginButtonText]}>Personal Login</Text>
+              <Ionicons name="person-outline" size={20} color={TAVVY_CYAN} />
+              <Text style={[styles.loginButtonText, { color: TAVVY_CYAN }]}>Personal Login</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.loginButton, dynamicStyles.loginButton, dynamicStyles.proLoginButton]}
+              style={[styles.loginButton, { borderColor: isDark ? theme.border : '#D1D5DB', backgroundColor: isDark ? theme.surface : '#fff' }]}
               onPress={handleProLogin}
             >
-              <Ionicons name="briefcase-outline" size={18} color={isDark ? theme.textSecondary : '#6B7280'} />
-              <Text style={[styles.loginButtonText, dynamicStyles.proLoginText]}>
+              <Ionicons name="briefcase-outline" size={20} color={isDark ? theme.textSecondary : '#6B7280'} />
+              <Text style={[styles.loginButtonText, { color: isDark ? theme.textSecondary : '#6B7280' }]}>
                 Pro Login
               </Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* App Tiles Grid - Bigger icons, Tavvy style */}
+        {/* App Tiles Grid - Large Tavvy-style icons */}
         <View style={styles.tilesGrid}>
           {APP_TILES.map((tile, index) => (
             <TouchableOpacity
               key={`${tile.id}-${index}`}
               style={styles.tile}
               onPress={() => handleTilePress(tile)}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              <View
-                style={[
-                  styles.tileIconContainer,
-                  { backgroundColor: isDark ? tile.backgroundColorDark : tile.backgroundColor },
-                ]}
+              <LinearGradient
+                colors={tile.gradientColors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.tileIconContainer}
               >
                 {renderIcon(tile)}
-              </View>
+              </LinearGradient>
               <Text style={[styles.tileName, dynamicStyles.tileName]} numberOfLines={2}>{tile.name}</Text>
             </TouchableOpacity>
           ))}
@@ -443,25 +403,27 @@ const styles = StyleSheet.create({
 
   header: {
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 24,
+    paddingTop: 24,
+    paddingBottom: 20,
   },
   headerTitle: {
-    fontSize: 34,
+    fontSize: 36,
     fontWeight: '800',
     color: '#111827',
     marginBottom: 4,
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#6B7280',
+    fontWeight: '500',
   },
 
   loginButtons: {
     flexDirection: 'row',
     paddingHorizontal: 20,
     gap: 12,
-    marginBottom: 28,
+    marginBottom: 32,
   },
   loginButton: {
     flex: 1,
@@ -469,63 +431,55 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#06B6D4',
-    backgroundColor: '#fff',
     gap: 8,
-  },
-  proLoginButton: {
-    borderColor: '#D1D5DB',
   },
   loginButtonText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#06B6D4',
-  },
-  proLoginText: {
-    color: '#6B7280',
+    fontWeight: '700',
   },
 
-  // Tiles Grid - Bigger icons
+  // Tiles Grid - Large iOS-style icons
   tilesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 16,
-    gap: 12,
-    justifyContent: 'flex-start',
+    paddingHorizontal: 20,
+    justifyContent: 'space-between',
   },
   tile: {
-    width: '30%',
+    width: TILE_SIZE,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
   tileIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
+    width: TILE_SIZE - 16,
+    height: TILE_SIZE - 16,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
   tileName: {
     fontSize: 13,
     fontWeight: '600',
     color: '#374151',
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 17,
+    paddingHorizontal: 4,
   },
 
   comingSoon: {
     fontSize: 14,
     color: '#9CA3AF',
     textAlign: 'center',
-    marginTop: 24,
+    marginTop: 16,
     marginBottom: 20,
+    fontWeight: '500',
   },
 });
