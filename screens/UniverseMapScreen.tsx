@@ -254,6 +254,33 @@ export default function UniverseMapScreen() {
           <Text style={[styles.cardLocation, { color: isDark ? theme.textSecondary : '#6B7280' }]} numberOfLines={1}>
             {item.location || 'Location TBD'}
           </Text>
+          
+          {/* 2x2 Review Signal Grid */}
+          <View style={styles.signalGrid}>
+            {/* Row 1: Two blue "Good" signals */}
+            <View style={styles.signalRow}>
+              <View style={[styles.signalBar, styles.signalGood]}>
+                <Ionicons name="thumbs-up" size={14} color="#fff" />
+                <Text style={styles.signalText}>Be the first to tap!</Text>
+              </View>
+              <View style={[styles.signalBar, styles.signalGood]}>
+                <Ionicons name="thumbs-up" size={14} color="#fff" />
+                <Text style={styles.signalText}>Be the first to tap!</Text>
+              </View>
+            </View>
+            {/* Row 2: Purple "Vibe" and Orange "Heads Up" */}
+            <View style={styles.signalRow}>
+              <View style={[styles.signalBar, styles.signalVibe]}>
+                <Ionicons name="trending-up" size={14} color="#fff" />
+                <Text style={styles.signalText}>Be the first to tap!</Text>
+              </View>
+              <View style={[styles.signalBar, styles.signalHeadsUp]}>
+                <Ionicons name="alert" size={14} color="#fff" />
+                <Text style={styles.signalText}>Be the first to tap!</Text>
+              </View>
+            </View>
+          </View>
+          
           <View style={styles.cardMeta}>
             <Text style={[styles.cardPlaces, { color: '#06B6D4' }]}>
               {item.place_count || 0} places
@@ -1041,9 +1068,49 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 
-  cardLocation: {
+   cardLocation: {
     fontSize: 14,
     marginBottom: 8,
+  },
+
+  // Signal Grid (2x2 review bars)
+  signalGrid: {
+    marginBottom: 12,
+  },
+
+  signalRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+
+  signalBar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    gap: 6,
+  },
+
+  signalGood: {
+    backgroundColor: '#3B82F6',
+  },
+
+  signalVibe: {
+    backgroundColor: '#8B5CF6',
+  },
+
+  signalHeadsUp: {
+    backgroundColor: '#F59E0B',
+  },
+
+  signalText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
   },
 
   cardMeta: {

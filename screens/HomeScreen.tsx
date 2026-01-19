@@ -1173,8 +1173,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const switchToStandardMode = () => {
     setViewMode('standard');
+    setSearchQuery('');
     setSearchedAddress(null);
     setTargetLocation(null);
+    setSearchedAddressName('');
   };
 
   // ============================================
@@ -2612,7 +2614,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       <BottomSheet
         ref={bottomSheetRef}
         index={1}
-        snapPoints={searchedAddress ? [40, '40%', '55%'] : [40, '35%', '55%']}
+        snapPoints={searchedAddress ? [60, '35%', '50%'] : [60, '30%', '50%']}
         backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
         handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
         enablePanDownToClose={false}
@@ -3438,7 +3440,8 @@ const styles = StyleSheet.create({
   },
   bottomSheetContent: {
     paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingTop: 8,
+    paddingBottom: 100,
   },
 
   // Place Card (for bottom sheet)
