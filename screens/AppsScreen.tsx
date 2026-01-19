@@ -7,7 +7,6 @@
  * - Toggle now matches HomeScreen's Standard/Map toggle EXACTLY (full-width, dark navy active, no icons)
  * - Header banner extends to the very top of the screen (no SafeAreaView gap)
  * - All app tiles preserved (Universes, Rides, RV & Camping, Atlas, Pros, etc.)
- * - NAVIGATION FIX: Properly handles cross-tab navigation using navigation.getParent()
  */
 
 import React from 'react';
@@ -39,8 +38,6 @@ interface AppTile {
   iconColor: string;
   route?: string;
   params?: object;
-  isTab?: boolean; // Flag to indicate if this navigates to a different tab
-  tabName?: string; // The actual tab name to navigate to
 }
 
 const APP_TILES: AppTile[] = [
@@ -52,8 +49,7 @@ const APP_TILES: AppTile[] = [
     backgroundColor: '#FEF3C7',
     backgroundColorDark: '#78350F',
     iconColor: '#F59E0B',
-    isTab: true,
-    tabName: 'Home',
+    route: 'Home',
   },
   {
     id: 'universes',
@@ -63,8 +59,7 @@ const APP_TILES: AppTile[] = [
     backgroundColor: '#CCFBF1',
     backgroundColorDark: '#134E4A',
     iconColor: '#14B8A6',
-    isTab: true,
-    tabName: 'Explore',
+    route: 'Explore',
   },
   {
     id: 'rides',
@@ -94,8 +89,7 @@ const APP_TILES: AppTile[] = [
     backgroundColor: '#E0E7FF',
     backgroundColorDark: '#312E81',
     iconColor: '#4F46E5',
-    isTab: true,
-    tabName: 'Atlas',
+    route: 'Atlas',
   },
   {
     id: 'cities',
@@ -108,6 +102,36 @@ const APP_TILES: AppTile[] = [
     route: 'CitiesBrowse',
   },
   {
+    id: 'happening-now',
+    name: 'Happening Now',
+    icon: 'sparkles',
+    iconType: 'ionicons',
+    backgroundColor: '#FEE2E2',
+    backgroundColorDark: '#9F1239',
+    iconColor: '#FF2D55',
+    route: 'HappeningNow',
+  },
+  {
+    id: 'experiences',
+    name: 'Experiences',
+    icon: 'compass',
+    iconType: 'ionicons',
+    backgroundColor: '#EDE9FE',
+    backgroundColorDark: '#4C1D95',
+    iconColor: '#5856D6',
+    route: 'ExperiencePaths',
+  },
+  {
+    id: 'realtors',
+    name: 'Realtors',
+    icon: 'home',
+    iconType: 'ionicons',
+    backgroundColor: '#DBEAFE',
+    backgroundColorDark: '#1E3A5F',
+    iconColor: '#1E3A5F',
+    route: 'RealtorsBrowse',
+  },
+  {
     id: 'pros',
     name: 'Pros',
     icon: 'construct',
@@ -115,8 +139,7 @@ const APP_TILES: AppTile[] = [
     backgroundColor: '#DBEAFE',
     backgroundColorDark: '#1E3A8A',
     iconColor: '#3B82F6',
-    isTab: true,
-    tabName: 'Pros',
+    route: 'Pros',
   },
   {
     id: 'saved',
@@ -126,7 +149,7 @@ const APP_TILES: AppTile[] = [
     backgroundColor: '#FCE7F3',
     backgroundColorDark: '#831843',
     iconColor: '#EC4899',
-    route: 'SavedMain',
+    route: 'Saved',
   },
   {
     id: 'account',
@@ -156,33 +179,17 @@ export default function AppsScreen() {
   const { theme, isDark, setThemeMode } = useThemeContext();
 
   const handleTilePress = (tile: AppTile) => {
-    if (tile.isTab && tile.tabName) {
-      // Navigate to a different tab using getParent to access the tab navigator
-      const tabNavigator = navigation.getParent();
-      if (tabNavigator) {
-        tabNavigator.navigate(tile.tabName);
-      } else {
-        // Fallback: try direct navigation
-        navigation.navigate(tile.tabName);
-      }
-    } else if (tile.route) {
-      // Navigate within the current stack
+    if (tile.route) {
       navigation.navigate(tile.route, tile.params || {});
     }
   };
 
   const handlePersonalLogin = () => {
-    navigation.navigate('Login');
+    navigation.navigate('Profile', { screen: 'Login' });
   };
 
   const handleProLogin = () => {
-    // Navigate to Pros tab, then to ProsRegistration screen
-    const tabNavigator = navigation.getParent();
-    if (tabNavigator) {
-      tabNavigator.navigate('Pros', { screen: 'ProsRegistration' });
-    } else {
-      navigation.navigate('Pros', { screen: 'ProsRegistration' });
-    }
+    navigation.navigate('Pros', { screen: 'ProsRegistration' });
   };
 
   const renderIcon = (tile: AppTile, size: number = 28) => {
@@ -276,6 +283,13 @@ export default function AppsScreen() {
             style={styles.headerLogo}
             resizeMode="contain"
           />
+          <TouchableOpacity
+            style={styles.helpButton}
+            onPress={() => navigation.navigate('HelpSupport')}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="help-circle-outline" size={26} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -398,7 +412,17 @@ const styles = StyleSheet.create({
   // Logo row
   logoRow: {
     paddingHorizontal: 18,
-    alignItems: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  helpButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   headerLogo: {

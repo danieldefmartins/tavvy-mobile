@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,15 +8,17 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { Colors } from '../constants/Colors';
-import { useTranslation } from 'react-i18next';
+
+const { width } = Dimensions.get('window');
 
 export default function ProfileScreen({ navigation }: any) {
-  const { t } = useTranslation();
   const { user, signOut } = useAuth();
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({
@@ -74,11 +76,24 @@ export default function ProfileScreen({ navigation }: any) {
     }
   };
 
-  // 1. NOT LOGGED IN STATE
+  // 1. NOT LOGGED IN STATE - Beautiful Welcome Screen
   if (!user) {
     return (
-      <View style={styles.container}>
+      <View style={styles.guestContainer}>
+        {/* Navy Background with subtle gradient */}
+        <LinearGradient
+          colors={['#0F1233', '#1A1F4E', '#0F1233']}
+          style={styles.guestGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+        
+        {/* Decorative circles */}
+        <View style={styles.decorativeCircle1} />
+        <View style={styles.decorativeCircle2} />
+        
         <View style={styles.guestContent}>
+          {/* Logo Section */}
           <View style={styles.guestHeader}>
             <Image 
               source={require('../assets/brand/logo-full.png')} 
@@ -91,6 +106,23 @@ export default function ProfileScreen({ navigation }: any) {
             </Text>
           </View>
 
+          {/* Feature Pills */}
+          <View style={styles.featurePills}>
+            <View style={styles.featurePill}>
+              <Ionicons name="thumbs-up" size={16} color="#0A84FF" />
+              <Text style={styles.featurePillText}>The Good</Text>
+            </View>
+            <View style={styles.featurePill}>
+              <Ionicons name="sparkles" size={16} color="#8B5CF6" />
+              <Text style={styles.featurePillText}>The Vibe</Text>
+            </View>
+            <View style={styles.featurePill}>
+              <Ionicons name="alert-circle" size={16} color="#FF9500" />
+              <Text style={styles.featurePillText}>Heads Up</Text>
+            </View>
+          </View>
+
+          {/* Buttons */}
           <View style={styles.guestButtons}>
             <TouchableOpacity
               style={styles.primaryButton}
@@ -106,6 +138,14 @@ export default function ProfileScreen({ navigation }: any) {
               <Text style={styles.secondaryButtonText}>Create Account</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Terms */}
+          <Text style={styles.termsText}>
+            By continuing, you agree to our{' '}
+            <Text style={styles.termsLink}>Terms of Service</Text>
+            {' '}and{' '}
+            <Text style={styles.termsLink}>Privacy Policy</Text>
+          </Text>
         </View>
       </View>
     );
@@ -205,88 +245,137 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 40,
   },
-  // Guest Styles
+  
+  // ===== GUEST STYLES (Welcome Screen) =====
+  guestContainer: {
+    flex: 1,
+    backgroundColor: '#0F1233', // TavvY Navy
+  },
+  guestGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  decorativeCircle1: {
+    position: 'absolute',
+    top: -100,
+    right: -100,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(59, 130, 246, 0.08)', // Blue glow
+  },
+  decorativeCircle2: {
+    position: 'absolute',
+    bottom: -50,
+    left: -100,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: 'rgba(249, 115, 22, 0.06)', // Orange glow
+  },
   guestContent: {
     flex: 1,
     justifyContent: 'center',
-    padding: 24,
-    minHeight: '100%',
+    padding: 32,
+    paddingTop: 80,
+    paddingBottom: 60,
   },
   guestHeader: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 40,
   },
   guestLogo: {
-    width: 180,
-    height: 120,
-    marginBottom: 24,
-  },
-  logoContainer: {
-    width: 80,
+    width: 200,
     height: 80,
-    borderRadius: 20,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  logoText: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: Colors.white,
+    marginBottom: 32,
   },
   guestTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: 12,
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 16,
     textAlign: 'center',
+    letterSpacing: 0.5,
   },
   guestSubtitle: {
-    fontSize: 16,
-    color: Colors.textSecondary,
+    fontSize: 17,
+    color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 26,
+    paddingHorizontal: 20,
+  },
+  featurePills: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 48,
+  },
+  featurePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  featurePillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   guestButtons: {
     gap: 16,
   },
   primaryButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: '#3B82F6', // TavvY Blue
+    paddingVertical: 18,
+    borderRadius: 14,
     alignItems: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   primaryButtonText: {
-    color: Colors.white,
-    fontSize: 16,
+    color: '#FFFFFF',
+    fontSize: 17,
     fontWeight: '600',
+    letterSpacing: 0.3,
   },
   secondaryButton: {
-    backgroundColor: Colors.white,
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingVertical: 18,
+    borderRadius: 14,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
   secondaryButtonText: {
-    color: Colors.text,
-    fontSize: 16,
+    color: '#FFFFFF',
+    fontSize: 17,
     fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  termsText: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.5)',
+    textAlign: 'center',
+    marginTop: 32,
+    lineHeight: 20,
+  },
+  termsLink: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    textDecorationLine: 'underline',
   },
 
-  // Logged In Styles
+  // ===== LOGGED IN STYLES =====
   profileHeader: {
     backgroundColor: Colors.white,
     alignItems: 'center',
@@ -299,7 +388,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#E0F2FE', // Light blue background for avatar
+    backgroundColor: '#E0F2FE',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -352,38 +441,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '700',
     color: Colors.text,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: Colors.textSecondary,
     marginTop: 4,
   },
   statDivider: {
     width: 1,
-    height: '100%',
-    backgroundColor: Colors.border,
+    height: 40,
+    backgroundColor: Colors.surface,
   },
   menuContainer: {
     backgroundColor: Colors.white,
-    marginTop: 24,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: Colors.surface,
+    marginTop: 12,
+    paddingHorizontal: 16,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: Colors.surface,
   },
   menuIconContainer: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 10,
     backgroundColor: Colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
@@ -392,27 +479,28 @@ const styles = StyleSheet.create({
   menuText: {
     flex: 1,
     fontSize: 16,
-    color: '#374151',
+    fontWeight: '500',
+    color: Colors.text,
   },
   signOutButton: {
-    marginTop: 32,
     marginHorizontal: 24,
+    marginTop: 24,
     paddingVertical: 16,
     borderRadius: 12,
-    backgroundColor: '#FEF2F2',
     alignItems: 'center',
+    backgroundColor: Colors.white,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: Colors.error,
   },
   signOutText: {
-    color: Colors.error,
     fontSize: 16,
     fontWeight: '600',
+    color: Colors.error,
   },
   versionText: {
     textAlign: 'center',
     marginTop: 24,
+    fontSize: 13,
     color: Colors.textSecondary,
-    fontSize: 12,
   },
 });

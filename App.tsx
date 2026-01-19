@@ -72,6 +72,7 @@ import RidesBrowseScreen from './screens/RidesBrowseScreen';
 import RVCampingBrowseScreen from './screens/RVCampingBrowseScreen';
 import CitiesBrowseScreen from './screens/CitiesBrowseScreen';
 import RideDetailsScreen from './screens/RideDetailsScreen';
+import QuickFindsResultsScreen from './screens/QuickFindsResultsScreen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -180,6 +181,7 @@ function AppsStack() {
       <MenuStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
       <MenuStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
       <MenuStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
+      <MenuStackNav.Screen name="QuickFindsResults" component={QuickFindsResultsScreen} />
     </MenuStackNav.Navigator>
   );
 }
