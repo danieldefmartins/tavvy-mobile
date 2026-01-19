@@ -2637,7 +2637,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         ) : (
           <BottomSheetFlatList
             data={filteredPlaces}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
             renderItem={renderPlaceCard}
             contentContainerStyle={styles.bottomSheetContent}
             showsVerticalScrollIndicator={false}

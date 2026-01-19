@@ -259,7 +259,7 @@ export default function ProsBrowseScreen() {
 
       <FlatList
         data={pros as any}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         renderItem={renderPro}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmpty}

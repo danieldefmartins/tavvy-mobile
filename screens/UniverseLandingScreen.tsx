@@ -346,9 +346,9 @@ export default function UniverseLandingScreen() {
           <View style={styles.subUniversesSection}>
             <Text style={styles.sectionTitle}>Parks & Areas</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subUniversesContainer}>
-              {subUniverses.map((subUniverse) => (
+              {subUniverses.map((subUniverse, index) => (
                 <TouchableOpacity 
-                  key={subUniverse.id} 
+                  key={`sub-${subUniverse.id}-${index}`} 
                   style={styles.subUniverseCard}
                   onPress={() => handleSubUniversePress(subUniverse)}
                 >
@@ -409,9 +409,9 @@ export default function UniverseLandingScreen() {
           </View>
 
           {filteredPlaces.length > 0 ? (
-            filteredPlaces.map((place) => (
+            filteredPlaces.map((place, index) => (
               <TouchableOpacity 
-                key={place.id} 
+                key={`place-${place.id}-${index}`} 
                 style={styles.placeCard}
                 onPress={() => handlePlacePress(place)}
               >

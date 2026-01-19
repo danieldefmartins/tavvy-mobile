@@ -165,7 +165,7 @@ export default function ProsMessagesScreen() {
         <FlatList
           data={conversations}
           renderItem={renderConversationItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.emptyState}>
@@ -198,7 +198,7 @@ export default function ProsMessagesScreen() {
           ref={flatListRef}
           data={messages}
           renderItem={renderMessageItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
           contentContainerStyle={styles.messagesContent}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
         />

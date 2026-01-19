@@ -343,7 +343,7 @@ export default function ExperiencePathsScreen() {
             <FlatList
               data={featuredPaths}
               renderItem={renderFeaturedPath}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item, index) => `${item.id}-${index}`}
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.featuredList}

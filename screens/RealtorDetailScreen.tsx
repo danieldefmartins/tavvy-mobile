@@ -374,7 +374,7 @@ export default function RealtorDetailScreen() {
             ref={carouselRef}
             data={realtor.photos}
             renderItem={renderCarouselItem}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}

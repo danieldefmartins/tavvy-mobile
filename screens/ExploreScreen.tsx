@@ -69,7 +69,7 @@ export default function ExploreScreen() {
       {/* List */}
       <FlatList
         data={filteredData}
-        keyExtractor={item => item.id}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.card} onPress={() => handlePress(item)}>

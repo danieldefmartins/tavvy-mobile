@@ -205,7 +205,7 @@ export default function PlacePhotosScreen({ route, navigation }: PlacePhotosScre
         <FlatList
           data={photos}
           renderItem={renderGridItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
           numColumns={COLUMN_COUNT}
           contentContainerStyle={styles.gridContainer}
           showsVerticalScrollIndicator={false}
@@ -251,7 +251,7 @@ export default function PlacePhotosScreen({ route, navigation }: PlacePhotosScre
             ref={fullscreenListRef}
             data={photos}
             renderItem={renderFullscreenItem}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}

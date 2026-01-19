@@ -972,7 +972,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
             ref={carouselRef}
             data={photos.length > 0 ? photos : [{ id: 'placeholder', url: getCategoryFallbackImage(place.primaryCategory) }]}
             renderItem={renderCarouselItem}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}

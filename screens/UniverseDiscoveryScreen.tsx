@@ -361,9 +361,9 @@ export default function UniverseDiscoveryScreen() {
 
           {nearbyUniverses.length > 0 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.nearbyContainer}>
-              {nearbyUniverses.map((item) => (
+              {nearbyUniverses.map((item, index) => (
                 <TouchableOpacity 
-                  key={item.id} 
+                  key={`nearby-${item.id}-${index}`} 
                   style={[styles.nearbyCard, { backgroundColor: isDark ? theme.surface : '#111827' }]}
                   onPress={() => navigation.navigate('UniverseLanding', { universeId: item.id })}
                 >
@@ -391,9 +391,9 @@ export default function UniverseDiscoveryScreen() {
 
           {popularUniverses.length > 0 ? (
             <View style={styles.gridContainer}>
-              {popularUniverses.map((item) => (
+              {popularUniverses.map((item, index) => (
                 <TouchableOpacity 
-                  key={item.id} 
+                  key={`popular-${item.id}-${index}`} 
                   style={[styles.gridCard, { backgroundColor: isDark ? theme.surface : '#111827' }]}
                   onPress={() => navigation.navigate('UniverseLanding', { universeId: item.id })}
                 >

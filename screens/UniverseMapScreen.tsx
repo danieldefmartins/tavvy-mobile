@@ -638,7 +638,7 @@ export default function UniverseMapScreen() {
       >
         <BottomSheetFlatList
           data={filteredUniverses}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
           renderItem={renderUniverseCard}
           contentContainerStyle={styles.bottomSheetContent}
           showsVerticalScrollIndicator={false}

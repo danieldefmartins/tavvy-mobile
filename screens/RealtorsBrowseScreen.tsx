@@ -404,7 +404,7 @@ export default function RealtorsBrowseScreen() {
         <FlatList
           data={realtors}
           renderItem={renderRealtorCard}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={

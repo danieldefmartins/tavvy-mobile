@@ -287,7 +287,7 @@ export default function HappeningNowScreen() {
             <FlatList
               data={featuredEvents}
               renderItem={renderFeaturedEvent}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item, index) => `${item.id}-${index}`}
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.featuredList}

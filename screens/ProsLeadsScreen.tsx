@@ -135,7 +135,7 @@ export default function ProsLeadsScreen() {
             { status: 'won' as FilterStatus, label: 'Won' },
             { status: 'lost' as FilterStatus, label: 'Lost' },
           ]}
-          keyExtractor={(item) => item.status}
+          keyExtractor={(item, index) => `${item.status}-${index}`}
           renderItem={({ item }) => renderFilterTab(item.status, item.label)}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterList}
@@ -162,7 +162,7 @@ export default function ProsLeadsScreen() {
       ) : (
         <FlatList
           data={filteredRequests}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
           renderItem={renderLead}
           contentContainerStyle={styles.leadsList}
           showsVerticalScrollIndicator={false}
