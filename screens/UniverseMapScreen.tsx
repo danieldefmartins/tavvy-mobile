@@ -1,16 +1,17 @@
 /**
  * UniverseMapScreen.tsx
- * Full-screen map showing only universe markers
+ * Full-screen map showing universe markers with draggable bottom sheet
  * Path: screens/UniverseMapScreen.tsx
  * 
- * Shows all universes as markers on a map with:
+ * Features:
  * - Search bar at top
  * - Category filter chips (All, Theme Parks, Airports, etc.)
  * - Satellite view toggle
+ * - Draggable bottom sheet with universe cards (like HomeScreen)
  * - Same map style as HomeScreen
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -29,6 +30,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import MapLibreGL from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
+import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabaseClient';
 
@@ -73,6 +75,7 @@ interface Universe {
   latitude: number;
   longitude: number;
   thumbnail_image_url: string | null;
+  banner_image_url: string | null;
   place_count: number;
   category_id: string | null;
   location: string | null;
@@ -88,6 +91,16 @@ const CATEGORY_COLORS: Record<string, string> = {
   default: '#06B6D4', // Default - Cyan
 };
 
+// Category names for display
+const CATEGORY_NAMES: Record<string, string> = {
+  '370839a3-f138-4e05-b357-bffa554a1a43': 'Theme Park',
+  '74f99eab-4141-4d79-ac4a-b244ed7adaa2': 'Airport',
+  '4538293c-b3c6-4e33-8673-6413c692e4b9': 'National Park',
+  '26917772-0a8f-432f-9243-99883165209b': 'Stadium',
+  '6d262f3b-40bc-44ff-b076-c9aff3409f43': 'Campus',
+  default: 'Universe',
+};
+
 export default function UniverseMapScreen() {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useThemeContext();
@@ -100,6 +113,10 @@ export default function UniverseMapScreen() {
   const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('osm');
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const cameraRef = useRef<MapLibreGL.Camera>(null);
+  const bottomSheetRef = useRef<BottomSheet>(null);
+
+  // Bottom sheet snap points - same pattern as HomeScreen
+  const snapPoints = useMemo(() => [60, '35%', '55%'], []);
 
   // Default center (center of US)
   const defaultCenter: [number, number] = [-98.5795, 39.8283];
@@ -130,7 +147,7 @@ export default function UniverseMapScreen() {
     try {
       const { data, error } = await supabase
         .from('atlas_universes')
-        .select('id, name, latitude, longitude, thumbnail_image_url, place_count, category_id, location')
+        .select('id, name, latitude, longitude, thumbnail_image_url, banner_image_url, place_count, category_id, location')
         .not('latitude', 'is', null)
         .not('longitude', 'is', null)
         .eq('status', 'published');
@@ -174,6 +191,11 @@ export default function UniverseMapScreen() {
     return CATEGORY_COLORS[categoryId] || CATEGORY_COLORS.default;
   };
 
+  const getCategoryName = (categoryId: string | null) => {
+    if (!categoryId) return CATEGORY_NAMES.default;
+    return CATEGORY_NAMES[categoryId] || CATEGORY_NAMES.default;
+  };
+
   const handleMarkerPress = (universe: Universe) => {
     setSelectedUniverse(universe);
     // Center map on selected universe
@@ -184,12 +206,12 @@ export default function UniverseMapScreen() {
         animationDuration: 500,
       });
     }
+    // Expand bottom sheet to show the card
+    bottomSheetRef.current?.snapToIndex(1);
   };
 
-  const handleNavigateToUniverse = () => {
-    if (selectedUniverse) {
-      navigation.navigate('UniverseLanding', { universeId: selectedUniverse.id });
-    }
+  const handleNavigateToUniverse = (universe: Universe) => {
+    navigation.navigate('UniverseLanding', { universeId: universe.id });
   };
 
   const centerOnUserLocation = () => {
@@ -208,6 +230,55 @@ export default function UniverseMapScreen() {
     const nextIndex = (currentIndex + 1) % styles.length;
     setMapStyle(styles[nextIndex]);
   };
+
+  // Render universe card for bottom sheet
+  const renderUniverseCard = useCallback(({ item }: { item: Universe }) => {
+    const categoryName = getCategoryName(item.category_id);
+    const categoryColor = getMarkerColor(item.category_id);
+    
+    return (
+      <TouchableOpacity
+        style={[styles.universeCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+        onPress={() => handleNavigateToUniverse(item)}
+        activeOpacity={0.9}
+      >
+        {/* Universe Image */}
+        <View style={styles.cardImageContainer}>
+          {item.banner_image_url || item.thumbnail_image_url ? (
+            <Image
+              source={{ uri: item.banner_image_url || item.thumbnail_image_url || '' }}
+              style={styles.cardImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.cardImage, styles.cardImagePlaceholder]}>
+              <Ionicons name="planet" size={32} color="#9CA3AF" />
+            </View>
+          )}
+          {/* Category Badge */}
+          <View style={[styles.categoryBadge, { backgroundColor: categoryColor }]}>
+            <Text style={styles.categoryBadgeText}>{categoryName}</Text>
+          </View>
+        </View>
+        
+        {/* Universe Info */}
+        <View style={styles.cardContent}>
+          <Text style={[styles.cardName, { color: isDark ? theme.text : '#111827' }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={[styles.cardLocation, { color: isDark ? theme.textSecondary : '#6B7280' }]} numberOfLines={1}>
+            {item.location || 'Location TBD'}
+          </Text>
+          <View style={styles.cardMeta}>
+            <Text style={[styles.cardPlaces, { color: '#06B6D4' }]}>
+              {item.place_count || 0} places
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color="#06B6D4" />
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  }, [isDark, theme]);
 
   if (loading) {
     return (
@@ -347,14 +418,21 @@ export default function UniverseMapScreen() {
             );
           })}
         </ScrollView>
+
+        {/* Universe Count */}
+        <View style={styles.countContainer}>
+          <Text style={[styles.countText, { color: isDark ? theme.textSecondary : '#6B7280' }]}>
+            {filteredUniverses.length} universes
+          </Text>
+        </View>
       </SafeAreaView>
 
       {/* Weather Icon (subtle, top right) */}
-      <View style={styles.weatherContainer}>
+      <View style={[styles.weatherContainer, { backgroundColor: isDark ? theme.surface : 'rgba(255, 255, 255, 0.9)' }]}>
         <Ionicons name="partly-sunny" size={20} color="#6B7280" />
       </View>
 
-      {/* Map Controls (right side) */}
+      {/* Map Controls (right side) - Map style above location */}
       <View style={styles.mapControls}>
         {/* Map Style Toggle */}
         <TouchableOpacity
@@ -377,78 +455,32 @@ export default function UniverseMapScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Universe Count Badge */}
-      <View style={[styles.countBadge, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-        <Text style={[styles.countText, { color: isDark ? theme.text : '#374151' }]}>
-          {filteredUniverses.length} universes
-        </Text>
-      </View>
-
-      {/* Selected Universe Card */}
-      {selectedUniverse && (
-        <View style={styles.selectedCardContainer}>
-          <TouchableOpacity
-            style={[styles.selectedCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-            onPress={handleNavigateToUniverse}
-            activeOpacity={0.9}
-          >
-            {selectedUniverse.thumbnail_image_url ? (
-              <Image
-                source={{ uri: selectedUniverse.thumbnail_image_url }}
-                style={styles.selectedCardImage}
-              />
-            ) : (
-              <View style={[styles.selectedCardImage, styles.selectedCardImagePlaceholder]}>
-                <Ionicons name="planet" size={24} color="#9CA3AF" />
-              </View>
-            )}
-            <View style={styles.selectedCardContent}>
-              <Text style={[styles.selectedCardName, { color: isDark ? theme.text : '#111827' }]} numberOfLines={1}>
-                {selectedUniverse.name}
-              </Text>
-              <Text style={[styles.selectedCardLocation, { color: isDark ? theme.textSecondary : '#6B7280' }]} numberOfLines={1}>
-                {selectedUniverse.location || 'Location TBD'}
-              </Text>
-              <Text style={[styles.selectedCardMeta, { color: '#06B6D4' }]}>
-                {selectedUniverse.place_count} places
+      {/* Bottom Sheet with Universe Cards */}
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={1}
+        snapPoints={snapPoints}
+        backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
+        handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
+        enablePanDownToClose={false}
+        enableContentPanningGesture={false}
+      >
+        <BottomSheetFlatList
+          data={filteredUniverses}
+          keyExtractor={(item) => item.id}
+          renderItem={renderUniverseCard}
+          contentContainerStyle={styles.bottomSheetContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="planet-outline" size={48} color="#9CA3AF" />
+              <Text style={[styles.emptyText, { color: isDark ? theme.textSecondary : '#6B7280' }]}>
+                No universes found
               </Text>
             </View>
-            <View style={styles.selectedCardArrow}>
-              <Ionicons name="chevron-forward" size={20} color="#06B6D4" />
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.closeButton, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-            onPress={() => setSelectedUniverse(null)}
-          >
-            <Ionicons name="close" size={20} color="#6B7280" />
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Legend */}
-      <View style={[styles.legendContainer, { backgroundColor: isDark ? theme.surface : 'rgba(255, 255, 255, 0.95)' }]}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
-          <Text style={[styles.legendText, { color: isDark ? theme.text : '#374151' }]}>Theme Parks</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#3B82F6' }]} />
-          <Text style={[styles.legendText, { color: isDark ? theme.text : '#374151' }]}>Airports</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#22C55E' }]} />
-          <Text style={[styles.legendText, { color: isDark ? theme.text : '#374151' }]}>National Parks</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
-          <Text style={[styles.legendText, { color: isDark ? theme.text : '#374151' }]}>Stadiums</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#8B5CF6' }]} />
-          <Text style={[styles.legendText, { color: isDark ? theme.text : '#374151' }]}>Campuses</Text>
-        </View>
-      </View>
+          }
+        />
+      </BottomSheet>
     </View>
   );
 }
@@ -546,12 +578,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  countContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+
+  countText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+
   // Weather Icon
   weatherContainer: {
     position: 'absolute',
     top: Platform.OS === 'android' ? 56 : 60,
     right: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     padding: 8,
     borderRadius: 20,
     shadowColor: '#000',
@@ -564,7 +605,7 @@ const styles = StyleSheet.create({
   // Map Controls
   mapControls: {
     position: 'absolute',
-    bottom: 180,
+    bottom: '40%',
     right: 16,
     gap: 8,
   },
@@ -580,26 +621,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
-  },
-
-  // Count Badge
-  countBadge: {
-    position: 'absolute',
-    top: Platform.OS === 'android' ? 130 : 140,
-    left: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-
-  countText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
 
   // User Location Marker
@@ -637,84 +658,35 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
 
-  // Selected Universe Card
-  selectedCardContainer: {
-    position: 'absolute',
-    bottom: 40,
-    left: 16,
-    right: 16,
-    zIndex: 10,
-  },
-
-  selectedCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 16,
-    padding: 12,
+  // Bottom Sheet
+  bottomSheetBackground: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-
-  selectedCardImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: '#E5E7EB',
-  },
-
-  selectedCardImagePlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  selectedCardContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-
-  selectedCardName: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-
-  selectedCardLocation: {
-    fontSize: 13,
-    marginBottom: 2,
-  },
-
-  selectedCardMeta: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-
-  selectedCardArrow: {
-    padding: 8,
-  },
-
-  closeButton: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    borderRadius: 12,
-    padding: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 12,
+    elevation: 8,
   },
 
-  // Legend
-  legendContainer: {
-    position: 'absolute',
-    bottom: 40,
-    left: 16,
-    borderRadius: 12,
-    padding: 12,
+  bottomSheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    marginTop: 8,
+  },
+
+  bottomSheetContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 100,
+  },
+
+  // Universe Card
+  universeCard: {
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -722,21 +694,71 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
 
-  legendItem: {
+  cardImageContainer: {
+    position: 'relative',
+  },
+
+  cardImage: {
+    width: '100%',
+    height: 140,
+    backgroundColor: '#E5E7EB',
+  },
+
+  cardImagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  categoryBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+
+  categoryBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
+  cardContent: {
+    padding: 16,
+  },
+
+  cardName: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+
+  cardLocation: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+
+  cardMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    justifyContent: 'space-between',
   },
 
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 8,
+  cardPlaces: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 
-  legendText: {
-    fontSize: 11,
-    fontWeight: '500',
+  // Empty State
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+  },
+
+  emptyText: {
+    marginTop: 12,
+    fontSize: 16,
   },
 });

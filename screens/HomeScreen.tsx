@@ -2400,7 +2400,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       <BottomSheet
         ref={bottomSheetRef}
         index={1}
-        snapPoints={searchedAddress ? [40, '40%', '65%'] : [40, '35%', '65%']}
+        snapPoints={searchedAddress ? [40, '40%', '55%'] : [40, '35%', '55%']}
         backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
         handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
         enablePanDownToClose={false}
