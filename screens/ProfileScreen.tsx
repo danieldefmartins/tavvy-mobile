@@ -96,7 +96,7 @@ export default function ProfileScreen({ navigation }: any) {
           {/* Logo Section */}
           <View style={styles.guestHeader}>
             <Image 
-              source={require('../assets/brand/logo-full.png')} 
+              source={require('../assets/brand/logo-full-white.png')} 
               style={styles.guestLogo}
               resizeMode="contain"
             />
@@ -288,9 +288,9 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   guestLogo: {
-    width: 200,
-    height: 80,
-    marginBottom: 32,
+    width: 364,
+    height: 156,
+    marginBottom: 50,
   },
   guestTitle: {
     fontSize: 32,
