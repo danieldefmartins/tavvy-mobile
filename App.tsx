@@ -75,6 +75,8 @@ import CitiesBrowseScreen from './screens/CitiesBrowseScreen';
 import RideDetailsScreen from './screens/RideDetailsScreen';
 import RealtorsBrowseScreen from './screens/RealtorsBrowseScreen';
 import RealtorDetailScreen from './screens/RealtorDetailScreen';
+import RealtorsHubScreen from './screens/RealtorsHubScreen';
+import HelpSupportScreen from './screens/HelpSupportScreen';
 import HappeningNowScreen from './screens/HappeningNowScreen';
 import ExperiencePathsScreen from './screens/ExperiencePathsScreen';
 
@@ -164,6 +166,7 @@ function AppsStack() {
       {/* Browse Screens accessible from Apps */}
       <MenuStackNav.Screen name="CitiesBrowse" component={CitiesBrowseScreen} />
       <MenuStackNav.Screen name="RidesBrowse" component={RidesBrowseScreen} />
+      <MenuStackNav.Screen name="RVCampingBrowse" component={RVCampingBrowseScreen} />
       <MenuStackNav.Screen name="RideDetails" component={RideDetailsScreen} />
       <MenuStackNav.Screen name="CityDetails" component={CityDetailsScreen} />
       <MenuStackNav.Screen name="AddReview" component={AddReviewScreen} />
@@ -172,10 +175,17 @@ function AppsStack() {
       {/* Realtors */}
       <MenuStackNav.Screen name="RealtorsBrowse" component={RealtorsBrowseScreen} />
       <MenuStackNav.Screen name="RealtorDetail" component={RealtorDetailScreen} />
+      <MenuStackNav.Screen name="RealtorsHub" component={RealtorsHubScreen} />
+      
+      {/* Saved */}
+      <MenuStackNav.Screen name="Saved" component={SavedScreen} />
       
       {/* Happening Now & Experiences */}
       <MenuStackNav.Screen name="HappeningNow" component={HappeningNowScreen} />
       <MenuStackNav.Screen name="ExperiencePaths" component={ExperiencePathsScreen} />
+      
+      {/* Help & Support */}
+      <MenuStackNav.Screen name="HelpSupport" component={HelpSupportScreen} />
       
       {/* Create functionality moved to Menu */}
       <MenuStackNav.Screen name="UniversalAdd" component={UniversalAddScreen} />

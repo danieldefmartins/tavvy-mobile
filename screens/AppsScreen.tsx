@@ -1,12 +1,13 @@
 /**
  * AppsScreen.tsx
- * Tools & shortcuts dashboard
+ * Tools & shortcuts dashboard with Tavvy-style icons
  * Path: screens/AppsScreen.tsx
  *
- * FIXED:
- * - Toggle now matches HomeScreen's Standard/Map toggle EXACTLY (full-width, dark navy active, no icons)
- * - Header banner extends to the very top of the screen (no SafeAreaView gap)
- * - All app tiles preserved (Universes, Rides, RV & Camping, Atlas, Pros, etc.)
+ * Features:
+ * - Bigger, more prominent icons with Tavvy cyan accent
+ * - Clean, modern grid layout
+ * - Fixed navigation routes
+ * - Removed duplicate tiles
  */
 
 import React from 'react';
@@ -25,8 +26,9 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
 
-// Match HomeScreen's ACCENT color exactly
+// Tavvy brand colors
 const ACCENT = '#0F1233';
+const TAVVY_CYAN = '#06B6D4';
 
 interface AppTile {
   id: string;
@@ -96,9 +98,9 @@ const APP_TILES: AppTile[] = [
     name: 'Cities',
     icon: 'business',
     iconType: 'ionicons',
-    backgroundColor: '#FEE2E2',
-    backgroundColorDark: '#991B1B',
-    iconColor: '#EF4444',
+    backgroundColor: '#DBEAFE',
+    backgroundColorDark: '#1E3A8A',
+    iconColor: '#3B82F6',
     route: 'CitiesBrowse',
   },
   {
@@ -106,9 +108,9 @@ const APP_TILES: AppTile[] = [
     name: 'Happening Now',
     icon: 'sparkles',
     iconType: 'ionicons',
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#FCE7F3',
     backgroundColorDark: '#9F1239',
-    iconColor: '#FF2D55',
+    iconColor: '#EC4899',
     route: 'HappeningNow',
   },
   {
@@ -118,7 +120,7 @@ const APP_TILES: AppTile[] = [
     iconType: 'ionicons',
     backgroundColor: '#EDE9FE',
     backgroundColorDark: '#4C1D95',
-    iconColor: '#5856D6',
+    iconColor: '#8B5CF6',
     route: 'ExperiencePaths',
   },
   {
@@ -126,9 +128,9 @@ const APP_TILES: AppTile[] = [
     name: 'Realtors',
     icon: 'home',
     iconType: 'ionicons',
-    backgroundColor: '#DBEAFE',
-    backgroundColorDark: '#1E3A5F',
-    iconColor: '#1E3A5F',
+    backgroundColor: '#CFFAFE',
+    backgroundColorDark: '#164E63',
+    iconColor: '#0891B2',
     route: 'RealtorsBrowse',
   },
   {
@@ -142,23 +144,13 @@ const APP_TILES: AppTile[] = [
     route: 'Pros',
   },
   {
-    id: 'realtors',
-    name: 'Realtors',
-    icon: 'home',
-    iconType: 'ionicons',
-    backgroundColor: '#FEF3C7',
-    backgroundColorDark: '#78350F',
-    iconColor: '#D97706',
-    route: 'RealtorsHub',
-  },
-  {
     id: 'saved',
     name: 'Saved',
     icon: 'heart',
     iconType: 'ionicons',
-    backgroundColor: '#FCE7F3',
-    backgroundColorDark: '#831843',
-    iconColor: '#EC4899',
+    backgroundColor: '#FEE2E2',
+    backgroundColorDark: '#991B1B',
+    iconColor: '#EF4444',
     route: 'Saved',
   },
   {
@@ -166,7 +158,7 @@ const APP_TILES: AppTile[] = [
     name: 'Account',
     icon: 'person',
     iconType: 'ionicons',
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#F3F4F6',
     backgroundColorDark: '#374151',
     iconColor: '#6B7280',
     route: 'ProfileMain',
@@ -180,6 +172,16 @@ const APP_TILES: AppTile[] = [
     backgroundColorDark: '#064E3B',
     iconColor: '#10B981',
     route: 'UniversalAdd',
+  },
+  {
+    id: 'help',
+    name: 'Help',
+    icon: 'help-circle',
+    iconType: 'ionicons',
+    backgroundColor: '#E0E7FF',
+    backgroundColorDark: '#312E81',
+    iconColor: '#6366F1',
+    route: 'HelpSupport',
   },
 ];
 
@@ -202,7 +204,7 @@ export default function AppsScreen() {
     navigation.navigate('Pros', { screen: 'ProsRegistration' });
   };
 
-  const renderIcon = (tile: AppTile, size: number = 28) => {
+  const renderIcon = (tile: AppTile, size: number = 36) => {
     const iconColor = isDark ? '#FFFFFF' : tile.iconColor;
 
     if (tile.iconType === 'material') {
@@ -227,7 +229,7 @@ export default function AppsScreen() {
   // Dynamic styles based on theme
   const dynamicStyles = {
     container: {
-      backgroundColor: isDark ? theme.background : '#F3F4F6',
+      backgroundColor: isDark ? theme.background : '#F9FAFB',
     },
     headerTitle: {
       color: isDark ? theme.text : '#111827',
@@ -237,10 +239,10 @@ export default function AppsScreen() {
     },
     loginButton: {
       backgroundColor: isDark ? theme.surface : '#fff',
-      borderColor: isDark ? theme.primary : '#3B82F6',
+      borderColor: isDark ? TAVVY_CYAN : TAVVY_CYAN,
     },
     loginButtonText: {
-      color: isDark ? theme.primary : '#3B82F6',
+      color: isDark ? TAVVY_CYAN : TAVVY_CYAN,
     },
     proLoginButton: {
       borderColor: isDark ? theme.border : '#D1D5DB',
@@ -260,9 +262,9 @@ export default function AppsScreen() {
     <View style={[styles.container, dynamicStyles.container]}>
       <StatusBar barStyle="light-content" />
       
-      {/* HEADER BANNER - Extends to very top of screen */}
+      {/* HEADER BANNER */}
       <View style={styles.headerBanner}>
-        {/* Toggle - EXACTLY matching HomeScreen style (full-width, no icons) */}
+        {/* Toggle */}
         <View style={styles.segmentWrap}>
           <View style={[styles.segment, { 
             borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,18,51,0.12)', 
@@ -321,7 +323,7 @@ export default function AppsScreen() {
               style={[styles.loginButton, dynamicStyles.loginButton]}
               onPress={handlePersonalLogin}
             >
-              <Ionicons name="person-outline" size={18} color={isDark ? theme.primary : '#3B82F6'} />
+              <Ionicons name="person-outline" size={18} color={TAVVY_CYAN} />
               <Text style={[styles.loginButtonText, dynamicStyles.loginButtonText]}>Personal Login</Text>
             </TouchableOpacity>
 
@@ -337,11 +339,11 @@ export default function AppsScreen() {
           </View>
         )}
 
-        {/* App Tiles Grid */}
+        {/* App Tiles Grid - Bigger icons, Tavvy style */}
         <View style={styles.tilesGrid}>
-          {APP_TILES.map((tile) => (
+          {APP_TILES.map((tile, index) => (
             <TouchableOpacity
-              key={tile.id}
+              key={`${tile.id}-${index}`}
               style={styles.tile}
               onPress={() => handleTilePress(tile)}
               activeOpacity={0.7}
@@ -354,7 +356,7 @@ export default function AppsScreen() {
               >
                 {renderIcon(tile)}
               </View>
-              <Text style={[styles.tileName, dynamicStyles.tileName]}>{tile.name}</Text>
+              <Text style={[styles.tileName, dynamicStyles.tileName]} numberOfLines={2}>{tile.name}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -369,7 +371,7 @@ export default function AppsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F9FAFB',
   },
   scrollView: {
     flex: 1,
@@ -378,22 +380,21 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
 
-  // Header banner - extends to the very top of the screen
+  // Header banner
   headerBanner: {
     backgroundColor: '#0f1233',
-    // Use platform-specific padding to account for status bar
     paddingTop: Platform.OS === 'ios' ? 60 : (StatusBar.currentHeight || 24) + 16,
     paddingBottom: 20,
   },
 
-  // Segment wrap - EXACTLY matching HomeScreen style
+  // Segment wrap
   segmentWrap: {
     paddingHorizontal: 18,
     marginTop: 8,
     marginBottom: 16,
   },
 
-  // Segment control - EXACTLY matching HomeScreen style
+  // Segment control
   segment: {
     height: 44,
     borderRadius: 18,
@@ -442,12 +443,12 @@ const styles = StyleSheet.create({
 
   header: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 20,
+    paddingTop: 20,
+    paddingBottom: 24,
   },
   headerTitle: {
     fontSize: 34,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#111827',
     marginBottom: 4,
   },
@@ -460,7 +461,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 20,
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 28,
   },
   loginButton: {
     flex: 1,
@@ -468,9 +469,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#3B82F6',
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#06B6D4',
     backgroundColor: '#fff',
     gap: 8,
   },
@@ -480,44 +481,51 @@ const styles = StyleSheet.create({
   loginButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#3B82F6',
+    color: '#06B6D4',
   },
   proLoginText: {
     color: '#6B7280',
   },
 
+  // Tiles Grid - Bigger icons
   tilesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    gap: 16,
+    paddingHorizontal: 16,
+    gap: 12,
     justifyContent: 'flex-start',
   },
   tile: {
-    width: '29%',
+    width: '30%',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 16,
   },
   tileIconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
+    width: 80,
+    height: 80,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   tileName: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#374151',
     textAlign: 'center',
+    lineHeight: 16,
   },
 
   comingSoon: {
     fontSize: 14,
     color: '#9CA3AF',
     textAlign: 'center',
-    marginTop: 32,
+    marginTop: 24,
     marginBottom: 20,
   },
 });
