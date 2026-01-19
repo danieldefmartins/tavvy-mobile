@@ -31,6 +31,7 @@ import ClaimBusinessScreen from './screens/ClaimBusinessScreen';
 
 import UniverseDiscoveryScreen from './screens/UniverseDiscoveryScreen';
 import UniverseLandingScreen from './screens/UniverseLandingScreen';
+import UniverseMapScreen from './screens/UniverseMapScreen';
 
 import UniversalAddScreen from './screens/UniversalAddScreen';
 import AddPlaceScreen from './screens/AddPlaceScreen';
@@ -203,6 +204,7 @@ function UniverseStack() {
     <UniverseStackNav.Navigator screenOptions={{ headerShown: false }}>
       <UniverseStackNav.Screen name="UniverseDiscovery" component={UniverseDiscoveryScreen} />
       <UniverseStackNav.Screen name="UniverseLanding" component={UniverseLandingScreen} />
+      <UniverseStackNav.Screen name="UniverseMap" component={UniverseMapScreen} />
       <UniverseStackNav.Screen name="PlaceDetails" component={PlaceDetailsScreen} />
     </UniverseStackNav.Navigator>
   );

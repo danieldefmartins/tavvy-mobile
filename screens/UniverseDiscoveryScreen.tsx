@@ -313,7 +313,7 @@ export default function UniverseDiscoveryScreen() {
 
         {/* Featured Universe */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#E5E7EB' }]}>Featured Universe</Text>
+          <Text style={[styles.sectionTitle, { color: '#06B6D4' }]}>Featured Universe</Text>
 
           {featuredUniverse ? (
             <TouchableOpacity
@@ -350,11 +350,11 @@ export default function UniverseDiscoveryScreen() {
           <View style={styles.sectionHeader}>
             <View style={styles.sectionHeaderLeft}>
               <Ionicons name="navigate" size={18} color="#06B6D4" />
-              <Text style={[styles.sectionTitleInline, { color: isDark ? theme.text : '#E5E7EB' }]}>
+              <Text style={[styles.sectionTitleInline, { color: '#06B6D4' }]}>
                 Nearby Universes
               </Text>
             </View>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('UniverseMap')}>
               <Text style={styles.seeAllText}>See Map</Text>
             </TouchableOpacity>
           </View>
@@ -387,7 +387,7 @@ export default function UniverseDiscoveryScreen() {
 
         {/* Popular Grid */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#E5E7EB' }]}>Popular Destinations</Text>
+          <Text style={[styles.sectionTitle, { color: '#06B6D4' }]}>Popular Destinations</Text>
 
           {popularUniverses.length > 0 ? (
             <View style={styles.gridContainer}>
