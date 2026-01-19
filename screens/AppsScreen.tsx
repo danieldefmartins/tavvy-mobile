@@ -112,6 +112,16 @@ const APP_TILES: AppTile[] = [
     route: 'Pros',
   },
   {
+    id: 'realtors',
+    name: 'Realtors',
+    icon: 'home',
+    iconType: 'ionicons',
+    backgroundColor: '#FEF3C7',
+    backgroundColorDark: '#78350F',
+    iconColor: '#D97706',
+    route: 'RealtorsHub',
+  },
+  {
     id: 'saved',
     name: 'Saved',
     icon: 'heart',
