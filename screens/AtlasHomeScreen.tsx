@@ -5,7 +5,7 @@
 // - FULL WIDTH SOLID HEADER: No rounded corners, edge-to-edge banner (#0f1233)
 // - White logo + "Atlas" section name
 // - Elegant floating cards with soft shadows
-// - Complete mock data
+// - NOW CONNECTED TO SUPABASE - Fetches real data from atlas_articles table
 // ============================================================================
 
 import React, { useEffect, useState } from 'react';
@@ -37,156 +37,40 @@ import {
 
 const { width } = Dimensions.get('window');
 
-// FULL MOCK DATA
-const MOCK_FEATURED = {
-  id: 'f1',
-  title: 'The Ultimate LAX Survival Guide',
-  slug: 'lax-survival-guide',
-  excerpt: 'Everything you need to know about navigating Los Angeles International Airport.',
-  content: 'This is the full content of the article...',
-  cover_image_url:
-    'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2074&auto=format&fit=crop',
-  author_id: 'a1',
-  author_name: 'Sarah Chen',
-  author_avatar_url:
-    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop',
-  read_time_minutes: 12,
-  view_count: 15420,
-  love_count: 2400,
-  not_for_me_count: 12,
-  save_count: 850,
-  is_featured: true,
-  status: 'published',
-  created_at: new Date().toISOString(),
-  published_at: new Date().toISOString(),
-  category_id: 'c1',
-  universe_id: 'u2',
-  category: { id: 'c1', name: 'Airports', color: '#0D9488', icon: '✈️' },
-};
-
-const MOCK_TRENDING = [
-  {
-    id: 't1',
-    title: "New York City: First-Time Visitor's Guide",
-    slug: 'nyc-guide',
-    excerpt: 'The essential guide for your first trip to the Big Apple.',
-    content: 'Content here...',
-    cover_image_url:
-      'https://images.unsplash.com/photo-1496442226666-8d4a0e62e6e9?q=80&w=2070&auto=format&fit=crop',
-    author_id: 'a2',
-    author_name: 'Mike Ross',
-    author_avatar_url: 'https://via.placeholder.com/100',
-    read_time_minutes: 11,
-    view_count: 12000,
-    love_count: 2000,
-    not_for_me_count: 5,
-    save_count: 600,
-    is_featured: false,
-    status: 'published',
-    created_at: new Date().toISOString(),
-    published_at: new Date().toISOString(),
-    category_id: 'c2',
-    universe_id: null,
-    category: { id: 'c2', name: 'Cities', color: '#3B82F6', icon: '🏙️' },
-  },
-  {
-    id: 't2',
-    title: "Disney World: First Timer's Complete Guide",
-    slug: 'disney-guide',
-    excerpt: 'How to maximize your magic at Disney World.',
-    content: 'Content here...',
-    cover_image_url:
-      'https://images.unsplash.com/photo-1597466599360-3b9775841aec?q=80&w=2000&auto=format&fit=crop',
-    author_id: 'a3',
-    author_name: 'Jenny Wilson',
-    author_avatar_url: 'https://via.placeholder.com/100',
-    read_time_minutes: 15,
-    view_count: 9800,
-    love_count: 1900,
-    not_for_me_count: 2,
-    save_count: 450,
-    is_featured: false,
-    status: 'published',
-    created_at: new Date().toISOString(),
-    published_at: new Date().toISOString(),
-    category_id: 'c3',
-    universe_id: 'u1',
-    category: { id: 'c3', name: 'Theme Parks', color: '#8B5CF6', icon: '🎢' },
-  },
-  {
-    id: 't3',
-    title: 'Best Coffee in Seattle',
-    slug: 'seattle-coffee',
-    excerpt: 'Where to find the best beans in the Emerald City.',
-    content: 'Content here...',
-    cover_image_url:
-      'https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=2000&auto=format&fit=crop',
-    author_id: 'a4',
-    author_name: 'Tom Cook',
-    author_avatar_url: 'https://via.placeholder.com/100',
-    read_time_minutes: 5,
-    view_count: 18000,
-    love_count: 3200,
-    not_for_me_count: 0,
-    save_count: 1200,
-    is_featured: false,
-    status: 'published',
-    created_at: new Date().toISOString(),
-    published_at: new Date().toISOString(),
-    category_id: 'c4',
-    universe_id: null,
-    category: { id: 'c4', name: 'Food & Drink', color: '#10B981', icon: '☕' },
-  },
-];
-
-const MOCK_UNIVERSES = [
-  {
-    id: 'u1',
-    name: 'Disney World',
-    place_count: 47,
-    thumbnail_image_url:
-      'https://images.unsplash.com/photo-1545580249-a3b334eb197f?q=80&w=1000&auto=format&fit=crop',
-  },
-  {
-    id: 'u2',
-    name: 'LAX Airport',
-    place_count: 23,
-    thumbnail_image_url:
-      'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?q=80&w=1000&auto=format&fit=crop',
-  },
-  {
-    id: 'u3',
-    name: 'Yellowstone',
-    place_count: 15,
-    thumbnail_image_url:
-      'https://images.unsplash.com/photo-1565108170253-2db022359792?q=80&w=1000&auto=format&fit=crop',
-  },
-];
+// Default placeholder images
+const PLACEHOLDER_ARTICLE = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800';
+const PLACEHOLDER_AVATAR = 'https://via.placeholder.com/100';
 
 export default function AtlasHomeScreen() {
   const navigation = useNavigation();
   const { theme, isDark } = useThemeContext();
   const [loading, setLoading] = useState(true);
 
-  const [featuredArticle, setFeaturedArticle] = useState<AtlasArticle | null>(
-    MOCK_FEATURED as any
-  );
-  const [trendingArticles, setTrendingArticles] = useState<AtlasArticle[]>(
-    MOCK_TRENDING as any
-  );
-  const [universes, setUniverses] = useState<AtlasUniverse[]>(
-    MOCK_UNIVERSES as any
-  );
+  // Real data from Supabase (initialized as null/empty)
+  const [featuredArticle, setFeaturedArticle] = useState<AtlasArticle | null>(null);
+  const [trendingArticles, setTrendingArticles] = useState<AtlasArticle[]>([]);
+  const [universes, setUniverses] = useState<AtlasUniverse[]>([]);
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
+    setLoading(true);
     try {
-      setLoading(false);
+      // Fetch all data from Supabase in parallel
+      const [featured, trending, featuredUniverses] = await Promise.all([
+        getFeaturedArticle(),
+        getTrendingArticles(5),
+        getFeaturedUniverses(5),
+      ]);
+
+      setFeaturedArticle(featured);
+      setTrendingArticles(trending);
+      setUniverses(featuredUniverses);
     } catch (error) {
       console.error('Error loading Atlas data:', error);
+    } finally {
       setLoading(false);
     }
   };
@@ -198,6 +82,16 @@ export default function AtlasHomeScreen() {
     return num.toString();
   };
 
+  // Empty state component
+  const EmptyState = ({ message, icon }: { message: string; icon: string }) => (
+    <View style={styles.emptyState}>
+      <Ionicons name={icon as any} size={48} color="#9CA3AF" />
+      <Text style={[styles.emptyStateText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+        {message}
+      </Text>
+    </View>
+  );
+
   if (loading) {
     return (
       <View
@@ -207,6 +101,9 @@ export default function AtlasHomeScreen() {
         ]}
       >
         <ActivityIndicator size="large" color="#2DD4BF" />
+        <Text style={[styles.loadingText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+          Loading articles...
+        </Text>
       </View>
     );
   }
@@ -243,7 +140,7 @@ export default function AtlasHomeScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Featured Article - Floating Card */}
-        {featuredArticle && (
+        {featuredArticle ? (
           <TouchableOpacity
             style={styles.featuredCard}
             activeOpacity={0.95}
@@ -254,7 +151,7 @@ export default function AtlasHomeScreen() {
             }
           >
             <Image
-              source={{ uri: featuredArticle.cover_image_url }}
+              source={{ uri: featuredArticle.cover_image_url || PLACEHOLDER_ARTICLE }}
               style={styles.featuredImage}
             />
             <View style={styles.featuredOverlay}>
@@ -268,14 +165,12 @@ export default function AtlasHomeScreen() {
                 <View style={styles.featuredMeta}>
                   <Image
                     source={{
-                      uri:
-                        featuredArticle.author_avatar_url ||
-                        'https://via.placeholder.com/32',
+                      uri: featuredArticle.author_avatar_url || PLACEHOLDER_AVATAR,
                     }}
                     style={styles.featuredAuthorAvatar}
                   />
                   <Text style={styles.featuredAuthor}>
-                    {featuredArticle.author_name}
+                    {featuredArticle.author_name || 'Tavvy Team'}
                   </Text>
                   <Text style={styles.featuredDot}>•</Text>
                   <Ionicons
@@ -291,6 +186,10 @@ export default function AtlasHomeScreen() {
               </View>
             </View>
           </TouchableOpacity>
+        ) : (
+          <View style={styles.featuredEmptyCard}>
+            <EmptyState message="No featured articles yet. Check back soon!" icon="newspaper-outline" />
+          </View>
         )}
 
         {/* Trending Now */}
@@ -299,70 +198,77 @@ export default function AtlasHomeScreen() {
             Trending Now
           </Text>
 
-          {trendingArticles.map((article) => (
-            <TouchableOpacity
-              key={article.id}
-              style={[
-                styles.trendingCard,
-                {
-                  backgroundColor: isDark ? theme.surface : '#fff',
-                  borderColor: isDark ? theme.border : '#F3F4F6',
-                },
-              ]}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('ArticleDetail', { article })}
-            >
-              <Image source={{ uri: article.cover_image_url }} style={styles.trendingImage} />
+          {trendingArticles.length > 0 ? (
+            trendingArticles.map((article) => (
+              <TouchableOpacity
+                key={article.id}
+                style={[
+                  styles.trendingCard,
+                  {
+                    backgroundColor: isDark ? theme.surface : '#fff',
+                    borderColor: isDark ? theme.border : '#F3F4F6',
+                  },
+                ]}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('ArticleDetail', { article })}
+              >
+                <Image 
+                  source={{ uri: article.cover_image_url || PLACEHOLDER_ARTICLE }} 
+                  style={styles.trendingImage} 
+                />
 
-              <View style={styles.trendingContent}>
-                <Text
-                  style={[
-                    styles.trendingTitle,
-                    { color: isDark ? theme.text : '#1F2937' },
-                  ]}
-                  numberOfLines={2}
-                >
-                  {article.title}
-                </Text>
-
-                <View style={styles.trendingFooter}>
-                  <View
+                <View style={styles.trendingContent}>
+                  <Text
                     style={[
-                      styles.categoryBadge,
-                      { backgroundColor: article.category?.color || '#14b8a6' },
+                      styles.trendingTitle,
+                      { color: isDark ? theme.text : '#1F2937' },
                     ]}
+                    numberOfLines={2}
                   >
-                    <Text style={styles.categoryBadgeText}>
-                      {article.category?.name.toUpperCase()}
-                    </Text>
-                  </View>
+                    {article.title}
+                  </Text>
 
-                  <View style={styles.trendingStatsRow}>
-                    <Ionicons name="heart" size={14} color="#EF4444" style={{ marginRight: 4 }} />
-                    <Text
+                  <View style={styles.trendingFooter}>
+                    <View
                       style={[
-                        styles.trendingStatsText,
-                        { color: isDark ? theme.textSecondary : '#6B7280' },
+                        styles.categoryBadge,
+                        { backgroundColor: article.category?.color || '#14b8a6' },
                       ]}
                     >
-                      {formatNumber(article.love_count)}
-                    </Text>
-                    <Text style={[styles.trendingDot, { color: isDark ? theme.border : '#D1D5DB' }]}>
-                      •
-                    </Text>
-                    <Text
-                      style={[
-                        styles.trendingStatsText,
-                        { color: isDark ? theme.textSecondary : '#6B7280' },
-                      ]}
-                    >
-                      {article.read_time_minutes} min read
-                    </Text>
+                      <Text style={styles.categoryBadgeText}>
+                        {(article.category?.name || 'GENERAL').toUpperCase()}
+                      </Text>
+                    </View>
+
+                    <View style={styles.trendingStatsRow}>
+                      <Ionicons name="heart" size={14} color="#EF4444" style={{ marginRight: 4 }} />
+                      <Text
+                        style={[
+                          styles.trendingStatsText,
+                          { color: isDark ? theme.textSecondary : '#6B7280' },
+                        ]}
+                      >
+                        {formatNumber(article.love_count || 0)}
+                      </Text>
+                      <Text style={[styles.trendingDot, { color: isDark ? theme.border : '#D1D5DB' }]}>
+                        •
+                      </Text>
+                      <Text
+                        style={[
+                          styles.trendingStatsText,
+                          { color: isDark ? theme.textSecondary : '#6B7280' },
+                        ]}
+                      >
+                        {article.read_time_minutes} min read
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            ))
+          ) : (
+            <EmptyState message="No trending articles yet" icon="trending-up-outline" />
+          )}
         </View>
 
         {/* Explore Universes */}
@@ -371,47 +277,54 @@ export default function AtlasHomeScreen() {
             Explore Universes
           </Text>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.universesScroll}
-            contentContainerStyle={{ paddingRight: 20, paddingLeft: 20 }}
-          >
-            {universes.map((universe) => (
-              <TouchableOpacity
-                key={universe.id}
-                style={[
-                  styles.universeCard,
-                  { backgroundColor: isDark ? theme.surface : '#fff' },
-                ]}
-                activeOpacity={0.8}
-                onPress={() =>
-                  navigation.navigate('UniverseDetail', { universeId: universe.id, universe })
-                }
-              >
-                <Image source={{ uri: universe.thumbnail_image_url }} style={styles.universeImage} />
-                <View style={styles.universeInfo}>
-                  <Text
-                    style={[
-                      styles.universeName,
-                      { color: isDark ? theme.text : '#111827' },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {universe.name}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.universePlaces,
-                      { color: isDark ? theme.textSecondary : '#6B7280' },
-                    ]}
-                  >
-                    {universe.place_count} places
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          {universes.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.universesScroll}
+              contentContainerStyle={{ paddingRight: 20, paddingLeft: 20 }}
+            >
+              {universes.map((universe) => (
+                <TouchableOpacity
+                  key={universe.id}
+                  style={[
+                    styles.universeCard,
+                    { backgroundColor: isDark ? theme.surface : '#fff' },
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    navigation.navigate('UniverseDetail', { universeId: universe.id, universe })
+                  }
+                >
+                  <Image 
+                    source={{ uri: universe.thumbnail_image_url || PLACEHOLDER_ARTICLE }} 
+                    style={styles.universeImage} 
+                  />
+                  <View style={styles.universeInfo}>
+                    <Text
+                      style={[
+                        styles.universeName,
+                        { color: isDark ? theme.text : '#111827' },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {universe.name}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.universePlaces,
+                        { color: isDark ? theme.textSecondary : '#6B7280' },
+                      ]}
+                    >
+                      {universe.place_count} places
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <EmptyState message="No universes to explore yet" icon="planet-outline" />
+          )}
         </View>
 
         <View style={{ height: 100 }} />
@@ -430,6 +343,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+  },
+
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyStateText: {
+    marginTop: 12,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+
+  featuredEmptyCard: {
+    marginHorizontal: 20,
+    height: 200,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
   },
 
   // FULL WIDTH SOLID HEADER - NO rounded corners

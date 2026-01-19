@@ -7,9 +7,11 @@
  * Left  = Logo
  * Center = "Universes"
  * Right = Profile icon
+ * 
+ * NOW CONNECTED TO SUPABASE - Fetches real data from atlas_universes table
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,86 +24,152 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { supabase } from '../lib/supabaseClient';
+import { getCategories, type AtlasCategory, type AtlasUniverse } from '../lib/atlas';
 
 const { width } = Dimensions.get('window');
+
+// Default placeholder image when no image is available
+const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800';
 
 export default function UniverseDiscoveryScreen() {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useThemeContext();
   const [activeCategory, setActiveCategory] = useState('All');
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const categories = [
+  // Real data from Supabase
+  const [featuredUniverse, setFeaturedUniverse] = useState<AtlasUniverse | null>(null);
+  const [popularUniverses, setPopularUniverses] = useState<AtlasUniverse[]>([]);
+  const [nearbyUniverses, setNearbyUniverses] = useState<AtlasUniverse[]>([]);
+  const [categories, setCategories] = useState<AtlasCategory[]>([]);
+
+  // Fetch data on mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // Refetch when category changes
+  useEffect(() => {
+    loadUniverses();
+  }, [activeCategory]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // Load categories
+      const cats = await getCategories();
+      setCategories(cats);
+
+      // Load universes
+      await loadUniverses();
+    } catch (error) {
+      console.error('Error loading universe data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadUniverses = async () => {
+    try {
+      // Build query for featured universe
+      let featuredQuery = supabase
+        .from('atlas_universes')
+        .select('*')
+        .eq('status', 'published')
+        .eq('is_featured', true)
+        .order('published_at', { ascending: false })
+        .limit(1);
+
+      // Build query for all universes
+      let universesQuery = supabase
+        .from('atlas_universes')
+        .select('*')
+        .eq('status', 'published')
+        .order('total_signals', { ascending: false });
+
+      // Apply category filter if not "All"
+      if (activeCategory !== 'All') {
+        const selectedCat = categories.find(c => c.name === activeCategory);
+        if (selectedCat) {
+          featuredQuery = featuredQuery.eq('category_id', selectedCat.id);
+          universesQuery = universesQuery.eq('category_id', selectedCat.id);
+        }
+      }
+
+      // Execute queries
+      const [featuredResult, universesResult] = await Promise.all([
+        featuredQuery.single(),
+        universesQuery.limit(10),
+      ]);
+
+      // Set featured universe
+      if (featuredResult.data) {
+        setFeaturedUniverse(featuredResult.data);
+      } else {
+        setFeaturedUniverse(null);
+      }
+
+      // Split universes into popular and nearby (for now, just split the list)
+      const allUniverses = universesResult.data || [];
+      setPopularUniverses(allUniverses.slice(0, 4));
+      setNearbyUniverses(allUniverses.slice(0, 3));
+
+    } catch (error) {
+      console.error('Error loading universes:', error);
+    }
+  };
+
+  // Build category chips from real data
+  const categoryChips = [
     { id: 'All', label: 'All', icon: null },
-    { id: 'Theme Parks', label: 'Theme Parks', icon: 'ticket-outline' },
-    { id: 'Airports', label: 'Airports', icon: 'airplane-outline' },
-    { id: 'Campuses', label: 'Campuses', icon: 'school-outline' },
-    { id: 'Festivals', label: 'Festivals', icon: 'musical-notes-outline' },
-    { id: 'Resorts', label: 'Resorts', icon: 'business-outline' },
+    ...categories.map(cat => ({
+      id: cat.name,
+      label: cat.name,
+      icon: getCategoryIcon(cat.slug),
+    })),
   ];
 
-  const popularUniverses = [
-    {
-      id: 'jfk',
-      name: 'JFK Airport',
-      location: 'New York, NY',
-      type: 'Airport',
-      places: 128,
-      image: 'https://images.unsplash.com/photo-1542296332-2e44a996aa0d?w=500',
-    },
-    {
-      id: 'atlantis',
-      name: 'Atlantis Bahamas',
-      location: 'Nassau, Bahamas',
-      type: 'Resort',
-      places: 64,
-      image: 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=500',
-    },
-    {
-      id: 'stanford',
-      name: 'Stanford University',
-      location: 'Stanford, CA',
-      type: 'Campus',
-      places: 92,
-      image: 'https://images.unsplash.com/photo-1564981797816-1043664bf78d?w=500',
-    },
-    {
-      id: 'coachella',
-      name: 'Coachella',
-      location: 'Indio, CA',
-      type: 'Festival',
-      places: 45,
-      image: 'https://images.unsplash.com/photo-1533174072545-e8d4aa97edf9?w=500',
-    },
-  ];
+  // Map category slug to icon
+  function getCategoryIcon(slug: string): string | null {
+    const iconMap: Record<string, string> = {
+      'theme-parks': 'ticket-outline',
+      'airports': 'airplane-outline',
+      'national-parks': 'leaf-outline',
+      'cities': 'business-outline',
+      'food-drink': 'restaurant-outline',
+      'travel-tips': 'compass-outline',
+    };
+    return iconMap[slug] || null;
+  }
 
-  const nearbyUniverses = [
-    {
-      id: 'universal',
-      name: 'Universal Studios',
-      dist: '8.2 mi',
-      type: 'Theme Park',
-      image: 'https://images.unsplash.com/photo-1595846519845-68e298c2edd8?w=500',
-    },
-    {
-      id: 'ucla',
-      name: 'UCLA Campus',
-      dist: '12.4 mi',
-      type: 'Campus',
-      image: 'https://images.unsplash.com/photo-1623000850260-297d2800c994?w=500',
-    },
-    {
-      id: 'miami',
-      name: 'Downtown Miami',
-      dist: '15.1 mi',
-      type: 'City',
-      image: 'https://images.unsplash.com/photo-1535498730771-e735b998cd64?w=500',
-    },
-  ];
+  // Empty state component
+  const EmptyState = ({ message }: { message: string }) => (
+    <View style={styles.emptyState}>
+      <Ionicons name="planet-outline" size={48} color="#9CA3AF" />
+      <Text style={[styles.emptyStateText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+        {message}
+      </Text>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: isDark ? theme.background : '#F9FAFB' }]}>
+        <ActivityIndicator size="large" color="#06B6D4" />
+        <Text style={[styles.loadingText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+          Loading universes...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F9FAFB' }]}>
@@ -138,6 +206,8 @@ export default function UniverseDiscoveryScreen() {
               placeholder="Find a universe..."
               placeholderTextColor={isDark ? '#9CA3AF' : '#9CA3AF'}
               style={[styles.searchInput, { color: isDark ? '#fff' : '#111827' }]}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
             />
           </View>
         </SafeAreaView>
@@ -146,7 +216,7 @@ export default function UniverseDiscoveryScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Categories */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesContainer}>
-          {categories.map((cat) => {
+          {categoryChips.map((cat) => {
             const isActive = activeCategory === cat.id;
             return (
               <TouchableOpacity
@@ -176,30 +246,34 @@ export default function UniverseDiscoveryScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#E5E7EB' }]}>Featured Universe</Text>
 
-          <TouchableOpacity
-            style={styles.featuredCard}
-            onPress={() => navigation.navigate('UniverseLanding', { universeId: 'disney' })}
-          >
-            <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1597466599360-3b9775841aec?w=800' }}
-              style={styles.featuredImage}
-            />
-            <View style={styles.featuredOverlay}>
-              <View style={styles.popularTag}>
-                <Ionicons name="flame" size={12} color="#F59E0B" />
-                <Text style={styles.popularTagText}>Popular</Text>
-              </View>
+          {featuredUniverse ? (
+            <TouchableOpacity
+              style={styles.featuredCard}
+              onPress={() => navigation.navigate('UniverseLanding', { universeId: featuredUniverse.id })}
+            >
+              <Image
+                source={{ uri: featuredUniverse.banner_image_url || PLACEHOLDER_IMAGE }}
+                style={styles.featuredImage}
+              />
+              <View style={styles.featuredOverlay}>
+                <View style={styles.popularTag}>
+                  <Ionicons name="flame" size={12} color="#F59E0B" />
+                  <Text style={styles.popularTagText}>Popular</Text>
+                </View>
 
-              <Text style={styles.featuredName}>Walt Disney World</Text>
+                <Text style={styles.featuredName}>{featuredUniverse.name}</Text>
 
-              <View style={styles.featuredMeta}>
-                <Ionicons name="location" size={14} color="#EF4444" />
-                <Text style={styles.featuredMetaText}>Orlando, FL</Text>
-                <Text style={styles.featuredDot}>•</Text>
-                <Text style={styles.featuredMetaText}>47 Places</Text>
+                <View style={styles.featuredMeta}>
+                  <Ionicons name="location" size={14} color="#EF4444" />
+                  <Text style={styles.featuredMetaText}>{featuredUniverse.location || 'Location TBD'}</Text>
+                  <Text style={styles.featuredDot}>•</Text>
+                  <Text style={styles.featuredMetaText}>{featuredUniverse.place_count} Places</Text>
+                </View>
               </View>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          ) : (
+            <EmptyState message="No featured universes yet. Check back soon!" />
+          )}
         </View>
 
         {/* Nearby Universes */}
@@ -216,49 +290,65 @@ export default function UniverseDiscoveryScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.nearbyContainer}>
-            {nearbyUniverses.map((item) => (
-              <TouchableOpacity key={item.id} style={[styles.nearbyCard, { backgroundColor: isDark ? theme.surface : '#111827' }]}>
-                <Image source={{ uri: item.image }} style={styles.nearbyImage} />
-                <View style={styles.nearbyContent}>
-                  <Text style={[styles.nearbyName, { color: '#E5E7EB' }]} numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                  <View style={styles.nearbyMeta}>
-                    <Text style={[styles.nearbyType, { color: '#9CA3AF' }]}>{item.type}</Text>
-                    <Text style={styles.nearbyDist}>{item.dist}</Text>
+          {nearbyUniverses.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.nearbyContainer}>
+              {nearbyUniverses.map((item) => (
+                <TouchableOpacity 
+                  key={item.id} 
+                  style={[styles.nearbyCard, { backgroundColor: isDark ? theme.surface : '#111827' }]}
+                  onPress={() => navigation.navigate('UniverseLanding', { universeId: item.id })}
+                >
+                  <Image source={{ uri: item.thumbnail_image_url || PLACEHOLDER_IMAGE }} style={styles.nearbyImage} />
+                  <View style={styles.nearbyContent}>
+                    <Text style={[styles.nearbyName, { color: '#E5E7EB' }]} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <View style={styles.nearbyMeta}>
+                      <Text style={[styles.nearbyType, { color: '#9CA3AF' }]}>{item.place_count} places</Text>
+                      <Text style={styles.nearbyDist}>{item.total_signals || 0} signals</Text>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <EmptyState message="No nearby universes found" />
+          )}
         </View>
 
         {/* Popular Grid */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#E5E7EB' }]}>Popular Destinations</Text>
 
-          <View style={styles.gridContainer}>
-            {popularUniverses.map((item) => (
-              <TouchableOpacity key={item.id} style={[styles.gridCard, { backgroundColor: isDark ? theme.surface : '#111827' }]}>
-                <Image source={{ uri: item.image }} style={styles.gridImage} />
-                <View style={styles.gridContent}>
-                  <Text style={[styles.gridName, { color: '#E5E7EB' }]} numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                  <Text style={[styles.gridLocation, { color: '#9CA3AF' }]} numberOfLines={1}>
-                    {item.location}
-                  </Text>
-                  <View style={styles.gridFooter}>
-                    <Text style={styles.gridType}>{item.type}</Text>
-                    <View style={[styles.gridBadge, { backgroundColor: '#0B1220' }]}>
-                      <Text style={[styles.gridBadgeText, { color: '#E5E7EB' }]}>{item.places}</Text>
+          {popularUniverses.length > 0 ? (
+            <View style={styles.gridContainer}>
+              {popularUniverses.map((item) => (
+                <TouchableOpacity 
+                  key={item.id} 
+                  style={[styles.gridCard, { backgroundColor: isDark ? theme.surface : '#111827' }]}
+                  onPress={() => navigation.navigate('UniverseLanding', { universeId: item.id })}
+                >
+                  <Image source={{ uri: item.thumbnail_image_url || PLACEHOLDER_IMAGE }} style={styles.gridImage} />
+                  <View style={styles.gridContent}>
+                    <Text style={[styles.gridName, { color: '#E5E7EB' }]} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <Text style={[styles.gridLocation, { color: '#9CA3AF' }]} numberOfLines={1}>
+                      {item.location || 'Location TBD'}
+                    </Text>
+                    <View style={styles.gridFooter}>
+                      <Text style={styles.gridType}>{item.article_count || 0} articles</Text>
+                      <View style={[styles.gridBadge, { backgroundColor: '#0B1220' }]}>
+                        <Text style={[styles.gridBadgeText, { color: '#E5E7EB' }]}>{item.place_count}</Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <EmptyState message="No popular destinations yet" />
+          )}
         </View>
 
         <View style={{ height: 100 }} />
@@ -269,6 +359,29 @@ export default function UniverseDiscoveryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+  },
+
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+
+  emptyStateText: {
+    marginTop: 12,
+    fontSize: 14,
+    textAlign: 'center',
+  },
 
   headerGradient: {
     paddingBottom: 14,
