@@ -80,6 +80,8 @@ export default function ArticleDetailScreen() {
   const loadFullArticle = async () => {
     try {
       setLoading(true);
+      console.log('=== Loading full article ===');
+      console.log('Initial article ID:', initialArticle.id);
       
       // Fetch full article with content_blocks
       const { data: fullArticle, error } = await supabase
@@ -92,9 +94,14 @@ export default function ArticleDetailScreen() {
         .eq('id', initialArticle.id)
         .single();
 
+      console.log('Supabase response error:', error);
+      console.log('Supabase response data keys:', fullArticle ? Object.keys(fullArticle) : 'null');
+      console.log('content_blocks in response:', fullArticle?.content_blocks ? `Array with ${fullArticle.content_blocks.length} items` : 'null/undefined');
+
       if (error) {
         console.error('Error fetching full article:', error);
       } else if (fullArticle) {
+        console.log('Setting article with content_blocks:', fullArticle.content_blocks?.length || 0, 'blocks');
         setArticle(fullArticle);
       }
 
