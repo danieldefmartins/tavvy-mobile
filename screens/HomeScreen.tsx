@@ -28,12 +28,17 @@ import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { fetchPlacesInBounds, PlaceCard, getPlaceIdForNavigation } from '../lib/placeService';
+import { searchSuggestions as searchPlaceSuggestions } from '../lib/searchService';
 
 const { width, height } = Dimensions.get('window');
 
 // ============================================
 // CONSTANTS
 // ============================================
+
+// Debug flag for place fetching - set to true to see metrics
+const DEBUG_PLACES = false;
 
 const MAP_PEEK_HEIGHT = height * 0.22;
 
@@ -570,58 +575,29 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
       console.log(`Fetching places near [${centerLng}, ${centerLat}]`);
 
-      // Query from both fsq_places_raw (Foursquare) and tavvy_places (user-added)
-      
-      // 1. Fetch from Foursquare data
-      const { data: fsqPlacesData, error: fsqError } = await supabase
-        .from('fsq_places_raw')
-        .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, postcode, tel, website, email, instagram, facebook_id, twitter, fsq_category_ids, fsq_category_labels, date_created, date_refreshed, date_closed')
-        .gte('latitude', minLat)
-        .lte('latitude', maxLat)
-        .gte('longitude', minLng)
-        .lte('longitude', maxLng)
-        .is('date_closed', null)
-        .limit(150);
-      
-      // 2. Fetch from user-added places
-      const { data: tavvyPlacesData, error: tavvyError } = await supabase
-        .from('tavvy_places')
-        .select('id, name, latitude, longitude, address, city, region, country, postcode, phone, website, email, instagram, facebook, twitter, tavvy_category, tavvy_subcategory, photos, cover_image_url, created_at')
-        .gte('latitude', minLat)
-        .lte('latitude', maxLat)
-        .gte('longitude', minLng)
-        .lte('longitude', maxLng)
-        .eq('is_deleted', false)
-        .limit(50);
-      
-      // Combine both sources
-      const fsqPlaces = (fsqPlacesData || []).map(p => ({ ...p, source: 'foursquare' }));
-      const tavvyPlaces = (tavvyPlacesData || []).map(p => ({ 
-        ...p, 
-        source: 'user',
-        fsq_place_id: p.id, // Use id as the identifier
-        locality: p.city,
-        tel: p.phone,
-        fsq_category_labels: [p.tavvy_subcategory || p.tavvy_category || 'Other']
-      }));
-      
-      const placesData = [...fsqPlaces, ...tavvyPlaces];
-      const placesError = fsqError || tavvyError;
-      
-      console.log(`Fetched ${fsqPlaces.length} Foursquare places, ${tavvyPlaces.length} user-added places`);
+      // Use centralized placeService with hybrid strategy:
+      // 1. Query canonical `places` table first (fast path)
+      // 2. Fallback to `fsq_places_raw` if results < threshold
+      const result = await fetchPlacesInBounds({
+        bounds: { minLat, maxLat, minLng, maxLng },
+        limit: 150,
+        fallbackThreshold: 40,
+      });
 
-      if (placesError) {
-        console.warn('Supabase error:', placesError);
-        setPlaces([]);
-        setFilteredPlaces([]);
-        setLoading(false);
-        return;
+      // Debug logging (only when DEBUG_PLACES is true)
+      if (DEBUG_PLACES) {
+        console.log(`[DEBUG] Places fetched: ${result.places.length}`);
+        console.log(`[DEBUG] From canonical: ${result.metrics.fromPlaces}`);
+        console.log(`[DEBUG] From fsq_raw: ${result.metrics.fromFsqRaw}`);
+        console.log(`[DEBUG] Fallback triggered: ${result.metrics.fallbackTriggered}`);
+        console.log(`[DEBUG] Total time: ${result.metrics.totalTime}ms`);
       }
 
-      console.log('Fetched places from Supabase:', placesData?.length || 0);
+      console.log(`Fetched ${result.places.length} places (${result.metrics.fromPlaces} canonical, ${result.metrics.fromFsqRaw} fsq_raw)`);
 
-      if (placesData && placesData.length > 0) {
-        const placeIds = placesData.map((p: any) => p.id);
+      if (result.places.length > 0) {
+        // Get signal aggregates for the places
+        const placeIds = result.places.map(p => p.source_id);
         
         let signalAggregates: any[] = [];
         try {
@@ -634,47 +610,38 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           console.log('No signal aggregates table or data');
         }
 
-        const processedPlaces = placesData
+        // Map PlaceCard[] to existing Place[] shape for UI compatibility
+        const processedPlaces = result.places
           .filter((place) => {
             return typeof place.longitude === 'number' && typeof place.latitude === 'number' && 
                    !isNaN(place.longitude) && !isNaN(place.latitude) && 
                    place.longitude !== 0 && place.latitude !== 0;
           })
           .map(place => {
-            // Get signals for this place using fsq_place_id
+            // Get signals for this place
             const placeSignals = signalAggregates
-              .filter(s => s.place_id === place.fsq_place_id)
+              .filter(s => s.place_id === place.source_id)
               .map(s => ({
                 bucket: s.signal_label || 'Unknown',
                 tap_total: s.total_taps || 0,
               }));
 
-            // Get category from fsq_category_labels - it's an array like ["Business > Hair Salon"]
-            let category = 'Other';
-            if (place.fsq_category_labels && Array.isArray(place.fsq_category_labels) && place.fsq_category_labels.length > 0) {
-              // Extract the last part of the category path (e.g., "Hair Salon" from "Business > Hair Salon")
-              const fullCategory = place.fsq_category_labels[0];
-              if (typeof fullCategory === 'string') {
-                const parts = fullCategory.split('>');
-                category = parts[parts.length - 1].trim();
-              }
-            }
-
+            // Map PlaceCard to existing Place interface
             return {
-              id: place.fsq_place_id,
+              id: place.source_id, // Use source_id for navigation (fsq_id or tavvy place id)
               name: place.name,
               latitude: place.latitude,
               longitude: place.longitude,
               address_line1: place.address || '',
-              city: place.locality || '',
+              city: place.city || '',
               state_region: place.region || '',
               country: place.country || '',
-              category: category,
-              phone: place.tel || '',
+              category: place.category || 'Other',
+              phone: place.phone || '',
               website: place.website || '',
               instagram_url: place.instagram || '',
               signals: placeSignals,
-              photos: [], // No photos column in fsq_places_raw
+              photos: place.photos || [],
             };
           });
 
@@ -709,40 +676,26 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     const suggestions: SearchSuggestion[] = [];
     const query = text.toLowerCase();
 
-    // Search database for matching places
+    // Search database for matching places using centralized searchService
     try {
-      const { data: searchResults, error } = await supabase
-        .from('fsq_places_raw')
-        .select('fsq_place_id, name, latitude, longitude, address, locality, region, fsq_category_labels')
-        .ilike('name', `%${text}%`)
-        .is('date_closed', null)
-        .limit(5);
+      const searchResults = await searchPlaceSuggestions(text, 5);
 
-      if (!error && searchResults && searchResults.length > 0) {
+      if (searchResults && searchResults.length > 0) {
         searchResults.forEach(place => {
-          let category = 'Other';
-          if (place.fsq_category_labels && Array.isArray(place.fsq_category_labels) && place.fsq_category_labels.length > 0) {
-            const fullCategory = place.fsq_category_labels[0];
-            if (typeof fullCategory === 'string') {
-              const parts = fullCategory.split('>');
-              category = parts[parts.length - 1].trim();
-            }
-          }
-          
           suggestions.push({
-            id: `place-${place.fsq_place_id}`,
+            id: `place-${place.source_id}`,
             type: 'place',
             title: place.name,
-            subtitle: `${category} • ${place.locality || 'Nearby'}`,
+            subtitle: `${place.category || 'Other'} • ${place.city || 'Nearby'}`,
             icon: 'location',
             data: {
-              id: place.fsq_place_id,
+              id: place.source_id,
               name: place.name,
               latitude: place.latitude,
               longitude: place.longitude,
               address_line1: place.address || '',
-              city: place.locality || '',
-              category: category,
+              city: place.city || '',
+              category: place.category || 'Other',
               signals: [],
               photos: [],
             },
