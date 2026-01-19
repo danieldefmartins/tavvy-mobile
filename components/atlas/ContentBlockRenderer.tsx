@@ -537,6 +537,19 @@ interface ContentBlockRendererProps {
 }
 
 export const ContentBlockRenderer: React.FC<ContentBlockRendererProps> = ({ blocks }) => {
+  console.log('=== ContentBlockRenderer ===');
+  console.log('Received blocks:', blocks?.length || 0);
+  console.log('Blocks array:', blocks ? 'exists' : 'null/undefined');
+  
+  if (!blocks || blocks.length === 0) {
+    console.log('No blocks to render!');
+    return (
+      <View style={styles.container}>
+        <Text style={{ color: 'red', padding: 20 }}>Debug: No content blocks received</Text>
+      </View>
+    );
+  }
+
   const renderBlock = (block: ContentBlock, index: number) => {
     const key = `block-${index}`;
 
