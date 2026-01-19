@@ -92,6 +92,18 @@ export interface ItineraryItem {
   place_id?: string;
 }
 
+// Single itinerary day block (from CSV format)
+export interface ItineraryDayBlock extends ContentBlock {
+  type: 'itinerary_day';
+  title: string;
+  items: ItineraryDayItem[];
+}
+
+export interface ItineraryDayItem {
+  time: string;
+  activity: string;
+}
+
 export interface CalloutBlock extends ContentBlock {
   type: 'callout';
   style: 'tip' | 'warning' | 'tavvy_note' | 'info';
@@ -369,6 +381,29 @@ const ItineraryBlockComponent: React.FC<{ block: ItineraryBlock }> = ({ block })
   );
 };
 
+// Itinerary Day Block (single day from CSV format)
+const ItineraryDayBlockComponent: React.FC<{ block: ItineraryDayBlock }> = ({ block }) => {
+  return (
+    <View style={styles.itineraryDayContainer}>
+      <View style={styles.itineraryDayHeader}>
+        <View style={styles.itineraryDayBadge}>
+          <Ionicons name="calendar-outline" size={14} color="#fff" />
+        </View>
+        <Text style={styles.itineraryDayTitle}>{block.title}</Text>
+      </View>
+      
+      {block.items.map((item, itemIndex) => (
+        <View key={itemIndex} style={styles.itineraryItem}>
+          <Text style={styles.itineraryItemTime}>{item.time}</Text>
+          <View style={styles.itineraryItemContent}>
+            <Text style={styles.itineraryItemTitle}>{item.activity}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+};
+
 // Callout Block
 const CalloutBlockComponent: React.FC<{ block: CalloutBlock }> = ({ block }) => {
   const getCalloutStyle = () => {
@@ -422,7 +457,7 @@ const CalloutBlockComponent: React.FC<{ block: CalloutBlock }> = ({ block }) => 
   );
 };
 
-// Checklist Block
+// Checklist Block - handles both string[] and ChecklistItem[] formats
 const ChecklistBlockComponent: React.FC<{ block: ChecklistBlock }> = ({ block }) => {
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
 
@@ -438,12 +473,20 @@ const ChecklistBlockComponent: React.FC<{ block: ChecklistBlock }> = ({ block })
     });
   };
 
+  // Normalize items to handle both string[] and ChecklistItem[] formats
+  const normalizedItems = block.items.map((item, index) => {
+    if (typeof item === 'string') {
+      return { id: `item-${index}`, text: item, checked: false };
+    }
+    return item;
+  });
+
   return (
     <View style={styles.checklistContainer}>
       {block.title && (
         <Text style={styles.checklistTitle}>{block.title}</Text>
       )}
-      {block.items.map((item) => {
+      {normalizedItems.map((item) => {
         const isChecked = checkedItems.has(item.id);
         return (
           <TouchableOpacity
@@ -512,6 +555,8 @@ export const ContentBlockRenderer: React.FC<ContentBlockRendererProps> = ({ bloc
         return <PlaceCardBlockComponent key={key} block={block as PlaceCardBlock} />;
       case 'itinerary':
         return <ItineraryBlockComponent key={key} block={block as ItineraryBlock} />;
+      case 'itinerary_day':
+        return <ItineraryDayBlockComponent key={key} block={block as ItineraryDayBlock} />;
       case 'callout':
         return <CalloutBlockComponent key={key} block={block as CalloutBlock} />;
       case 'checklist':
@@ -748,7 +793,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: TEAL_PRIMARY,
-    width: 60,
+    minWidth: 100,
+    marginRight: 8,
   },
   itineraryItemContent: {
     flex: 1,
@@ -774,6 +820,14 @@ const styles = StyleSheet.create({
     color: TEAL_PRIMARY,
     fontWeight: '500',
     marginLeft: 4,
+  },
+
+  // Itinerary Day (single day block)
+  itineraryDayContainer: {
+    marginVertical: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
   },
 
   // Callout
