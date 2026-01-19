@@ -1,13 +1,14 @@
 /**
  * UniverseMapScreen.tsx
- * Full-screen map showing universe markers with draggable bottom sheet
+ * Full-screen map showing universe markers with Lyft-inspired minimal floating icons
  * Path: screens/UniverseMapScreen.tsx
  * 
  * Features:
- * - Search bar at top
- * - Category filter chips (All, Theme Parks, Airports, etc.)
- * - Satellite view toggle
- * - Draggable bottom sheet with universe cards (like HomeScreen)
+ * - Search bar at top with category filters
+ * - Minimal floating icons (Lyft-inspired):
+ *   - Left: Legend/Info popup
+ *   - Right: Weather, Map Layers, Current Location
+ * - Draggable bottom sheet with universe cards
  * - Same map style as HomeScreen
  */
 
@@ -25,6 +26,7 @@ import {
   Image,
   TextInput,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -36,25 +38,19 @@ import { supabase } from '../lib/supabaseClient';
 
 const { width, height } = Dimensions.get('window');
 
-// Map Styles Configuration (same as HomeScreen)
+// Map Styles Configuration
 const MAP_STYLES = {
   osm: {
     name: 'Standard',
     type: 'raster',
     tileUrl: 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    icon: 'map',
+    icon: 'map-outline',
   },
   satellite: {
     name: 'Satellite',
     type: 'raster',
     tileUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    icon: 'image',
-  },
-  liberty: {
-    name: 'Vector',
-    type: 'vector',
-    url: 'https://tiles.openfreemap.org/styles/liberty',
-    icon: 'layers',
+    icon: 'earth-outline',
   },
 };
 
@@ -67,6 +63,16 @@ const UNIVERSE_CATEGORIES = [
   { id: 'Stadiums', label: 'Stadiums', categoryId: '26917772-0a8f-432f-9243-99883165209b' },
   { id: 'Campuses', label: 'Campuses', categoryId: '6d262f3b-40bc-44ff-b076-c9aff3409f43' },
 ];
+
+// Category colors for markers
+const CATEGORY_COLORS: Record<string, { color: string; name: string }> = {
+  '370839a3-f138-4e05-b357-bffa554a1a43': { color: '#EF4444', name: 'Theme Parks' },
+  '74f99eab-4141-4d79-ac4a-b244ed7adaa2': { color: '#3B82F6', name: 'Airports' },
+  '4538293c-b3c6-4e33-8673-6413c692e4b9': { color: '#22C55E', name: 'National Parks' },
+  '26917772-0a8f-432f-9243-99883165209b': { color: '#F59E0B', name: 'Stadiums' },
+  '6d262f3b-40bc-44ff-b076-c9aff3409f43': { color: '#8B5CF6', name: 'Campuses' },
+  default: { color: '#06B6D4', name: 'Other' },
+};
 
 // Universe type
 interface Universe {
@@ -81,41 +87,43 @@ interface Universe {
   location: string | null;
 }
 
-// Category colors for markers
-const CATEGORY_COLORS: Record<string, string> = {
-  '370839a3-f138-4e05-b357-bffa554a1a43': '#EF4444', // Theme Parks - Red
-  '74f99eab-4141-4d79-ac4a-b244ed7adaa2': '#3B82F6', // Airports - Blue
-  '4538293c-b3c6-4e33-8673-6413c692e4b9': '#22C55E', // National Parks - Green
-  '26917772-0a8f-432f-9243-99883165209b': '#F59E0B', // Stadiums - Amber
-  '6d262f3b-40bc-44ff-b076-c9aff3409f43': '#8B5CF6', // Campuses - Purple
-  default: '#06B6D4', // Default - Cyan
-};
-
-// Category names for display
-const CATEGORY_NAMES: Record<string, string> = {
-  '370839a3-f138-4e05-b357-bffa554a1a43': 'Theme Park',
-  '74f99eab-4141-4d79-ac4a-b244ed7adaa2': 'Airport',
-  '4538293c-b3c6-4e33-8673-6413c692e4b9': 'National Park',
-  '26917772-0a8f-432f-9243-99883165209b': 'Stadium',
-  '6d262f3b-40bc-44ff-b076-c9aff3409f43': 'Campus',
-  default: 'Universe',
-};
-
 export default function UniverseMapScreen() {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useThemeContext();
   const [loading, setLoading] = useState(true);
   const [universes, setUniverses] = useState<Universe[]>([]);
   const [filteredUniverses, setFilteredUniverses] = useState<Universe[]>([]);
-  const [selectedUniverse, setSelectedUniverse] = useState<Universe | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('osm');
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  
+  // Popup states
+  const [showLegendPopup, setShowLegendPopup] = useState(false);
+  const [showWeatherPopup, setShowWeatherPopup] = useState(false);
+  const [showMapLayerPopup, setShowMapLayerPopup] = useState(false);
+  
+  // Weather data (mock for now - can be connected to real API)
+  const [weatherData] = useState({
+    temp: 72,
+    feelsLike: 70,
+    high: 78,
+    low: 65,
+    condition: 'Sunny',
+    icon: 'sunny',
+    hourly: [
+      { time: 'Now', temp: 72, icon: 'sunny' },
+      { time: '11AM', temp: 74, icon: 'sunny' },
+      { time: '12PM', temp: 76, icon: 'partly-sunny' },
+      { time: '1PM', temp: 78, icon: 'partly-sunny' },
+    ],
+    airQuality: { status: 'Good', aqi: 32 },
+  });
+
   const cameraRef = useRef<MapLibreGL.Camera>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
 
-  // Bottom sheet snap points - same pattern as HomeScreen
+  // Bottom sheet snap points
   const snapPoints = useMemo(() => [60, '35%', '55%'], []);
 
   // Default center (center of US)
@@ -126,7 +134,6 @@ export default function UniverseMapScreen() {
     getUserLocation();
   }, []);
 
-  // Filter universes when category or search changes
   useEffect(() => {
     filterUniverses();
   }, [universes, selectedCategory, searchQuery]);
@@ -153,7 +160,6 @@ export default function UniverseMapScreen() {
         .eq('status', 'published');
 
       if (error) throw error;
-
       setUniverses(data || []);
       setFilteredUniverses(data || []);
     } catch (error) {
@@ -166,7 +172,6 @@ export default function UniverseMapScreen() {
   const filterUniverses = () => {
     let filtered = [...universes];
 
-    // Filter by category
     if (selectedCategory !== 'All') {
       const categoryConfig = UNIVERSE_CATEGORIES.find(c => c.id === selectedCategory);
       if (categoryConfig?.categoryId) {
@@ -174,7 +179,6 @@ export default function UniverseMapScreen() {
       }
     }
 
-    // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(u => 
@@ -187,27 +191,13 @@ export default function UniverseMapScreen() {
   };
 
   const getMarkerColor = (categoryId: string | null) => {
-    if (!categoryId) return CATEGORY_COLORS.default;
-    return CATEGORY_COLORS[categoryId] || CATEGORY_COLORS.default;
+    if (!categoryId) return CATEGORY_COLORS.default.color;
+    return CATEGORY_COLORS[categoryId]?.color || CATEGORY_COLORS.default.color;
   };
 
   const getCategoryName = (categoryId: string | null) => {
-    if (!categoryId) return CATEGORY_NAMES.default;
-    return CATEGORY_NAMES[categoryId] || CATEGORY_NAMES.default;
-  };
-
-  const handleMarkerPress = (universe: Universe) => {
-    setSelectedUniverse(universe);
-    // Center map on selected universe
-    if (cameraRef.current) {
-      cameraRef.current.setCamera({
-        centerCoordinate: [universe.longitude, universe.latitude],
-        zoomLevel: 10,
-        animationDuration: 500,
-      });
-    }
-    // Expand bottom sheet to show the card
-    bottomSheetRef.current?.snapToIndex(1);
+    if (!categoryId) return CATEGORY_COLORS.default.name;
+    return CATEGORY_COLORS[categoryId]?.name || CATEGORY_COLORS.default.name;
   };
 
   const handleNavigateToUniverse = (universe: Universe) => {
@@ -224,11 +214,9 @@ export default function UniverseMapScreen() {
     }
   };
 
-  const cycleMapStyle = () => {
-    const styles = Object.keys(MAP_STYLES) as (keyof typeof MAP_STYLES)[];
-    const currentIndex = styles.indexOf(mapStyle);
-    const nextIndex = (currentIndex + 1) % styles.length;
-    setMapStyle(styles[nextIndex]);
+  const selectMapStyle = (style: keyof typeof MAP_STYLES) => {
+    setMapStyle(style);
+    setShowMapLayerPopup(false);
   };
 
   // Render universe card for bottom sheet
@@ -242,7 +230,6 @@ export default function UniverseMapScreen() {
         onPress={() => handleNavigateToUniverse(item)}
         activeOpacity={0.9}
       >
-        {/* Universe Image */}
         <View style={styles.cardImageContainer}>
           {item.banner_image_url || item.thumbnail_image_url ? (
             <Image
@@ -255,13 +242,11 @@ export default function UniverseMapScreen() {
               <Ionicons name="planet" size={32} color="#9CA3AF" />
             </View>
           )}
-          {/* Category Badge */}
           <View style={[styles.categoryBadge, { backgroundColor: categoryColor }]}>
             <Text style={styles.categoryBadgeText}>{categoryName}</Text>
           </View>
         </View>
         
-        {/* Universe Info */}
         <View style={styles.cardContent}>
           <Text style={[styles.cardName, { color: isDark ? theme.text : '#111827' }]} numberOfLines={1}>
             {item.name}
@@ -280,6 +265,155 @@ export default function UniverseMapScreen() {
     );
   }, [isDark, theme]);
 
+  // Legend Popup Component
+  const LegendPopup = () => (
+    <Modal
+      visible={showLegendPopup}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowLegendPopup(false)}
+    >
+      <TouchableOpacity 
+        style={styles.modalOverlay} 
+        activeOpacity={1} 
+        onPress={() => setShowLegendPopup(false)}
+      >
+        <View style={[styles.popupContainer, styles.legendPopup, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+          <Text style={[styles.popupTitle, { color: isDark ? theme.text : '#111827' }]}>Map Legend</Text>
+          
+          {Object.entries(CATEGORY_COLORS).filter(([key]) => key !== 'default').map(([key, value]) => (
+            <View key={key} style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: value.color }]} />
+              <Text style={[styles.legendText, { color: isDark ? theme.text : '#374151' }]}>{value.name}</Text>
+            </View>
+          ))}
+          
+          <TouchableOpacity 
+            style={styles.popupCloseButton}
+            onPress={() => setShowLegendPopup(false)}
+          >
+            <Text style={styles.popupCloseText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
+  // Weather Popup Component
+  const WeatherPopup = () => (
+    <Modal
+      visible={showWeatherPopup}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowWeatherPopup(false)}
+    >
+      <TouchableOpacity 
+        style={styles.modalOverlay} 
+        activeOpacity={1} 
+        onPress={() => setShowWeatherPopup(false)}
+      >
+        <View style={[styles.popupContainer, styles.weatherPopup, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+          <Text style={[styles.popupTitle, { color: isDark ? theme.text : '#111827' }]}>Weather in the area</Text>
+          
+          {/* Current Temperature */}
+          <View style={styles.weatherMain}>
+            <Text style={[styles.weatherTemp, { color: isDark ? theme.text : '#111827' }]}>{weatherData.temp}°</Text>
+            <Ionicons name={weatherData.icon as any} size={48} color="#F59E0B" />
+          </View>
+          
+          <Text style={[styles.weatherCondition, { color: isDark ? theme.textSecondary : '#6B7280' }]}>
+            {weatherData.condition} · Feels like: {weatherData.feelsLike}°
+          </Text>
+          <Text style={[styles.weatherHighLow, { color: isDark ? theme.textSecondary : '#9CA3AF' }]}>
+            H: {weatherData.high}° L: {weatherData.low}°
+          </Text>
+          
+          {/* Hourly Forecast */}
+          <View style={styles.hourlyContainer}>
+            {weatherData.hourly.map((hour, index) => (
+              <View key={index} style={styles.hourlyItem}>
+                <Text style={[styles.hourlyTemp, { color: isDark ? theme.text : '#111827' }]}>{hour.temp}°</Text>
+                <Ionicons name={hour.icon as any} size={20} color="#F59E0B" />
+                <Text style={[styles.hourlyTime, { color: isDark ? theme.textSecondary : '#6B7280' }]}>{hour.time}</Text>
+              </View>
+            ))}
+          </View>
+          
+          {/* Air Quality */}
+          <View style={[styles.airQualityContainer, { backgroundColor: isDark ? theme.background : '#F3F4F6' }]}>
+            <Text style={[styles.airQualityLabel, { color: isDark ? theme.textSecondary : '#6B7280' }]}>Air quality</Text>
+            <View style={styles.airQualityValue}>
+              <View style={[styles.airQualityDot, { backgroundColor: '#22C55E' }]} />
+              <Text style={[styles.airQualityText, { color: isDark ? theme.text : '#111827' }]}>
+                {weatherData.airQuality.status} · {weatherData.airQuality.aqi} AQI
+              </Text>
+            </View>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.popupCloseButton}
+            onPress={() => setShowWeatherPopup(false)}
+          >
+            <Text style={styles.popupCloseText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
+  // Map Layer Popup Component
+  const MapLayerPopup = () => (
+    <Modal
+      visible={showMapLayerPopup}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowMapLayerPopup(false)}
+    >
+      <TouchableOpacity 
+        style={styles.modalOverlay} 
+        activeOpacity={1} 
+        onPress={() => setShowMapLayerPopup(false)}
+      >
+        <View style={[styles.popupContainer, styles.mapLayerPopup, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+          <Text style={[styles.popupTitle, { color: isDark ? theme.text : '#111827' }]}>Map Type</Text>
+          
+          <View style={styles.mapLayerOptions}>
+            {Object.entries(MAP_STYLES).map(([key, value]) => (
+              <TouchableOpacity
+                key={key}
+                style={[
+                  styles.mapLayerOption,
+                  mapStyle === key && styles.mapLayerOptionActive,
+                  { backgroundColor: isDark ? theme.background : '#F3F4F6' }
+                ]}
+                onPress={() => selectMapStyle(key as keyof typeof MAP_STYLES)}
+              >
+                <Ionicons 
+                  name={value.icon as any} 
+                  size={28} 
+                  color={mapStyle === key ? '#06B6D4' : (isDark ? theme.textSecondary : '#6B7280')} 
+                />
+                <Text style={[
+                  styles.mapLayerOptionText,
+                  { color: mapStyle === key ? '#06B6D4' : (isDark ? theme.text : '#374151') }
+                ]}>
+                  {value.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.popupCloseButton}
+            onPress={() => setShowMapLayerPopup(false)}
+          >
+            <Text style={styles.popupCloseText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer, { backgroundColor: isDark ? theme.background : '#F9FAFB' }]}>
@@ -296,12 +430,9 @@ export default function UniverseMapScreen() {
       <StatusBar barStyle="dark-content" />
 
       {/* Map */}
-      {/* @ts-ignore - MapLibreGL types are incomplete */}
       <MapLibreGL.MapView
         key={mapStyle}
         style={styles.map}
-        // @ts-ignore
-        styleURL={MAP_STYLES[mapStyle].type === 'vector' ? (MAP_STYLES[mapStyle] as any).url : undefined}
         logoEnabled={false}
         attributionEnabled={false}
         zoomEnabled={true}
@@ -319,27 +450,22 @@ export default function UniverseMapScreen() {
           maxZoomLevel={18}
         />
 
-        {/* Raster tile source for OSM and Satellite */}
-        {MAP_STYLES[mapStyle].type === 'raster' && (
-          <MapLibreGL.RasterSource
-            id="raster-source"
-            tileUrlTemplates={[(MAP_STYLES[mapStyle] as any).tileUrl]}
-            tileSize={256}
-          >
-            <MapLibreGL.RasterLayer
-              id="raster-layer"
-              sourceID="raster-source"
-              style={{ rasterOpacity: 1 }}
-            />
-          </MapLibreGL.RasterSource>
-        )}
+        {/* Raster tile source */}
+        <MapLibreGL.RasterSource
+          id="raster-source"
+          tileUrlTemplates={[MAP_STYLES[mapStyle].tileUrl]}
+          tileSize={256}
+        >
+          <MapLibreGL.RasterLayer
+            id="raster-layer"
+            sourceID="raster-source"
+            style={{ rasterOpacity: 1 }}
+          />
+        </MapLibreGL.RasterSource>
 
         {/* User Location Marker */}
         {userLocation && (
-          <MapLibreGL.PointAnnotation
-            id="user-location"
-            coordinate={userLocation}
-          >
+          <MapLibreGL.PointAnnotation id="user-location" coordinate={userLocation}>
             <View style={styles.userLocationMarker}>
               <View style={styles.userLocationDot} />
             </View>
@@ -352,7 +478,16 @@ export default function UniverseMapScreen() {
             key={universe.id}
             id={universe.id}
             coordinate={[universe.longitude, universe.latitude]}
-            onSelected={() => handleMarkerPress(universe)}
+            onSelected={() => {
+              if (cameraRef.current) {
+                cameraRef.current.setCamera({
+                  centerCoordinate: [universe.longitude, universe.latitude],
+                  zoomLevel: 10,
+                  animationDuration: 500,
+                });
+              }
+              bottomSheetRef.current?.snapToIndex(1);
+            }}
           >
             <View style={[styles.marker, { backgroundColor: getMarkerColor(universe.category_id) }]}>
               <Ionicons name="planet" size={16} color="#fff" />
@@ -365,7 +500,6 @@ export default function UniverseMapScreen() {
       {/* Search Overlay */}
       <SafeAreaView style={styles.searchOverlay}>
         <View style={styles.searchRow}>
-          {/* Back Button */}
           <TouchableOpacity 
             style={[styles.backButton, { backgroundColor: isDark ? theme.surface : '#fff' }]}
             onPress={() => navigation.goBack()}
@@ -373,7 +507,6 @@ export default function UniverseMapScreen() {
             <Ionicons name="arrow-back" size={24} color={isDark ? theme.text : '#000'} />
           </TouchableOpacity>
 
-          {/* Search Bar */}
           <View style={[styles.searchBar, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
             <Ionicons name="search" size={20} color="#999" />
             <TextInput
@@ -427,33 +560,44 @@ export default function UniverseMapScreen() {
         </View>
       </SafeAreaView>
 
-      {/* Weather Icon (subtle, top right) */}
-      <View style={[styles.weatherContainer, { backgroundColor: isDark ? theme.surface : 'rgba(255, 255, 255, 0.9)' }]}>
-        <Ionicons name="partly-sunny" size={20} color="#6B7280" />
+      {/* Floating Icons - Left Side (Legend) */}
+      <View style={styles.floatingIconsLeft}>
+        <TouchableOpacity
+          style={[styles.floatingIcon, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+          onPress={() => setShowLegendPopup(true)}
+        >
+          <Ionicons name="information-circle-outline" size={24} color={isDark ? theme.text : '#374151'} />
+        </TouchableOpacity>
       </View>
 
-      {/* Map Controls (right side) - Map style above location */}
-      <View style={styles.mapControls}>
-        {/* Map Style Toggle */}
+      {/* Floating Icons - Right Side (Weather, Layers, Location) */}
+      <View style={styles.floatingIconsRight}>
         <TouchableOpacity
-          style={[styles.mapControlButton, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-          onPress={cycleMapStyle}
+          style={[styles.floatingIcon, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+          onPress={() => setShowWeatherPopup(true)}
         >
-          <Ionicons 
-            name={MAP_STYLES[mapStyle].icon as any} 
-            size={22} 
-            color={isDark ? theme.text : '#374151'} 
-          />
+          <Ionicons name="partly-sunny-outline" size={24} color={isDark ? theme.text : '#374151'} />
         </TouchableOpacity>
 
-        {/* My Location Button */}
         <TouchableOpacity
-          style={[styles.mapControlButton, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+          style={[styles.floatingIcon, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+          onPress={() => setShowMapLayerPopup(true)}
+        >
+          <Ionicons name="layers-outline" size={24} color={isDark ? theme.text : '#374151'} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.floatingIcon, { backgroundColor: isDark ? theme.surface : '#fff' }]}
           onPress={centerOnUserLocation}
         >
-          <Ionicons name="locate" size={22} color={isDark ? theme.text : '#374151'} />
+          <Ionicons name="locate-outline" size={24} color={isDark ? theme.text : '#374151'} />
         </TouchableOpacity>
       </View>
+
+      {/* Popups */}
+      <LegendPopup />
+      <WeatherPopup />
+      <MapLayerPopup />
 
       {/* Bottom Sheet with Universe Cards */}
       <BottomSheet
@@ -588,29 +732,22 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Weather Icon
-  weatherContainer: {
+  // Floating Icons - Lyft-inspired
+  floatingIconsLeft: {
     position: 'absolute',
-    top: Platform.OS === 'android' ? 56 : 60,
-    right: 16,
-    padding: 8,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    left: 16,
+    bottom: '42%',
+    gap: 12,
   },
 
-  // Map Controls
-  mapControls: {
+  floatingIconsRight: {
     position: 'absolute',
-    bottom: '40%',
     right: 16,
-    gap: 8,
+    bottom: '42%',
+    gap: 12,
   },
 
-  mapControlButton: {
+  floatingIcon: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -618,7 +755,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
   },
@@ -656,6 +793,176 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 4,
+  },
+
+  // Modal & Popups
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  popupContainer: {
+    borderRadius: 20,
+    padding: 20,
+    marginHorizontal: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+
+  popupTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+
+  popupCloseButton: {
+    backgroundColor: '#E0F7FA',
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+
+  popupCloseText: {
+    color: '#06B6D4',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+
+  // Legend Popup
+  legendPopup: {
+    width: width * 0.75,
+  },
+
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 12,
+  },
+
+  legendText: {
+    fontSize: 15,
+  },
+
+  // Weather Popup
+  weatherPopup: {
+    width: width * 0.85,
+  },
+
+  weatherMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+
+  weatherTemp: {
+    fontSize: 56,
+    fontWeight: '300',
+  },
+
+  weatherCondition: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+
+  weatherHighLow: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+
+  hourlyContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+
+  hourlyItem: {
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  hourlyTemp: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  hourlyTime: {
+    fontSize: 12,
+  },
+
+  airQualityContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+  },
+
+  airQualityLabel: {
+    fontSize: 14,
+  },
+
+  airQualityValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+
+  airQualityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+
+  airQualityText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  // Map Layer Popup
+  mapLayerPopup: {
+    width: width * 0.75,
+  },
+
+  mapLayerOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: 12,
+  },
+
+  mapLayerOption: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+
+  mapLayerOptionActive: {
+    borderWidth: 2,
+    borderColor: '#06B6D4',
+  },
+
+  mapLayerOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 
   // Bottom Sheet
