@@ -77,37 +77,71 @@ export default function UniverseDiscoveryScreen() {
     }
   };
 
+  // Specific universe IDs for our curated parks
+  const FEATURED_PARK_IDS = [
+    '122e166f-9a09-4b11-8441-f4f4052df0d1', // Walt Disney World
+    '44a3967a-58d6-5b56-76c6-3a2816500f8f', // Universal Studios Florida
+    'bb61f8a0-ec49-4cea-4f0c-d4bcf2dc526c', // Islands of Adventure
+    'bf7beab6-45bb-492e-8f8b-c424f7eab9ed', // SeaWorld Orlando
+  ];
+
   const loadUniverses = async () => {
     try {
-      // Build query for featured universe
+      // Build query for featured universe (Walt Disney World)
       let featuredQuery = supabase
         .from('atlas_universes')
         .select('*')
-        .eq('status', 'published')
-        .eq('is_featured', true)
-        .order('published_at', { ascending: false })
-        .limit(1);
+        .eq('id', '122e166f-9a09-4b11-8441-f4f4052df0d1')
+        .single();
 
-      // Build query for all universes
-      let universesQuery = supabase
+      // Build query for popular universes - only our curated parks
+      let popularQuery = supabase
         .from('atlas_universes')
         .select('*')
+        .in('id', FEATURED_PARK_IDS)
         .eq('status', 'published')
-        .order('total_signals', { ascending: false });
+        .order('place_count', { ascending: false })
+        .limit(5);
+
+      // Build query for nearby universes - same parks for now
+      let nearbyQuery = supabase
+        .from('atlas_universes')
+        .select('*')
+        .in('id', FEATURED_PARK_IDS)
+        .eq('status', 'published')
+        .order('place_count', { ascending: false })
+        .limit(4);
 
       // Apply category filter if not "All"
       if (activeCategory !== 'All') {
         const selectedCat = categories.find(c => c.name === activeCategory);
         if (selectedCat) {
-          featuredQuery = featuredQuery.eq('category_id', selectedCat.id);
-          universesQuery = universesQuery.eq('category_id', selectedCat.id);
+          // For category filter, still use the curated parks but filter by category
+          popularQuery = supabase
+            .from('atlas_universes')
+            .select('*')
+            .in('id', FEATURED_PARK_IDS)
+            .eq('status', 'published')
+            .eq('category_id', selectedCat.id)
+            .order('place_count', { ascending: false })
+            .limit(5);
+          
+          nearbyQuery = supabase
+            .from('atlas_universes')
+            .select('*')
+            .in('id', FEATURED_PARK_IDS)
+            .eq('status', 'published')
+            .eq('category_id', selectedCat.id)
+            .order('place_count', { ascending: false })
+            .limit(4);
         }
       }
 
       // Execute queries
-      const [featuredResult, universesResult] = await Promise.all([
-        featuredQuery.single(),
-        universesQuery.limit(10),
+      const [featuredResult, popularResult, nearbyResult] = await Promise.all([
+        featuredQuery,
+        popularQuery,
+        nearbyQuery,
       ]);
 
       // Set featured universe
@@ -117,10 +151,11 @@ export default function UniverseDiscoveryScreen() {
         setFeaturedUniverse(null);
       }
 
-      // Split universes into popular and nearby (for now, just split the list)
-      const allUniverses = universesResult.data || [];
-      setPopularUniverses(allUniverses.slice(0, 4));
-      setNearbyUniverses(allUniverses.slice(0, 3));
+      // Set popular universes (up to 5)
+      setPopularUniverses(popularResult.data || []);
+      
+      // Set nearby universes
+      setNearbyUniverses(nearbyResult.data || []);
 
     } catch (error) {
       console.error('Error loading universes:', error);
