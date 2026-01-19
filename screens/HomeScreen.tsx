@@ -1172,11 +1172,17 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   };
 
   const switchToStandardMode = () => {
+    // Clear camera ref to prevent issues when unmounting map
+    if (cameraRef.current) {
+      cameraRef.current = null;
+    }
+    // Reset all map-related state
     setViewMode('standard');
     setSearchQuery('');
     setSearchedAddress(null);
     setTargetLocation(null);
     setSearchedAddressName('');
+    setSelectedPlace(null);
   };
 
   // ============================================
@@ -2614,7 +2620,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       <BottomSheet
         ref={bottomSheetRef}
         index={1}
-        snapPoints={searchedAddress ? [60, '35%', '50%'] : [60, '30%', '50%']}
+        snapPoints={searchedAddress ? [60, '35%', '45%'] : [60, '30%', '45%']}
+        topInset={Platform.OS === 'ios' ? 180 : 160}
         backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
         handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
         enablePanDownToClose={false}
