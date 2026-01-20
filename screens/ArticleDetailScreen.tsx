@@ -79,6 +79,13 @@ export default function ArticleDetailScreen() {
   // Fetch full article data to ensure content_blocks are loaded
   const loadFullArticle = async () => {
     try {
+      // Validate article ID before making database queries
+      if (!initialArticle?.id) {
+        console.error('Error: Article ID is missing or null');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       console.log('=== Loading full article ===');
       console.log('Initial article ID:', initialArticle.id);
@@ -121,12 +128,14 @@ export default function ArticleDetailScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user?.id || null);
 
-      // Load related articles
-      const related = await getRelatedArticles(article.id, article.category_id, 4);
-      setRelatedArticles(related);
+      // Load related articles (only if article ID is valid)
+      if (article?.id) {
+        const related = await getRelatedArticles(article.id, article.category_id, 4);
+        setRelatedArticles(related);
+      }
 
       // Load user reaction if logged in
-      if (user?.id) {
+      if (user?.id && article?.id) {
         const reaction = await getUserReaction(article.id, user.id);
         setUserReaction(reaction);
 
@@ -139,6 +148,8 @@ export default function ArticleDetailScreen() {
   };
 
   const incrementViewCount = async () => {
+    if (!article?.id) return;
+    
     try {
       await supabase
         .from('atlas_articles')
