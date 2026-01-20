@@ -137,11 +137,13 @@ export interface DividerBlock extends ContentBlock {
 interface PlaceData {
   id: string;
   name: string;
-  category: string;
-  rating?: number;
-  review_count?: number;
-  photos?: string[];
-  address?: string;
+  tavvy_category?: string;
+  tavvy_subcategory?: string;
+  photos?: any; // jsonb
+  street?: string;
+  city?: string;
+  region?: string;
+  cover_image_url?: string;
 }
 
 // ============================================================================
@@ -269,7 +271,7 @@ const PlaceCardBlockComponent: React.FC<{ block: PlaceCardBlock }> = ({ block })
     try {
       const { data, error } = await supabase
         .from('places')
-        .select('id, name, category, rating, review_count, photos, address, city, state')
+        .select('id, name, tavvy_category, tavvy_subcategory, photos, street, city, region, cover_image_url')
         .eq('id', block.place_id)
         .single();
 
@@ -300,7 +302,10 @@ const PlaceCardBlockComponent: React.FC<{ block: PlaceCardBlock }> = ({ block })
     return null;
   }
 
-  const placeImage = place.photos?.[0] || 'https://via.placeholder.com/100';
+  // Get image from cover_image_url or first photo in photos array
+  const placeImage = place.cover_image_url || 
+    (Array.isArray(place.photos) ? place.photos[0]?.url || place.photos[0] : null) || 
+    'https://via.placeholder.com/100';
 
   return (
     <View style={styles.placeCard}>
@@ -313,15 +318,14 @@ const PlaceCardBlockComponent: React.FC<{ block: PlaceCardBlock }> = ({ block })
           <Text style={styles.placeCardName} numberOfLines={1}>
             {place.name}
           </Text>
-          <View style={styles.placeCardRating}>
-            <Text style={styles.placeCardRatingText}>
-              {place.rating?.toFixed(1) || '4.5'}
-            </Text>
-            <StarRating rating={place.rating || 4.5} size={12} />
-          </View>
           <Text style={styles.placeCardCategory}>
-            {place.category}
+            {place.tavvy_category || place.tavvy_subcategory || 'Local Business'}
           </Text>
+          {place.city && (
+            <Text style={styles.placeCardLocation}>
+              {place.city}{place.region ? `, ${place.region}` : ''}
+            </Text>
+          )}
         </View>
       </View>
       <TouchableOpacity
@@ -733,6 +737,11 @@ const styles = StyleSheet.create({
   placeCardCategory: {
     fontSize: 13,
     color: '#6B7280',
+  },
+  placeCardLocation: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 2,
   },
   placeCardLoading: {
     backgroundColor: '#F3F4F6',
