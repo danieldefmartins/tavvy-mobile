@@ -1,12 +1,24 @@
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
-import { View, Text, StyleSheet, Animated, AppState, AppStateStatus } from 'react-native';
-import * as Network from 'expo-network';
+import { View, Text, StyleSheet, Animated, AppState, AppStateStatus, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+// Safe import of expo-network with fallback
+let Network: any = null;
+let NetworkStateType: any = null;
+
+try {
+  // Dynamic require to catch native module errors
+  const ExpoNetwork = require('expo-network');
+  Network = ExpoNetwork;
+  NetworkStateType = ExpoNetwork.NetworkStateType;
+} catch (error) {
+  console.warn('[NetworkContext] expo-network not available, using fallback');
+}
 
 interface NetworkContextType {
   isConnected: boolean;
   isInternetReachable: boolean;
-  connectionType: Network.NetworkStateType | null;
+  connectionType: any;
 }
 
 const NetworkContext = createContext<NetworkContextType>({
@@ -23,7 +35,7 @@ interface NetworkProviderProps {
 
 /**
  * Network Provider that monitors connectivity and shows offline banner.
- * Uses expo-network which is already included in Expo.
+ * Uses expo-network with safe fallback if native module is unavailable.
  */
 export const NetworkProvider: React.FC<NetworkProviderProps> = ({ children }) => {
   const [networkState, setNetworkState] = useState<NetworkContextType>({
@@ -36,6 +48,16 @@ export const NetworkProvider: React.FC<NetworkProviderProps> = ({ children }) =>
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const checkNetwork = async () => {
+    // If expo-network is not available, assume connected
+    if (!Network || !Network.getNetworkStateAsync) {
+      setNetworkState({
+        isConnected: true,
+        isInternetReachable: true,
+        connectionType: null,
+      });
+      return;
+    }
+
     try {
       const state = await Network.getNetworkStateAsync();
       const isConnected = state.isConnected ?? true;
@@ -69,10 +91,22 @@ export const NetworkProvider: React.FC<NetworkProviderProps> = ({ children }) =>
       }
     } catch (error) {
       console.warn('[Network] Error checking network state:', error);
+      // On error, assume connected to prevent false offline states
+      setNetworkState({
+        isConnected: true,
+        isInternetReachable: true,
+        connectionType: null,
+      });
     }
   };
 
   useEffect(() => {
+    // Only set up network monitoring if expo-network is available
+    if (!Network) {
+      console.log('[NetworkContext] Running without network monitoring');
+      return;
+    }
+
     // Check initial state
     checkNetwork();
 
