@@ -24,7 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import MapLibreGL from '@maplibre/maplibre-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
+import BottomSheet, { BottomSheetFlatList, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThemeContext } from '../contexts/ThemeContext';
@@ -339,6 +339,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // Refs
   const cameraRef = useRef<any>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
+  const categoryBottomSheetRef = useRef<BottomSheet>(null);
   const searchInputRef = useRef<TextInput>(null);
 
   // ============================================
@@ -2756,33 +2757,213 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         </TouchableOpacity>
       </Modal>
 
-      {/* Bottom Sheet with Place Cards or Address Card */}
-      <BottomSheet
-        ref={bottomSheetRef}
-        index={1}
-        snapPoints={searchedAddress ? [40, '40%', '65%'] : [40, '35%', '65%']}
-        backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
-        handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
-        enablePanDownToClose={false}
-        enableContentPanningGesture={false}
+      {/* Bottom Sheet with Place Cards or Address Card - hide when category results showing */}
+      {!showCategoryResults && (
+        <BottomSheet
+          ref={bottomSheetRef}
+          index={1}
+          snapPoints={searchedAddress ? [40, '40%', '65%'] : [40, '35%', '65%']}
+          backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
+          handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
+          enablePanDownToClose={false}
+          enableContentPanningGesture={false}
+        >
+          {searchedAddress ? (
+            <ScrollView 
+              style={styles.addressCardScrollView}
+              showsVerticalScrollIndicator={false}
+            >
+              {renderAddressInfoCard()}
+            </ScrollView>
+          ) : (
+            <BottomSheetFlatList
+              data={filteredPlaces}
+              keyExtractor={(item) => item.id}
+              renderItem={renderPlaceCard}
+              contentContainerStyle={styles.bottomSheetContent}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
+        </BottomSheet>
+      )}
+
+      {/* Category Results Bottom Sheet - overlay on map */}
+      {showCategoryResults && (
+        <BottomSheet
+          ref={categoryBottomSheetRef}
+          index={1}
+          snapPoints={['15%', '50%', '85%']}
+          backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
+          handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
+          enablePanDownToClose={false}
+        >
+          {/* Category Header */}
+          <View style={[styles.categorySheetHeader, { backgroundColor: isDark ? theme.background : '#fff' }]}>
+            <View style={styles.categoryResultsTitleRow}>
+              <Text style={[styles.categoryResultsTitle, { color: isDark ? theme.text : '#000' }]}>{selectedCategory}</Text>
+              <TouchableOpacity onPress={closeCategoryResults} style={styles.categoryResultsClose}>
+                <Ionicons name="close" size={24} color={isDark ? theme.text : '#000'} />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Quick Filter Chips */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickFiltersRow}>
+              <TouchableOpacity 
+                style={[styles.filterChip, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}
+                onPress={() => setShowFilterModal(true)}
+              >
+                <Ionicons name="options-outline" size={16} color={isDark ? theme.text : '#333'} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[
+                  styles.filterChip, 
+                  { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' },
+                  activeFilters.hours === 'Open now' && styles.filterChipActive
+                ]}
+                onPress={() => setActiveFilters(prev => ({ ...prev, hours: prev.hours === 'Open now' ? 'Any' : 'Open now' }))}
+              >
+                <Text style={[styles.filterChipText, { color: isDark ? theme.text : '#333' }]}>Open now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[
+                  styles.filterChip, 
+                  { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' },
+                  activeFilters.priceMax < 100 && styles.filterChipActive
+                ]}
+                onPress={() => setShowFilterModal(true)}
+              >
+                <Text style={[styles.filterChipText, { color: isDark ? theme.text : '#333' }]}>Price</Text>
+                <Ionicons name="chevron-down" size={14} color={isDark ? theme.text : '#333'} />
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+
+          {/* Results List */}
+          {isLoadingCategoryResults ? (
+            <View style={styles.categoryResultsLoading}>
+              <ActivityIndicator size="large" color="#0A84FF" />
+              <Text style={[styles.loadingText, { color: isDark ? theme.textSecondary : '#666' }]}>Finding {selectedCategory.toLowerCase()}...</Text>
+            </View>
+          ) : (
+            <BottomSheetScrollView contentContainerStyle={styles.categoryResultsList}>
+              {categoryResultsPlaces.length === 0 ? (
+                <View style={styles.noResultsContainer}>
+                  <Ionicons name="search-outline" size={48} color={isDark ? theme.textSecondary : '#999'} />
+                  <Text style={[styles.noResultsText, { color: isDark ? theme.textSecondary : '#666' }]}>No {selectedCategory.toLowerCase()} found nearby</Text>
+                  <Text style={[styles.noResultsSubtext, { color: isDark ? theme.textSecondary : '#999' }]}>Try adjusting your filters or search in a different area</Text>
+                </View>
+              ) : (
+                categoryResultsPlaces.map((place, catIndex) => (
+                  <TouchableOpacity
+                    key={`category-${place.id}-${catIndex}`}
+                    style={[styles.categoryResultCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+                    onPress={() => handlePlacePress(place)}
+                    activeOpacity={0.9}
+                  >
+                    {/* Photo */}
+                    <View style={styles.categoryResultPhotoContainer}>
+                      <Image
+                        source={{ uri: place.photo || getCategoryFallbackImage(place.category) }}
+                        style={styles.categoryResultPhoto}
+                        resizeMode="cover"
+                      />
+                      <LinearGradient
+                        colors={['transparent', 'rgba(0,0,0,0.7)']}
+                        style={styles.categoryResultPhotoGradient}
+                      />
+                      <View style={styles.categoryResultPhotoOverlay}>
+                        <Text style={styles.categoryResultPhotoName} numberOfLines={1}>{place.name}</Text>
+                        <Text style={styles.categoryResultPhotoMeta} numberOfLines={1}>
+                          {place.category} • {place.city || place.address_line1 || 'Nearby'}
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    {/* 2x2 Signal Grid */}
+                    <View style={styles.categoryResultSignalGrid}>
+                      {getDisplaySignals(place.signals).map((signal, idx) => (
+                        <View 
+                          key={`cat-${catIndex}-${place.id}-sig-${idx}`} 
+                          style={[styles.categoryResultSignalBadge2x2, { backgroundColor: getSignalColor(signal.bucket) }]}
+                        >
+                          <Ionicons 
+                            name={getSignalIcon(signal.bucket) as any} 
+                            size={14} 
+                            color="#FFFFFF" 
+                            style={{ marginRight: 4 }} 
+                          />
+                          <Text style={styles.categoryResultSignalText2x2} numberOfLines={1}>
+                            {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </BottomSheetScrollView>
+          )}
+        </BottomSheet>
+      )}
+
+      {/* Filter Modal for Category Results */}
+      <Modal
+        visible={showFilterModal && showCategoryResults}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowFilterModal(false)}
       >
-        {searchedAddress ? (
-          <ScrollView 
-            style={styles.addressCardScrollView}
-            showsVerticalScrollIndicator={false}
-          >
-            {renderAddressInfoCard()}
+        <SafeAreaView style={[styles.filterModalContainer, { backgroundColor: isDark ? theme.background : '#fff' }]}>
+          <View style={[styles.filterModalHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee' }]}>
+            <Text style={[styles.filterModalTitle, { color: isDark ? theme.text : '#000' }]}>Filters</Text>
+            <TouchableOpacity onPress={() => setShowFilterModal(false)} style={styles.filterModalClose}>
+              <View style={[styles.filterModalCloseCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}>
+                <Ionicons name="close" size={20} color={isDark ? theme.text : '#000'} />
+              </View>
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={styles.filterModalContent}>
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Price per person</Text>
+              <View style={styles.priceRangeContainer}>
+                <Text style={[styles.priceRangeLabel, { color: isDark ? theme.text : '#000' }]}>
+                  ${activeFilters.priceMin}–${activeFilters.priceMax}+
+                </Text>
+              </View>
+            </View>
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Hours</Text>
+              <View style={styles.filterOptionsRow}>
+                {['Any', 'Open now'].map((hours) => (
+                  <TouchableOpacity
+                    key={hours}
+                    style={[
+                      styles.filterOption,
+                      { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
+                      activeFilters.hours === hours && styles.filterOptionActive
+                    ]}
+                    onPress={() => setActiveFilters(prev => ({ ...prev, hours }))}
+                  >
+                    <Text style={[
+                      styles.filterOptionText,
+                      { color: isDark ? theme.text : '#000' },
+                      activeFilters.hours === hours && styles.filterOptionTextActive
+                    ]}>{hours}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           </ScrollView>
-        ) : (
-          <BottomSheetFlatList
-            data={filteredPlaces}
-            keyExtractor={(item) => item.id}
-            renderItem={renderPlaceCard}
-            contentContainerStyle={styles.bottomSheetContent}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-      </BottomSheet>
+          <View style={[styles.filterModalButtons, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee' }]}>
+            <TouchableOpacity style={[styles.filterClearBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e8f4f8' }]} onPress={clearFilters}>
+              <Text style={[styles.filterClearBtnText, { color: '#0A84FF' }]}>Clear</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.filterApplyBtn} onPress={applyFilters}>
+              <Text style={styles.filterApplyBtnText}>Apply</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </View>
   );
 
@@ -2802,307 +2983,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // Get filter config for current category
   const filterConfig = CATEGORY_FILTERS[selectedCategory] || CATEGORY_FILTERS.default;
 
-  // Render category results view with filter bottom sheet
-  if (showCategoryResults) {
-    return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: isDark ? theme.background : BG }]}>
-        {/* Category Results Header */}
-        <View style={[styles.categoryResultsHeader, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-          <View style={styles.categoryResultsTitleRow}>
-            <Text style={[styles.categoryResultsTitle, { color: isDark ? theme.text : '#000' }]}>{selectedCategory}</Text>
-            <TouchableOpacity onPress={closeCategoryResults} style={styles.categoryResultsClose}>
-              <Ionicons name="close" size={24} color={isDark ? theme.text : '#000'} />
-            </TouchableOpacity>
-          </View>
-          
-          {/* Quick Filter Chips */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickFiltersRow}>
-            <TouchableOpacity 
-              style={[styles.filterChip, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}
-              onPress={() => setShowFilterModal(true)}
-            >
-              <Ionicons name="options-outline" size={16} color={isDark ? theme.text : '#333'} />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[
-                styles.filterChip, 
-                { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' },
-                activeFilters.hours === 'Open now' && styles.filterChipActive
-              ]}
-              onPress={() => setActiveFilters(prev => ({ ...prev, hours: prev.hours === 'Open now' ? 'Any' : 'Open now' }))}
-            >
-              <Text style={[styles.filterChipText, { color: isDark ? theme.text : '#333' }]}>Open now</Text>
-            </TouchableOpacity>
-            {filterConfig.cuisines && (
-              <TouchableOpacity 
-                style={[
-                  styles.filterChip, 
-                  { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' },
-                  activeFilters.cuisine !== 'Any' && styles.filterChipActive
-                ]}
-                onPress={() => setShowFilterModal(true)}
-              >
-                <Text style={[styles.filterChipText, { color: isDark ? theme.text : '#333' }]}>
-                  {activeFilters.cuisine === 'Any' ? 'Cuisine' : activeFilters.cuisine}
-                </Text>
-                <Ionicons name="chevron-down" size={14} color={isDark ? theme.text : '#333'} />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity 
-              style={[
-                styles.filterChip, 
-                { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' },
-                activeFilters.priceMax < 100 && styles.filterChipActive
-              ]}
-              onPress={() => setShowFilterModal(true)}
-            >
-              <Text style={[styles.filterChipText, { color: isDark ? theme.text : '#333' }]}>Price</Text>
-              <Ionicons name="chevron-down" size={14} color={isDark ? theme.text : '#333'} />
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-
-        {/* Results List */}
-        {isLoadingCategoryResults ? (
-          <View style={styles.categoryResultsLoading}>
-            <ActivityIndicator size="large" color="#0A84FF" />
-            <Text style={[styles.loadingText, { color: isDark ? theme.textSecondary : '#666' }]}>Finding {selectedCategory.toLowerCase()}...</Text>
-          </View>
-        ) : (
-          <ScrollView contentContainerStyle={styles.categoryResultsList}>
-            {categoryResultsPlaces.length === 0 ? (
-              <View style={styles.noResultsContainer}>
-                <Ionicons name="search-outline" size={48} color={isDark ? theme.textSecondary : '#999'} />
-                <Text style={[styles.noResultsText, { color: isDark ? theme.textSecondary : '#666' }]}>No {selectedCategory.toLowerCase()} found nearby</Text>
-                <Text style={[styles.noResultsSubtext, { color: isDark ? theme.textSecondary : '#999' }]}>Try adjusting your filters or search in a different area</Text>
-              </View>
-            ) : (
-              categoryResultsPlaces.map((place, catIndex) => (
-                <TouchableOpacity
-                  key={`category-${place.id}-${catIndex}`}
-                  style={[styles.categoryResultCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-                  onPress={() => handlePlacePress(place)}
-                  activeOpacity={0.9}
-                >
-                  {/* Photo */}
-                  <View style={styles.categoryResultPhotoContainer}>
-                    <Image
-                      source={{ uri: place.photo || getCategoryFallbackImage(place.category) }}
-                      style={styles.categoryResultPhoto}
-                      resizeMode="cover"
-                    />
-                    <LinearGradient
-                      colors={['transparent', 'rgba(0,0,0,0.7)']}
-                      style={styles.categoryResultPhotoGradient}
-                    />
-                    <View style={styles.categoryResultPhotoOverlay}>
-                      <Text style={styles.categoryResultPhotoName} numberOfLines={1}>{place.name}</Text>
-                      <Text style={styles.categoryResultPhotoMeta} numberOfLines={1}>
-                        {place.category} • {place.city || place.address_line1 || 'Nearby'}
-                      </Text>
-                    </View>
-                  </View>
-                  
-                  {/* 2x2 Signal Grid */}
-                  <View style={styles.categoryResultSignalGrid}>
-                    {getDisplaySignals(place.signals).map((signal, idx) => (
-                      <View 
-                        key={`cat-${catIndex}-${place.id}-sig-${idx}`} 
-                        style={[styles.categoryResultSignalBadge2x2, { backgroundColor: getSignalColor(signal.bucket) }]}
-                      >
-                        <Ionicons 
-                          name={getSignalIcon(signal.bucket) as any} 
-                          size={14} 
-                          color="#FFFFFF" 
-                          style={{ marginRight: 4 }} 
-                        />
-                        <Text style={styles.categoryResultSignalText2x2} numberOfLines={1}>
-                          {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-          </ScrollView>
-        )}
-
-        {/* Filter Modal */}
-        <Modal
-          visible={showFilterModal}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setShowFilterModal(false)}
-        >
-          <SafeAreaView style={[styles.filterModalContainer, { backgroundColor: isDark ? theme.background : '#fff' }]}>
-            {/* Modal Header */}
-            <View style={[styles.filterModalHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee' }]}>
-              <Text style={[styles.filterModalTitle, { color: isDark ? theme.text : '#000' }]}>Filters</Text>
-              <TouchableOpacity onPress={() => setShowFilterModal(false)} style={styles.filterModalClose}>
-                <View style={[styles.filterModalCloseCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}>
-                  <Ionicons name="close" size={20} color={isDark ? theme.text : '#000'} />
-                </View>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView contentContainerStyle={styles.filterModalContent}>
-              {/* Price Range */}
-              <View style={styles.filterSection}>
-                <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Price per person</Text>
-                <View style={styles.priceRangeContainer}>
-                  <Text style={[styles.priceRangeLabel, { color: isDark ? theme.text : '#000' }]}>
-                    ${activeFilters.priceMin}–${activeFilters.priceMax}+
-                  </Text>
-                </View>
-              </View>
-
-              {/* Tap Rating */}
-              <View style={styles.filterSection}>
-                <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Tap Rating</Text>
-                <View style={styles.moreFiltersWrap}>
-                  {[
-                    { key: 'any', label: 'Any' },
-                    { key: 'mostly_positive', label: 'Mostly Positive' },
-                    { key: 'highly_rated', label: 'Highly Rated' },
-                    { key: 'trending', label: 'Trending' },
-                    { key: 'no_heads_up', label: 'No Heads Up (3mo)' },
-                  ].map((option) => (
-                    <TouchableOpacity
-                      key={option.key}
-                      style={[
-                        styles.moreFilterChip,
-                        { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0', borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.2)' : '#ddd' },
-                        activeFilters.rating === option.key && styles.moreFilterChipActive
-                      ]}
-                      onPress={() => setActiveFilters(prev => ({ ...prev, rating: option.key }))}
-                    >
-                      <Text style={[
-                        styles.moreFilterChipText,
-                        { color: isDark ? theme.text : '#333' },
-                        activeFilters.rating === option.key && styles.moreFilterChipTextActive
-                      ]}>
-                        {option.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Number of Taps */}
-              <View style={styles.filterSection}>
-                <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Number of taps</Text>
-                <View style={styles.filterOptionsRow}>
-                  {['Any', '50+', '100+', '500+'].map((count) => (
-                    <TouchableOpacity
-                      key={count}
-                      style={[
-                        styles.filterOption,
-                        { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
-                        activeFilters.tapCount === count && styles.filterOptionActive
-                      ]}
-                      onPress={() => setActiveFilters(prev => ({ ...prev, tapCount: count }))}
-                    >
-                      <Text style={[
-                        styles.filterOptionText,
-                        { color: isDark ? theme.text : '#000' },
-                        activeFilters.tapCount === count && styles.filterOptionTextActive
-                      ]}>{count}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Hours */}
-              <View style={styles.filterSection}>
-                <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Hours</Text>
-                <View style={styles.filterOptionsRow}>
-                  {['Any', 'Open now', 'Custom'].map((hours) => (
-                    <TouchableOpacity
-                      key={hours}
-                      style={[
-                        styles.filterOption,
-                        { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
-                        activeFilters.hours === hours && styles.filterOptionActive
-                      ]}
-                      onPress={() => setActiveFilters(prev => ({ ...prev, hours }))}
-                    >
-                      <Text style={[
-                        styles.filterOptionText,
-                        { color: isDark ? theme.text : '#000' },
-                        activeFilters.hours === hours && styles.filterOptionTextActive
-                      ]}>{hours}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Cuisine (if applicable) */}
-              {filterConfig.cuisines && (
-                <View style={styles.filterSection}>
-                  <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Cuisine</Text>
-                  <View style={styles.cuisineGrid}>
-                    {filterConfig.cuisines.map((cuisine) => (
-                      <TouchableOpacity
-                        key={cuisine.name}
-                        style={[
-                          styles.cuisineOption,
-                          { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
-                          activeFilters.cuisine === cuisine.name && styles.cuisineOptionActive
-                        ]}
-                        onPress={() => setActiveFilters(prev => ({ ...prev, cuisine: cuisine.name }))}
-                      >
-                        {cuisine.icon && <Ionicons name={cuisine.icon as any} size={20} color={isDark ? theme.text : '#333'} />}
-                        <Text style={[
-                          styles.cuisineOptionText,
-                          { color: isDark ? theme.text : '#000' },
-                          activeFilters.cuisine === cuisine.name && styles.cuisineOptionTextActive
-                        ]}>{cuisine.name}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              {/* More Filters */}
-              <View style={styles.filterSection}>
-                <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>More filters</Text>
-                <View style={styles.moreFiltersWrap}>
-                  {filterConfig.moreFilters.map((filter) => (
-                    <TouchableOpacity
-                      key={filter}
-                      style={[
-                        styles.moreFilterChip,
-                        { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
-                        activeFilters.moreFilters.includes(filter) && styles.moreFilterChipActive
-                      ]}
-                      onPress={() => toggleMoreFilter(filter)}
-                    >
-                      <Text style={[
-                        styles.moreFilterChipText,
-                        { color: isDark ? theme.text : '#000' },
-                        activeFilters.moreFilters.includes(filter) && styles.moreFilterChipTextActive
-                      ]}>{filter}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            </ScrollView>
-
-            {/* Bottom Buttons */}
-            <View style={[styles.filterModalButtons, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee' }]}>
-              <TouchableOpacity style={[styles.filterClearBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e8f4f8' }]} onPress={clearFilters}>
-                <Text style={[styles.filterClearBtnText, { color: '#0A84FF' }]}>Clear</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.filterApplyBtn} onPress={applyFilters}>
-                <Text style={styles.filterApplyBtnText}>Apply</Text>
-              </TouchableOpacity>
-            </View>
-          </SafeAreaView>
-        </Modal>
-      </SafeAreaView>
-    );
-  }
 
   return viewMode === 'standard' ? renderStandardMode() : renderMapMode();
 }
@@ -3952,6 +3832,13 @@ const styles = StyleSheet.create({
   },
 
   // Category Results View
+  categorySheetHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
   categoryResultsHeader: {
     paddingHorizontal: 20,
     paddingTop: 16,
