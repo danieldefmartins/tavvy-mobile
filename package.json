@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "prebuild": "expo prebuild",
     "clean": "rm -rf node_modules ios android && npm install",
-    "postinstall": "patch-package && node -e \"console.log('\\n=== INSTALLED VERSIONS ==='); console.log('expo:', require('expo/package.json').version); console.log('react-native:', require('react-native/package.json').version); console.log('react-native-screens:', require('react-native-screens/package.json').version); console.log('=========================\\n');\""
+    "postinstall": "patch-package && node scripts/remove-fabric-ts.js && node -e \"console.log('\\n=== INSTALLED VERSIONS ==='); console.log('expo:', require('expo/package.json').version); console.log('react-native:', require('react-native/package.json').version); console.log('react-native-screens:', require('react-native-screens/package.json').version); console.log('=========================\\n');\""
   },
   "dependencies": {
     "@expo/ngrok": "^4.1.3",
