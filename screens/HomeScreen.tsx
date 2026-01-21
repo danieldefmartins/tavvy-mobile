@@ -317,6 +317,28 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [showSearchThisArea, setShowSearchThisArea] = useState(false);
   const [isSearchingArea, setIsSearchingArea] = useState(false);
   
+  // Floating icon popup states
+  const [showLegendPopup, setShowLegendPopup] = useState(false);
+  const [showWeatherPopup, setShowWeatherPopup] = useState(false);
+  const [showMapLayerPopup, setShowMapLayerPopup] = useState(false);
+  
+  // Weather data (mock for now - can be connected to real API)
+  const [weatherData] = useState({
+    temp: 72,
+    feelsLike: 70,
+    high: 78,
+    low: 65,
+    condition: 'Sunny',
+    icon: 'sunny',
+    hourly: [
+      { time: 'Now', temp: 72, icon: 'sunny' },
+      { time: '11AM', temp: 74, icon: 'sunny' },
+      { time: '12PM', temp: 76, icon: 'partly-sunny' },
+      { time: '1PM', temp: 78, icon: 'partly-sunny' },
+    ],
+    airQuality: { status: 'Good', aqi: 32 },
+  });
+  
   // Personalization states
   const [greeting, setGreeting] = useState('');
   
@@ -407,6 +429,19 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       await AsyncStorage.setItem(STORAGE_KEYS.RECENT_SEARCHES, JSON.stringify(updated));
     } catch (error) {
       console.log('Error saving recent search:', error);
+    }
+  };
+
+  /**
+   * Center map on user's current location
+   */
+  const centerOnUserLocation = () => {
+    if (userLocation && cameraRef.current) {
+      cameraRef.current.setCamera({
+        centerCoordinate: userLocation,
+        zoomLevel: 14,
+        animationDuration: 500,
+      });
     }
   };
 
@@ -2457,6 +2492,193 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         </TouchableOpacity>
       )}
 
+      {/* Floating Icons - Left Side (Legend) */}
+      <View style={styles.floatingIconsLeft}>
+        <TouchableOpacity
+          style={[styles.floatingIcon, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+          onPress={() => setShowLegendPopup(true)}
+        >
+          <Ionicons name="information-circle-outline" size={24} color={isDark ? theme.text : '#374151'} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Floating Icons - Right Side (Weather, Layers, Location) */}
+      <View style={styles.floatingIconsRight}>
+        <TouchableOpacity
+          style={[styles.floatingIcon, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+          onPress={() => setShowWeatherPopup(true)}
+        >
+          <Ionicons name="partly-sunny-outline" size={24} color={isDark ? theme.text : '#374151'} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.floatingIcon, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+          onPress={() => setShowMapLayerPopup(true)}
+        >
+          <Ionicons name="layers-outline" size={24} color={isDark ? theme.text : '#374151'} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.floatingIcon, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+          onPress={centerOnUserLocation}
+        >
+          <Ionicons name="locate-outline" size={24} color={isDark ? theme.text : '#374151'} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Legend Popup */}
+      <Modal
+        visible={showLegendPopup}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLegendPopup(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowLegendPopup(false)}
+        >
+          <View style={[styles.popupContainer, styles.legendPopup, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+            <Text style={[styles.popupTitle, { color: isDark ? theme.text : '#111827' }]}>Map Legend</Text>
+            
+            {[
+              { color: '#EF4444', name: 'Restaurants' },
+              { color: '#F59E0B', name: 'Cafes' },
+              { color: '#8B5CF6', name: 'Bars' },
+              { color: '#3B82F6', name: 'Shopping' },
+              { color: '#22C55E', name: 'RV & Camping' },
+              { color: '#EC4899', name: 'Hotels' },
+            ].map((item, index) => (
+              <View key={index} style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                <Text style={[styles.legendText, { color: isDark ? theme.text : '#374151' }]}>{item.name}</Text>
+              </View>
+            ))}
+            
+            <TouchableOpacity 
+              style={styles.popupCloseButton}
+              onPress={() => setShowLegendPopup(false)}
+            >
+              <Text style={styles.popupCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Weather Popup */}
+      <Modal
+        visible={showWeatherPopup}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowWeatherPopup(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowWeatherPopup(false)}
+        >
+          <View style={[styles.popupContainer, styles.weatherPopup, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+            <Text style={[styles.popupTitle, { color: isDark ? theme.text : '#111827' }]}>Weather</Text>
+            
+            {/* Current Temperature */}
+            <View style={styles.weatherMain}>
+              <Text style={[styles.weatherTemp, { color: isDark ? theme.text : '#111827' }]}>{weatherData.temp}°</Text>
+              <Ionicons name={weatherData.icon as any} size={48} color="#F59E0B" />
+            </View>
+            
+            <Text style={[styles.weatherCondition, { color: isDark ? theme.textSecondary : '#6B7280' }]}>
+              {weatherData.condition} · Feels like: {weatherData.feelsLike}°
+            </Text>
+            <Text style={[styles.weatherHighLow, { color: isDark ? theme.textSecondary : '#9CA3AF' }]}>
+              H: {weatherData.high}° L: {weatherData.low}°
+            </Text>
+            
+            {/* Hourly Forecast */}
+            <View style={styles.hourlyContainer}>
+              {weatherData.hourly.map((hour, index) => (
+                <View key={index} style={styles.hourlyItem}>
+                  <Text style={[styles.hourlyTemp, { color: isDark ? theme.text : '#111827' }]}>{hour.temp}°</Text>
+                  <Ionicons name={hour.icon as any} size={20} color="#F59E0B" />
+                  <Text style={[styles.hourlyTime, { color: isDark ? theme.textSecondary : '#6B7280' }]}>{hour.time}</Text>
+                </View>
+              ))}
+            </View>
+            
+            {/* Air Quality */}
+            <View style={[styles.airQualityContainer, { backgroundColor: isDark ? theme.background : '#F3F4F6' }]}>
+              <Text style={[styles.airQualityLabel, { color: isDark ? theme.textSecondary : '#6B7280' }]}>Air quality</Text>
+              <View style={styles.airQualityValue}>
+                <View style={[styles.airQualityDot, { backgroundColor: '#22C55E' }]} />
+                <Text style={[styles.airQualityText, { color: isDark ? theme.text : '#111827' }]}>
+                  {weatherData.airQuality.status} · {weatherData.airQuality.aqi} AQI
+                </Text>
+              </View>
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.popupCloseButton}
+              onPress={() => setShowWeatherPopup(false)}
+            >
+              <Text style={styles.popupCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Map Layer Popup */}
+      <Modal
+        visible={showMapLayerPopup}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowMapLayerPopup(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowMapLayerPopup(false)}
+        >
+          <View style={[styles.popupContainer, styles.mapLayerPopup, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+            <Text style={[styles.popupTitle, { color: isDark ? theme.text : '#111827' }]}>Map Type</Text>
+            
+            <View style={styles.mapLayerOptions}>
+              {Object.entries(MAP_STYLES).map(([key, value]) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.mapLayerOption,
+                    mapStyle === key && styles.mapLayerOptionActive,
+                    { backgroundColor: isDark ? theme.background : '#F3F4F6' }
+                  ]}
+                  onPress={() => {
+                    setMapStyle(key as keyof typeof MAP_STYLES);
+                    setShowMapLayerPopup(false);
+                  }}
+                >
+                  <Ionicons 
+                    name={value.icon as any} 
+                    size={28} 
+                    color={mapStyle === key ? '#06B6D4' : (isDark ? theme.textSecondary : '#6B7280')} 
+                  />
+                  <Text style={[
+                    styles.mapLayerOptionText,
+                    { color: mapStyle === key ? '#06B6D4' : (isDark ? theme.text : '#374151') }
+                  ]}>
+                    {value.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.popupCloseButton}
+              onPress={() => setShowMapLayerPopup(false)}
+            >
+              <Text style={styles.popupCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Bottom Sheet with Place Cards or Address Card */}
       <BottomSheet
         ref={bottomSheetRef}
@@ -4184,5 +4406,177 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginTop: 12,
+  },
+
+  // Floating Icons
+  floatingIconsLeft: {
+    position: 'absolute',
+    left: 16,
+    bottom: '42%',
+    gap: 12,
+  },
+  floatingIconsRight: {
+    position: 'absolute',
+    right: 16,
+    bottom: '42%',
+    gap: 12,
+  },
+  floatingIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+
+  // Modal & Popups
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  popupContainer: {
+    borderRadius: 20,
+    padding: 20,
+    marginHorizontal: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  popupTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  popupCloseButton: {
+    backgroundColor: '#E0F7FA',
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  popupCloseText: {
+    color: '#06B6D4',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+
+  // Legend Popup
+  legendPopup: {
+    width: width * 0.75,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 12,
+  },
+  legendText: {
+    fontSize: 15,
+  },
+
+  // Weather Popup
+  weatherPopup: {
+    width: width * 0.85,
+  },
+  weatherMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  weatherTemp: {
+    fontSize: 56,
+    fontWeight: '300',
+  },
+  weatherCondition: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  weatherHighLow: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  hourlyContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+  hourlyItem: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  hourlyTemp: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  hourlyTime: {
+    fontSize: 12,
+  },
+  airQualityContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+  },
+  airQualityLabel: {
+    fontSize: 14,
+  },
+  airQualityValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  airQualityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  airQualityText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  // Map Layer Popup
+  mapLayerPopup: {
+    width: width * 0.75,
+  },
+  mapLayerOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: 12,
+  },
+  mapLayerOption: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  mapLayerOptionActive: {
+    borderWidth: 2,
+    borderColor: '#06B6D4',
+  },
+  mapLayerOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
