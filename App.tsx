@@ -176,6 +176,9 @@ function AppsStack() {
       {/* Browse Screens accessible from Apps */}
       <MenuStackNav.Screen name="CitiesBrowse" component={CitiesBrowseScreen} />
       <MenuStackNav.Screen name="RidesBrowse" component={RidesBrowseScreen} />
+      <MenuStackNav.Screen name="RVCampingBrowse" component={RVCampingBrowseScreen} />
+      <MenuStackNav.Screen name="UniverseDiscovery" component={UniverseDiscoveryScreen} />
+      <MenuStackNav.Screen name="UniverseLanding" component={UniverseLandingScreen} />
       <MenuStackNav.Screen name="RideDetails" component={RideDetailsScreen} />
       <MenuStackNav.Screen name="CityDetails" component={CityDetailsScreen} />
       <MenuStackNav.Screen name="AddReview" component={AddReviewScreen} />

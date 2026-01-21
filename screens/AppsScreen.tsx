@@ -3,10 +3,11 @@
  * Tools & shortcuts dashboard
  * Path: screens/AppsScreen.tsx
  *
- * FIXED:
- * - Toggle now matches HomeScreen's Standard/Map toggle EXACTLY (full-width, dark navy active, no icons)
- * - Header banner extends to the very top of the screen (no SafeAreaView gap)
- * - All app tiles preserved (Universes, Rides, RV & Camping, Atlas, Pros, etc.)
+ * FEATURES:
+ * - Large gradient tiles with white icons
+ * - Correct app order: Pros, Realtors, Cities, Atlas, RV & Camping, Universes, Rides, Experiences, Happening Now, then others
+ * - Fixed navigation routes
+ * - Dark/Light mode toggle
  */
 
 import React from 'react';
@@ -19,11 +20,16 @@ import {
   Image,
   Platform,
   StatusBar,
+  Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const TILE_SIZE = (SCREEN_WIDTH - 60) / 3; // 3 columns with padding
 
 // Match HomeScreen's ACCENT color exactly
 const ACCENT = '#0F1233';
@@ -33,82 +39,19 @@ interface AppTile {
   name: string;
   icon: string;
   iconType: 'ionicons' | 'material';
-  backgroundColor: string;
-  backgroundColorDark: string;
-  iconColor: string;
+  gradientColors: string[];
   route?: string;
   params?: object;
 }
 
 const APP_TILES: AppTile[] = [
-  {
-    id: 'quick-finds',
-    name: 'Quick Finds',
-    icon: 'flash',
-    iconType: 'ionicons',
-    backgroundColor: '#FEF3C7',
-    backgroundColorDark: '#78350F',
-    iconColor: '#F59E0B',
-    route: 'Home',
-  },
-  {
-    id: 'universes',
-    name: 'Universes',
-    icon: 'planet',
-    iconType: 'ionicons',
-    backgroundColor: '#CCFBF1',
-    backgroundColorDark: '#134E4A',
-    iconColor: '#14B8A6',
-    route: 'Universes',
-  },
-  {
-    id: 'rides',
-    name: 'Rides',
-    icon: 'train',
-    iconType: 'ionicons',
-    backgroundColor: '#FEE2E2',
-    backgroundColorDark: '#7F1D1D',
-    iconColor: '#EF4444',
-    route: 'RidesBrowse',
-  },
-  {
-    id: 'rv-camping',
-    name: 'RV & Camping',
-    icon: 'bonfire',
-    iconType: 'ionicons',
-    backgroundColor: '#FED7AA',
-    backgroundColorDark: '#7C2D12',
-    iconColor: '#EA580C',
-    route: 'RVCampingBrowse',
-  },
-  {
-    id: 'atlas',
-    name: 'Atlas',
-    icon: 'book',
-    iconType: 'ionicons',
-    backgroundColor: '#E0E7FF',
-    backgroundColorDark: '#312E81',
-    iconColor: '#4F46E5',
-    route: 'Atlas',
-  },
-  {
-    id: 'cities',
-    name: 'Cities',
-    icon: 'business',
-    iconType: 'ionicons',
-    backgroundColor: '#FEE2E2',
-    backgroundColorDark: '#991B1B',
-    iconColor: '#EF4444',
-    route: 'CitiesBrowse',
-  },
+  // Row 1: Pros, Realtors, Cities
   {
     id: 'pros',
     name: 'Pros',
     icon: 'construct',
     iconType: 'ionicons',
-    backgroundColor: '#DBEAFE',
-    backgroundColorDark: '#1E3A8A',
-    iconColor: '#3B82F6',
+    gradientColors: ['#3B82F6', '#1D4ED8'],
     route: 'Pros',
   },
   {
@@ -116,39 +59,98 @@ const APP_TILES: AppTile[] = [
     name: 'Realtors',
     icon: 'home',
     iconType: 'ionicons',
-    backgroundColor: '#FEF3C7',
-    backgroundColorDark: '#78350F',
-    iconColor: '#D97706',
+    gradientColors: ['#14B8A6', '#0D9488'],
     route: 'RealtorsHub',
+  },
+  {
+    id: 'cities',
+    name: 'Cities',
+    icon: 'business',
+    iconType: 'ionicons',
+    gradientColors: ['#60A5FA', '#3B82F6'],
+    route: 'CitiesBrowse',
+  },
+  // Row 2: Atlas, RV & Camping, Universes
+  {
+    id: 'atlas',
+    name: 'Atlas',
+    icon: 'book',
+    iconType: 'ionicons',
+    gradientColors: ['#818CF8', '#6366F1'],
+    route: 'Atlas',
+  },
+  {
+    id: 'rv-camping',
+    name: 'RV & Camping',
+    icon: 'bonfire',
+    iconType: 'ionicons',
+    gradientColors: ['#FB923C', '#EA580C'],
+    route: 'RVCampingBrowse',
+  },
+  {
+    id: 'universes',
+    name: 'Universes',
+    icon: 'planet',
+    iconType: 'ionicons',
+    gradientColors: ['#2DD4BF', '#14B8A6'],
+    route: 'UniverseDiscovery',
+  },
+  // Row 3: Rides, Experiences, Happening Now
+  {
+    id: 'rides',
+    name: 'Rides',
+    icon: 'train',
+    iconType: 'ionicons',
+    gradientColors: ['#F87171', '#EF4444'],
+    route: 'RidesBrowse',
+  },
+  {
+    id: 'experiences',
+    name: 'Experiences',
+    icon: 'leaf',
+    iconType: 'ionicons',
+    gradientColors: ['#A78BFA', '#8B5CF6'],
+    route: 'Home', // TODO: Create ExperiencesBrowse screen
+  },
+  {
+    id: 'happening',
+    name: 'Happening Now',
+    icon: 'sparkles',
+    iconType: 'ionicons',
+    gradientColors: ['#F472B6', '#EC4899'],
+    route: 'Home', // TODO: Create HappeningNow screen
+  },
+  // Row 4+: Quick Finds, Saved, Account, Create
+  {
+    id: 'quick-finds',
+    name: 'Quick Finds',
+    icon: 'flash',
+    iconType: 'ionicons',
+    gradientColors: ['#FBBF24', '#F59E0B'],
+    route: 'Home',
   },
   {
     id: 'saved',
     name: 'Saved',
     icon: 'heart',
     iconType: 'ionicons',
-    backgroundColor: '#FCE7F3',
-    backgroundColorDark: '#831843',
-    iconColor: '#EC4899',
-    route: 'Saved',
+    gradientColors: ['#FB7185', '#F43F5E'],
+    route: 'SavedMain',
   },
   {
     id: 'account',
     name: 'Account',
     icon: 'person',
     iconType: 'ionicons',
-    backgroundColor: '#E5E7EB',
-    backgroundColorDark: '#374151',
-    iconColor: '#6B7280',
-    route: 'Profile',
+    gradientColors: ['#94A3B8', '#64748B'],
+    route: 'ProfileMain',
   },
   {
     id: 'create',
     name: 'Create',
     icon: 'add-circle',
     iconType: 'ionicons',
-    backgroundColor: '#D1FAE5',
-    backgroundColorDark: '#064E3B',
-    iconColor: '#10B981',
+    gradientColors: ['#34D399', '#10B981'],
     route: 'UniversalAdd',
   },
 ];
@@ -160,27 +162,31 @@ export default function AppsScreen() {
 
   const handleTilePress = (tile: AppTile) => {
     if (tile.route) {
+      // Special handling for routes that require login
+      if ((tile.id === 'saved' || tile.id === 'account') && !user) {
+        navigation.navigate('Login');
+        return;
+      }
       navigation.navigate(tile.route, tile.params || {});
     }
   };
 
   const handlePersonalLogin = () => {
-    navigation.navigate('Profile', { screen: 'Login' });
+    navigation.navigate('Login');
   };
 
   const handleProLogin = () => {
-    navigation.navigate('Pros', { screen: 'ProsRegistration' });
+    // Navigate to Pros tab which has login flow
+    navigation.navigate('Pros');
   };
 
-  const renderIcon = (tile: AppTile, size: number = 28) => {
-    const iconColor = isDark ? '#FFFFFF' : tile.iconColor;
-
+  const renderIcon = (tile: AppTile, size: number = 36) => {
     if (tile.iconType === 'material') {
       return (
         <MaterialCommunityIcons
           name={tile.icon as any}
           size={size}
-          color={iconColor}
+          color="#FFFFFF"
         />
       );
     }
@@ -189,7 +195,7 @@ export default function AppsScreen() {
       <Ionicons
         name={tile.icon as any}
         size={size}
-        color={iconColor}
+        color="#FFFFFF"
       />
     );
   };
@@ -207,10 +213,10 @@ export default function AppsScreen() {
     },
     loginButton: {
       backgroundColor: isDark ? theme.surface : '#fff',
-      borderColor: isDark ? theme.primary : '#3B82F6',
+      borderColor: isDark ? theme.primary : '#14B8A6',
     },
     loginButtonText: {
-      color: isDark ? theme.primary : '#3B82F6',
+      color: isDark ? theme.primary : '#14B8A6',
     },
     proLoginButton: {
       borderColor: isDark ? theme.border : '#D1D5DB',
@@ -256,13 +262,19 @@ export default function AppsScreen() {
           </View>
         </View>
 
-        {/* Logo Row */}
+        {/* Logo Row with Help Icon */}
         <View style={styles.logoRow}>
           <Image
             source={require('../assets/brand/logo-horizontal.png')}
             style={styles.headerLogo}
             resizeMode="contain"
           />
+          <TouchableOpacity 
+            style={styles.helpButton}
+            onPress={() => navigation.navigate('HelpSupport')}
+          >
+            <Ionicons name="help-circle-outline" size={28} color="rgba(255,255,255,0.7)" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -284,7 +296,7 @@ export default function AppsScreen() {
               style={[styles.loginButton, dynamicStyles.loginButton]}
               onPress={handlePersonalLogin}
             >
-              <Ionicons name="person-outline" size={18} color={isDark ? theme.primary : '#3B82F6'} />
+              <Ionicons name="person-outline" size={18} color={isDark ? theme.primary : '#14B8A6'} />
               <Text style={[styles.loginButtonText, dynamicStyles.loginButtonText]}>Personal Login</Text>
             </TouchableOpacity>
 
@@ -300,23 +312,23 @@ export default function AppsScreen() {
           </View>
         )}
 
-        {/* App Tiles Grid */}
+        {/* App Tiles Grid - Large Gradient Tiles */}
         <View style={styles.tilesGrid}>
           {APP_TILES.map((tile) => (
             <TouchableOpacity
               key={tile.id}
               style={styles.tile}
               onPress={() => handleTilePress(tile)}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              <View
-                style={[
-                  styles.tileIconContainer,
-                  { backgroundColor: isDark ? tile.backgroundColorDark : tile.backgroundColor },
-                ]}
+              <LinearGradient
+                colors={tile.gradientColors}
+                style={styles.tileGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
               >
                 {renderIcon(tile)}
-              </View>
+              </LinearGradient>
               <Text style={[styles.tileName, dynamicStyles.tileName]}>{tile.name}</Text>
             </TouchableOpacity>
           ))}
@@ -385,12 +397,18 @@ const styles = StyleSheet.create({
   // Logo row
   logoRow: {
     paddingHorizontal: 18,
-    alignItems: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
 
   headerLogo: {
     width: 180,
     height: 54,
+  },
+
+  helpButton: {
+    padding: 4,
   },
 
   header: {
@@ -423,7 +441,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#3B82F6',
+    borderColor: '#14B8A6',
     backgroundColor: '#fff',
     gap: 8,
   },
@@ -433,35 +451,42 @@ const styles = StyleSheet.create({
   loginButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#3B82F6',
+    color: '#14B8A6',
   },
   proLoginText: {
     color: '#6B7280',
   },
 
+  // Large gradient tiles
   tilesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 20,
-    gap: 16,
+    gap: 12,
     justifyContent: 'flex-start',
   },
   tile: {
-    width: '29%',
+    width: TILE_SIZE,
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  tileIconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
+  tileGradient: {
+    width: TILE_SIZE - 8,
+    height: TILE_SIZE - 8,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
+    // Shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   tileName: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#374151',
     textAlign: 'center',
   },
