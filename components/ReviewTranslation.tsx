@@ -18,6 +18,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { getCurrentLanguage } from '../i18n';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface ReviewTranslationProps {
   originalText: string;
@@ -209,18 +210,24 @@ export const useTranslationPreference = () => {
 
   // Load preference from storage on mount
   useEffect(() => {
-    // TODO: Load from AsyncStorage
-    // const loadPreference = async () => {
-    //   const saved = await AsyncStorage.getItem('@tavvy_auto_translate');
-    //   setAutoTranslate(saved === 'true');
-    // };
-    // loadPreference();
+    const loadPreference = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('@tavvy_auto_translate');
+        setAutoTranslate(saved === 'true');
+      } catch (error) {
+        console.error('Error loading translation preference:', error);
+      }
+    };
+    loadPreference();
   }, []);
 
   const toggleAutoTranslate = async (enabled: boolean) => {
     setAutoTranslate(enabled);
-    // TODO: Save to AsyncStorage
-    // await AsyncStorage.setItem('@tavvy_auto_translate', enabled.toString());
+    try {
+      await AsyncStorage.setItem('@tavvy_auto_translate', enabled.toString());
+    } catch (error) {
+      console.error('Error saving translation preference:', error);
+    }
   };
 
   return { autoTranslate, toggleAutoTranslate };

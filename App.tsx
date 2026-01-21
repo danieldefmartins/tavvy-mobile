@@ -79,6 +79,14 @@ import RidesBrowseScreen from './screens/RidesBrowseScreen';
 import RVCampingBrowseScreen from './screens/RVCampingBrowseScreen';
 import CitiesBrowseScreen from './screens/CitiesBrowseScreen';
 import RideDetailsScreen from './screens/RideDetailsScreen';
+import RealtorsHubScreen from './screens/RealtorsHubScreen';
+import RealtorsBrowseScreen from './screens/RealtorsBrowseScreen';
+import RealtorDetailScreen from './screens/RealtorDetailScreen';
+
+// ========== MISSING SCREENS (Referenced but not in navigation) ==========
+import SettingsScreen from './screens/SettingsScreen';
+import HelpSupportScreen from './screens/HelpSupportScreen';
+import ProsLeadDetailScreen from './screens/ProsLeadDetailScreen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -184,10 +192,19 @@ function AppsStack() {
         options={{ presentation: 'modal' }}
       />
       
+      {/* Realtors Hub accessible from Apps */}
+      <MenuStackNav.Screen name="RealtorsHub" component={RealtorsHubScreen} />
+      <MenuStackNav.Screen name="RealtorsBrowse" component={RealtorsBrowseScreen} />
+      <MenuStackNav.Screen name="RealtorDetail" component={RealtorDetailScreen} />
+      
       {/* Pro Dashboard accessible from Menu */}
       <MenuStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
       <MenuStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
       <MenuStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
+      
+      {/* Settings and Help - referenced by other screens */}
+      <MenuStackNav.Screen name="Settings" component={SettingsScreen} />
+      <MenuStackNav.Screen name="HelpSupport" component={HelpSupportScreen} />
     </MenuStackNav.Navigator>
   );
 }
@@ -223,6 +240,7 @@ function ProsStack() {
         options={{ presentation: 'modal' }}
       />
       <ProsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
+      <ProsStackNav.Screen name="ProsLeadDetail" component={ProsLeadDetailScreen} />
       <ProsStackNav.Screen name="ProsRequestStep0" component={ProsRequestStep0Screen} />
       <ProsStackNav.Screen name="ProsRequestStep1" component={ProsRequestStep1Screen} />
       <ProsStackNav.Screen name="ProsRequestStep2Photo" component={ProsRequestStep2PhotoScreen} />

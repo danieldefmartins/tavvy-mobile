@@ -1898,19 +1898,19 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         
         {/* Quick Actions */}
         <View style={[styles.quickActions, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleCall(place.phone)}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleCall(place.phone)} accessibilityLabel="Call business" accessibilityRole="button">
             <Ionicons name="call-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
             <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Call</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleDirections(place)}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleDirections(place)} accessibilityLabel="Get directions" accessibilityRole="button">
             <Ionicons name="navigate-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
             <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Directions</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleSocial(place.instagram_url)}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleSocial(place.instagram_url)} accessibilityLabel="View Instagram" accessibilityRole="button">
             <Ionicons name="chatbubble-ellipses-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
             <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Social</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleWebsite(place.website)}>
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleWebsite(place.website)} accessibilityLabel="Visit website" accessibilityRole="button">
             <Ionicons name="globe-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
             <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Website</Text>
           </TouchableOpacity>
@@ -1940,7 +1940,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           }]}>
             <TouchableOpacity
               style={[styles.segmentItem, viewMode === 'standard' && [styles.segmentItemActive, { backgroundColor: ACCENT }]]}
-              onPress={() => setViewMode('standard')}
+              onPress={() => setViewMode('standard')} accessibilityLabel="List view" accessibilityRole="button"
               activeOpacity={0.9}
             >
               <Text style={[styles.segmentText, { color: viewMode === 'standard' ? '#fff' : (isDark ? theme.textSecondary : '#6B6B6B') }]}>Standard</Text>
@@ -1948,7 +1948,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
             <TouchableOpacity
               style={[styles.segmentItem, viewMode === 'map' && [styles.segmentItemActive, { backgroundColor: ACCENT }]]}
-              onPress={switchToMapMode}
+              onPress={switchToMapMode} accessibilityLabel="Map view" accessibilityRole="button"
               activeOpacity={0.9}
             >
               <Text style={[styles.segmentText, { color: viewMode === 'map' ? '#fff' : (isDark ? theme.textSecondary : '#6B6B6B') }]}>Map</Text>
@@ -2037,7 +2037,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             {/* Trending Near You Header */}
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111' }]}>Trending Near You</Text>
-              <TouchableOpacity onPress={switchToMapMode} activeOpacity={0.8}>
+              <TouchableOpacity onPress={switchToMapMode} accessibilityLabel="Map view" accessibilityRole="button" activeOpacity={0.8}>
                 <Text style={[styles.seeAll, { color: ACCENT }]}>See All</Text>
               </TouchableOpacity>
             </View>
@@ -2425,7 +2425,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         {/* Back button */}
         <TouchableOpacity 
           style={[styles.backButton, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-          onPress={switchToStandardMode}
+          onPress={switchToStandardMode} accessibilityLabel="Back to list view" accessibilityRole="button"
         >
           <Ionicons name="arrow-back" size={24} color={isDark ? theme.text : '#000'} />
         </TouchableOpacity>
@@ -2555,7 +2555,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             styles.searchThisAreaButton,
             { backgroundColor: isDark ? theme.primary : '#007AFF' },
           ]}
-          onPress={handleSearchThisArea}
+          onPress={handleSearchThisArea} accessibilityLabel="Search this area" accessibilityRole="button"
           disabled={isSearchingArea}
         >
           {isSearchingArea ? (
@@ -2573,7 +2573,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       <View style={styles.floatingIconsLeft}>
         <TouchableOpacity
           style={[styles.floatingIcon, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-          onPress={() => setShowLegendPopup(true)}
+          onPress={() => setShowLegendPopup(true)} accessibilityLabel="Show map legend" accessibilityRole="button"
         >
           <Ionicons name="information-circle-outline" size={24} color={isDark ? theme.text : '#374151'} />
         </TouchableOpacity>
@@ -2583,21 +2583,21 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       <View style={styles.floatingIconsRight}>
         <TouchableOpacity
           style={[styles.floatingIcon, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-          onPress={() => setShowWeatherPopup(true)}
+          onPress={() => setShowWeatherPopup(true)} accessibilityLabel="Show weather" accessibilityRole="button"
         >
           <Ionicons name="partly-sunny-outline" size={24} color={isDark ? theme.text : '#374151'} />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.floatingIcon, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-          onPress={() => setShowMapLayerPopup(true)}
+          onPress={() => setShowMapLayerPopup(true)} accessibilityLabel="Change map layer" accessibilityRole="button"
         >
           <Ionicons name="layers-outline" size={24} color={isDark ? theme.text : '#374151'} />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.floatingIcon, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-          onPress={centerOnUserLocation}
+          onPress={centerOnUserLocation} accessibilityLabel="Center on my location" accessibilityRole="button"
         >
           <Ionicons name="locate-outline" size={24} color={isDark ? theme.text : '#374151'} />
         </TouchableOpacity>

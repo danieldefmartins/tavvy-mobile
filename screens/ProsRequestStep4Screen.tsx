@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, FlatList, ActivityIndicator, Keyboard } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -17,6 +17,15 @@ export default function ProsRequestStep4Screen({ navigation, route }: any) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, []);
 
   // Free Address Search using OpenStreetMap (Nominatim)
   const searchAddress = async (text: string) => {
