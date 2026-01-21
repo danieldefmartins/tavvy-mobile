@@ -2072,7 +2072,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               {filteredPlaces
                 .filter((place) => {
                   const category = (place.category || place.primary_category || '').toLowerCase();
-                  return ['restaurants', 'coffee shop', 'cafes', 'contractors', 'universes', 'cities'].includes(category);
+                  // Use partial matching to handle variations like 'Restaurant' vs 'Restaurants'
+                  const trendingCategories = ['restaurant', 'coffee', 'cafe', 'contractor', 'universe', 'city', 'cities'];
+                  return trendingCategories.some(cat => category.includes(cat));
                 })
                 .slice(0, 10)
                 .map((place, trendingIndex) => (
