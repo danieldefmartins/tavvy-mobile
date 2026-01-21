@@ -1296,7 +1296,12 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const handleMarkerPress = (place: Place) => {
     setSelectedPlace(place);
-    bottomSheetRef.current?.snapToIndex(1);
+    // Snap the appropriate bottom sheet based on current view
+    if (showCategoryResults) {
+      categoryBottomSheetRef.current?.snapToIndex(1);
+    } else {
+      bottomSheetRef.current?.snapToIndex(1);
+    }
   };
 
   // ============================================
@@ -1490,11 +1495,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const getMarkerColor = (category?: string) => {
     if (!category) return '#007AFF';
+    // Colors match the Map Legend
     const colors: Record<string, string> = {
-      restaurants: '#FF6B6B',
-      cafes: '#4ECDC4',
-      bars: '#FFD93D',
-      shopping: '#95E1D3',
+      restaurants: '#EF4444',  // Red
+      cafes: '#F59E0B',        // Orange/Amber
+      bars: '#8B5CF6',         // Purple
+      shopping: '#3B82F6',     // Blue
+      'rv & camping': '#22C55E', // Green
+      hotels: '#EC4899',       // Pink
     };
     return colors[category.toLowerCase()] || '#007AFF';
   };
@@ -2384,7 +2392,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </MapLibreGL.PointAnnotation>
         )}
 
-        {filteredPlaces
+        {/* Show category-filtered pins when category is selected, otherwise show all places */}
+        {(showCategoryResults ? categoryResultsPlaces : filteredPlaces)
           .filter((place) => {
             const lon = place.longitude || place.lng;
             const lat = place.latitude || place.lat;
@@ -2410,7 +2419,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   name={
                     place.category?.toLowerCase() === 'restaurants' ? 'restaurant' :
                     place.category?.toLowerCase() === 'cafes' ? 'cafe' :
-                    place.category?.toLowerCase() === 'bars' ? 'beer' : 'location'
+                    place.category?.toLowerCase() === 'bars' ? 'beer' :
+                    place.category?.toLowerCase() === 'shopping' ? 'cart' :
+                    place.category?.toLowerCase() === 'rv & camping' ? 'bonfire' :
+                    place.category?.toLowerCase() === 'hotels' ? 'bed' : 'location'
                   }
                   size={20}
                   color="#fff"
@@ -2762,7 +2774,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <BottomSheet
           ref={bottomSheetRef}
           index={1}
-          snapPoints={searchedAddress ? [40, '40%', '65%'] : [40, '35%', '65%']}
+          snapPoints={searchedAddress ? [40, '40%', '65%'] : (selectedPlace ? [40, '50%', '85%'] : [40, '35%', '65%'])}
           backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
           handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
           enablePanDownToClose={false}
@@ -2775,6 +2787,17 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             >
               {renderAddressInfoCard()}
             </ScrollView>
+          ) : selectedPlace ? (
+            /* Show selected place card when pin is clicked */
+            <BottomSheetScrollView contentContainerStyle={styles.bottomSheetContent}>
+              <View style={styles.selectedPlaceHeader}>
+                <Text style={[styles.selectedPlaceTitle, { color: isDark ? theme.text : '#000' }]}>Selected Place</Text>
+                <TouchableOpacity onPress={() => setSelectedPlace(null)} style={styles.clearSelectionBtn}>
+                  <Ionicons name="close-circle" size={24} color={isDark ? theme.textSecondary : '#999'} />
+                </TouchableOpacity>
+              </View>
+              {renderPlaceCard({ item: selectedPlace })}
+            </BottomSheetScrollView>
           ) : (
             <BottomSheetFlatList
               data={filteredPlaces}
@@ -3508,6 +3531,20 @@ const styles = StyleSheet.create({
   bottomSheetContent: {
     paddingHorizontal: 16,
     paddingBottom: 20,
+  },
+  selectedPlaceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  selectedPlaceTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  clearSelectionBtn: {
+    padding: 4,
   },
 
   // Place Card (for bottom sheet)
