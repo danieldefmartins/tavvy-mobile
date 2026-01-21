@@ -35,7 +35,7 @@ export interface SearchOptions {
   fallbackThreshold?: number;    // Default: 10
 }
 
-export interface SearchResult {
+export interface SearchResultResponse {
   results: SearchResult[];
   metrics: {
     fromPlacesSearch: number;
@@ -43,6 +43,18 @@ export interface SearchResult {
     fallbackTriggered: boolean;
     totalTime: number;
   };
+}
+
+export interface AddressSuggestion {
+  id: string;
+  displayName: string;
+  shortName: string;
+  latitude: number;
+  longitude: number;
+  type: string;
+  city?: string;
+  state?: string;
+  country?: string;
 }
 
 // ============================================
@@ -66,7 +78,7 @@ const DEFAULT_RADIUS_KM = 50;
  * 3. Deduplicate by source_id
  * 4. Return unified SearchResult[] format
  */
-export async function searchPlaces(options: SearchOptions): Promise<SearchResult> {
+export async function searchPlaces(options: SearchOptions): Promise<SearchResultResponse> {
   const startTime = Date.now();
   const { query, location, filters, limit = DEFAULT_LIMIT, fallbackThreshold = DEFAULT_FALLBACK_THRESHOLD } = options;
 
@@ -180,7 +192,7 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
 
   const endTime = Date.now();
 
-  const result: SearchResult = {
+  const result: SearchResultResponse = {
     results: allResults,
     metrics: {
       fromPlacesSearch: resultsFromPlacesSearch.length,
@@ -317,59 +329,159 @@ function toRad(deg: number): number {
 }
 
 /**
- * Search for suggestions (autocomplete) - lighter weight than full search
+ * Search for suggestions (autocomplete) - optimized for speed
+ * Searches both places database and FSQ raw in parallel
+ * Minimum 1 character to start searching
  */
-export async function searchSuggestions(query: string, limit: number = 5): Promise<SearchResult[]> {
-  if (!query || query.trim().length < 2) {
+export async function searchSuggestions(
+  query: string, 
+  limit: number = 8,
+  userLocation?: { latitude: number; longitude: number }
+): Promise<SearchResult[]> {
+  // Start searching from 1 character
+  if (!query || query.trim().length < 1) {
     return [];
   }
 
   const searchTerm = query.trim().toLowerCase();
 
   try {
-    // Quick search on places_search for autocomplete
-    const { data: searchData, error } = await supabase
-      .from('places_search')
-      .select('place_id, name, city, category, latitude, longitude')
-      .ilike('name_norm', `%${searchTerm}%`)
-      .limit(limit);
-
-    if (error || !searchData) {
-      // Fallback to fsq_places_raw
-      const { data: fsqData } = await supabase
+    // Search both sources in parallel for speed
+    const [placesResult, fsqResult] = await Promise.all([
+      // Search places_search table
+      supabase
+        .from('places_search')
+        .select('place_id, name, city, region, category, latitude, longitude')
+        .or(`name_norm.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
+        .limit(limit),
+      // Search fsq_places_raw table
+      supabase
         .from('fsq_places_raw')
-        .select('fsq_place_id, name, locality, latitude, longitude, fsq_category_labels')
-        .ilike('name', `%${query}%`)
+        .select('fsq_place_id, name, locality, region, latitude, longitude, fsq_category_labels')
+        .or(`name.ilike.%${searchTerm}%,locality.ilike.%${searchTerm}%`)
         .is('date_closed', null)
-        .limit(limit);
+        .limit(limit)
+    ]);
 
-      if (fsqData) {
-        return fsqData.map(p => ({
-          id: `fsq:${p.fsq_place_id}`,
-          source: 'fsq_raw' as PlaceSource,
-          source_id: p.fsq_place_id,
-          name: p.name,
-          latitude: p.latitude,
-          longitude: p.longitude,
-          city: p.locality,
-          category: extractCategory(p.fsq_category_labels),
-        }));
+    const results: SearchResult[] = [];
+    const seenNames = new Set<string>();
+
+    // Process places_search results first (higher priority)
+    if (placesResult.data) {
+      for (const s of placesResult.data) {
+        const nameKey = s.name.toLowerCase();
+        if (!seenNames.has(nameKey)) {
+          seenNames.add(nameKey);
+          const result: SearchResult = {
+            id: s.place_id,
+            source: 'places' as PlaceSource,
+            source_id: s.place_id,
+            name: s.name,
+            latitude: s.latitude,
+            longitude: s.longitude,
+            city: s.city,
+            region: s.region,
+            category: s.category,
+          };
+          if (userLocation && s.latitude && s.longitude) {
+            result.distance = calculateDistance(
+              userLocation.latitude, userLocation.longitude,
+              s.latitude, s.longitude
+            );
+          }
+          results.push(result);
+        }
       }
+    }
+
+    // Add FSQ results (deduplicated)
+    if (fsqResult.data) {
+      for (const p of fsqResult.data) {
+        const nameKey = p.name.toLowerCase();
+        if (!seenNames.has(nameKey)) {
+          seenNames.add(nameKey);
+          const result: SearchResult = {
+            id: `fsq:${p.fsq_place_id}`,
+            source: 'fsq_raw' as PlaceSource,
+            source_id: p.fsq_place_id,
+            name: p.name,
+            latitude: p.latitude,
+            longitude: p.longitude,
+            city: p.locality,
+            region: p.region,
+            category: extractCategory(p.fsq_category_labels),
+          };
+          if (userLocation && p.latitude && p.longitude) {
+            result.distance = calculateDistance(
+              userLocation.latitude, userLocation.longitude,
+              p.latitude, p.longitude
+            );
+          }
+          results.push(result);
+        }
+      }
+    }
+
+    // Sort by distance if location provided, otherwise by name match quality
+    if (userLocation) {
+      results.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+    } else {
+      // Prioritize exact prefix matches
+      results.sort((a, b) => {
+        const aStartsWith = a.name.toLowerCase().startsWith(searchTerm) ? 0 : 1;
+        const bStartsWith = b.name.toLowerCase().startsWith(searchTerm) ? 0 : 1;
+        return aStartsWith - bStartsWith;
+      });
+    }
+
+    return results.slice(0, limit);
+  } catch (error) {
+    console.error('[searchService] Error in searchSuggestions:', error);
+    return [];
+  }
+}
+
+/**
+ * Search for address suggestions using Nominatim (OpenStreetMap)
+ * Free, no API key required
+ */
+export async function searchAddresses(
+  query: string,
+  limit: number = 5
+): Promise<AddressSuggestion[]> {
+  if (!query || query.trim().length < 3) {
+    return [];
+  }
+
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=${limit}&addressdetails=1`,
+      {
+        headers: {
+          'User-Agent': 'Tavvy-App/1.0',
+        },
+      }
+    );
+
+    if (!response.ok) {
       return [];
     }
 
-    return searchData.map(s => ({
-      id: s.place_id,
-      source: 'places' as PlaceSource,
-      source_id: s.place_id,
-      name: s.name,
-      latitude: s.latitude,
-      longitude: s.longitude,
-      city: s.city,
-      category: s.category,
+    const results = await response.json();
+    
+    return results.map((r: any) => ({
+      id: r.place_id,
+      displayName: r.display_name,
+      shortName: r.display_name.split(',')[0],
+      latitude: parseFloat(r.lat),
+      longitude: parseFloat(r.lon),
+      type: r.type,
+      city: r.address?.city || r.address?.town || r.address?.village,
+      state: r.address?.state,
+      country: r.address?.country,
     }));
   } catch (error) {
-    console.error('[searchService] Error in searchSuggestions:', error);
+    console.error('[searchService] Error in searchAddresses:', error);
     return [];
   }
 }

@@ -843,7 +843,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
     // Search database for matching places using centralized searchService
     try {
-      const searchResults = await searchPlaceSuggestions(text, 5);
+      const searchResults = await searchPlaceSuggestions(text, 8, userLocation || undefined);
 
       if (searchResults && searchResults.length > 0) {
         searchResults.forEach(place => {
@@ -919,8 +919,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
     setSearchSuggestions(suggestions);
 
-    // Geocode address if query looks like an address
-    if (text.length > 5 && /\d/.test(text)) {
+    // Always search for addresses when query is long enough
+    if (text.length >= 3) {
       setIsSearchingAddress(true);
       try {
         const response = await fetch(
@@ -2427,7 +2427,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             placeholderTextColor={isDark ? theme.textSecondary : '#999'}
             value={searchQuery}
             onChangeText={(text) => {
-              setSearchQuery(text);
+              handleSearchInputChange(text);
               if (targetLocation && text !== searchedAddressName) {
                 setTargetLocation(null);
                 setSearchedAddressName('');
@@ -2444,6 +2444,61 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             </TouchableOpacity>
           )}
         </View>
+        
+        {/* Search Suggestions Dropdown for Map Mode */}
+        {searchQuery.trim().length > 0 && searchSuggestions.length > 0 && (
+          <View style={[styles.mapSearchSuggestions, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+            <ScrollView style={{ maxHeight: 250 }} keyboardShouldPersistTaps="handled">
+              {searchSuggestions.map((suggestion) => (
+                <TouchableOpacity
+                  key={suggestion.id}
+                  style={styles.mapSuggestionItem}
+                  onPress={() => handleSuggestionSelect(suggestion)}
+                >
+                  <View style={[
+                    styles.suggestionIconContainer,
+                    suggestion.type === 'place' && styles.suggestionIconPlace,
+                    suggestion.type === 'category' && styles.suggestionIconCategory,
+                    suggestion.type === 'address' && styles.suggestionIconAddress,
+                    suggestion.type === 'recent' && styles.suggestionIconRecent,
+                  ]}>
+                    <Ionicons
+                      name={suggestion.icon as any}
+                      size={18}
+                      color={
+                        suggestion.type === 'place' ? '#0A84FF' :
+                        suggestion.type === 'category' ? '#34C759' :
+                        suggestion.type === 'address' ? '#AF52DE' : '#8E8E93'
+                      }
+                    />
+                  </View>
+                  <View style={styles.suggestionTextContainer}>
+                    <Text style={[styles.suggestionTitle, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>
+                      {suggestion.title}
+                    </Text>
+                    {suggestion.subtitle && (
+                      <Text style={[styles.suggestionSubtitle, { color: isDark ? theme.textSecondary : '#8E8E93' }]} numberOfLines={1}>
+                        {suggestion.subtitle}
+                      </Text>
+                    )}
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
+                </TouchableOpacity>
+              ))}
+              
+              {isSearchingAddress && (
+                <View style={styles.mapSuggestionItem}>
+                  <View style={[styles.suggestionIconContainer, styles.suggestionIconAddress]}>
+                    <ActivityIndicator size="small" color="#AF52DE" />
+                  </View>
+                  <View style={styles.suggestionTextContainer}>
+                    <Text style={[styles.suggestionTitle, { color: isDark ? theme.text : '#000' }]}>Searching addresses...</Text>
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        )}
       </View>
       
       {/* Category Filters - Text only, rounded */}
@@ -3463,6 +3518,24 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 8,
     fontSize: 16,
+  },
+  mapSearchSuggestions: {
+    marginTop: 8,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  mapSuggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
   },
   mapCategoryOverlay: {
     position: 'absolute',
