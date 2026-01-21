@@ -29,7 +29,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const TILE_SIZE = (SCREEN_WIDTH - 60) / 3; // 3 columns with padding
+const TILE_SIZE = (SCREEN_WIDTH - 40 - 24) / 3; // 3 columns: screen - padding(40) - gaps(24 for 2 gaps of 12)
 
 // Match HomeScreen's ACCENT color exactly
 const ACCENT = '#0F1233';
@@ -176,11 +176,11 @@ export default function AppsScreen() {
   };
 
   const handleProLogin = () => {
-    // Navigate to Pros tab which has login flow
-    navigation.navigate('Pros');
+    // Navigate to Pro Login screen
+    navigation.navigate('ProsLogin');
   };
 
-  const renderIcon = (tile: AppTile, size: number = 36) => {
+  const renderIcon = (tile: AppTile, size: number = 48) => {
     if (tile.iconType === 'material') {
       return (
         <MaterialCommunityIcons

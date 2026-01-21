@@ -73,6 +73,7 @@ import ProsRequestStep3Screen from './screens/ProsRequestStep3Screen';
 import ProsRequestStep4Screen from './screens/ProsRequestStep4Screen';
 import ProsRequestStep5Screen from './screens/ProsRequestStep5Screen';
 import ProsProjectStatusScreen from './screens/ProsProjectStatusScreen';
+import ProsLoginScreen from './screens/ProsLoginScreen';
 
 // ========== BROWSE SCREENS ==========
 import RidesBrowseScreen from './screens/RidesBrowseScreen';
@@ -169,6 +170,7 @@ function AppsStack() {
       {/* Auth */}
       <MenuStackNav.Screen name="Login" component={LoginScreen} />
       <MenuStackNav.Screen name="SignUp" component={SignUpScreen} />
+      <MenuStackNav.Screen name="ProsLogin" component={ProsLoginScreen} />
 
       {/* Shared screens accessible from menu */}
       <MenuStackNav.Screen name="RateCity" component={RateCityScreen} />
