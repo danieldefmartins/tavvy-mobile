@@ -14,6 +14,17 @@
     },
     "plugins": [
       [
+        "expo-build-properties",
+        {
+          "ios": {
+            "newArchEnabled": false
+          },
+          "android": {
+            "newArchEnabled": false
+          }
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "Tavvy uses your location to show nearby places and let you review locations around you."
