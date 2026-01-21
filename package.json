@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "prebuild": "expo prebuild",
     "clean": "rm -rf node_modules ios android && npm install",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package && node -e \"console.log('\\n=== INSTALLED VERSIONS ==='); console.log('expo:', require('expo/package.json').version); console.log('react-native:', require('react-native/package.json').version); console.log('react-native-screens:', require('react-native-screens/package.json').version); console.log('=========================\\n');\""
   },
   "dependencies": {
     "@expo/ngrok": "^4.1.3",
@@ -51,12 +51,15 @@
     "react-native-gesture-handler": "~2.24.0",
     "react-native-reanimated": "~3.17.0",
     "react-native-safe-area-context": "5.4.0",
-    "react-native-screens": "~4.11.1",
+    "react-native-screens": "4.18.0",
     "react-native-url-polyfill": "^2.0.0"
   },
   "devDependencies": {
     "@types/react": "~19.0.10",
     "babel-preset-expo": "~13.0.0",
     "typescript": "~5.8.0"
+  },
+  "overrides": {
+    "react-native-screens": "4.18.0"
   }
 }

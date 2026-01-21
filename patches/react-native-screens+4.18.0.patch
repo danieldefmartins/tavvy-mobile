@@ -9,12 +9,13 @@ index 0000000..8d0ed9b
 +export default requireNativeComponent('RNSFullWindowOverlay');
 diff --git a/node_modules/react-native-screens/src/fabric/FullWindowOverlayNativeComponent.ts b/node_modules/react-native-screens/src/fabric/FullWindowOverlayNativeComponent.ts
 deleted file mode 100644
-index 616f607..0000000
+index 0589532..0000000
 --- a/node_modules/react-native-screens/src/fabric/FullWindowOverlayNativeComponent.ts
 +++ /dev/null
-@@ -1,14 +0,0 @@
+@@ -1,15 +0,0 @@
 -'use client';
 -
+-// eslint-disable-next-line @react-native/no-deep-imports
 -import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
 -import type { ViewProps } from 'react-native';
 -import { WithDefault } from 'react-native/Libraries/Types/CodegenTypes';
@@ -38,12 +39,13 @@ index 0000000..489903e
 +export default requireNativeComponent('RNSModalScreen');
 diff --git a/node_modules/react-native-screens/src/fabric/ModalScreenNativeComponent.ts b/node_modules/react-native-screens/src/fabric/ModalScreenNativeComponent.ts
 deleted file mode 100644
-index 77593c6..0000000
+index 5675438..0000000
 --- a/node_modules/react-native-screens/src/fabric/ModalScreenNativeComponent.ts
 +++ /dev/null
-@@ -1,116 +0,0 @@
+@@ -1,120 +0,0 @@
 -'use client';
 -
+-// eslint-disable-next-line @react-native/no-deep-imports
 -import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
 -import type { ViewProps, ColorValue } from 'react-native';
 -import type {
@@ -110,6 +112,8 @@ index 77593c6..0000000
 -
 -type ReplaceAnimation = 'pop' | 'push';
 -
+-type OptionalBoolean = 'undefined' | 'false' | 'true';
+-
 -export interface NativeProps extends ViewProps {
 -  onAppear?: DirectEventHandler<ScreenEvent>;
 -  onDisappear?: DirectEventHandler<ScreenEvent>;
@@ -122,6 +126,7 @@ index 77593c6..0000000
 -  onGestureCancel?: DirectEventHandler<ScreenEvent>;
 -  onHeaderBackButtonClicked?: DirectEventHandler<ScreenEvent>;
 -  onSheetDetentChanged?: DirectEventHandler<SheetDetentChangedEvent>;
+-  screenId?: WithDefault<string, ''>;
 -  sheetAllowedDetents?: number[];
 -  sheetLargestUndimmedDetent?: WithDefault<Int32, -1>;
 -  sheetGrabberVisible?: WithDefault<boolean, false>;
@@ -130,7 +135,7 @@ index 77593c6..0000000
 -  sheetInitialDetent?: WithDefault<Int32, 0>;
 -  sheetElevation?: WithDefault<Int32, 24>;
 -  customAnimationOnSwipe?: boolean;
--  fullScreenSwipeEnabled?: boolean;
+-  fullScreenSwipeEnabled?: WithDefault<OptionalBoolean, 'undefined'>;
 -  fullScreenSwipeShadowEnabled?: WithDefault<boolean, true>;
 -  homeIndicatorHidden?: boolean;
 -  preventNativeDismiss?: boolean;
@@ -206,12 +211,13 @@ index 0000000..32d6568
 +export default requireNativeComponent('RNSScreenContainer');
 diff --git a/node_modules/react-native-screens/src/fabric/ScreenContainerNativeComponent.ts b/node_modules/react-native-screens/src/fabric/ScreenContainerNativeComponent.ts
 deleted file mode 100644
-index b8f0c7b..0000000
+index 3b2cd8d..0000000
 --- a/node_modules/react-native-screens/src/fabric/ScreenContainerNativeComponent.ts
 +++ /dev/null
-@@ -1,8 +0,0 @@
+@@ -1,9 +0,0 @@
 -'use client';
 -
+-// eslint-disable-next-line @react-native/no-deep-imports
 -import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
 -import type { ViewProps } from 'react-native';
 -
@@ -229,10 +235,11 @@ index 0000000..bfa8969
 +export default requireNativeComponent('RNSScreenContentWrapper');
 diff --git a/node_modules/react-native-screens/src/fabric/ScreenContentWrapperNativeComponent.ts b/node_modules/react-native-screens/src/fabric/ScreenContentWrapperNativeComponent.ts
 deleted file mode 100644
-index f2feae6..0000000
+index 9074a07..0000000
 --- a/node_modules/react-native-screens/src/fabric/ScreenContentWrapperNativeComponent.ts
 +++ /dev/null
-@@ -1,9 +0,0 @@
+@@ -1,10 +0,0 @@
+-// eslint-disable-next-line @react-native/no-deep-imports
 -import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
 -import type { ViewProps } from 'react-native';
 -
@@ -253,10 +260,11 @@ index 0000000..c5fe89c
 +export default requireNativeComponent('RNSScreenFooter');
 diff --git a/node_modules/react-native-screens/src/fabric/ScreenFooterNativeComponent.ts b/node_modules/react-native-screens/src/fabric/ScreenFooterNativeComponent.ts
 deleted file mode 100644
-index dbb46fc..0000000
+index 43d7b16..0000000
 --- a/node_modules/react-native-screens/src/fabric/ScreenFooterNativeComponent.ts
 +++ /dev/null
-@@ -1,6 +0,0 @@
+@@ -1,7 +0,0 @@
+-// eslint-disable-next-line @react-native/no-deep-imports
 -import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
 -import type { ViewProps } from 'react-native';
 -
@@ -274,12 +282,13 @@ index 0000000..9ac0db8
 +export default requireNativeComponent('RNSScreen');
 diff --git a/node_modules/react-native-screens/src/fabric/ScreenNativeComponent.ts b/node_modules/react-native-screens/src/fabric/ScreenNativeComponent.ts
 deleted file mode 100644
-index 2a7ae3d..0000000
+index e984449..0000000
 --- a/node_modules/react-native-screens/src/fabric/ScreenNativeComponent.ts
 +++ /dev/null
-@@ -1,116 +0,0 @@
+@@ -1,126 +0,0 @@
 -'use client';
 -
+-// eslint-disable-next-line @react-native/no-deep-imports
 -import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
 -import type { ViewProps, ColorValue } from 'react-native';
 -import type {
@@ -346,6 +355,10 @@ index 2a7ae3d..0000000
 -
 -type ReplaceAnimation = 'pop' | 'push';
 -
+-type ScrollEdgeEffect = 'automatic' | 'hard' | 'soft' | 'hidden';
+-
+-type OptionalBoolean = 'undefined' | 'false' | 'true';
+-
 -export interface NativeProps extends ViewProps {
 -  onAppear?: DirectEventHandler<ScreenEvent>;
 -  onDisappear?: DirectEventHandler<ScreenEvent>;
@@ -358,6 +371,7 @@ index 2a7ae3d..0000000
 -  onGestureCancel?: DirectEventHandler<ScreenEvent>;
 -  onHeaderBackButtonClicked?: DirectEventHandler<ScreenEvent>;
 -  onSheetDetentChanged?: DirectEventHandler<SheetDetentChangedEvent>;
+-  screenId?: WithDefault<string, ''>;
 -  sheetAllowedDetents?: number[];
 -  sheetLargestUndimmedDetent?: WithDefault<Int32, -1>;
 -  sheetGrabberVisible?: WithDefault<boolean, false>;
@@ -366,7 +380,7 @@ index 2a7ae3d..0000000
 -  sheetInitialDetent?: WithDefault<Int32, 0>;
 -  sheetElevation?: WithDefault<Int32, 24>;
 -  customAnimationOnSwipe?: boolean;
--  fullScreenSwipeEnabled?: boolean;
+-  fullScreenSwipeEnabled?: WithDefault<OptionalBoolean, 'undefined'>;
 -  fullScreenSwipeShadowEnabled?: WithDefault<boolean, true>;
 -  homeIndicatorHidden?: boolean;
 -  preventNativeDismiss?: boolean;
@@ -389,6 +403,10 @@ index 2a7ae3d..0000000
 -  navigationBarTranslucent?: boolean;
 -  navigationBarHidden?: boolean;
 -  nativeBackButtonDismissalEnabled?: boolean;
+-  bottomScrollEdgeEffect?: WithDefault<ScrollEdgeEffect, 'automatic'>;
+-  leftScrollEdgeEffect?: WithDefault<ScrollEdgeEffect, 'automatic'>;
+-  rightScrollEdgeEffect?: WithDefault<ScrollEdgeEffect, 'automatic'>;
+-  topScrollEdgeEffect?: WithDefault<ScrollEdgeEffect, 'automatic'>;
 -}
 -
 -export default codegenNativeComponent<NativeProps>('RNSScreen', {
@@ -405,12 +423,13 @@ index 0000000..6d3d851
 +export default requireNativeComponent('RNSScreenNavigationContainer');
 diff --git a/node_modules/react-native-screens/src/fabric/ScreenNavigationContainerNativeComponent.ts b/node_modules/react-native-screens/src/fabric/ScreenNavigationContainerNativeComponent.ts
 deleted file mode 100644
-index 906ae64..0000000
+index 277dd70..0000000
 --- a/node_modules/react-native-screens/src/fabric/ScreenNavigationContainerNativeComponent.ts
 +++ /dev/null
-@@ -1,11 +0,0 @@
+@@ -1,12 +0,0 @@
 -'use client';
 -
+-// eslint-disable-next-line @react-native/no-deep-imports
 -import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
 -import type { ViewProps } from 'react-native';
 -
@@ -422,28 +441,29 @@ index 906ae64..0000000
 -);
 diff --git a/node_modules/react-native-screens/src/fabric/ScreenStackHeaderConfigNativeComponent.js b/node_modules/react-native-screens/src/fabric/ScreenStackHeaderConfigNativeComponent.js
 new file mode 100644
-index 0000000..cdbfbf8
+index 0000000..7536048
 --- /dev/null
 +++ b/node_modules/react-native-screens/src/fabric/ScreenStackHeaderConfigNativeComponent.js
-@@ -0,0 +1,4 @@
+@@ -0,0 +1,3 @@
 +'use client';
 +import { requireNativeComponent } from 'react-native';
-+
 +export default requireNativeComponent('RNSScreenStackHeaderConfig');
 diff --git a/node_modules/react-native-screens/src/fabric/ScreenStackHeaderConfigNativeComponent.ts b/node_modules/react-native-screens/src/fabric/ScreenStackHeaderConfigNativeComponent.ts
 deleted file mode 100644
-index f47d82a..0000000
+index 2fbbea2..0000000
 --- a/node_modules/react-native-screens/src/fabric/ScreenStackHeaderConfigNativeComponent.ts
 +++ /dev/null
-@@ -1,82 +0,0 @@
+@@ -1,91 +0,0 @@
 -'use client';
 -
+-// eslint-disable-next-line @react-native/no-deep-imports
 -import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
 -import type { ViewProps, ColorValue } from 'react-native';
 -import type {
 -  Int32,
 -  WithDefault,
 -  DirectEventHandler,
+-  UnsafeMixed,
 -} from 'react-native/Libraries/Types/CodegenTypes';
 -
 -type DirectionType = 'rtl' | 'ltr';
@@ -452,6 +472,9 @@ index f47d82a..0000000
 -type OnAttachedEvent = Readonly<{}>;
 -// eslint-disable-next-line @typescript-eslint/ban-types
 -type OnDetachedEvent = Readonly<{}>;
+-
+-type OnPressHeaderBarButtonItemEvent = Readonly<{ buttonId: string }>;
+-type OnPressHeaderBarButtonMenuItemEvent = Readonly<{ menuId: string }>;
 -
 -type BackButtonDisplayMode = 'minimal' | 'default' | 'generic';
 -
@@ -510,6 +533,10 @@ index f47d82a..0000000
 -  blurEffect?: WithDefault<BlurEffect, 'none'>;
 -  // TODO: implement this props on iOS
 -  topInsetEnabled?: boolean;
+-  headerLeftBarButtonItems?: UnsafeMixed[];
+-  headerRightBarButtonItems?: UnsafeMixed[];
+-  onPressHeaderBarButtonItem?: DirectEventHandler<OnPressHeaderBarButtonItemEvent>;
+-  onPressHeaderBarButtonMenuItem?: DirectEventHandler<OnPressHeaderBarButtonMenuItemEvent>;
 -}
 -
 -export default codegenNativeComponent<NativeProps>(
@@ -529,12 +556,13 @@ index 0000000..5149986
 +export default requireNativeComponent('RNSScreenStackHeaderSubview');
 diff --git a/node_modules/react-native-screens/src/fabric/ScreenStackHeaderSubviewNativeComponent.ts b/node_modules/react-native-screens/src/fabric/ScreenStackHeaderSubviewNativeComponent.ts
 deleted file mode 100644
-index e5b4751..0000000
+index b695c4f..0000000
 --- a/node_modules/react-native-screens/src/fabric/ScreenStackHeaderSubviewNativeComponent.ts
 +++ /dev/null
-@@ -1,24 +0,0 @@
+@@ -1,26 +0,0 @@
 -'use client';
 -
+-// eslint-disable-next-line @react-native/no-deep-imports
 -import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
 -import type { ViewProps } from 'react-native';
 -import type { WithDefault } from 'react-native/Libraries/Types/CodegenTypes';
@@ -549,6 +577,7 @@ index e5b4751..0000000
 -
 -export interface NativeProps extends ViewProps {
 -  type?: WithDefault<HeaderSubviewTypes, 'left'>;
+-  hidesSharedBackground?: boolean;
 -}
 -
 -export default codegenNativeComponent<NativeProps>(
@@ -568,12 +597,13 @@ index 0000000..891be0b
 +export default requireNativeComponent('RNSScreenStack');
 diff --git a/node_modules/react-native-screens/src/fabric/ScreenStackNativeComponent.ts b/node_modules/react-native-screens/src/fabric/ScreenStackNativeComponent.ts
 deleted file mode 100644
-index 5547599..0000000
+index 6c79d16..0000000
 --- a/node_modules/react-native-screens/src/fabric/ScreenStackNativeComponent.ts
 +++ /dev/null
-@@ -1,14 +0,0 @@
+@@ -1,15 +0,0 @@
 -'use client';
 -
+-// eslint-disable-next-line @react-native/no-deep-imports
 -import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
 -import type { ViewProps } from 'react-native';
 -import type { DirectEventHandler } from 'react-native/Libraries/Types/CodegenTypes';
@@ -597,10 +627,10 @@ index 0000000..fb3524d
 +export default requireNativeComponent('RNSSearchBar');
 diff --git a/node_modules/react-native-screens/src/fabric/SearchBarNativeComponent.ts b/node_modules/react-native-screens/src/fabric/SearchBarNativeComponent.ts
 deleted file mode 100644
-index 467442a..0000000
+index 8b1317c..0000000
 --- a/node_modules/react-native-screens/src/fabric/SearchBarNativeComponent.ts
 +++ /dev/null
-@@ -1,80 +0,0 @@
+@@ -1,95 +0,0 @@
 -'use client';
 -
 -/* eslint-disable */
@@ -622,9 +652,22 @@ index 467442a..0000000
 -  text?: string;
 -}>;
 -
--type SearchBarPlacement = 'automatic' | 'inline' | 'stacked';
+-type SearchBarPlacement =
+-  | 'automatic'
+-  | 'inline' // deprecated starting from iOS 26
+-  | 'stacked'
+-  | 'integrated'
+-  | 'integratedButton'
+-  | 'integratedCentered';
 -
--type AutoCapitalizeType = 'none' | 'words' | 'sentences' | 'characters';
+-type AutoCapitalizeType =
+-  | 'systemDefault'
+-  | 'none'
+-  | 'words'
+-  | 'sentences'
+-  | 'characters';
+-
+-type OptionalBoolean = 'undefined' | 'false' | 'true';
 -
 -export interface NativeProps extends ViewProps {
 -  onSearchFocus?: DirectEventHandler<SearchBarEvent> | null;
@@ -632,12 +675,13 @@ index 467442a..0000000
 -  onSearchButtonPress?: DirectEventHandler<SearchButtonPressedEvent> | null;
 -  onCancelButtonPress?: DirectEventHandler<SearchBarEvent> | null;
 -  onChangeText?: DirectEventHandler<ChangeTextEvent> | null;
--  hideWhenScrolling?: boolean;
--  autoCapitalize?: WithDefault<AutoCapitalizeType, 'none'>;
+-  hideWhenScrolling?: WithDefault<boolean, true>;
+-  autoCapitalize?: WithDefault<AutoCapitalizeType, 'systemDefault'>;
 -  placeholder?: string;
--  placement?: WithDefault<SearchBarPlacement, 'stacked'>;
--  obscureBackground?: boolean;
--  hideNavigationBar?: boolean;
+-  placement?: WithDefault<SearchBarPlacement, 'automatic'>;
+-  allowToolbarIntegration?: WithDefault<boolean, true>;
+-  obscureBackground?: WithDefault<OptionalBoolean, 'undefined'>;
+-  hideNavigationBar?: WithDefault<OptionalBoolean, 'undefined'>;
 -  cancelButtonText?: string;
 -  // TODO: implement these on iOS
 -  barTintColor?: ColorValue;
@@ -645,6 +689,7 @@ index 467442a..0000000
 -  textColor?: ColorValue;
 -
 -  // Android only
+-  autoFocus?: WithDefault<boolean, false>;
 -  disableBackButtonOverride?: boolean;
 -  // TODO: consider creating enum here
 -  inputType?: string;
@@ -681,3 +726,548 @@ index 467442a..0000000
 -});
 -
 -export default codegenNativeComponent<NativeProps>('RNSSearchBar', {});
+diff --git a/node_modules/react-native-screens/src/fabric/bottom-tabs/BottomTabsNativeComponent.js b/node_modules/react-native-screens/src/fabric/bottom-tabs/BottomTabsNativeComponent.js
+new file mode 100644
+index 0000000..3351114
+--- /dev/null
++++ b/node_modules/react-native-screens/src/fabric/bottom-tabs/BottomTabsNativeComponent.js
+@@ -0,0 +1,3 @@
++'use client';
++import { requireNativeComponent } from 'react-native';
++export default requireNativeComponent('RNSBottomTabs');
+diff --git a/node_modules/react-native-screens/src/fabric/bottom-tabs/BottomTabsNativeComponent.ts b/node_modules/react-native-screens/src/fabric/bottom-tabs/BottomTabsNativeComponent.ts
+deleted file mode 100644
+index a20e74f..0000000
+--- a/node_modules/react-native-screens/src/fabric/bottom-tabs/BottomTabsNativeComponent.ts
++++ /dev/null
+@@ -1,76 +0,0 @@
+-'use client';
+-
+-// eslint-disable-next-line @react-native/no-deep-imports
+-import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
+-import type { ColorValue, ViewProps } from 'react-native';
+-import type {
+-  DirectEventHandler,
+-  Float,
+-  WithDefault,
+-} from 'react-native/Libraries/Types/CodegenTypes';
+-
+-// TODO: Report issue on RN repo, that nesting color value inside a struct does not work.
+-// Generated code is ok, but the value is not passed down correctly - whatever color is set
+-// host component receives RGBA(0, 0, 0, 0) anyway.
+-// type TabBarAppearance = {
+-//   backgroundColor?: ColorValue;
+-// };
+-
+-type NativeFocusChangeEvent = {
+-  tabKey: string;
+-};
+-
+-type TabBarItemLabelVisibilityMode =
+-  | 'auto'
+-  | 'selected'
+-  | 'labeled'
+-  | 'unlabeled';
+-
+-type TabBarMinimizeBehavior =
+-  | 'automatic'
+-  | 'never'
+-  | 'onScrollDown'
+-  | 'onScrollUp';
+-
+-type TabBarControllerMode = 'automatic' | 'tabBar' | 'tabSidebar';
+-
+-export interface NativeProps extends ViewProps {
+-  // Events
+-  onNativeFocusChange?: DirectEventHandler<NativeFocusChangeEvent>;
+-
+-  // Appearance
+-  // tabBarAppearance?: TabBarAppearance; // Does not work due to codegen issue.
+-
+-  // Android-specific
+-  tabBarBackgroundColor?: ColorValue;
+-  tabBarItemTitleFontFamily?: string;
+-  tabBarItemTitleFontSize?: Float;
+-  tabBarItemTitleFontSizeActive?: Float;
+-  tabBarItemTitleFontWeight?: string;
+-  tabBarItemTitleFontStyle?: string;
+-  tabBarItemTitleFontColor?: ColorValue;
+-  tabBarItemTitleFontColorActive?: ColorValue;
+-  tabBarItemIconColor?: ColorValue;
+-  tabBarItemIconColorActive?: ColorValue;
+-  tabBarItemActiveIndicatorColor?: ColorValue;
+-  tabBarItemActiveIndicatorEnabled?: WithDefault<boolean, true>;
+-  tabBarItemRippleColor?: ColorValue;
+-  tabBarItemLabelVisibilityMode?: WithDefault<
+-    TabBarItemLabelVisibilityMode,
+-    'auto'
+-  >;
+-
+-  // iOS-specific
+-  tabBarTintColor?: ColorValue;
+-  tabBarMinimizeBehavior?: WithDefault<TabBarMinimizeBehavior, 'automatic'>;
+-  tabBarControllerMode?: WithDefault<TabBarControllerMode, 'automatic'>;
+-
+-  // Control
+-
+-  // Experimental support
+-  controlNavigationStateInJS?: WithDefault<boolean, false>;
+-}
+-
+-export default codegenNativeComponent<NativeProps>('RNSBottomTabs', {
+-  interfaceOnly: true,
+-});
+diff --git a/node_modules/react-native-screens/src/fabric/bottom-tabs/BottomTabsScreenNativeComponent.js b/node_modules/react-native-screens/src/fabric/bottom-tabs/BottomTabsScreenNativeComponent.js
+new file mode 100644
+index 0000000..a93031c
+--- /dev/null
++++ b/node_modules/react-native-screens/src/fabric/bottom-tabs/BottomTabsScreenNativeComponent.js
+@@ -0,0 +1,3 @@
++'use client';
++import { requireNativeComponent } from 'react-native';
++export default requireNativeComponent('RNSBottomTabsScreen');
+diff --git a/node_modules/react-native-screens/src/fabric/bottom-tabs/BottomTabsScreenNativeComponent.ts b/node_modules/react-native-screens/src/fabric/bottom-tabs/BottomTabsScreenNativeComponent.ts
+deleted file mode 100644
+index f7f396d..0000000
+--- a/node_modules/react-native-screens/src/fabric/bottom-tabs/BottomTabsScreenNativeComponent.ts
++++ /dev/null
+@@ -1,168 +0,0 @@
+-'use client';
+-
+-// eslint-disable-next-line @react-native/no-deep-imports
+-import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
+-import type {
+-  ColorValue,
+-  ImageSource,
+-  ProcessedColorValue,
+-  ViewProps,
+-} from 'react-native';
+-import {
+-  DirectEventHandler,
+-  Float,
+-  Int32,
+-  WithDefault,
+-} from 'react-native/Libraries/Types/CodegenTypes';
+-
+-import { UnsafeMixed } from './codegenUtils';
+-
+-// iOS-specific: SFSymbol, image as a template usage
+-export type IconType = 'image' | 'template' | 'sfSymbol';
+-
+-// eslint-disable-next-line @typescript-eslint/ban-types
+-type GenericEmptyEvent = Readonly<{}>;
+-
+-type LifecycleStateChangeEvent = Readonly<{
+-  previousState: Int32;
+-  newState: Int32;
+-}>;
+-
+-export type ItemStateAppearance = {
+-  tabBarItemTitleFontFamily?: string;
+-  tabBarItemTitleFontSize?: Float;
+-  tabBarItemTitleFontWeight?: string;
+-  tabBarItemTitleFontStyle?: string;
+-  tabBarItemTitleFontColor?: ProcessedColorValue | null;
+-  tabBarItemTitlePositionAdjustment?: {
+-    horizontal?: Float;
+-    vertical?: Float;
+-  };
+-  tabBarItemIconColor?: ProcessedColorValue | null;
+-  tabBarItemBadgeBackgroundColor?: ProcessedColorValue | null;
+-};
+-
+-export type ItemAppearance = {
+-  normal?: ItemStateAppearance;
+-  selected?: ItemStateAppearance;
+-  focused?: ItemStateAppearance;
+-  disabled?: ItemStateAppearance;
+-};
+-
+-export type Appearance = {
+-  stacked?: ItemAppearance;
+-  inline?: ItemAppearance;
+-  compactInline?: ItemAppearance;
+-
+-  tabBarBackgroundColor?: ProcessedColorValue | null;
+-  tabBarShadowColor?: ProcessedColorValue | null;
+-  tabBarBlurEffect?: WithDefault<BlurEffect, 'systemDefault'>;
+-};
+-
+-type BlurEffect =
+-  | 'none'
+-  | 'systemDefault'
+-  | 'extraLight'
+-  | 'light'
+-  | 'dark'
+-  | 'regular'
+-  | 'prominent'
+-  | 'systemUltraThinMaterial'
+-  | 'systemThinMaterial'
+-  | 'systemMaterial'
+-  | 'systemThickMaterial'
+-  | 'systemChromeMaterial'
+-  | 'systemUltraThinMaterialLight'
+-  | 'systemThinMaterialLight'
+-  | 'systemMaterialLight'
+-  | 'systemThickMaterialLight'
+-  | 'systemChromeMaterialLight'
+-  | 'systemUltraThinMaterialDark'
+-  | 'systemThinMaterialDark'
+-  | 'systemMaterialDark'
+-  | 'systemThickMaterialDark'
+-  | 'systemChromeMaterialDark';
+-
+-type Orientation =
+-  | 'inherit'
+-  | 'all'
+-  | 'allButUpsideDown'
+-  | 'portrait'
+-  | 'portraitUp'
+-  | 'portraitDown'
+-  | 'landscape'
+-  | 'landscapeLeft'
+-  | 'landscapeRight';
+-
+-type SystemItem =
+-  | 'none'
+-  | 'bookmarks'
+-  | 'contacts'
+-  | 'downloads'
+-  | 'favorites'
+-  | 'featured'
+-  | 'history'
+-  | 'more'
+-  | 'mostRecent'
+-  | 'mostViewed'
+-  | 'recents'
+-  | 'search'
+-  | 'topRated';
+-
+-type ScrollEdgeEffect = 'automatic' | 'hard' | 'soft' | 'hidden';
+-
+-export interface NativeProps extends ViewProps {
+-  // Events
+-  onLifecycleStateChange?: DirectEventHandler<LifecycleStateChangeEvent>;
+-  onWillAppear?: DirectEventHandler<GenericEmptyEvent>;
+-  onDidAppear?: DirectEventHandler<GenericEmptyEvent>;
+-  onWillDisappear?: DirectEventHandler<GenericEmptyEvent>;
+-  onDidDisappear?: DirectEventHandler<GenericEmptyEvent>;
+-
+-  // Control
+-  isFocused?: boolean;
+-  tabKey: string;
+-
+-  // General
+-  title?: string | undefined | null;
+-  badgeValue?: string;
+-
+-  // Currently iOS-only
+-  orientation?: WithDefault<Orientation, 'inherit'>;
+-
+-  // Android-specific image handling
+-  drawableIconResourceName?: string;
+-  imageIconResource?: ImageSource;
+-  tabBarItemBadgeTextColor?: ColorValue;
+-  tabBarItemBadgeBackgroundColor?: ColorValue;
+-
+-  // iOS-specific
+-  standardAppearance?: UnsafeMixed<Appearance>;
+-  scrollEdgeAppearance?: UnsafeMixed<Appearance>;
+-
+-  iconType?: WithDefault<IconType, 'sfSymbol'>;
+-
+-  iconImageSource?: ImageSource;
+-  iconSfSymbolName?: string;
+-
+-  selectedIconImageSource?: ImageSource;
+-  selectedIconSfSymbolName?: string;
+-
+-  systemItem?: WithDefault<SystemItem, 'none'>;
+-
+-  specialEffects?: {
+-    repeatedTabSelection?: {
+-      popToRoot?: WithDefault<boolean, true>;
+-      scrollToTop?: WithDefault<boolean, true>;
+-    };
+-  };
+-
+-  overrideScrollViewContentInsetAdjustmentBehavior?: WithDefault<boolean, true>;
+-
+-  bottomScrollEdgeEffect?: WithDefault<ScrollEdgeEffect, 'automatic'>;
+-  leftScrollEdgeEffect?: WithDefault<ScrollEdgeEffect, 'automatic'>;
+-  rightScrollEdgeEffect?: WithDefault<ScrollEdgeEffect, 'automatic'>;
+-  topScrollEdgeEffect?: WithDefault<ScrollEdgeEffect, 'automatic'>;
+-}
+-
+-export default codegenNativeComponent<NativeProps>('RNSBottomTabsScreen', {});
+diff --git a/node_modules/react-native-screens/src/fabric/bottom-tabs/codegenUtils.js b/node_modules/react-native-screens/src/fabric/bottom-tabs/codegenUtils.js
+new file mode 100644
+index 0000000..cb0ff5c
+--- /dev/null
++++ b/node_modules/react-native-screens/src/fabric/bottom-tabs/codegenUtils.js
+@@ -0,0 +1 @@
++export {};
+diff --git a/node_modules/react-native-screens/src/fabric/bottom-tabs/codegenUtils.ts b/node_modules/react-native-screens/src/fabric/bottom-tabs/codegenUtils.ts
+deleted file mode 100644
+index e71923f..0000000
+--- a/node_modules/react-native-screens/src/fabric/bottom-tabs/codegenUtils.ts
++++ /dev/null
+@@ -1,6 +0,0 @@
+-// copied from https://github.com/software-mansion/react-native-svg/blob/be06e84ec4809a8071f18f9824ffbe61424ee80d/src/fabric/codegenUtils.ts
+-
+-// codegen will generate folly::dynamic in place of this type, but it's not exported by RN
+-// since codegen doesn't really follow imports, this way we can trick it into generating the correct type
+-// while keeping typescript happy
+-export type UnsafeMixed<T> = T;
+diff --git a/node_modules/react-native-screens/src/fabric/gamma/ScreenStackHostNativeComponent.js b/node_modules/react-native-screens/src/fabric/gamma/ScreenStackHostNativeComponent.js
+new file mode 100644
+index 0000000..3de32e2
+--- /dev/null
++++ b/node_modules/react-native-screens/src/fabric/gamma/ScreenStackHostNativeComponent.js
+@@ -0,0 +1,3 @@
++'use client';
++import { requireNativeComponent } from 'react-native';
++export default requireNativeComponent('RNSScreenStackHost');
+diff --git a/node_modules/react-native-screens/src/fabric/gamma/ScreenStackHostNativeComponent.ts b/node_modules/react-native-screens/src/fabric/gamma/ScreenStackHostNativeComponent.ts
+deleted file mode 100644
+index 2d1749c..0000000
+--- a/node_modules/react-native-screens/src/fabric/gamma/ScreenStackHostNativeComponent.ts
++++ /dev/null
+@@ -1,9 +0,0 @@
+-'use client';
+-
+-import type { ViewProps } from 'react-native';
+-// eslint-disable-next-line @react-native/no-deep-imports
+-import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
+-
+-export interface NativeProps extends ViewProps {}
+-
+-export default codegenNativeComponent<NativeProps>('RNSScreenStackHost', {});
+diff --git a/node_modules/react-native-screens/src/fabric/gamma/SplitViewHostNativeComponent.js b/node_modules/react-native-screens/src/fabric/gamma/SplitViewHostNativeComponent.js
+new file mode 100644
+index 0000000..1fd7d86
+--- /dev/null
++++ b/node_modules/react-native-screens/src/fabric/gamma/SplitViewHostNativeComponent.js
+@@ -0,0 +1,3 @@
++'use client';
++import { requireNativeComponent } from 'react-native';
++export default requireNativeComponent('RNSSplitViewHost');
+diff --git a/node_modules/react-native-screens/src/fabric/gamma/SplitViewHostNativeComponent.ts b/node_modules/react-native-screens/src/fabric/gamma/SplitViewHostNativeComponent.ts
+deleted file mode 100644
+index 0d88a25..0000000
+--- a/node_modules/react-native-screens/src/fabric/gamma/SplitViewHostNativeComponent.ts
++++ /dev/null
+@@ -1,89 +0,0 @@
+-'use client';
+-
+-import type { ViewProps } from 'react-native';
+-// eslint-disable-next-line @react-native/no-deep-imports
+-import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
+-import type {
+-  DirectEventHandler,
+-  Float,
+-  WithDefault,
+-} from 'react-native/Libraries/Types/CodegenTypes';
+-
+-// eslint-disable-next-line @typescript-eslint/ban-types
+-type GenericEmptyEvent = Readonly<{}>;
+-
+-type DisplayModeWillChangeEvent = {
+-  currentDisplayMode: string;
+-  nextDisplayMode: string;
+-};
+-
+-type SplitViewDisplayModeButtonVisibility = 'always' | 'automatic' | 'never';
+-
+-type SplitViewSplitBehavior = 'automatic' | 'displace' | 'overlay' | 'tile';
+-
+-type SplitViewPrimaryEdge = 'leading' | 'trailing';
+-
+-type SplitViewDisplayMode =
+-  | 'automatic'
+-  | 'secondaryOnly'
+-  | 'oneBesideSecondary'
+-  | 'oneOverSecondary'
+-  | 'twoBesideSecondary'
+-  | 'twoOverSecondary'
+-  | 'twoDisplaceSecondary';
+-
+-type SplitViewOrientation =
+-  | 'inherit'
+-  | 'all'
+-  | 'allButUpsideDown'
+-  | 'portrait'
+-  | 'portraitUp'
+-  | 'portraitDown'
+-  | 'landscape'
+-  | 'landscapeLeft'
+-  | 'landscapeRight';
+-
+-interface ColumnMetrics {
+-  minimumPrimaryColumnWidth?: WithDefault<Float, -1.0>;
+-  maximumPrimaryColumnWidth?: WithDefault<Float, -1.0>;
+-  preferredPrimaryColumnWidthOrFraction?: WithDefault<Float, -1.0>;
+-  minimumSupplementaryColumnWidth?: WithDefault<Float, -1.0>;
+-  maximumSupplementaryColumnWidth?: WithDefault<Float, -1.0>;
+-  preferredSupplementaryColumnWidthOrFraction?: WithDefault<Float, -1.0>;
+-
+-  // iOS 26 only
+-  minimumSecondaryColumnWidth?: WithDefault<Float, -1.0>;
+-  preferredSecondaryColumnWidthOrFraction?: WithDefault<Float, -1.0>;
+-  minimumInspectorColumnWidth?: WithDefault<Float, -1.0>;
+-  maximumInspectorColumnWidth?: WithDefault<Float, -1.0>;
+-  preferredInspectorColumnWidthOrFraction?: WithDefault<Float, -1.0>;
+-}
+-
+-interface NativeProps extends ViewProps {
+-  // Appearance
+-
+-  preferredDisplayMode?: WithDefault<SplitViewDisplayMode, 'automatic'>;
+-  preferredSplitBehavior?: WithDefault<SplitViewSplitBehavior, 'automatic'>;
+-  primaryEdge?: WithDefault<SplitViewPrimaryEdge, 'leading'>;
+-  showSecondaryToggleButton?: WithDefault<boolean, false>;
+-  displayModeButtonVisibility?: WithDefault<
+-    SplitViewDisplayModeButtonVisibility,
+-    'automatic'
+-  >;
+-  columnMetrics?: ColumnMetrics;
+-  orientation?: WithDefault<SplitViewOrientation, 'inherit'>;
+-
+-  // Interactions
+-
+-  presentsWithGesture?: WithDefault<boolean, true>;
+-  showInspector?: WithDefault<boolean, false>;
+-
+-  // Custom events
+-
+-  onCollapse?: DirectEventHandler<GenericEmptyEvent>;
+-  onDisplayModeWillChange?: DirectEventHandler<DisplayModeWillChangeEvent>;
+-  onExpand?: DirectEventHandler<GenericEmptyEvent>;
+-  onInspectorHide?: DirectEventHandler<GenericEmptyEvent>;
+-}
+-
+-export default codegenNativeComponent<NativeProps>('RNSSplitViewHost', {});
+diff --git a/node_modules/react-native-screens/src/fabric/gamma/SplitViewScreenNativeComponent.js b/node_modules/react-native-screens/src/fabric/gamma/SplitViewScreenNativeComponent.js
+new file mode 100644
+index 0000000..5e275ec
+--- /dev/null
++++ b/node_modules/react-native-screens/src/fabric/gamma/SplitViewScreenNativeComponent.js
+@@ -0,0 +1,3 @@
++'use client';
++import { requireNativeComponent } from 'react-native';
++export default requireNativeComponent('RNSSplitViewScreen');
+diff --git a/node_modules/react-native-screens/src/fabric/gamma/SplitViewScreenNativeComponent.ts b/node_modules/react-native-screens/src/fabric/gamma/SplitViewScreenNativeComponent.ts
+deleted file mode 100644
+index 321e2af..0000000
+--- a/node_modules/react-native-screens/src/fabric/gamma/SplitViewScreenNativeComponent.ts
++++ /dev/null
+@@ -1,29 +0,0 @@
+-'use client';
+-
+-import type { ViewProps } from 'react-native';
+-import {
+-  DirectEventHandler,
+-  WithDefault,
+-} from 'react-native/Libraries/Types/CodegenTypes';
+-// eslint-disable-next-line @react-native/no-deep-imports
+-import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
+-
+-// eslint-disable-next-line @typescript-eslint/ban-types
+-type GenericEmptyEvent = Readonly<{}>;
+-
+-type SplitViewScreenColumnType = 'column' | 'inspector';
+-
+-interface NativeProps extends ViewProps {
+-  // Config
+-  columnType?: WithDefault<SplitViewScreenColumnType, 'column'>;
+-
+-  // Events
+-  onWillAppear?: DirectEventHandler<GenericEmptyEvent>;
+-  onDidAppear?: DirectEventHandler<GenericEmptyEvent>;
+-  onWillDisappear?: DirectEventHandler<GenericEmptyEvent>;
+-  onDidDisappear?: DirectEventHandler<GenericEmptyEvent>;
+-}
+-
+-export default codegenNativeComponent<NativeProps>('RNSSplitViewScreen', {
+-  interfaceOnly: true,
+-});
+diff --git a/node_modules/react-native-screens/src/fabric/gamma/StackScreenNativeComponent.js b/node_modules/react-native-screens/src/fabric/gamma/StackScreenNativeComponent.js
+new file mode 100644
+index 0000000..8f2bed8
+--- /dev/null
++++ b/node_modules/react-native-screens/src/fabric/gamma/StackScreenNativeComponent.js
+@@ -0,0 +1,3 @@
++'use client';
++import { requireNativeComponent } from 'react-native';
++export default requireNativeComponent('RNSStackScreen');
+diff --git a/node_modules/react-native-screens/src/fabric/gamma/StackScreenNativeComponent.ts b/node_modules/react-native-screens/src/fabric/gamma/StackScreenNativeComponent.ts
+deleted file mode 100644
+index 2722af7..0000000
+--- a/node_modules/react-native-screens/src/fabric/gamma/StackScreenNativeComponent.ts
++++ /dev/null
+@@ -1,26 +0,0 @@
+-'use client';
+-
+-import type { ViewProps } from 'react-native';
+-import {
+-  DirectEventHandler,
+-  Int32,
+-} from 'react-native/Libraries/Types/CodegenTypes';
+-// eslint-disable-next-line @react-native/no-deep-imports
+-import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
+-
+-// eslint-disable-next-line @typescript-eslint/ban-types
+-export type GenericEmptyEvent = Readonly<{}>;
+-
+-export interface NativeProps extends ViewProps {
+-  // Control
+-  maxLifecycleState: Int32;
+-  screenKey: string;
+-
+-  // Events
+-  onWillAppear?: DirectEventHandler<GenericEmptyEvent>;
+-  onDidAppear?: DirectEventHandler<GenericEmptyEvent>;
+-  onWillDisappear?: DirectEventHandler<GenericEmptyEvent>;
+-  onDidDisappear?: DirectEventHandler<GenericEmptyEvent>;
+-}
+-
+-export default codegenNativeComponent<NativeProps>('RNSStackScreen', {});
+diff --git a/node_modules/react-native-screens/src/fabric/safe-area/SafeAreaViewNativeComponent.js b/node_modules/react-native-screens/src/fabric/safe-area/SafeAreaViewNativeComponent.js
+new file mode 100644
+index 0000000..817fcda
+--- /dev/null
++++ b/node_modules/react-native-screens/src/fabric/safe-area/SafeAreaViewNativeComponent.js
+@@ -0,0 +1,3 @@
++'use client';
++import { requireNativeComponent } from 'react-native';
++export default requireNativeComponent('RNSSafeAreaView');
+diff --git a/node_modules/react-native-screens/src/fabric/safe-area/SafeAreaViewNativeComponent.ts b/node_modules/react-native-screens/src/fabric/safe-area/SafeAreaViewNativeComponent.ts
+deleted file mode 100644
+index 6248102..0000000
+--- a/node_modules/react-native-screens/src/fabric/safe-area/SafeAreaViewNativeComponent.ts
++++ /dev/null
+@@ -1,24 +0,0 @@
+-// Implementation adapted from `react-native-safe-area-context`:
+-// https://github.com/AppAndFlow/react-native-safe-area-context/blob/v5.6.1/src/specs/NativeSafeAreaView.ts
+-
+-// eslint-disable-next-line @react-native/no-deep-imports
+-import codegenNativeComponent from 'react-native/Libraries/Utilities/codegenNativeComponent';
+-import { ViewProps } from 'react-native';
+-import { WithDefault } from 'react-native/Libraries/Types/CodegenTypesNamespace';
+-
+-type InsetType = 'all' | 'system' | 'interface';
+-
+-export interface NativeProps extends ViewProps {
+-  edges?: Readonly<{
+-    top: boolean;
+-    right: boolean;
+-    bottom: boolean;
+-    left: boolean;
+-  }>;
+-  // Android-only
+-  insetType?: WithDefault<InsetType, 'all'>;
+-}
+-
+-export default codegenNativeComponent<NativeProps>('RNSSafeAreaView', {
+-  interfaceOnly: true,
+-});
