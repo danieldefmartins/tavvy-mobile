@@ -2063,13 +2063,19 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               </TouchableOpacity>
             </View>
 
-            {/* Trending Carousel */}
+            {/* Trending Carousel - Only show top 5 categories */}
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false} 
               contentContainerStyle={styles.trendingScroll}
             >
-              {filteredPlaces.slice(0, 10).map((place, trendingIndex) => (
+              {filteredPlaces
+                .filter((place) => {
+                  const category = (place.category || place.primary_category || '').toLowerCase();
+                  return ['restaurants', 'coffee shop', 'cafes', 'contractors', 'universes', 'cities'].includes(category);
+                })
+                .slice(0, 10)
+                .map((place, trendingIndex) => (
                 <TouchableOpacity
                   key={`trending-${place.id}-${trendingIndex}`}
                   onPress={() => handlePlacePress(place)}
