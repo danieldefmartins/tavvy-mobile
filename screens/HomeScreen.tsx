@@ -308,6 +308,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   
   // Map states
   const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('osm');
+  const [currentMapBounds, setCurrentMapBounds] = useState<{
+    minLat: number;
+    maxLat: number;
+    minLng: number;
+    maxLng: number;
+  } | null>(null);
+  const [showSearchThisArea, setShowSearchThisArea] = useState(false);
+  const [isSearchingArea, setIsSearchingArea] = useState(false);
   
   // Personalization states
   const [greeting, setGreeting] = useState('');
@@ -658,6 +666,122 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       setFilteredPlaces([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Fetch places for the current visible map bounds
+   * Called when user taps "Search this Area" button
+   */
+  const fetchPlacesForBounds = async (bounds: {
+    minLat: number;
+    maxLat: number;
+    minLng: number;
+    maxLng: number;
+  }) => {
+    try {
+      setIsSearchingArea(true);
+      console.log(`Fetching places for bounds: [${bounds.minLng}, ${bounds.minLat}] to [${bounds.maxLng}, ${bounds.maxLat}]`);
+
+      const result = await fetchPlacesInBounds({
+        bounds,
+        limit: 150,
+        fallbackThreshold: 40,
+      });
+
+      console.log(`Fetched ${result.places.length} places for map bounds`);
+
+      if (result.places.length > 0) {
+        // Get signal aggregates for the places
+        const placeIds = result.places.map(p => p.source_id);
+        
+        let signalAggregates: any[] = [];
+        try {
+          const { data: signalData } = await supabase
+            .from('place_signal_aggregates')
+            .select('place_id, signal_label, total_taps')
+            .in('place_id', placeIds);
+          signalAggregates = signalData || [];
+        } catch (e) {
+          console.log('No signal aggregates table or data');
+        }
+
+        // Map PlaceCard[] to existing Place[] shape for UI compatibility
+        const processedPlaces = result.places
+          .filter((place) => {
+            return typeof place.longitude === 'number' && typeof place.latitude === 'number' && 
+                   !isNaN(place.longitude) && !isNaN(place.latitude) && 
+                   place.longitude !== 0 && place.latitude !== 0;
+          })
+          .map(place => {
+            const placeSignals = signalAggregates
+              .filter(s => s.place_id === place.source_id)
+              .map(s => ({
+                bucket: s.signal_label || 'Unknown',
+                tap_total: s.total_taps || 0,
+              }));
+
+            return {
+              id: place.source_id,
+              name: place.name,
+              latitude: place.latitude,
+              longitude: place.longitude,
+              address_line1: place.address || '',
+              city: place.city || '',
+              state_region: place.region || '',
+              country: place.country || '',
+              category: place.category || 'Other',
+              phone: place.phone || '',
+              website: place.website || '',
+              instagram_url: place.instagram || '',
+              signals: placeSignals,
+              photos: place.photos || [],
+            };
+          });
+
+        setPlaces(processedPlaces as Place[]);
+        setFilteredPlaces(processedPlaces as Place[]);
+      } else {
+        console.log('No places found in this area');
+        setPlaces([]);
+        setFilteredPlaces([]);
+      }
+      
+      setShowSearchThisArea(false);
+    } catch (error) {
+      console.error('Error fetching places for bounds:', error);
+    } finally {
+      setIsSearchingArea(false);
+    }
+  };
+
+  /**
+   * Handle map region change - show "Search this Area" button
+   */
+  const handleMapRegionChange = (feature: any) => {
+    if (!feature?.properties?.visibleBounds) return;
+    
+    const visibleBounds = feature.properties.visibleBounds;
+    // visibleBounds is [[ne_lng, ne_lat], [sw_lng, sw_lat]]
+    const [[neLng, neLat], [swLng, swLat]] = visibleBounds;
+    
+    const newBounds = {
+      minLat: swLat,
+      maxLat: neLat,
+      minLng: swLng,
+      maxLng: neLng,
+    };
+    
+    setCurrentMapBounds(newBounds);
+    setShowSearchThisArea(true);
+  };
+
+  /**
+   * Handle "Search this Area" button press
+   */
+  const handleSearchThisArea = () => {
+    if (currentMapBounds) {
+      fetchPlacesForBounds(currentMapBounds);
     }
   };
 
@@ -2125,6 +2249,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         scrollEnabled={true}
         rotateEnabled={true}
         pitchEnabled={true}
+        onRegionDidChange={handleMapRegionChange}
       >
         <MapLibreGL.Camera
           ref={cameraRef}
@@ -2310,6 +2435,27 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           ))}
         </ScrollView>
       </View>
+
+      {/* Search this Area Button */}
+      {showSearchThisArea && viewMode === 'map' && (
+        <TouchableOpacity
+          style={[
+            styles.searchThisAreaButton,
+            { backgroundColor: isDark ? theme.primary : '#007AFF' },
+          ]}
+          onPress={handleSearchThisArea}
+          disabled={isSearchingArea}
+        >
+          {isSearchingArea ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="refresh" size={18} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.searchThisAreaText}>Search this area</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      )}
 
       {/* Bottom Sheet with Place Cards or Address Card */}
       <BottomSheet
@@ -3122,6 +3268,29 @@ const styles = StyleSheet.create({
   },
   mapCategoryChipTextActive: {
     color: '#fff',
+  },
+
+  // Search this Area Button
+  searchThisAreaButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 170 : 130,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 15,
+  },
+  searchThisAreaText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 
   // Bottom Sheet

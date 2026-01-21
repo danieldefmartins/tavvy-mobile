@@ -170,13 +170,18 @@ export async function fetchPlacesInBounds(options: FetchPlacesOptions): Promise<
   }
 
   // ============================================
-  // STEP 4: Merge and return results
+  // STEP 4: Merge, deduplicate, and return results
   // ============================================
   const allPlaces = [...placesFromCanonical, ...placesFromFsqRaw];
+  
+  // Additional deduplication by name + proximity
+  // This catches duplicates that have different source_ids but are the same place
+  const deduplicatedPlaces = deduplicateByNameAndProximity(allPlaces);
+  
   const endTime = Date.now();
 
   const result: FetchPlacesResult = {
-    places: allPlaces,
+    places: deduplicatedPlaces,
     metrics: {
       fromPlaces: placesFromCanonical.length,
       fromFsqRaw: placesFromFsqRaw.length,
@@ -365,4 +370,100 @@ export async function fetchPlaceById(placeId: string): Promise<PlaceCard | null>
 
   console.warn(`[placeService] Place not found: ${placeId}`);
   return null;
+}
+
+// ============================================
+// DEDUPLICATION HELPER
+// ============================================
+
+/**
+ * Calculate distance between two coordinates in meters
+ */
+function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
+ * Normalize place name for comparison
+ * Removes common suffixes, punctuation, and extra spaces
+ */
+function normalizeName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[''`]/g, "'")
+    .replace(/[^\w\s']/g, '')
+    .replace(/\s+(inc|llc|ltd|corp|restaurant|cafe|bar|grill|kitchen|eatery|bistro|diner)\.?$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Deduplicate places by name similarity and geographic proximity
+ * Two places are considered duplicates if:
+ * 1. Their normalized names match exactly, AND
+ * 2. They are within 100 meters of each other
+ * 
+ * When duplicates are found, prefer the one from 'places' table (canonical)
+ */
+function deduplicateByNameAndProximity(places: PlaceCard[]): PlaceCard[] {
+  const PROXIMITY_THRESHOLD_METERS = 100;
+  const seen = new Map<string, PlaceCard>();
+  const result: PlaceCard[] = [];
+  
+  for (const place of places) {
+    const normalizedName = normalizeName(place.name);
+    let isDuplicate = false;
+    
+    // Check against all seen places with similar names
+    for (const [key, existingPlace] of seen.entries()) {
+      const existingNormalizedName = normalizeName(existingPlace.name);
+      
+      // Check if names match
+      if (normalizedName === existingNormalizedName) {
+        // Check proximity
+        const distance = getDistanceInMeters(
+          place.latitude,
+          place.longitude,
+          existingPlace.latitude,
+          existingPlace.longitude
+        );
+        
+        if (distance <= PROXIMITY_THRESHOLD_METERS) {
+          isDuplicate = true;
+          
+          // If current place is from canonical table and existing is from fsq_raw, replace it
+          if (place.source === 'places' && existingPlace.source === 'fsq_raw') {
+            seen.set(key, place);
+            // Update result array
+            const idx = result.findIndex(p => p.id === existingPlace.id);
+            if (idx !== -1) {
+              result[idx] = place;
+            }
+          }
+          break;
+        }
+      }
+    }
+    
+    if (!isDuplicate) {
+      const key = `${normalizedName}-${place.latitude.toFixed(4)}-${place.longitude.toFixed(4)}`;
+      seen.set(key, place);
+      result.push(place);
+    }
+  }
+  
+  const duplicatesRemoved = places.length - result.length;
+  if (duplicatesRemoved > 0) {
+    console.log(`[placeService] Removed ${duplicatesRemoved} duplicate places by name+proximity`);
+  }
+  
+  return result;
 }
