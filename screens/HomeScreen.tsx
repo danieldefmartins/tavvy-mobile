@@ -806,7 +806,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   };
 
   /**
-   * Handle map region change - show "Search this Area" button
+   * Handle map region change - show "Search this Area" button only when map is moved
    */
   const handleMapRegionChange = (feature: any) => {
     if (!feature?.properties?.visibleBounds) return;
@@ -822,8 +822,20 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       maxLng: neLng,
     };
     
+    // Only show "Search this area" if bounds have significantly changed from current
+    if (currentMapBounds) {
+      const latDiff = Math.abs(newBounds.minLat - currentMapBounds.minLat) + 
+                      Math.abs(newBounds.maxLat - currentMapBounds.maxLat);
+      const lngDiff = Math.abs(newBounds.minLng - currentMapBounds.minLng) + 
+                      Math.abs(newBounds.maxLng - currentMapBounds.maxLng);
+      
+      // Only show button if map moved significantly (threshold ~0.01 degrees = ~1km)
+      if (latDiff > 0.01 || lngDiff > 0.01) {
+        setShowSearchThisArea(true);
+      }
+    }
+    
     setCurrentMapBounds(newBounds);
-    setShowSearchThisArea(true);
   };
 
   /**
@@ -2774,7 +2786,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <BottomSheet
           ref={bottomSheetRef}
           index={1}
-          snapPoints={searchedAddress ? [40, '40%', '65%'] : (selectedPlace ? [40, '50%', '85%'] : [40, '35%', '65%'])}
+          snapPoints={searchedAddress ? [40, '40%', '60%'] : (selectedPlace ? [40, '45%', '60%'] : [40, '35%', '60%'])}
           backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
           handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
           enablePanDownToClose={false}
@@ -2815,7 +2827,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <BottomSheet
           ref={categoryBottomSheetRef}
           index={1}
-          snapPoints={['15%', '50%', '85%']}
+          snapPoints={['15%', '45%', '60%']}
           backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
           handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
           enablePanDownToClose={false}
