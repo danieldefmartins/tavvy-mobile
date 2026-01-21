@@ -30,6 +30,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { fetchPlacesInBounds, PlaceCard, getPlaceIdForNavigation } from '../lib/placeService';
 import { searchSuggestions as searchPlaceSuggestions } from '../lib/searchService';
+import { fetchWeatherData, getDefaultWeatherData, WeatherData } from '../lib/weatherService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -322,22 +323,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [showWeatherPopup, setShowWeatherPopup] = useState(false);
   const [showMapLayerPopup, setShowMapLayerPopup] = useState(false);
   
-  // Weather data (mock for now - can be connected to real API)
-  const [weatherData] = useState({
-    temp: 72,
-    feelsLike: 70,
-    high: 78,
-    low: 65,
-    condition: 'Sunny',
-    icon: 'sunny',
-    hourly: [
-      { time: 'Now', temp: 72, icon: 'sunny' },
-      { time: '11AM', temp: 74, icon: 'sunny' },
-      { time: '12PM', temp: 76, icon: 'partly-sunny' },
-      { time: '1PM', temp: 78, icon: 'partly-sunny' },
-    ],
-    airQuality: { status: 'Good', aqi: 32 },
-  });
+  // Weather data - fetched from real API
+  const [weatherData, setWeatherData] = useState<WeatherData>(getDefaultWeatherData());
+  const [isLoadingWeather, setIsLoadingWeather] = useState(false);
   
   // Personalization states
   const [greeting, setGreeting] = useState('');
@@ -429,6 +417,23 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       await AsyncStorage.setItem(STORAGE_KEYS.RECENT_SEARCHES, JSON.stringify(updated));
     } catch (error) {
       console.log('Error saving recent search:', error);
+    }
+  };
+
+  /**
+   * Load weather data for user's location
+   */
+  const loadWeatherData = async (coords: [number, number]) => {
+    setIsLoadingWeather(true);
+    try {
+      const data = await fetchWeatherData(coords[1], coords[0]); // lat, lng
+      if (data) {
+        setWeatherData(data);
+      }
+    } catch (error) {
+      console.log('Error loading weather:', error);
+    } finally {
+      setIsLoadingWeather(false);
     }
   };
 
@@ -576,6 +581,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         setUserLocation(coords);
         
         fetchPlaces(coords);
+        loadWeatherData(coords);
         
         const [address] = await Location.reverseGeocodeAsync({
           latitude: location.coords.latitude,
@@ -2578,7 +2584,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           onPress={() => setShowWeatherPopup(false)}
         >
           <View style={[styles.popupContainer, styles.weatherPopup, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-            <Text style={[styles.popupTitle, { color: isDark ? theme.text : '#111827' }]}>Weather</Text>
+            <Text style={[styles.popupTitle, { color: isDark ? theme.text : '#111827' }]}>Weather in the area</Text>
             
             {/* Current Temperature */}
             <View style={styles.weatherMain}>
