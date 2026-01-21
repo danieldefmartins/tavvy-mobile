@@ -81,12 +81,24 @@ const resources = {
 
 // Get the best matching language from device locale
 const getDeviceLanguage = (): string => {
-  const deviceLocale = Localization.locale;
-  const languageCode = deviceLocale.split('-')[0].toLowerCase();
-  
-  // Check if we support this language
-  const isSupported = SUPPORTED_LANGUAGES.some(lang => lang.code === languageCode);
-  return isSupported ? languageCode : 'en';
+  try {
+    // Safely get device locale with fallback
+    const deviceLocale = Localization.locale || Localization.getLocales?.()?.[0]?.languageCode || 'en';
+    
+    // Handle undefined or invalid locale
+    if (!deviceLocale || typeof deviceLocale !== 'string') {
+      return 'en';
+    }
+    
+    const languageCode = deviceLocale.split('-')[0].toLowerCase();
+    
+    // Check if we support this language
+    const isSupported = SUPPORTED_LANGUAGES.some(lang => lang.code === languageCode);
+    return isSupported ? languageCode : 'en';
+  } catch (error) {
+    console.warn('[i18n] Error getting device language, defaulting to English:', error);
+    return 'en';
+  }
 };
 
 // Initialize i18next
