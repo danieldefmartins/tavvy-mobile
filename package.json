@@ -10,7 +10,8 @@
     "web": "expo start --web",
     "prebuild": "expo prebuild",
     "clean": "rm -rf node_modules ios android && npm install",
-    "postinstall": "node -e \"console.log('react-native-screens:', require('react-native-screens/package.json').version)\""
+    "postinstall": "node -e \"console.log('react-native-screens:', require('react-native-screens/package.json').version)\"",
+    "eas-build-post-install": "node scripts/eas-post-install.js"
   },
   "dependencies": {
     "@expo/ngrok": "^4.1.3",
