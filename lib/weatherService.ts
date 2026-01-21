@@ -1,10 +1,9 @@
 /**
  * Weather Service
- * Fetches real weather data from OpenWeatherMap API
+ * Fetches real weather data from Open-Meteo API
+ * 100% FREE - No API key required
+ * https://open-meteo.com/
  */
-
-// OpenWeatherMap API - Free tier: 1000 calls/day
-const OPENWEATHER_API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY || '';
 
 export interface WeatherData {
   temp: number;
@@ -24,106 +23,127 @@ export interface WeatherData {
   };
 }
 
-// Map OpenWeatherMap icon codes to Ionicons names
-const iconMap: { [key: string]: string } = {
-  '01d': 'sunny',
-  '01n': 'moon',
-  '02d': 'partly-sunny',
-  '02n': 'cloudy-night',
-  '03d': 'cloud',
-  '03n': 'cloud',
-  '04d': 'cloudy',
-  '04n': 'cloudy',
-  '09d': 'rainy',
-  '09n': 'rainy',
-  '10d': 'rainy',
-  '10n': 'rainy',
-  '11d': 'thunderstorm',
-  '11n': 'thunderstorm',
-  '13d': 'snow',
-  '13n': 'snow',
-  '50d': 'cloudy',
-  '50n': 'cloudy',
+// Map WMO weather codes to conditions and Ionicons
+const weatherCodeMap: { [key: number]: { condition: string; icon: string } } = {
+  0: { condition: 'Clear', icon: 'sunny' },
+  1: { condition: 'Mostly Clear', icon: 'sunny' },
+  2: { condition: 'Partly Cloudy', icon: 'partly-sunny' },
+  3: { condition: 'Overcast', icon: 'cloudy' },
+  45: { condition: 'Foggy', icon: 'cloudy' },
+  48: { condition: 'Foggy', icon: 'cloudy' },
+  51: { condition: 'Light Drizzle', icon: 'rainy' },
+  53: { condition: 'Drizzle', icon: 'rainy' },
+  55: { condition: 'Heavy Drizzle', icon: 'rainy' },
+  56: { condition: 'Freezing Drizzle', icon: 'rainy' },
+  57: { condition: 'Freezing Drizzle', icon: 'rainy' },
+  61: { condition: 'Light Rain', icon: 'rainy' },
+  63: { condition: 'Rain', icon: 'rainy' },
+  65: { condition: 'Heavy Rain', icon: 'rainy' },
+  66: { condition: 'Freezing Rain', icon: 'rainy' },
+  67: { condition: 'Freezing Rain', icon: 'rainy' },
+  71: { condition: 'Light Snow', icon: 'snow' },
+  73: { condition: 'Snow', icon: 'snow' },
+  75: { condition: 'Heavy Snow', icon: 'snow' },
+  77: { condition: 'Snow Grains', icon: 'snow' },
+  80: { condition: 'Light Showers', icon: 'rainy' },
+  81: { condition: 'Showers', icon: 'rainy' },
+  82: { condition: 'Heavy Showers', icon: 'rainy' },
+  85: { condition: 'Snow Showers', icon: 'snow' },
+  86: { condition: 'Heavy Snow Showers', icon: 'snow' },
+  95: { condition: 'Thunderstorm', icon: 'thunderstorm' },
+  96: { condition: 'Thunderstorm', icon: 'thunderstorm' },
+  99: { condition: 'Thunderstorm', icon: 'thunderstorm' },
 };
 
-// Map AQI values to status
+// Map US AQI values to status
 const getAqiStatus = (aqi: number): string => {
   if (aqi <= 50) return 'Good';
   if (aqi <= 100) return 'Moderate';
-  if (aqi <= 150) return 'Unhealthy for Sensitive Groups';
+  if (aqi <= 150) return 'Unhealthy for Sensitive';
   if (aqi <= 200) return 'Unhealthy';
   if (aqi <= 300) return 'Very Unhealthy';
   return 'Hazardous';
 };
 
-// Format hour from timestamp
-const formatHour = (timestamp: number, index: number): string => {
+// Format hour from ISO string
+const formatHour = (isoString: string, index: number): string => {
   if (index === 0) return 'Now';
-  const date = new Date(timestamp * 1000);
+  const date = new Date(isoString);
   const hours = date.getHours();
   const ampm = hours >= 12 ? 'PM' : 'AM';
   const hour12 = hours % 12 || 12;
   return `${hour12}${ampm}`;
 };
 
+// Get icon for time of day
+const getIconForCode = (code: number, hour: number): string => {
+  const weather = weatherCodeMap[code] || { condition: 'Clear', icon: 'sunny' };
+  // Use night icons for nighttime (before 6am or after 8pm)
+  if ((hour < 6 || hour >= 20) && weather.icon === 'sunny') {
+    return 'moon';
+  }
+  if ((hour < 6 || hour >= 20) && weather.icon === 'partly-sunny') {
+    return 'cloudy-night';
+  }
+  return weather.icon;
+};
+
 /**
  * Fetch weather data for a given location
+ * Uses Open-Meteo API - completely free, no API key needed
  */
 export const fetchWeatherData = async (
   latitude: number,
   longitude: number
 ): Promise<WeatherData | null> => {
   try {
-    if (!OPENWEATHER_API_KEY) {
-      console.warn('OpenWeatherMap API key not configured');
-      return null;
-    }
-
-    // Fetch current weather and forecast in parallel
-    const [currentRes, forecastRes, airQualityRes] = await Promise.all([
+    // Fetch weather and air quality in parallel
+    const [weatherRes, aqiRes] = await Promise.all([
       fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=imperial&appid=${OPENWEATHER_API_KEY}`
+        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,weather_code&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=auto&forecast_days=1`
       ),
       fetch(
-        `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=imperial&cnt=8&appid=${OPENWEATHER_API_KEY}`
-      ),
-      fetch(
-        `https://api.openweathermap.org/data/2.5/air_pollution?lat=${latitude}&lon=${longitude}&appid=${OPENWEATHER_API_KEY}`
+        `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&current=us_aqi`
       ),
     ]);
 
-    if (!currentRes.ok || !forecastRes.ok) {
-      console.error('Weather API error:', currentRes.status, forecastRes.status);
+    if (!weatherRes.ok) {
+      console.error('Weather API error:', weatherRes.status);
       return null;
     }
 
-    const current = await currentRes.json();
-    const forecast = await forecastRes.json();
-    const airQuality = airQualityRes.ok ? await airQualityRes.json() : null;
+    const weather = await weatherRes.json();
+    const airQuality = aqiRes.ok ? await aqiRes.json() : null;
 
-    // Extract hourly forecast (every 3 hours from OpenWeatherMap free tier)
-    const hourly = forecast.list.slice(0, 4).map((item: any, index: number) => ({
-      time: formatHour(item.dt, index),
-      temp: Math.round(item.main.temp),
-      icon: iconMap[item.weather[0].icon] || 'partly-sunny',
-    }));
-
-    // Calculate AQI (OpenWeatherMap uses 1-5 scale, convert to US AQI approximation)
-    let aqi = 0;
-    if (airQuality?.list?.[0]?.main?.aqi) {
-      const owmAqi = airQuality.list[0].main.aqi;
-      // Approximate conversion: OWM 1-5 to US AQI 0-500
-      const aqiMap: { [key: number]: number } = { 1: 25, 2: 75, 3: 125, 4: 175, 5: 300 };
-      aqi = aqiMap[owmAqi] || 50;
+    // Get current hour index for hourly data
+    const currentHour = new Date().getHours();
+    
+    // Extract hourly forecast (next 4 hours)
+    const hourlyData = weather.hourly;
+    const hourly = [];
+    for (let i = 0; i < 4 && currentHour + i < 24; i++) {
+      const hourIndex = currentHour + i;
+      hourly.push({
+        time: formatHour(hourlyData.time[hourIndex], i),
+        temp: Math.round(hourlyData.temperature_2m[hourIndex]),
+        icon: getIconForCode(hourlyData.weather_code[hourIndex], hourIndex),
+      });
     }
 
+    // Get current weather info
+    const currentWeather = weather.current;
+    const weatherInfo = weatherCodeMap[currentWeather.weather_code] || { condition: 'Clear', icon: 'sunny' };
+    
+    // Get AQI
+    const aqi = airQuality?.current?.us_aqi || 0;
+
     return {
-      temp: Math.round(current.main.temp),
-      feelsLike: Math.round(current.main.feels_like),
-      high: Math.round(current.main.temp_max),
-      low: Math.round(current.main.temp_min),
-      condition: current.weather[0].main,
-      icon: iconMap[current.weather[0].icon] || 'partly-sunny',
+      temp: Math.round(currentWeather.temperature_2m),
+      feelsLike: Math.round(currentWeather.apparent_temperature),
+      high: Math.round(weather.daily.temperature_2m_max[0]),
+      low: Math.round(weather.daily.temperature_2m_min[0]),
+      condition: weatherInfo.condition,
+      icon: getIconForCode(currentWeather.weather_code, currentHour),
       hourly,
       airQuality: {
         status: getAqiStatus(aqi),
