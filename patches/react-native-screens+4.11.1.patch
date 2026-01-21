@@ -1,0 +1,45 @@
+diff --git a/node_modules/react-native-screens/src/fabric/ScreenStackHeaderConfigNativeComponent.ts b/node_modules/react-native-screens/src/fabric/ScreenStackHeaderConfigNativeComponent.ts
+index f47d82a..8646c79 100644
+--- a/node_modules/react-native-screens/src/fabric/ScreenStackHeaderConfigNativeComponent.ts
++++ b/node_modules/react-native-screens/src/fabric/ScreenStackHeaderConfigNativeComponent.ts
+@@ -47,7 +47,7 @@ export interface NativeProps extends ViewProps {
+   backTitle?: string;
+   backTitleFontFamily?: string;
+   backTitleFontSize?: Int32;
+-  backTitleVisible?: WithDefault<boolean, 'true'>;
++  backTitleVisible?: WithDefault<boolean, true>;
+   color?: ColorValue;
+   direction?: WithDefault<DirectionType, 'ltr'>;
+   hidden?: boolean;
+diff --git a/node_modules/react-native-screens/src/fabric/SearchBarNativeComponent.ts b/node_modules/react-native-screens/src/fabric/SearchBarNativeComponent.ts
+index 467442a..3d7554d 100644
+--- a/node_modules/react-native-screens/src/fabric/SearchBarNativeComponent.ts
++++ b/node_modules/react-native-screens/src/fabric/SearchBarNativeComponent.ts
+@@ -24,11 +24,11 @@ type SearchBarPlacement = 'automatic' | 'inline' | 'stacked';
+ type AutoCapitalizeType = 'none' | 'words' | 'sentences' | 'characters';
+ 
+ export interface NativeProps extends ViewProps {
+-  onSearchFocus?: DirectEventHandler<SearchBarEvent> | null;
+-  onSearchBlur?: DirectEventHandler<SearchBarEvent> | null;
+-  onSearchButtonPress?: DirectEventHandler<SearchButtonPressedEvent> | null;
+-  onCancelButtonPress?: DirectEventHandler<SearchBarEvent> | null;
+-  onChangeText?: DirectEventHandler<ChangeTextEvent> | null;
++  onSearchFocus?: DirectEventHandler<SearchBarEvent>;
++  onSearchBlur?: DirectEventHandler<SearchBarEvent>;
++  onSearchButtonPress?: DirectEventHandler<SearchButtonPressedEvent>;
++  onCancelButtonPress?: DirectEventHandler<SearchBarEvent>;
++  onChangeText?: DirectEventHandler<ChangeTextEvent>;
+   hideWhenScrolling?: boolean;
+   autoCapitalize?: WithDefault<AutoCapitalizeType, 'none'>;
+   placeholder?: string;
+@@ -45,8 +45,8 @@ export interface NativeProps extends ViewProps {
+   disableBackButtonOverride?: boolean;
+   // TODO: consider creating enum here
+   inputType?: string;
+-  onClose?: DirectEventHandler<SearchBarEvent> | null;
+-  onOpen?: DirectEventHandler<SearchBarEvent> | null;
++  onClose?: DirectEventHandler<SearchBarEvent>;
++  onOpen?: DirectEventHandler<SearchBarEvent>;
+   hintTextColor?: ColorValue;
+   headerIconColor?: ColorValue;
+   shouldShowHintSearchIcon?: WithDefault<boolean, true>;
