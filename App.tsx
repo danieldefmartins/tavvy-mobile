@@ -14,6 +14,12 @@ import { Colors, darkTheme } from './constants/Colors';
 // Animated Splash Screen (replaces VideoSplashScreen)
 import AnimatedSplash from './components/AnimatedSplash';
 
+// Error Boundary for graceful error handling
+import ErrorBoundary from './components/ErrorBoundary';
+
+// Network connectivity monitoring
+import { NetworkProvider } from './contexts/NetworkContext';
+
 // Signal System - Preload cache on app start
 import { preloadSignalLabels } from './hooks/useSignalLabels';
 import { preloadSignalCache } from './lib/reviews';
@@ -364,17 +370,21 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: darkTheme.background }}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ThemeProvider>
-            {showSplash ? (
-              <AnimatedSplash onAnimationComplete={handleSplashComplete} />
-            ) : (
-              <AppContent />
-            )}
-          </ThemeProvider>
-        </AuthProvider>
-      </QueryClientProvider>
+      <ErrorBoundary>
+        <NetworkProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <ThemeProvider>
+                {showSplash ? (
+                  <AnimatedSplash onAnimationComplete={handleSplashComplete} />
+                ) : (
+                  <AppContent />
+                )}
+              </ThemeProvider>
+            </AuthProvider>
+          </QueryClientProvider>
+        </NetworkProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }

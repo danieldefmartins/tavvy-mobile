@@ -269,6 +269,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   
   // Search states
   const [searchQuery, setSearchQuery] = useState('');
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
@@ -346,6 +347,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   useEffect(() => {
     initializeApp();
+    
+    // Cleanup debounce timer on unmount
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
   }, []);
 
   // Handle camera movement when targetLocation changes
@@ -830,19 +838,26 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // SEARCH FUNCTIONS
   // ============================================
 
-  const handleSearchInputChange = async (text: string) => {
+  const handleSearchInputChange = (text: string) => {
     setSearchQuery(text);
+    
+    // Clear previous debounce timer
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
     
     if (text.trim().length === 0) {
       setSearchSuggestions([]);
       return;
     }
 
-    const suggestions: SearchSuggestion[] = [];
-    const query = text.toLowerCase();
+    // Debounce search by 300ms to reduce API calls
+    searchDebounceRef.current = setTimeout(async () => {
+      const suggestions: SearchSuggestion[] = [];
+      const query = text.toLowerCase();
 
-    // Search database for matching places using centralized searchService
-    try {
+      // Search database for matching places using centralized searchService
+      try {
       const searchResults = await searchPlaceSuggestions(text, 8, userLocation || undefined);
 
       if (searchResults && searchResults.length > 0) {
@@ -946,6 +961,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         setIsSearchingAddress(false);
       }
     }
+    }, 300); // End of debounce setTimeout
   };
 
   const handleSearchFocus = () => {
@@ -1686,28 +1702,28 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         </View>
 
         <View style={styles.addressActionsRow}>
-          <TouchableOpacity style={styles.addressActionButton} onPress={handleAddressDirections}>
+          <TouchableOpacity style={styles.addressActionButton} onPress={handleAddressDirections} accessibilityLabel="Get directions" accessibilityRole="button">
             <View style={[styles.addressActionIcon, { backgroundColor: '#007AFF' }]}>
               <Ionicons name="navigate" size={20} color="#fff" />
             </View>
             <Text style={[styles.addressActionText, { color: isDark ? theme.textSecondary : '#666' }]}>Directions</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.addressActionButton} onPress={handleShare}>
+          <TouchableOpacity style={styles.addressActionButton} onPress={handleShare} accessibilityLabel="Share location" accessibilityRole="button">
             <View style={[styles.addressActionIcon, { backgroundColor: '#34C759' }]}>
               <Ionicons name="share-outline" size={20} color="#fff" />
             </View>
             <Text style={[styles.addressActionText, { color: isDark ? theme.textSecondary : '#666' }]}>Share</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.addressActionButton} onPress={handleSaveParking}>
+          <TouchableOpacity style={styles.addressActionButton} onPress={handleSaveParking} accessibilityLabel="Save parking location" accessibilityRole="button">
             <View style={[styles.addressActionIcon, { backgroundColor: '#FF9500' }]}>
               <Ionicons name="car" size={20} color="#fff" />
             </View>
             <Text style={[styles.addressActionText, { color: isDark ? theme.textSecondary : '#666' }]}>Park Here</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.addressActionButton} onPress={handleCopyAddress}>
+          <TouchableOpacity style={styles.addressActionButton} onPress={handleCopyAddress} accessibilityLabel="Copy address" accessibilityRole="button">
             <View style={[styles.addressActionIcon, { backgroundColor: '#8E8E93' }]}>
               <Ionicons name="copy-outline" size={20} color="#fff" />
             </View>
@@ -1715,7 +1731,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={[styles.saveLocationButton, { backgroundColor: isDark ? theme.surface : '#F2F2F7' }]} onPress={handleSaveLocation}>
+        <TouchableOpacity style={[styles.saveLocationButton, { backgroundColor: isDark ? theme.surface : '#F2F2F7' }]} onPress={handleSaveLocation} accessibilityLabel="Save to my places" accessibilityRole="button">
           <Ionicons name="bookmark-outline" size={20} color="#007AFF" />
           <Text style={styles.saveLocationText}>Save to My Places</Text>
         </TouchableOpacity>
