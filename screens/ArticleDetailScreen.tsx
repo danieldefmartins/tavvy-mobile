@@ -116,7 +116,7 @@ const getFontSizes = (bodySize: number) => ({
 });
 
 // Supabase Edge Function URL for audio generation
-const AUDIO_FUNCTION_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/generate-article-audio`;
+const AUDIO_FUNCTION_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/hyper-service`;
 
 export default function ArticleDetailScreen() {
   const navigation = useNavigation();
