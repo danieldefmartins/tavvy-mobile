@@ -435,23 +435,52 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   };
 
   /**
-   * Load trending items from multiple sources: places, cities, universes
+   * Calculate distance between two coordinates in miles (Haversine formula)
    */
-  const loadTrendingItems = async () => {
+  const calculateDistanceMiles = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 3959; // Earth's radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  /**
+   * Load trending items from multiple sources: places, cities, universes
+   * Only shows items within 50 miles of user's location
+   */
+  const loadTrendingItems = async (userCoords?: [number, number] | null) => {
     setIsLoadingTrending(true);
     try {
       const items: any[] = [];
+      const MAX_DISTANCE_MILES = 50;
       
-      // Fetch featured cities
+      // Use provided coords or current userLocation
+      const coords = userCoords || userLocation;
+      
+      // Fetch cities (get more to filter by distance)
       const { data: cities, error: citiesError } = await supabase
         .from('tavvy_cities')
         .select('id, name, state, cover_image_url, thumbnail_image_url, description, latitude, longitude')
         .eq('is_active', true)
         .order('population', { ascending: false })
-        .limit(5);
+        .limit(50);
       
       if (cities && !citiesError) {
         cities.forEach((city: any) => {
+          // Filter by distance if we have user location
+          if (coords && city.latitude && city.longitude) {
+            const distance = calculateDistanceMiles(
+              coords[1], coords[0], // userLocation is [lng, lat]
+              Number(city.latitude), Number(city.longitude)
+            );
+            if (distance > MAX_DISTANCE_MILES) return;
+          }
+          
           items.push({
             id: city.id,
             name: city.name,
@@ -465,16 +494,25 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         });
       }
       
-      // Fetch featured universes
+      // Fetch universes (get more to filter by distance)
       const { data: universes, error: universesError } = await supabase
         .from('atlas_universes')
         .select('id, name, location, banner_image_url, thumbnail_image_url, description, latitude, longitude')
         .eq('status', 'published')
         .order('total_signals', { ascending: false })
-        .limit(5);
+        .limit(50);
       
       if (universes && !universesError) {
         universes.forEach((universe: any) => {
+          // Filter by distance if we have user location
+          if (coords && universe.latitude && universe.longitude) {
+            const distance = calculateDistanceMiles(
+              coords[1], coords[0], // userLocation is [lng, lat]
+              Number(universe.latitude), Number(universe.longitude)
+            );
+            if (distance > MAX_DISTANCE_MILES) return;
+          }
+          
           items.push({
             id: universe.id,
             name: universe.name,
@@ -488,8 +526,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         });
       }
       
-      // Shuffle items to mix cities and universes
-      const shuffled = items.sort(() => Math.random() - 0.5);
+      // Shuffle items to mix cities and universes, limit to 10
+      const shuffled = items.sort(() => Math.random() - 0.5).slice(0, 10);
       setTrendingItems(shuffled);
     } catch (error) {
       console.log('Error loading trending items:', error);
@@ -660,6 +698,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         
         fetchPlaces(coords);
         loadWeatherData(coords);
+        loadTrendingItems(coords); // Reload trending with user location for distance filtering
         
         const [address] = await Location.reverseGeocodeAsync({
           latitude: location.coords.latitude,
