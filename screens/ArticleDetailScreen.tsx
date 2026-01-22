@@ -38,6 +38,7 @@ import {
   type ArticleReaction,
 } from '../lib/atlas';
 import { ContentBlockRenderer, ContentBlock } from '../components/atlas';
+import { getCoverImageUrl, getThumbnailUrl } from '../lib/imageUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -309,7 +310,7 @@ export default function ArticleDetailScreen() {
         {/* Cover Image */}
         <View style={styles.coverImageContainer}>
           <Image
-            source={{ uri: article.cover_image_url || PLACEHOLDER_ARTICLE }}
+            source={{ uri: getCoverImageUrl(article.cover_image_url) || PLACEHOLDER_ARTICLE }}
             style={styles.coverImage}
             resizeMode="cover"
           />
@@ -418,7 +419,7 @@ export default function ArticleDetailScreen() {
                     onPress={() => navigation.push('ArticleDetail', { article: related })}
                   >
                     <Image
-                      source={{ uri: related.cover_image_url || PLACEHOLDER_ARTICLE }}
+                      source={{ uri: getThumbnailUrl(related.cover_image_url) || PLACEHOLDER_ARTICLE }}
                       style={styles.relatedImage}
                     />
                     <View style={styles.relatedContent}>

@@ -19,6 +19,7 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../lib/supabaseClient';
+import { getCoverImageUrl } from '../../lib/imageUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -215,10 +216,13 @@ const ParagraphBlockComponent: React.FC<{ block: ParagraphBlock }> = ({ block })
 
 // Image Block
 const ImageBlockComponent: React.FC<{ block: ImageBlock }> = ({ block }) => {
+  // Use optimized image URL for faster loading
+  const optimizedUrl = getCoverImageUrl(block.url);
+  
   return (
     <View style={styles.imageContainer}>
       <Image
-        source={{ uri: block.url }}
+        source={{ uri: optimizedUrl }}
         style={styles.blockImage}
         resizeMode="cover"
       />

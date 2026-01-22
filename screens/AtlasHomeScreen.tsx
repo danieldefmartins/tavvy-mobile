@@ -36,6 +36,7 @@ import {
   type AtlasArticle,
   type AtlasCategory,
 } from '../lib/atlas';
+import { getCoverImageUrl, getThumbnailUrl } from '../lib/imageUtils';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2; // 2 columns with padding
@@ -175,7 +176,7 @@ export default function AtlasHomeScreen() {
         onPress={() => navigateToArticle(featuredArticle)}
       >
         <Image
-          source={{ uri: featuredArticle.cover_image_url || PLACEHOLDER_ARTICLE }}
+          source={{ uri: getCoverImageUrl(featuredArticle.cover_image_url) || PLACEHOLDER_ARTICLE }}
           style={styles.featuredImage}
         />
         <View style={styles.featuredOverlay}>
@@ -226,7 +227,7 @@ export default function AtlasHomeScreen() {
         onPress={() => navigateToArticle(article)}
       >
         <Image
-          source={{ uri: article.cover_image_url || PLACEHOLDER_ARTICLE }}
+          source={{ uri: getThumbnailUrl(article.cover_image_url) || PLACEHOLDER_ARTICLE }}
           style={styles.articleCardImage}
         />
         <View style={styles.articleCardContent}>
@@ -293,7 +294,7 @@ export default function AtlasHomeScreen() {
               onPress={() => navigateToArticle(article)}
             >
               <Image
-                source={{ uri: article.cover_image_url || PLACEHOLDER_ARTICLE }}
+                source={{ uri: getThumbnailUrl(article.cover_image_url) || PLACEHOLDER_ARTICLE }}
                 style={styles.trendingImage}
               />
               <View style={styles.trendingContent}>
