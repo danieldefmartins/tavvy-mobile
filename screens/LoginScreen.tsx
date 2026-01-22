@@ -10,14 +10,19 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Dimensions,
+  ScrollView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
 
+const { width, height } = Dimensions.get('window');
+
 export default function LoginScreen({ navigation }: any) {
   const { signIn } = useAuth();
-  const { theme } = useThemeContext();
+  const { theme, isDark } = useThemeContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,155 +46,307 @@ export default function LoginScreen({ navigation }: any) {
     }
   };
 
-  // Dynamic styles based on theme
-  const dynamicStyles = {
-    container: { backgroundColor: theme.background },
-    backIcon: { color: theme.text },
-    logo: { color: theme.primary },
-    subtitle: { color: theme.textSecondary },
-    label: { color: theme.text },
-    input: { 
-      borderColor: theme.border, 
-      backgroundColor: theme.surfaceElevated,
-      color: theme.text,
-    },
-    eyeIcon: { color: theme.textSecondary },
-    loginButton: { backgroundColor: theme.primary },
-    forgotPasswordText: { color: theme.primary },
-    footerText: { color: theme.textSecondary },
-    signUpLink: { color: theme.primary },
-  };
+  // Generate decorative logo pattern positions
+  const logoPatterns = [
+    { top: '5%', left: '5%', opacity: 0.08, size: 60, rotation: '-15deg' },
+    { top: '8%', right: '10%', opacity: 0.06, size: 45, rotation: '10deg' },
+    { top: '15%', left: '15%', opacity: 0.05, size: 35, rotation: '25deg' },
+    { top: '12%', right: '25%', opacity: 0.07, size: 50, rotation: '-5deg' },
+    { top: '20%', left: '70%', opacity: 0.04, size: 40, rotation: '15deg' },
+    { top: '25%', left: '3%', opacity: 0.06, size: 55, rotation: '-20deg' },
+    { bottom: '35%', right: '5%', opacity: 0.05, size: 45, rotation: '30deg' },
+    { bottom: '25%', left: '8%', opacity: 0.07, size: 50, rotation: '-10deg' },
+    { bottom: '15%', right: '15%', opacity: 0.04, size: 35, rotation: '20deg' },
+    { bottom: '8%', left: '20%', opacity: 0.06, size: 40, rotation: '-25deg' },
+    { bottom: '5%', right: '30%', opacity: 0.05, size: 55, rotation: '5deg' },
+  ];
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, dynamicStyles.container]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={theme.text} />
-          </TouchableOpacity>
-        </View>
+    <View style={styles.container}>
+      {/* Background Gradient - Tavvy Navy to Deep Blue */}
+      <LinearGradient
+        colors={['#0F1233', '#1a237e', '#0F1233']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
 
-        {/* Logo/Title */}
-        <View style={styles.titleContainer}>
-          <Image 
-            source={require('../assets/brand/logo-icon.png')} 
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-          <Text style={[styles.logo, dynamicStyles.logo]}>tavvy</Text>
-          <Text style={[styles.subtitle, dynamicStyles.subtitle]}>Welcome back!</Text>
-        </View>
+      {/* Decorative Logo Pattern Background */}
+      {logoPatterns.map((pattern, index) => (
+        <Image
+          key={index}
+          source={require('../assets/brand/tavvy-logo-white.png')}
+          style={[
+            styles.patternLogo,
+            {
+              top: pattern.top,
+              bottom: pattern.bottom,
+              left: pattern.left,
+              right: pattern.right,
+              opacity: pattern.opacity,
+              width: pattern.size,
+              height: pattern.size,
+              transform: [{ rotate: pattern.rotation }],
+            },
+          ]}
+          resizeMode="contain"
+        />
+      ))}
 
-        {/* Form */}
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, dynamicStyles.label]}>Email</Text>
-            <TextInput
-              style={[styles.input, dynamicStyles.input]}
-              placeholder="your@email.com"
-              placeholderTextColor={theme.textTertiary}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-            />
+      {/* Subtle Glow Effects */}
+      <View style={styles.glowTop} />
+      <View style={styles.glowBottom} />
+
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Header with Back Button */}
+          <View style={styles.header}>
+            <TouchableOpacity 
+              onPress={() => navigation.goBack()} 
+              style={styles.backButton}
+            >
+              <View style={styles.backButtonCircle}>
+                <Ionicons name="arrow-back" size={22} color="#fff" />
+              </View>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, dynamicStyles.label]}>Password</Text>
-            <View style={styles.passwordContainer}>
-              <TextInput
-                style={[styles.input, styles.passwordInput, dynamicStyles.input]}
-                placeholder="Enter your password"
-                placeholderTextColor={theme.textTertiary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
+          {/* Logo Section */}
+          <View style={styles.logoSection}>
+            <View style={styles.logoContainer}>
+              <Image 
+                source={require('../assets/brand/logo-icon.png')} 
+                style={styles.logoImage}
+                resizeMode="contain"
               />
-              <TouchableOpacity
-                style={styles.eyeIcon}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-off' : 'eye'}
-                  size={20}
-                  color={theme.textSecondary}
-                />
-              </TouchableOpacity>
+              {/* Glow behind logo */}
+              <View style={styles.logoGlow} />
             </View>
+            <Text style={styles.brandName}>tavvy</Text>
+            <Text style={styles.welcomeText}>Welcome back!</Text>
+            <Text style={styles.subtitleText}>Sign in to continue your journey</Text>
           </View>
 
-          <TouchableOpacity
-            style={[styles.loginButton, dynamicStyles.loginButton, loading && styles.loginButtonDisabled]}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.loginButtonText}>Log In</Text>
-            )}
-          </TouchableOpacity>
+          {/* Login Form Card */}
+          <View style={styles.formCard}>
+            {/* Email Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons name="mail-outline" size={20} color="#64748B" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="your@email.com"
+                  placeholderTextColor="#94A3B8"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                />
+              </View>
+            </View>
 
-          <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={[styles.forgotPasswordText, dynamicStyles.forgotPasswordText]}>Forgot Password?</Text>
-          </TouchableOpacity>
-        </View>
+            {/* Password Input */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Password</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons name="lock-closed-outline" size={20} color="#64748B" style={styles.inputIcon} />
+                <TextInput
+                  style={[styles.input, styles.passwordInput]}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#94A3B8"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color="#64748B"
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
 
-        {/* Sign Up Link */}
-        <View style={styles.footer}>
-          <Text style={[styles.footerText, dynamicStyles.footerText]}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-            <Text style={[styles.signUpLink, dynamicStyles.signUpLink]}>Sign Up</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </KeyboardAvoidingView>
+            {/* Login Button */}
+            <TouchableOpacity
+              style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+              onPress={handleLogin}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#3B82F6', '#2563EB']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.loginButtonGradient}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Text style={styles.loginButtonText}>Log In</Text>
+                    <Ionicons name="arrow-forward" size={20} color="#fff" style={{ marginLeft: 8 }} />
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Forgot Password */}
+            <TouchableOpacity style={styles.forgotPassword}>
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Divider */}
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or continue with</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Social Login Options */}
+          <View style={styles.socialContainer}>
+            <TouchableOpacity style={styles.socialButton}>
+              <Ionicons name="logo-apple" size={24} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.socialButton}>
+              <Ionicons name="logo-google" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Sign Up Link */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Don't have an account? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+              <Text style={styles.signUpLink}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0F1233',
   },
-  content: {
+  patternLogo: {
+    position: 'absolute',
+    zIndex: 0,
+  },
+  glowTop: {
+    position: 'absolute',
+    top: -100,
+    left: -100,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: '#3B82F6',
+    opacity: 0.15,
+  },
+  glowBottom: {
+    position: 'absolute',
+    bottom: -50,
+    right: -50,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: '#F97316',
+    opacity: 0.1,
+  },
+  keyboardView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 24,
+    paddingBottom: 40,
   },
   header: {
-    paddingTop: 60,
-    marginBottom: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    marginBottom: 10,
   },
   backButton: {
-    padding: 8,
-    marginLeft: -8,
+    alignSelf: 'flex-start',
   },
-  titleContainer: {
+  backButtonCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
-    marginBottom: 40,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  logoSection: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  logoContainer: {
+    position: 'relative',
+    marginBottom: 16,
   },
   logoImage: {
-    width: 80,
-    height: 80,
-    marginBottom: 16,
-    borderRadius: 16,
+    width: 100,
+    height: 100,
+    borderRadius: 24,
+    zIndex: 1,
   },
-  logo: {
-    fontSize: 36,
+  logoGlow: {
+    position: 'absolute',
+    top: -10,
+    left: -10,
+    right: -10,
+    bottom: -10,
+    borderRadius: 34,
+    backgroundColor: '#3B82F6',
+    opacity: 0.3,
+    zIndex: 0,
+  },
+  brandName: {
+    fontSize: 42,
     fontWeight: '700',
+    color: '#3B82F6',
     marginBottom: 8,
+    letterSpacing: -1,
   },
-  subtitle: {
-    fontSize: 18,
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#F1F5F9',
+    marginBottom: 4,
   },
-  form: {
+  subtitleText: {
+    fontSize: 15,
+    color: '#94A3B8',
+  },
+  formCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 24,
+    padding: 24,
     marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
   },
   inputGroup: {
     marginBottom: 20,
@@ -197,38 +354,51 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#1E293B',
     marginBottom: 8,
   },
-  input: {
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
     borderWidth: 1,
-    borderRadius: 12,
+    borderColor: '#E2E8F0',
+  },
+  inputIcon: {
+    paddingLeft: 14,
+  },
+  input: {
+    flex: 1,
     padding: 14,
     fontSize: 16,
-  },
-  passwordContainer: {
-    position: 'relative',
+    color: '#1E293B',
   },
   passwordInput: {
-    paddingRight: 48,
+    paddingRight: 50,
   },
-  eyeIcon: {
+  eyeButton: {
     position: 'absolute',
-    right: 12,
-    top: 14,
+    right: 14,
     padding: 4,
   },
   loginButton: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
     marginTop: 8,
+    borderRadius: 14,
+    overflow: 'hidden',
   },
   loginButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.6,
+  },
+  loginButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
   },
   loginButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
   },
   forgotPassword: {
@@ -238,19 +408,51 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#3B82F6',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  dividerText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    marginHorizontal: 16,
+  },
+  socialContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 32,
+  },
+  socialButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 'auto',
-    marginBottom: 40,
   },
   footerText: {
-    fontSize: 14,
+    fontSize: 15,
+    color: '#94A3B8',
   },
   signUpLink: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
+    color: '#3B82F6',
   },
 });
