@@ -246,7 +246,7 @@ export default function SettingsScreen() {
             
             <TouchableOpacity 
               style={[styles.settingRow, styles.settingRowBorder]}
-              onPress={() => navigation.navigate('CommunityGuidelines' as never)}
+              onPress={() => navigation.navigate('HelpSupport' as never)}
             >
               <View style={styles.settingLeft}>
                 <Ionicons name="document-text" size={22} color={theme.signalPros} />

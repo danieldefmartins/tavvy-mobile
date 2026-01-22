@@ -49,7 +49,7 @@ export default function ProsLeadsScreen() {
 
   const handleLeadPress = (request: ProjectRequest) => {
     // Navigate to detail screen - passing the whole request object
-    navigation.navigate('ProsLeadDetailScreen', { leadId: request.id, lead: request });
+    navigation.navigate('ProsLeadDetail', { leadId: request.id, lead: request });
   };
 
   const handleMessagePress = (request: ProjectRequest) => {

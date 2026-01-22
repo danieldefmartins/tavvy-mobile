@@ -104,7 +104,7 @@ export default function ProsDashboardScreen() {
           <Text style={styles.headerTitle}>Dashboard</Text>
           <TouchableOpacity
             style={styles.settingsButton}
-            onPress={() => navigation.navigate('ProsSettingsScreen')}
+            onPress={() => navigation.navigate('Settings')}
           >
             <Ionicons name="settings-outline" size={24} color={ProsColors.textPrimary} />
           </TouchableOpacity>
@@ -113,7 +113,7 @@ export default function ProsDashboardScreen() {
         {/* Profile Card */}
         <TouchableOpacity
           style={styles.profileCard}
-          onPress={() => navigation.navigate('ProsEditProfileScreen')}
+          onPress={() => navigation.navigate('ProsEditProfile')}
         >
           <View style={styles.profileHeader}>
             {(profile as any).logoUrl ? (
@@ -154,7 +154,7 @@ export default function ProsDashboardScreen() {
         <View style={styles.statsGrid}>
           <TouchableOpacity
             style={styles.statCard}
-            onPress={() => navigation.navigate('ProsLeadsScreen')}
+            onPress={() => navigation.navigate('ProsLeads')}
           >
             <View style={[styles.statIcon, { backgroundColor: `${ProsColors.primary}15` }]}>
               <Ionicons name="document-text" size={24} color={ProsColors.primary} />
@@ -165,7 +165,7 @@ export default function ProsDashboardScreen() {
 
           <TouchableOpacity
             style={styles.statCard}
-            onPress={() => navigation.navigate('ProsMessagesScreen')}
+            onPress={() => navigation.navigate('ProsMessages')}
           >
             <View style={[styles.statIcon, { backgroundColor: `${ProsColors.secondary}15` }]}>
               <Ionicons name="chatbubbles" size={24} color={ProsColors.secondary} />
@@ -197,7 +197,7 @@ export default function ProsDashboardScreen() {
           <View style={styles.quickActions}>
             <TouchableOpacity
               style={styles.quickAction}
-              onPress={() => navigation.navigate('ProsEditProfileScreen')}
+              onPress={() => navigation.navigate('ProsEditProfile')}
             >
               <Ionicons name="person-outline" size={22} color={ProsColors.primary} />
               <Text style={styles.quickActionText}>Edit Profile</Text>
@@ -218,7 +218,7 @@ export default function ProsDashboardScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickAction}
-              onPress={() => navigation.navigate('ProsServicesScreen')}
+              onPress={() => navigation.navigate('ProsServices')}
             >
               <Ionicons name="construct-outline" size={22} color={ProsColors.primary} />
               <Text style={styles.quickActionText}>Services</Text>
@@ -230,7 +230,7 @@ export default function ProsDashboardScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Leads</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('ProsLeadsScreen')}>
+            <TouchableOpacity onPress={() => navigation.navigate('ProsLeads')}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -239,7 +239,7 @@ export default function ProsDashboardScreen() {
               <ProsLeadCardCompact
                 key={lead.id}
                 lead={lead as any}
-                onPress={() => navigation.navigate('ProsLeadDetailScreen', { leadId: lead.id })}
+                onPress={() => navigation.navigate('ProsLeadDetail', { leadId: lead.id })}
               />
             ))
           ) : (

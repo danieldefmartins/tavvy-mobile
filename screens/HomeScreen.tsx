@@ -2073,7 +2073,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 .filter((place) => {
                   const category = (place.category || place.primary_category || '').toLowerCase();
                   // Use partial matching to handle variations like 'Restaurant' vs 'Restaurants'
-                  const trendingCategories = ['restaurant', 'coffee', 'cafe', 'contractor', 'universe', 'city', 'cities'];
+                  const trendingCategories = ['restaurant', 'coffee', 'cafe', 'coffee shop', 'contractor', 'universe', 'city', 'cities'];
                   return trendingCategories.some(cat => category.includes(cat));
                 })
                 .slice(0, 10)

@@ -164,7 +164,7 @@ export default function RealtorsHubScreen() {
 
   const handleContact = () => {
     if (realtor) {
-      navigation.navigate('ProsMessagesScreen', {
+      navigation.navigate('ProsMessages', {
         recipientId: realtor.id,
         recipientName: realtor.name,
         recipientType: 'realtor',
