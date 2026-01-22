@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     paddingHorizontal: 20,
     gap: 12,
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
   },
   tile: {
     width: TILE_SIZE,
