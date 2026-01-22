@@ -4,6 +4,7 @@
 // Renders block-based content for Atlas articles
 // Supports: heading, paragraph, image, bullet_list, numbered_list,
 // place_card, itinerary, callout, checklist, quote, divider
+// Now supports reading settings: textColor, fontSize, lineHeight
 // ============================================================================
 
 import React, { useState, useEffect } from 'react';
@@ -147,6 +148,13 @@ interface PlaceData {
   cover_image_url?: string;
 }
 
+// Reading settings props for text styling
+interface ReadingSettings {
+  textColor?: string;
+  fontSize?: number;
+  lineHeight?: number;
+}
+
 // ============================================================================
 // HELPER COMPONENTS
 // ============================================================================
@@ -174,25 +182,38 @@ const StarRating: React.FC<{ rating: number; size?: number }> = ({ rating, size 
 // BLOCK COMPONENTS
 // ============================================================================
 
-// Heading Block
-const HeadingBlockComponent: React.FC<{ block: HeadingBlock }> = ({ block }) => {
-  const headingStyles = {
-    1: styles.heading1,
-    2: styles.heading2,
-    3: styles.heading3,
+// Heading Block - Now accepts reading settings
+const HeadingBlockComponent: React.FC<{ block: HeadingBlock; settings: ReadingSettings }> = ({ block, settings }) => {
+  const { textColor, fontSize = 16, lineHeight = 26 } = settings;
+  
+  // Calculate heading sizes based on body font size
+  const headingSizes = {
+    1: { fontSize: fontSize + 12, lineHeight: lineHeight + 10 },
+    2: { fontSize: fontSize + 6, lineHeight: lineHeight + 4 },
+    3: { fontSize: fontSize + 2, lineHeight: lineHeight },
   };
 
   // Support both 'text' and 'content' field names for compatibility
   const textContent = block.text || (block as any).content || '';
 
   return (
-    <Text style={[styles.headingBase, headingStyles[block.level]]}>
+    <Text style={[
+      styles.headingBase,
+      { 
+        fontSize: headingSizes[block.level].fontSize,
+        lineHeight: headingSizes[block.level].lineHeight,
+        color: textColor || '#111827',
+      }
+    ]}>
       {textContent}
     </Text>
   );
 };
-// Paragraph Block
-const ParagraphBlockComponent: React.FC<{ block: ParagraphBlock }> = ({ block }) => {
+
+// Paragraph Block - Now accepts reading settings
+const ParagraphBlockComponent: React.FC<{ block: ParagraphBlock; settings: ReadingSettings }> = ({ block, settings }) => {
+  const { textColor, fontSize = 16, lineHeight = 26 } = settings;
+  
   // Simple markdown-like parsing for bold and italic
   const renderText = (text: string) => {
     // Handle undefined/null text
@@ -203,7 +224,7 @@ const ParagraphBlockComponent: React.FC<{ block: ParagraphBlock }> = ({ block })
     return parts.map((part, index) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         return (
-          <Text key={index} style={styles.boldText}>
+          <Text key={index} style={[styles.boldText, { color: textColor }]}>
             {part.slice(2, -2)}
           </Text>
         );
@@ -216,14 +237,22 @@ const ParagraphBlockComponent: React.FC<{ block: ParagraphBlock }> = ({ block })
   const textContent = block.text || (block as any).content || '';
 
   return (
-    <Text style={styles.paragraph}>
+    <Text style={[
+      styles.paragraph,
+      { 
+        color: textColor || '#374151',
+        fontSize: fontSize,
+        lineHeight: lineHeight,
+      }
+    ]}>
       {renderText(textContent)}
     </Text>
   );
 };
 
 // Image Block
-const ImageBlockComponent: React.FC<{ block: ImageBlock }> = ({ block }) => {
+const ImageBlockComponent: React.FC<{ block: ImageBlock; settings: ReadingSettings }> = ({ block, settings }) => {
+  const { textColor } = settings;
   // Use optimized image URL for faster loading
   const optimizedUrl = getCoverImageUrl(block.url);
   
@@ -235,34 +264,58 @@ const ImageBlockComponent: React.FC<{ block: ImageBlock }> = ({ block }) => {
         resizeMode="cover"
       />
       {block.caption && (
-        <Text style={styles.imageCaption}>{block.caption}</Text>
+        <Text style={[styles.imageCaption, textColor && { color: textColor, opacity: 0.7 }]}>
+          {block.caption}
+        </Text>
       )}
     </View>
   );
 };
 
-// Bullet List Block
-const BulletListBlockComponent: React.FC<{ block: BulletListBlock }> = ({ block }) => {
+// Bullet List Block - Now accepts reading settings
+const BulletListBlockComponent: React.FC<{ block: BulletListBlock; settings: ReadingSettings }> = ({ block, settings }) => {
+  const { textColor, fontSize = 16, lineHeight = 24 } = settings;
+  
   return (
     <View style={styles.listContainer}>
       {block.items.map((item, index) => (
         <View key={index} style={styles.listItem}>
           <View style={styles.bulletPoint} />
-          <Text style={styles.listItemText}>{item}</Text>
+          <Text style={[
+            styles.listItemText,
+            { 
+              color: textColor || '#374151',
+              fontSize: fontSize,
+              lineHeight: lineHeight,
+            }
+          ]}>
+            {item}
+          </Text>
         </View>
       ))}
     </View>
   );
 };
 
-// Numbered List Block
-const NumberedListBlockComponent: React.FC<{ block: NumberedListBlock }> = ({ block }) => {
+// Numbered List Block - Now accepts reading settings
+const NumberedListBlockComponent: React.FC<{ block: NumberedListBlock; settings: ReadingSettings }> = ({ block, settings }) => {
+  const { textColor, fontSize = 16, lineHeight = 24 } = settings;
+  
   return (
     <View style={styles.listContainer}>
       {block.items.map((item, index) => (
         <View key={index} style={styles.listItem}>
-          <Text style={styles.listNumber}>{index + 1}.</Text>
-          <Text style={styles.listItemText}>{item}</Text>
+          <Text style={[styles.listNumber, { fontSize: fontSize }]}>{index + 1}.</Text>
+          <Text style={[
+            styles.listItemText,
+            { 
+              color: textColor || '#374151',
+              fontSize: fontSize,
+              lineHeight: lineHeight,
+            }
+          ]}>
+            {item}
+          </Text>
         </View>
       ))}
     </View>
@@ -351,14 +404,17 @@ const PlaceCardBlockComponent: React.FC<{ block: PlaceCardBlock }> = ({ block })
   );
 };
 
-// Itinerary Block
-const ItineraryBlockComponent: React.FC<{ block: ItineraryBlock }> = ({ block }) => {
+// Itinerary Block - Now accepts reading settings
+const ItineraryBlockComponent: React.FC<{ block: ItineraryBlock; settings: ReadingSettings }> = ({ block, settings }) => {
   const navigation = useNavigation();
+  const { textColor, fontSize = 16, lineHeight = 24 } = settings;
 
   return (
     <View style={styles.itineraryContainer}>
       {block.title && (
-        <Text style={styles.itineraryTitle}>{block.title}</Text>
+        <Text style={[styles.itineraryTitle, textColor && { color: textColor }]}>
+          {block.title}
+        </Text>
       )}
       {block.days.map((day, dayIndex) => (
         <View key={dayIndex} style={styles.itineraryDay}>
@@ -366,18 +422,39 @@ const ItineraryBlockComponent: React.FC<{ block: ItineraryBlock }> = ({ block })
             <View style={styles.itineraryDayBadge}>
               <Text style={styles.itineraryDayNumber}>Day {day.day_number}</Text>
             </View>
-            <Text style={styles.itineraryDayTitle}>{day.title}</Text>
+            <Text style={[styles.itineraryDayTitle, textColor && { color: textColor }]}>
+              {day.title}
+            </Text>
           </View>
-          
           {day.items.map((item, itemIndex) => (
             <View key={itemIndex} style={styles.itineraryItem}>
               {item.time && (
-                <Text style={styles.itineraryItemTime}>{item.time}</Text>
+                <Text style={[styles.itineraryItemTime, { fontSize: fontSize - 2 }]}>
+                  {item.time}
+                </Text>
               )}
               <View style={styles.itineraryItemContent}>
-                <Text style={styles.itineraryItemTitle}>{item.title}</Text>
+                <Text style={[
+                  styles.itineraryItemTitle,
+                  { 
+                    color: textColor || '#374151',
+                    fontSize: fontSize,
+                  }
+                ]}>
+                  {item.title}
+                </Text>
                 {item.description && (
-                  <Text style={styles.itineraryItemDesc}>{item.description}</Text>
+                  <Text style={[
+                    styles.itineraryItemDesc,
+                    { 
+                      color: textColor || '#6B7280',
+                      fontSize: fontSize - 2,
+                      lineHeight: lineHeight - 4,
+                      opacity: 0.8,
+                    }
+                  ]}>
+                    {item.description}
+                  </Text>
                 )}
                 {item.place_id && (
                   <TouchableOpacity
@@ -397,22 +474,35 @@ const ItineraryBlockComponent: React.FC<{ block: ItineraryBlock }> = ({ block })
   );
 };
 
-// Itinerary Day Block (single day from CSV format)
-const ItineraryDayBlockComponent: React.FC<{ block: ItineraryDayBlock }> = ({ block }) => {
+// Itinerary Day Block (single day) - Now accepts reading settings
+const ItineraryDayBlockComponent: React.FC<{ block: ItineraryDayBlock; settings: ReadingSettings }> = ({ block, settings }) => {
+  const { textColor, fontSize = 16, lineHeight = 24 } = settings;
+  
   return (
     <View style={styles.itineraryDayContainer}>
       <View style={styles.itineraryDayHeader}>
         <View style={styles.itineraryDayBadge}>
-          <Ionicons name="calendar-outline" size={14} color="#fff" />
+          <Text style={styles.itineraryDayNumber}>Itinerary</Text>
         </View>
-        <Text style={styles.itineraryDayTitle}>{block.title}</Text>
+        <Text style={[styles.itineraryDayTitle, textColor && { color: textColor }]}>
+          {block.title}
+        </Text>
       </View>
-      
       {block.items.map((item, itemIndex) => (
         <View key={itemIndex} style={styles.itineraryItem}>
-          <Text style={styles.itineraryItemTime}>{item.time}</Text>
+          <Text style={[styles.itineraryItemTime, { fontSize: fontSize - 2 }]}>
+            {item.time}
+          </Text>
           <View style={styles.itineraryItemContent}>
-            <Text style={styles.itineraryItemTitle}>{item.activity}</Text>
+            <Text style={[
+              styles.itineraryItemTitle,
+              { 
+                color: textColor || '#374151',
+                fontSize: fontSize,
+              }
+            ]}>
+              {item.activity}
+            </Text>
           </View>
         </View>
       ))}
@@ -420,87 +510,112 @@ const ItineraryDayBlockComponent: React.FC<{ block: ItineraryDayBlock }> = ({ bl
   );
 };
 
-// Callout Block
-const CalloutBlockComponent: React.FC<{ block: CalloutBlock }> = ({ block }) => {
+// Callout Block - Now accepts reading settings
+const CalloutBlockComponent: React.FC<{ block: CalloutBlock; settings: ReadingSettings }> = ({ block, settings }) => {
+  const { textColor, fontSize = 16, lineHeight = 22 } = settings;
+  
   const getCalloutStyle = () => {
     switch (block.style) {
       case 'tip':
         return {
-          bg: TEAL_BG,
-          border: TEAL_PRIMARY,
-          icon: 'bulb-outline' as const,
+          backgroundColor: TEAL_BG,
+          borderColor: TEAL_PRIMARY,
           iconColor: TEAL_PRIMARY,
+          icon: 'bulb' as const,
         };
       case 'warning':
         return {
-          bg: AMBER_BG,
-          border: AMBER_WARNING,
-          icon: 'warning-outline' as const,
+          backgroundColor: AMBER_BG,
+          borderColor: AMBER_WARNING,
           iconColor: AMBER_WARNING,
+          icon: 'warning' as const,
         };
       case 'tavvy_note':
         return {
-          bg: TEAL_BG,
-          border: TEAL_PRIMARY,
-          icon: 'information-circle-outline' as const,
+          backgroundColor: TEAL_BG,
+          borderColor: TEAL_PRIMARY,
           iconColor: TEAL_PRIMARY,
+          icon: 'paw' as const,
         };
       case 'info':
       default:
         return {
-          bg: BLUE_BG,
-          border: BLUE_INFO,
-          icon: 'information-circle-outline' as const,
+          backgroundColor: BLUE_BG,
+          borderColor: BLUE_INFO,
           iconColor: BLUE_INFO,
+          icon: 'information-circle' as const,
         };
     }
   };
 
-  const style = getCalloutStyle();
+  const calloutStyle = getCalloutStyle();
+
+  // Support both 'text' and 'content' field names for compatibility
+  const textContent = block.text || (block as any).content || '';
 
   return (
-    <View style={[styles.calloutContainer, { backgroundColor: style.bg, borderLeftColor: style.border }]}>
+    <View
+      style={[
+        styles.calloutContainer,
+        {
+          backgroundColor: calloutStyle.backgroundColor,
+          borderLeftColor: calloutStyle.borderColor,
+        },
+      ]}
+    >
       <View style={styles.calloutHeader}>
-        <Ionicons name={style.icon} size={20} color={style.iconColor} />
+        <Ionicons name={calloutStyle.icon} size={20} color={calloutStyle.iconColor} />
         {block.title && (
-          <Text style={[styles.calloutTitle, { color: style.border }]}>
+          <Text style={[styles.calloutTitle, { color: calloutStyle.iconColor }]}>
             {block.title}
           </Text>
         )}
       </View>
-      <Text style={styles.calloutText}>{block.text || (block as any).content || ''}</Text>
+      <Text style={[
+        styles.calloutText,
+        { 
+          fontSize: fontSize - 1,
+          lineHeight: lineHeight,
+        }
+      ]}>
+        {textContent}
+      </Text>
     </View>
   );
 };
 
-// Checklist Block - handles both string[] and ChecklistItem[] formats
-const ChecklistBlockComponent: React.FC<{ block: ChecklistBlock }> = ({ block }) => {
+// Checklist Block - Now accepts reading settings
+const ChecklistBlockComponent: React.FC<{ block: ChecklistBlock; settings: ReadingSettings }> = ({ block, settings }) => {
+  const { textColor, fontSize = 16 } = settings;
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
 
-  const toggleItem = (id: string) => {
-    setCheckedItems(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
+  const toggleItem = (itemId: string) => {
+    const newChecked = new Set(checkedItems);
+    if (newChecked.has(itemId)) {
+      newChecked.delete(itemId);
+    } else {
+      newChecked.add(itemId);
+    }
+    setCheckedItems(newChecked);
   };
 
-  // Normalize items to handle both string[] and ChecklistItem[] formats
-  const normalizedItems = block.items.map((item, index) => {
+  // Normalize items to ensure they have id and text properties
+  const normalizedItems = (block.items || []).map((item, index) => {
     if (typeof item === 'string') {
-      return { id: `item-${index}`, text: item, checked: false };
+      return { id: `item-${index}`, text: item };
     }
-    return item;
+    return {
+      id: item.id || `item-${index}`,
+      text: item.text || item.content || String(item),
+    };
   });
 
   return (
     <View style={styles.checklistContainer}>
       {block.title && (
-        <Text style={styles.checklistTitle}>{block.title}</Text>
+        <Text style={[styles.checklistTitle, textColor && { color: textColor }]}>
+          {block.title}
+        </Text>
       )}
       {normalizedItems.map((item) => {
         const isChecked = checkedItems.has(item.id);
@@ -516,7 +631,14 @@ const ChecklistBlockComponent: React.FC<{ block: ChecklistBlock }> = ({ block })
                 <Ionicons name="checkmark" size={14} color="#fff" />
               )}
             </View>
-            <Text style={[styles.checklistItemText, isChecked && styles.checklistItemTextChecked]}>
+            <Text style={[
+              styles.checklistItemText,
+              { 
+                color: textColor || '#374151',
+                fontSize: fontSize,
+              },
+              isChecked && styles.checklistItemTextChecked
+            ]}>
               {item.text}
             </Text>
           </TouchableOpacity>
@@ -526,15 +648,26 @@ const ChecklistBlockComponent: React.FC<{ block: ChecklistBlock }> = ({ block })
   );
 };
 
-// Quote Block
-const QuoteBlockComponent: React.FC<{ block: QuoteBlock }> = ({ block }) => {
+// Quote Block - Now accepts reading settings
+const QuoteBlockComponent: React.FC<{ block: QuoteBlock; settings: ReadingSettings }> = ({ block, settings }) => {
+  const { textColor, fontSize = 16, lineHeight = 26 } = settings;
+  
   // Support both 'text' and 'content' field names for compatibility
   const textContent = block.text || (block as any).content || '';
   
   return (
     <View style={styles.quoteContainer}>
       <Ionicons name="chatbox-ellipses" size={24} color={TEAL_PRIMARY} style={styles.quoteIcon} />
-      <Text style={styles.quoteText}>"{textContent}"</Text>
+      <Text style={[
+        styles.quoteText,
+        { 
+          color: textColor || '#374151',
+          fontSize: fontSize + 1,
+          lineHeight: lineHeight,
+        }
+      ]}>
+        "{textContent}"
+      </Text>
       {block.author && (
         <Text style={styles.quoteAuthor}>— {block.author}</Text>
       )}
@@ -566,7 +699,7 @@ export const ContentBlockRenderer: React.FC<ContentBlockRendererProps> = ({
 }) => {
   console.log('=== ContentBlockRenderer ===');
   console.log('Received blocks:', blocks?.length || 0);
-  console.log('Blocks array:', blocks ? 'exists' : 'null/undefined');
+  console.log('Reading settings - textColor:', textColor, 'fontSize:', fontSize, 'lineHeight:', lineHeight);
   
   if (!blocks || blocks.length === 0) {
     console.log('No blocks to render!');
@@ -577,32 +710,39 @@ export const ContentBlockRenderer: React.FC<ContentBlockRendererProps> = ({
     );
   }
 
+  // Create reading settings object to pass to all block components
+  const readingSettings: ReadingSettings = {
+    textColor,
+    fontSize,
+    lineHeight,
+  };
+
   const renderBlock = (block: ContentBlock, index: number) => {
     const key = `block-${index}`;
 
     switch (block.type) {
       case 'heading':
-        return <HeadingBlockComponent key={key} block={block as HeadingBlock} />;
+        return <HeadingBlockComponent key={key} block={block as HeadingBlock} settings={readingSettings} />;
       case 'paragraph':
-        return <ParagraphBlockComponent key={key} block={block as ParagraphBlock} />;
+        return <ParagraphBlockComponent key={key} block={block as ParagraphBlock} settings={readingSettings} />;
       case 'image':
-        return <ImageBlockComponent key={key} block={block as ImageBlock} />;
+        return <ImageBlockComponent key={key} block={block as ImageBlock} settings={readingSettings} />;
       case 'bullet_list':
-        return <BulletListBlockComponent key={key} block={block as BulletListBlock} />;
+        return <BulletListBlockComponent key={key} block={block as BulletListBlock} settings={readingSettings} />;
       case 'numbered_list':
-        return <NumberedListBlockComponent key={key} block={block as NumberedListBlock} />;
+        return <NumberedListBlockComponent key={key} block={block as NumberedListBlock} settings={readingSettings} />;
       case 'place_card':
         return <PlaceCardBlockComponent key={key} block={block as PlaceCardBlock} />;
       case 'itinerary':
-        return <ItineraryBlockComponent key={key} block={block as ItineraryBlock} />;
+        return <ItineraryBlockComponent key={key} block={block as ItineraryBlock} settings={readingSettings} />;
       case 'itinerary_day':
-        return <ItineraryDayBlockComponent key={key} block={block as ItineraryDayBlock} />;
+        return <ItineraryDayBlockComponent key={key} block={block as ItineraryDayBlock} settings={readingSettings} />;
       case 'callout':
-        return <CalloutBlockComponent key={key} block={block as CalloutBlock} />;
+        return <CalloutBlockComponent key={key} block={block as CalloutBlock} settings={readingSettings} />;
       case 'checklist':
-        return <ChecklistBlockComponent key={key} block={block as ChecklistBlock} />;
+        return <ChecklistBlockComponent key={key} block={block as ChecklistBlock} settings={readingSettings} />;
       case 'quote':
-        return <QuoteBlockComponent key={key} block={block as QuoteBlock} />;
+        return <QuoteBlockComponent key={key} block={block as QuoteBlock} settings={readingSettings} />;
       case 'divider':
         return <DividerBlockComponent key={key} />;
       // Support for additional block types from article imports
@@ -610,13 +750,13 @@ export const ContentBlockRenderer: React.FC<ContentBlockRendererProps> = ({
         // Handle generic 'list' type - map to bullet_list or numbered_list based on style
         const listBlock = block as any;
         if (listBlock.style === 'ordered') {
-          return <NumberedListBlockComponent key={key} block={{ type: 'numbered_list', items: listBlock.items || [] } as NumberedListBlock} />;
+          return <NumberedListBlockComponent key={key} block={{ type: 'numbered_list', items: listBlock.items || [] } as NumberedListBlock} settings={readingSettings} />;
         }
-        return <BulletListBlockComponent key={key} block={{ type: 'bullet_list', items: listBlock.items || [] } as BulletListBlock} />;
+        return <BulletListBlockComponent key={key} block={{ type: 'bullet_list', items: listBlock.items || [] } as BulletListBlock} settings={readingSettings} />;
       case 'tip_box':
         // Handle tip_box as a callout with 'tip' style
         const tipBlock = block as any;
-        return <CalloutBlockComponent key={key} block={{ type: 'callout', style: 'tip', title: tipBlock.title, text: tipBlock.content || tipBlock.text || '' } as CalloutBlock} />;
+        return <CalloutBlockComponent key={key} block={{ type: 'callout', style: 'tip', title: tipBlock.title, text: tipBlock.content || tipBlock.text || '' } as CalloutBlock} settings={readingSettings} />;
       default:
         console.warn(`Unknown block type: ${block.type}`);
         return null;
@@ -645,18 +785,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 24,
     marginBottom: 12,
-  },
-  heading1: {
-    fontSize: 28,
-    lineHeight: 36,
-  },
-  heading2: {
-    fontSize: 22,
-    lineHeight: 30,
-  },
-  heading3: {
-    fontSize: 18,
-    lineHeight: 26,
   },
 
   // Paragraph

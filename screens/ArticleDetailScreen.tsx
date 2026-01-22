@@ -107,13 +107,19 @@ interface ExtendedAtlasArticle extends AtlasArticle {
 }
 
 // Calculate font sizes based on body font size
-const getFontSizes = (bodySize: number) => ({
-  title: bodySize + 10,
-  body: bodySize,
-  meta: Math.max(11, bodySize - 3),
-  excerpt: bodySize + 1,
-  lineHeight: bodySize + 10,
-});
+// Line height scales proportionally with font size for better readability
+const getFontSizes = (bodySize: number) => {
+  // Line height ratio increases slightly with larger fonts for better readability
+  // Base ratio is 1.6, increases to 1.7 for larger fonts
+  const lineHeightRatio = bodySize >= 20 ? 1.7 : 1.6;
+  return {
+    title: bodySize + 10,
+    body: bodySize,
+    meta: Math.max(11, bodySize - 3),
+    excerpt: bodySize + 1,
+    lineHeight: Math.round(bodySize * lineHeightRatio),
+  };
+};
 
 // Supabase Edge Function URL for audio generation
 const AUDIO_FUNCTION_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/hyper-service`;
