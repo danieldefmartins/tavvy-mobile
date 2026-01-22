@@ -1226,9 +1226,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       const maxLng = centerLng + lngDelta;
 
       // Map user-friendly category names to Foursquare category patterns
+      // IMPORTANT: These keys MUST match the categories array exactly
       const categoryMappings: { [key: string]: string[] } = {
-        'Restaurants': ['restaurant', 'dining', 'food', 'eatery', 'bistro', 'grill', 'kitchen'],
-        'Coffee Shops': ['coffee', 'café', 'cafe', 'tea', 'espresso', 'bakery'],
+        'Restaurants': ['restaurant', 'dining', 'food', 'eatery', 'bistro', 'grill', 'kitchen', 'steakhouse', 'bbq'],
+        'Cafes': ['coffee', 'café', 'cafe', 'tea', 'espresso', 'bakery', 'coffee shop', 'tea house', 'tea room'],
+        'Coffee Shops': ['coffee', 'café', 'cafe', 'tea', 'espresso', 'bakery', 'coffee shop', 'tea house', 'tea room'],
         'Bars': ['bar', 'pub', 'nightclub', 'lounge', 'brewery', 'tavern', 'wine'],
         'Contractors': ['contractor', 'construction', 'home service', 'repair', 'plumber', 'electrician'],
         'Hotels': ['hotel', 'motel', 'inn', 'lodging', 'resort', 'hostel'],
