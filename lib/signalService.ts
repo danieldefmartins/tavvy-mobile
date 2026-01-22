@@ -840,3 +840,65 @@ export function debugListSignals(): void {
   
   console.log('By prefix:', byPrefix);
 }
+
+// ============================================
+// HAPPENING SCORE INTEGRATION
+// ============================================
+// Updates the place_happening_scores table when activity occurs
+
+// Activity point values
+const HAPPENING_POINTS = {
+  NEW_STORY: 50,
+  NEW_REVIEW: 25,
+  NEW_CHECKIN: 15,
+  NEW_PHOTO: 10,
+  NEW_TAP_SIGNAL: 5,
+};
+
+/**
+ * Record a new review and update happening score
+ */
+export async function recordReviewActivity(placeId: string): Promise<void> {
+  try {
+    const { updateHappeningScore } = await import('./storyService');
+    await updateHappeningScore(placeId, HAPPENING_POINTS.NEW_REVIEW);
+  } catch (error) {
+    console.error('Error recording review activity:', error);
+  }
+}
+
+/**
+ * Record a new tap signal and update happening score
+ */
+export async function recordTapActivity(placeId: string): Promise<void> {
+  try {
+    const { updateHappeningScore } = await import('./storyService');
+    await updateHappeningScore(placeId, HAPPENING_POINTS.NEW_TAP_SIGNAL);
+  } catch (error) {
+    console.error('Error recording tap activity:', error);
+  }
+}
+
+/**
+ * Record a new photo upload and update happening score
+ */
+export async function recordPhotoActivity(placeId: string): Promise<void> {
+  try {
+    const { updateHappeningScore } = await import('./storyService');
+    await updateHappeningScore(placeId, HAPPENING_POINTS.NEW_PHOTO);
+  } catch (error) {
+    console.error('Error recording photo activity:', error);
+  }
+}
+
+/**
+ * Record a check-in and update happening score
+ */
+export async function recordCheckinActivity(placeId: string): Promise<void> {
+  try {
+    const { updateHappeningScore } = await import('./storyService');
+    await updateHappeningScore(placeId, HAPPENING_POINTS.NEW_CHECKIN);
+  } catch (error) {
+    console.error('Error recording checkin activity:', error);
+  }
+}

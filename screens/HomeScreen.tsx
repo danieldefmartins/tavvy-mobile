@@ -31,6 +31,10 @@ import { useThemeContext } from '../contexts/ThemeContext';
 import { fetchPlacesInBounds, PlaceCard, getPlaceIdForNavigation } from '../lib/placeService';
 import { searchSuggestions as searchPlaceSuggestions } from '../lib/searchService';
 import { fetchWeatherData, getDefaultWeatherData, WeatherData } from '../lib/weatherService';
+// Integrated Discovery Components
+import { StoriesRow } from '../components/StoriesRow';
+import { HappeningNow } from '../components/HappeningNow';
+import { QuickFinds } from '../components/QuickFinds';
 
 const { width, height } = Dimensions.get('window');
 
@@ -2192,6 +2196,25 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <Text style={[styles.hint, { color: isDark ? theme.textSecondary : '#666' }]}>
               Signals are Tavvy reviews — compare places in seconds
             </Text>
+            {/* ====== INTEGRATED DISCOVERY COMPONENTS ====== */}
+            
+            {/* Place Stories Row */}
+            <StoriesRow
+              currentUserId={currentUser?.id}
+              userLocation={userLocation}
+              maxDistance={20}
+            />
+            
+            {/* Whats Happening Now Carousel */}
+            <HappeningNow
+              onPlacePress={(placeId) => navigation.navigate("PlaceDetails" as never, { placeId } as never)}
+            />
+            
+            {/* Quick Finds Buttons */}
+            <QuickFinds />
+            
+            {/* ====== END INTEGRATED DISCOVERY ====== */}
+
 
             {/* Trending Near You Header */}
             <View style={styles.sectionHeader}>
