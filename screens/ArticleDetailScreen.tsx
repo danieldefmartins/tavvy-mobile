@@ -5,7 +5,8 @@
 // Features: Reading modes, Font size controls, Audio playback (Amazon Polly)
 // ============================================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -142,10 +143,67 @@ export default function ArticleDetailScreen() {
   // Audio state
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   
-  // Reading preferences - now with numeric font size
+  // Reading preferences - now with numeric font size (persisted in AsyncStorage)
   const [readingMode, setReadingMode] = useState<ReadingMode>(DEFAULT_READING_MODE);
   const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+
+  // AsyncStorage keys for reading preferences
+  const STORAGE_KEYS = {
+    READING_MODE: '@tavvy_atlas_reading_mode',
+    FONT_SIZE: '@tavvy_atlas_font_size',
+  };
+
+  // Load saved reading preferences on mount
+  useEffect(() => {
+    loadReadingPreferences();
+  }, []);
+
+  // Save reading preferences when they change (after initial load)
+  useEffect(() => {
+    if (preferencesLoaded) {
+      saveReadingPreferences();
+    }
+  }, [readingMode, fontSize, preferencesLoaded]);
+
+  const loadReadingPreferences = async () => {
+    try {
+      const [savedMode, savedSize] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEYS.READING_MODE),
+        AsyncStorage.getItem(STORAGE_KEYS.FONT_SIZE),
+      ]);
+
+      if (savedMode && ['light', 'sepia', 'dark'].includes(savedMode)) {
+        setReadingMode(savedMode as ReadingMode);
+      }
+
+      if (savedSize) {
+        const parsedSize = parseInt(savedSize, 10);
+        if (!isNaN(parsedSize) && parsedSize >= MIN_FONT_SIZE && parsedSize <= MAX_FONT_SIZE) {
+          setFontSize(parsedSize);
+        }
+      }
+
+      setPreferencesLoaded(true);
+      console.log('Reading preferences loaded:', { mode: savedMode, size: savedSize });
+    } catch (error) {
+      console.error('Error loading reading preferences:', error);
+      setPreferencesLoaded(true);
+    }
+  };
+
+  const saveReadingPreferences = async () => {
+    try {
+      await Promise.all([
+        AsyncStorage.setItem(STORAGE_KEYS.READING_MODE, readingMode),
+        AsyncStorage.setItem(STORAGE_KEYS.FONT_SIZE, fontSize.toString()),
+      ]);
+      console.log('Reading preferences saved:', { mode: readingMode, size: fontSize });
+    } catch (error) {
+      console.error('Error saving reading preferences:', error);
+    }
+  };
 
   // Get current theme colors based on reading mode
   const colors = READING_MODES[readingMode];
@@ -365,9 +423,19 @@ export default function ArticleDetailScreen() {
     }
   };
 
-  const restoreDefaults = () => {
+  const restoreDefaults = async () => {
     setReadingMode(DEFAULT_READING_MODE);
     setFontSize(DEFAULT_FONT_SIZE);
+    // Clear saved preferences when restoring defaults
+    try {
+      await Promise.all([
+        AsyncStorage.removeItem(STORAGE_KEYS.READING_MODE),
+        AsyncStorage.removeItem(STORAGE_KEYS.FONT_SIZE),
+      ]);
+      console.log('Reading preferences reset to defaults');
+    } catch (error) {
+      console.error('Error clearing reading preferences:', error);
+    }
   };
 
   const formatNumber = (num: number): string => {
