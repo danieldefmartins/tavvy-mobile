@@ -28,6 +28,7 @@ import BottomSheet, { BottomSheetFlatList, BottomSheetScrollView } from '@gorhom
 import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import { fetchPlacesInBounds, PlaceCard, getPlaceIdForNavigation } from '../lib/placeService';
 import { searchSuggestions as searchPlaceSuggestions } from '../lib/searchService';
 import { fetchWeatherData, getDefaultWeatherData, WeatherData } from '../lib/weatherService';
@@ -279,6 +280,9 @@ interface GeocodingResult {
 export default function HomeScreen({ navigation }: { navigation: any }) {
   // Theme context for dark mode support
   const { theme, isDark } = useThemeContext();
+  
+  // Auth context for current user
+  const { user } = useAuth();
   
   // View mode: 'standard' (default) or 'map' (search/swipe triggered)
   const [viewMode, setViewMode] = useState<'standard' | 'map'>('standard');
@@ -2200,7 +2204,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             
             {/* Place Stories Row */}
             <StoriesRow
-              currentUserId={currentUser?.id}
+              currentUserId={user?.id}
               userLocation={userLocation}
               maxDistance={20}
             />
