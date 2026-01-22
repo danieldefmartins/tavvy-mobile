@@ -122,7 +122,7 @@ const APP_TILES: AppTile[] = [
     icon: 'sparkles',
     iconType: 'ionicons',
     gradientColors: ['#F472B6', '#EC4899'],
-    route: 'Home', // TODO: Create HappeningNow screen
+    route: 'HappeningNow',
   },
   // Row 4+: Quick Finds, Saved, Account, Create
   {

@@ -206,13 +206,70 @@ export default function QuickFindResultsScreen() {
         </View>
       ) : places.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="search" size={48} color={isDark ? '#6B7280' : '#9CA3AF'} />
+          {/* Encouraging Growth Message */}
+          <View style={styles.emptyIconContainer}>
+            <LinearGradient
+              colors={['#F59E0B', '#FBBF24']}
+              style={styles.emptyIconGradient}
+            >
+              <Ionicons name="rocket" size={40} color="#fff" />
+            </LinearGradient>
+          </View>
           <Text style={[styles.emptyTitle, { color: isDark ? theme.text : '#1F2937' }]}>
-            No places found
+            We're Building Something Amazing!
           </Text>
-          <Text style={[styles.emptyText, { color: isDark ? theme.textSecondary : '#6B7280' }]}>
-            We couldn't find any places matching "{label}". Try a different search.
+          <Text style={[styles.emptySubtitle, { color: isDark ? theme.textSecondary : '#6B7280' }]}>
+            Perfect "{label}" recommendations coming soon
           </Text>
+          <View style={[styles.emptyCard, { backgroundColor: isDark ? theme.cardBackground : '#fff' }]}>
+            <View style={styles.emptyCardRow}>
+              <Ionicons name="trending-up" size={24} color="#10B981" />
+              <View style={styles.emptyCardText}>
+                <Text style={[styles.emptyCardTitle, { color: isDark ? theme.text : '#1F2937' }]}>
+                  Growing Fast
+                </Text>
+                <Text style={[styles.emptyCardDesc, { color: isDark ? theme.textSecondary : '#6B7280' }]}>
+                  Thousands of new users are joining daily, adding reviews and stories
+                </Text>
+              </View>
+            </View>
+            <View style={styles.emptyCardDivider} />
+            <View style={styles.emptyCardRow}>
+              <Ionicons name="sparkles" size={24} color="#8B5CF6" />
+              <View style={styles.emptyCardText}>
+                <Text style={[styles.emptyCardTitle, { color: isDark ? theme.text : '#1F2937' }]}>
+                  Personalized For You
+                </Text>
+                <Text style={[styles.emptyCardDesc, { color: isDark ? theme.textSecondary : '#6B7280' }]}>
+                  We need more data to recommend the perfect places just for you
+                </Text>
+              </View>
+            </View>
+            <View style={styles.emptyCardDivider} />
+            <View style={styles.emptyCardRow}>
+              <Ionicons name="calendar" size={24} color="#3B82F6" />
+              <View style={styles.emptyCardText}>
+                <Text style={[styles.emptyCardTitle, { color: isDark ? theme.text : '#1F2937' }]}>
+                  Check Back Soon
+                </Text>
+                <Text style={[styles.emptyCardDesc, { color: isDark ? theme.textSecondary : '#6B7280' }]}>
+                  Come back in 2-3 weeks for amazing personalized recommendations!
+                </Text>
+              </View>
+            </View>
+          </View>
+          <TouchableOpacity 
+            style={styles.exploreButton}
+            onPress={() => navigation.goBack()}
+          >
+            <LinearGradient
+              colors={['#3B82F6', '#2563EB']}
+              style={styles.exploreButtonGradient}
+            >
+              <Text style={styles.exploreButtonText}>Explore Other Features</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -312,16 +369,88 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
-    gap: 12,
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  emptyIconContainer: {
+    marginBottom: 8,
+  },
+  emptyIconGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
     textAlign: 'center',
+  },
+  emptyCard: {
+    width: '100%',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  emptyCardRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 8,
+  },
+  emptyCardText: {
+    flex: 1,
+    gap: 2,
+  },
+  emptyCardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  emptyCardDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  emptyCardDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 8,
+  },
+  exploreButton: {
+    marginTop: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  exploreButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  exploreButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   listContent: {
     padding: 16,
