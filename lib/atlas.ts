@@ -214,6 +214,38 @@ export async function getFeaturedArticle(): Promise<AtlasArticle | null> {
   return data;
 }
 
+// Get all published articles with pagination and optional randomization
+export async function getAllArticles(
+  options: {
+    limit?: number;
+    offset?: number;
+    shuffle?: boolean;
+  } = {}
+): Promise<AtlasArticle[]> {
+  const { limit = 20, offset = 0, shuffle = false } = options;
+
+  const { data, error } = await supabase
+    .from('atlas_articles')
+    .select(`
+      *,
+      category:atlas_categories(*)
+    `)
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw error;
+  
+  let articles = data || [];
+  
+  // Shuffle if requested
+  if (shuffle && articles.length > 0) {
+    articles = articles.sort(() => Math.random() - 0.5);
+  }
+  
+  return articles;
+}
+
 export async function getTrendingArticles(limit = 10): Promise<AtlasArticle[]> {
   const { data, error } = await supabase
     .from('atlas_articles')

@@ -553,9 +553,17 @@ const DividerBlockComponent: React.FC = () => {
 
 interface ContentBlockRendererProps {
   blocks: ContentBlock[];
+  textColor?: string;
+  fontSize?: number;
+  lineHeight?: number;
 }
 
-export const ContentBlockRenderer: React.FC<ContentBlockRendererProps> = ({ blocks }) => {
+export const ContentBlockRenderer: React.FC<ContentBlockRendererProps> = ({ 
+  blocks,
+  textColor,
+  fontSize,
+  lineHeight,
+}) => {
   console.log('=== ContentBlockRenderer ===');
   console.log('Received blocks:', blocks?.length || 0);
   console.log('Blocks array:', blocks ? 'exists' : 'null/undefined');

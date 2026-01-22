@@ -1,8 +1,8 @@
 // ============================================================================
-// ARTICLE DETAIL SCREEN v2.0
+// ARTICLE DETAIL SCREEN v2.1
 // ============================================================================
 // Full article reading experience with block-based content
-// Matches mockup design with author info, place cards, and content blocks
+// Features: Reading modes (Light/Sepia/Dark), Font size controls, Fixed header
 // ============================================================================
 
 import React, { useEffect, useState } from 'react';
@@ -19,6 +19,7 @@ import {
   Dimensions,
   StatusBar,
   Platform,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -46,6 +47,65 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const TEAL_PRIMARY = '#0D9488';
 const TEAL_LIGHT = '#5EEAD4';
 
+// Reading Mode Color Schemes (research-based for eye comfort)
+const READING_MODES = {
+  light: {
+    background: '#FAFAFA',
+    text: '#1F2937',
+    secondaryText: '#4B5563',
+    metaText: '#6B7280',
+    divider: '#E5E7EB',
+    cardBg: '#FFFFFF',
+    statusBar: 'dark-content' as const,
+  },
+  sepia: {
+    background: '#FBF5E6',
+    text: '#5C4B37',
+    secondaryText: '#7A6B5A',
+    metaText: '#8B7B6B',
+    divider: '#E8DCC8',
+    cardBg: '#F5EFE0',
+    statusBar: 'dark-content' as const,
+  },
+  dark: {
+    background: '#1A1A2E',
+    text: '#E8E6E3',
+    secondaryText: '#B8B5B0',
+    metaText: '#9A9790',
+    divider: '#2D2D44',
+    cardBg: '#252540',
+    statusBar: 'light-content' as const,
+  },
+};
+
+// Font Size Options
+const FONT_SIZES = {
+  small: {
+    title: 22,
+    body: 14,
+    meta: 11,
+    excerpt: 15,
+    lineHeight: 22,
+  },
+  medium: {
+    title: 26,
+    body: 16,
+    meta: 13,
+    excerpt: 17,
+    lineHeight: 26,
+  },
+  large: {
+    title: 30,
+    body: 19,
+    meta: 14,
+    excerpt: 19,
+    lineHeight: 30,
+  },
+};
+
+type ReadingMode = 'light' | 'sepia' | 'dark';
+type FontSize = 'small' | 'medium' | 'large';
+
 // Placeholder images
 const PLACEHOLDER_AVATAR = 'https://via.placeholder.com/100';
 const PLACEHOLDER_ARTICLE = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800';
@@ -72,6 +132,15 @@ export default function ArticleDetailScreen() {
   const [isSaved, setIsSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  
+  // Reading preferences
+  const [readingMode, setReadingMode] = useState<ReadingMode>('light');
+  const [fontSize, setFontSize] = useState<FontSize>('medium');
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  // Get current theme colors based on reading mode
+  const colors = READING_MODES[readingMode];
+  const fontSizes = FONT_SIZES[fontSize];
 
   useEffect(() => {
     loadFullArticle();
@@ -237,7 +306,12 @@ export default function ArticleDetailScreen() {
   };
 
   const formatDate = (dateString: string): string => {
+    if (!dateString) return '';
     const date = new Date(dateString);
+    // Check for invalid date (Unix epoch / null timestamp)
+    if (date.getFullYear() < 2000) {
+      return 'Recently published';
+    }
     return date.toLocaleDateString('en-US', { 
       month: 'short', 
       day: 'numeric', 
@@ -260,54 +334,158 @@ export default function ArticleDetailScreen() {
       ? [{ type: 'paragraph', text: article.content }]
       : [];
 
+  // Render Reading Settings Modal
+  const renderSettingsModal = () => (
+    <Modal
+      visible={showSettingsModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowSettingsModal(false)}
+    >
+      <TouchableOpacity 
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => setShowSettingsModal(false)}
+      >
+        <View style={[styles.modalContent, { backgroundColor: colors.cardBg }]}>
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Reading Settings</Text>
+            <TouchableOpacity onPress={() => setShowSettingsModal(false)}>
+              <Ionicons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Reading Mode Selection */}
+          <Text style={[styles.settingLabel, { color: colors.secondaryText }]}>Reading Mode</Text>
+          <View style={styles.modeOptions}>
+            <TouchableOpacity
+              style={[
+                styles.modeButton,
+                { backgroundColor: READING_MODES.light.background, borderColor: readingMode === 'light' ? TEAL_PRIMARY : '#E5E7EB' },
+                readingMode === 'light' && styles.modeButtonSelected,
+              ]}
+              onPress={() => setReadingMode('light')}
+            >
+              <Text style={[styles.modeButtonText, { color: READING_MODES.light.text }]}>Light</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.modeButton,
+                { backgroundColor: READING_MODES.sepia.background, borderColor: readingMode === 'sepia' ? TEAL_PRIMARY : '#E5E7EB' },
+                readingMode === 'sepia' && styles.modeButtonSelected,
+              ]}
+              onPress={() => setReadingMode('sepia')}
+            >
+              <Text style={[styles.modeButtonText, { color: READING_MODES.sepia.text }]}>Sepia</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.modeButton,
+                { backgroundColor: READING_MODES.dark.background, borderColor: readingMode === 'dark' ? TEAL_PRIMARY : '#2D2D44' },
+                readingMode === 'dark' && styles.modeButtonSelected,
+              ]}
+              onPress={() => setReadingMode('dark')}
+            >
+              <Text style={[styles.modeButtonText, { color: READING_MODES.dark.text }]}>Dark</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Font Size Selection */}
+          <Text style={[styles.settingLabel, { color: colors.secondaryText, marginTop: 20 }]}>Font Size</Text>
+          <View style={styles.fontSizeOptions}>
+            <TouchableOpacity
+              style={[
+                styles.fontSizeButton,
+                { backgroundColor: colors.background, borderColor: fontSize === 'small' ? TEAL_PRIMARY : colors.divider },
+                fontSize === 'small' && styles.fontSizeButtonSelected,
+              ]}
+              onPress={() => setFontSize('small')}
+            >
+              <Text style={[styles.fontSizeSmall, { color: colors.text }]}>A</Text>
+              <Text style={[styles.fontSizeLabel, { color: colors.metaText }]}>Small</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.fontSizeButton,
+                { backgroundColor: colors.background, borderColor: fontSize === 'medium' ? TEAL_PRIMARY : colors.divider },
+                fontSize === 'medium' && styles.fontSizeButtonSelected,
+              ]}
+              onPress={() => setFontSize('medium')}
+            >
+              <Text style={[styles.fontSizeMedium, { color: colors.text }]}>A</Text>
+              <Text style={[styles.fontSizeLabel, { color: colors.metaText }]}>Medium</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.fontSizeButton,
+                { backgroundColor: colors.background, borderColor: fontSize === 'large' ? TEAL_PRIMARY : colors.divider },
+                fontSize === 'large' && styles.fontSizeButtonSelected,
+              ]}
+              onPress={() => setFontSize('large')}
+            >
+              <Text style={[styles.fontSizeLarge, { color: colors.text }]}>A</Text>
+              <Text style={[styles.fontSizeLabel, { color: colors.metaText }]}>Large</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
   // Show loading state while fetching full article
   if (loading && displayBlocks.length === 0) {
     return (
-      <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#fff', justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={TEAL_PRIMARY} />
-        <Text style={{ marginTop: 12, color: '#6B7280' }}>Loading article...</Text>
+        <Text style={{ marginTop: 12, color: colors.metaText }}>Loading article...</Text>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#fff' }]}>
-      <StatusBar barStyle="dark-content" />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={colors.statusBar} />
       
+      {/* Fixed Header Bar */}
+      <View style={[styles.headerBar, { paddingTop: insets.top + 8, backgroundColor: colors.background }]}>
+        <TouchableOpacity
+          style={[styles.headerButton, { backgroundColor: colors.cardBg }]}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={[styles.headerButton, { backgroundColor: colors.cardBg }]}
+            onPress={() => setShowSettingsModal(true)}
+          >
+            <Ionicons name="text" size={22} color={colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.headerButton, { backgroundColor: colors.cardBg }]}
+            onPress={handleSave}
+          >
+            <Ionicons 
+              name={isSaved ? 'bookmark' : 'bookmark-outline'} 
+              size={24} 
+              color={isSaved ? TEAL_PRIMARY : colors.text} 
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.headerButton, { backgroundColor: colors.cardBg }]}
+            onPress={handleShare}
+          >
+            <Ionicons name="share-outline" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <ScrollView 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 40, paddingTop: insets.top + 60 }}
       >
-        {/* Header with back button and actions */}
-        <View style={[styles.headerBar, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#374151" />
-          </TouchableOpacity>
-
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={handleSave}
-            >
-              <Ionicons 
-                name={isSaved ? 'bookmark' : 'bookmark-outline'} 
-                size={24} 
-                color={isSaved ? TEAL_PRIMARY : '#374151'} 
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={handleShare}
-            >
-              <Ionicons name="share-outline" size={24} color="#374151" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Cover Image */}
+        {/* Cover Image - Now properly positioned below header */}
         <View style={styles.coverImageContainer}>
           <Image
             source={{ uri: getCoverImageUrl(article.cover_image_url) || PLACEHOLDER_ARTICLE }}
@@ -319,7 +497,7 @@ export default function ArticleDetailScreen() {
         {/* Article Content */}
         <View style={styles.contentContainer}>
           {/* Title */}
-          <Text style={[styles.title, { color: isDark ? theme.text : '#111827' }]}>
+          <Text style={[styles.title, { color: colors.text, fontSize: fontSizes.title }]}>
             {article.title}
           </Text>
 
@@ -330,10 +508,10 @@ export default function ArticleDetailScreen() {
               style={styles.authorAvatar}
             />
             <View style={styles.authorInfo}>
-              <Text style={[styles.authorName, { color: isDark ? theme.text : '#111827' }]}>
+              <Text style={[styles.authorName, { color: colors.text }]}>
                 {article.author_name || 'Tavvy Team'}
               </Text>
-              <Text style={styles.authorRole}>
+              <Text style={[styles.authorRole, { color: colors.metaText }]}>
                 {article.author_bio || 'Local Guide Writer'}
               </Text>
             </View>
@@ -345,38 +523,45 @@ export default function ArticleDetailScreen() {
           {/* Meta Info */}
           <View style={styles.metaSection}>
             <View style={styles.metaItem}>
-              <Ionicons name="time-outline" size={16} color="#6B7280" />
-              <Text style={styles.metaText}>
+              <Ionicons name="time-outline" size={16} color={colors.metaText} />
+              <Text style={[styles.metaText, { color: colors.metaText, fontSize: fontSizes.meta }]}>
                 {article.read_time_minutes} min read
               </Text>
             </View>
-            <Text style={styles.metaDot}>•</Text>
-            <Text style={styles.metaText}>
+            <Text style={[styles.metaDot, { color: colors.divider }]}>•</Text>
+            <Text style={[styles.metaText, { color: colors.metaText, fontSize: fontSizes.meta }]}>
               {formatDate(article.published_at)}
             </Text>
             <View style={styles.metaSpacer} />
             <View style={styles.metaItem}>
-              <Ionicons name="eye-outline" size={16} color="#6B7280" />
-              <Text style={styles.metaText}>
+              <Ionicons name="eye-outline" size={16} color={colors.metaText} />
+              <Text style={[styles.metaText, { color: colors.metaText, fontSize: fontSizes.meta }]}>
                 {formatNumber(article.view_count || 0)} views
               </Text>
             </View>
           </View>
 
           {/* Divider */}
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           {/* Excerpt */}
           {article.excerpt && (
-            <Text style={styles.excerpt}>{article.excerpt}</Text>
+            <Text style={[styles.excerpt, { color: colors.secondaryText, fontSize: fontSizes.excerpt }]}>
+              {article.excerpt}
+            </Text>
           )}
 
           {/* Content Blocks */}
-          <ContentBlockRenderer blocks={displayBlocks} />
+          <ContentBlockRenderer 
+            blocks={displayBlocks} 
+            textColor={colors.text}
+            fontSize={fontSizes.body}
+            lineHeight={fontSizes.lineHeight}
+          />
 
           {/* Reaction Section */}
-          <View style={styles.reactionSection}>
-            <Text style={styles.reactionTitle}>Did you find this helpful?</Text>
+          <View style={[styles.reactionSection, { borderTopColor: colors.divider }]}>
+            <Text style={[styles.reactionTitle, { color: colors.secondaryText }]}>Did you find this helpful?</Text>
             <View style={styles.reactionButtons}>
               <TouchableOpacity
                 style={[
@@ -403,8 +588,8 @@ export default function ArticleDetailScreen() {
 
           {/* Related Articles */}
           {relatedArticles.length > 0 && (
-            <View style={styles.relatedSection}>
-              <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111827' }]}>
+            <View style={[styles.relatedSection, { borderTopColor: colors.divider }]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Related Articles
               </Text>
               <ScrollView
@@ -415,7 +600,7 @@ export default function ArticleDetailScreen() {
                 {relatedArticles.map((related) => (
                   <TouchableOpacity
                     key={related.id}
-                    style={styles.relatedCard}
+                    style={[styles.relatedCard, { backgroundColor: colors.cardBg }]}
                     onPress={() => navigation.push('ArticleDetail', { article: related })}
                   >
                     <Image
@@ -423,10 +608,10 @@ export default function ArticleDetailScreen() {
                       style={styles.relatedImage}
                     />
                     <View style={styles.relatedContent}>
-                      <Text style={styles.relatedTitle} numberOfLines={2}>
+                      <Text style={[styles.relatedTitle, { color: colors.text }]} numberOfLines={2}>
                         {related.title}
                       </Text>
-                      <Text style={styles.relatedMeta}>
+                      <Text style={[styles.relatedMeta, { color: colors.metaText }]}>
                         {related.read_time_minutes} min read
                       </Text>
                     </View>
@@ -437,6 +622,9 @@ export default function ArticleDetailScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Settings Modal */}
+      {renderSettingsModal()}
     </View>
   );
 }
@@ -459,15 +647,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 8,
     zIndex: 10,
-    backgroundColor: 'rgba(255,255,255,0.95)',
   },
   headerButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.9)',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerActions: {
     flexDirection: 'row',
@@ -476,7 +667,6 @@ const styles = StyleSheet.create({
 
   // Cover Image
   coverImageContainer: {
-    marginTop: 80,
     marginHorizontal: 16,
     borderRadius: 16,
     overflow: 'hidden',
@@ -670,5 +860,88 @@ const styles = StyleSheet.create({
   relatedMeta: {
     fontSize: 12,
     color: '#6B7280',
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  settingLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  modeOptions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modeButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+  },
+  modeButtonSelected: {
+    borderWidth: 3,
+  },
+  modeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  fontSizeOptions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  fontSizeButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+  },
+  fontSizeButtonSelected: {
+    borderWidth: 3,
+    borderColor: TEAL_PRIMARY,
+  },
+  fontSizeSmall: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  fontSizeMedium: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  fontSizeLarge: {
+    fontSize: 22,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  fontSizeLabel: {
+    fontSize: 11,
   },
 });

@@ -1,15 +1,15 @@
 // ============================================================================
-// ATLAS HOME SCREEN v2.0
+// ATLAS HOME SCREEN v2.1
 // ============================================================================
 // Features:
-// - Category filter chips (All, Local Guides, Owner Spotlights, etc.)
-// - Featured article hero card with gradient overlay
-// - Article grid layout (2 columns)
-// - Trending section
-// - Matches mockup design with teal/green accent colors
+// - Dynamic category filters based on actual articles
+// - Display all articles on load (not just on search)
+// - Infinite scroll to load more articles
+// - Randomized/mixed article display
+// - Working "All" filter
 // ============================================================================
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -33,6 +33,7 @@ import {
   getTrendingArticles,
   getCategories,
   getArticlesByCategory,
+  getAllArticles,
   type AtlasArticle,
   type AtlasCategory,
 } from '../lib/atlas';
@@ -50,14 +51,21 @@ const TEAL_BG = '#F0FDFA';
 const PLACEHOLDER_ARTICLE = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800';
 const PLACEHOLDER_AVATAR = 'https://via.placeholder.com/100';
 
-// Category filter options
-const FILTER_OPTIONS = [
-  { id: 'all', name: 'All', slug: 'all' },
-  { id: 'local-guides', name: 'Local Guides', slug: 'local-guides' },
-  { id: 'owner-spotlights', name: 'Owner Spotlights', slug: 'owner-spotlights' },
-  { id: 'tavvy-tips', name: 'Tavvy Tips', slug: 'tavvy-tips' },
-  { id: 'food-drink', name: 'Food & Drink', slug: 'food-drink' },
-  { id: 'services', name: 'Services', slug: 'services' },
+// Dynamic filter types based on article content
+type FilterType = 'all' | 'family' | 'restaurants' | 'city';
+
+interface FilterOption {
+  id: FilterType;
+  name: string;
+  keywords: string[];
+}
+
+// Filter options based on article content patterns
+const FILTER_OPTIONS: FilterOption[] = [
+  { id: 'all', name: 'All', keywords: [] },
+  { id: 'family', name: 'Family & Kids', keywords: ['kids', 'family', 'children'] },
+  { id: 'restaurants', name: 'Restaurants', keywords: ['restaurant', 'best restaurants', 'eats', 'food'] },
+  { id: 'city', name: 'City Guides', keywords: ['things to do', 'guide'] },
 ];
 
 export default function AtlasHomeScreen() {
@@ -65,35 +73,44 @@ export default function AtlasHomeScreen() {
   const { theme, isDark } = useThemeContext();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState<FilterType>('all');
 
   // Data states
   const [featuredArticle, setFeaturedArticle] = useState<AtlasArticle | null>(null);
-  const [articles, setArticles] = useState<AtlasArticle[]>([]);
+  const [allArticles, setAllArticles] = useState<AtlasArticle[]>([]);
+  const [displayedArticles, setDisplayedArticles] = useState<AtlasArticle[]>([]);
   const [trendingArticles, setTrendingArticles] = useState<AtlasArticle[]>([]);
   const [categories, setCategories] = useState<AtlasCategory[]>([]);
+  
+  // Pagination
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const PAGE_SIZE = 20;
 
   useEffect(() => {
     loadData();
   }, []);
 
   useEffect(() => {
-    loadFilteredArticles();
-  }, [selectedFilter]);
+    filterArticles();
+  }, [selectedFilter, allArticles]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [featured, trending, cats] = await Promise.all([
+      const [featured, articles, cats] = await Promise.all([
         getFeaturedArticle(),
-        getTrendingArticles(10),
+        getAllArticles({ limit: PAGE_SIZE, offset: 0, shuffle: true }),
         getCategories(),
       ]);
 
       setFeaturedArticle(featured);
-      setTrendingArticles(trending);
+      setAllArticles(articles);
+      setTrendingArticles(articles.slice(0, 10));
       setCategories(cats);
-      setArticles(trending);
+      setOffset(PAGE_SIZE);
+      setHasMore(articles.length >= PAGE_SIZE);
     } catch (error) {
       console.error('Error loading Atlas data:', error);
     } finally {
@@ -101,25 +118,60 @@ export default function AtlasHomeScreen() {
     }
   };
 
-  const loadFilteredArticles = async () => {
+  const loadMoreArticles = async () => {
+    if (loadingMore || !hasMore) return;
+    
+    setLoadingMore(true);
+    try {
+      const moreArticles = await getAllArticles({ 
+        limit: PAGE_SIZE, 
+        offset: offset,
+        shuffle: true 
+      });
+      
+      if (moreArticles.length > 0) {
+        setAllArticles(prev => [...prev, ...moreArticles]);
+        setOffset(prev => prev + PAGE_SIZE);
+        setHasMore(moreArticles.length >= PAGE_SIZE);
+      } else {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error('Error loading more articles:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const filterArticles = () => {
     if (selectedFilter === 'all') {
-      setArticles(trendingArticles);
+      setDisplayedArticles(allArticles);
       return;
     }
 
-    try {
-      const category = categories.find(c => c.slug === selectedFilter);
-      if (category) {
-        const filtered = await getArticlesByCategory(category.id, { limit: 20 });
-        setArticles(filtered);
-      }
-    } catch (error) {
-      console.error('Error loading filtered articles:', error);
+    const filterOption = FILTER_OPTIONS.find(f => f.id === selectedFilter);
+    if (!filterOption) {
+      setDisplayedArticles(allArticles);
+      return;
     }
+
+    const filtered = allArticles.filter(article => {
+      const titleLower = article.title.toLowerCase();
+      const excerptLower = (article.excerpt || '').toLowerCase();
+      
+      return filterOption.keywords.some(keyword => 
+        titleLower.includes(keyword.toLowerCase()) || 
+        excerptLower.includes(keyword.toLowerCase())
+      );
+    });
+
+    setDisplayedArticles(filtered);
   };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    setOffset(0);
+    setHasMore(true);
     await loadData();
     setRefreshing(false);
   }, []);
@@ -141,8 +193,24 @@ export default function AtlasHomeScreen() {
   };
 
   // Render category filter chip
-  const renderFilterChip = (filter: typeof FILTER_OPTIONS[0]) => {
-    const isSelected = selectedFilter === filter.slug;
+  const renderFilterChip = (filter: FilterOption) => {
+    const isSelected = selectedFilter === filter.id;
+    
+    // Count articles for this filter
+    let count = 0;
+    if (filter.id === 'all') {
+      count = allArticles.length;
+    } else {
+      count = allArticles.filter(article => {
+        const titleLower = article.title.toLowerCase();
+        const excerptLower = (article.excerpt || '').toLowerCase();
+        return filter.keywords.some(keyword => 
+          titleLower.includes(keyword.toLowerCase()) || 
+          excerptLower.includes(keyword.toLowerCase())
+        );
+      }).length;
+    }
+
     return (
       <TouchableOpacity
         key={filter.id}
@@ -150,7 +218,7 @@ export default function AtlasHomeScreen() {
           styles.filterChip,
           isSelected ? styles.filterChipSelected : styles.filterChipUnselected,
         ]}
-        onPress={() => setSelectedFilter(filter.slug)}
+        onPress={() => setSelectedFilter(filter.id)}
         activeOpacity={0.7}
       >
         <Text
@@ -159,7 +227,7 @@ export default function AtlasHomeScreen() {
             isSelected ? styles.filterChipTextSelected : styles.filterChipTextUnselected,
           ]}
         >
-          {filter.name}
+          {filter.name} ({count})
         </Text>
       </TouchableOpacity>
     );
@@ -183,7 +251,7 @@ export default function AtlasHomeScreen() {
           {/* Category badge */}
           <View style={styles.featuredBadge}>
             <Text style={styles.featuredBadgeText}>
-              {featuredArticle.category?.name || 'Local Guides'}
+              {featuredArticle.category?.name || 'Featured'}
             </Text>
           </View>
 
@@ -256,7 +324,7 @@ export default function AtlasHomeScreen() {
   // Render article grid (2 columns)
   const renderArticleGrid = () => {
     // Skip the first article if it's the featured one
-    const gridArticles = articles.filter(a => a.id !== featuredArticle?.id);
+    const gridArticles = displayedArticles.filter(a => a.id !== featuredArticle?.id);
     const rows = [];
     
     for (let i = 0; i < gridArticles.length; i += 2) {
@@ -315,6 +383,28 @@ export default function AtlasHomeScreen() {
     );
   };
 
+  // Render load more indicator
+  const renderLoadMoreIndicator = () => {
+    if (!loadingMore) return null;
+    
+    return (
+      <View style={styles.loadMoreContainer}>
+        <ActivityIndicator size="small" color={TEAL_PRIMARY} />
+        <Text style={styles.loadMoreText}>Loading more articles...</Text>
+      </View>
+    );
+  };
+
+  // Handle scroll to load more
+  const handleScroll = (event: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const paddingToBottom = 100;
+    
+    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom) {
+      loadMoreArticles();
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: isDark ? theme.background : '#fff' }]}>
@@ -356,6 +446,8 @@ export default function AtlasHomeScreen() {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={400}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -374,16 +466,40 @@ export default function AtlasHomeScreen() {
           {FILTER_OPTIONS.map(renderFilterChip)}
         </ScrollView>
 
+        {/* Results count */}
+        <View style={styles.resultsHeader}>
+          <Text style={styles.resultsCount}>
+            {displayedArticles.length} article{displayedArticles.length !== 1 ? 's' : ''}
+            {selectedFilter !== 'all' && ` in ${FILTER_OPTIONS.find(f => f.id === selectedFilter)?.name}`}
+          </Text>
+        </View>
+
         {/* Featured Article */}
-        {renderFeaturedArticle()}
+        {selectedFilter === 'all' && renderFeaturedArticle()}
 
         {/* Article Grid */}
         <View style={styles.gridContainer}>
-          {renderArticleGrid()}
+          {displayedArticles.length > 0 ? (
+            renderArticleGrid()
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="document-text-outline" size={48} color="#9CA3AF" />
+              <Text style={styles.emptyStateText}>No articles found for this filter</Text>
+              <TouchableOpacity 
+                style={styles.emptyStateButton}
+                onPress={() => setSelectedFilter('all')}
+              >
+                <Text style={styles.emptyStateButtonText}>View All Articles</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
+        {/* Load More Indicator */}
+        {renderLoadMoreIndicator()}
+
         {/* Trending Section */}
-        {renderTrendingSection()}
+        {selectedFilter === 'all' && renderTrendingSection()}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -443,7 +559,7 @@ const styles = StyleSheet.create({
 
   // Filters
   filtersContainer: {
-    marginBottom: 16,
+    marginBottom: 8,
   },
   filtersContent: {
     paddingHorizontal: 16,
@@ -473,6 +589,16 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
 
+  // Results header
+  resultsHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  resultsCount: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+
   scrollView: {
     flex: 1,
   },
@@ -498,16 +624,16 @@ const styles = StyleSheet.create({
   },
   featuredOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    padding: 20,
     justifyContent: 'space-between',
-    padding: 16,
   },
   featuredBadge: {
     backgroundColor: TEAL_PRIMARY,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    alignSelf: 'flex-end',
+    alignSelf: 'flex-start',
   },
   featuredBadgeText: {
     color: '#fff',
@@ -515,27 +641,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   featuredContent: {
-    marginTop: 'auto',
+    gap: 12,
   },
   featuredTitle: {
-    fontSize: 24,
-    fontWeight: '800',
     color: '#fff',
-    marginBottom: 12,
-    lineHeight: 30,
-    textShadowColor: 'rgba(0,0,0,0.4)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 28,
+    textAlign: 'left',
   },
   featuredMeta: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
   featuredAuthorAvatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    marginRight: 10,
     borderWidth: 2,
     borderColor: '#fff',
   },
@@ -547,12 +670,12 @@ const styles = StyleSheet.create({
   featuredReadTime: {
     color: 'rgba(255,255,255,0.8)',
     fontSize: 12,
-    marginTop: 2,
   },
 
-  // Article Grid
+  // Grid
   gridContainer: {
     paddingHorizontal: 16,
+    marginTop: 8,
   },
   articleRow: {
     flexDirection: 'row',
@@ -565,34 +688,35 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
   },
   articleCardImage: {
     width: '100%',
     height: 120,
-    resizeMode: 'cover',
+    backgroundColor: '#E5E7EB',
   },
   articleCardContent: {
     padding: 12,
   },
   articleCardTitle: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#111827',
     lineHeight: 20,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   articleCardMeta: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   articleCardAvatar: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    marginRight: 8,
+    backgroundColor: '#E5E7EB',
   },
   articleCardMetaText: {
     flex: 1,
@@ -605,20 +729,21 @@ const styles = StyleSheet.create({
   articleCardReadTime: {
     fontSize: 11,
     color: '#6B7280',
-    marginTop: 1,
   },
 
-  // Trending Section
+  // Trending
   trendingSection: {
     marginTop: 24,
-    paddingBottom: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: '800',
-    marginBottom: 14,
+    fontWeight: '700',
+    color: '#111827',
     paddingHorizontal: 16,
-    letterSpacing: -0.5,
+    marginBottom: 16,
   },
   trendingScroll: {
     paddingHorizontal: 16,
@@ -627,18 +752,18 @@ const styles = StyleSheet.create({
     width: 160,
     backgroundColor: '#fff',
     borderRadius: 12,
-    overflow: 'hidden',
     marginRight: 12,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
-    shadowRadius: 6,
+    shadowRadius: 8,
     elevation: 2,
   },
   trendingImage: {
     width: '100%',
     height: 100,
-    resizeMode: 'cover',
+    backgroundColor: '#E5E7EB',
   },
   trendingContent: {
     padding: 10,
@@ -653,10 +778,46 @@ const styles = StyleSheet.create({
   trendingMeta: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
   },
   trendingLoves: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#6B7280',
-    marginLeft: 4,
+  },
+
+  // Empty state
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  emptyStateButton: {
+    backgroundColor: TEAL_PRIMARY,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  emptyStateButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  // Load more
+  loadMoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    gap: 8,
+  },
+  loadMoreText: {
+    fontSize: 14,
+    color: '#6B7280',
   },
 });
