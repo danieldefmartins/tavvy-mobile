@@ -130,24 +130,16 @@ export default function ProsLoginScreen({ navigation }: any) {
 
           {/* Logo Section */}
           <View style={styles.logoSection}>
-            {/* Icon with Green Gradient */}
-            <View style={styles.iconContainer}>
-              <LinearGradient
-                colors={[PROS_GREEN, PROS_GREEN_DARK]}
-                style={styles.iconGradient}
-              >
-                <Ionicons name="construct" size={44} color="#fff" />
-              </LinearGradient>
-              {/* Glow behind icon */}
-              <View style={styles.iconGlow} />
+            {/* Tavvy Logo */}
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../assets/brand/tavvy-logo-white.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+              {/* Glow behind logo */}
+              <View style={styles.logoGlow} />
             </View>
-
-            {/* Tavvy Wordmark */}
-            <Image
-              source={require('../assets/brand/tavvy-logo-white.png')}
-              style={styles.wordmark}
-              resizeMode="contain"
-            />
 
             {/* Pros Badge */}
             <View style={styles.prosBadge}>
@@ -352,43 +344,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  iconContainer: {
+  logoContainer: {
     position: 'relative',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  iconGradient: {
-    width: 88,
-    height: 88,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoImage: {
+    width: 200,
+    height: 65,
     zIndex: 1,
   },
-  iconGlow: {
+  logoGlow: {
     position: 'absolute',
-    top: -8,
-    left: -8,
-    right: -8,
-    bottom: -8,
-    borderRadius: 30,
+    top: -15,
+    left: -20,
+    right: -20,
+    bottom: -15,
+    borderRadius: 20,
     backgroundColor: PROS_GREEN,
-    opacity: 0.3,
+    opacity: 0.25,
     zIndex: 0,
   },
-  wordmark: {
-    width: 120,
-    height: 40,
-    marginBottom: 8,
-  },
   prosBadge: {
-    backgroundColor: PROS_GREEN,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: PROS_GREEN,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
     borderRadius: 20,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   prosBadgeText: {
-    color: '#fff',
+    color: PROS_GREEN,
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 2,

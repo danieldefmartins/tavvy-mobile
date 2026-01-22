@@ -122,14 +122,13 @@ export default function LoginScreen({ navigation }: any) {
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
               <Image 
-                source={require('../assets/brand/logo-icon.png')} 
+                source={require('../assets/brand/tavvy-logo-white.png')} 
                 style={styles.logoImage}
                 resizeMode="contain"
               />
               {/* Glow behind logo */}
               <View style={styles.logoGlow} />
             </View>
-            <Text style={styles.brandName}>tavvy</Text>
             <Text style={styles.welcomeText}>Welcome back!</Text>
             <Text style={styles.subtitleText}>Sign in to continue your journey</Text>
           </View>
@@ -304,28 +303,20 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   logoImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 24,
+    width: 180,
+    height: 60,
     zIndex: 1,
   },
   logoGlow: {
     position: 'absolute',
-    top: -10,
-    left: -10,
-    right: -10,
-    bottom: -10,
-    borderRadius: 34,
+    top: -15,
+    left: -20,
+    right: -20,
+    bottom: -15,
+    borderRadius: 20,
     backgroundColor: '#3B82F6',
-    opacity: 0.3,
+    opacity: 0.25,
     zIndex: 0,
-  },
-  brandName: {
-    fontSize: 42,
-    fontWeight: '700',
-    color: '#3B82F6',
-    marginBottom: 8,
-    letterSpacing: -1,
   },
   welcomeText: {
     fontSize: 24,
