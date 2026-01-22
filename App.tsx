@@ -89,6 +89,12 @@ import SettingsScreen from './screens/SettingsScreen';
 import HelpSupportScreen from './screens/HelpSupportScreen';
 import ProsLeadDetailScreen from './screens/ProsLeadDetailScreen';
 
+// ========== STORY & DISCOVERY SCREENS ==========
+import StoryUploadScreen from './screens/StoryUploadScreen';
+import OwnerHighlightsScreen from './screens/OwnerHighlightsScreen';
+import StoryModerationScreen from './screens/StoryModerationScreen';
+import StoryAnalyticsScreen from './screens/StoryAnalyticsScreen';
+
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -136,6 +142,14 @@ function HomeStack() {
         component={BusinessCardScannerScreen}
         options={{ presentation: 'modal' }}
       />
+      {/* Story & Discovery Screens */}
+      <HomeStackNav.Screen 
+        name="StoryUpload" 
+        component={StoryUploadScreen}
+        options={{ presentation: 'modal' }}
+      />
+      <HomeStackNav.Screen name="OwnerHighlights" component={OwnerHighlightsScreen} />
+      <HomeStackNav.Screen name="StoryAnalytics" component={StoryAnalyticsScreen} />
     </HomeStackNav.Navigator>
   );
 }
@@ -210,6 +224,10 @@ function AppsStack() {
       {/* Settings and Help - referenced by other screens */}
       <MenuStackNav.Screen name="Settings" component={SettingsScreen} />
       <MenuStackNav.Screen name="HelpSupport" component={HelpSupportScreen} />
+      
+      {/* Admin Screens */}
+      <MenuStackNav.Screen name="StoryModeration" component={StoryModerationScreen} />
+      <MenuStackNav.Screen name="StoryAnalytics" component={StoryAnalyticsScreen} />
     </MenuStackNav.Navigator>
   );
 }
