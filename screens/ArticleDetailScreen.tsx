@@ -129,8 +129,8 @@ export default function ArticleDetailScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user?.id || null);
 
-      // Load related articles (only if article ID is valid)
-      if (article?.id) {
+      // Load related articles (only if article ID and category_id are valid)
+      if (article?.id && article?.category_id) {
         const related = await getRelatedArticles(article.id, article.category_id, 4);
         setRelatedArticles(related);
       }
