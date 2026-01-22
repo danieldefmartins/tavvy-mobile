@@ -490,10 +490,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       // Fetch places (restaurants, coffee shops, and general places with reviews)
       const { data: places, error: placesError } = await supabase
         .from('fsq_places_raw')
-        .select('fsq_id, name, address_line1, city, state_region, category, latitude, longitude, cover_image_url')
+        .select('fsq_place_id, name, address, locality, region, fsq_category_labels, latitude, longitude')
         .not('latitude', 'is', null)
         .not('longitude', 'is', null)
-        .order('created_at', { ascending: false })
+        .order('date_created', { ascending: false })
         .limit(100);
       
       if (places && !placesError) {
@@ -508,7 +508,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           }
           
           // Determine category type for display
-          const categoryLower = (place.category || '').toLowerCase();
+          const categoryLower = (place.fsq_category_labels || '').toLowerCase();
           let displayCategory = 'Places';
           if (categoryLower.includes('restaurant') || categoryLower.includes('dining') || categoryLower.includes('food')) {
             displayCategory = 'Restaurants';
@@ -517,10 +517,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           }
           
           items.push({
-            id: place.fsq_id,
+            id: place.fsq_place_id,
             name: place.name,
-            subtitle: place.city ? `${place.city}, ${place.state_region || ''}`.trim() : place.address_line1,
-            image: place.cover_image_url,
+            subtitle: place.locality ? `${place.locality}, ${place.region || ''}`.trim() : place.address,
+            image: null, // fsq_places_raw doesn't have cover images
             type: 'place',
             category: displayCategory,
             latitude: place.latitude,
