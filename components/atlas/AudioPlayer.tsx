@@ -3,9 +3,10 @@
 // ============================================================================
 // Plays article audio with play/pause, progress bar, and speed controls
 // Uses expo-av for audio playback
+// Pure JS implementation - no native slider dependency
 // ============================================================================
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,10 +14,12 @@ import {
   StyleSheet,
   ActivityIndicator,
   Animated,
+  PanResponder,
+  GestureResponderEvent,
+  PanResponderGestureState,
 } from 'react-native';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
-import Slider from '@react-native-community/slider';
 
 // Tavvy brand colors
 const TEAL_PRIMARY = '#0D9488';
@@ -37,6 +40,100 @@ const formatTime = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+// Pure JS Progress Bar Component
+interface ProgressBarProps {
+  progress: number; // 0 to 1
+  onSeek: (progress: number) => void;
+  trackColor?: string;
+  progressColor?: string;
+  thumbColor?: string;
+}
+
+const ProgressBar: React.FC<ProgressBarProps> = ({
+  progress,
+  onSeek,
+  trackColor = TEAL_LIGHT,
+  progressColor = TEAL_PRIMARY,
+  thumbColor = TEAL_PRIMARY,
+}) => {
+  const [trackWidth, setTrackWidth] = useState(0);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [seekProgress, setSeekProgress] = useState(progress);
+
+  const displayProgress = isSeeking ? seekProgress : progress;
+
+  const handlePress = (event: GestureResponderEvent) => {
+    if (trackWidth > 0) {
+      const locationX = event.nativeEvent.locationX;
+      const newProgress = Math.max(0, Math.min(1, locationX / trackWidth));
+      onSeek(newProgress);
+    }
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (event) => {
+        setIsSeeking(true);
+        if (trackWidth > 0) {
+          const locationX = event.nativeEvent.locationX;
+          const newProgress = Math.max(0, Math.min(1, locationX / trackWidth));
+          setSeekProgress(newProgress);
+        }
+      },
+      onPanResponderMove: (event, gestureState) => {
+        if (trackWidth > 0) {
+          const startX = event.nativeEvent.locationX - gestureState.dx;
+          const currentX = startX + gestureState.dx;
+          const newProgress = Math.max(0, Math.min(1, currentX / trackWidth));
+          setSeekProgress(newProgress);
+        }
+      },
+      onPanResponderRelease: () => {
+        setIsSeeking(false);
+        onSeek(seekProgress);
+      },
+      onPanResponderTerminate: () => {
+        setIsSeeking(false);
+      },
+    })
+  ).current;
+
+  return (
+    <View
+      style={styles.progressBarContainer}
+      onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
+      {...panResponder.panHandlers}
+    >
+      {/* Track Background */}
+      <View style={[styles.progressTrack, { backgroundColor: trackColor }]}>
+        {/* Progress Fill */}
+        <View
+          style={[
+            styles.progressFill,
+            {
+              backgroundColor: progressColor,
+              width: `${displayProgress * 100}%`,
+            },
+          ]}
+        />
+      </View>
+      {/* Thumb */}
+      <View
+        style={[
+          styles.progressThumb,
+          {
+            backgroundColor: thumbColor,
+            left: `${displayProgress * 100}%`,
+            marginLeft: -8,
+          },
+        ]}
+      />
+    </View>
+  );
 };
 
 export default function AudioPlayer({
@@ -148,9 +245,10 @@ export default function AudioPlayer({
     }
   };
 
-  const handleSeek = async (value: number) => {
-    if (sound) {
-      await sound.setPositionAsync(value * 1000);
+  const handleSeek = async (progressPercent: number) => {
+    if (sound && duration > 0) {
+      const newPosition = progressPercent * duration;
+      await sound.setPositionAsync(newPosition * 1000);
     }
   };
 
@@ -210,8 +308,10 @@ export default function AudioPlayer({
 
   const expandedHeight = expandAnimation.interpolate({
     inputRange: [0, 1],
-    outputRange: [60, 120],
+    outputRange: [70, 130],
   });
+
+  const progress = duration > 0 ? position / duration : 0;
 
   return (
     <Animated.View style={[styles.container, { backgroundColor, height: expandedHeight }]}>
@@ -244,15 +344,12 @@ export default function AudioPlayer({
               {formatTime(duration)}
             </Text>
           </View>
-          <Slider
-            style={styles.slider}
-            minimumValue={0}
-            maximumValue={duration}
-            value={position}
-            onSlidingComplete={handleSeek}
-            minimumTrackTintColor={TEAL_PRIMARY}
-            maximumTrackTintColor={TEAL_LIGHT}
-            thumbTintColor={TEAL_PRIMARY}
+          <ProgressBar
+            progress={progress}
+            onSeek={handleSeek}
+            trackColor={TEAL_LIGHT}
+            progressColor={TEAL_PRIMARY}
+            thumbColor={TEAL_PRIMARY}
           />
         </View>
 
@@ -328,15 +425,38 @@ const styles = StyleSheet.create({
   timeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   timeText: {
     fontSize: 12,
     fontWeight: '500',
   },
-  slider: {
-    width: '100%',
-    height: 20,
+  // Progress Bar Styles
+  progressBarContainer: {
+    height: 24,
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  progressTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  progressThumb: {
+    position: 'absolute',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    top: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   expandButton: {
     padding: 8,
