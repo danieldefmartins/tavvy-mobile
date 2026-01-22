@@ -1,8 +1,8 @@
 // ============================================================================
-// ARTICLE DETAIL SCREEN v2.2
+// ARTICLE DETAIL SCREEN v2.3
 // ============================================================================
 // Full article reading experience with block-based content
-// Features: Reading modes (Light/Sepia/Dark), Incremental font size, Restore defaults
+// Features: Reading modes, Font size controls, Audio playback (Amazon Polly)
 // ============================================================================
 
 import React, { useEffect, useState } from 'react';
@@ -38,7 +38,7 @@ import {
   type AtlasArticle,
   type ArticleReaction,
 } from '../lib/atlas';
-import { ContentBlockRenderer, ContentBlock } from '../components/atlas';
+import { ContentBlockRenderer, ContentBlock, AudioPlayer } from '../components/atlas';
 import { getCoverImageUrl, getThumbnailUrl } from '../lib/imageUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -57,6 +57,7 @@ const READING_MODES = {
     metaText: '#6B7280',
     divider: '#E5E7EB',
     cardBg: '#FFFFFF',
+    audioBg: '#F0FDFA',
     statusBar: 'dark-content' as const,
   },
   sepia: {
@@ -66,6 +67,7 @@ const READING_MODES = {
     metaText: '#8B7B6B',
     divider: '#E8DCC8',
     cardBg: '#F5EFE0',
+    audioBg: '#F5EFE0',
     statusBar: 'dark-content' as const,
   },
   dark: {
@@ -75,6 +77,7 @@ const READING_MODES = {
     metaText: '#B8B5B0',        // Lighter meta text
     divider: '#2D2D44',
     cardBg: '#252540',
+    audioBg: '#252540',
     statusBar: 'light-content' as const,
   },
 };
@@ -98,6 +101,9 @@ interface ExtendedAtlasArticle extends AtlasArticle {
   article_template_type?: string;
   author_bio?: string;
   cover_image_caption?: string;
+  audio_url?: string | null;
+  audio_duration?: number | null;
+  audio_generated_at?: string | null;
 }
 
 // Calculate font sizes based on body font size
@@ -108,6 +114,9 @@ const getFontSizes = (bodySize: number) => ({
   excerpt: bodySize + 1,
   lineHeight: bodySize + 10,
 });
+
+// Supabase Edge Function URL for audio generation
+const AUDIO_FUNCTION_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/generate-article-audio`;
 
 export default function ArticleDetailScreen() {
   const navigation = useNavigation();
@@ -123,6 +132,9 @@ export default function ArticleDetailScreen() {
   const [isSaved, setIsSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  
+  // Audio state
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   
   // Reading preferences - now with numeric font size
   const [readingMode, setReadingMode] = useState<ReadingMode>(DEFAULT_READING_MODE);
@@ -154,7 +166,7 @@ export default function ArticleDetailScreen() {
       console.log('=== Loading full article ===');
       console.log('Initial article ID:', initialArticle.id);
       
-      // Fetch full article with content_blocks
+      // Fetch full article with content_blocks and audio fields
       const { data: fullArticle, error } = await supabase
         .from('atlas_articles')
         .select(`
@@ -168,6 +180,7 @@ export default function ArticleDetailScreen() {
       console.log('Supabase response error:', error);
       console.log('Supabase response data keys:', fullArticle ? Object.keys(fullArticle) : 'null');
       console.log('content_blocks in response:', fullArticle?.content_blocks ? `Array with ${fullArticle.content_blocks.length} items` : 'null/undefined');
+      console.log('audio_url in response:', fullArticle?.audio_url || 'null');
 
       if (error) {
         console.error('Error fetching full article:', error);
@@ -221,6 +234,47 @@ export default function ArticleDetailScreen() {
         .eq('id', article.id);
     } catch (error) {
       console.error('Error incrementing view count:', error);
+    }
+  };
+
+  // Generate audio for the article
+  const handleGenerateAudio = async () => {
+    if (!article?.id) return;
+
+    try {
+      setIsGeneratingAudio(true);
+      console.log('Generating audio for article:', article.id);
+
+      const response = await fetch(AUDIO_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`,
+        },
+        body: JSON.stringify({ article_id: article.id }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('Audio generated:', result.audio_url);
+        setArticle({
+          ...article,
+          audio_url: result.audio_url,
+          audio_duration: result.audio_duration,
+          audio_generated_at: new Date().toISOString(),
+        });
+      } else {
+        throw new Error(result.error || 'Failed to generate audio');
+      }
+    } catch (error) {
+      console.error('Error generating audio:', error);
+      Alert.alert(
+        'Audio Generation Failed',
+        'Unable to generate audio for this article. Please try again later.'
+      );
+    } finally {
+      setIsGeneratingAudio(false);
     }
   };
 
@@ -585,6 +639,17 @@ export default function ArticleDetailScreen() {
 
           {/* Divider */}
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+
+          {/* Audio Player */}
+          <AudioPlayer
+            articleId={article.id}
+            audioUrl={article.audio_url}
+            audioDuration={article.audio_duration}
+            onGenerateAudio={handleGenerateAudio}
+            isGenerating={isGeneratingAudio}
+            backgroundColor={colors.audioBg}
+            textColor={colors.text}
+          />
 
           {/* Excerpt */}
           {article.excerpt && (

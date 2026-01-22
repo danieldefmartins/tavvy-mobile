@@ -1,5 +1,6 @@
 // Atlas Components Index
 export { ContentBlockRenderer } from './ContentBlockRenderer';
+export { default as AudioPlayer } from './AudioPlayer';
 export type {
   ContentBlock,
   HeadingBlock,
