@@ -331,6 +331,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // Personalization states
   const [greeting, setGreeting] = useState('');
   
+  // Trending items from multiple sources
+  const [trendingItems, setTrendingItems] = useState<any[]>([]);
+  const [isLoadingTrending, setIsLoadingTrending] = useState(false);
+  
   // Parking and saved locations
   const [parkingLocation, setParkingLocation] = useState<ParkingLocation | null>(null);
   const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([]);
@@ -392,6 +396,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     loadRecentSearches();
     loadParkingLocation();
     loadSavedLocations();
+    loadTrendingItems();
     requestLocationPermission();
   };
 
@@ -426,6 +431,70 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       await AsyncStorage.setItem(STORAGE_KEYS.RECENT_SEARCHES, JSON.stringify(updated));
     } catch (error) {
       console.log('Error saving recent search:', error);
+    }
+  };
+
+  /**
+   * Load trending items from multiple sources: places, cities, universes
+   */
+  const loadTrendingItems = async () => {
+    setIsLoadingTrending(true);
+    try {
+      const items: any[] = [];
+      
+      // Fetch featured cities
+      const { data: cities, error: citiesError } = await supabase
+        .from('tavvy_cities')
+        .select('id, name, state, cover_image_url, thumbnail_image_url, description, latitude, longitude')
+        .eq('is_active', true)
+        .order('population', { ascending: false })
+        .limit(5);
+      
+      if (cities && !citiesError) {
+        cities.forEach((city: any) => {
+          items.push({
+            id: city.id,
+            name: city.name,
+            subtitle: city.state,
+            image: city.cover_image_url || city.thumbnail_image_url,
+            type: 'city',
+            category: 'Cities',
+            latitude: city.latitude,
+            longitude: city.longitude,
+          });
+        });
+      }
+      
+      // Fetch featured universes
+      const { data: universes, error: universesError } = await supabase
+        .from('atlas_universes')
+        .select('id, name, location, banner_image_url, thumbnail_image_url, description, latitude, longitude')
+        .eq('status', 'published')
+        .order('total_signals', { ascending: false })
+        .limit(5);
+      
+      if (universes && !universesError) {
+        universes.forEach((universe: any) => {
+          items.push({
+            id: universe.id,
+            name: universe.name,
+            subtitle: universe.location,
+            image: universe.banner_image_url || universe.thumbnail_image_url,
+            type: 'universe',
+            category: 'Universes',
+            latitude: universe.latitude,
+            longitude: universe.longitude,
+          });
+        });
+      }
+      
+      // Shuffle items to mix cities and universes
+      const shuffled = items.sort(() => Math.random() - 0.5);
+      setTrendingItems(shuffled);
+    } catch (error) {
+      console.log('Error loading trending items:', error);
+    } finally {
+      setIsLoadingTrending(false);
     }
   };
 
@@ -2063,85 +2132,82 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               </TouchableOpacity>
             </View>
 
-            {/* Trending Carousel - Only show top 5 categories */}
+            {/* Trending Carousel - Cities, Universes, and Places */}
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false} 
               contentContainerStyle={styles.trendingScroll}
             >
-              {filteredPlaces
-                .filter((place) => {
-                  const category = (place.category || place.primary_category || '').toLowerCase();
-                  // Use partial matching to handle variations like 'Restaurant' vs 'Restaurants'
-                  const trendingCategories = ['restaurant', 'coffee', 'cafe', 'coffee shop', 'contractor', 'universe', 'city', 'cities'];
-                  return trendingCategories.some(cat => category.includes(cat));
-                })
+              {isLoadingTrending ? (
+                <View style={{ width: cardWidth, height: 200, justifyContent: 'center', alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color={ACCENT} />
+                </View>
+              ) : (
+                // Combine trending items (cities/universes) with filtered places
+                [...trendingItems, ...filteredPlaces
+                  .filter((place) => {
+                    const category = (place.category || place.primary_category || '').toLowerCase();
+                    const trendingCategories = ['restaurant', 'coffee', 'cafe'];
+                    return trendingCategories.some(cat => category.includes(cat));
+                  })
+                  .slice(0, 5)
+                  .map((place) => ({
+                    id: place.id,
+                    name: place.name,
+                    subtitle: place.city || place.primary_category || place.category,
+                    image: place.photos?.[0] || getCategoryFallbackImage(place.category || place.primary_category),
+                    type: 'place',
+                    category: place.primary_category || place.category,
+                    place: place,
+                  }))
+                ]
                 .slice(0, 10)
-                .map((place, trendingIndex) => (
+                .map((item, trendingIndex) => (
                 <TouchableOpacity
-                  key={`trending-${place.id}-${trendingIndex}`}
-                  onPress={() => handlePlacePress(place)}
+                  key={`trending-${item.type}-${item.id}-${trendingIndex}`}
+                  onPress={() => {
+                    if (item.type === 'city') {
+                      navigation.navigate('Atlas', { screen: 'CityDetails', params: { cityId: item.id } });
+                    } else if (item.type === 'universe') {
+                      navigation.navigate('Explore', { screen: 'UniverseLanding', params: { universeId: item.id } });
+                    } else if (item.place) {
+                      handlePlacePress(item.place);
+                    }
+                  }}
                   activeOpacity={0.92}
                   style={[styles.previewCard, { width: cardWidth, backgroundColor: isDark ? theme.surface : '#fff' }]}
                 >
                   {/* Image with overlay */}
                   <ImageBackground 
-                    source={{ uri: place.photos?.[0] || getCategoryFallbackImage(place.category || place.primary_category) }} 
+                    source={{ uri: item.image || getCategoryFallbackImage(item.category) }} 
                     style={styles.previewImage} 
                     imageStyle={styles.previewImageRadius}
                   >
                     <View style={styles.imageOverlay} />
                     <Text style={styles.placeName} numberOfLines={1}>
-                      {place.name}
+                      {item.name}
                     </Text>
                     <Text style={styles.placeMeta} numberOfLines={1}>
-                      {place.primary_category || place.category} • {place.city || 'Nearby'}
+                      {item.category} • {item.subtitle || ''}
                     </Text>
                   </ImageBackground>
 
-                  {/* Actions Row */}
-                  <View style={[styles.actionsRow, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-                    <TouchableOpacity onPress={() => handleCall(place.phone)} style={styles.actionBtn} activeOpacity={0.8}>
-                      <Ionicons name="call-outline" size={18} color={isDark ? theme.textSecondary : '#666'} />
-                      <Text style={[styles.actionBtnText, { color: isDark ? theme.textSecondary : '#666' }]}>Call</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleDirections(place)} style={styles.actionBtn} activeOpacity={0.8}>
-                      <Ionicons name="navigate-outline" size={18} color={isDark ? theme.textSecondary : '#666'} />
-                      <Text style={[styles.actionBtnText, { color: isDark ? theme.textSecondary : '#666' }]}>Directions</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleSocial(place.instagram_url)} style={styles.actionBtn} activeOpacity={0.8}>
-                      <Ionicons name="chatbubble-ellipses-outline" size={18} color={isDark ? theme.textSecondary : '#666'} />
-                      <Text style={[styles.actionBtnText, { color: isDark ? theme.textSecondary : '#666' }]}>Social</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleWebsite(place.website)} style={styles.actionBtn} activeOpacity={0.8}>
-                      <Ionicons name="globe-outline" size={18} color={isDark ? theme.textSecondary : '#666'} />
-                      <Text style={[styles.actionBtnText, { color: isDark ? theme.textSecondary : '#666' }]}>Website</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Signals Grid - Always show with fallbacks for empty categories */}
-                  <View style={[styles.signalsGrid, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-                    {getDisplaySignals(place.signals).map((signal, idx) => (
-                      <View key={`trending-${trendingIndex}-${place.id}-sig-${idx}`} style={styles.signalBadgeWrapper}>
-                        <View style={[styles.signalBadge, { backgroundColor: getSignalColor(signal.bucket) }]}>
-                          <Ionicons 
-                            name={getSignalIcon(signal.bucket) as any} 
-                            size={12} 
-                            color={getSignalIconColor(signal.bucket)} 
-                            style={{ marginRight: 4 }}
-                          />
-                          <Text style={[styles.signalLabel, signal.isEmpty && styles.signalLabelEmpty]} numberOfLines={1}>
-                            {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
-                          </Text>
-                        </View>
-                        {!signal.isEmpty && (
-                          <Text style={styles.signalCount}>x{signal.tap_total}</Text>
-                        )}
-                      </View>
-                    ))}
+                  {/* Type Badge */}
+                  <View style={[styles.actionsRow, { backgroundColor: isDark ? theme.surface : '#fff', justifyContent: 'center' }]}>
+                    <View style={{ 
+                      backgroundColor: item.type === 'city' ? '#3B82F6' : item.type === 'universe' ? '#8B5CF6' : '#22C55E',
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 16,
+                    }}>
+                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
+                        {item.type === 'city' ? '🏙️ City' : item.type === 'universe' ? '🌌 Universe' : '📍 Place'}
+                      </Text>
+                    </View>
                   </View>
                 </TouchableOpacity>
-              ))}
+              ))
+              )}
             </ScrollView>
 
             {/* Explore Categories */}
