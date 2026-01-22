@@ -49,9 +49,16 @@ const MAP_PEEK_HEIGHT = height * 0.22;
 // These values ensure the bottom sheet NEVER overlaps the fixed header elements
 // Fixed header includes: search bar, category chips, and "Search this area" button
 // This is a PERMANENT constraint - DO NOT change without explicit approval
-const FIXED_HEADER_HEIGHT = Platform.OS === 'ios' ? 220 : 180; // Height of search + filters + button area
-const BOTTOM_SHEET_MAX_HEIGHT = height - FIXED_HEADER_HEIGHT; // Maximum height bottom sheet can expand to
-const BOTTOM_SHEET_MAX_SNAP = Math.min(BOTTOM_SHEET_MAX_HEIGHT, height * 0.72); // Cap at 72% or below header
+//
+// iOS Layout:
+//   - Search bar: top 60px, height 44px → ends at 104px
+//   - Category chips: top 116px, height ~36px → ends at ~152px  
+//   - "Search this area" button: top 170px, height ~40px → ends at ~210px
+//   - Add 10px padding below button = 220px total
+//
+// The topInset prop tells the bottom sheet where to STOP at the top
+// This prevents the sheet from overlapping the fixed header elements
+const BOTTOM_SHEET_TOP_INSET = Platform.OS === 'ios' ? 220 : 180;
 
 // Map Styles Configuration
 const MAP_STYLES = {
@@ -2911,7 +2918,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <BottomSheet
           ref={bottomSheetRef}
           index={1}
-          snapPoints={searchedAddress ? [40, '40%', BOTTOM_SHEET_MAX_SNAP] : (selectedPlace ? [40, '45%', BOTTOM_SHEET_MAX_SNAP] : [40, '35%', BOTTOM_SHEET_MAX_SNAP])}
+          snapPoints={searchedAddress ? [40, '40%', '70%'] : (selectedPlace ? [40, '45%', '70%'] : [40, '35%', '70%'])}
+          topInset={BOTTOM_SHEET_TOP_INSET}
           backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
           handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
           enablePanDownToClose={false}
@@ -2952,7 +2960,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <BottomSheet
           ref={categoryBottomSheetRef}
           index={1}
-          snapPoints={['15%', '45%', BOTTOM_SHEET_MAX_SNAP]}
+          snapPoints={['15%', '45%', '70%']}
+          topInset={BOTTOM_SHEET_TOP_INSET}
           backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
           handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
           enablePanDownToClose={false}
