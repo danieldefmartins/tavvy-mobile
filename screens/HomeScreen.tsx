@@ -1886,7 +1886,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
         {nearbyPlaces.length > 0 && (
           <View style={styles.nearbySection}>
-            <Text style={[styles.nearbySectionTitle, { color: isDark ? theme.text : '#000' }]}>Nearby on TavvY</Text>
+            <Text style={[styles.nearbySectionTitle, { color: isDark ? theme.text : '#000' }]}>Nearby on Tavvy</Text>
             {nearbyPlaces.map((place, nearbyIndex) => (
               <TouchableOpacity
                 key={`nearby-${place.id}-${nearbyIndex}`}
@@ -2309,7 +2309,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 <View style={styles.didYouKnowContent}>
                   <Text style={[styles.didYouKnowTitle, { color: isDark ? theme.text : '#000' }]}>Did you know?</Text>
                   <Text style={[styles.didYouKnowText, { color: isDark ? theme.textSecondary : '#666' }]}>
-                    TavvY uses tap-based signals instead of star ratings to give you honest, structured insights about places.
+                    Tavvy uses tap-based signals instead of star ratings to give you honest, structured insights about places.
                   </Text>
                 </View>
               </View>
@@ -2399,7 +2399,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             {/* ===== HOW TAVVY WORKS SECTION ===== */}
             <View style={styles.howItWorksSection}>
               <Text style={[styles.howItWorksTitle, { color: isDark ? theme.text : '#000' }]}>
-                ✨ How TavvY Works
+                ✨ How Tavvy Works
               </Text>
               <Text style={[styles.howItWorksSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
                 A smarter way to discover and review places
@@ -2427,7 +2427,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 style={styles.learnMoreButton}
                 onPress={() => navigation.navigate('Apps', { screen: 'About' })}
               >
-                <Text style={styles.learnMoreText}>Learn More About TavvY</Text>
+                <Text style={styles.learnMoreText}>Learn More About Tavvy</Text>
                 <Ionicons name="arrow-forward" size={16} color="#0A84FF" />
               </TouchableOpacity>
             </View>
@@ -4489,7 +4489,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
 
-  // How TavvY Works Section
+  // How Tavvy Works Section
   howItWorksSection: {
     paddingHorizontal: 20,
     marginTop: 32,

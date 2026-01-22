@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "TavvY",
+    "appName": "Tavvy",
     "tagline": "Een slimme manier om te tikken",
     "loading": "Laden...",
     "error": "Er is iets misgegaan",
@@ -58,8 +58,8 @@
     "signOut": "Uitloggen",
     "createAccount": "Account aanmaken",
     "welcomeBack": "Welkom terug!",
-    "welcomeToTavvy": "Welkom bij TavvY",
-    "welcomeToCommunity": "Welkom bij de TavvY community",
+    "welcomeToTavvy": "Welkom bij Tavvy",
+    "welcomeToCommunity": "Welkom bij de Tavvy community",
     "email": "E-mail",
     "emailAddress": "E-mailadres",
     "password": "Wachtwoord",
@@ -72,7 +72,7 @@
     "signInToView": "Log in om opgeslagen plaatsen te bekijken",
     "signUpToUnlock": "Registreer om te ontgrendelen:",
     "tavvyMember": "Tavvy Lid",
-    "tavvyExplorer": "TavvY Ontdekker"
+    "tavvyExplorer": "Tavvy Ontdekker"
   },
   "home": {
     "greeting": {
@@ -172,7 +172,7 @@
     }
   },
   "pros": {
-    "tavvyPros": "TavvY Professionals",
+    "tavvyPros": "Tavvy Professionals",
     "welcomePro": "Welkom, Professional!",
     "prosNearYou": "Professionals in de buurt",
     "browseByService": "Bladeren op service",
@@ -225,7 +225,7 @@
     "startGrowing": "Begin met het laten groeien van uw bedrijf",
     "buildTrust": "Bouw vertrouwen op met klanten",
     "trackPerformance": "Volg uw prestaties",
-    "whyChooseTavvy": "Waarom TavvY kiezen",
+    "whyChooseTavvy": "Waarom Tavvy kiezen",
     "allProsVetted": "Alle professionals zijn geverifieerd en beoordeeld",
     "readFeedback": "Lees eerlijke feedback van klanten",
     "chatWithPros": "Chat met professionals en deel uw contactgegevens veilig",
@@ -247,7 +247,7 @@
       "unlimitedLeads": "Onbeperkte leads",
       "moneyBackGuarantee": "30 dagen geld-terug-garantie",
       "cancelAnytime": "Op elk moment opzeggen. Geen verborgen kosten.",
-      "tryRiskFree": "Probeer TavvY Pros risicovrij.",
+      "tryRiskFree": "Probeer Tavvy Pros risicovrij.",
       "perYear": "/jaar",
       "save": "Bespaar {{amount}}"
     },
@@ -304,7 +304,7 @@
     "goodLighting": "Maak foto's met goede verlichting",
     "scanningTips": "Tips voor scannen:",
     "addressRequired": "Adres is verplicht",
-    "cityAlreadyExists": "Deze stad bestaat al in TavvY"
+    "cityAlreadyExists": "Deze stad bestaat al in Tavvy"
   },
   "cities": {
     "cities": "Steden",
@@ -434,10 +434,10 @@
     "requestSubmitted": "Aanvraag verzonden!",
     "thankYou": "Bedankt!",
     "submittedToday": "Vandaag ingediend",
-    "youAreSubscribed": "U bent nu geabonneerd op TavvY Pros!"
+    "youAreSubscribed": "U bent nu geabonneerd op Tavvy Pros!"
   },
   "legal": {
-    "copyright": "© {{year}} TavvY, Inc. Alle rechten voorbehouden.",
+    "copyright": "© {{year}} Tavvy, Inc. Alle rechten voorbehouden.",
     "termsOfService": "Servicevoorwaarden",
     "privacyPolicy": "Privacybeleid",
     "communityGuidelines": "Communityrichtlijnen",

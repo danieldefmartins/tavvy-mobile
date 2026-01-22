@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "TavvY",
+    "appName": "Tavvy",
     "tagline": "스마트한 탭 방법",
     "loading": "로딩 중...",
     "error": "오류가 발생했습니다",
@@ -58,8 +58,8 @@
     "signOut": "로그아웃",
     "createAccount": "계정 만들기",
     "welcomeBack": "다시 오신 것을 환영합니다!",
-    "welcomeToTavvy": "TavvY에 오신 것을 환영합니다",
-    "welcomeToCommunity": "TavvY 커뮤니티에 오신 것을 환영합니다",
+    "welcomeToTavvy": "Tavvy에 오신 것을 환영합니다",
+    "welcomeToCommunity": "Tavvy 커뮤니티에 오신 것을 환영합니다",
     "email": "이메일",
     "emailAddress": "이메일 주소",
     "password": "비밀번호",
@@ -72,7 +72,7 @@
     "signInToView": "저장된 장소를 보려면 로그인하세요",
     "signUpToUnlock": "가입하여 잠금 해제:",
     "tavvyMember": "Tavvy 회원",
-    "tavvyExplorer": "TavvY 탐험가"
+    "tavvyExplorer": "Tavvy 탐험가"
   },
   "home": {
     "greeting": {
@@ -172,7 +172,7 @@
     }
   },
   "pros": {
-    "tavvyPros": "TavvY 전문가",
+    "tavvyPros": "Tavvy 전문가",
     "welcomePro": "환영합니다, 전문가님!",
     "prosNearYou": "내 주변 전문가",
     "browseByService": "서비스별 검색",
@@ -225,7 +225,7 @@
     "startGrowing": "비즈니스 성장 시작",
     "buildTrust": "고객과 신뢰 구축",
     "trackPerformance": "성과 추적",
-    "whyChooseTavvy": "TavvY를 선택하는 이유",
+    "whyChooseTavvy": "Tavvy를 선택하는 이유",
     "allProsVetted": "모든 전문가는 검증 및 평가됨",
     "readFeedback": "고객의 솔직한 피드백 읽기",
     "chatWithPros": "전문가와 채팅하고 연락처를 안전하게 공유",
@@ -247,7 +247,7 @@
       "unlimitedLeads": "무제한 리드",
       "moneyBackGuarantee": "30일 환불 보장",
       "cancelAnytime": "언제든지 취소. 숨겨진 수수료 없음.",
-      "tryRiskFree": "TavvY Pros를 위험 부담 없이 체험하세요.",
+      "tryRiskFree": "Tavvy Pros를 위험 부담 없이 체험하세요.",
       "perYear": "/년",
       "save": "{{amount}} 절약"
     },
@@ -304,7 +304,7 @@
     "goodLighting": "좋은 조명에서 사진 촬영",
     "scanningTips": "스캔 팁:",
     "addressRequired": "주소 필요",
-    "cityAlreadyExists": "이 도시는 이미 TavvY에 있습니다"
+    "cityAlreadyExists": "이 도시는 이미 Tavvy에 있습니다"
   },
   "cities": {
     "cities": "도시",
@@ -434,10 +434,10 @@
     "requestSubmitted": "요청이 제출되었습니다!",
     "thankYou": "감사합니다!",
     "submittedToday": "오늘 제출됨",
-    "youAreSubscribed": "TavvY Pros에 가입되었습니다!"
+    "youAreSubscribed": "Tavvy Pros에 가입되었습니다!"
   },
   "legal": {
-    "copyright": "© {{year}} TavvY, Inc. All rights reserved.",
+    "copyright": "© {{year}} Tavvy, Inc. All rights reserved.",
     "termsOfService": "서비스 약관",
     "privacyPolicy": "개인정보 보호정책",
     "communityGuidelines": "커뮤니티 가이드라인",

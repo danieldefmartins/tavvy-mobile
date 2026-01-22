@@ -1,5 +1,5 @@
 /**
- * TavvY RTL (Right-to-Left) Support Hook
+ * Tavvy RTL (Right-to-Left) Support Hook
  * 
  * Provides utilities for handling RTL layouts for Arabic language.
  * 

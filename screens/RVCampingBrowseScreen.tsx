@@ -1,7 +1,7 @@
 // ============================================================================
 // RV & CAMPING BROWSE SCREEN
 // ============================================================================
-// Browse RV parks, campgrounds, and camping spots with TavvY signals
+// Browse RV parks, campgrounds, and camping spots with Tavvy signals
 // Place this file in: screens/RVCampingBrowseScreen.tsx
 // ============================================================================
 

@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "TavvY",
+    "appName": "Tavvy",
     "tagline": "Cách chạm thông minh",
     "loading": "Đang tải...",
     "error": "Đã xảy ra lỗi",
@@ -58,8 +58,8 @@
     "signOut": "Đăng xuất",
     "createAccount": "Tạo tài khoản",
     "welcomeBack": "Chào mừng trở lại!",
-    "welcomeToTavvy": "Chào mừng đến với TavvY",
-    "welcomeToCommunity": "Chào mừng đến với cộng đồng TavvY",
+    "welcomeToTavvy": "Chào mừng đến với Tavvy",
+    "welcomeToCommunity": "Chào mừng đến với cộng đồng Tavvy",
     "email": "Email",
     "emailAddress": "Địa chỉ email",
     "password": "Mật khẩu",
@@ -72,7 +72,7 @@
     "signInToView": "Đăng nhập để xem địa điểm đã lưu",
     "signUpToUnlock": "Đăng ký để mở khóa:",
     "tavvyMember": "Thành viên Tavvy",
-    "tavvyExplorer": "Nhà thám hiểm TavvY"
+    "tavvyExplorer": "Nhà thám hiểm Tavvy"
   },
   "home": {
     "greeting": {
@@ -172,7 +172,7 @@
     }
   },
   "pros": {
-    "tavvyPros": "TavvY Chuyên gia",
+    "tavvyPros": "Tavvy Chuyên gia",
     "welcomePro": "Chào mừng, Chuyên gia!",
     "prosNearYou": "Chuyên gia gần bạn",
     "browseByService": "Duyệt theo dịch vụ",
@@ -225,7 +225,7 @@
     "startGrowing": "Bắt đầu phát triển doanh nghiệp",
     "buildTrust": "Xây dựng niềm tin với khách hàng",
     "trackPerformance": "Theo dõi hiệu suất của bạn",
-    "whyChooseTavvy": "Tại sao chọn TavvY",
+    "whyChooseTavvy": "Tại sao chọn Tavvy",
     "allProsVetted": "Tất cả chuyên gia đều được xác minh và đánh giá",
     "readFeedback": "Đọc phản hồi trung thực từ khách hàng",
     "chatWithPros": "Trò chuyện với chuyên gia và chia sẻ thông tin liên hệ an toàn",
@@ -247,7 +247,7 @@
       "unlimitedLeads": "Khách hàng tiềm năng không giới hạn",
       "moneyBackGuarantee": "Đảm bảo hoàn tiền 30 ngày",
       "cancelAnytime": "Hủy bất cứ lúc nào. Không phí ẩn.",
-      "tryRiskFree": "Dùng thử TavvY Pros không rủi ro.",
+      "tryRiskFree": "Dùng thử Tavvy Pros không rủi ro.",
       "perYear": "/năm",
       "save": "Tiết kiệm {{amount}}"
     },
@@ -304,7 +304,7 @@
     "goodLighting": "Chụp ảnh trong điều kiện ánh sáng tốt",
     "scanningTips": "Mẹo quét:",
     "addressRequired": "Cần có địa chỉ",
-    "cityAlreadyExists": "Thành phố này đã tồn tại trong TavvY"
+    "cityAlreadyExists": "Thành phố này đã tồn tại trong Tavvy"
   },
   "cities": {
     "cities": "Thành phố",
@@ -434,10 +434,10 @@
     "requestSubmitted": "Đã gửi yêu cầu!",
     "thankYou": "Cảm ơn bạn!",
     "submittedToday": "Đã gửi hôm nay",
-    "youAreSubscribed": "Bạn đã đăng ký TavvY Pros!"
+    "youAreSubscribed": "Bạn đã đăng ký Tavvy Pros!"
   },
   "legal": {
-    "copyright": "© {{year}} TavvY, Inc. Bảo lưu mọi quyền.",
+    "copyright": "© {{year}} Tavvy, Inc. Bảo lưu mọi quyền.",
     "termsOfService": "Điều khoản dịch vụ",
     "privacyPolicy": "Chính sách bảo mật",
     "communityGuidelines": "Nguyên tắc cộng đồng",

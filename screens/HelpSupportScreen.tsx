@@ -25,7 +25,7 @@ export default function HelpSupportScreen({ navigation }: any) {
   const TERMS_URL = 'https://tavvy.com/terms';
 
   const handleEmailSupport = async () => {
-    const subject = encodeURIComponent('TavvY App Support Request');
+    const subject = encodeURIComponent('Tavvy App Support Request');
     const body = encodeURIComponent('\n\n---\nApp Version: 1.0.0\nPlatform: iOS');
     const mailtoUrl = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
     
@@ -190,8 +190,8 @@ export default function HelpSupportScreen({ navigation }: any) {
 
         {/* App Info */}
         <View style={styles.appInfo}>
-          <Text style={styles.appVersion}>TavvY Version 1.0.0</Text>
-          <Text style={styles.appCopyright}>© 2026 TavvY, Inc. All rights reserved.</Text>
+          <Text style={styles.appVersion}>Tavvy Version 1.0.0</Text>
+          <Text style={styles.appCopyright}>© 2026 Tavvy, Inc. All rights reserved.</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

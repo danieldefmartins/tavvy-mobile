@@ -3,7 +3,7 @@
  * Install path: screens/RealtorsBrowseScreen.tsx
  * 
  * Browse and search for real estate agents in your area.
- * Uses TavvY's signal-based review system.
+ * Uses Tavvy's signal-based review system.
  * 
  * NOW CONNECTED TO SUPABASE - Fetches real data from pro_providers table
  */
@@ -44,7 +44,7 @@ const RealtorColors = {
   gradientEnd: '#2D5A8A',
 };
 
-// TavvY Signal Colors
+// Tavvy Signal Colors
 const SignalColors = {
   theGood: '#3B82F6',      // Blue - positive
   theVibe: '#8B5CF6',      // Purple - vibe
@@ -314,7 +314,7 @@ export default function RealtorsBrowseScreen() {
         </View>
       )}
 
-      {/* TavvY Signal Bars - 2 blue on first row, purple + orange on second row */}
+      {/* Tavvy Signal Bars - 2 blue on first row, purple + orange on second row */}
       <View style={styles.signalBarsContainer}>
         {/* First Row - 2 Blue (The Good) bars */}
         <View style={styles.signalRow}>
@@ -678,7 +678,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: RealtorColors.textLight,
   },
-  // TavvY Signal Bars
+  // Tavvy Signal Bars
   signalBarsContainer: {
     gap: 8,
   },

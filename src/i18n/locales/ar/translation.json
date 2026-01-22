@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "TavvY",
+    "appName": "Tavvy",
     "tagline": "طريقة ذكية للنقر",
     "loading": "جاري التحميل...",
     "error": "حدث خطأ ما",
@@ -58,8 +58,8 @@
     "signOut": "تسجيل الخروج",
     "createAccount": "إنشاء حساب",
     "welcomeBack": "مرحباً بعودتك!",
-    "welcomeToTavvy": "مرحباً بك في TavvY",
-    "welcomeToCommunity": "مرحباً بك في مجتمع TavvY",
+    "welcomeToTavvy": "مرحباً بك في Tavvy",
+    "welcomeToCommunity": "مرحباً بك في مجتمع Tavvy",
     "email": "البريد الإلكتروني",
     "emailAddress": "عنوان البريد الإلكتروني",
     "password": "كلمة المرور",
@@ -72,7 +72,7 @@
     "signInToView": "سجل الدخول لعرض الأماكن المحفوظة",
     "signUpToUnlock": "سجل لفتح:",
     "tavvyMember": "عضو Tavvy",
-    "tavvyExplorer": "مستكشف TavvY"
+    "tavvyExplorer": "مستكشف Tavvy"
   },
   "home": {
     "greeting": {
@@ -172,7 +172,7 @@
     }
   },
   "pros": {
-    "tavvyPros": "محترفو TavvY",
+    "tavvyPros": "محترفو Tavvy",
     "welcomePro": "مرحباً، محترف!",
     "prosNearYou": "محترفون بالقرب منك",
     "browseByService": "تصفح حسب الخدمة",
@@ -225,7 +225,7 @@
     "startGrowing": "ابدأ في تنمية عملك",
     "buildTrust": "ابنِ الثقة مع العملاء",
     "trackPerformance": "تتبع أدائك",
-    "whyChooseTavvy": "لماذا تختار TavvY",
+    "whyChooseTavvy": "لماذا تختار Tavvy",
     "allProsVetted": "جميع المحترفين موثقون ومقيّمون",
     "readFeedback": "اقرأ ملاحظات العملاء الصادقة",
     "chatWithPros": "تحدث مع المحترفين وشارك معلومات الاتصال بأمان",
@@ -247,7 +247,7 @@
       "unlimitedLeads": "عملاء محتملون غير محدودين",
       "moneyBackGuarantee": "ضمان استرداد الأموال لمدة 30 يوماً",
       "cancelAnytime": "إلغاء في أي وقت. بدون رسوم خفية.",
-      "tryRiskFree": "جرب TavvY Pros بدون مخاطر.",
+      "tryRiskFree": "جرب Tavvy Pros بدون مخاطر.",
       "perYear": "/سنة",
       "save": "وفر {{amount}}"
     },
@@ -304,7 +304,7 @@
     "goodLighting": "التقط صوراً بإضاءة جيدة",
     "scanningTips": "نصائح للمسح:",
     "addressRequired": "العنوان مطلوب",
-    "cityAlreadyExists": "هذه المدينة موجودة بالفعل في TavvY"
+    "cityAlreadyExists": "هذه المدينة موجودة بالفعل في Tavvy"
   },
   "cities": {
     "cities": "المدن",
@@ -434,10 +434,10 @@
     "requestSubmitted": "تم إرسال الطلب!",
     "thankYou": "شكراً لك!",
     "submittedToday": "تم الإرسال اليوم",
-    "youAreSubscribed": "أنت الآن مشترك في TavvY Pros!"
+    "youAreSubscribed": "أنت الآن مشترك في Tavvy Pros!"
   },
   "legal": {
-    "copyright": "© {{year}} TavvY, Inc. جميع الحقوق محفوظة.",
+    "copyright": "© {{year}} Tavvy, Inc. جميع الحقوق محفوظة.",
     "termsOfService": "شروط الخدمة",
     "privacyPolicy": "سياسة الخصوصية",
     "communityGuidelines": "إرشادات المجتمع",

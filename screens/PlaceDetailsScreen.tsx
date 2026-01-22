@@ -462,7 +462,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           return;
         }
 
-        // Fetch real place data from Supabase (using places_unified view for both TavvY and Foursquare places)
+        // Fetch real place data from Supabase (using places_unified view for both Tavvy and Foursquare places)
         // Use limit(1) and maybeSingle() to handle potential duplicates in the view
         const { data: placeData, error: placeError } = await supabase
           .from('places_unified')
@@ -712,7 +712,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
     if (!place) return;
     try {
       await Share.share({
-        message: `Check out ${place.name} on TavvY!`,
+        message: `Check out ${place.name} on Tavvy!`,
         title: place.name,
       });
     } catch (error) {

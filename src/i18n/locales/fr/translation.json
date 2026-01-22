@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "TavvY",
+    "appName": "Tavvy",
     "tagline": "Une façon intelligente de taper",
     "loading": "Chargement...",
     "error": "Une erreur s'est produite",
@@ -58,8 +58,8 @@
     "signOut": "Se déconnecter",
     "createAccount": "Créer un compte",
     "welcomeBack": "Bon retour !",
-    "welcomeToTavvy": "Bienvenue sur TavvY",
-    "welcomeToCommunity": "Bienvenue dans la communauté TavvY",
+    "welcomeToTavvy": "Bienvenue sur Tavvy",
+    "welcomeToCommunity": "Bienvenue dans la communauté Tavvy",
     "email": "E-mail",
     "emailAddress": "Adresse e-mail",
     "password": "Mot de passe",
@@ -72,7 +72,7 @@
     "signInToView": "Connectez-vous pour voir les lieux enregistrés",
     "signUpToUnlock": "Inscrivez-vous pour débloquer :",
     "tavvyMember": "Membre Tavvy",
-    "tavvyExplorer": "Explorateur TavvY"
+    "tavvyExplorer": "Explorateur Tavvy"
   },
   "home": {
     "greeting": {
@@ -172,7 +172,7 @@
     }
   },
   "pros": {
-    "tavvyPros": "TavvY Professionnels",
+    "tavvyPros": "Tavvy Professionnels",
     "welcomePro": "Bienvenue, Professionnel !",
     "prosNearYou": "Professionnels près de vous",
     "browseByService": "Parcourir par service",
@@ -225,7 +225,7 @@
     "startGrowing": "Commencez à développer votre entreprise",
     "buildTrust": "Construisez la confiance avec les clients",
     "trackPerformance": "Suivez vos performances",
-    "whyChooseTavvy": "Pourquoi choisir TavvY",
+    "whyChooseTavvy": "Pourquoi choisir Tavvy",
     "allProsVetted": "Tous les professionnels sont vérifiés et évalués",
     "readFeedback": "Lisez les retours honnêtes des clients",
     "chatWithPros": "Discutez avec les pros et partagez vos coordonnées en toute sécurité",
@@ -247,7 +247,7 @@
       "unlimitedLeads": "Prospects illimités",
       "moneyBackGuarantee": "Garantie de remboursement de 30 jours",
       "cancelAnytime": "Annulez à tout moment. Sans frais cachés.",
-      "tryRiskFree": "Essayez TavvY Pros sans risque.",
+      "tryRiskFree": "Essayez Tavvy Pros sans risque.",
       "perYear": "/an",
       "save": "Économisez {{amount}}"
     },
@@ -304,7 +304,7 @@
     "goodLighting": "Prenez des photos avec un bon éclairage",
     "scanningTips": "Conseils pour scanner :",
     "addressRequired": "L'adresse est requise",
-    "cityAlreadyExists": "Cette ville existe déjà dans TavvY"
+    "cityAlreadyExists": "Cette ville existe déjà dans Tavvy"
   },
   "cities": {
     "cities": "Villes",
@@ -434,10 +434,10 @@
     "requestSubmitted": "Demande soumise !",
     "thankYou": "Merci !",
     "submittedToday": "Soumis aujourd'hui",
-    "youAreSubscribed": "Vous êtes maintenant abonné à TavvY Pros !"
+    "youAreSubscribed": "Vous êtes maintenant abonné à Tavvy Pros !"
   },
   "legal": {
-    "copyright": "© {{year}} TavvY, Inc. Tous droits réservés.",
+    "copyright": "© {{year}} Tavvy, Inc. Tous droits réservés.",
     "termsOfService": "Conditions d'utilisation",
     "privacyPolicy": "Politique de confidentialité",
     "communityGuidelines": "Règles de la communauté",

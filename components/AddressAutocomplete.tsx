@@ -142,7 +142,7 @@ export function AddressAutocomplete({
         headers: {
           'Accept': 'application/json',
           // Nominatim requires a User-Agent header
-          'User-Agent': 'TavvY-App/1.0',
+          'User-Agent': 'Tavvy-App/1.0',
         },
       });
 

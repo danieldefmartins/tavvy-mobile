@@ -319,7 +319,7 @@ function TabNavigator() {
 }
 
 // --------------------
-// TavvY Navigation Theme
+// Tavvy Navigation Theme
 // --------------------
 const TavvyDarkTheme = {
   ...DarkTheme,

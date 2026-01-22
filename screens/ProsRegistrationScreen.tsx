@@ -145,7 +145,7 @@ export default function ProsRegistrationScreen() {
       await subscribe(formData.selectedTier);
 
       Alert.alert(
-        'Welcome to TavvY Pros!',
+        'Welcome to Tavvy Pros!',
         'Your business profile has been created. Complete your profile to start receiving leads.',
         [
           {

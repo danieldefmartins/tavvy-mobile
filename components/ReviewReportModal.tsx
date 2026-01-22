@@ -159,7 +159,7 @@ export const ReviewReportModal: React.FC<ReviewReportModalProps> = ({
 
       Alert.alert(
         'Report Submitted',
-        'Thank you for helping keep TavvY safe. Our team will review this report.',
+        'Thank you for helping keep Tavvy safe. Our team will review this report.',
         [{ text: 'OK', onPress: onClose }]
       );
     } catch (error) {

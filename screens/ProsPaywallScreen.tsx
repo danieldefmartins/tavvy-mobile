@@ -43,7 +43,7 @@ export default function ProsPaywallScreen() {
 
       // Redirect to Stripe Checkout
       const { error: stripeError } = await initPaymentSheet({ 
-        merchantDisplayName: 'TavvY, Inc.',
+        merchantDisplayName: 'Tavvy, Inc.',
         paymentIntentClientSecret: sessionId,
       });
 
@@ -62,7 +62,7 @@ export default function ProsPaywallScreen() {
           console.error(paymentError);
         }
       } else {
-        Alert.alert('Success', 'You are now subscribed to TavvY Pros!');
+        Alert.alert('Success', 'You are now subscribed to Tavvy Pros!');
         navigation.navigate('ProsDashboard');
       }
 
@@ -80,7 +80,7 @@ export default function ProsPaywallScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroSection}>
           <View style={styles.iconContainer}><Ionicons name="briefcase" size={40} color={ProsColors.primary} /></View>
-          <Text style={styles.heroTitle}>Grow Your Business with TavvY Pros</Text>
+          <Text style={styles.heroTitle}>Grow Your Business with Tavvy Pros</Text>
           <Text style={styles.heroSubtitle}>Get unlimited leads for a flat annual fee. No per-lead charges.</Text>
         </View>
         <View style={styles.plansSection}>
@@ -109,7 +109,7 @@ export default function ProsPaywallScreen() {
         </View>
         <View style={styles.guaranteeSection}>
           <Ionicons name="shield-checkmark" size={24} color="#10B981" />
-          <View style={styles.guaranteeContent}><Text style={styles.guaranteeTitle}>30-Day Money-Back Guarantee</Text><Text style={styles.guaranteeText}>Try TavvY Pros risk-free.</Text></View>
+          <View style={styles.guaranteeContent}><Text style={styles.guaranteeTitle}>30-Day Money-Back Guarantee</Text><Text style={styles.guaranteeText}>Try Tavvy Pros risk-free.</Text></View>
         </View>
       </ScrollView>
       <View style={styles.footer}>

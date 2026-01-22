@@ -35,7 +35,7 @@ const guidelines: GuidelineSection[] = [
   {
     icon: 'location',
     title: 'Review Real Visits',
-    description: 'Only tap on places you have actually visited. Authentic experiences make TavvY valuable for everyone.',
+    description: 'Only tap on places you have actually visited. Authentic experiences make Tavvy valuable for everyone.',
   },
   {
     icon: 'shield-checkmark',
@@ -79,9 +79,9 @@ export default function CommunityGuidelinesScreen({ navigation }: any) {
           <View style={styles.iconContainer}>
             <Ionicons name="heart" size={32} color={Colors.primary} />
           </View>
-          <Text style={styles.introTitle}>Welcome to the TavvY Community</Text>
+          <Text style={styles.introTitle}>Welcome to the Tavvy Community</Text>
           <Text style={styles.introText}>
-            TavvY is built on trust and authentic experiences. These guidelines help us maintain a helpful, respectful community for everyone.
+            Tavvy is built on trust and authentic experiences. These guidelines help us maintain a helpful, respectful community for everyone.
           </Text>
         </View>
 

@@ -3,7 +3,7 @@
  * Install path: constants/ProsConfig.ts
  */
 
-// Update this URL to your deployed TavvY Pro Services backend
+// Update this URL to your deployed Tavvy Pro Services backend
 export const PROS_API_URL = 'https://your-tavvy-pro-services.manus.space';
 
 // Service categories with Ionicons icon names

@@ -1,5 +1,5 @@
 /**
- * TavvY Category Selector Component
+ * Tavvy Category Selector Component
  * 
  * A comprehensive category selection component that supports:
  * - Content type selection (Place, Service Business, City, Universe)

@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "TavvY",
+    "appName": "Tavvy",
     "tagline": "智能点击方式",
     "loading": "加载中...",
     "error": "出错了",
@@ -58,8 +58,8 @@
     "signOut": "退出登录",
     "createAccount": "创建账户",
     "welcomeBack": "欢迎回来！",
-    "welcomeToTavvy": "欢迎来到 TavvY",
-    "welcomeToCommunity": "欢迎加入 TavvY 社区",
+    "welcomeToTavvy": "欢迎来到 Tavvy",
+    "welcomeToCommunity": "欢迎加入 Tavvy 社区",
     "email": "邮箱",
     "emailAddress": "邮箱地址",
     "password": "密码",
@@ -72,7 +72,7 @@
     "signInToView": "登录以查看已保存的地点",
     "signUpToUnlock": "注册解锁：",
     "tavvyMember": "Tavvy 会员",
-    "tavvyExplorer": "TavvY 探索者"
+    "tavvyExplorer": "Tavvy 探索者"
   },
   "home": {
     "greeting": {
@@ -172,7 +172,7 @@
     }
   },
   "pros": {
-    "tavvyPros": "TavvY 专业人士",
+    "tavvyPros": "Tavvy 专业人士",
     "welcomePro": "欢迎，专业人士！",
     "prosNearYou": "附近的专业人士",
     "browseByService": "按服务浏览",
@@ -225,7 +225,7 @@
     "startGrowing": "开始发展您的业务",
     "buildTrust": "与客户建立信任",
     "trackPerformance": "跟踪您的表现",
-    "whyChooseTavvy": "为什么选择 TavvY",
+    "whyChooseTavvy": "为什么选择 Tavvy",
     "allProsVetted": "所有专业人士均经过审核和评级",
     "readFeedback": "阅读客户的真实反馈",
     "chatWithPros": "与专业人士聊天并安全分享您的联系信息",
@@ -247,7 +247,7 @@
       "unlimitedLeads": "无限潜在客户",
       "moneyBackGuarantee": "30天退款保证",
       "cancelAnytime": "随时取消。无隐藏费用。",
-      "tryRiskFree": "无风险试用 TavvY Pros。",
+      "tryRiskFree": "无风险试用 Tavvy Pros。",
       "perYear": "/年",
       "save": "节省 {{amount}}"
     },
@@ -304,7 +304,7 @@
     "goodLighting": "在良好光线下拍照",
     "scanningTips": "扫描提示：",
     "addressRequired": "需要地址",
-    "cityAlreadyExists": "此城市已存在于 TavvY"
+    "cityAlreadyExists": "此城市已存在于 Tavvy"
   },
   "cities": {
     "cities": "城市",
@@ -434,10 +434,10 @@
     "requestSubmitted": "请求已提交！",
     "thankYou": "谢谢！",
     "submittedToday": "今天已提交",
-    "youAreSubscribed": "您已订阅 TavvY Pros！"
+    "youAreSubscribed": "您已订阅 Tavvy Pros！"
   },
   "legal": {
-    "copyright": "© {{year}} TavvY, Inc. 保留所有权利。",
+    "copyright": "© {{year}} Tavvy, Inc. 保留所有权利。",
     "termsOfService": "服务条款",
     "privacyPolicy": "隐私政策",
     "communityGuidelines": "社区准则",

@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "TavvY",
+    "appName": "Tavvy",
     "tagline": "टैप करने का स्मार्ट तरीका",
     "loading": "लोड हो रहा है...",
     "error": "कुछ गलत हो गया",
@@ -58,8 +58,8 @@
     "signOut": "साइन आउट",
     "createAccount": "खाता बनाएं",
     "welcomeBack": "वापसी पर स्वागत है!",
-    "welcomeToTavvy": "TavvY में आपका स्वागत है",
-    "welcomeToCommunity": "TavvY समुदाय में आपका स्वागत है",
+    "welcomeToTavvy": "Tavvy में आपका स्वागत है",
+    "welcomeToCommunity": "Tavvy समुदाय में आपका स्वागत है",
     "email": "ईमेल",
     "emailAddress": "ईमेल पता",
     "password": "पासवर्ड",
@@ -72,7 +72,7 @@
     "signInToView": "सहेजे गए स्थान देखने के लिए साइन इन करें",
     "signUpToUnlock": "अनलॉक करने के लिए साइन अप करें:",
     "tavvyMember": "Tavvy सदस्य",
-    "tavvyExplorer": "TavvY एक्सप्लोरर"
+    "tavvyExplorer": "Tavvy एक्सप्लोरर"
   },
   "home": {
     "greeting": {
@@ -172,7 +172,7 @@
     }
   },
   "pros": {
-    "tavvyPros": "TavvY प्रोफेशनल",
+    "tavvyPros": "Tavvy प्रोफेशनल",
     "welcomePro": "स्वागत है, प्रोफेशनल!",
     "prosNearYou": "आपके पास प्रोफेशनल",
     "browseByService": "सेवा द्वारा ब्राउज़ करें",
@@ -225,7 +225,7 @@
     "startGrowing": "अपना व्यवसाय बढ़ाना शुरू करें",
     "buildTrust": "ग्राहकों के साथ विश्वास बनाएं",
     "trackPerformance": "अपने प्रदर्शन को ट्रैक करें",
-    "whyChooseTavvy": "TavvY क्यों चुनें",
+    "whyChooseTavvy": "Tavvy क्यों चुनें",
     "allProsVetted": "सभी प्रोफेशनल सत्यापित और रेटेड हैं",
     "readFeedback": "ग्राहकों से ईमानदार फीडबैक पढ़ें",
     "chatWithPros": "प्रोफेशनल से चैट करें और अपनी संपर्क जानकारी सुरक्षित रूप से साझा करें",
@@ -247,7 +247,7 @@
       "unlimitedLeads": "असीमित लीड्स",
       "moneyBackGuarantee": "30 दिन की मनी-बैक गारंटी",
       "cancelAnytime": "कभी भी रद्द करें। कोई छिपी फीस नहीं।",
-      "tryRiskFree": "TavvY Pros को जोखिम-मुक्त आज़माएं।",
+      "tryRiskFree": "Tavvy Pros को जोखिम-मुक्त आज़माएं।",
       "perYear": "/वर्ष",
       "save": "{{amount}} बचाएं"
     },
@@ -304,7 +304,7 @@
     "goodLighting": "अच्छी रोशनी में फोटो लें",
     "scanningTips": "स्कैनिंग टिप्स:",
     "addressRequired": "पता आवश्यक है",
-    "cityAlreadyExists": "यह शहर TavvY में पहले से मौजूद है"
+    "cityAlreadyExists": "यह शहर Tavvy में पहले से मौजूद है"
   },
   "cities": {
     "cities": "शहर",
@@ -434,10 +434,10 @@
     "requestSubmitted": "अनुरोध जमा किया गया!",
     "thankYou": "धन्यवाद!",
     "submittedToday": "आज जमा किया गया",
-    "youAreSubscribed": "अब आप TavvY Pros के सदस्य हैं!"
+    "youAreSubscribed": "अब आप Tavvy Pros के सदस्य हैं!"
   },
   "legal": {
-    "copyright": "© {{year}} TavvY, Inc. सर्वाधिकार सुरक्षित।",
+    "copyright": "© {{year}} Tavvy, Inc. सर्वाधिकार सुरक्षित।",
     "termsOfService": "सेवा की शर्तें",
     "privacyPolicy": "गोपनीयता नीति",
     "communityGuidelines": "समुदाय दिशानिर्देश",

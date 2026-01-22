@@ -175,7 +175,7 @@ serve(async (req) => {
     }
 
     if (shouldSendSMS && provider.phone) {
-      const smsBody = `TavvY Pros: ${body.title}\n\n${body.body}`
+      const smsBody = `Tavvy Pros: ${body.title}\n\n${body.body}`
       results.sms_sent = await sendSmsGHL(provider.phone, smsBody)
     }
 

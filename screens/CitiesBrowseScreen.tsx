@@ -1,7 +1,7 @@
 // ============================================================================
 // CITIES BROWSE SCREEN
 // ============================================================================
-// Browse cities with TavvY signals - Cities are places too!
+// Browse cities with Tavvy signals - Cities are places too!
 // Place this file in: screens/CitiesBrowseScreen.tsx
 // ============================================================================
 

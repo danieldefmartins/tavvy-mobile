@@ -22,7 +22,7 @@ export default function ProsClaimBusinessScreen() {
     else if (step === 2) { if (!businessPhone && !businessEmail) { Alert.alert('Required', 'Please enter contact information.'); return; } setStep(3); }
     else if (step === 3) { setStep(4); }
     else if (step === 4) { if (verificationCode.length !== 6) { Alert.alert('Invalid Code', 'Please enter the 6-digit verification code.'); return; }
-      Alert.alert('Success!', 'Your business has been claimed. Welcome to TavvY Pros!', [{ text: 'Get Started', onPress: () => navigation.navigate('ProsDashboard') }]);
+      Alert.alert('Success!', 'Your business has been claimed. Welcome to Tavvy Pros!', [{ text: 'Get Started', onPress: () => navigation.navigate('ProsDashboard') }]);
     }
   };
 

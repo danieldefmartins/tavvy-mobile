@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "TavvY",
+    "appName": "Tavvy",
     "tagline": "A savvy way of tapping",
     "loading": "Loading...",
     "error": "Something went wrong",
@@ -58,8 +58,8 @@
     "signOut": "Sign Out",
     "createAccount": "Create Account",
     "welcomeBack": "Welcome back!",
-    "welcomeToTavvy": "Welcome to TavvY",
-    "welcomeToCommunity": "Welcome to the TavvY Community",
+    "welcomeToTavvy": "Welcome to Tavvy",
+    "welcomeToCommunity": "Welcome to the Tavvy Community",
     "email": "Email",
     "emailAddress": "Email Address",
     "password": "Password",
@@ -72,7 +72,7 @@
     "signInToView": "Sign in to view saved places",
     "signUpToUnlock": "Sign up to unlock:",
     "tavvyMember": "Tavvy Member",
-    "tavvyExplorer": "TavvY Explorer"
+    "tavvyExplorer": "Tavvy Explorer"
   },
   "home": {
     "greeting": {
@@ -172,7 +172,7 @@
     }
   },
   "pros": {
-    "tavvyPros": "TavvY Pros",
+    "tavvyPros": "Tavvy Pros",
     "welcomePro": "Welcome, Pro!",
     "prosNearYou": "Pros Near You",
     "browseByService": "Browse by Service",
@@ -225,7 +225,7 @@
     "startGrowing": "Start Growing Your Business",
     "buildTrust": "Build trust with customers",
     "trackPerformance": "Track your performance",
-    "whyChooseTavvy": "Why Choose TavvY",
+    "whyChooseTavvy": "Why Choose Tavvy",
     "allProsVetted": "All professionals are vetted and reviewed",
     "readFeedback": "Read honest feedback from customers",
     "chatWithPros": "Chat with pros and share your contact info securely",
@@ -247,7 +247,7 @@
       "unlimitedLeads": "Unlimited Leads",
       "moneyBackGuarantee": "30-Day Money-Back Guarantee",
       "cancelAnytime": "Cancel anytime. No hidden fees.",
-      "tryRiskFree": "Try TavvY Pros risk-free.",
+      "tryRiskFree": "Try Tavvy Pros risk-free.",
       "perYear": "/year",
       "save": "Save {{amount}}"
     },
@@ -304,7 +304,7 @@
     "goodLighting": "Take photos in good lighting",
     "scanningTips": "Tips for scanning:",
     "addressRequired": "Address is required",
-    "cityAlreadyExists": "This city already exists in TavvY"
+    "cityAlreadyExists": "This city already exists in Tavvy"
   },
   "cities": {
     "cities": "Cities",
@@ -434,10 +434,10 @@
     "requestSubmitted": "Request Submitted!",
     "thankYou": "Thank You!",
     "submittedToday": "Submitted today",
-    "youAreSubscribed": "You are now subscribed to TavvY Pros!"
+    "youAreSubscribed": "You are now subscribed to Tavvy Pros!"
   },
   "legal": {
-    "copyright": "© {{year}} TavvY, Inc. All rights reserved.",
+    "copyright": "© {{year}} Tavvy, Inc. All rights reserved.",
     "termsOfService": "Terms of Service",
     "privacyPolicy": "Privacy Policy",
     "communityGuidelines": "Community Guidelines",

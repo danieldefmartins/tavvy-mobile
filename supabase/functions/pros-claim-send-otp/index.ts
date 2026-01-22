@@ -156,7 +156,7 @@ serve(async (req) => {
           body: new URLSearchParams({
             To: formattedPhone,
             From: twilioPhoneNumber,
-            Body: `Your TavvY Pros verification code is: ${otp}. This code expires in 10 minutes.`,
+            Body: `Your Tavvy Pros verification code is: ${otp}. This code expires in 10 minutes.`,
           }),
         }
       )

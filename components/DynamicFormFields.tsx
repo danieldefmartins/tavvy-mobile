@@ -1,5 +1,5 @@
 /**
- * TavvY Dynamic Form Fields Component
+ * Tavvy Dynamic Form Fields Component
  * 
  * Renders form fields dynamically based on the selected category.
  * Supports various field types and conditional display logic.

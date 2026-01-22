@@ -1,5 +1,5 @@
 /**
- * TavvY Categories Module
+ * Tavvy Categories Module
  * 
  * Central export point for all category-related functionality.
  * 

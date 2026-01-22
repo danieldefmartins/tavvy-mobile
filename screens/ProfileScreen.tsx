@@ -83,7 +83,7 @@ export default function ProfileScreen({ navigation }: any) {
               style={styles.guestLogo}
               resizeMode="contain"
             />
-            <Text style={styles.guestTitle}>Welcome to TavvY</Text>
+            <Text style={styles.guestTitle}>Welcome to Tavvy</Text>
             <Text style={styles.guestSubtitle}>
               A savvy way of tapping. Discover and share the vibe of places around you.
             </Text>
@@ -120,7 +120,7 @@ export default function ProfileScreen({ navigation }: any) {
           </Text>
         </View>
         <Text style={styles.userName}>
-          {user.user_metadata?.full_name || 'TavvY Explorer'}
+          {user.user_metadata?.full_name || 'Tavvy Explorer'}
         </Text>
         <Text style={styles.userEmail}>{user.email}</Text>
         

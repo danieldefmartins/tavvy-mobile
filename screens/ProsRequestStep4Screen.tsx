@@ -41,7 +41,7 @@ export default function ProsRequestStep4Screen({ navigation, route }: any) {
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&addressdetails=1&limit=5&countrycodes=us`,
         {
           headers: {
-            'User-Agent': 'TavvY-Mobile-App'
+            'User-Agent': 'Tavvy-Mobile-App'
           }
         }
       );

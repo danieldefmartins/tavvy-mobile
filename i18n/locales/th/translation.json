@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "TavvY",
+    "appName": "Tavvy",
     "tagline": "วิธีแตะที่ชาญฉลาด",
     "loading": "กำลังโหลด...",
     "error": "เกิดข้อผิดพลาด",
@@ -58,8 +58,8 @@
     "signOut": "ออกจากระบบ",
     "createAccount": "สร้างบัญชี",
     "welcomeBack": "ยินดีต้อนรับกลับ!",
-    "welcomeToTavvy": "ยินดีต้อนรับสู่ TavvY",
-    "welcomeToCommunity": "ยินดีต้อนรับสู่ชุมชน TavvY",
+    "welcomeToTavvy": "ยินดีต้อนรับสู่ Tavvy",
+    "welcomeToCommunity": "ยินดีต้อนรับสู่ชุมชน Tavvy",
     "email": "อีเมล",
     "emailAddress": "ที่อยู่อีเมล",
     "password": "รหัสผ่าน",
@@ -72,7 +72,7 @@
     "signInToView": "ลงชื่อเข้าใช้เพื่อดูสถานที่ที่บันทึก",
     "signUpToUnlock": "สมัครเพื่อปลดล็อก:",
     "tavvyMember": "สมาชิก Tavvy",
-    "tavvyExplorer": "นักสำรวจ TavvY"
+    "tavvyExplorer": "นักสำรวจ Tavvy"
   },
   "home": {
     "greeting": {
@@ -172,7 +172,7 @@
     }
   },
   "pros": {
-    "tavvyPros": "TavvY มืออาชีพ",
+    "tavvyPros": "Tavvy มืออาชีพ",
     "welcomePro": "ยินดีต้อนรับ, มืออาชีพ!",
     "prosNearYou": "มืออาชีพใกล้คุณ",
     "browseByService": "เรียกดูตามบริการ",
@@ -225,7 +225,7 @@
     "startGrowing": "เริ่มขยายธุรกิจของคุณ",
     "buildTrust": "สร้างความไว้วางใจกับลูกค้า",
     "trackPerformance": "ติดตามประสิทธิภาพของคุณ",
-    "whyChooseTavvy": "ทำไมต้องเลือก TavvY",
+    "whyChooseTavvy": "ทำไมต้องเลือก Tavvy",
     "allProsVetted": "มืออาชีพทุกคนได้รับการตรวจสอบและให้คะแนน",
     "readFeedback": "อ่านความคิดเห็นที่ตรงไปตรงมาจากลูกค้า",
     "chatWithPros": "แชทกับมืออาชีพและแชร์ข้อมูลติดต่อของคุณอย่างปลอดภัย",
@@ -247,7 +247,7 @@
       "unlimitedLeads": "ลูกค้าเป้าหมายไม่จำกัด",
       "moneyBackGuarantee": "รับประกันคืนเงิน 30 วัน",
       "cancelAnytime": "ยกเลิกได้ทุกเมื่อ ไม่มีค่าธรรมเนียมแอบแฝง",
-      "tryRiskFree": "ลอง TavvY Pros โดยไม่มีความเสี่ยง",
+      "tryRiskFree": "ลอง Tavvy Pros โดยไม่มีความเสี่ยง",
       "perYear": "/ปี",
       "save": "ประหยัด {{amount}}"
     },
@@ -304,7 +304,7 @@
     "goodLighting": "ถ่ายรูปในแสงที่ดี",
     "scanningTips": "เคล็ดลับการสแกน:",
     "addressRequired": "ต้องระบุที่อยู่",
-    "cityAlreadyExists": "เมืองนี้มีอยู่แล้วใน TavvY"
+    "cityAlreadyExists": "เมืองนี้มีอยู่แล้วใน Tavvy"
   },
   "cities": {
     "cities": "เมือง",
@@ -434,10 +434,10 @@
     "requestSubmitted": "ส่งคำขอแล้ว!",
     "thankYou": "ขอบคุณ!",
     "submittedToday": "ส่งวันนี้",
-    "youAreSubscribed": "คุณเป็นสมาชิก TavvY Pros แล้ว!"
+    "youAreSubscribed": "คุณเป็นสมาชิก Tavvy Pros แล้ว!"
   },
   "legal": {
-    "copyright": "© {{year}} TavvY, Inc. สงวนลิขสิทธิ์",
+    "copyright": "© {{year}} Tavvy, Inc. สงวนลิขสิทธิ์",
     "termsOfService": "ข้อกำหนดการให้บริการ",
     "privacyPolicy": "นโยบายความเป็นส่วนตัว",
     "communityGuidelines": "แนวทางชุมชน",

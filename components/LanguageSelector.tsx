@@ -1,5 +1,5 @@
 /**
- * TavvY Language Selector Component
+ * Tavvy Language Selector Component
  * 
  * A reusable component for selecting app language.
  * Can be used in Settings screen or as a modal.

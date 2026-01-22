@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "TavvY",
+    "appName": "Tavvy",
     "tagline": "Cara cerdas untuk mengetuk",
     "loading": "Memuat...",
     "error": "Terjadi kesalahan",
@@ -58,8 +58,8 @@
     "signOut": "Keluar",
     "createAccount": "Buat akun",
     "welcomeBack": "Selamat datang kembali!",
-    "welcomeToTavvy": "Selamat datang di TavvY",
-    "welcomeToCommunity": "Selamat datang di komunitas TavvY",
+    "welcomeToTavvy": "Selamat datang di Tavvy",
+    "welcomeToCommunity": "Selamat datang di komunitas Tavvy",
     "email": "Email",
     "emailAddress": "Alamat email",
     "password": "Kata sandi",
@@ -72,7 +72,7 @@
     "signInToView": "Masuk untuk melihat tempat tersimpan",
     "signUpToUnlock": "Daftar untuk membuka:",
     "tavvyMember": "Anggota Tavvy",
-    "tavvyExplorer": "Penjelajah TavvY"
+    "tavvyExplorer": "Penjelajah Tavvy"
   },
   "home": {
     "greeting": {
@@ -172,7 +172,7 @@
     }
   },
   "pros": {
-    "tavvyPros": "TavvY Profesional",
+    "tavvyPros": "Tavvy Profesional",
     "welcomePro": "Selamat datang, Profesional!",
     "prosNearYou": "Profesional di dekat Anda",
     "browseByService": "Jelajahi berdasarkan layanan",
@@ -225,7 +225,7 @@
     "startGrowing": "Mulai kembangkan bisnis Anda",
     "buildTrust": "Bangun kepercayaan dengan pelanggan",
     "trackPerformance": "Lacak kinerja Anda",
-    "whyChooseTavvy": "Mengapa pilih TavvY",
+    "whyChooseTavvy": "Mengapa pilih Tavvy",
     "allProsVetted": "Semua profesional diverifikasi dan dinilai",
     "readFeedback": "Baca umpan balik jujur dari pelanggan",
     "chatWithPros": "Chat dengan profesional dan bagikan info kontak Anda dengan aman",
@@ -247,7 +247,7 @@
       "unlimitedLeads": "Prospek tak terbatas",
       "moneyBackGuarantee": "Garansi uang kembali 30 hari",
       "cancelAnytime": "Batalkan kapan saja. Tanpa biaya tersembunyi.",
-      "tryRiskFree": "Coba TavvY Pros tanpa risiko.",
+      "tryRiskFree": "Coba Tavvy Pros tanpa risiko.",
       "perYear": "/tahun",
       "save": "Hemat {{amount}}"
     },
@@ -304,7 +304,7 @@
     "goodLighting": "Ambil foto dengan pencahayaan yang baik",
     "scanningTips": "Tips pemindaian:",
     "addressRequired": "Alamat diperlukan",
-    "cityAlreadyExists": "Kota ini sudah ada di TavvY"
+    "cityAlreadyExists": "Kota ini sudah ada di Tavvy"
   },
   "cities": {
     "cities": "Kota",
@@ -434,10 +434,10 @@
     "requestSubmitted": "Permintaan terkirim!",
     "thankYou": "Terima kasih!",
     "submittedToday": "Dikirim hari ini",
-    "youAreSubscribed": "Anda sekarang berlangganan TavvY Pros!"
+    "youAreSubscribed": "Anda sekarang berlangganan Tavvy Pros!"
   },
   "legal": {
-    "copyright": "© {{year}} TavvY, Inc. Hak cipta dilindungi.",
+    "copyright": "© {{year}} Tavvy, Inc. Hak cipta dilindungi.",
     "termsOfService": "Ketentuan layanan",
     "privacyPolicy": "Kebijakan privasi",
     "communityGuidelines": "Pedoman komunitas",

@@ -1,5 +1,5 @@
 /**
- * TavvY Category Field Configuration
+ * Tavvy Category Field Configuration
  * 
  * This file defines the dynamic form fields for each category.
  * When a category is selected, the appropriate fields are displayed.

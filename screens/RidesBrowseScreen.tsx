@@ -1,7 +1,7 @@
 // ============================================================================
 // RIDES BROWSE SCREEN
 // ============================================================================
-// Browse theme park rides and attractions with TavvY signals
+// Browse theme park rides and attractions with Tavvy signals
 // Place this file in: screens/RidesBrowseScreen.tsx
 // ============================================================================
 

@@ -239,7 +239,7 @@ export default function ProsHomeScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>TavvY Pros</Text>
+        <Text style={styles.headerTitle}>Tavvy Pros</Text>
         <View style={styles.headerToggle}>
           <TouchableOpacity
             style={[styles.modeToggle, viewMode === 'user' && styles.modeToggleActive]}

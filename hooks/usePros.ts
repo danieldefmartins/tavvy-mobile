@@ -1,6 +1,6 @@
 /**
  * Pros API Hooks
- * Connects to Supabase Edge Functions for the TavvY Pros feature.
+ * Connects to Supabase Edge Functions for the Tavvy Pros feature.
  * Install path: hooks/usePros.ts
  */
 

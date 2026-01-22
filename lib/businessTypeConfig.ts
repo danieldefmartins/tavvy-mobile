@@ -1,5 +1,5 @@
 /**
- * TavvY Business Type Configuration System (Updated)
+ * Tavvy Business Type Configuration System (Updated)
  * 
  * This file provides backward compatibility with the old business type system
  * while bridging to the new comprehensive category system.

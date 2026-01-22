@@ -1,7 +1,7 @@
 // ============================================================================
 // RIDE DETAILS SCREEN
 // ============================================================================
-// Detailed view of a theme park ride with TavvY signals
+// Detailed view of a theme park ride with Tavvy signals
 // Place this file in: screens/RideDetailsScreen.tsx
 // Based on mockup: VelociCoaster design with universal review bars
 // ============================================================================

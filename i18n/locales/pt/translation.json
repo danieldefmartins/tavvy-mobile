@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "TavvY",
+    "appName": "Tavvy",
     "tagline": "Uma forma inteligente de tocar",
     "loading": "Carregando...",
     "error": "Algo deu errado",
@@ -58,8 +58,8 @@
     "signOut": "Sair",
     "createAccount": "Criar conta",
     "welcomeBack": "Bem-vindo de volta!",
-    "welcomeToTavvy": "Bem-vindo ao TavvY",
-    "welcomeToCommunity": "Bem-vindo à comunidade TavvY",
+    "welcomeToTavvy": "Bem-vindo ao Tavvy",
+    "welcomeToCommunity": "Bem-vindo à comunidade Tavvy",
     "email": "E-mail",
     "emailAddress": "Endereço de e-mail",
     "password": "Senha",
@@ -72,7 +72,7 @@
     "signInToView": "Entre para ver lugares salvos",
     "signUpToUnlock": "Cadastre-se para desbloquear:",
     "tavvyMember": "Membro Tavvy",
-    "tavvyExplorer": "Explorador TavvY"
+    "tavvyExplorer": "Explorador Tavvy"
   },
   "home": {
     "greeting": {
@@ -172,7 +172,7 @@
     }
   },
   "pros": {
-    "tavvyPros": "TavvY Profissionais",
+    "tavvyPros": "Tavvy Profissionais",
     "welcomePro": "Bem-vindo, Profissional!",
     "prosNearYou": "Profissionais perto de você",
     "browseByService": "Buscar por serviço",
@@ -225,7 +225,7 @@
     "startGrowing": "Comece a crescer seu negócio",
     "buildTrust": "Construa confiança com clientes",
     "trackPerformance": "Acompanhe seu desempenho",
-    "whyChooseTavvy": "Por que escolher TavvY",
+    "whyChooseTavvy": "Por que escolher Tavvy",
     "allProsVetted": "Todos os profissionais são verificados e avaliados",
     "readFeedback": "Leia feedback honesto de clientes",
     "chatWithPros": "Converse com profissionais e compartilhe suas informações de contato com segurança",
@@ -247,7 +247,7 @@
       "unlimitedLeads": "Leads ilimitados",
       "moneyBackGuarantee": "Garantia de devolução de 30 dias",
       "cancelAnytime": "Cancele quando quiser. Sem taxas ocultas.",
-      "tryRiskFree": "Experimente TavvY Profissionais sem risco.",
+      "tryRiskFree": "Experimente Tavvy Profissionais sem risco.",
       "perYear": "/ano",
       "save": "Economize {{amount}}"
     },
@@ -304,7 +304,7 @@
     "goodLighting": "Tire fotos com boa iluminação",
     "scanningTips": "Dicas para escanear:",
     "addressRequired": "Endereço é obrigatório",
-    "cityAlreadyExists": "Esta cidade já existe no TavvY"
+    "cityAlreadyExists": "Esta cidade já existe no Tavvy"
   },
   "cities": {
     "cities": "Cidades",
@@ -434,10 +434,10 @@
     "requestSubmitted": "Solicitação enviada!",
     "thankYou": "Obrigado!",
     "submittedToday": "Enviado hoje",
-    "youAreSubscribed": "Você agora está inscrito no TavvY Profissionais!"
+    "youAreSubscribed": "Você agora está inscrito no Tavvy Profissionais!"
   },
   "legal": {
-    "copyright": "© {{year}} TavvY, Inc. Todos os direitos reservados.",
+    "copyright": "© {{year}} Tavvy, Inc. Todos os direitos reservados.",
     "termsOfService": "Termos de serviço",
     "privacyPolicy": "Política de privacidade",
     "communityGuidelines": "Diretrizes da comunidade",

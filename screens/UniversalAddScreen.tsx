@@ -1,5 +1,5 @@
 /**
- * TavvY Universal Add Screen V2
+ * Tavvy Universal Add Screen V2
  * 
  * A comprehensive "Add" screen that integrates:
  * - Content type selection (Place or Business, City, Universe)
@@ -831,7 +831,7 @@ export default function UniversalAddScreenV2() {
           `limit=10`,
           {
             headers: {
-              'User-Agent': 'TavvY-App/1.0',
+              'User-Agent': 'Tavvy-App/1.0',
             },
           }
         );
@@ -1008,7 +1008,7 @@ export default function UniversalAddScreenV2() {
           newErrors.city = 'Please select a city';
         }
         if (cityExists) {
-          newErrors.city = 'This city already exists in TavvY';
+          newErrors.city = 'This city already exists in Tavvy';
         }
         break;
         
@@ -1457,7 +1457,7 @@ export default function UniversalAddScreenV2() {
                     <View style={styles.cityExistsContent}>
                       <Text style={styles.cityExistsTitle}>City Already Exists</Text>
                       <Text style={styles.cityExistsText}>
-                        This city has already been added to TavvY. You can search for it and add reviews instead.
+                        This city has already been added to Tavvy. You can search for it and add reviews instead.
                       </Text>
                     </View>
                   </View>

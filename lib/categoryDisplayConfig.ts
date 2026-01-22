@@ -1,5 +1,5 @@
 /**
- * TavvY Category Display Configuration
+ * Tavvy Category Display Configuration
  * 
  * This file provides display configurations for PlaceDetailsScreen
  * based on the category system. It determines which fields to show,

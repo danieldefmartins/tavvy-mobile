@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "TavvY",
+    "appName": "Tavvy",
     "tagline": "Умный способ нажимать",
     "loading": "Загрузка...",
     "error": "Что-то пошло не так",
@@ -58,8 +58,8 @@
     "signOut": "Выйти",
     "createAccount": "Создать аккаунт",
     "welcomeBack": "С возвращением!",
-    "welcomeToTavvy": "Добро пожаловать в TavvY",
-    "welcomeToCommunity": "Добро пожаловать в сообщество TavvY",
+    "welcomeToTavvy": "Добро пожаловать в Tavvy",
+    "welcomeToCommunity": "Добро пожаловать в сообщество Tavvy",
     "email": "Email",
     "emailAddress": "Адрес электронной почты",
     "password": "Пароль",
@@ -72,7 +72,7 @@
     "signInToView": "Войдите, чтобы увидеть сохраненные места",
     "signUpToUnlock": "Зарегистрируйтесь, чтобы разблокировать:",
     "tavvyMember": "Участник Tavvy",
-    "tavvyExplorer": "Исследователь TavvY"
+    "tavvyExplorer": "Исследователь Tavvy"
   },
   "home": {
     "greeting": {
@@ -172,7 +172,7 @@
     }
   },
   "pros": {
-    "tavvyPros": "TavvY Профессионалы",
+    "tavvyPros": "Tavvy Профессионалы",
     "welcomePro": "Добро пожаловать, Профессионал!",
     "prosNearYou": "Профессионалы рядом",
     "browseByService": "Поиск по услуге",
@@ -225,7 +225,7 @@
     "startGrowing": "Начните развивать свой бизнес",
     "buildTrust": "Завоюйте доверие клиентов",
     "trackPerformance": "Отслеживайте результаты",
-    "whyChooseTavvy": "Почему TavvY",
+    "whyChooseTavvy": "Почему Tavvy",
     "allProsVetted": "Все профессионалы проверены и оценены",
     "readFeedback": "Читайте честные отзывы клиентов",
     "chatWithPros": "Общайтесь с профессионалами и безопасно делитесь контактами",
@@ -247,7 +247,7 @@
       "unlimitedLeads": "Безлимитные заявки",
       "moneyBackGuarantee": "30-дневная гарантия возврата",
       "cancelAnytime": "Отмена в любое время. Без скрытых платежей.",
-      "tryRiskFree": "Попробуйте TavvY Pros без риска.",
+      "tryRiskFree": "Попробуйте Tavvy Pros без риска.",
       "perYear": "/год",
       "save": "Экономия {{amount}}"
     },
@@ -304,7 +304,7 @@
     "goodLighting": "Делайте фото при хорошем освещении",
     "scanningTips": "Советы по сканированию:",
     "addressRequired": "Адрес обязателен",
-    "cityAlreadyExists": "Этот город уже есть в TavvY"
+    "cityAlreadyExists": "Этот город уже есть в Tavvy"
   },
   "cities": {
     "cities": "Города",
@@ -434,10 +434,10 @@
     "requestSubmitted": "Запрос отправлен!",
     "thankYou": "Спасибо!",
     "submittedToday": "Отправлено сегодня",
-    "youAreSubscribed": "Вы подписаны на TavvY Pros!"
+    "youAreSubscribed": "Вы подписаны на Tavvy Pros!"
   },
   "legal": {
-    "copyright": "© {{year}} TavvY, Inc. Все права защищены.",
+    "copyright": "© {{year}} Tavvy, Inc. Все права защищены.",
     "termsOfService": "Условия использования",
     "privacyPolicy": "Политика конфиденциальности",
     "communityGuidelines": "Правила сообщества",

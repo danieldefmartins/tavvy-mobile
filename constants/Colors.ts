@@ -1,4 +1,4 @@
-// TavvY Design System - Brand Color Scheme
+// Tavvy Design System - Brand Color Scheme
 // Supports Light and Dark modes with centralized color management
 
 import { useColorScheme } from 'react-native';
@@ -53,14 +53,14 @@ const palette = {
   gray800: '#1E293B',
   gray900: '#0F172A',
 
-  // Dark Mode Specific (TavvY Navy scale)
-  darkBackground: '#0F1233',      // TavvY Navy
+  // Dark Mode Specific (Tavvy Navy scale)
+  darkBackground: '#0F1233',      // Tavvy Navy
   darkSurface: '#1E293B',         // Elevated surface
   darkSurfaceElevated: '#334155', // More elevated
   darkSeparator: '#334155',       // Borders
 };
 
-// ===== DARK THEME (Primary for TavvY) =====
+// ===== DARK THEME (Primary for Tavvy) =====
 export const darkTheme = {
   // Backgrounds
   background: palette.darkBackground,
@@ -233,7 +233,7 @@ export const Colors = {
   tabBarActive: brand.blue,
   tabBarInactive: brand.textSecondary,
 
-  // Review Semantic Themes (TavvY Signal Colors)
+  // Review Semantic Themes (Tavvy Signal Colors)
   // Blue = The Good (Positive)
   // Purple/Gray = The Vibe (Neutral)
   // Orange = Heads Up (Negative)
@@ -266,7 +266,7 @@ export const Colors = {
 // ===== THEME HOOK =====
 export const useTheme = () => {
   const colorScheme = useColorScheme();
-  // Default to dark theme for TavvY brand consistency
+  // Default to dark theme for Tavvy brand consistency
   return colorScheme === 'light' ? lightTheme : darkTheme;
 };
 

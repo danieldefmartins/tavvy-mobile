@@ -3,7 +3,7 @@
  * Install path: screens/ProsManageProfileScreen.tsx
  * 
  * Allows Pros to manage their business details and select technical 
- * specialties (Tier 1 branches) for the TavvY Matching Engine.
+ * specialties (Tier 1 branches) for the Tavvy Matching Engine.
  */
 
 import React, { useState, useEffect } from 'react';

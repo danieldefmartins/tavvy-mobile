@@ -1,5 +1,5 @@
 /**
- * SignalReviewScreen - The Heart of TavvY
+ * SignalReviewScreen - The Heart of Tavvy
  * Install path: screens/SignalReviewScreen.tsx
  * 
  * Replaces traditional star ratings with structured, tap-based signals.

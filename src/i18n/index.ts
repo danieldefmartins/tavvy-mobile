@@ -1,5 +1,5 @@
 /**
- * TavvY Internationalization (i18n) Configuration
+ * Tavvy Internationalization (i18n) Configuration
  * 
  * Supports 17 languages with:
  * - Auto-detection of device language

@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "TavvY",
+    "appName": "Tavvy",
     "tagline": "Akıllı bir dokunma yolu",
     "loading": "Yükleniyor...",
     "error": "Bir şeyler yanlış gitti",
@@ -58,8 +58,8 @@
     "signOut": "Çıkış yap",
     "createAccount": "Hesap oluştur",
     "welcomeBack": "Tekrar hoş geldiniz!",
-    "welcomeToTavvy": "TavvY'ye hoş geldiniz",
-    "welcomeToCommunity": "TavvY topluluğuna hoş geldiniz",
+    "welcomeToTavvy": "Tavvy'ye hoş geldiniz",
+    "welcomeToCommunity": "Tavvy topluluğuna hoş geldiniz",
     "email": "E-posta",
     "emailAddress": "E-posta adresi",
     "password": "Şifre",
@@ -72,7 +72,7 @@
     "signInToView": "Kayıtlı yerleri görmek için giriş yapın",
     "signUpToUnlock": "Açmak için kayıt olun:",
     "tavvyMember": "Tavvy Üyesi",
-    "tavvyExplorer": "TavvY Kaşifi"
+    "tavvyExplorer": "Tavvy Kaşifi"
   },
   "home": {
     "greeting": {
@@ -172,7 +172,7 @@
     }
   },
   "pros": {
-    "tavvyPros": "TavvY Profesyoneller",
+    "tavvyPros": "Tavvy Profesyoneller",
     "welcomePro": "Hoş geldiniz, Profesyonel!",
     "prosNearYou": "Yakınındaki profesyoneller",
     "browseByService": "Hizmete göre göz at",
@@ -225,7 +225,7 @@
     "startGrowing": "İşinizi büyütmeye başlayın",
     "buildTrust": "Müşterilerle güven oluşturun",
     "trackPerformance": "Performansınızı takip edin",
-    "whyChooseTavvy": "Neden TavvY",
+    "whyChooseTavvy": "Neden Tavvy",
     "allProsVetted": "Tüm profesyoneller doğrulanmış ve değerlendirilmiştir",
     "readFeedback": "Müşterilerden dürüst geri bildirimleri okuyun",
     "chatWithPros": "Profesyonellerle sohbet edin ve iletişim bilgilerinizi güvenle paylaşın",
@@ -247,7 +247,7 @@
       "unlimitedLeads": "Sınırsız müşteri adayı",
       "moneyBackGuarantee": "30 gün para iade garantisi",
       "cancelAnytime": "İstediğiniz zaman iptal edin. Gizli ücret yok.",
-      "tryRiskFree": "TavvY Pros'u risksiz deneyin.",
+      "tryRiskFree": "Tavvy Pros'u risksiz deneyin.",
       "perYear": "/yıl",
       "save": "{{amount}} tasarruf edin"
     },
@@ -304,7 +304,7 @@
     "goodLighting": "İyi aydınlatmada fotoğraf çekin",
     "scanningTips": "Tarama ipuçları:",
     "addressRequired": "Adres gerekli",
-    "cityAlreadyExists": "Bu şehir TavvY'de zaten mevcut"
+    "cityAlreadyExists": "Bu şehir Tavvy'de zaten mevcut"
   },
   "cities": {
     "cities": "Şehirler",
@@ -434,10 +434,10 @@
     "requestSubmitted": "İstek gönderildi!",
     "thankYou": "Teşekkürler!",
     "submittedToday": "Bugün gönderildi",
-    "youAreSubscribed": "Artık TavvY Pros'a abone oldunuz!"
+    "youAreSubscribed": "Artık Tavvy Pros'a abone oldunuz!"
   },
   "legal": {
-    "copyright": "© {{year}} TavvY, Inc. Tüm hakları saklıdır.",
+    "copyright": "© {{year}} Tavvy, Inc. Tüm hakları saklıdır.",
     "termsOfService": "Hizmet şartları",
     "privacyPolicy": "Gizlilik politikası",
     "communityGuidelines": "Topluluk kuralları",

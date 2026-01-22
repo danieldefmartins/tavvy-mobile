@@ -3,7 +3,7 @@
  * Install path: screens/RealtorDetailScreen.tsx
  * 
  * Detailed profile view for a real estate agent.
- * Matches the PlaceDetailsScreen style with TavvY signal-based reviews.
+ * Matches the PlaceDetailsScreen style with Tavvy signal-based reviews.
  */
 import React, { useState, useRef } from 'react';
 import {
@@ -26,7 +26,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
-// TavvY Signal Colors
+// Tavvy Signal Colors
 const SignalColors = {
   theGood: '#0A84FF',      // Blue - positive
   theVibe: '#8B5CF6',      // Purple - vibe

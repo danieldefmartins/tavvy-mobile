@@ -1,5 +1,5 @@
 /**
- * SignalBar - Universal signal bar component for TavvY
+ * SignalBar - Universal signal bar component for Tavvy
  * 
  * This component renders signal bars consistently across the entire app.
  * Any change to this component will affect ALL screens that display signals.

@@ -57,7 +57,7 @@ export default function ProsCategoryLandingScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>How TavvY Works</Text>
+          <Text style={styles.sectionTitle}>How Tavvy Works</Text>
           {howItWorks.map((item) => (
             <View key={item.step} style={styles.stepCard}>
               <View style={styles.stepNumber}>
@@ -86,7 +86,7 @@ export default function ProsCategoryLandingScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Why Choose TavvY</Text>
+          <Text style={styles.sectionTitle}>Why Choose Tavvy</Text>
           <View style={styles.benefitsGrid}>
             <View style={styles.benefitCard}>
               <Ionicons name="shield-checkmark" size={28} color={ProsColors.primary} />

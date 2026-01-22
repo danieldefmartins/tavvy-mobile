@@ -1,7 +1,7 @@
 /**
- * TavvY Category Configuration System
+ * Tavvy Category Configuration System
  * 
- * This file defines the complete category taxonomy for the TavvY app.
+ * This file defines the complete category taxonomy for the Tavvy app.
  * It includes:
  * - Content types (Place or Business, City, Universe)
  * - Primary categories with subcategories (sorted alphabetically)

@@ -113,7 +113,7 @@ async function loadSignalCache(): Promise<void> {
 // ============================================
 
 /**
- * Maps TavvY primary category slugs to their signal prefixes.
+ * Maps Tavvy primary category slugs to their signal prefixes.
  * Signals are filtered based on these prefixes when displaying
  * category-specific review options.
  */

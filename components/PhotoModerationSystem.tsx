@@ -167,7 +167,7 @@ export const PhotoReportModal: React.FC<PhotoReportModalProps> = ({
 
       Alert.alert(
         'Report Submitted',
-        'Thank you for helping keep TavvY safe. Our team will review this photo.',
+        'Thank you for helping keep Tavvy safe. Our team will review this photo.',
         [{ text: 'OK', onPress: onClose }]
       );
     } catch (error: any) {

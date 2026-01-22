@@ -1,5 +1,5 @@
 /**
- * TavvY Review Translation Component
+ * Tavvy Review Translation Component
  * 
  * Shows reviews in original language with toggle to view auto-translated version.
  * Preserves authenticity while enabling global accessibility.

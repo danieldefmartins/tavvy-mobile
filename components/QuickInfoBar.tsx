@@ -65,12 +65,12 @@ const NavigationModal: React.FC<NavigationModalProps> = ({
   const navigationOptions = [
     {
       id: 'tavvy',
-      name: 'TavvY Navigation',
+      name: 'Tavvy Navigation',
       icon: 'navigate',
       color: '#14b8a6',
       onPress: () => {
-        // Internal TavvY navigation - could open in-app map
-        Alert.alert('TavvY Navigation', 'Opening TavvY turn-by-turn navigation...');
+        // Internal Tavvy navigation - could open in-app map
+        Alert.alert('Tavvy Navigation', 'Opening Tavvy turn-by-turn navigation...');
         onClose();
       },
     },
