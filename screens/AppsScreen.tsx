@@ -28,8 +28,12 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const TILE_SIZE = (SCREEN_WIDTH - 40 - 24) / 3; // 3 columns: screen - padding(40) - gaps(24 for 2 gaps of 12)
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const IS_TABLET = SCREEN_WIDTH >= 768;
+const COLUMNS = IS_TABLET ? 4 : 3;
+const MAX_TILE_SIZE = 120;
+const CALCULATED_TILE_SIZE = (SCREEN_WIDTH - 40 - (COLUMNS - 1) * 12) / COLUMNS;
+const TILE_SIZE = Math.min(CALCULATED_TILE_SIZE, MAX_TILE_SIZE);
 
 // Match HomeScreen's ACCENT color exactly
 const ACCENT = '#0F1233';
@@ -319,7 +323,7 @@ export default function AppsScreen() {
               key={tile.id}
               style={styles.tile}
               onPress={() => handleTilePress(tile)}
-              activeOpacity={0.8}
+              activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} delayPressIn={0}
             >
               <LinearGradient
                 colors={tile.gradientColors}

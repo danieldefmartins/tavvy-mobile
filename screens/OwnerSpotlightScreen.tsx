@@ -128,8 +128,8 @@ export default function OwnerSpotlightScreen() {
       // Fetch linked place data if available
       if (article.primary_place_id) {
         const { data: placeData, error: placeError } = await supabase
-          .from('places')
-          .select('id, name, category, address, city, state, photos, rating')
+          .from('fsq_places_raw')
+          .select('fsq_place_id, name, fsq_category_labels, address, locality, region')
           .eq('id', article.primary_place_id)
           .single();
 

@@ -75,6 +75,22 @@ const RIDE_CATEGORIES = [
 ];
 
 // ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+const extractCategory = (labels: any): string => {
+  if (!labels) return 'Attraction';
+  const labelsStr = Array.isArray(labels) ? labels.join(' ') : String(labels);
+  // Try to find a matching ride category
+  for (const cat of RIDE_CATEGORIES) {
+    if (labelsStr.toLowerCase().includes(cat.toLowerCase())) {
+      return cat;
+    }
+  }
+  return 'Attraction';
+};
+
+// ============================================
 // MAIN COMPONENT
 // ============================================
 
@@ -96,68 +112,42 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
     try {
       if (offset === 0) setLoading(true);
 
-      // Query places that are rides/attractions from atlas_universe_places
+      // Query places that are rides/attractions from fsq_places_raw
       const { data: placesData, error } = await supabase
-        .from('places')
-        .select(`
-          id,
-          name,
-          description,
-          tavvy_category,
-          tavvy_subcategory,
-          city,
-          region,
-          latitude,
-          longitude
-        `)
-        .eq('source_type', 'tavvy_curated')
-        .or(RIDE_CATEGORIES.map(cat => `tavvy_category.ilike.%${cat}%`).join(','))
-        .limit(50);
+        .from('fsq_places_raw')
+        .select('fsq_place_id, name, latitude, longitude, address, locality, region, fsq_category_labels')
+        .is('date_closed', null)
+        .limit(100);
 
       if (error) {
         console.error('Error loading rides:', error);
-        // Try alternative query - get all curated places
-        const { data: fallbackData } = await supabase
-          .from('places')
-          .select('*')
-          .eq('source_type', 'tavvy_curated')
-          .limit(50);
-        
-        if (fallbackData && fallbackData.length > 0) {
-          setPlaces(fallbackData.map(p => ({
-            id: p.id,
-            name: p.name,
-            description: p.description,
-            tavvy_category: p.tavvy_category,
-            tavvy_subcategory: p.tavvy_subcategory,
-            city: p.city,
-            region: p.region,
-            latitude: p.latitude,
-            longitude: p.longitude,
-            photos: [],
-            signals: [],
-          })));
-        } else {
-          setPlaces([]);
-        }
+        setPlaces([]);
         return;
       }
 
       if (placesData && placesData.length > 0) {
-        setPlaces(placesData.map(p => ({
-          id: p.id,
+        // Filter for ride-related categories
+        const filteredPlaces = placesData.filter(p => {
+          if (!p.fsq_category_labels) return false;
+          const labels = Array.isArray(p.fsq_category_labels) 
+            ? p.fsq_category_labels.join(' ').toLowerCase() 
+            : String(p.fsq_category_labels).toLowerCase();
+          return RIDE_CATEGORIES.some(cat => labels.includes(cat.toLowerCase()));
+        }).map(p => ({
+          id: p.fsq_place_id,
           name: p.name,
-          description: p.description,
-          tavvy_category: p.tavvy_category,
-          tavvy_subcategory: p.tavvy_subcategory,
-          city: p.city,
+          description: '',
+          tavvy_category: extractCategory(p.fsq_category_labels),
+          tavvy_subcategory: '',
+          city: p.locality,
           region: p.region,
           latitude: p.latitude,
           longitude: p.longitude,
           photos: [],
           signals: [],
-        })));
-        setHasMore(placesData.length === 50);
+        }));
+        setPlaces(filteredPlaces);
+        setHasMore(filteredPlaces.length >= 50);
       } else {
         setPlaces([]);
       }
