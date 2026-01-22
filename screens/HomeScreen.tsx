@@ -467,83 +467,94 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   };
 
   /**
-   * Load trending items from multiple sources: places, cities, universes
-   * Only shows items within 50 miles of user's location
+   * Load trending items: Places, Restaurants, Coffee Shops, and Pros
+   * Only shows items within 20 miles of user's location
    */
   const loadTrendingItems = async (userCoords?: [number, number] | null) => {
     setIsLoadingTrending(true);
     try {
       const items: any[] = [];
-      const MAX_DISTANCE_MILES = 50;
+      const MAX_DISTANCE_MILES = 20;
       
       // Use provided coords or current userLocation
       const coords = userCoords || userLocation;
       
-      // Fetch cities (get more to filter by distance)
-      const { data: cities, error: citiesError } = await supabase
-        .from('tavvy_cities')
-        .select('id, name, state, cover_image_url, thumbnail_image_url, description, latitude, longitude')
-        .eq('is_active', true)
-        .order('population', { ascending: false })
-        .limit(50);
+      // Fetch places (restaurants, coffee shops, and general places with reviews)
+      const { data: places, error: placesError } = await supabase
+        .from('fsq_places_raw')
+        .select('fsq_id, name, address_line1, city, state_region, category, latitude, longitude, cover_image_url')
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(100);
       
-      if (cities && !citiesError) {
-        cities.forEach((city: any) => {
+      if (places && !placesError) {
+        places.forEach((place: any) => {
           // Filter by distance if we have user location
-          if (coords && city.latitude && city.longitude) {
+          if (coords && place.latitude && place.longitude) {
             const distance = calculateDistanceMiles(
               coords[1], coords[0], // userLocation is [lng, lat]
-              Number(city.latitude), Number(city.longitude)
+              Number(place.latitude), Number(place.longitude)
+            );
+            if (distance > MAX_DISTANCE_MILES) return;
+          }
+          
+          // Determine category type for display
+          const categoryLower = (place.category || '').toLowerCase();
+          let displayCategory = 'Places';
+          if (categoryLower.includes('restaurant') || categoryLower.includes('dining') || categoryLower.includes('food')) {
+            displayCategory = 'Restaurants';
+          } else if (categoryLower.includes('coffee') || categoryLower.includes('cafe') || categoryLower.includes('café') || categoryLower.includes('tea')) {
+            displayCategory = 'Coffee Shops';
+          }
+          
+          items.push({
+            id: place.fsq_id,
+            name: place.name,
+            subtitle: place.city ? `${place.city}, ${place.state_region || ''}`.trim() : place.address_line1,
+            image: place.cover_image_url,
+            type: 'place',
+            category: displayCategory,
+            latitude: place.latitude,
+            longitude: place.longitude,
+          });
+        });
+      }
+      
+      // Fetch Pros (service providers)
+      const { data: pros, error: prosError } = await supabase
+        .from('tavvy_pros')
+        .select('id, business_name, service_category, city, state, profile_image_url, latitude, longitude')
+        .eq('status', 'active')
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null)
+        .limit(50);
+      
+      if (pros && !prosError) {
+        pros.forEach((pro: any) => {
+          // Filter by distance if we have user location
+          if (coords && pro.latitude && pro.longitude) {
+            const distance = calculateDistanceMiles(
+              coords[1], coords[0], // userLocation is [lng, lat]
+              Number(pro.latitude), Number(pro.longitude)
             );
             if (distance > MAX_DISTANCE_MILES) return;
           }
           
           items.push({
-            id: city.id,
-            name: city.name,
-            subtitle: city.state,
-            image: city.cover_image_url || city.thumbnail_image_url,
-            type: 'city',
-            category: 'Cities',
-            latitude: city.latitude,
-            longitude: city.longitude,
+            id: pro.id,
+            name: pro.business_name,
+            subtitle: pro.service_category || (pro.city ? `${pro.city}, ${pro.state || ''}`.trim() : 'Service Provider'),
+            image: pro.profile_image_url,
+            type: 'pro',
+            category: 'Pros',
+            latitude: pro.latitude,
+            longitude: pro.longitude,
           });
         });
       }
       
-      // Fetch universes (get more to filter by distance)
-      const { data: universes, error: universesError } = await supabase
-        .from('atlas_universes')
-        .select('id, name, location, banner_image_url, thumbnail_image_url, description, latitude, longitude')
-        .eq('status', 'published')
-        .order('total_signals', { ascending: false })
-        .limit(50);
-      
-      if (universes && !universesError) {
-        universes.forEach((universe: any) => {
-          // Filter by distance if we have user location
-          if (coords && universe.latitude && universe.longitude) {
-            const distance = calculateDistanceMiles(
-              coords[1], coords[0], // userLocation is [lng, lat]
-              Number(universe.latitude), Number(universe.longitude)
-            );
-            if (distance > MAX_DISTANCE_MILES) return;
-          }
-          
-          items.push({
-            id: universe.id,
-            name: universe.name,
-            subtitle: universe.location,
-            image: universe.banner_image_url || universe.thumbnail_image_url,
-            type: 'universe',
-            category: 'Universes',
-            latitude: universe.latitude,
-            longitude: universe.longitude,
-          });
-        });
-      }
-      
-      // Shuffle items to mix cities and universes, limit to 10
+      // Shuffle items and limit to 10
       const shuffled = items.sort(() => Math.random() - 0.5).slice(0, 10);
       setTrendingItems(shuffled);
     } catch (error) {
@@ -2224,10 +2235,12 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 <TouchableOpacity
                   key={`trending-${item.type}-${item.id}-${trendingIndex}`}
                   onPress={() => {
-                    if (item.type === 'city') {
-                      navigation.navigate('Atlas', { screen: 'CityDetails', params: { cityId: item.id } });
-                    } else if (item.type === 'universe') {
-                      navigation.navigate('Explore', { screen: 'UniverseLanding', params: { universeId: item.id } });
+                    if (item.type === 'place') {
+                      // Navigate to place details
+                      navigation.navigate('PlaceDetails', { placeId: item.id });
+                    } else if (item.type === 'pro') {
+                      // Navigate to pro details
+                      navigation.navigate('Pros', { screen: 'ProDetails', params: { proId: item.id } });
                     } else if (item.place) {
                       handlePlacePress(item.place);
                     }
@@ -2253,13 +2266,17 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   {/* Type Badge */}
                   <View style={[styles.actionsRow, { backgroundColor: isDark ? theme.surface : '#fff', justifyContent: 'center' }]}>
                     <View style={{ 
-                      backgroundColor: item.type === 'city' ? '#3B82F6' : item.type === 'universe' ? '#8B5CF6' : '#22C55E',
+                      backgroundColor: item.type === 'pro' ? '#10B981' : 
+                        item.category === 'Restaurants' ? '#EF4444' : 
+                        item.category === 'Coffee Shops' ? '#8B5CF6' : '#3B82F6',
                       paddingHorizontal: 12,
                       paddingVertical: 6,
                       borderRadius: 16,
                     }}>
                       <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
-                        {item.type === 'city' ? '🏙️ City' : item.type === 'universe' ? '🌌 Universe' : '📍 Place'}
+                        {item.type === 'pro' ? '⭐ Pro' : 
+                          item.category === 'Restaurants' ? '🍽️ Restaurant' : 
+                          item.category === 'Coffee Shops' ? '☕ Coffee' : '📍 Place'}
                       </Text>
                     </View>
                   </View>
