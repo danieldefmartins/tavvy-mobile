@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { getQuickFindPresets, QuickFindPreset } from '../lib/storyService';
+import { trackDiscoveryEvent } from '../lib/analyticsService';
 
 interface QuickFindsProps {
   onPresetPress?: (preset: QuickFindPreset) => void;
@@ -42,19 +43,28 @@ export const QuickFinds: React.FC<QuickFindsProps> = ({ onPresetPress }) => {
     }
   };
 
-  const handlePresetPress = (preset: QuickFindPreset) => {
+  const handlePresetPress = async (preset: QuickFindPreset) => {
     setSelectedSlug(preset.slug);
+    
+    // Track the tap event
+    try {
+      await trackDiscoveryEvent('quick_find_tap', {
+        preset_slug: preset.slug,
+        preset_label: preset.label,
+        tags: preset.tags,
+      });
+    } catch (error) {
+      console.error('Error tracking quick find tap:', error);
+    }
     
     if (onPresetPress) {
       onPresetPress(preset);
     } else {
-      // Default navigation to search with tags
-      (navigation as any).navigate('Home', {
-        screen: 'HomeMain',
-        params: {
-          quickFindTags: preset.tags,
-          quickFindLabel: preset.label,
-        },
+      // Navigate to Quick Find Results screen
+      (navigation as any).navigate('QuickFindResults', {
+        tags: preset.tags,
+        label: preset.label,
+        icon: preset.icon,
       });
     }
     

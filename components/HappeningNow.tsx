@@ -21,6 +21,7 @@ import { useNavigation } from '@react-navigation/native';
 import { getHappeningNowPlaces } from '../lib/storyService';
 import { supabase } from '../lib/supabaseClient';
 import { StoryRing, StoryRingState } from './StoryRing';
+import { trackDiscoveryEvent } from '../lib/analyticsService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.7;
@@ -35,6 +36,7 @@ interface HappeningPlace {
   cover_image_url?: string;
   city?: string;
   story_ring_state?: StoryRingState;
+  story_count?: number;
 }
 
 interface HappeningNowProps {
@@ -57,9 +59,19 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
   const loadHappeningPlaces = async () => {
     setIsLoading(true);
     try {
-      // Get places with high happening scores
-      const happeningData = await getHappeningNowPlaces(10, 25);
+      // First try to get places with high happening scores
+      let happeningData = await getHappeningNowPlaces(10, 25);
       
+      // If no happening scores, fall back to places with recent stories
+      if (happeningData.length === 0) {
+        happeningData = await getPlacesWithRecentActivity();
+      }
+      
+      if (happeningData.length === 0) {
+        // Final fallback: get places with recent reviews
+        happeningData = await getPlacesWithRecentReviews();
+      }
+
       if (happeningData.length === 0) {
         setPlaces([]);
         return;
@@ -81,7 +93,7 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
           category: extractCategory(details?.category),
           cover_image_url: details?.cover_image_url,
           city: details?.city,
-          story_ring_state: 'unseen' as StoryRingState, // Default to unseen for happening places
+          story_ring_state: (h as any).story_count > 0 ? 'unseen' as StoryRingState : 'none' as StoryRingState,
         };
       });
 
@@ -90,6 +102,88 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
       console.error('Error loading happening places:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Fallback: Get places with recent stories
+  const getPlacesWithRecentActivity = async (): Promise<HappeningPlace[]> => {
+    try {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      
+      const { data, error } = await supabase
+        .from('place_stories')
+        .select('place_id, created_at')
+        .eq('status', 'active')
+        .gte('created_at', sevenDaysAgo)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Group by place and count stories
+      const placeMap = new Map<string, { count: number; lastActivity: string }>();
+      data?.forEach(story => {
+        const existing = placeMap.get(story.place_id);
+        if (!existing) {
+          placeMap.set(story.place_id, { count: 1, lastActivity: story.created_at });
+        } else {
+          existing.count++;
+        }
+      });
+
+      // Convert to HappeningPlace format
+      return Array.from(placeMap.entries())
+        .map(([place_id, { count, lastActivity }]) => ({
+          place_id,
+          happening_score: count * 10, // Simple score based on story count
+          last_activity_at: lastActivity,
+          story_count: count,
+        }))
+        .sort((a, b) => b.happening_score - a.happening_score)
+        .slice(0, 10);
+    } catch (error) {
+      console.error('Error getting places with recent activity:', error);
+      return [];
+    }
+  };
+
+  // Final fallback: Get places with recent reviews
+  const getPlacesWithRecentReviews = async (): Promise<HappeningPlace[]> => {
+    try {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      
+      const { data, error } = await supabase
+        .from('place_reviews')
+        .select('place_id, created_at')
+        .gte('created_at', sevenDaysAgo)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      // Group by place and count reviews
+      const placeMap = new Map<string, { count: number; lastActivity: string }>();
+      data?.forEach(review => {
+        const existing = placeMap.get(review.place_id);
+        if (!existing) {
+          placeMap.set(review.place_id, { count: 1, lastActivity: review.created_at });
+        } else {
+          existing.count++;
+        }
+      });
+
+      // Convert to HappeningPlace format
+      return Array.from(placeMap.entries())
+        .map(([place_id, { count, lastActivity }]) => ({
+          place_id,
+          happening_score: count * 5, // Lower score for reviews
+          last_activity_at: lastActivity,
+          story_count: 0,
+        }))
+        .sort((a, b) => b.happening_score - a.happening_score)
+        .slice(0, 10);
+    } catch (error) {
+      console.error('Error getting places with recent reviews:', error);
+      return [];
     }
   };
 
@@ -109,16 +203,30 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
     if (diffMins < 5) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     const diffHours = Math.floor(diffMins / 60);
-    return `${diffHours}h ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
   };
 
   const getActivityLevel = (score: number): { label: string; color: string } => {
     if (score >= 100) return { label: '🔥 Very Active', color: '#EF4444' };
     if (score >= 50) return { label: '⚡ Active', color: '#F59E0B' };
-    return { label: '✨ Buzzing', color: '#10B981' };
+    if (score >= 20) return { label: '✨ Buzzing', color: '#10B981' };
+    return { label: '📍 Recent', color: '#3B82F6' };
   };
 
-  const handlePlacePress = (place: HappeningPlace) => {
+  const handlePlacePress = async (place: HappeningPlace) => {
+    // Track the tap event
+    try {
+      await trackDiscoveryEvent('happening_now_tap', {
+        place_id: place.place_id,
+        place_name: place.name,
+        happening_score: place.happening_score,
+      });
+    } catch (error) {
+      console.error('Error tracking happening now tap:', error);
+    }
+
     if (onPlacePress) {
       onPlacePress(place.place_id);
     } else {
@@ -126,9 +234,26 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
     }
   };
 
-  const handleStoryPress = (place: HappeningPlace) => {
+  const handleStoryPress = async (place: HappeningPlace) => {
+    // Track the tap event
+    try {
+      await trackDiscoveryEvent('story_ring_tap', {
+        place_id: place.place_id,
+        place_name: place.name,
+        source: 'happening_now',
+      });
+    } catch (error) {
+      console.error('Error tracking story ring tap:', error);
+    }
+
     if (onStoryPress) {
       onStoryPress(place.place_id);
+    } else {
+      // Navigate to story viewer for this place
+      (navigation as any).navigate('PlaceDetails', { 
+        placeId: place.place_id,
+        openStories: true,
+      });
     }
   };
 

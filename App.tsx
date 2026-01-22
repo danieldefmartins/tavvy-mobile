@@ -94,6 +94,7 @@ import StoryUploadScreen from './screens/StoryUploadScreen';
 import OwnerHighlightsScreen from './screens/OwnerHighlightsScreen';
 import StoryModerationScreen from './screens/StoryModerationScreen';
 import StoryAnalyticsScreen from './screens/StoryAnalyticsScreen';
+import QuickFindResultsScreen from './screens/QuickFindResultsScreen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -150,6 +151,7 @@ function HomeStack() {
       />
       <HomeStackNav.Screen name="OwnerHighlights" component={OwnerHighlightsScreen} />
       <HomeStackNav.Screen name="StoryAnalytics" component={StoryAnalyticsScreen} />
+      <HomeStackNav.Screen name="QuickFindResults" component={QuickFindResultsScreen} />
     </HomeStackNav.Navigator>
   );
 }
