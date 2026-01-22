@@ -31,7 +31,7 @@ import { useThemeContext } from '../contexts/ThemeContext';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const IS_TABLET = SCREEN_WIDTH >= 768;
 const COLUMNS = IS_TABLET ? 4 : 3;
-const MAX_TILE_SIZE = 120;
+const MAX_TILE_SIZE = 95; // Reduced from 120 for more compact design
 const CALCULATED_TILE_SIZE = (SCREEN_WIDTH - 40 - (COLUMNS - 1) * 12) / COLUMNS;
 const TILE_SIZE = Math.min(CALCULATED_TILE_SIZE, MAX_TILE_SIZE);
 
@@ -475,9 +475,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   tileGradient: {
-    width: TILE_SIZE - 8,
-    height: TILE_SIZE - 8,
-    borderRadius: 24,
+    width: TILE_SIZE - 12, // Smaller box, same icon
+    height: TILE_SIZE - 12, // Smaller box, same icon
+    borderRadius: 20, // Adjusted for smaller box
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
