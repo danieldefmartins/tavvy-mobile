@@ -43,6 +43,16 @@ const DEBUG_PLACES = false;
 
 const MAP_PEEK_HEIGHT = height * 0.22;
 
+// ============================================
+// BOTTOM SHEET LAYOUT CONSTRAINTS (LOCKED)
+// ============================================
+// These values ensure the bottom sheet NEVER overlaps the fixed header elements
+// Fixed header includes: search bar, category chips, and "Search this area" button
+// This is a PERMANENT constraint - DO NOT change without explicit approval
+const FIXED_HEADER_HEIGHT = Platform.OS === 'ios' ? 220 : 180; // Height of search + filters + button area
+const BOTTOM_SHEET_MAX_HEIGHT = height - FIXED_HEADER_HEIGHT; // Maximum height bottom sheet can expand to
+const BOTTOM_SHEET_MAX_SNAP = Math.min(BOTTOM_SHEET_MAX_HEIGHT, height * 0.72); // Cap at 72% or below header
+
 // Map Styles Configuration
 const MAP_STYLES = {
   osm: {
@@ -2899,7 +2909,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <BottomSheet
           ref={bottomSheetRef}
           index={1}
-          snapPoints={searchedAddress ? [40, '40%', '60%'] : (selectedPlace ? [40, '45%', '60%'] : [40, '35%', '60%'])}
+          snapPoints={searchedAddress ? [40, '40%', BOTTOM_SHEET_MAX_SNAP] : (selectedPlace ? [40, '45%', BOTTOM_SHEET_MAX_SNAP] : [40, '35%', BOTTOM_SHEET_MAX_SNAP])}
           backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
           handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
           enablePanDownToClose={false}
@@ -2940,7 +2950,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <BottomSheet
           ref={categoryBottomSheetRef}
           index={1}
-          snapPoints={['15%', '45%', '60%']}
+          snapPoints={['15%', '45%', BOTTOM_SHEET_MAX_SNAP]}
           backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
           handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
           enablePanDownToClose={false}
