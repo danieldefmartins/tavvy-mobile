@@ -1,8 +1,8 @@
 // ============================================================================
-// ARTICLE DETAIL SCREEN v2.1
+// ARTICLE DETAIL SCREEN v2.2
 // ============================================================================
 // Full article reading experience with block-based content
-// Features: Reading modes (Light/Sepia/Dark), Font size controls, Fixed header
+// Features: Reading modes (Light/Sepia/Dark), Incremental font size, Restore defaults
 // ============================================================================
 
 import React, { useEffect, useState } from 'react';
@@ -48,11 +48,12 @@ const TEAL_PRIMARY = '#0D9488';
 const TEAL_LIGHT = '#5EEAD4';
 
 // Reading Mode Color Schemes (research-based for eye comfort)
+// Dark mode now uses same bright text color as title for better readability
 const READING_MODES = {
   light: {
     background: '#FAFAFA',
     text: '#1F2937',
-    secondaryText: '#4B5563',
+    secondaryText: '#374151',
     metaText: '#6B7280',
     divider: '#E5E7EB',
     cardBg: '#FFFFFF',
@@ -61,7 +62,7 @@ const READING_MODES = {
   sepia: {
     background: '#FBF5E6',
     text: '#5C4B37',
-    secondaryText: '#7A6B5A',
+    secondaryText: '#6B5A48',
     metaText: '#8B7B6B',
     divider: '#E8DCC8',
     cardBg: '#F5EFE0',
@@ -69,42 +70,23 @@ const READING_MODES = {
   },
   dark: {
     background: '#1A1A2E',
-    text: '#E8E6E3',
-    secondaryText: '#B8B5B0',
-    metaText: '#9A9790',
+    text: '#F5F5F5',           // Bright white for titles AND body text
+    secondaryText: '#E8E6E3',   // Slightly softer for secondary
+    metaText: '#B8B5B0',        // Lighter meta text
     divider: '#2D2D44',
     cardBg: '#252540',
     statusBar: 'light-content' as const,
   },
 };
 
-// Font Size Options
-const FONT_SIZES = {
-  small: {
-    title: 22,
-    body: 14,
-    meta: 11,
-    excerpt: 15,
-    lineHeight: 22,
-  },
-  medium: {
-    title: 26,
-    body: 16,
-    meta: 13,
-    excerpt: 17,
-    lineHeight: 26,
-  },
-  large: {
-    title: 30,
-    body: 19,
-    meta: 14,
-    excerpt: 19,
-    lineHeight: 30,
-  },
-};
+// Default reading settings
+const DEFAULT_READING_MODE: ReadingMode = 'light';
+const DEFAULT_FONT_SIZE = 16;
+const MIN_FONT_SIZE = 12;
+const MAX_FONT_SIZE = 28;
+const FONT_SIZE_STEP = 2;
 
 type ReadingMode = 'light' | 'sepia' | 'dark';
-type FontSize = 'small' | 'medium' | 'large';
 
 // Placeholder images
 const PLACEHOLDER_AVATAR = 'https://via.placeholder.com/100';
@@ -117,6 +99,15 @@ interface ExtendedAtlasArticle extends AtlasArticle {
   author_bio?: string;
   cover_image_caption?: string;
 }
+
+// Calculate font sizes based on body font size
+const getFontSizes = (bodySize: number) => ({
+  title: bodySize + 10,
+  body: bodySize,
+  meta: Math.max(11, bodySize - 3),
+  excerpt: bodySize + 1,
+  lineHeight: bodySize + 10,
+});
 
 export default function ArticleDetailScreen() {
   const navigation = useNavigation();
@@ -133,14 +124,17 @@ export default function ArticleDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   
-  // Reading preferences
-  const [readingMode, setReadingMode] = useState<ReadingMode>('light');
-  const [fontSize, setFontSize] = useState<FontSize>('medium');
+  // Reading preferences - now with numeric font size
+  const [readingMode, setReadingMode] = useState<ReadingMode>(DEFAULT_READING_MODE);
+  const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Get current theme colors based on reading mode
   const colors = READING_MODES[readingMode];
-  const fontSizes = FONT_SIZES[fontSize];
+  const fontSizes = getFontSizes(fontSize);
+
+  // Check if settings have been modified from defaults
+  const isModified = readingMode !== DEFAULT_READING_MODE || fontSize !== DEFAULT_FONT_SIZE;
 
   useEffect(() => {
     loadFullArticle();
@@ -298,6 +292,24 @@ export default function ArticleDetailScreen() {
     }
   };
 
+  // Font size controls
+  const increaseFontSize = () => {
+    if (fontSize < MAX_FONT_SIZE) {
+      setFontSize(prev => Math.min(prev + FONT_SIZE_STEP, MAX_FONT_SIZE));
+    }
+  };
+
+  const decreaseFontSize = () => {
+    if (fontSize > MIN_FONT_SIZE) {
+      setFontSize(prev => Math.max(prev - FONT_SIZE_STEP, MIN_FONT_SIZE));
+    }
+  };
+
+  const restoreDefaults = () => {
+    setReadingMode(DEFAULT_READING_MODE);
+    setFontSize(DEFAULT_FONT_SIZE);
+  };
+
   const formatNumber = (num: number): string => {
     if (num >= 1000) {
       return `${(num / 1000).toFixed(1)}k`;
@@ -347,7 +359,11 @@ export default function ArticleDetailScreen() {
         activeOpacity={1}
         onPress={() => setShowSettingsModal(false)}
       >
-        <View style={[styles.modalContent, { backgroundColor: colors.cardBg }]}>
+        <TouchableOpacity 
+          activeOpacity={1} 
+          style={[styles.modalContent, { backgroundColor: colors.cardBg }]}
+          onPress={(e) => e.stopPropagation()}
+        >
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>Reading Settings</Text>
             <TouchableOpacity onPress={() => setShowSettingsModal(false)}>
@@ -390,44 +406,70 @@ export default function ArticleDetailScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Font Size Selection */}
-          <Text style={[styles.settingLabel, { color: colors.secondaryText, marginTop: 20 }]}>Font Size</Text>
-          <View style={styles.fontSizeOptions}>
+          {/* Font Size Controls - Incremental */}
+          <Text style={[styles.settingLabel, { color: colors.secondaryText, marginTop: 24 }]}>Font Size</Text>
+          <View style={styles.fontSizeControls}>
             <TouchableOpacity
               style={[
-                styles.fontSizeButton,
-                { backgroundColor: colors.background, borderColor: fontSize === 'small' ? TEAL_PRIMARY : colors.divider },
-                fontSize === 'small' && styles.fontSizeButtonSelected,
+                styles.fontSizeControlButton,
+                { backgroundColor: colors.background, borderColor: colors.divider },
+                fontSize <= MIN_FONT_SIZE && styles.fontSizeControlButtonDisabled,
               ]}
-              onPress={() => setFontSize('small')}
+              onPress={decreaseFontSize}
+              disabled={fontSize <= MIN_FONT_SIZE}
             >
-              <Text style={[styles.fontSizeSmall, { color: colors.text }]}>A</Text>
-              <Text style={[styles.fontSizeLabel, { color: colors.metaText }]}>Small</Text>
+              <Text style={[
+                styles.fontSizeControlText, 
+                { color: fontSize <= MIN_FONT_SIZE ? colors.metaText : colors.text }
+              ]}>
+                A-
+              </Text>
             </TouchableOpacity>
+            
+            <View style={styles.fontSizeDisplay}>
+              <Text style={[styles.fontSizeValue, { color: colors.text }]}>{fontSize}px</Text>
+              <Text style={[styles.fontSizeHint, { color: colors.metaText }]}>
+                {fontSize === DEFAULT_FONT_SIZE ? 'Default' : fontSize < DEFAULT_FONT_SIZE ? 'Smaller' : 'Larger'}
+              </Text>
+            </View>
+            
             <TouchableOpacity
               style={[
-                styles.fontSizeButton,
-                { backgroundColor: colors.background, borderColor: fontSize === 'medium' ? TEAL_PRIMARY : colors.divider },
-                fontSize === 'medium' && styles.fontSizeButtonSelected,
+                styles.fontSizeControlButton,
+                { backgroundColor: colors.background, borderColor: colors.divider },
+                fontSize >= MAX_FONT_SIZE && styles.fontSizeControlButtonDisabled,
               ]}
-              onPress={() => setFontSize('medium')}
+              onPress={increaseFontSize}
+              disabled={fontSize >= MAX_FONT_SIZE}
             >
-              <Text style={[styles.fontSizeMedium, { color: colors.text }]}>A</Text>
-              <Text style={[styles.fontSizeLabel, { color: colors.metaText }]}>Medium</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.fontSizeButton,
-                { backgroundColor: colors.background, borderColor: fontSize === 'large' ? TEAL_PRIMARY : colors.divider },
-                fontSize === 'large' && styles.fontSizeButtonSelected,
-              ]}
-              onPress={() => setFontSize('large')}
-            >
-              <Text style={[styles.fontSizeLarge, { color: colors.text }]}>A</Text>
-              <Text style={[styles.fontSizeLabel, { color: colors.metaText }]}>Large</Text>
+              <Text style={[
+                styles.fontSizeControlText, 
+                styles.fontSizeControlTextLarge,
+                { color: fontSize >= MAX_FONT_SIZE ? colors.metaText : colors.text }
+              ]}>
+                A+
+              </Text>
             </TouchableOpacity>
           </View>
-        </View>
+
+          {/* Preview Text */}
+          <View style={[styles.previewContainer, { backgroundColor: colors.background, borderColor: colors.divider }]}>
+            <Text style={[styles.previewText, { color: colors.text, fontSize: fontSize, lineHeight: fontSize + 10 }]}>
+              Preview: The quick brown fox jumps over the lazy dog.
+            </Text>
+          </View>
+
+          {/* Restore Defaults Button */}
+          {isModified && (
+            <TouchableOpacity
+              style={styles.restoreButton}
+              onPress={restoreDefaults}
+            >
+              <Ionicons name="refresh" size={18} color={TEAL_PRIMARY} />
+              <Text style={styles.restoreButtonText}>Restore Original Settings</Text>
+            </TouchableOpacity>
+          )}
+        </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
   );
@@ -911,37 +953,71 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  fontSizeOptions: {
+
+  // Font Size Controls - New incremental style
+  fontSizeControls: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
   },
-  fontSizeButton: {
-    flex: 1,
-    paddingVertical: 16,
+  fontSizeControlButton: {
+    width: 60,
+    height: 60,
     borderRadius: 12,
     borderWidth: 2,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  fontSizeButtonSelected: {
-    borderWidth: 3,
-    borderColor: TEAL_PRIMARY,
+  fontSizeControlButtonDisabled: {
+    opacity: 0.4,
   },
-  fontSizeSmall: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  fontSizeMedium: {
+  fontSizeControlText: {
     fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
+    fontWeight: '700',
   },
-  fontSizeLarge: {
+  fontSizeControlTextLarge: {
     fontSize: 22,
-    fontWeight: '600',
-    marginBottom: 4,
   },
-  fontSizeLabel: {
-    fontSize: 11,
+  fontSizeDisplay: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  fontSizeValue: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  fontSizeHint: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+
+  // Preview
+  previewContainer: {
+    marginTop: 20,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  previewText: {
+    textAlign: 'center',
+  },
+
+  // Restore button
+  restoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: TEAL_PRIMARY,
+    gap: 8,
+  },
+  restoreButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: TEAL_PRIMARY,
   },
 });
