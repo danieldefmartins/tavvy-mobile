@@ -30,13 +30,12 @@ interface RouteParams {
 }
 
 interface Place {
-  fsq_id: string;
+  fsq_place_id: string;
   name: string;
-  category: string;
-  cover_image_url?: string;
-  city?: string;
-  state_region?: string;
-  address_line1?: string;
+  fsq_category_labels?: string;
+  locality?: string;
+  region?: string;
+  address?: string;
   story_count?: number;
 }
 
@@ -84,8 +83,8 @@ export default function QuickFindResultsScreen() {
         // If no places with matching story tags, search by category/name
         const { data: fallbackPlaces, error: fallbackError } = await supabase
           .from('fsq_places_raw')
-          .select('fsq_id, name, category, cover_image_url, city, state_region, address_line1')
-          .or(tags.map(tag => `name.ilike.%${tag}%,category.ilike.%${tag}%`).join(','))
+          .select('fsq_place_id, name, fsq_category_labels, locality, region, address')
+          .or(tags.map(tag => `name.ilike.%${tag}%,fsq_category_labels.ilike.%${tag}%`).join(','))
           .limit(20);
 
         if (fallbackError) throw fallbackError;
@@ -97,15 +96,15 @@ export default function QuickFindResultsScreen() {
       // Fetch place details
       const { data: placeDetails, error: placeError } = await supabase
         .from('fsq_places_raw')
-        .select('fsq_id, name, category, cover_image_url, city, state_region, address_line1')
-        .in('fsq_id', placeIds);
+        .select('fsq_place_id, name, fsq_category_labels, locality, region, address')
+        .in('fsq_place_id', placeIds);
 
       if (placeError) throw placeError;
 
       // Merge with story counts and sort by count
       const mergedPlaces = placeDetails?.map(place => ({
         ...place,
-        story_count: placeCounts.get(place.fsq_id) || 0,
+        story_count: placeCounts.get(place.fsq_place_id) || 0,
       })).sort((a, b) => (b.story_count || 0) - (a.story_count || 0)) || [];
 
       setPlaces(mergedPlaces);
@@ -118,7 +117,7 @@ export default function QuickFindResultsScreen() {
   };
 
   const handlePlacePress = (place: Place) => {
-    (navigation as any).navigate('PlaceDetails', { placeId: place.fsq_id });
+    (navigation as any).navigate('PlaceDetails', { placeId: place.fsq_place_id });
   };
 
   const extractCategory = (category?: string): string => {
@@ -134,8 +133,8 @@ export default function QuickFindResultsScreen() {
       activeOpacity={0.8}
     >
       <View style={styles.imageContainer}>
-        {item.cover_image_url ? (
-          <Image source={{ uri: item.cover_image_url }} style={styles.placeImage} />
+        {false ? (
+          <Image source={{ uri: '' }} style={styles.placeImage} />
         ) : (
           <View style={[styles.placeholderImage, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]}>
             <Ionicons name="business" size={32} color={isDark ? '#6B7280' : '#9CA3AF'} />
@@ -153,11 +152,11 @@ export default function QuickFindResultsScreen() {
           {item.name}
         </Text>
         <Text style={[styles.placeCategory, { color: isDark ? theme.textSecondary : '#6B7280' }]}>
-          {extractCategory(item.category)}
+          {extractCategory(item.fsq_category_labels)}
         </Text>
-        {item.city && (
+        {item.locality && (
           <Text style={[styles.placeLocation, { color: isDark ? theme.textSecondary : '#9CA3AF' }]} numberOfLines={1}>
-            {item.city}{item.state_region ? `, ${item.state_region}` : ''}
+            {item.locality}{item.region ? `, ${item.region}` : ''}
           </Text>
         )}
       </View>
@@ -275,7 +274,7 @@ export default function QuickFindResultsScreen() {
         <FlatList
           data={places}
           renderItem={renderPlace}
-          keyExtractor={(item) => item.fsq_id}
+          keyExtractor={(item) => item.fsq_place_id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />

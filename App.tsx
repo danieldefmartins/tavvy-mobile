@@ -229,6 +229,9 @@ function AppsStack() {
       <MenuStackNav.Screen name="Settings" component={SettingsScreen} />
       <MenuStackNav.Screen name="HelpSupport" component={HelpSupportScreen} />
       
+      {/* Happening Now - accessible from Apps */}
+      <MenuStackNav.Screen name="HappeningNow" component={HappeningNowScreen} />
+      
       {/* Admin Screens */}
       <MenuStackNav.Screen name="StoryModeration" component={StoryModerationScreen} />
       <MenuStackNav.Screen name="StoryAnalytics" component={StoryAnalyticsScreen} />
