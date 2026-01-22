@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { getQuickFindPresets, QuickFindPreset } from '../lib/storyService';
-import { trackDiscoveryEvent } from '../lib/analyticsService';
+import { trackQuickFindTap } from '../lib/analyticsService';
 
 interface QuickFindsProps {
   onPresetPress?: (preset: QuickFindPreset) => void;
@@ -48,11 +48,7 @@ export const QuickFinds: React.FC<QuickFindsProps> = ({ onPresetPress }) => {
     
     // Track the tap event
     try {
-      await trackDiscoveryEvent('quick_find_tap', {
-        preset_slug: preset.slug,
-        preset_label: preset.label,
-        tags: preset.tags,
-      });
+      await trackQuickFindTap(preset.slug, preset.tags);
     } catch (error) {
       console.error('Error tracking quick find tap:', error);
     }

@@ -21,7 +21,7 @@ import { useNavigation } from '@react-navigation/native';
 import { getHappeningNowPlaces } from '../lib/storyService';
 import { supabase } from '../lib/supabaseClient';
 import { StoryRing, StoryRingState } from './StoryRing';
-import { trackDiscoveryEvent } from '../lib/analyticsService';
+import { trackHappeningNowTap, trackStoryRingTap } from '../lib/analyticsService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.7;
@@ -218,11 +218,7 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
   const handlePlacePress = async (place: HappeningPlace) => {
     // Track the tap event
     try {
-      await trackDiscoveryEvent('happening_now_tap', {
-        place_id: place.place_id,
-        place_name: place.name,
-        happening_score: place.happening_score,
-      });
+      await trackHappeningNowTap(place.place_id, place.happening_score);
     } catch (error) {
       console.error('Error tracking happening now tap:', error);
     }
@@ -237,11 +233,7 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
   const handleStoryPress = async (place: HappeningPlace) => {
     // Track the tap event
     try {
-      await trackDiscoveryEvent('story_ring_tap', {
-        place_id: place.place_id,
-        place_name: place.name,
-        source: 'happening_now',
-      });
+      await trackStoryRingTap(place.place_id);
     } catch (error) {
       console.error('Error tracking story ring tap:', error);
     }
