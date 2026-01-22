@@ -2425,7 +2425,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               
               <TouchableOpacity 
                 style={styles.learnMoreButton}
-                onPress={() => navigation.navigate('Apps', { screen: 'About' })}
+                onPress={() => Linking.openURL('https://tavvy.com/about-us')}
               >
                 <Text style={styles.learnMoreText}>Learn More About Tavvy</Text>
                 <Ionicons name="arrow-forward" size={16} color="#0A84FF" />
