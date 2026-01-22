@@ -182,17 +182,22 @@ const HeadingBlockComponent: React.FC<{ block: HeadingBlock }> = ({ block }) => 
     3: styles.heading3,
   };
 
+  // Support both 'text' and 'content' field names for compatibility
+  const textContent = block.text || (block as any).content || '';
+
   return (
     <Text style={[styles.headingBase, headingStyles[block.level]]}>
-      {block.text}
+      {textContent}
     </Text>
   );
 };
-
 // Paragraph Block
 const ParagraphBlockComponent: React.FC<{ block: ParagraphBlock }> = ({ block }) => {
   // Simple markdown-like parsing for bold and italic
   const renderText = (text: string) => {
+    // Handle undefined/null text
+    if (!text) return null;
+    
     // Replace **bold** with bold text
     const parts = text.split(/(\*\*[^*]+\*\*)/g);
     return parts.map((part, index) => {
@@ -207,9 +212,12 @@ const ParagraphBlockComponent: React.FC<{ block: ParagraphBlock }> = ({ block })
     });
   };
 
+  // Support both 'text' and 'content' field names for compatibility
+  const textContent = block.text || (block as any).content || '';
+
   return (
     <Text style={styles.paragraph}>
-      {renderText(block.text)}
+      {renderText(textContent)}
     </Text>
   );
 };
@@ -460,7 +468,7 @@ const CalloutBlockComponent: React.FC<{ block: CalloutBlock }> = ({ block }) => 
           </Text>
         )}
       </View>
-      <Text style={styles.calloutText}>{block.text}</Text>
+      <Text style={styles.calloutText}>{block.text || (block as any).content || ''}</Text>
     </View>
   );
 };
@@ -520,10 +528,13 @@ const ChecklistBlockComponent: React.FC<{ block: ChecklistBlock }> = ({ block })
 
 // Quote Block
 const QuoteBlockComponent: React.FC<{ block: QuoteBlock }> = ({ block }) => {
+  // Support both 'text' and 'content' field names for compatibility
+  const textContent = block.text || (block as any).content || '';
+  
   return (
     <View style={styles.quoteContainer}>
       <Ionicons name="chatbox-ellipses" size={24} color={TEAL_PRIMARY} style={styles.quoteIcon} />
-      <Text style={styles.quoteText}>"{block.text}"</Text>
+      <Text style={styles.quoteText}>"{textContent}"</Text>
       {block.author && (
         <Text style={styles.quoteAuthor}>— {block.author}</Text>
       )}
@@ -586,6 +597,18 @@ export const ContentBlockRenderer: React.FC<ContentBlockRendererProps> = ({ bloc
         return <QuoteBlockComponent key={key} block={block as QuoteBlock} />;
       case 'divider':
         return <DividerBlockComponent key={key} />;
+      // Support for additional block types from article imports
+      case 'list':
+        // Handle generic 'list' type - map to bullet_list or numbered_list based on style
+        const listBlock = block as any;
+        if (listBlock.style === 'ordered') {
+          return <NumberedListBlockComponent key={key} block={{ type: 'numbered_list', items: listBlock.items || [] } as NumberedListBlock} />;
+        }
+        return <BulletListBlockComponent key={key} block={{ type: 'bullet_list', items: listBlock.items || [] } as BulletListBlock} />;
+      case 'tip_box':
+        // Handle tip_box as a callout with 'tip' style
+        const tipBlock = block as any;
+        return <CalloutBlockComponent key={key} block={{ type: 'callout', style: 'tip', title: tipBlock.title, text: tipBlock.content || tipBlock.text || '' } as CalloutBlock} />;
       default:
         console.warn(`Unknown block type: ${block.type}`);
         return null;
