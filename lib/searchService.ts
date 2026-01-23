@@ -150,7 +150,7 @@ export function clearSearchCache(): void {
  * Search for places by text query using hybrid strategy.
  * 
  * Strategy:
- * 1. Query `places_search` table first (full-text + trigram)
+ * 1. Query `places` table first (canonical places data)
  * 2. If results < threshold, query `fsq_places_raw` as fallback
  * 3. Deduplicate by source_id
  * 4. Return unified SearchResult[] format
@@ -177,44 +177,31 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
   let fallbackTriggered = false;
 
   // ============================================
-  // STEP 1: Query places_search table (optimized path)
+  // STEP 1: Query places table directly (canonical path)
   // ============================================
   try {
-    // Use ilike for simple matching (trigram index will help)
-    // For full-text search, we'd use: .textSearch('search_tsv', searchTerm)
+    // Use ilike for simple matching on name and city
     let searchQuery = supabase
-      .from('places_search')
-      .select('place_id, name, name_norm, city, region, category, subcategory, latitude, longitude')
-      .or(`name_norm.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
+      .from('places')
+      .select('id, name, city, region, tavvy_category, tavvy_subcategory, latitude, longitude, cover_image_url, address, phone, website, photos, status')
+      .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
+      .eq('status', 'active')
       .limit(limit);
 
     if (filters?.category) {
-      searchQuery = searchQuery.eq('category', filters.category);
+      searchQuery = searchQuery.eq('tavvy_category', filters.category);
     }
 
-    const { data: searchData, error: searchError } = await searchQuery;
+    const { data: placesData, error: searchError } = await searchQuery;
 
     if (searchError) {
-      console.warn('[searchService] Error querying places_search:', searchError);
-    } else if (searchData) {
-      // Fetch full place data for the matched place_ids
-      const placeIds = searchData.map(s => s.place_id);
-      
-      if (placeIds.length > 0) {
-        const { data: placesData, error: placesError } = await supabase
-          .from('places')
-          .select('*')
-          .in('id', placeIds);
-
-        if (!placesError && placesData) {
-          resultsFromPlacesSearch = placesData.map(p => transformToSearchResult(p, 'places', location));
-        }
-      }
-      
-      console.log(`[searchService] Found ${resultsFromPlacesSearch.length} results from places_search`);
+      console.warn('[searchService] Error querying places:', searchError);
+    } else if (placesData) {
+      resultsFromPlacesSearch = placesData.map(p => transformToSearchResult(p, 'places', location));
+      console.log(`[searchService] Found ${resultsFromPlacesSearch.length} results from places table`);
     }
   } catch (error) {
-    console.error('[searchService] Exception querying places_search:', error);
+    console.error('[searchService] Exception querying places:', error);
   }
 
   // ============================================
@@ -516,11 +503,12 @@ async function searchWithGeoBounds(
 
   // Search both sources in parallel with geo bounds
   const [placesResult, fsqResult] = await Promise.all([
-    // Search places_search table with geo bounds
+    // Search places table with geo bounds
     supabase
-      .from('places_search')
-      .select('place_id, name, city, region, category, latitude, longitude')
-      .or(`name_norm.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
+      .from('places')
+      .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, address')
+      .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
+      .eq('status', 'active')
       .gte('latitude', minLat)
       .lte('latitude', maxLat)
       .gte('longitude', minLng)
@@ -551,9 +539,10 @@ async function searchWithoutLocation(
 ): Promise<SearchResult[]> {
   const [placesResult, fsqResult] = await Promise.all([
     supabase
-      .from('places_search')
-      .select('place_id, name, city, region, category, latitude, longitude')
-      .or(`name_norm.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
+      .from('places')
+      .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, address')
+      .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
+      .eq('status', 'active')
       .limit(limit),
     supabase
       .from('fsq_places_raw')
@@ -578,22 +567,24 @@ function processSearchResults(
   const results: SearchResult[] = [];
   const seenNames = new Set<string>();
 
-  // Process places_search results first (higher priority)
+  // Process places results first (higher priority)
   if (placesData) {
     for (const s of placesData) {
       const nameKey = s.name.toLowerCase();
       if (!seenNames.has(nameKey)) {
         seenNames.add(nameKey);
         const result: SearchResult = {
-          id: s.place_id,
+          id: s.id,
           source: 'places' as PlaceSource,
-          source_id: s.place_id,
+          source_id: s.id,
           name: s.name,
           latitude: s.latitude,
           longitude: s.longitude,
           city: s.city,
           region: s.region,
-          category: s.category,
+          category: s.tavvy_category,
+          cover_image_url: s.cover_image_url,
+          address: s.address,
         };
         if (location && s.latitude && s.longitude) {
           result.distance = calculateDistance(
@@ -825,13 +816,15 @@ export async function prefetchNearbyPlaces(
   const startTime = Date.now();
 
   try {
+    // Use 'places' table (canonical) instead of 'places_search' which may not exist
     const { data, error } = await supabase
-      .from('places_search')
-      .select('place_id, name, city, region, category, latitude, longitude')
+      .from('places')
+      .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, address')
       .gte('latitude', minLat)
       .lte('latitude', maxLat)
       .gte('longitude', minLng)
       .lte('longitude', maxLng)
+      .eq('status', 'active')
       .limit(limit);
 
     if (error) {
@@ -840,15 +833,17 @@ export async function prefetchNearbyPlaces(
     }
 
     const results: SearchResult[] = (data || []).map(s => ({
-      id: s.place_id,
+      id: s.id,
       source: 'places' as PlaceSource,
-      source_id: s.place_id,
+      source_id: s.id,
       name: s.name,
       latitude: s.latitude,
       longitude: s.longitude,
       city: s.city,
       region: s.region,
-      category: s.category,
+      category: s.tavvy_category,
+      cover_image_url: s.cover_image_url,
+      address: s.address,
       distance: calculateDistance(latitude, longitude, s.latitude, s.longitude),
     }));
 

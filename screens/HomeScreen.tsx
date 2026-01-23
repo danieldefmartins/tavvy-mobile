@@ -2569,7 +2569,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // RENDER: STANDARD MODE (New Layout Design)
   // ============================================
 
-  const cardWidth = Math.min(320, width * 0.78);
+  // Standard card width for Trending Near You - matches HappeningNow and Explore Tavvy (70%)
+  const trendingCardWidth = width * 0.7;
+  const trendingCardHeight = 180;
 
   const renderStandardMode = () => (
     <SafeAreaView style={[styles.safe, { backgroundColor: isDark ? theme.background : BG }]}>
@@ -2694,14 +2696,16 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false} 
-              contentContainerStyle={styles.trendingScroll}
+              contentContainerStyle={{ paddingHorizontal: 18, gap: 12 }}
+              snapToInterval={trendingCardWidth + 12}
+              decelerationRate="fast"
             >
               {isLoadingTrending ? (
-                <View style={{ width: cardWidth, height: 200, justifyContent: 'center', alignItems: 'center' }}>
+                <View style={{ width: trendingCardWidth, height: trendingCardHeight, justifyContent: 'center', alignItems: 'center' }}>
                   <ActivityIndicator size="small" color={ACCENT} />
                 </View>
               ) : trendingItems.length === 0 && filteredPlaces.length === 0 ? (
-                <View style={{ width: cardWidth, height: 200, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? theme.surface : '#f5f5f5', borderRadius: 16, marginRight: 12 }}>
+                <View style={{ width: trendingCardWidth, height: trendingCardHeight, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? theme.surface : '#f5f5f5', borderRadius: 16, marginRight: 12 }}>
                   <Ionicons name="location-outline" size={32} color={isDark ? theme.textSecondary : '#999'} />
                   <Text style={{ color: isDark ? theme.textSecondary : '#666', marginTop: 8, fontSize: 14 }}>Discovering places...</Text>
                   <Text style={{ color: isDark ? theme.textSecondary : '#999', marginTop: 4, fontSize: 12 }}>Pull down to refresh</Text>
@@ -2726,40 +2730,53 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                     }
                   }}
                   activeOpacity={0.92}
-                  style={[styles.previewCard, { width: cardWidth, backgroundColor: isDark ? theme.surface : '#fff' }]}
+                  style={[styles.trendingCard, { width: trendingCardWidth, height: trendingCardHeight, backgroundColor: isDark ? theme.surface : '#1F2937' }]}
                 >
-                  {/* Image with overlay */}
+                  {/* Full-bleed Image with gradient overlay - matches HappeningNow style */}
                   <ImageBackground 
                     source={{ uri: item.image || getCategoryFallbackImage(item.category) }} 
-                    style={styles.previewImage} 
-                    imageStyle={styles.previewImageRadius}
+                    style={styles.trendingCardImage} 
+                    imageStyle={{ borderRadius: 16 }}
                   >
-                    <View style={styles.imageOverlay} />
-                    <Text style={styles.placeName} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    <Text style={styles.placeMeta} numberOfLines={1}>
-                      {item.category} • {item.subtitle || ''}
-                    </Text>
-                  </ImageBackground>
-
-                  {/* Type Badge */}
-                  <View style={[styles.actionsRow, { backgroundColor: isDark ? theme.surface : '#fff', justifyContent: 'center' }]}>
-                    <View style={{ 
-                      backgroundColor: item.type === 'pro' ? '#10B981' : 
-                        item.category === 'Restaurants' ? '#EF4444' : 
-                        item.category === 'Coffee Shops' ? '#8B5CF6' : '#3B82F6',
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 16,
-                    }}>
-                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
-                        {item.type === 'pro' ? '⭐ Pro' : 
-                          item.category === 'Restaurants' ? '🍽️ Restaurant' : 
-                          item.category === 'Coffee Shops' ? '☕ Coffee' : '📍 Place'}
-                      </Text>
+                    <LinearGradient
+                      colors={['transparent', 'rgba(0,0,0,0.85)']}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                    
+                    {/* Type Badge - top left */}
+                    <View style={styles.trendingTypeBadge}>
+                      <View style={{ 
+                        backgroundColor: item.type === 'pro' ? '#10B981' : 
+                          item.category === 'Restaurants' ? '#EF4444' : 
+                          item.category === 'Coffee Shops' ? '#8B5CF6' : '#3B82F6',
+                        paddingHorizontal: 10,
+                        paddingVertical: 4,
+                        borderRadius: 12,
+                      }}>
+                        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>
+                          {item.type === 'pro' ? '⭐ Pro' : 
+                            item.category === 'Restaurants' ? '🍽️' : 
+                            item.category === 'Coffee Shops' ? '☕' : '📍'}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
+                    
+                    {/* Content - bottom left */}
+                    <View style={styles.trendingCardContent}>
+                      <Text style={styles.trendingCardName} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      <View style={styles.trendingCardMeta}>
+                        <Text style={styles.trendingCardCategory}>{item.category}</Text>
+                        {item.subtitle && (
+                          <>
+                            <Text style={styles.trendingCardDot}>•</Text>
+                            <Text style={styles.trendingCardSubtitle}>{item.subtitle}</Text>
+                          </>
+                        )}
+                      </View>
+                    </View>
+                  </ImageBackground>
                 </TouchableOpacity>
               ))
               )}
@@ -4490,6 +4507,55 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 11,
     fontWeight: '600',
+  },
+
+  // Trending Near You Cards - 70% width, 180px height to match HappeningNow and Explore Tavvy
+  trendingCard: {
+    borderRadius: 16,
+    marginRight: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  trendingCardImage: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
+  trendingTypeBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+  },
+  trendingCardContent: {
+    padding: 12,
+  },
+  trendingCardName: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+    textAlign: 'left',
+  },
+  trendingCardMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  trendingCardCategory: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 12,
+  },
+  trendingCardDot: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginHorizontal: 6,
+    fontSize: 12,
+  },
+  trendingCardSubtitle: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 12,
   },
 
   // Did You Know
