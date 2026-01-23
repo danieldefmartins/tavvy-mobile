@@ -3433,43 +3433,147 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
           enablePanDownToClose={false}
         >
-          {/* Category Header */}
+          {/* Category Header - Google Maps Style */}
           <View style={[styles.categorySheetHeader, { backgroundColor: isDark ? theme.background : '#fff' }]}>
+            {/* Title Row with Close Button */}
             <View style={styles.categoryResultsTitleRow}>
               <Text style={[styles.categoryResultsTitle, { color: isDark ? theme.text : '#000' }]}>{selectedCategory}</Text>
-              <TouchableOpacity onPress={closeCategoryResults} style={styles.categoryResultsClose}>
-                <Ionicons name="close" size={24} color={isDark ? theme.text : '#000'} />
+              <TouchableOpacity 
+                onPress={closeCategoryResults} 
+                style={[styles.categoryResultsCloseBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}
+              >
+                <Ionicons name="close" size={20} color={isDark ? theme.text : '#000'} />
               </TouchableOpacity>
             </View>
             
-            {/* Quick Filter Chips */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickFiltersRow}>
+            {/* Filter Pills Row - Google Maps Style */}
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={styles.filterPillsRow}
+            >
+              {/* Filter Icon Button */}
               <TouchableOpacity 
-                style={[styles.filterChip, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}
+                style={[styles.filterPillIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA' }]}
                 onPress={() => setShowFilterModal(true)}
               >
-                <Ionicons name="options-outline" size={16} color={isDark ? theme.text : '#333'} />
+                <Ionicons name="options-outline" size={18} color={isDark ? theme.text : '#333'} />
               </TouchableOpacity>
+              
+              {/* Sort By Dropdown */}
               <TouchableOpacity 
                 style={[
-                  styles.filterChip, 
-                  { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' },
-                  activeFilters.hours === 'Open now' && styles.filterChipActive
+                  styles.filterPill, 
+                  { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA' },
+                  activeFilters.sortBy !== 'Distance' && styles.filterPillActive
+                ]}
+                onPress={() => setShowFilterModal(true)}
+              >
+                <Text style={[
+                  styles.filterPillText, 
+                  { color: isDark ? theme.text : '#333' },
+                  activeFilters.sortBy !== 'Distance' && styles.filterPillTextActive
+                ]}>
+                  Sort by
+                </Text>
+                <Ionicons 
+                  name="chevron-down" 
+                  size={14} 
+                  color={activeFilters.sortBy !== 'Distance' ? '#fff' : (isDark ? theme.text : '#333')} 
+                  style={{ marginLeft: 4 }}
+                />
+              </TouchableOpacity>
+              
+              {/* Open Now Toggle */}
+              <TouchableOpacity 
+                style={[
+                  styles.filterPill, 
+                  { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA' },
+                  activeFilters.hours === 'Open now' && styles.filterPillActive
                 ]}
                 onPress={() => setActiveFilters(prev => ({ ...prev, hours: prev.hours === 'Open now' ? 'Any' : 'Open now' }))}
               >
-                <Text style={[styles.filterChipText, { color: isDark ? theme.text : '#333' }]}>Open now</Text>
+                <Text style={[
+                  styles.filterPillText, 
+                  { color: isDark ? theme.text : '#333' },
+                  activeFilters.hours === 'Open now' && styles.filterPillTextActive
+                ]}>
+                  Open now
+                </Text>
               </TouchableOpacity>
+              
+              {/* Cuisine/Type Dropdown (for Restaurants/Cafes/Bars) */}
+              {['Restaurants', 'Cafes', 'Bars', 'Fast Food'].includes(selectedCategory) && (
+                <TouchableOpacity 
+                  style={[
+                    styles.filterPill, 
+                    { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA' },
+                    activeFilters.type !== 'Any' && styles.filterPillActive
+                  ]}
+                  onPress={() => setShowFilterModal(true)}
+                >
+                  <Text style={[
+                    styles.filterPillText, 
+                    { color: isDark ? theme.text : '#333' },
+                    activeFilters.type !== 'Any' && styles.filterPillTextActive
+                  ]}>
+                    {selectedCategory === 'Restaurants' ? 'Cuisine' : 'Type'}
+                  </Text>
+                  <Ionicons 
+                    name="chevron-down" 
+                    size={14} 
+                    color={activeFilters.type !== 'Any' ? '#fff' : (isDark ? theme.text : '#333')} 
+                    style={{ marginLeft: 4 }}
+                  />
+                </TouchableOpacity>
+              )}
+              
+              {/* Price Dropdown */}
               <TouchableOpacity 
                 style={[
-                  styles.filterChip, 
-                  { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' },
-                  activeFilters.priceMax < 100 && styles.filterChipActive
+                  styles.filterPill, 
+                  { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA' },
+                  activeFilters.price !== 'Any' && styles.filterPillActive
                 ]}
                 onPress={() => setShowFilterModal(true)}
               >
-                <Text style={[styles.filterChipText, { color: isDark ? theme.text : '#333' }]}>Price</Text>
-                <Ionicons name="chevron-down" size={14} color={isDark ? theme.text : '#333'} />
+                <Text style={[
+                  styles.filterPillText, 
+                  { color: isDark ? theme.text : '#333' },
+                  activeFilters.price !== 'Any' && styles.filterPillTextActive
+                ]}>
+                  Price
+                </Text>
+                <Ionicons 
+                  name="chevron-down" 
+                  size={14} 
+                  color={activeFilters.price !== 'Any' ? '#fff' : (isDark ? theme.text : '#333')} 
+                  style={{ marginLeft: 4 }}
+                />
+              </TouchableOpacity>
+              
+              {/* Distance Dropdown */}
+              <TouchableOpacity 
+                style={[
+                  styles.filterPill, 
+                  { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA' },
+                  activeFilters.distance !== 'Any' && styles.filterPillActive
+                ]}
+                onPress={() => setShowFilterModal(true)}
+              >
+                <Text style={[
+                  styles.filterPillText, 
+                  { color: isDark ? theme.text : '#333' },
+                  activeFilters.distance !== 'Any' && styles.filterPillTextActive
+                ]}>
+                  Distance
+                </Text>
+                <Ionicons 
+                  name="chevron-down" 
+                  size={14} 
+                  color={activeFilters.distance !== 'Any' ? '#fff' : (isDark ? theme.text : '#333')} 
+                  style={{ marginLeft: 4 }}
+                />
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -4898,11 +5002,54 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  categoryResultsCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   quickFiltersRow: {
     flexDirection: 'row',
     gap: 8,
     paddingRight: 20,
   },
+  // Google Maps Style Filter Pills
+  filterPillsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  filterPillIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  filterPillActive: {
+    backgroundColor: ACCENT,
+    borderColor: ACCENT,
+  },
+  filterPillText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  filterPillTextActive: {
+    color: '#fff',
+  },
+  // Legacy filter chip styles (keep for backwards compatibility)
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
