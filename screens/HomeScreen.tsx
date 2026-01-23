@@ -594,16 +594,16 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       console.log('Places with recent activity:', placesWithActivity.size);
       
       // Fetch places - ONLY Restaurants and Coffee Shops
-      // Must have address AND phone number
+      // Must have address AND phone number (tel column in fsq_places_raw)
       const { data: places, error: placesError } = await supabase
         .from('fsq_places_raw')
-        .select('fsq_place_id, name, address, locality, region, fsq_category_labels, latitude, longitude, phone')
+        .select('fsq_place_id, name, address, locality, region, fsq_category_labels, latitude, longitude, tel')
         .not('latitude', 'is', null)
         .not('longitude', 'is', null)
         .not('address', 'is', null)
         .neq('address', '')
-        .not('phone', 'is', null)
-        .neq('phone', '')
+        .not('tel', 'is', null)
+        .neq('tel', '')
         .or('fsq_category_labels.ilike.%restaurant%,fsq_category_labels.ilike.%dining%,fsq_category_labels.ilike.%food%,fsq_category_labels.ilike.%coffee%,fsq_category_labels.ilike.%cafe%,fsq_category_labels.ilike.%café%,fsq_category_labels.ilike.%tea house%')
         .limit(200);
       
@@ -2688,7 +2688,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111' }]}>Trending Near You</Text>
               <TouchableOpacity onPress={switchToMapMode} accessibilityLabel="Map view" accessibilityRole="button" activeOpacity={0.8}>
-                <Text style={[styles.seeAll, { color: ACCENT }]}>See All</Text>
+                <Text style={styles.seeAll}>See All</Text>
               </TouchableOpacity>
             </View>
 
@@ -2787,7 +2787,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>Explore Tavvy</Text>
                 <TouchableOpacity onPress={() => navigation.navigate('Apps')}>
-                  <Text style={[styles.seeAll, { color: ACCENT }]}>See All</Text>
+                  <Text style={styles.seeAll}>See All</Text>
                 </TouchableOpacity>
               </View>
               <Text style={[styles.exploreSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
@@ -2873,7 +2873,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <View style={styles.featureSectionHeader}>
                 <Text style={[styles.featureSectionTitle, { color: isDark ? theme.text : '#000' }]}>🏆 Top Contributors</Text>
                 <TouchableOpacity onPress={() => navigation.navigate('Profile', { screen: 'Leaderboard' })}>
-                  <Text style={styles.seeAllText}>See All</Text>
+                  <Text style={styles.seeAll}>See All</Text>
                 </TouchableOpacity>
               </View>
               <Text style={[styles.sectionSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
@@ -4270,6 +4270,7 @@ const styles = StyleSheet.create({
   seeAll: {
     fontSize: 15,
     fontWeight: '600',
+    color: '#0F8A8A', // ACCENT color - uniform across all sections
   },
 
   // Trending Scroll
