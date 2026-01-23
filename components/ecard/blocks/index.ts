@@ -7,9 +7,9 @@
 export { default as YouTubeBlockEditor } from './YouTubeBlockEditor';
 export { default as YouTubeBlockPreview } from './YouTubeBlockPreview';
 
-// Gallery Block (to be implemented)
-// export { default as GalleryBlockEditor } from './GalleryBlockEditor';
-// export { default as GalleryBlockPreview } from './GalleryBlockPreview';
+// Gallery Block
+export { default as GalleryBlockEditor } from './GalleryBlockEditor';
+export { default as GalleryBlockPreview } from './GalleryBlockPreview';
 
 // Testimonials Block (to be implemented)
 // export { default as TestimonialsBlockEditor } from './TestimonialsBlockEditor';

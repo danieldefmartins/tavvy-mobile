@@ -48,31 +48,40 @@
 - [ ] Drag to reorder featured socials
 - [ ] Add/remove from featured row
 
+### 6. Profile Photo Size Customization
+- [ ] **Allow users to increase profile photo size**
+- [ ] Size options: Small (100px), Medium (140px), Large (180px), Extra Large (220px)
+- [ ] Important for realtors and other pros who want prominent photos
+- [ ] Size selector in profile/appearance settings
+- [ ] Update mobile app preview to reflect size
+- [ ] Update web card to use custom size
+- [ ] Store preference in database (profile_photo_size column)
+
 ---
 
 ## 🟡 NEW BLOCK TYPES (Priority 2)
 
-### 6. YouTube Video Block
+### 7. YouTube Video Block
 - [ ] Create YouTube block type in config
 - [ ] Video URL input field
 - [ ] Thumbnail preview in editor
 - [ ] Embedded player on web card
 - [ ] Support for YouTube Shorts
 
-### 7. Gallery Block
+### 8. Gallery Block
 - [ ] Create Gallery block type
 - [ ] Multi-image upload (up to 10 images)
 - [ ] Grid layout preview
 - [ ] Lightbox view on web card
 - [ ] Image captions (optional)
 
-### 8. Testimonials Block
+### 9. Testimonials Block
 - [ ] Create Testimonials block type
 - [ ] Add testimonial: Name, text, rating (stars), photo (optional)
 - [ ] Carousel display on web card
 - [ ] Up to 10 testimonials
 
-### 9. Form Block
+### 10. Form Block
 - [ ] Create Form block type
 - [ ] Customizable fields: Name, Email, Phone, Message
 - [ ] Form submissions sent to card owner's email
@@ -83,7 +92,7 @@
 
 ## 🟢 PRO CREDENTIALS BLOCK (Priority 3)
 
-### 10. Credentials Block (Pro Section)
+### 11. Credentials Block (Pro Section)
 - [ ] Create Credentials block type
 - [ ] Fields:
   - [ ] Schedule/Book action button (link to booking URL)
@@ -99,7 +108,7 @@
 
 ## 🔵 TAVVY-EXCLUSIVE FEATURES (Priority 4)
 
-### 11. Save to Tavvy Wallet
+### 12. Save to Tavvy Wallet
 - [ ] **"Save to Wallet" button on web card**
 - [ ] Connect to existing Tavvy Wallet system
 - [ ] Customers can save favorite pros
@@ -107,14 +116,14 @@
 - [ ] Re-contact later functionality
 - [ ] Deep link to Tavvy app
 
-### 12. Review Request Button
+### 13. Review Request Button
 - [ ] **"Leave a Tavvy Review" button**
 - [ ] One-tap to open review form
 - [ ] Pre-filled with pro's info
 - [ ] Ties into Tavvy review system
 - [ ] Growth + trust builder
 
-### 13. Smart Follow-Up (Later Phase)
+### 14. Smart Follow-Up (Later Phase)
 - [ ] "Remind me in 6 months" option
 - [ ] "Contact again" button
 - [ ] Push notification integration
@@ -124,7 +133,7 @@
 
 ## 🟣 TEMPLATES (Priority 5)
 
-### 14. Add More Templates
+### 15. Add More Templates
 Based on reference images provided:
 
 - [ ] **Kids/Fun Template** - Colorful, playful, cartoon-style
@@ -159,7 +168,7 @@ Based on reference images provided:
   - Serif typography
   - Premium feel
 
-### 13. Template Categories
+### 16. Template Categories
 - [ ] Free Templates (6)
 - [ ] Pro Templates (6+)
 - [ ] Template preview in gallery
