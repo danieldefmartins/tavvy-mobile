@@ -515,11 +515,15 @@ export default function CreateDigitalCardScreen() {
       }
 
       // Prepare card data for database
+      // Note: template_id and color_scheme_id columns need to be added to database
+      // Run this SQL in Supabase:
+      // ALTER TABLE digital_cards ADD COLUMN IF NOT EXISTS template_id VARCHAR(50) DEFAULT 'classic-blue';
+      // ALTER TABLE digital_cards ADD COLUMN IF NOT EXISTS color_scheme_id VARCHAR(50) DEFAULT 'blue';
       const dbCardData = {
         user_id: user?.id || null,
         slug: slug,
-        template_id: cardData.templateId || 'classic-blue',
-        color_scheme_id: cardData.colorSchemeId || 'blue',
+        // template_id: cardData.templateId || 'classic-blue',  // Uncomment after adding column
+        // color_scheme_id: cardData.colorSchemeId || 'blue',   // Uncomment after adding column
         full_name: cardData.fullName,
         title: cardData.title,
         company: cardData.company,
