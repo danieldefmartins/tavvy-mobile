@@ -257,19 +257,18 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
     );
   }
 
-  if (places.length === 0) {
-    return null; // Don't show section if no happening places
-  }
+  // Per v1 spec: Never show empty states, always render section with placeholder
+  const showPlaceholder = places.length === 0;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.title}>🎯 What's Happening Now</Text>
-          <Text style={styles.subtitle}>Places with recent activity</Text>
+          <Text style={styles.title}>Happening Now</Text>
+          <Text style={styles.subtitle}>Time-sensitive experiences near you</Text>
         </View>
-        <TouchableOpacity style={styles.refreshButton} onPress={loadHappeningPlaces}>
-          <Ionicons name="refresh" size={18} color="#6B7280" />
+        <TouchableOpacity style={styles.seeAllButton} onPress={() => (navigation as any).navigate('HappeningNow')}>
+          <Text style={styles.seeAllText}>See all</Text>
         </TouchableOpacity>
       </View>
 
@@ -280,74 +279,100 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
         snapToInterval={CARD_WIDTH + 12}
         decelerationRate="fast"
       >
-        {places.map((place, index) => {
-          const activity = getActivityLevel(place.happening_score);
-          
-          return (
-            <TouchableOpacity
-              key={place.place_id}
-              style={styles.card}
-              onPress={() => handlePlacePress(place)}
-              activeOpacity={0.9}
-            >
-              {/* Background Image */}
-              <View style={styles.imageContainer}>
-                {place.cover_image_url ? (
-                  <Image
-                    source={{ uri: place.cover_image_url }}
-                    style={styles.backgroundImage}
-                  />
-                ) : (
-                  <View style={styles.placeholderImage}>
-                    <Ionicons name="business" size={40} color="#9CA3AF" />
-                  </View>
-                )}
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.8)']}
-                  style={styles.gradient}
-                />
+        {showPlaceholder ? (
+          // Placeholder cards when no data - per v1 spec, never show empty states
+          [
+            { id: 'placeholder-1', title: 'Events coming soon', subtitle: 'Tonight', icon: 'calendar-outline', color: '#8B5CF6' },
+            { id: 'placeholder-2', title: 'Live experiences', subtitle: 'This weekend', icon: 'flash-outline', color: '#F59E0B' },
+            { id: 'placeholder-3', title: 'Local happenings', subtitle: 'Near you', icon: 'location-outline', color: '#10B981' },
+          ].map((item) => (
+            <View key={item.id} style={styles.card}>
+              <View style={[styles.placeholderImage, { backgroundColor: item.color + '20' }]}>
+                <Ionicons name={item.icon as any} size={40} color={item.color} />
               </View>
-
-              {/* Activity Badge */}
-              <View style={[styles.activityBadge, { backgroundColor: activity.color }]}>
-                <Text style={styles.activityText}>{activity.label}</Text>
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.7)']}
+                style={styles.gradient}
+              />
+              <View style={[styles.activityBadge, { backgroundColor: item.color }]}>
+                <Text style={styles.activityText}>{item.subtitle}</Text>
               </View>
-
-              {/* Story Ring (if has stories) */}
-              {place.story_ring_state !== 'none' && (
-                <TouchableOpacity
-                  style={styles.storyRingContainer}
-                  onPress={() => handleStoryPress(place)}
-                >
-                  <StoryRing
-                    imageUrl={place.cover_image_url}
-                    size={48}
-                    state={place.story_ring_state || 'none'}
-                  />
-                </TouchableOpacity>
-              )}
-
-              {/* Content */}
               <View style={styles.content}>
-                <Text style={styles.placeName} numberOfLines={1}>
-                  {place.name}
-                </Text>
-                <View style={styles.metaRow}>
-                  <Text style={styles.category}>{place.category}</Text>
-                  {place.city && (
-                    <>
-                      <Text style={styles.dot}>•</Text>
-                      <Text style={styles.city}>{place.city}</Text>
-                    </>
-                  )}
-                </View>
-                <Text style={styles.lastActivity}>
-                  Last activity: {formatActivityTime(place.last_activity_at)}
-                </Text>
+                <Text style={styles.placeName}>{item.title}</Text>
+                <Text style={styles.placeholderSubtext}>Check back for updates</Text>
               </View>
-            </TouchableOpacity>
-          );
-        })}
+            </View>
+          ))
+        ) : (
+          places.map((place, index) => {
+            const activity = getActivityLevel(place.happening_score);
+            
+            return (
+              <TouchableOpacity
+                key={place.place_id}
+                style={styles.card}
+                onPress={() => handlePlacePress(place)}
+                activeOpacity={0.9}
+              >
+                {/* Background Image */}
+                <View style={styles.imageContainer}>
+                  {place.cover_image_url ? (
+                    <Image
+                      source={{ uri: place.cover_image_url }}
+                      style={styles.backgroundImage}
+                    />
+                  ) : (
+                    <View style={styles.placeholderImage}>
+                      <Ionicons name="business" size={40} color="#9CA3AF" />
+                    </View>
+                  )}
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.8)']}
+                    style={styles.gradient}
+                  />
+                </View>
+
+                {/* Time Context Badge */}
+                <View style={[styles.activityBadge, { backgroundColor: activity.color }]}>
+                  <Text style={styles.activityText}>{activity.label}</Text>
+                </View>
+
+                {/* Story Ring (if has stories) */}
+                {place.story_ring_state !== 'none' && (
+                  <TouchableOpacity
+                    style={styles.storyRingContainer}
+                    onPress={() => handleStoryPress(place)}
+                  >
+                    <StoryRing
+                      imageUrl={place.cover_image_url}
+                      size={48}
+                      state={place.story_ring_state || 'none'}
+                    />
+                  </TouchableOpacity>
+                )}
+
+                {/* Content */}
+                <View style={styles.content}>
+                  <Text style={styles.placeName} numberOfLines={1}>
+                    {place.name}
+                  </Text>
+                  <View style={styles.metaRow}>
+                    <Text style={styles.category}>{place.category}</Text>
+                    {place.city && (
+                      <>
+                        <Text style={styles.dot}>•</Text>
+                        <Text style={styles.city}>{place.city}</Text>
+                      </>
+                    )}
+                  </View>
+                  <Text style={styles.lastActivity}>
+                    {formatActivityTime(place.last_activity_at)}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
       </ScrollView>
     </View>
   );
@@ -384,6 +409,15 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     padding: 8,
+  },
+  seeAllButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0A84FF',
   },
   scrollContent: {
     paddingHorizontal: 12,
@@ -465,6 +499,11 @@ const styles = StyleSheet.create({
   lastActivity: {
     color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 11,
+  },
+  placeholderSubtext: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 12,
+    marginTop: 4,
   },
 });
 

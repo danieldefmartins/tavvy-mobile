@@ -640,100 +640,121 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   };
 
   /**
-   * Load Explore Tavvy items (Atlas article, Ride, Airport, Happening Now)
+   * Load Explore Tavvy items - Universes Preview
+   * Per v1 spec: Show Airports, Rides & Attractions, RV & Camping as large Universe cards
+   * Future-ready: Nightlife, Family, Shopping, Outdoors
    */
   const loadExploreItems = async () => {
     setIsLoadingExplore(true);
     try {
       const items: any[] = [];
       
-      // 1. Fetch a random Atlas article
-      const { data: atlasArticle } = await supabase
-        .from('atlas_articles')
-        .select('id, title, excerpt, featured_image_url, slug')
-        .eq('status', 'published')
-        .limit(10);
-      
-      if (atlasArticle && atlasArticle.length > 0) {
-        const randomArticle = atlasArticle[Math.floor(Math.random() * atlasArticle.length)];
-        items.push({
-          id: randomArticle.id,
-          type: 'atlas',
-          title: randomArticle.title,
-          subtitle: 'Atlas Article',
-          image: randomArticle.featured_image_url,
-          icon: 'book-outline',
-          color: '#10B981',
-          data: randomArticle,
-        });
-      }
-      
-      // 2. Fetch a nearby ride/attraction (theme park related places)
-      const { data: rides } = await supabase
-        .from('fsq_places_raw')
-        .select('fsq_place_id, name, address, locality, region, fsq_category_labels, latitude, longitude')
-        .or('fsq_category_labels.ilike.%theme park%,fsq_category_labels.ilike.%amusement%,fsq_category_labels.ilike.%attraction%,fsq_category_labels.ilike.%roller coaster%')
-        .limit(10);
-      
-      if (rides && rides.length > 0) {
-        const randomRide = rides[Math.floor(Math.random() * rides.length)];
-        items.push({
-          id: randomRide.fsq_place_id,
-          type: 'ride',
-          title: randomRide.name,
-          subtitle: randomRide.locality || 'Theme Park Ride',
-          image: null,
-          icon: 'rocket-outline',
-          color: '#8B5CF6',
-          data: randomRide,
-        });
-      }
-      
-      // 3. Fetch a nearby airport universe
+      // 1. Airports Universe
       const { data: airports } = await supabase
         .from('atlas_universes')
         .select('id, name, location, thumbnail_image_url, category_id')
         .eq('status', 'published')
-        .or('name.ilike.%airport%,name.ilike.%international%')
-        .limit(10);
+        .or('name.ilike.%airport%,name.ilike.%international%,category_id.eq.airports')
+        .limit(5);
       
       if (airports && airports.length > 0) {
         const randomAirport = airports[Math.floor(Math.random() * airports.length)];
         items.push({
           id: randomAirport.id,
           type: 'universe',
-          title: randomAirport.name,
-          subtitle: randomAirport.location || 'Airport Universe',
+          universeType: 'airports',
+          title: randomAirport.name || 'Airports',
+          subtitle: randomAirport.location || 'Explore terminals & lounges',
           image: randomAirport.thumbnail_image_url,
           icon: 'airplane-outline',
           color: '#3B82F6',
+          route: 'UniverseLanding',
           data: randomAirport,
+        });
+      } else {
+        // Placeholder if no airport data
+        items.push({
+          id: 'airports-placeholder',
+          type: 'universe',
+          universeType: 'airports',
+          title: 'Airports',
+          subtitle: 'Explore terminals & lounges',
+          image: null,
+          icon: 'airplane-outline',
+          color: '#3B82F6',
+          route: 'UniverseDiscovery',
+          isPlaceholder: true,
         });
       }
       
-      // 4. Fetch a happening now place (recent story or review)
-      const { data: happeningPlaces } = await supabase
-        .from('place_stories')
-        .select('place_id, fsq_places_raw!inner(fsq_place_id, name, locality, region)')
-        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-        .eq('moderation_status', 'active')
-        .limit(10);
+      // 2. Rides & Attractions Universe
+      const { data: rides } = await supabase
+        .from('fsq_places_raw')
+        .select('fsq_place_id, name, address, locality, region, fsq_category_labels, latitude, longitude')
+        .or('fsq_category_labels.ilike.%theme park%,fsq_category_labels.ilike.%amusement%,fsq_category_labels.ilike.%attraction%')
+        .limit(5);
       
-      if (happeningPlaces && happeningPlaces.length > 0) {
-        const randomHappening = happeningPlaces[Math.floor(Math.random() * happeningPlaces.length)];
-        const place = randomHappening.fsq_places_raw as any;
-        if (place) {
-          items.push({
-            id: place.fsq_place_id,
-            type: 'happening',
-            title: place.name,
-            subtitle: place.locality || 'Happening Now',
-            image: null,
-            icon: 'flash-outline',
-            color: '#F59E0B',
-            data: place,
-          });
-        }
+      if (rides && rides.length > 0) {
+        items.push({
+          id: 'rides-universe',
+          type: 'universe',
+          universeType: 'rides',
+          title: 'Rides & Attractions',
+          subtitle: `${rides.length}+ theme parks to explore`,
+          image: null,
+          icon: 'rocket-outline',
+          color: '#8B5CF6',
+          route: 'RidesBrowse',
+          data: { count: rides.length },
+        });
+      } else {
+        items.push({
+          id: 'rides-placeholder',
+          type: 'universe',
+          universeType: 'rides',
+          title: 'Rides & Attractions',
+          subtitle: 'Theme park experiences',
+          image: null,
+          icon: 'rocket-outline',
+          color: '#8B5CF6',
+          route: 'RidesBrowse',
+          isPlaceholder: true,
+        });
+      }
+      
+      // 3. RV & Camping Universe
+      const { data: camping } = await supabase
+        .from('fsq_places_raw')
+        .select('fsq_place_id, name, address, locality, region, fsq_category_labels, latitude, longitude')
+        .or('fsq_category_labels.ilike.%rv park%,fsq_category_labels.ilike.%campground%,fsq_category_labels.ilike.%camping%')
+        .limit(5);
+      
+      if (camping && camping.length > 0) {
+        items.push({
+          id: 'camping-universe',
+          type: 'universe',
+          universeType: 'camping',
+          title: 'RV & Camping',
+          subtitle: `${camping.length}+ campgrounds nearby`,
+          image: null,
+          icon: 'bonfire-outline',
+          color: '#10B981',
+          route: 'RVCampingBrowse',
+          data: { count: camping.length },
+        });
+      } else {
+        items.push({
+          id: 'camping-placeholder',
+          type: 'universe',
+          universeType: 'camping',
+          title: 'RV & Camping',
+          subtitle: 'Campgrounds & RV parks',
+          image: null,
+          icon: 'bonfire-outline',
+          color: '#10B981',
+          route: 'RVCampingBrowse',
+          isPlaceholder: true,
+        });
       }
       
       setExploreItems(items);
@@ -2641,7 +2662,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               )}
             </ScrollView>
 
-            {/* Explore Tavvy - Curated Content Cards */}
+            {/* Explore Tavvy - Universes Preview (v1 spec) */}
             <View style={styles.exploreSection}>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>Explore Tavvy</Text>
@@ -2649,29 +2670,33 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   <Text style={[styles.seeAll, { color: ACCENT }]}>See All</Text>
                 </TouchableOpacity>
               </View>
+              <Text style={[styles.exploreSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
+                Curated worlds of experiences
+              </Text>
               <ScrollView 
                 horizontal 
                 showsHorizontalScrollIndicator={false} 
                 contentContainerStyle={{ paddingRight: 18 }}
+                snapToInterval={width * 0.9}
+                decelerationRate="fast"
               >
                 {isLoadingExplore ? (
-                  <View style={{ width: 160, height: 140, justifyContent: 'center', alignItems: 'center' }}>
+                  <View style={{ width: width * 0.9 - 18, height: 180, justifyContent: 'center', alignItems: 'center' }}>
                     <ActivityIndicator size="small" color={ACCENT} />
                   </View>
-                ) : exploreItems.length > 0 ? (
+                ) : (
+                  // Universe cards - always show (with placeholders if no data per v1 spec)
                   exploreItems.map((item, index) => (
                     <TouchableOpacity
-                      key={`explore-${item.type}-${item.id}-${index}`}
+                      key={`explore-universe-${item.id}-${index}`}
                       style={[styles.exploreCard, { backgroundColor: isDark ? theme.surface : '#111827' }]}
                       onPress={() => {
-                        if (item.type === 'atlas') {
-                          navigation.navigate('AtlasArticle', { articleId: item.id, slug: item.data?.slug });
-                        } else if (item.type === 'ride') {
-                          navigation.navigate('PlaceDetails', { placeId: item.id });
-                        } else if (item.type === 'universe') {
-                          navigation.navigate('UniverseLanding', { universeId: item.id });
-                        } else if (item.type === 'happening') {
-                          navigation.navigate('PlaceDetails', { placeId: item.id });
+                        if (item.route) {
+                          if (item.route === 'UniverseLanding' && item.data?.id) {
+                            navigation.navigate('UniverseLanding', { universeId: item.data.id });
+                          } else {
+                            navigation.navigate(item.route as never);
+                          }
                         }
                       }}
                       activeOpacity={0.9}
@@ -2680,7 +2705,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                         <Image source={{ uri: item.image }} style={styles.exploreCardImage} />
                       ) : (
                         <View style={[styles.exploreCardImage, { backgroundColor: item.color, justifyContent: 'center', alignItems: 'center' }]}>
-                          <Ionicons name={item.icon} size={32} color="#fff" />
+                          <Ionicons name={item.icon} size={48} color="#fff" />
+                        </View>
+                      )}
+                      {/* Placeholder indicator */}
+                      {item.isPlaceholder && (
+                        <View style={styles.placeholderBadge}>
+                          <Text style={styles.placeholderBadgeText}>Coming Soon</Text>
                         </View>
                       )}
                       <View style={styles.exploreCardContent}>
@@ -2690,38 +2721,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                         <View style={styles.exploreCardMeta}>
                           <View style={[styles.exploreCardBadge, { backgroundColor: item.color }]}>
                             <Ionicons name={item.icon} size={12} color="#fff" />
-                          </View>
-                          <Text style={[styles.exploreCardSubtitle, { color: '#9CA3AF' }]} numberOfLines={1}>
-                            {item.subtitle}
-                          </Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  ))
-                ) : (
-                  // Fallback static cards when no data
-                  [
-                    { type: 'atlas', title: 'Atlas Articles', subtitle: 'Discover Stories', icon: 'book-outline', color: '#10B981', route: 'Atlas' },
-                    { type: 'ride', title: 'Rides & Attractions', subtitle: 'Theme Parks', icon: 'rocket-outline', color: '#8B5CF6', route: 'RidesBrowse' },
-                    { type: 'universe', title: 'Universes', subtitle: 'Airports & More', icon: 'airplane-outline', color: '#3B82F6', route: 'UniverseDiscovery' },
-                    { type: 'happening', title: 'Happening Now', subtitle: 'Live Events', icon: 'flash-outline', color: '#F59E0B', route: 'HappeningNow' },
-                  ].map((item, index) => (
-                    <TouchableOpacity
-                      key={`explore-static-${index}`}
-                      style={[styles.exploreCard, { backgroundColor: isDark ? theme.surface : '#111827' }]}
-                      onPress={() => navigation.navigate(item.route as never)}
-                      activeOpacity={0.9}
-                    >
-                      <View style={[styles.exploreCardImage, { backgroundColor: item.color, justifyContent: 'center', alignItems: 'center' }]}>
-                        <Ionicons name={item.icon as any} size={32} color="#fff" />
-                      </View>
-                      <View style={styles.exploreCardContent}>
-                        <Text style={[styles.exploreCardTitle, { color: '#E5E7EB' }]} numberOfLines={1}>
-                          {item.title}
-                        </Text>
-                        <View style={styles.exploreCardMeta}>
-                          <View style={[styles.exploreCardBadge, { backgroundColor: item.color }]}>
-                            <Ionicons name={item.icon as any} size={12} color="#fff" />
                           </View>
                           <Text style={[styles.exploreCardSubtitle, { color: '#9CA3AF' }]} numberOfLines={1}>
                             {item.subtitle}
@@ -2747,48 +2746,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   </Text>
                 </View>
               </View>
-            </View>
-
-            {/* ===== RIDES & ATTRACTIONS SECTION ===== */}
-            <View style={styles.sectionContainer}>
-              <View style={styles.featureSectionHeader}>
-                <Text style={[styles.featureSectionTitle, { color: isDark ? theme.text : '#000' }]}>🎢 Rides & Attractions</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('RidesBrowse')}>
-                  <Text style={styles.seeAllText}>See All</Text>
-                </TouchableOpacity>
-              </View>
-              <Text style={[styles.sectionSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
-                Theme park experiences reviewed by the community
-              </Text>
-              <TouchableOpacity
-                style={[styles.emptyFeatureCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-                onPress={() => navigation.navigate('RidesBrowse')}
-                activeOpacity={0.9}
-              >
-                <Ionicons name="rocket-outline" size={32} color={isDark ? theme.textSecondary : '#ccc'} />
-                <Text style={[styles.emptyFeatureText, { color: isDark ? theme.textSecondary : '#666' }]}>Explore rides & attractions</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* ===== RV & CAMPING SECTION ===== */}
-            <View style={styles.sectionContainer}>
-              <View style={styles.featureSectionHeader}>
-                <Text style={[styles.featureSectionTitle, { color: isDark ? theme.text : '#000' }]}>🏕️ RV & Camping</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('RVCampingBrowse')}>
-                  <Text style={styles.seeAllText}>See All</Text>
-                </TouchableOpacity>
-              </View>
-              <Text style={[styles.sectionSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
-                Campgrounds and RV parks with real traveler insights
-              </Text>
-              <TouchableOpacity
-                style={[styles.emptyFeatureCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-                onPress={() => navigation.navigate('RVCampingBrowse')}
-                activeOpacity={0.9}
-              >
-                <Ionicons name="bonfire-outline" size={32} color={isDark ? theme.textSecondary : '#ccc'} />
-                <Text style={[styles.emptyFeatureText, { color: isDark ? theme.textSecondary : '#666' }]}>Explore RV parks & campgrounds</Text>
-              </TouchableOpacity>
             </View>
 
             {/* ===== TOP CONTRIBUTORS SECTION ===== */}
@@ -4158,6 +4115,11 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 16,
   },
+  exploreSubtitle: {
+    fontSize: 14,
+    marginBottom: 12,
+    marginTop: -4,
+  },
   exploreGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -4220,6 +4182,20 @@ const styles = StyleSheet.create({
   exploreCardSubtitle: {
     fontSize: 14,
     flex: 1,
+  },
+  placeholderBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  placeholderBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
   },
 
   // Did You Know
