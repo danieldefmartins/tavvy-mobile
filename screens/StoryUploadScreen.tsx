@@ -27,7 +27,18 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Video, ResizeMode } from 'expo-av';
 import { supabase } from '../lib/supabaseClient';
-import { createStory, getQuickFindPresets, QuickFindPreset } from '../lib/storyService';
+import { 
+  createStory, 
+  getQuickFindPresets, 
+  QuickFindPreset,
+  createStoryWithLocation,
+  getCurrentLocation,
+  isWithinRadius,
+  canUserCreateStory,
+  canUserCreateStoryForPlace,
+  DEFAULT_RADIUS_METERS,
+  STORY_EXPIRY_HOURS,
+} from '../lib/storyService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MAX_VIDEO_DURATION = 15; // seconds
@@ -43,12 +54,23 @@ const SUGGESTED_TAGS = [
 interface RouteParams {
   placeId: string;
   placeName: string;
+  placeLatitude?: number;
+  placeLongitude?: number;
 }
 
 export default function StoryUploadScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { placeId, placeName } = (route.params as RouteParams) || {};
+  const { placeId, placeName, placeLatitude, placeLongitude } = (route.params as RouteParams) || {};
+
+  // Location gating state
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [isWithinRange, setIsWithinRange] = useState<boolean | null>(null);
+  const [distanceToPlace, setDistanceToPlace] = useState<number | null>(null);
+  const [canPost, setCanPost] = useState<boolean>(true);
+  const [canPostError, setCanPostError] = useState<string | null>(null);
+  const [checkingPermissions, setCheckingPermissions] = useState(true);
 
   // Camera state
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
@@ -79,7 +101,75 @@ export default function StoryUploadScreen() {
 
   useEffect(() => {
     loadPresets();
+    checkLocationAndPermissions();
   }, []);
+
+  // Check location gating and user permissions
+  const checkLocationAndPermissions = async () => {
+    setCheckingPermissions(true);
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setCanPost(false);
+        setCanPostError('You must be logged in to post stories');
+        setCheckingPermissions(false);
+        return;
+      }
+
+      // Check if user can create stories (not suspended, within limits)
+      const canCreateResult = await canUserCreateStory(user.id);
+      if (!canCreateResult.allowed) {
+        setCanPost(false);
+        setCanPostError(canCreateResult.reason || 'You cannot post stories at this time');
+        setCheckingPermissions(false);
+        return;
+      }
+
+      // Check place-specific rate limit
+      if (placeId) {
+        const canCreateForPlaceResult = await canUserCreateStoryForPlace(user.id, placeId);
+        if (!canCreateForPlaceResult.allowed) {
+          setCanPost(false);
+          setCanPostError(canCreateForPlaceResult.reason || 'Rate limit reached for this place');
+          setCheckingPermissions(false);
+          return;
+        }
+      }
+
+      // Get user's current location
+      const location = await getCurrentLocation();
+      if (!location) {
+        setLocationError('Could not get your location. Please enable location services.');
+        setCheckingPermissions(false);
+        return;
+      }
+      setUserLocation(location);
+
+      // Check if within range of place (if place coordinates provided)
+      if (placeLatitude && placeLongitude) {
+        const rangeCheck = isWithinRadius(
+          location.latitude,
+          location.longitude,
+          placeLatitude,
+          placeLongitude,
+          DEFAULT_RADIUS_METERS
+        );
+        setIsWithinRange(rangeCheck.withinRadius);
+        setDistanceToPlace(rangeCheck.distance);
+
+        if (!rangeCheck.withinRadius) {
+          setCanPost(false);
+          setCanPostError(`You must be within ${DEFAULT_RADIUS_METERS}m of ${placeName} to post a story. You are ${rangeCheck.distance}m away.`);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking permissions:', error);
+      setLocationError('Error checking your location');
+    } finally {
+      setCheckingPermissions(false);
+    }
+  };
 
   const loadPresets = async () => {
     const data = await getQuickFindPresets();
@@ -233,6 +323,18 @@ export default function StoryUploadScreen() {
       return;
     }
 
+    // Check if user can post (location gating, suspension, rate limits)
+    if (!canPost) {
+      Alert.alert('Cannot Post', canPostError || 'You cannot post stories at this time');
+      return;
+    }
+
+    // Verify location one more time before upload
+    if (!userLocation) {
+      Alert.alert('Location Required', 'Please enable location services to post stories');
+      return;
+    }
+
     setIsUploading(true);
     setUploadProgress(0);
 
@@ -277,24 +379,45 @@ export default function StoryUploadScreen() {
 
       setUploadProgress(80);
 
-      // Create story record
-      const story = await createStory({
-        place_id: placeId,
-        user_id: user.id,
-        media_url: publicUrl,
-        media_type: mediaType,
-        thumbnail_url: mediaType === 'video' ? thumbnailUri : publicUrl,
-        caption: caption.trim() || undefined,
-        tags: selectedTags.length > 0 ? selectedTags : undefined,
-        duration_seconds: mediaType === 'video' ? recordingDuration : undefined,
-      });
+      // Create story record with location validation
+      let storyResult;
+      
+      // Use location-gated creation if place coordinates are available
+      if (placeLatitude && placeLongitude && userLocation) {
+        storyResult = await createStoryWithLocation({
+          place_id: placeId,
+          user_id: user.id,
+          media_url: publicUrl,
+          media_type: mediaType,
+          thumbnail_url: mediaType === 'video' ? thumbnailUri || undefined : publicUrl,
+          caption: caption.trim() || undefined,
+          tags: selectedTags.length > 0 ? selectedTags : undefined,
+          userLocation: userLocation,
+          placeLocation: {
+            latitude: placeLatitude,
+            longitude: placeLongitude,
+          },
+        });
+      } else {
+        // Fallback to regular creation (for places without coordinates)
+        const story = await createStory({
+          place_id: placeId,
+          user_id: user.id,
+          media_url: publicUrl,
+          media_type: mediaType,
+          thumbnail_url: mediaType === 'video' ? thumbnailUri : publicUrl,
+          caption: caption.trim() || undefined,
+          tags: selectedTags.length > 0 ? selectedTags : undefined,
+        });
+        storyResult = story ? { success: true, story } : { success: false, error: 'Failed to create story' };
+      }
 
       setUploadProgress(100);
 
-      if (story) {
+      if (storyResult.success) {
         Alert.alert(
           'Success!',
-          'Your story has been uploaded and is pending review.',
+          `Your story has been uploaded! It will be visible for ${STORY_EXPIRY_HOURS / 24} days.`,
           [
             {
               text: 'OK',
@@ -303,7 +426,7 @@ export default function StoryUploadScreen() {
           ]
         );
       } else {
-        throw new Error('Failed to create story record');
+        throw new Error(storyResult.error || 'Failed to create story record');
       }
     } catch (error) {
       console.error('Error uploading story:', error);
@@ -326,6 +449,49 @@ export default function StoryUploadScreen() {
 
   // Render camera view
   const renderCamera = () => {
+    // Show loading while checking permissions
+    if (checkingPermissions) {
+      return (
+        <View style={styles.permissionContainer}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={styles.permissionTitle}>Checking permissions...</Text>
+          <Text style={styles.permissionText}>
+            Verifying your location and account status.
+          </Text>
+        </View>
+      );
+    }
+
+    // Show error if user cannot post (suspended, rate limited, or out of range)
+    if (!canPost || locationError) {
+      return (
+        <View style={styles.permissionContainer}>
+          <Ionicons name="location-outline" size={64} color="#EF4444" />
+          <Text style={styles.permissionTitle}>Cannot Post Story</Text>
+          <Text style={styles.permissionText}>
+            {canPostError || locationError || 'You cannot post stories at this time.'}
+          </Text>
+          {distanceToPlace && (
+            <Text style={styles.distanceText}>
+              You are {distanceToPlace}m away (max: {DEFAULT_RADIUS_METERS}m)
+            </Text>
+          )}
+          <TouchableOpacity
+            style={styles.permissionButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.permissionButtonText}>Go Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.permissionButton, { backgroundColor: '#6B7280', marginTop: 12 }]}
+            onPress={checkLocationAndPermissions}
+          >
+            <Text style={styles.permissionButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
     if (!cameraPermission?.granted || !micPermission?.granted) {
       return (
         <View style={styles.permissionContainer}>
@@ -658,6 +824,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  distanceText: {
+    fontSize: 12,
+    color: '#F59E0B',
+    textAlign: 'center',
+    marginBottom: 16,
+    fontWeight: '500',
   },
 
   // Camera styles

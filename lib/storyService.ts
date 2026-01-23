@@ -659,3 +659,768 @@ function calculateDistanceMiles(
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
+
+
+// =============================================
+// LOCATION GATING & MODERATION SYSTEM
+// =============================================
+// Implements Tavvy Stories (Live Experience) v1
+// - Location gating (150m radius)
+// - 2-3 day lifespan
+// - 1-tap reporting → business admin review
+// - Strike system (2 strikes = suspension)
+
+import * as Location from 'expo-location';
+
+// Constants
+export const STORY_EXPIRY_HOURS = 72; // 3 days
+export const DEFAULT_RADIUS_METERS = 150; // Standard places
+export const LARGE_VENUE_RADIUS_METERS = 500; // Airports, malls, theme parks
+export const MAX_STORIES_PER_USER_PER_DAY = 10;
+export const MAX_STORIES_PER_PLACE_PER_USER_PER_DAY = 3;
+
+// Additional Types for Moderation
+export interface StoryReport {
+  id: string;
+  story_id: string;
+  reporter_user_id: string;
+  reason: 'sexual' | 'explicit' | 'harassment' | 'violent' | 'spam' | 'other';
+  created_at: string;
+}
+
+export interface UserStrike {
+  user_id: string;
+  strike_count: number;
+  last_strike_at?: string;
+  status: 'active' | 'suspended';
+  suspended_until?: string;
+  notes?: string;
+}
+
+export interface ModerationEvent {
+  id: string;
+  story_id: string;
+  actor_type: 'system' | 'business_admin' | 'super_admin';
+  actor_user_id?: string;
+  action: 'auto_scan_passed' | 'auto_scan_flagged' | 'reported_to_review' | 'approved' | 'removed';
+  details?: any;
+  created_at: string;
+}
+
+// =============================================
+// LOCATION UTILITIES
+// =============================================
+
+/**
+ * Calculate distance between two coordinates using Haversine formula (meters)
+ */
+export function calculateDistanceMeters(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
+ * Check if user is within allowed radius of place
+ */
+export function isWithinRadius(
+  userLat: number,
+  userLon: number,
+  placeLat: number,
+  placeLon: number,
+  radiusMeters: number = DEFAULT_RADIUS_METERS
+): { withinRadius: boolean; distance: number } {
+  const distance = calculateDistanceMeters(userLat, userLon, placeLat, placeLon);
+  return {
+    withinRadius: distance <= radiusMeters,
+    distance: Math.round(distance),
+  };
+}
+
+/**
+ * Get current user location
+ */
+export async function getCurrentLocation(): Promise<{
+  latitude: number;
+  longitude: number;
+} | null> {
+  try {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      return null;
+    }
+
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+
+    return {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    };
+  } catch (error) {
+    console.error('Error getting location:', error);
+    return null;
+  }
+}
+
+// =============================================
+// STRIKE SYSTEM
+// =============================================
+
+/**
+ * Get user's strike status
+ */
+export async function getUserStrikeStatus(userId: string): Promise<UserStrike | null> {
+  try {
+    const { data, error } = await supabase
+      .from('user_strikes')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching strike status:', error);
+      return null;
+    }
+
+    return data as UserStrike | null;
+  } catch (error) {
+    console.error('Error in getUserStrikeStatus:', error);
+    return null;
+  }
+}
+
+/**
+ * Check if user can create stories (not suspended)
+ */
+export async function canUserCreateStory(userId: string): Promise<{
+  allowed: boolean;
+  reason?: string;
+}> {
+  // Check suspension status
+  const strikeStatus = await getUserStrikeStatus(userId);
+
+  if (strikeStatus?.status === 'suspended') {
+    const suspendedUntil = strikeStatus.suspended_until
+      ? new Date(strikeStatus.suspended_until).toLocaleDateString()
+      : 'indefinitely';
+    return {
+      allowed: false,
+      reason: `Your account is suspended until ${suspendedUntil}. You cannot create stories.`,
+    };
+  }
+
+  // Check daily limits
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const { count: dailyCount } = await supabase
+    .from('place_stories')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('created_at', today.toISOString());
+
+  if ((dailyCount || 0) >= MAX_STORIES_PER_USER_PER_DAY) {
+    return {
+      allowed: false,
+      reason: `You've reached the daily limit of ${MAX_STORIES_PER_USER_PER_DAY} stories. Try again tomorrow.`,
+    };
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Check if user can create story for specific place (rate limit)
+ */
+export async function canUserCreateStoryForPlace(
+  userId: string,
+  placeId: string
+): Promise<{
+  allowed: boolean;
+  reason?: string;
+}> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const { count } = await supabase
+    .from('place_stories')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('place_id', placeId)
+    .gte('created_at', today.toISOString());
+
+  if ((count || 0) >= MAX_STORIES_PER_PLACE_PER_USER_PER_DAY) {
+    return {
+      allowed: false,
+      reason: `You've already posted ${MAX_STORIES_PER_PLACE_PER_USER_PER_DAY} stories for this place today.`,
+    };
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Apply strike to user
+ */
+export async function applyStrike(
+  userId: string,
+  notes?: string
+): Promise<{ success: boolean; newStrikeCount: number; suspended: boolean }> {
+  try {
+    // Get current strike status
+    const { data: existingStrikes } = await supabase
+      .from('user_strikes')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    const currentCount = existingStrikes?.strike_count || 0;
+    const newCount = currentCount + 1;
+    const newStatus = newCount >= 2 ? 'suspended' : 'active';
+
+    // Calculate suspension end date (7 days for first suspension)
+    const suspendedUntil = newStatus === 'suspended'
+      ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      : null;
+
+    // Upsert strike record
+    const { error } = await supabase
+      .from('user_strikes')
+      .upsert({
+        user_id: userId,
+        strike_count: newCount,
+        last_strike_at: new Date().toISOString(),
+        status: newStatus,
+        suspended_until: suspendedUntil,
+        notes: notes || existingStrikes?.notes,
+      }, {
+        onConflict: 'user_id',
+      });
+
+    if (error) {
+      console.error('Error applying strike:', error);
+      return { success: false, newStrikeCount: currentCount, suspended: false };
+    }
+
+    return { success: true, newStrikeCount: newCount, suspended: newStatus === 'suspended' };
+  } catch (error) {
+    console.error('Error in applyStrike:', error);
+    return { success: false, newStrikeCount: 0, suspended: false };
+  }
+}
+
+// =============================================
+// LOCATION-GATED STORY CREATION
+// =============================================
+
+export interface CreateStoryWithLocationParams {
+  place_id: string;
+  user_id: string;
+  media_url: string;
+  media_type: 'video' | 'image';
+  thumbnail_url?: string;
+  caption?: string;
+  tags?: string[];
+  userLocation: {
+    latitude: number;
+    longitude: number;
+  };
+  placeLocation: {
+    latitude: number;
+    longitude: number;
+  };
+}
+
+/**
+ * Create a story with location validation
+ * Enforces 150m radius requirement
+ */
+export async function createStoryWithLocation(
+  params: CreateStoryWithLocationParams
+): Promise<{ success: boolean; story?: PlaceStory; error?: string }> {
+  try {
+    // Check if user can create stories (not suspended, within limits)
+    const canCreate = await canUserCreateStory(params.user_id);
+    if (!canCreate.allowed) {
+      return { success: false, error: canCreate.reason };
+    }
+
+    // Check place-specific rate limit
+    const canCreateForPlace = await canUserCreateStoryForPlace(params.user_id, params.place_id);
+    if (!canCreateForPlace.allowed) {
+      return { success: false, error: canCreateForPlace.reason };
+    }
+
+    // Validate location - must be within radius
+    const locationCheck = isWithinRadius(
+      params.userLocation.latitude,
+      params.userLocation.longitude,
+      params.placeLocation.latitude,
+      params.placeLocation.longitude,
+      DEFAULT_RADIUS_METERS
+    );
+
+    if (!locationCheck.withinRadius) {
+      return {
+        success: false,
+        error: `You must be within ${DEFAULT_RADIUS_METERS}m of this place to post a story. You are ${locationCheck.distance}m away.`,
+      };
+    }
+
+    // Extract hashtags from caption
+    const tags = params.tags || [];
+    if (params.caption) {
+      const hashtagMatches = params.caption.match(/#(\w+)/g);
+      if (hashtagMatches) {
+        tags.push(...hashtagMatches.map(tag => tag.slice(1).toLowerCase()));
+      }
+    }
+
+    // Calculate expiry time (72 hours = 3 days)
+    const expiresAt = new Date(Date.now() + STORY_EXPIRY_HOURS * 60 * 60 * 1000);
+
+    // Create story record
+    const { data, error } = await supabase
+      .from('place_stories')
+      .insert({
+        place_id: params.place_id,
+        user_id: params.user_id,
+        media_url: params.media_url,
+        media_type: params.media_type,
+        thumbnail_url: params.thumbnail_url,
+        caption: params.caption,
+        tags: [...new Set(tags)],
+        status: 'active',
+        is_permanent: false,
+        expires_at: expiresAt.toISOString(),
+        // Store location data for audit
+        geo_lat: params.userLocation.latitude,
+        geo_lng: params.userLocation.longitude,
+        distance_meters: locationCheck.distance,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating story:', error);
+      return { success: false, error: error.message };
+    }
+
+    // Update happening score
+    await updateHappeningScore(params.place_id, 50);
+
+    return { success: true, story: data as PlaceStory };
+  } catch (error: any) {
+    console.error('Error in createStoryWithLocation:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// =============================================
+// REPORTING & MODERATION
+// =============================================
+
+/**
+ * Report a story with reason (triggers business admin review)
+ * 1 report = story goes under review
+ */
+export async function reportStoryWithReason(
+  storyId: string,
+  reporterUserId: string,
+  reason: StoryReport['reason']
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Insert report (unique constraint prevents duplicate reports)
+    const { error: reportError } = await supabase
+      .from('story_reports')
+      .insert({
+        story_id: storyId,
+        reporter_user_id: reporterUserId,
+        reason,
+      });
+
+    if (reportError) {
+      if (reportError.code === '23505') {
+        return { success: false, error: 'You have already reported this story' };
+      }
+      console.error('Error reporting story:', reportError);
+      return { success: false, error: reportError.message };
+    }
+
+    // Update story status to under_review (1 report triggers review)
+    const { error: updateError } = await supabase
+      .from('place_stories')
+      .update({
+        status: 'reported', // Using existing status, will show as under_review
+        report_count: supabase.rpc ? 1 : 1, // Increment would need RPC
+      })
+      .eq('id', storyId);
+
+    if (updateError) {
+      console.error('Error updating story status:', updateError);
+    }
+
+    // Log moderation event
+    await supabase.from('story_moderation_events').insert({
+      story_id: storyId,
+      actor_type: 'system',
+      action: 'reported_to_review',
+      details: { reason, reporter_id: reporterUserId },
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error in reportStoryWithReason:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get stories pending review for business admin
+ */
+export async function getPendingStoriesForAdmin(placeId: string): Promise<PlaceStory[]> {
+  try {
+    const { data, error } = await supabase
+      .from('place_stories')
+      .select('*')
+      .eq('place_id', placeId)
+      .eq('status', 'reported')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching pending stories:', error);
+      return [];
+    }
+
+    return data as PlaceStory[];
+  } catch (error) {
+    console.error('Error in getPendingStoriesForAdmin:', error);
+    return [];
+  }
+}
+
+/**
+ * Approve a reported story (business admin action)
+ */
+export async function approveReportedStory(
+  storyId: string,
+  adminUserId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Update story status back to active
+    const { error } = await supabase
+      .from('place_stories')
+      .update({ status: 'active' })
+      .eq('id', storyId);
+
+    if (error) {
+      console.error('Error approving story:', error);
+      return { success: false, error: error.message };
+    }
+
+    // Log moderation event
+    await supabase.from('story_moderation_events').insert({
+      story_id: storyId,
+      actor_type: 'business_admin',
+      actor_user_id: adminUserId,
+      action: 'approved',
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error in approveReportedStory:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Remove a reported story (business admin action) - applies strike to uploader
+ */
+export async function removeReportedStory(
+  storyId: string,
+  adminUserId: string,
+  notes?: string
+): Promise<{ success: boolean; strikeApplied: boolean; error?: string }> {
+  try {
+    // Get story to find uploader
+    const { data: story } = await supabase
+      .from('place_stories')
+      .select('user_id')
+      .eq('id', storyId)
+      .single();
+
+    if (!story) {
+      return { success: false, strikeApplied: false, error: 'Story not found' };
+    }
+
+    // Update story status to deleted
+    const { error: updateError } = await supabase
+      .from('place_stories')
+      .update({ status: 'deleted' })
+      .eq('id', storyId);
+
+    if (updateError) {
+      console.error('Error removing story:', updateError);
+      return { success: false, strikeApplied: false, error: updateError.message };
+    }
+
+    // Apply strike to uploader
+    const strikeResult = await applyStrike(story.user_id, notes);
+
+    // Log moderation event
+    await supabase.from('story_moderation_events').insert({
+      story_id: storyId,
+      actor_type: 'business_admin',
+      actor_user_id: adminUserId,
+      action: 'removed',
+      details: { notes, strike_applied: strikeResult.success },
+    });
+
+    return { success: true, strikeApplied: strikeResult.success };
+  } catch (error: any) {
+    console.error('Error in removeReportedStory:', error);
+    return { success: false, strikeApplied: false, error: error.message };
+  }
+}
+
+/**
+ * Check if user is a business admin for a place
+ */
+export async function isBusinessAdmin(userId: string, placeId: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('place_admins')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('place_id', placeId)
+      .single();
+
+    if (error) return false;
+    return !!data;
+  } catch (error) {
+    return false;
+  }
+}
+
+// =============================================
+// TIME UTILITIES
+// =============================================
+
+/**
+ * Get time ago string
+ */
+export function getTimeAgo(dateString: string): string {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${diffDays}d ago`;
+}
+
+/**
+ * Get time remaining until expiry
+ */
+export function getTimeRemaining(expiresAt: string): string {
+  const now = new Date();
+  const expiry = new Date(expiresAt);
+  const diffMs = expiry.getTime() - now.getTime();
+
+  if (diffMs <= 0) return 'Expired';
+
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffHours / 24);
+  const remainingHours = diffHours % 24;
+
+  if (diffDays > 0) {
+    return `${diffDays}d ${remainingHours}h left`;
+  }
+  return `${diffHours}h left`;
+}
+
+
+// =============================================
+// BUSINESS ADMIN MODERATION HELPERS
+// =============================================
+
+export interface ReportedStoryWithDetails extends PlaceStory {
+  reports?: {
+    id: string;
+    reason: string;
+    created_at: string;
+  }[];
+}
+
+export type ModerationAction = 'approve' | 'remove' | 'dismiss';
+
+/**
+ * Get reported stories for a business admin with report details
+ */
+export async function getReportedStoriesForAdmin(
+  adminUserId: string,
+  placeId: string
+): Promise<ReportedStoryWithDetails[]> {
+  try {
+    // First verify user is admin for this place
+    const isAdmin = await isBusinessAdmin(adminUserId, placeId);
+    if (!isAdmin) {
+      console.error('User is not admin for this place');
+      return [];
+    }
+
+    // Get reported stories with their reports
+    const { data: stories, error: storiesError } = await supabase
+      .from('place_stories')
+      .select('*')
+      .eq('place_id', placeId)
+      .in('status', ['reported', 'under_review'])
+      .order('created_at', { ascending: false });
+
+    if (storiesError) {
+      console.error('Error fetching reported stories:', storiesError);
+      return [];
+    }
+
+    if (!stories || stories.length === 0) {
+      return [];
+    }
+
+    // Get reports for these stories
+    const storyIds = stories.map(s => s.id);
+    const { data: reports, error: reportsError } = await supabase
+      .from('story_reports')
+      .select('id, story_id, reason, created_at')
+      .in('story_id', storyIds)
+      .order('created_at', { ascending: false });
+
+    if (reportsError) {
+      console.error('Error fetching reports:', reportsError);
+    }
+
+    // Combine stories with their reports
+    const storiesWithReports: ReportedStoryWithDetails[] = stories.map(story => ({
+      ...story,
+      reports: reports?.filter(r => r.story_id === story.id).map(r => ({
+        id: r.id,
+        reason: r.reason,
+        created_at: r.created_at,
+      })) || [],
+    }));
+
+    return storiesWithReports;
+  } catch (error) {
+    console.error('Error in getReportedStoriesForAdmin:', error);
+    return [];
+  }
+}
+
+/**
+ * Moderate a story (approve, remove, or dismiss report)
+ */
+export async function moderateStory(
+  storyId: string,
+  adminUserId: string,
+  action: ModerationAction,
+  notes?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Get story to verify and get place_id
+    const { data: story, error: storyError } = await supabase
+      .from('place_stories')
+      .select('place_id, user_id')
+      .eq('id', storyId)
+      .single();
+
+    if (storyError || !story) {
+      return { success: false, error: 'Story not found' };
+    }
+
+    // Verify admin permission
+    const isAdmin = await isBusinessAdmin(adminUserId, story.place_id);
+    if (!isAdmin) {
+      return { success: false, error: 'You are not authorized to moderate this story' };
+    }
+
+    switch (action) {
+      case 'approve':
+        return await approveReportedStory(storyId, adminUserId);
+
+      case 'dismiss':
+        // Dismiss report - set story back to active without strike
+        const { error: dismissError } = await supabase
+          .from('place_stories')
+          .update({ status: 'active', report_count: 0 })
+          .eq('id', storyId);
+
+        if (dismissError) {
+          return { success: false, error: dismissError.message };
+        }
+
+        // Log moderation event
+        await supabase.from('story_moderation_events').insert({
+          story_id: storyId,
+          actor_type: 'business_admin',
+          actor_user_id: adminUserId,
+          action: 'approved', // Using approved since dismiss isn't in the enum
+          details: { action: 'dismiss', notes },
+        });
+
+        return { success: true };
+
+      case 'remove':
+        return await removeReportedStory(storyId, adminUserId, notes);
+
+      default:
+        return { success: false, error: 'Invalid action' };
+    }
+  } catch (error: any) {
+    console.error('Error in moderateStory:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get user's suspension info for display
+ */
+export async function getUserSuspensionInfo(userId: string): Promise<{
+  isSuspended: boolean;
+  suspendedUntil?: string;
+  strikeCount: number;
+} | null> {
+  try {
+    const strikeStatus = await getUserStrikeStatus(userId);
+    
+    if (!strikeStatus) {
+      return { isSuspended: false, strikeCount: 0 };
+    }
+
+    return {
+      isSuspended: strikeStatus.status === 'suspended',
+      suspendedUntil: strikeStatus.suspended_until,
+      strikeCount: strikeStatus.strike_count,
+    };
+  } catch (error) {
+    console.error('Error getting suspension info:', error);
+    return null;
+  }
+}

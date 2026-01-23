@@ -102,6 +102,7 @@ import CreateDigitalCardScreen from './screens/CreateDigitalCardScreen';
 import MyDigitalCardScreen from './screens/MyDigitalCardScreen';
 import PublicCardViewScreen from './screens/PublicCardViewScreen';
 import EditProfileScreen from './screens/EditProfileScreen';
+import BusinessStoryModerationScreen from './screens/BusinessStoryModerationScreen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -256,6 +257,7 @@ function AppsStack() {
       {/* Admin Screens */}
       <MenuStackNav.Screen name="StoryModeration" component={StoryModerationScreen} />
       <MenuStackNav.Screen name="StoryAnalytics" component={StoryAnalyticsScreen} />
+      <MenuStackNav.Screen name="BusinessStoryModeration" component={BusinessStoryModerationScreen} />
     </MenuStackNav.Navigator>
   );
 }

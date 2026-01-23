@@ -18,11 +18,13 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Animated,
+  Alert,
+  ScrollView,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { PlaceStory, markStoryViewed } from '../lib/storyService';
+import { PlaceStory, markStoryViewed, reportStoryWithReason, StoryReport } from '../lib/storyService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STORY_DURATION = 5000; // 5 seconds for images
@@ -52,6 +54,9 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isPaused, setIsPaused] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const progressAnimation = useRef<Animated.CompositeAnimation | null>(null);
   const videoRef = useRef<Video>(null);
@@ -222,9 +227,20 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                 </Text>
               </View>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={28} color="#fff" />
-            </TouchableOpacity>
+            <View style={styles.headerRight}>
+              <TouchableOpacity 
+                onPress={() => {
+                  setIsPaused(true);
+                  setShowOptionsMenu(true);
+                }} 
+                style={styles.optionsButton}
+              >
+                <Ionicons name="ellipsis-horizontal" size={24} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <Ionicons name="close" size={28} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
         </SafeAreaView>
 
@@ -287,6 +303,132 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
             ))}
           </View>
         )}
+
+        {/* Options Menu Modal */}
+        <Modal
+          visible={showOptionsMenu}
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            setShowOptionsMenu(false);
+            setIsPaused(false);
+          }}
+        >
+          <TouchableWithoutFeedback onPress={() => {
+            setShowOptionsMenu(false);
+            setIsPaused(false);
+          }}>
+            <View style={styles.optionsOverlay}>
+              <View style={styles.optionsMenu}>
+                <TouchableOpacity
+                  style={styles.optionItem}
+                  onPress={() => {
+                    setShowOptionsMenu(false);
+                    setShowReportModal(true);
+                  }}
+                >
+                  <Ionicons name="flag-outline" size={24} color="#EF4444" />
+                  <Text style={styles.optionTextDanger}>Report Story</Text>
+                </TouchableOpacity>
+                <View style={styles.optionDivider} />
+                <TouchableOpacity
+                  style={styles.optionItem}
+                  onPress={() => {
+                    setShowOptionsMenu(false);
+                    setIsPaused(false);
+                  }}
+                >
+                  <Ionicons name="close-outline" size={24} color="#6B7280" />
+                  <Text style={styles.optionText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+
+        {/* Report Modal */}
+        <Modal
+          visible={showReportModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => {
+            setShowReportModal(false);
+            setIsPaused(false);
+          }}
+        >
+          <View style={styles.reportOverlay}>
+            <View style={styles.reportModal}>
+              <View style={styles.reportHeader}>
+                <Text style={styles.reportTitle}>Report Story</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowReportModal(false);
+                    setIsPaused(false);
+                  }}
+                >
+                  <Ionicons name="close" size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.reportSubtitle}>
+                Why are you reporting this story?
+              </Text>
+              <ScrollView style={styles.reportOptions}>
+                {[
+                  { reason: 'sexual' as const, label: 'Sexual Content', icon: 'warning-outline' },
+                  { reason: 'explicit' as const, label: 'Explicit/Graphic Content', icon: 'eye-off-outline' },
+                  { reason: 'harassment' as const, label: 'Harassment or Bullying', icon: 'hand-left-outline' },
+                  { reason: 'violent' as const, label: 'Violence or Threats', icon: 'alert-circle-outline' },
+                  { reason: 'spam' as const, label: 'Spam or Misleading', icon: 'megaphone-outline' },
+                  { reason: 'other' as const, label: 'Other', icon: 'ellipsis-horizontal-outline' },
+                ].map((item) => (
+                  <TouchableOpacity
+                    key={item.reason}
+                    style={styles.reportOption}
+                    disabled={isReporting}
+                    onPress={async () => {
+                      if (!currentUserId) {
+                        Alert.alert('Login Required', 'Please log in to report stories.');
+                        return;
+                      }
+                      setIsReporting(true);
+                      try {
+                        const result = await reportStoryWithReason(
+                          currentStory.id,
+                          currentUserId,
+                          item.reason
+                        );
+                        if (result.success) {
+                          Alert.alert(
+                            'Report Submitted',
+                            'Thank you for your report. Our team will review this story.',
+                            [{ text: 'OK', onPress: () => {
+                              setShowReportModal(false);
+                              setIsPaused(false);
+                              goToNext();
+                            }}]
+                          );
+                        } else {
+                          Alert.alert('Error', result.error || 'Failed to submit report');
+                        }
+                      } catch (error) {
+                        Alert.alert('Error', 'Failed to submit report. Please try again.');
+                      } finally {
+                        setIsReporting(false);
+                      }
+                    }}
+                  >
+                    <Ionicons name={item.icon as any} size={24} color="#374151" />
+                    <Text style={styles.reportOptionText}>{item.label}</Text>
+                    {isReporting && <ActivityIndicator size="small" color="#3B82F6" />}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <Text style={styles.reportDisclaimer}>
+                Reports are reviewed by the business owner. False reports may result in account restrictions.
+              </Text>
+            </View>
+          </View>
+        </Modal>
       </View>
     </Modal>
   );
@@ -422,6 +564,105 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '500',
+  },
+  // Header right section
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  optionsButton: {
+    padding: 8,
+  },
+  // Options menu styles
+  optionsOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  optionsMenu: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: '80%',
+    maxWidth: 300,
+    overflow: 'hidden',
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  optionTextDanger: {
+    fontSize: 16,
+    color: '#EF4444',
+    fontWeight: '500',
+  },
+  optionDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  // Report modal styles
+  reportOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  reportModal: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+    maxHeight: '80%',
+  },
+  reportHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 8,
+  },
+  reportTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  reportSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  reportOptions: {
+    maxHeight: 300,
+  },
+  reportOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    paddingHorizontal: 20,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  reportOptionText: {
+    fontSize: 16,
+    color: '#374151',
+    flex: 1,
+  },
+  reportDisclaimer: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    marginTop: 16,
   },
 });
 
