@@ -593,18 +593,15 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       
       console.log('Places with recent activity:', placesWithActivity.size);
       
-      // Fetch places - ONLY Restaurants and Coffee Shops
-      // Must have address AND phone number (tel column in fsq_places_raw)
+      // Fetch places from canonical 'places' table - Restaurants, Cafes, Bars, Dining
+      // Categories in DB are like: "[Dining and Drinking > Restaurant]", "['Dining and Drinking > Cafe"
       const { data: places, error: placesError } = await supabase
-        .from('fsq_places_raw')
-        .select('fsq_place_id, name, address, locality, region, fsq_category_labels, latitude, longitude, tel')
+        .from('places')
+        .select('id, name, street, city, region, tavvy_category, latitude, longitude, cover_image_url, phone')
         .not('latitude', 'is', null)
         .not('longitude', 'is', null)
-        .not('address', 'is', null)
-        .neq('address', '')
-        .not('tel', 'is', null)
-        .neq('tel', '')
-        .or('fsq_category_labels.ilike.%restaurant%,fsq_category_labels.ilike.%dining%,fsq_category_labels.ilike.%food%,fsq_category_labels.ilike.%coffee%,fsq_category_labels.ilike.%cafe%,fsq_category_labels.ilike.%café%,fsq_category_labels.ilike.%tea house%')
+        .eq('status', 'active')
+        .or('tavvy_category.ilike.%restaurant%,tavvy_category.ilike.%dining%,tavvy_category.ilike.%cafe%,tavvy_category.ilike.%coffee%,tavvy_category.ilike.%bar%,tavvy_category.ilike.%bakery%')
         .limit(200);
       
       console.log('Trending places query result:', { count: places?.length, error: placesError });
@@ -621,26 +618,25 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           );
           if (distance > MAX_DISTANCE_MILES) return;
           
-          // Determine category type for display (only Restaurants or Coffee Shops)
-          const categoryLower = (place.fsq_category_labels || '').toLowerCase();
-          let displayCategory = '';
-          if (categoryLower.includes('restaurant') || categoryLower.includes('dining') || categoryLower.includes('food')) {
-            displayCategory = 'Restaurants';
-          } else if (categoryLower.includes('coffee') || categoryLower.includes('cafe') || categoryLower.includes('café') || categoryLower.includes('tea')) {
+          // Determine category type for display
+          const categoryLower = (place.tavvy_category || '').toLowerCase();
+          let displayCategory = 'Restaurants'; // Default
+          if (categoryLower.includes('cafe') || categoryLower.includes('coffee')) {
             displayCategory = 'Coffee Shops';
+          } else if (categoryLower.includes('bar')) {
+            displayCategory = 'Bars';
+          } else if (categoryLower.includes('bakery')) {
+            displayCategory = 'Bakery';
           }
           
-          // Skip if not a valid category (Restaurants or Coffee Shops)
-          if (!displayCategory) return;
-          
           // Check if this place has recent activity (trending indicator)
-          const hasRecentActivity = placesWithActivity.has(place.fsq_place_id);
+          const hasRecentActivity = placesWithActivity.has(place.id);
           
           items.push({
-            id: place.fsq_place_id,
+            id: place.id,
             name: place.name,
-            subtitle: place.locality ? `${place.locality}, ${place.region || ''}`.trim() : place.address,
-            image: null, // fsq_places_raw doesn't have cover images
+            subtitle: place.city ? `${place.city}, ${place.region || ''}`.trim() : place.street,
+            image: place.cover_image_url, // places table has cover images
             type: 'place',
             category: displayCategory,
             latitude: place.latitude,
