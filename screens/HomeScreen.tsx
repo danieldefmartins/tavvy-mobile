@@ -593,57 +593,60 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       
       console.log('Places with recent activity:', placesWithActivity.size);
       
-      // Fetch places from canonical 'places' table - Restaurants, Cafes, Bars, Dining
-      // Categories in DB are like: "[Dining and Drinking > Restaurant]", "['Dining and Drinking > Cafe"
+      // Fetch places from fsq_places_raw table - Restaurants, Cafes, Bars, Dining
+      // Categories in DB are like: "[Dining and Drinking > Restaurant]"
+      // Removed strict tel requirement to get more results
       const { data: places, error: placesError } = await supabase
-        .from('places')
-        .select('id, name, street, city, region, tavvy_category, latitude, longitude, cover_image_url, phone')
+        .from('fsq_places_raw')
+        .select('fsq_place_id, name, address, locality, region, fsq_category_labels, latitude, longitude')
         .not('latitude', 'is', null)
         .not('longitude', 'is', null)
-        .eq('status', 'active')
-        .or('tavvy_category.ilike.%restaurant%,tavvy_category.ilike.%dining%,tavvy_category.ilike.%cafe%,tavvy_category.ilike.%coffee%,tavvy_category.ilike.%bar%,tavvy_category.ilike.%bakery%')
-        .limit(200);
+        .or('fsq_category_labels.ilike.%restaurant%,fsq_category_labels.ilike.%dining%,fsq_category_labels.ilike.%cafe%,fsq_category_labels.ilike.%coffee%,fsq_category_labels.ilike.%bar%,fsq_category_labels.ilike.%bakery%')
+        .limit(300);
       
-      console.log('Trending places query result:', { count: places?.length, error: placesError });
+      console.log('[Trending] Query result:', { count: places?.length, error: placesError, hasCoords: !!coords });
       
       if (places && !placesError) {
         places.forEach((place: any) => {
-          // MUST have user location for distance filtering - skip if no coords
-          if (!coords || !place.latitude || !place.longitude) return;
+          if (!place.latitude || !place.longitude) return;
           
-          // Calculate distance and filter by 20 miles max
-          const distance = calculateDistanceMiles(
-            coords[1], coords[0], // userLocation is [lng, lat]
-            Number(place.latitude), Number(place.longitude)
-          );
-          if (distance > MAX_DISTANCE_MILES) return;
+          // Calculate distance if we have user coords
+          let distance = 0;
+          if (coords) {
+            distance = calculateDistanceMiles(
+              coords[1], coords[0], // userLocation is [lng, lat]
+              Number(place.latitude), Number(place.longitude)
+            );
+            // Only filter by distance if we have user location
+            if (distance > MAX_DISTANCE_MILES) return;
+          }
           
           // Determine category type for display
-          const categoryLower = (place.tavvy_category || '').toLowerCase();
-          let displayCategory = 'Restaurants'; // Default
+          const categoryLower = (place.fsq_category_labels || '').toLowerCase();
+          let displayCategory = 'Restaurant'; // Default
           if (categoryLower.includes('cafe') || categoryLower.includes('coffee')) {
-            displayCategory = 'Coffee Shops';
+            displayCategory = 'Coffee';
           } else if (categoryLower.includes('bar')) {
-            displayCategory = 'Bars';
+            displayCategory = 'Bar';
           } else if (categoryLower.includes('bakery')) {
             displayCategory = 'Bakery';
           }
           
           // Check if this place has recent activity (trending indicator)
-          const hasRecentActivity = placesWithActivity.has(place.id);
+          const hasRecentActivity = placesWithActivity.has(place.fsq_place_id);
           
           items.push({
-            id: place.id,
+            id: place.fsq_place_id,
             name: place.name,
-            subtitle: place.city ? `${place.city}, ${place.region || ''}`.trim() : place.street,
-            image: place.cover_image_url, // places table has cover images
+            subtitle: place.locality ? `${place.locality}, ${place.region || ''}`.trim() : place.address,
+            image: null, // fsq_places_raw doesn't have cover images
             type: 'place',
             category: displayCategory,
             latitude: place.latitude,
             longitude: place.longitude,
             distance: distance,
             hasRecentActivity: hasRecentActivity,
-            activityScore: hasRecentActivity ? 100 : 0, // Prioritize places with activity
+            activityScore: hasRecentActivity ? 100 : (coords ? 0 : 50), // Give score to all if no location
           });
         });
       }
@@ -689,6 +692,37 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         });
       }
       
+      console.log('[Trending] Total items before sort:', items.length);
+      
+      // If no items found with location filter, show random places as fallback
+      if (items.length === 0 && places && places.length > 0) {
+        console.log('[Trending] No nearby items, showing random places as fallback');
+        // Take first 10 places without distance filter
+        places.slice(0, 10).forEach((place: any) => {
+          const categoryLower = (place.fsq_category_labels || '').toLowerCase();
+          let displayCategory = 'Restaurant';
+          if (categoryLower.includes('cafe') || categoryLower.includes('coffee')) {
+            displayCategory = 'Coffee';
+          } else if (categoryLower.includes('bar')) {
+            displayCategory = 'Bar';
+          }
+          
+          items.push({
+            id: place.fsq_place_id,
+            name: place.name,
+            subtitle: place.locality ? `${place.locality}, ${place.region || ''}`.trim() : place.address,
+            image: null,
+            type: 'place',
+            category: displayCategory,
+            latitude: place.latitude,
+            longitude: place.longitude,
+            distance: 0,
+            hasRecentActivity: false,
+            activityScore: 50,
+          });
+        });
+      }
+      
       // Sort by: 1) Recent activity first, 2) Then by distance
       // This ensures trending feels alive, not random
       const sorted = items
@@ -702,6 +736,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         })
         .slice(0, 10);
       
+      console.log('[Trending] Final items:', sorted.length);
       setTrendingItems(sorted);
     } catch (error) {
       console.log('Error loading trending items:', error);
