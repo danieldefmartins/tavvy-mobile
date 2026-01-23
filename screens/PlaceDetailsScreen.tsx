@@ -1291,9 +1291,9 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
                   todayTapCount={0}
                   lastTapTime={null}
                   totalTapCount={0}
-                  userStreak={gamification.currentStreak}
-                  userBadges={gamification.badges}
-                  userImpactCount={gamification.impactCount}
+                  userStreak={gamification?.currentStreak || 0}
+                  userBadges={gamification?.badges || []}
+                  userImpactCount={gamification?.impactCount || 0}
                 />
               </View>
 
