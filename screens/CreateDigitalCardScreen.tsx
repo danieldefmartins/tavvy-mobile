@@ -120,6 +120,8 @@ interface CardLink {
 interface CardData {
   id?: string;
   slug?: string;
+  templateId?: string;
+  colorSchemeId?: string;
   fullName: string;
   title: string;
   company: string;
@@ -139,6 +141,8 @@ interface CardData {
 }
 
 const initialCardData: CardData = {
+  templateId: 'classic-blue',
+  colorSchemeId: 'blue',
   fullName: '',
   title: '',
   company: '',
@@ -147,7 +151,7 @@ const initialCardData: CardData = {
   website: '',
   city: '',
   state: '',
-  gradientColors: ['#8B5CF6', '#4F46E5'],
+  gradientColors: ['#1E90FF', '#00BFFF'],
   profilePhotoUri: null,
   socialInstagram: '',
   socialFacebook: '',
@@ -192,18 +196,29 @@ export default function CreateDigitalCardScreen() {
     } else if (route.params?.templateConfig) {
       // Apply template configuration from ECardColorPickerScreen
       const { template, colorScheme } = route.params.templateConfig;
+      const templateId = route.params.templateId;
+      const colorSchemeId = colorScheme?.id;
+      
       if (colorScheme) {
         setCardData(prev => ({
           ...prev,
+          templateId: templateId,
+          colorSchemeId: colorSchemeId,
           gradientColors: [colorScheme.primary, colorScheme.secondary] as [string, string],
         }));
       }
-      setSelectedTemplate(route.params.templateId);
+      setSelectedTemplate(templateId);
       setCurrentStep('info'); // Skip template selection, go straight to info
       
-      // If editing existing card, load the data
+      // If editing existing card, load the data but keep the new template
       if (route.params.mode === 'edit' && route.params.existingData) {
-        setCardData(prev => ({ ...prev, ...route.params.existingData }));
+        setCardData(prev => ({ 
+          ...prev, 
+          ...route.params.existingData,
+          templateId: templateId,
+          colorSchemeId: colorSchemeId,
+          gradientColors: [colorScheme.primary, colorScheme.secondary] as [string, string],
+        }));
         setIsEditing(true);
       }
     } else {
@@ -232,6 +247,8 @@ export default function CreateDigitalCardScreen() {
           const loadedCard: CardData = {
             id: data.id,
             slug: data.slug,
+            templateId: data.template_id || 'classic-blue',
+            colorSchemeId: data.color_scheme_id || 'blue',
             fullName: data.full_name || '',
             title: data.title || '',
             company: data.company || '',
@@ -240,7 +257,7 @@ export default function CreateDigitalCardScreen() {
             website: data.website || '',
             city: data.city || '',
             state: data.state || '',
-            gradientColors: [data.gradient_color_1 || '#8B5CF6', data.gradient_color_2 || '#4F46E5'],
+            gradientColors: [data.gradient_color_1 || '#1E90FF', data.gradient_color_2 || '#00BFFF'],
             profilePhotoUri: data.profile_photo_url || null,
             socialInstagram: data.social_instagram || '',
             socialFacebook: data.social_facebook || '',
@@ -501,6 +518,8 @@ export default function CreateDigitalCardScreen() {
       const dbCardData = {
         user_id: user?.id || null,
         slug: slug,
+        template_id: cardData.templateId || 'classic-blue',
+        color_scheme_id: cardData.colorSchemeId || 'blue',
         full_name: cardData.fullName,
         title: cardData.title,
         company: cardData.company,
