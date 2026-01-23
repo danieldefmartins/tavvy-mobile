@@ -703,16 +703,16 @@ export default function MyDigitalCardScreen() {
         onRequestClose={() => setShowQRModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.qrModal, { backgroundColor: theme.card }]}>
+          <View style={styles.qrModal}>
             <TouchableOpacity 
               style={styles.modalClose}
               onPress={() => setShowQRModal(false)}
             >
-              <Ionicons name="close" size={28} color={theme.text} />
+              <Ionicons name="close-circle" size={32} color="#64748B" />
             </TouchableOpacity>
             
-            <Text style={[styles.qrTitle, { color: theme.text }]}>Scan to View Card</Text>
-            <Text style={[styles.qrSubtitle, { color: theme.textSecondary }]}>
+            <Text style={styles.qrTitle}>Scan to View Card</Text>
+            <Text style={styles.qrSubtitle}>
               Point your camera at this QR code
             </Text>
             
@@ -725,13 +725,13 @@ export default function MyDigitalCardScreen() {
               />
             </View>
             
-            <Text style={[styles.qrUrl, { color: theme.textSecondary }]}>{cardUrl}</Text>
+            <Text style={styles.qrUrl}>{cardUrl}</Text>
             
             <TouchableOpacity 
               style={styles.qrCopyButton}
               onPress={handleCopyLink}
             >
-              <Ionicons name="copy" size={18} color="#8B5CF6" />
+              <Ionicons name="copy" size={18} color="#fff" />
               <Text style={styles.qrCopyText}>Copy Link</Text>
             </TouchableOpacity>
           </View>
@@ -947,7 +947,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 18, 51, 0.95)',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -956,7 +956,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     padding: 28,
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
@@ -974,40 +974,39 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 20,
     letterSpacing: -0.3,
+    color: '#1E293B',
   },
   qrSubtitle: {
     fontSize: 16,
     marginTop: 8,
     marginBottom: 28,
+    color: '#64748B',
   },
   qrContainer: {
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#F8FAFC',
     borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   qrUrl: {
     fontSize: 14,
     marginTop: 20,
     textAlign: 'center',
+    color: '#64748B',
   },
   qrCopyButton: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 20,
-    paddingHorizontal: 24,
+    paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 24,
-    borderWidth: 2,
-    borderColor: '#8B5CF6',
+    backgroundColor: '#8B5CF6',
     gap: 8,
   },
   qrCopyText: {
-    color: '#8B5CF6',
+    color: '#fff',
     fontSize: 16,
     fontWeight: '700',
   },
