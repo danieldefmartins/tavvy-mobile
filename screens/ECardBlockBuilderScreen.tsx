@@ -304,6 +304,18 @@ export default function ECardBlockBuilderScreen() {
       case 'testimonials':
         const testimonialCount = block.data.testimonials?.length || 0;
         return testimonialCount > 0 ? `${testimonialCount} testimonial${testimonialCount > 1 ? 's' : ''}` : 'Tap to add testimonials';
+      case 'form':
+        const formType = block.data.formType || 'native';
+        const formTypeLabels: Record<string, string> = {
+          native: 'Tavvy Form',
+          gohighlevel: 'Go High Level',
+          typeform: 'Typeform',
+          jotform: 'JotForm',
+          googleforms: 'Google Forms',
+          calendly: 'Calendly',
+          webhook: 'Custom Webhook',
+        };
+        return block.data.title || formTypeLabels[formType] || 'Tap to configure form';
       case 'divider':
         return `${block.data.style} style`;
       case 'spacer':

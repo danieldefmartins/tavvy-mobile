@@ -377,23 +377,49 @@ export const BLOCK_CONFIGS: BlockConfig[] = [
   {
     id: 'form',
     name: 'Contact Form',
-    description: 'Let visitors send you messages',
+    description: 'Lead capture with GHL, Typeform, Calendly & more',
     icon: 'mail-outline',
     isPremium: true,
     isRequired: false,
     maxInstances: 1,
     defaultData: {
+      formType: 'native', // 'native', 'gohighlevel', 'typeform', 'jotform', 'googleforms', 'calendly', 'webhook'
       title: 'Get in Touch',
-      fields: ['name', 'email', 'message'],
-      submitButtonText: 'Send Message',
-      thankYouMessage: 'Thanks! I\'ll get back to you soon.',
-      recipientEmail: '',
+      description: '',
+      buttonText: 'Send Message',
+      fields: [
+        { id: '1', type: 'text', label: 'Name', placeholder: 'Your name', required: true },
+        { id: '2', type: 'email', label: 'Email', placeholder: 'your@email.com', required: true },
+        { id: '3', type: 'phone', label: 'Phone', placeholder: '(555) 123-4567', required: false },
+        { id: '4', type: 'textarea', label: 'Message', placeholder: 'How can I help you?', required: false },
+      ],
+      successMessage: "Thanks! I'll get back to you soon.",
+      // Go High Level
+      ghlFormId: '',
+      ghlLocationId: '',
+      ghlWebhookUrl: '',
+      ghlEmbedCode: '',
+      // External embeds
+      embedUrl: '',
+      embedCode: '',
+      // Webhook
+      webhookUrl: '',
+      webhookMethod: 'POST',
     },
     fields: [
-      { key: 'title', label: 'Form Title', type: 'text', placeholder: 'Contact Me', maxLength: 50 },
-      { key: 'submitButtonText', label: 'Button Text', type: 'text', placeholder: 'Send Message', maxLength: 30 },
-      { key: 'thankYouMessage', label: 'Thank You Message', type: 'textarea', placeholder: 'Thanks for reaching out!', maxLength: 200 },
-      { key: 'recipientEmail', label: 'Your Email (to receive messages)', type: 'email', placeholder: 'you@example.com', required: true },
+      { key: 'formType', label: 'Form Type', type: 'select', options: [
+        { value: 'native', label: 'Tavvy Form' },
+        { value: 'gohighlevel', label: 'Go High Level' },
+        { value: 'typeform', label: 'Typeform' },
+        { value: 'jotform', label: 'JotForm' },
+        { value: 'googleforms', label: 'Google Forms' },
+        { value: 'calendly', label: 'Calendly' },
+        { value: 'webhook', label: 'Custom Webhook' },
+      ]},
+      { key: 'title', label: 'Form Title', type: 'text', placeholder: 'Get in Touch', maxLength: 50 },
+      { key: 'description', label: 'Description', type: 'textarea', placeholder: 'Fill out the form and I\'ll get back to you.', maxLength: 200 },
+      { key: 'buttonText', label: 'Button Text', type: 'text', placeholder: 'Send Message', maxLength: 30 },
+      { key: 'successMessage', label: 'Success Message', type: 'textarea', placeholder: 'Thanks for reaching out!', maxLength: 200 },
     ],
   },
   {

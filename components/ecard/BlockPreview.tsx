@@ -315,6 +315,66 @@ export const VideoBlockPreview: React.FC<BlockPreviewProps> = ({ block, isPrevie
   );
 };
 
+// Form Block
+export const FormBlockPreview: React.FC<BlockPreviewProps> = ({ block, isPreview }) => {
+  const { formType = 'native', title, description, buttonText = 'Submit', fields = [] } = block.data;
+  
+  // For external forms, show a button to open the form
+  if (formType !== 'native') {
+    const formTypeLabels: Record<string, string> = {
+      gohighlevel: 'Go High Level',
+      typeform: 'Typeform',
+      jotform: 'JotForm',
+      googleforms: 'Google Forms',
+      calendly: 'Calendly',
+      webhook: 'Custom Form',
+    };
+    
+    return (
+      <View style={styles.formBlock}>
+        {title && <Text style={styles.formTitle}>{title}</Text>}
+        {description && <Text style={styles.formDescription}>{description}</Text>}
+        <TouchableOpacity style={styles.formExternalButton} activeOpacity={isPreview ? 1 : 0.7}>
+          <Ionicons name="open-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.formButtonText}>
+            Open {formTypeLabels[formType] || 'Form'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+  
+  // Native form preview
+  return (
+    <View style={styles.formBlock}>
+      {title && <Text style={styles.formTitle}>{title}</Text>}
+      {description && <Text style={styles.formDescription}>{description}</Text>}
+      
+      {/* Form fields preview */}
+      {fields.map((field: any, index: number) => (
+        <View key={field.id || index} style={styles.formFieldPreview}>
+          <Text style={styles.formFieldLabel}>
+            {field.label}
+            {field.required && <Text style={styles.formRequired}> *</Text>}
+          </Text>
+          <View style={[
+            styles.formFieldInput,
+            field.type === 'textarea' && styles.formFieldTextarea,
+          ]}>
+            <Text style={styles.formFieldPlaceholder}>{field.placeholder}</Text>
+          </View>
+        </View>
+      ))}
+      
+      {/* Submit button */}
+      <TouchableOpacity style={styles.formSubmitButton} activeOpacity={isPreview ? 1 : 0.7}>
+        <Ionicons name="send-outline" size={18} color="#FFFFFF" />
+        <Text style={styles.formButtonText}>{buttonText}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
 // Testimonials Block
 export const TestimonialsBlockPreview: React.FC<BlockPreviewProps> = ({ block }) => {
   const { title, testimonials = [] } = block.data;
@@ -405,6 +465,8 @@ export const BlockPreview: React.FC<BlockPreviewProps> = (props) => {
       return <VideoBlockPreview {...props} />;
     case 'testimonials':
       return <TestimonialsBlockPreview {...props} />;
+    case 'form':
+      return <FormBlockPreview {...props} />;
     case 'divider':
       return <DividerBlockPreview {...props} />;
     case 'spacer':
@@ -708,6 +770,75 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
   },
   
+  // Form Block
+  formBlock: {
+    paddingVertical: 16,
+  },
+  formTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  formDescription: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  formFieldPreview: {
+    marginBottom: 12,
+  },
+  formFieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 6,
+  },
+  formRequired: {
+    color: '#ef4444',
+  },
+  formFieldInput: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  formFieldTextarea: {
+    minHeight: 80,
+  },
+  formFieldPlaceholder: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.4)',
+  },
+  formSubmitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(99, 102, 241, 0.9)',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+  },
+  formExternalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(99, 102, 241, 0.9)',
+    borderRadius: 12,
+    padding: 16,
+  },
+  formButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
   // Divider
   dividerLine: {
     height: 1,
