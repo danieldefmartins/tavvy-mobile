@@ -51,12 +51,17 @@ interface Props {
 
 export default function ECardPreviewScreen({ navigation, route }: Props) {
   const { profile, links, templateId } = route.params || {};
+  
+  // Generate card URL from profile name
+  const generateSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+  const cardSlug = profile?.name ? generateSlug(profile.name) : 'preview';
+  const cardUrl = `https://tavvy.com/${cardSlug}`;
 
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Check out my digital card!`,
-        url: `https://tavvy.com/card/preview`,
+        message: `Check out my digital card: ${cardUrl}`,
+        url: cardUrl,
       });
     } catch (error) {
       console.error(error);

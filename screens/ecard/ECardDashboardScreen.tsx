@@ -53,7 +53,9 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   
   const [links, setLinks] = useState<LinkItem[]>(initialLinks || []);
   const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'analytics'>('links');
-  const [cardUrl] = useState('tavvy.com/c/yourname'); // Will be dynamic
+  // Generate card URL from profile name (will be dynamic based on saved slug)
+  const generateSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+  const [cardUrl] = useState(`tavvy.com/${profile?.name ? generateSlug(profile.name) : 'yourname'}`);
   
   const slideAnim = useRef(new Animated.Value(0)).current;
 
