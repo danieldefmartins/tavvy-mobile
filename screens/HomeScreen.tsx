@@ -29,7 +29,7 @@ import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchPlacesInBounds, PlaceCard, getPlaceIdForNavigation } from '../lib/placeService';
+import { fetchPlacesInBounds, PlaceCard, getPlaceIdForNavigation, formatDistance } from '../lib/placeService';
 import { searchSuggestions as searchPlaceSuggestions } from '../lib/searchService';
 import { fetchWeatherData, getDefaultWeatherData, WeatherData } from '../lib/weatherService';
 // Integrated Discovery Components
@@ -87,8 +87,9 @@ const MAP_STYLES = {
   },
 };
 
-// Categories for filtering - text only, no icons
-const categories = ['All', 'Restaurants', 'Cafes', 'Bars', 'Shopping', 'RV & Camping', 'Hotels'];
+// Categories for filtering - Filter icon first, then category chips
+// 'Filter' is a special category that opens the advanced filter modal
+const categories = ['Filter', 'All', 'Restaurants', 'Cafes', 'Bars', 'Gas', 'Shopping', 'RV & Camping', 'Hotels'];
 
 // Searchable categories for autocomplete
 const SEARCHABLE_CATEGORIES = [
@@ -108,6 +109,10 @@ const SEARCHABLE_CATEGORIES = [
   { name: 'RV Parks', icon: 'car', type: 'category' },
   { name: 'Dump Stations', icon: 'water', type: 'category' },
   { name: 'Propane', icon: 'flame', type: 'category' },
+  // Gas & Automotive
+  { name: 'Gas', icon: 'car', type: 'category' },
+  { name: 'Gas Stations', icon: 'car', type: 'category' },
+  { name: 'Fuel', icon: 'car', type: 'category' },
   // Hotels & Lodging
   { name: 'Hotels', icon: 'bed', type: 'category' },
   // Theme Parks
@@ -311,6 +316,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   
   // Filter modal states
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [showAdvancedFilterModal, setShowAdvancedFilterModal] = useState(false);
   const [activeFilters, setActiveFilters] = useState<{
     cuisine: string;
     priceMin: number;
@@ -892,10 +898,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       // Use centralized placeService with hybrid strategy:
       // 1. Query canonical `places` table first (fast path)
       // 2. Fallback to `fsq_places_raw` if results < threshold
+      // 3. Sort by distance from user location
       const result = await fetchPlacesInBounds({
         bounds: { minLat, maxLat, minLng, maxLng },
+        userLocation: userLocation ? { latitude: userLocation.latitude, longitude: userLocation.longitude } : undefined,
         limit: 150,
         fallbackThreshold: 40,
+        sortByDistance: true,
       });
 
       // Debug logging (only when DEBUG_PLACES is true)
@@ -976,6 +985,32 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   };
 
   /**
+   * Calculate dynamic limit based on visible map area
+   * Larger visible area = more places to show
+   */
+  const calculateDynamicLimit = (bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number }): number => {
+    const latDelta = bounds.maxLat - bounds.minLat;
+    const lngDelta = bounds.maxLng - bounds.minLng;
+    
+    // Calculate approximate area in degrees squared
+    const areaDegrees = latDelta * lngDelta;
+    
+    // Base limit for small area (city block level, ~0.01 sq degrees)
+    // Scale up for larger areas, cap at 500 for very zoomed out views
+    if (areaDegrees < 0.01) {
+      return 100;  // Very zoomed in (neighborhood level)
+    } else if (areaDegrees < 0.1) {
+      return 150;  // City level
+    } else if (areaDegrees < 1) {
+      return 250;  // Metro area level
+    } else if (areaDegrees < 5) {
+      return 400;  // Regional level
+    } else {
+      return 500;  // State/country level - max limit
+    }
+  };
+
+  /**
    * Fetch places for the current visible map bounds
    * Called when user taps "Search this Area" button
    */
@@ -987,12 +1022,17 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   }) => {
     try {
       setIsSearchingArea(true);
-      console.log(`Fetching places for bounds: [${bounds.minLng}, ${bounds.minLat}] to [${bounds.maxLng}, ${bounds.maxLat}]`);
+      
+      // Calculate dynamic limit based on visible area size
+      const dynamicLimit = calculateDynamicLimit(bounds);
+      console.log(`Fetching places for bounds: [${bounds.minLng}, ${bounds.minLat}] to [${bounds.maxLng}, ${bounds.maxLat}] with limit ${dynamicLimit}`);
 
       const result = await fetchPlacesInBounds({
         bounds,
-        limit: 150,
+        userLocation: userLocation ? { latitude: userLocation.latitude, longitude: userLocation.longitude } : undefined,
+        limit: dynamicLimit,
         fallbackThreshold: 40,
+        sortByDistance: true,
       });
 
       console.log(`Fetched ${result.places.length} places for map bounds`);
@@ -1322,6 +1362,12 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // ============================================
 
   const handleCategorySelect = async (category: string) => {
+    // Special handling for Filter button - opens advanced filter modal
+    if (category === 'Filter') {
+      setShowAdvancedFilterModal(true);
+      return;
+    }
+    
     setSelectedCategory(category);
     
     if (category === 'All') {
@@ -1377,6 +1423,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         'Health': ['health', 'medical', 'doctor', 'hospital', 'clinic', 'pharmacy', 'dentist'],
         'Beauty': ['beauty', 'salon', 'spa', 'hair', 'nail', 'barber'],
         'Fitness': ['gym', 'fitness', 'yoga', 'sports', 'athletic'],
+        // Gas & Automotive
+        'Gas': ['gas station', 'fuel', 'petrol', 'gasoline', 'diesel', 'filling station', 'service station', 'convenience store gas'],
+        'Gas Stations': ['gas station', 'fuel', 'petrol', 'gasoline', 'diesel', 'filling station', 'service station'],
         // RV & Camping
         'RV & Camping': ['campground', 'rv park', 'camping', 'camper', 'caravan', 'motorhome', 'boondocking'],
         'Campgrounds': ['campground', 'camping', 'campsite', 'tent', 'camp'],
@@ -1765,16 +1814,124 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const getMarkerColor = (category?: string) => {
     if (!category) return '#007AFF';
-    // Colors match the Map Legend
+    // Colors match the Map Legend - expanded for more categories
     const colors: Record<string, string> = {
-      restaurants: '#EF4444',  // Red
-      cafes: '#F59E0B',        // Orange/Amber
-      bars: '#8B5CF6',         // Purple
-      shopping: '#3B82F6',     // Blue
-      'rv & camping': '#22C55E', // Green
-      hotels: '#EC4899',       // Pink
+      // Food & Drink
+      restaurants: '#EF4444',      // Red
+      restaurant: '#EF4444',       // Red
+      'food': '#EF4444',           // Red
+      'dining': '#EF4444',         // Red
+      cafes: '#F59E0B',            // Orange/Amber
+      cafe: '#F59E0B',             // Orange/Amber
+      'coffee': '#F59E0B',         // Orange/Amber
+      'coffee shop': '#F59E0B',    // Orange/Amber
+      bars: '#8B5CF6',             // Purple
+      bar: '#8B5CF6',              // Purple
+      'nightlife': '#8B5CF6',      // Purple
+      'pub': '#8B5CF6',            // Purple
+      'brewery': '#8B5CF6',        // Purple
+      // Shopping
+      shopping: '#3B82F6',         // Blue
+      'retail': '#3B82F6',         // Blue
+      'store': '#3B82F6',          // Blue
+      'mall': '#3B82F6',           // Blue
+      // Travel & Lodging
+      'rv & camping': '#22C55E',   // Green
+      'camping': '#22C55E',        // Green
+      'outdoors': '#22C55E',       // Green
+      'parks': '#22C55E',          // Green
+      'park': '#22C55E',           // Green
+      hotels: '#EC4899',           // Pink
+      hotel: '#EC4899',            // Pink
+      'lodging': '#EC4899',        // Pink
+      // Gas & Automotive
+      'gas': '#FF6B35',            // Orange-Red
+      'gas station': '#FF6B35',    // Orange-Red
+      'fuel': '#FF6B35',           // Orange-Red
+      'automotive': '#FF6B35',     // Orange-Red
+      // Entertainment
+      'entertainment': '#10B981',  // Emerald
+      'arts': '#10B981',           // Emerald
+      'museum': '#10B981',         // Emerald
+      'theater': '#10B981',        // Emerald
+      'cinema': '#10B981',         // Emerald
+      // Services
+      'services': '#6366F1',       // Indigo
+      'health': '#6366F1',         // Indigo
+      'medical': '#6366F1',        // Indigo
+      'fitness': '#6366F1',        // Indigo
+      'gym': '#6366F1',            // Indigo
+      // Travel
+      'travel': '#0EA5E9',         // Sky Blue
+      'airport': '#0EA5E9',        // Sky Blue
+      'transit': '#0EA5E9',        // Sky Blue
+      // Attractions
+      'attractions': '#F43F5E',    // Rose
+      'theme park': '#F43F5E',     // Rose
+      'landmark': '#F43F5E',       // Rose
     };
     return colors[category.toLowerCase()] || '#007AFF';
+  };
+
+  // Get icon name based on category
+  const getMarkerIcon = (category?: string): string => {
+    if (!category) return 'location';
+    const icons: Record<string, string> = {
+      // Food & Drink
+      restaurants: 'restaurant',
+      restaurant: 'restaurant',
+      'food': 'restaurant',
+      'dining': 'restaurant',
+      cafes: 'cafe',
+      cafe: 'cafe',
+      'coffee': 'cafe',
+      'coffee shop': 'cafe',
+      bars: 'beer',
+      bar: 'beer',
+      'nightlife': 'moon',
+      'pub': 'beer',
+      'brewery': 'beer',
+      // Shopping
+      shopping: 'cart',
+      'retail': 'cart',
+      'store': 'storefront',
+      'mall': 'storefront',
+      // Travel & Lodging
+      'rv & camping': 'bonfire',
+      'camping': 'bonfire',
+      'outdoors': 'leaf',
+      'parks': 'leaf',
+      'park': 'leaf',
+      hotels: 'bed',
+      hotel: 'bed',
+      'lodging': 'bed',
+      // Gas & Automotive
+      'gas': 'car',
+      'gas station': 'car',
+      'fuel': 'car',
+      'automotive': 'car',
+      // Entertainment
+      'entertainment': 'game-controller',
+      'arts': 'color-palette',
+      'museum': 'business',
+      'theater': 'film',
+      'cinema': 'film',
+      // Services
+      'services': 'construct',
+      'health': 'medical',
+      'medical': 'medical',
+      'fitness': 'fitness',
+      'gym': 'fitness',
+      // Travel
+      'travel': 'airplane',
+      'airport': 'airplane',
+      'transit': 'bus',
+      // Attractions
+      'attractions': 'star',
+      'theme park': 'happy',
+      'landmark': 'flag',
+    };
+    return icons[category.toLowerCase()] || 'location';
   };
 
   // ============================================
@@ -2783,15 +2940,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 ]}
               >
                 <Ionicons
-                  name={
-                    place.category?.toLowerCase() === 'restaurants' ? 'restaurant' :
-                    place.category?.toLowerCase() === 'cafes' ? 'cafe' :
-                    place.category?.toLowerCase() === 'bars' ? 'beer' :
-                    place.category?.toLowerCase() === 'shopping' ? 'cart' :
-                    place.category?.toLowerCase() === 'rv & camping' ? 'bonfire' :
-                    place.category?.toLowerCase() === 'hotels' ? 'bed' : 'location'
-                  }
-                  size={20}
+                  name={getMarkerIcon(place.category) as any}
+                  size={18}
                   color="#fff"
                 />
               </View>
@@ -2897,7 +3047,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         )}
       </View>
       
-      {/* Category Filters - Text only, rounded */}
+      {/* Category Filters - Filter icon first, then text chips */}
       <View style={styles.mapCategoryOverlay}>
         <ScrollView
           horizontal
@@ -2910,19 +3060,24 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               style={[
                 styles.mapCategoryChip,
                 { backgroundColor: isDark ? theme.surface : '#fff' },
-                selectedCategory === category && styles.mapCategoryChipActive,
+                category === 'Filter' && styles.mapFilterChip,
+                selectedCategory === category && category !== 'Filter' && styles.mapCategoryChipActive,
               ]}
               onPress={() => handleCategorySelect(category)}
             >
-              <Text
-                style={[
-                  styles.mapCategoryChipText,
-                  { color: isDark ? theme.text : '#333' },
-                  selectedCategory === category && styles.mapCategoryChipTextActive,
-                ]}
-              >
-                {category}
-              </Text>
+              {category === 'Filter' ? (
+                <Ionicons name="options" size={18} color={isDark ? theme.text : '#333'} />
+              ) : (
+                <Text
+                  style={[
+                    styles.mapCategoryChipText,
+                    { color: isDark ? theme.text : '#333' },
+                    selectedCategory === category && styles.mapCategoryChipTextActive,
+                  ]}
+                >
+                  {category}
+                </Text>
+              )}
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -3352,6 +3507,172 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             </TouchableOpacity>
             <TouchableOpacity style={styles.filterApplyBtn} onPress={applyFilters}>
               <Text style={styles.filterApplyBtnText}>Apply</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Advanced Filter Modal - Opens from Filter icon */}
+      <Modal
+        visible={showAdvancedFilterModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowAdvancedFilterModal(false)}
+      >
+        <SafeAreaView style={[styles.filterModalContainer, { backgroundColor: isDark ? theme.background : '#fff' }]}>
+          <View style={[styles.filterModalHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee' }]}>
+            <Text style={[styles.filterModalTitle, { color: isDark ? theme.text : '#000' }]}>Advanced Filters</Text>
+            <TouchableOpacity onPress={() => setShowAdvancedFilterModal(false)} style={styles.filterModalClose}>
+              <View style={[styles.filterModalCloseCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}>
+                <Ionicons name="close" size={20} color={isDark ? theme.text : '#000'} />
+              </View>
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={styles.filterModalContent}>
+            {/* Distance Filter */}
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Distance</Text>
+              <View style={styles.filterOptionsRow}>
+                {['1 mi', '5 mi', '10 mi', '25 mi', 'Any'].map((dist) => (
+                  <TouchableOpacity
+                    key={dist}
+                    style={[
+                      styles.filterOption,
+                      { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
+                    ]}
+                    onPress={() => {}}
+                  >
+                    <Text style={[
+                      styles.filterOptionText,
+                      { color: isDark ? theme.text : '#000' },
+                    ]}>{dist}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Price Range Filter */}
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Price Range</Text>
+              <View style={styles.filterOptionsRow}>
+                {['$', '$$', '$$$', '$$$$', 'Any'].map((price) => (
+                  <TouchableOpacity
+                    key={price}
+                    style={[
+                      styles.filterOption,
+                      { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
+                    ]}
+                    onPress={() => {}}
+                  >
+                    <Text style={[
+                      styles.filterOptionText,
+                      { color: isDark ? theme.text : '#000' },
+                    ]}>{price}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Rating Filter */}
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Rating</Text>
+              <View style={styles.filterOptionsRow}>
+                {['4.5+', '4.0+', '3.5+', 'Any'].map((rating) => (
+                  <TouchableOpacity
+                    key={rating}
+                    style={[
+                      styles.filterOption,
+                      { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
+                    ]}
+                    onPress={() => {}}
+                  >
+                    <Text style={[
+                      styles.filterOptionText,
+                      { color: isDark ? theme.text : '#000' },
+                    ]}>{rating}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Hours Filter */}
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Hours</Text>
+              <View style={styles.filterOptionsRow}>
+                {['Open Now', 'Open 24h', 'Any'].map((hours) => (
+                  <TouchableOpacity
+                    key={hours}
+                    style={[
+                      styles.filterOption,
+                      { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
+                    ]}
+                    onPress={() => {}}
+                  >
+                    <Text style={[
+                      styles.filterOptionText,
+                      { color: isDark ? theme.text : '#000' },
+                    ]}>{hours}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Amenities Filter */}
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Amenities</Text>
+              <View style={[styles.filterOptionsRow, { flexWrap: 'wrap' }]}>
+                {['WiFi', 'Parking', 'Outdoor Seating', 'Takeout', 'Delivery', 'Reservations', 'Wheelchair Accessible'].map((amenity) => (
+                  <TouchableOpacity
+                    key={amenity}
+                    style={[
+                      styles.filterOption,
+                      { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', marginBottom: 8 },
+                    ]}
+                    onPress={() => {}}
+                  >
+                    <Text style={[
+                      styles.filterOptionText,
+                      { color: isDark ? theme.text : '#000' },
+                    ]}>{amenity}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Sort By */}
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Sort By</Text>
+              <View style={styles.filterOptionsRow}>
+                {['Distance', 'Rating', 'Most Taps', 'Newest'].map((sort) => (
+                  <TouchableOpacity
+                    key={sort}
+                    style={[
+                      styles.filterOption,
+                      { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
+                    ]}
+                    onPress={() => {}}
+                  >
+                    <Text style={[
+                      styles.filterOptionText,
+                      { color: isDark ? theme.text : '#000' },
+                    ]}>{sort}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </ScrollView>
+          <View style={[styles.filterModalButtons, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee' }]}>
+            <TouchableOpacity 
+              style={[styles.filterClearBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e8f4f8' }]} 
+              onPress={() => setShowAdvancedFilterModal(false)}
+            >
+              <Text style={[styles.filterClearBtnText, { color: '#0A84FF' }]}>Reset All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.filterApplyBtn} 
+              onPress={() => setShowAdvancedFilterModal(false)}
+            >
+              <Text style={styles.filterApplyBtnText}>Apply Filters</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -3890,6 +4211,11 @@ const styles = StyleSheet.create({
   },
   mapCategoryChipActive: {
     backgroundColor: '#0A84FF',
+  },
+  mapFilterChip: {
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
   },
   mapCategoryChipText: {
     fontSize: 13,

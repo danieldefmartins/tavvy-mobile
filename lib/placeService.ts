@@ -25,6 +25,7 @@ export interface PlaceCard {
   name: string;
   latitude: number;
   longitude: number;
+  distance?: number;             // Distance from user in meters (if userLocation provided)
   address?: string;
   city?: string;
   region?: string;
@@ -51,12 +52,17 @@ export interface FetchPlacesOptions {
     minLng: number;
     maxLng: number;
   };
+  userLocation?: {
+    latitude: number;
+    longitude: number;
+  };
   filters?: {
     category?: string;
     status?: string;
   };
   limit?: number;
   fallbackThreshold?: number;    // Default: 40
+  sortByDistance?: boolean;      // Default: true when userLocation is provided
 }
 
 export interface FetchPlacesResult {
@@ -91,7 +97,7 @@ const DEFAULT_FALLBACK_THRESHOLD = 40;
  */
 export async function fetchPlacesInBounds(options: FetchPlacesOptions): Promise<FetchPlacesResult> {
   const startTime = Date.now();
-  const { bounds, filters, limit = DEFAULT_LIMIT, fallbackThreshold = DEFAULT_FALLBACK_THRESHOLD } = options;
+  const { bounds, userLocation, filters, limit = DEFAULT_LIMIT, fallbackThreshold = DEFAULT_FALLBACK_THRESHOLD, sortByDistance = true } = options;
   const { minLat, maxLat, minLng, maxLng } = bounds;
 
   let placesFromCanonical: PlaceCard[] = [];
@@ -176,7 +182,28 @@ export async function fetchPlacesInBounds(options: FetchPlacesOptions): Promise<
   
   // Additional deduplication by name + proximity
   // This catches duplicates that have different source_ids but are the same place
-  const deduplicatedPlaces = deduplicateByNameAndProximity(allPlaces);
+  let deduplicatedPlaces = deduplicateByNameAndProximity(allPlaces);
+  
+  // ============================================
+  // STEP 5: Calculate distance and sort by proximity
+  // ============================================
+  if (userLocation && sortByDistance) {
+    // Add distance to each place
+    deduplicatedPlaces = deduplicatedPlaces.map(place => ({
+      ...place,
+      distance: getDistanceInMeters(
+        userLocation.latitude,
+        userLocation.longitude,
+        place.latitude,
+        place.longitude
+      )
+    }));
+    
+    // Sort by distance (closest first)
+    deduplicatedPlaces.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+    
+    console.log(`[placeService] Sorted ${deduplicatedPlaces.length} places by distance from user`);
+  }
   
   const endTime = Date.now();
 
@@ -466,4 +493,45 @@ function deduplicateByNameAndProximity(places: PlaceCard[]): PlaceCard[] {
   }
   
   return result;
+}
+
+
+// ============================================
+// DISTANCE FORMATTING HELPER
+// ============================================
+
+/**
+ * Format distance in meters to a human-readable string
+ * @param meters Distance in meters
+ * @returns Formatted string like "0.3 mi" or "2.5 mi"
+ */
+export function formatDistance(meters: number | undefined): string {
+  if (meters === undefined || meters === null) {
+    return '';
+  }
+  
+  // Convert meters to miles (1 mile = 1609.34 meters)
+  const miles = meters / 1609.34;
+  
+  if (miles < 0.1) {
+    // Less than 0.1 miles, show in feet
+    const feet = Math.round(meters * 3.28084);
+    return `${feet} ft`;
+  } else if (miles < 10) {
+    // Less than 10 miles, show 1 decimal
+    return `${miles.toFixed(1)} mi`;
+  } else {
+    // 10+ miles, show whole number
+    return `${Math.round(miles)} mi`;
+  }
+}
+
+/**
+ * Get distance in miles from meters
+ */
+export function getDistanceInMiles(meters: number | undefined): number {
+  if (meters === undefined || meters === null) {
+    return Infinity;
+  }
+  return meters / 1609.34;
 }
