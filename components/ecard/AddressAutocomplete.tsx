@@ -98,10 +98,34 @@ export default function AddressAutocomplete({ value, onChange }: Props) {
         {
           headers: {
             'User-Agent': 'TavvyApp/1.0',
+            'Accept': 'application/json',
           },
         }
       );
+
+      // Check if response is OK
+      if (!response.ok) {
+        console.warn('Address API returned error status:', response.status);
+        setPredictions([]);
+        return;
+      }
+
+      // Check content type to ensure we're getting JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.warn('Address API returned non-JSON response');
+        setPredictions([]);
+        return;
+      }
+
       const data = await response.json();
+      
+      // Validate that data is an array
+      if (!Array.isArray(data)) {
+        console.warn('Address API returned unexpected data format');
+        setPredictions([]);
+        return;
+      }
       
       // Transform Nominatim results to match our prediction format
       const predictions = data.map((item: any) => ({
@@ -113,6 +137,7 @@ export default function AddressAutocomplete({ value, onChange }: Props) {
       setPredictions(predictions);
     } catch (error) {
       console.error('Error fetching address predictions:', error);
+      setPredictions([]);
     } finally {
       setLoading(false);
     }
