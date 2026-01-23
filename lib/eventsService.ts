@@ -305,7 +305,12 @@ export async function fetchTavvyEvents(
     const { data, error } = await query;
 
     if (error) {
-      console.error('[Events] Error fetching Tavvy events:', error);
+      // Silently handle missing table - this is expected if tavvy_events hasn't been created yet
+      if (error.code === 'PGRST205' || error.message?.includes('does not exist')) {
+        console.log('[Events] tavvy_events table not found, skipping community events');
+      } else {
+        console.error('[Events] Error fetching Tavvy events:', error);
+      }
       return [];
     }
 
