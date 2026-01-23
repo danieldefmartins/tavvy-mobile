@@ -43,7 +43,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_URL_BASE = 'https://tavvy.com/card/';
+const CARD_URL_BASE = 'https://tavvy.com/';
 
 interface CardLink {
   id?: string;

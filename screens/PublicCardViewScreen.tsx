@@ -208,7 +208,7 @@ export default function PublicCardViewScreen() {
         phoneNumbers: cardData.phone ? [{ label: 'mobile', number: cardData.phone }] : [],
         emails: cardData.email ? [{ label: 'work', email: cardData.email }] : [],
         urlAddresses: cardData.website ? [{ label: 'website', url: cardData.website }] : [],
-        note: `Tavvy Card: https://tavvy.com/card/${cardData.slug}`,
+        note: `Tavvy Card: https://tavvy.com/${cardData.slug}`,
       };
 
       await Contacts.addContactAsync(contact);
@@ -224,8 +224,8 @@ export default function PublicCardViewScreen() {
     
     try {
       await Share.share({
-        message: `Check out ${cardData.fullName}'s digital card: https://tavvy.com/card/${cardData.slug}`,
-        url: `https://tavvy.com/card/${cardData.slug}`,
+        message: `Check out ${cardData.fullName}'s digital card: https://tavvy.com/${cardData.slug}`,
+        url: `https://tavvy.com/${cardData.slug}`,
         title: `${cardData.fullName}'s Digital Card`,
       });
     } catch (error) {
