@@ -253,7 +253,7 @@ export default function AudioPlayer({
   };
 
   const handleSpeedChange = async () => {
-    const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
+    const speeds = [0.75, 0.9, 1.0, 1.25, 1.5, 2.0];
     const currentIndex = speeds.indexOf(playbackSpeed);
     const nextIndex = (currentIndex + 1) % speeds.length;
     const newSpeed = speeds[nextIndex];
