@@ -2818,7 +2818,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <View style={styles.featureSectionHeader}>
                 <Text style={[styles.featureSectionTitle, { color: isDark ? theme.text : '#000' }]}>🏆 Top Contributors</Text>
                 <TouchableOpacity onPress={() => navigation.navigate('Profile', { screen: 'Leaderboard' })}>
-                  <Text style={styles.seeAllText}>View All</Text>
+                  <Text style={styles.seeAllText}>See All</Text>
                 </TouchableOpacity>
               </View>
               <Text style={[styles.sectionSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
@@ -4194,14 +4194,14 @@ const styles = StyleSheet.create({
 
   // Explore Section
   exploreSection: {
-    paddingHorizontal: 18,
-    marginTop: 20,
+    marginTop: 8,
     marginBottom: 16,
   },
   exploreSubtitle: {
     fontSize: 14,
-    marginBottom: 12,
-    marginTop: -4,
+    marginTop: 4,
+    marginBottom: 10,
+    paddingHorizontal: 18,
   },
   exploreGrid: {
     flexDirection: 'row',
@@ -5233,26 +5233,27 @@ const styles = StyleSheet.create({
 
   // ===== NEW SECTIONS STYLES =====
   sectionContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     marginTop: 24,
   },
   featureSectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'baseline',
   },
   featureSectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
   sectionSubtitle: {
     fontSize: 14,
     marginTop: 4,
   },
   seeAllText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#0A84FF',
+    color: '#0F8A8A', // ACCENT color for consistency
   },
 
   // Feature Cards (Rides, RV & Camping)
@@ -5371,8 +5372,8 @@ const styles = StyleSheet.create({
 
   // How Tavvy Works Section
   howItWorksSection: {
-    paddingHorizontal: 20,
-    marginTop: 32,
+    paddingHorizontal: 18,
+    marginTop: 24,
     marginBottom: 16,
   },
   howItWorksHeader: {
@@ -5383,12 +5384,14 @@ const styles = StyleSheet.create({
   },
   howItWorksTitle: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: -0.3,
     marginBottom: 4,
   },
   howItWorksSubtitle: {
     fontSize: 14,
-    marginBottom: 16,
+    marginTop: 4,
+    marginBottom: 0,
   },
   howItWorksCard: {
     borderRadius: 16,

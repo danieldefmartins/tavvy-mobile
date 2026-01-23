@@ -268,7 +268,7 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
           <Text style={styles.subtitle}>Time-sensitive experiences near you</Text>
         </View>
         <TouchableOpacity style={styles.seeAllButton} onPress={() => (navigation as any).navigate('HappeningNow')}>
-          <Text style={styles.seeAllText}>See all</Text>
+          <Text style={styles.seeAllText}>See All</Text>
         </TouchableOpacity>
       </View>
 
@@ -418,22 +418,23 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 16,
-    marginBottom: 12,
+    alignItems: 'baseline',
+    paddingHorizontal: 18,
+    marginBottom: 10,
   },
   headerLeft: {
     flex: 1,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.3,
     color: '#1F2937',
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#6B7280',
-    marginTop: 2,
+    marginTop: 4,
   },
   refreshButton: {
     padding: 8,
@@ -443,12 +444,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   seeAllText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#0A84FF',
+    color: '#0F8A8A', // ACCENT color for consistency
   },
   scrollContent: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 18,
     gap: 12,
   },
   card: {
