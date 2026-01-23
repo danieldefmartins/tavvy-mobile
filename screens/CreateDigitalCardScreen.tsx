@@ -183,12 +183,29 @@ export default function CreateDigitalCardScreen() {
   // Animation
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  // Load existing card if editing
+  // Load existing card if editing or apply template config
   useEffect(() => {
     if (route.params?.cardData) {
       setCardData(route.params.cardData);
       setIsEditing(true);
       setCurrentStep('info');
+    } else if (route.params?.templateConfig) {
+      // Apply template configuration from ECardColorPickerScreen
+      const { template, colorScheme } = route.params.templateConfig;
+      if (colorScheme) {
+        setCardData(prev => ({
+          ...prev,
+          gradientColors: [colorScheme.primary, colorScheme.secondary] as [string, string],
+        }));
+      }
+      setSelectedTemplate(route.params.templateId);
+      setCurrentStep('info'); // Skip template selection, go straight to info
+      
+      // If editing existing card, load the data
+      if (route.params.mode === 'edit' && route.params.existingData) {
+        setCardData(prev => ({ ...prev, ...route.params.existingData }));
+        setIsEditing(true);
+      }
     } else {
       loadExistingCard();
     }
@@ -683,7 +700,13 @@ export default function CreateDigitalCardScreen() {
       {/* Profile Photo */}
       <TouchableOpacity style={styles.photoSection} onPress={pickImage}>
         {cardData.profilePhotoUri ? (
-          <Image source={{ uri: cardData.profilePhotoUri }} style={styles.profilePhoto} />
+          <View style={styles.photoWithOverlay}>
+            <Image source={{ uri: cardData.profilePhotoUri }} style={styles.profilePhoto} />
+            <View style={styles.photoOverlay}>
+              <Ionicons name="camera" size={20} color="#fff" />
+              <Text style={styles.photoOverlayText}>Change</Text>
+            </View>
+          </View>
         ) : (
           <LinearGradient
             colors={cardData.gradientColors}
@@ -1361,6 +1384,28 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
+  },
+  photoWithOverlay: {
+    position: 'relative',
+  },
+  photoOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderBottomLeftRadius: 50,
+    borderBottomRightRadius: 50,
+    paddingVertical: 8,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  photoOverlayText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
   },
   photoPlaceholder: {
     width: 100,
