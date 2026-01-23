@@ -948,7 +948,15 @@ export default function CreateDigitalCardScreen() {
   // Render link modal
   const renderLinkModal = () => (
     <Modal visible={showLinkModal} animationType="slide" transparent>
-      <View style={styles.modalOverlay}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.modalOverlay}
+      >
+        <TouchableOpacity 
+          style={styles.modalBackdrop} 
+          activeOpacity={1} 
+          onPress={closeLinkModal}
+        />
         <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>
@@ -959,56 +967,63 @@ export default function CreateDigitalCardScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.text }]}>Link Title</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-              placeholder="My Portfolio"
-              placeholderTextColor={theme.textSecondary}
-              value={linkTitle}
-              onChangeText={setLinkTitle}
-            />
-          </View>
+          <ScrollView 
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: theme.text }]}>Link Title</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+                placeholder="My Portfolio"
+                placeholderTextColor={theme.textSecondary}
+                value={linkTitle}
+                onChangeText={setLinkTitle}
+              />
+            </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.text }]}>URL</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-              placeholder="https://example.com"
-              placeholderTextColor={theme.textSecondary}
-              value={linkUrl}
-              onChangeText={setLinkUrl}
-              autoCapitalize="none"
-              keyboardType="url"
-            />
-          </View>
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: theme.text }]}>URL</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+                placeholder="https://example.com"
+                placeholderTextColor={theme.textSecondary}
+                value={linkUrl}
+                onChangeText={setLinkUrl}
+                autoCapitalize="none"
+                keyboardType="url"
+              />
+            </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.text }]}>Icon</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.iconPicker}>
-              {LINK_ICONS.map((icon) => (
-                <TouchableOpacity
-                  key={icon.id}
-                  style={[
-                    styles.iconOption,
-                    { backgroundColor: theme.card, borderColor: theme.border },
-                    linkIcon === icon.id && { borderColor: cardData.gradientColors[0], backgroundColor: cardData.gradientColors[0] + '20' },
-                  ]}
-                  onPress={() => setLinkIcon(icon.id)}
-                >
-                  <Ionicons name={icon.icon as any} size={24} color={linkIcon === icon.id ? cardData.gradientColors[0] : theme.text} />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: theme.text }]}>Icon</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.iconPicker}>
+                {LINK_ICONS.map((icon) => (
+                  <TouchableOpacity
+                    key={icon.id}
+                    style={[
+                      styles.iconOption,
+                      { backgroundColor: theme.card, borderColor: theme.border },
+                      linkIcon === icon.id && { borderColor: cardData.gradientColors[0], backgroundColor: cardData.gradientColors[0] + '20' },
+                    ]}
+                    onPress={() => setLinkIcon(icon.id)}
+                  >
+                    <Ionicons name={icon.icon as any} size={24} color={linkIcon === icon.id ? cardData.gradientColors[0] : theme.text} />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
 
-          <TouchableOpacity style={[styles.modalButton, { backgroundColor: cardData.gradientColors[0] }]} onPress={addOrUpdateLink}>
-            <Text style={styles.modalButtonText}>
-              {editingLinkIndex !== null ? 'Update Link' : 'Add Link'}
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={[styles.modalButton, { backgroundColor: cardData.gradientColors[0] }]} onPress={addOrUpdateLink}>
+              <Text style={styles.modalButtonText}>
+                {editingLinkIndex !== null ? 'Update Link' : 'Add Link'}
+              </Text>
+            </TouchableOpacity>
+            
+            <View style={{ height: 20 }} />
+          </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 
@@ -1549,14 +1564,18 @@ const styles = StyleSheet.create({
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    maxHeight: SCREEN_HEIGHT * 0.7,
   },
   modalHeader: {
     flexDirection: 'row',
