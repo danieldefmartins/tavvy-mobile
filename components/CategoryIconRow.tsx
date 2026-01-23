@@ -19,15 +19,29 @@ import { Ionicons } from '@expo/vector-icons';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Category definitions with icons
+// Comprehensive set covering food, entertainment, services, and lifestyle
 const CATEGORY_ICONS = [
   { id: 'all', name: 'All', icon: 'apps-outline', activeIcon: 'apps' },
+  // Food & Drink
   { id: 'restaurants', name: 'Restaurants', icon: 'restaurant-outline', activeIcon: 'restaurant' },
   { id: 'cafes', name: 'Cafes', icon: 'cafe-outline', activeIcon: 'cafe' },
   { id: 'bars', name: 'Bars', icon: 'beer-outline', activeIcon: 'beer' },
+  { id: 'fast-food', name: 'Fast Food', icon: 'fast-food-outline', activeIcon: 'fast-food' },
+  // Entertainment & Nightlife
   { id: 'live-music', name: 'Live Music', icon: 'musical-notes-outline', activeIcon: 'musical-notes' },
   { id: 'events', name: 'Events', icon: 'calendar-outline', activeIcon: 'calendar' },
+  { id: 'nightlife', name: 'Nightlife', icon: 'moon-outline', activeIcon: 'moon' },
+  // Shopping & Services
   { id: 'shopping', name: 'Shopping', icon: 'bag-outline', activeIcon: 'bag' },
+  { id: 'gas', name: 'Gas', icon: 'car-outline', activeIcon: 'car' },
+  { id: 'hotels', name: 'Hotels', icon: 'bed-outline', activeIcon: 'bed' },
+  // Lifestyle & Wellness
   { id: 'outdoor', name: 'Outdoor', icon: 'leaf-outline', activeIcon: 'leaf' },
+  { id: 'fitness', name: 'Fitness', icon: 'fitness-outline', activeIcon: 'fitness' },
+  { id: 'beauty', name: 'Beauty', icon: 'sparkles-outline', activeIcon: 'sparkles' },
+  // Services
+  { id: 'pros', name: 'Pros', icon: 'construct-outline', activeIcon: 'construct' },
+  { id: 'healthcare', name: 'Healthcare', icon: 'medkit-outline', activeIcon: 'medkit' },
 ];
 
 // Theme colors

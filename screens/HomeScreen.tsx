@@ -1591,6 +1591,17 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         // Theme Parks
         'Theme Parks': ['theme park', 'amusement park', 'water park', 'attraction'],
         'Rides': ['ride', 'roller coaster', 'attraction'],
+        // Entertainment & Nightlife (from CategoryIconRow)
+        'Live Music': ['live music', 'concert', 'music venue', 'jazz', 'blues', 'rock', 'band', 'performance'],
+        'Events': ['event', 'festival', 'fair', 'convention', 'expo', 'show', 'concert'],
+        'Nightlife': ['nightclub', 'club', 'lounge', 'dance', 'disco', 'bar', 'pub', 'karaoke'],
+        // Food (from CategoryIconRow)
+        'Fast Food': ['fast food', 'burger', 'pizza', 'taco', 'sandwich', 'drive-through', 'quick service'],
+        // Outdoor (from CategoryIconRow)
+        'Outdoor': ['park', 'trail', 'hiking', 'nature', 'garden', 'outdoor', 'recreation', 'beach', 'lake'],
+        // Services (from CategoryIconRow)
+        'Pros': ['contractor', 'service', 'repair', 'professional', 'handyman', 'plumber', 'electrician', 'mechanic'],
+        'Healthcare': ['hospital', 'clinic', 'doctor', 'medical', 'urgent care', 'pharmacy', 'dentist', 'health'],
         // Amenities
         'Restrooms': ['restroom', 'bathroom', 'toilet', 'washroom', 'lavatory'],
         'Showers': ['shower', 'bath house'],
@@ -2592,9 +2603,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           <>
             {/* Category Icon Row - Icon-based shortcuts (replaces text pills) */}
             {/* Tap-first Tavvy design: cleaner, faster to scan */}
+            {/* Tapping a category opens map view with that filter applied */}
             <CategoryIconRow
               selectedCategory={selectedCategory}
-              onCategorySelect={handleCategorySelect}
+              onCategorySelect={(category) => {
+                handleCategorySelect(category);
+                // Switch to map view with the selected category filter
+                switchToMapMode();
+              }}
               isDark={isDark}
               theme={theme}
             />
