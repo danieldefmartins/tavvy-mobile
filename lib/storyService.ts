@@ -510,3 +510,152 @@ export async function getQuickFindPlaces(
     return [];
   }
 }
+
+
+// =============================================
+// NEARBY PLACES WITH STORIES
+// =============================================
+
+export interface PlaceWithStoryInfo {
+  placeId: string;
+  placeName: string;
+  placeImage: string | null;
+  storyCount: number;
+  hasUnviewedStories: boolean;
+  latestStoryId: string;
+  latitude: number;
+  longitude: number;
+}
+
+/**
+ * Get nearby places that have active stories
+ * Used for the Stories row on Home Screen
+ */
+export async function getNearbyPlacesWithStories(
+  userLocation: [number, number] | null, // [lng, lat]
+  currentUserId?: string,
+  maxDistance: number = 20, // miles
+  limit: number = 15
+): Promise<PlaceWithStoryInfo[]> {
+  try {
+    const now = new Date().toISOString();
+    
+    // Get all active stories (not expired)
+    const { data: stories, error: storiesError } = await supabase
+      .from('place_stories')
+      .select('id, place_id, created_at')
+      .eq('status', 'active')
+      .or(`expires_at.gt.${now},is_permanent.eq.true`)
+      .order('created_at', { ascending: false });
+
+    if (storiesError) {
+      console.error('[storyService] Error fetching stories:', storiesError);
+      return [];
+    }
+
+    if (!stories || stories.length === 0) {
+      console.log('[storyService] No active stories found');
+      return [];
+    }
+
+    // Get unique place IDs
+    const placeIds = [...new Set(stories.map(s => s.place_id))];
+    console.log('[storyService] Places with stories:', placeIds.length);
+
+    // Fetch place details
+    const { data: places, error: placesError } = await supabase
+      .from('places')
+      .select('id, name, cover_image_url, latitude, longitude')
+      .in('id', placeIds);
+
+    if (placesError) {
+      console.error('[storyService] Error fetching places:', placesError);
+      return [];
+    }
+
+    // Get user's viewed stories
+    let viewedStoryIds = new Set<string>();
+    if (currentUserId) {
+      const { data: views } = await supabase
+        .from('place_story_views')
+        .select('story_id')
+        .eq('user_id', currentUserId);
+      
+      if (views) {
+        viewedStoryIds = new Set(views.map(v => v.story_id));
+      }
+    }
+
+    // Build places with stories data
+    const placesMap = new Map<string, PlaceWithStoryInfo>();
+    
+    stories.forEach(story => {
+      const place = places?.find(p => p.id === story.place_id);
+      if (!place || !place.latitude || !place.longitude) return;
+
+      // Calculate distance if we have user location
+      if (userLocation) {
+        const distance = calculateDistanceMiles(
+          userLocation[1], userLocation[0],
+          Number(place.latitude), Number(place.longitude)
+        );
+        if (distance > maxDistance) return;
+      }
+
+      const isUnviewed = !viewedStoryIds.has(story.id);
+      const existing = placesMap.get(story.place_id);
+
+      if (existing) {
+        existing.storyCount++;
+        if (isUnviewed) existing.hasUnviewedStories = true;
+      } else {
+        placesMap.set(story.place_id, {
+          placeId: story.place_id,
+          placeName: place.name,
+          placeImage: place.cover_image_url,
+          storyCount: 1,
+          hasUnviewedStories: isUnviewed,
+          latestStoryId: story.id,
+          latitude: Number(place.latitude),
+          longitude: Number(place.longitude),
+        });
+      }
+    });
+
+    // Sort by: unviewed first, then by story count
+    const result = Array.from(placesMap.values())
+      .sort((a, b) => {
+        if (a.hasUnviewedStories !== b.hasUnviewedStories) {
+          return a.hasUnviewedStories ? -1 : 1;
+        }
+        return b.storyCount - a.storyCount;
+      })
+      .slice(0, limit);
+
+    console.log('[storyService] Nearby places with stories:', result.length);
+    return result;
+  } catch (error) {
+    console.error('[storyService] Error getting nearby places with stories:', error);
+    return [];
+  }
+}
+
+// Helper function for distance calculation
+function calculateDistanceMiles(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 3959; // Earth's radius in miles
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}

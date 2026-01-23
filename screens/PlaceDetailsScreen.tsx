@@ -37,6 +37,9 @@ import {
   useTap,
   useHasUserTapped
 } from '../hooks/useTapSystem';
+import { getPlaceStories, PlaceStory, getStoryRingState, StoryRingState } from '../lib/storyService';
+import { StoryViewer } from '../components/StoryViewer';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
@@ -295,6 +298,11 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   // NEW: Photo carousel state
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const carouselRef = useRef<FlatList>(null);
+  
+  // Stories state
+  const [stories, setStories] = useState<PlaceStory[]>([]);
+  const [storyRingState, setStoryRingState] = useState<StoryRingState>('none');
+  const [showStoryViewer, setShowStoryViewer] = useState(false);
   
   // Review Report Modal state (Apple compliance)
   const [showReportModal, setShowReportModal] = useState(false);
@@ -562,6 +570,26 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
     };
 
     fetchPlaceData();
+  }, [placeId]);
+
+  // Fetch stories for this place
+  useEffect(() => {
+    if (!placeId) return;
+    
+    const fetchStories = async () => {
+      try {
+        const placeStories = await getPlaceStories(placeId);
+        setStories(placeStories);
+        
+        // Get story ring state
+        const ringState = await getStoryRingState(placeId);
+        setStoryRingState(ringState);
+      } catch (err) {
+        console.error('[PlaceDetails] Error fetching stories:', err);
+      }
+    };
+    
+    fetchStories();
   }, [placeId]);
 
   // Extract entrances from place data
@@ -1030,9 +1058,42 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
 	          {/* Hero Text Overlay */}
 	          <View style={styles.heroTextContainer}>
                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 12}}>
-                  {place.logo_url && (
-                    <Image source={{ uri: place.logo_url }} style={styles.logoImage} />
-                  )}
+                  {/* Story Ring around Logo */}
+                  <TouchableOpacity 
+                    onPress={() => stories.length > 0 && setShowStoryViewer(true)}
+                    disabled={stories.length === 0}
+                    activeOpacity={0.8}
+                  >
+                    {storyRingState !== 'none' ? (
+                      <LinearGradient
+                        colors={storyRingState === 'unseen' 
+                          ? ['#FF6B6B', '#FFE66D', '#4ECDC4', '#45B7D1'] 
+                          : ['#C4C4C4', '#A0A0A0']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.storyRing}
+                      >
+                        <View style={styles.storyRingInner}>
+                          {place.logo_url ? (
+                            <Image source={{ uri: place.logo_url }} style={styles.logoImageWithRing} />
+                          ) : (
+                            <View style={styles.logoPlaceholder}>
+                              <Ionicons name="storefront" size={24} color="#666" />
+                            </View>
+                          )}
+                        </View>
+                      </LinearGradient>
+                    ) : (
+                      place.logo_url && (
+                        <Image source={{ uri: place.logo_url }} style={styles.logoImage} />
+                      )
+                    )}
+                    {stories.length > 0 && (
+                      <View style={styles.storyCountBadge}>
+                        <Text style={styles.storyCountText}>{stories.length}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
                   <View style={{flex: 1}}>
                     <Text style={styles.placeName}>{place.name}</Text>
                     <View style={styles.heroSubtitle}>
@@ -1679,6 +1740,19 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
         reviewId={reportingSignalId || ''}
         placeId={placeId || ''}
       />
+
+      {/* Story Viewer Modal */}
+      <StoryViewer
+        visible={showStoryViewer}
+        stories={stories}
+        placeName={place?.name}
+        placeImage={place?.logo_url || place?.coverImageUrl}
+        onClose={() => setShowStoryViewer(false)}
+        onStoryViewed={(storyId) => {
+          // Update story ring state after viewing
+          setStoryRingState('seen');
+        }}
+      />
     </View>
   );
 }
@@ -1830,6 +1904,54 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     borderWidth: 2,
     borderColor: '#fff',
+  },
+  // Story ring styles
+  storyRing: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    padding: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  storyRingInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+  },
+  logoImageWithRing: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 30,
+  },
+  logoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 30,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  storyCountBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#0F8A8A',
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+    paddingHorizontal: 4,
+  },
+  storyCountText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#fff',
   },
   placeName: {
     fontSize: 26,
