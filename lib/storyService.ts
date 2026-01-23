@@ -792,8 +792,14 @@ export async function getUserStrikeStatus(userId: string): Promise<UserStrike | 
       .eq('user_id', userId)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
+    // PGRST116 = no rows found, PGRST205 = table not found
+    if (error && error.code !== 'PGRST116' && error.code !== 'PGRST205') {
       console.error('Error fetching strike status:', error);
+      return null;
+    }
+
+    // If table doesn't exist or no data, return null (user has no strikes)
+    if (error?.code === 'PGRST205' || !data) {
       return null;
     }
 

@@ -53,34 +53,64 @@ export async function getProfile(userId: string): Promise<UserProfile | null> {
 
 /**
  * Create or update user profile (upsert)
+ * Uses UPDATE for existing records to preserve unspecified fields
  */
 export async function upsertProfile(
   userId: string,
   profileData: UpdateProfileData
 ): Promise<{ success: boolean; error?: string; profile?: UserProfile }> {
   try {
-    const { data, error } = await supabase
+    // First check if profile exists
+    const { data: existingProfile } = await supabase
       .from('profiles')
-      .upsert({
-        user_id: userId,
-        ...profileData,
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id',
-      })
-      .select()
+      .select('user_id')
+      .eq('user_id', userId)
       .single();
 
-    if (error) {
-      // Check for unique constraint violation on username
-      if (error.code === '23505' && error.message.includes('username')) {
-        return { success: false, error: 'Username is already taken' };
-      }
-      console.error('Error upserting profile:', error);
-      return { success: false, error: error.message };
-    }
+    if (existingProfile) {
+      // Profile exists - use UPDATE to preserve other fields
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          ...profileData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId)
+        .select()
+        .single();
 
-    return { success: true, profile: data as UserProfile };
+      if (error) {
+        if (error.code === '23505' && error.message.includes('username')) {
+          return { success: false, error: 'Username is already taken' };
+        }
+        console.error('Error updating profile:', error);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, profile: data as UserProfile };
+    } else {
+      // Profile doesn't exist - INSERT new record
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: userId,
+          ...profileData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '23505' && error.message.includes('username')) {
+          return { success: false, error: 'Username is already taken' };
+        }
+        console.error('Error inserting profile:', error);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, profile: data as UserProfile };
+    }
   } catch (error: any) {
     console.error('Error in upsertProfile:', error);
     return { success: false, error: error.message };

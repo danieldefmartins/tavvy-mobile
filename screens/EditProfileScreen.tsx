@@ -137,6 +137,8 @@ export default function EditProfileScreen({ navigation }: any) {
     setSaving(true);
 
     try {
+      let avatarUrl = avatarUri; // Keep existing avatar URL
+
       // Upload new avatar if changed
       if (newAvatarUri) {
         setUploadingAvatar(true);
@@ -148,22 +150,32 @@ export default function EditProfileScreen({ navigation }: any) {
           setSaving(false);
           return;
         }
+        // Avatar URL is already saved by updateAvatar, just update other fields
       }
 
-      // Update profile data
-      const result = await update({
-        display_name: displayName.trim() || null,
-        username: username.trim().toLowerCase() || null,
-        bio: bio.trim() || null,
-      });
+      // Only update other profile fields if they changed (avatar already saved separately)
+      const hasOtherChanges = 
+        displayName !== (profile?.display_name || '') ||
+        username !== (profile?.username || '') ||
+        bio !== (profile?.bio || '');
 
-      if (result.success) {
-        Alert.alert('Success', 'Your profile has been updated!', [
-          { text: 'OK', onPress: () => navigation.goBack() }
-        ]);
-      } else {
-        Alert.alert('Error', result.error || 'Failed to update profile.');
+      if (hasOtherChanges) {
+        const result = await update({
+          display_name: displayName.trim() || null,
+          username: username.trim().toLowerCase() || null,
+          bio: bio.trim() || null,
+        });
+
+        if (!result.success) {
+          Alert.alert('Error', result.error || 'Failed to update profile.');
+          setSaving(false);
+          return;
+        }
       }
+
+      Alert.alert('Success', 'Your profile has been updated!', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'An unexpected error occurred.');
     } finally {
