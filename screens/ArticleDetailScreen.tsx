@@ -303,11 +303,17 @@ export default function ArticleDetailScreen() {
 
   // Generate audio for the article
   const handleGenerateAudio = async () => {
-    if (!article?.id) return;
+    if (!article?.id) {
+      console.error('Cannot generate audio: article ID is missing');
+      return;
+    }
 
     try {
       setIsGeneratingAudio(true);
-      console.log('Generating audio for article:', article.id);
+      console.log('=== Starting Audio Generation ===');
+      console.log('Article ID:', article.id);
+      console.log('Article Title:', article.title);
+      console.log('Edge Function URL:', AUDIO_FUNCTION_URL);
 
       const response = await fetch(AUDIO_FUNCTION_URL, {
         method: 'POST',
@@ -318,10 +324,14 @@ export default function ArticleDetailScreen() {
         body: JSON.stringify({ article_id: article.id }),
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       const result = await response.json();
+      console.log('Response result:', JSON.stringify(result, null, 2));
 
       if (result.success) {
-        console.log('Audio generated:', result.audio_url);
+        console.log('Audio generated successfully:', result.audio_url);
         setArticle({
           ...article,
           audio_url: result.audio_url,
@@ -329,13 +339,20 @@ export default function ArticleDetailScreen() {
           audio_generated_at: new Date().toISOString(),
         });
       } else {
+        // Log the specific error from the Edge Function
+        console.error('Edge Function error:', result.error);
         throw new Error(result.error || 'Failed to generate audio');
       }
-    } catch (error) {
-      console.error('Error generating audio:', error);
+    } catch (error: any) {
+      console.error('=== Audio Generation Error ===');
+      console.error('Error message:', error?.message || error);
+      console.error('Error stack:', error?.stack);
+      
+      // Show more specific error message to user
+      const errorMessage = error?.message || 'Unknown error';
       Alert.alert(
         'Audio Generation Failed',
-        'Unable to generate audio for this article. Please try again later.'
+        `Unable to generate audio: ${errorMessage}\n\nPlease try again later.`
       );
     } finally {
       setIsGeneratingAudio(false);
