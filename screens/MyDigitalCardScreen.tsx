@@ -15,7 +15,7 @@
  * - Save to Contacts (vCard)
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -35,10 +35,12 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import QRCode from 'react-native-qrcode-svg';
 import * as Contacts from 'expo-contacts';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabaseClient';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_URL_BASE = 'https://tavvy.com/card/';
@@ -67,12 +69,80 @@ export default function MyDigitalCardScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { theme, isDark } = useThemeContext();
+  const { user } = useAuth();
   const [showQRModal, setShowQRModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [cardData, setCardData] = useState<CardData>(route.params?.cardData || {});
+  const [hasCard, setHasCard] = useState(false);
   
-  const cardData: CardData = route.params?.cardData || {};
   const cardUrl = CARD_URL_BASE + (cardData.slug || 'preview');
+
+  // Fetch user's digital card from database
+  const fetchUserCard = useCallback(async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
+    // If cardData was passed via params, use it
+    if (route.params?.cardData?.slug) {
+      setCardData(route.params.cardData);
+      setHasCard(true);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('digital_cards')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error || !data) {
+        setHasCard(false);
+        setIsLoading(false);
+        return;
+      }
+
+      const card: CardData = {
+        id: data.id,
+        slug: data.slug,
+        fullName: data.full_name,
+        title: data.title || '',
+        company: data.company || '',
+        phone: data.phone || '',
+        email: data.email || '',
+        website: data.website || '',
+        city: data.city || '',
+        state: data.state || '',
+        gradientColors: [data.gradient_color_1 || '#8B5CF6', data.gradient_color_2 || '#4F46E5'],
+        profilePhotoUri: data.profile_photo_url,
+        socialInstagram: data.social_instagram || '',
+        socialFacebook: data.social_facebook || '',
+        socialLinkedin: data.social_linkedin || '',
+        socialTwitter: data.social_twitter || '',
+        socialTiktok: data.social_tiktok || '',
+      };
+
+      setCardData(card);
+      setHasCard(true);
+    } catch (error) {
+      console.error('Error fetching card:', error);
+      setHasCard(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, route.params?.cardData]);
+
+  // Fetch card on focus (in case user just created one)
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserCard();
+    }, [fetchUserCard])
+  );
 
   // Generate vCard string
   const generateVCard = (): string => {
@@ -211,6 +281,61 @@ export default function MyDigitalCardScreen() {
   const hasSocialLinks = cardData.socialInstagram || cardData.socialFacebook || 
                          cardData.socialLinkedin || cardData.socialTwitter || cardData.socialTiktok;
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <StatusBar barStyle="light-content" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#8B5CF6" />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading your card...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // No card state - prompt to create one
+  if (!hasCard && !route.params?.cardData) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <StatusBar barStyle="light-content" />
+        <View style={styles.noCardContainer}>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()} 
+            style={styles.noCardBackButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.text} />
+          </TouchableOpacity>
+          
+          <LinearGradient
+            colors={['#8B5CF6', '#4F46E5']}
+            style={styles.noCardIcon}
+          >
+            <Ionicons name="id-card" size={48} color="#fff" />
+          </LinearGradient>
+          
+          <Text style={[styles.noCardTitle, { color: theme.text }]}>No Digital Card Yet</Text>
+          <Text style={[styles.noCardSubtitle, { color: theme.textSecondary }]}>
+            Create your digital business card to share your contact info instantly with anyone.
+          </Text>
+          
+          <TouchableOpacity 
+            style={styles.createCardButton}
+            onPress={() => navigation.navigate('CreateDigitalCard')}
+          >
+            <LinearGradient
+              colors={['#8B5CF6', '#4F46E5']}
+              style={styles.createCardButtonGradient}
+            >
+              <Ionicons name="add" size={24} color="#fff" />
+              <Text style={styles.createCardButtonText}>Create My Card</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar barStyle="light-content" />
@@ -235,7 +360,7 @@ export default function MyDigitalCardScreen() {
 
           {/* Edit Button */}
           <TouchableOpacity 
-            onPress={() => navigation.navigate('CreateDigitalCard')} 
+            onPress={() => navigation.navigate('CreateDigitalCard', { cardData })} 
             style={styles.editButton}
           >
             <Ionicons name="pencil" size={20} color="#fff" />
@@ -796,6 +921,66 @@ const styles = StyleSheet.create({
   qrCopyText: {
     color: '#8B5CF6',
     fontSize: 16,
+    fontWeight: '700',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  noCardContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 28,
+  },
+  noCardBackButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40,
+    left: 20,
+    padding: 10,
+  },
+  noCardIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  noCardTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 12,
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  noCardSubtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+    paddingHorizontal: 20,
+  },
+  createCardButton: {
+    borderRadius: 28,
+    overflow: 'hidden',
+  },
+  createCardButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    gap: 10,
+  },
+  createCardButtonText: {
+    color: '#fff',
+    fontSize: 18,
     fontWeight: '700',
   },
 });
