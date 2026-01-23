@@ -45,6 +45,15 @@ import { supabase } from '../lib/supabaseClient';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_URL_BASE = 'https://tavvy.com/card/';
 
+interface CardLink {
+  id?: string;
+  title: string;
+  url: string;
+  icon: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
 interface CardData {
   id?: string;
   slug?: string;
@@ -63,7 +72,21 @@ interface CardData {
   socialLinkedin: string;
   socialTwitter: string;
   socialTiktok: string;
+  links?: CardLink[];
 }
+
+// Link icons mapping
+const LINK_ICONS: { [key: string]: string } = {
+  globe: 'globe-outline',
+  cart: 'cart-outline',
+  calendar: 'calendar-outline',
+  document: 'document-text-outline',
+  play: 'play-circle-outline',
+  music: 'musical-notes-outline',
+  gift: 'gift-outline',
+  mail: 'mail-outline',
+  link: 'link-outline',
+};
 
 export default function MyDigitalCardScreen() {
   const navigation = useNavigation<any>();
@@ -76,6 +99,7 @@ export default function MyDigitalCardScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [cardData, setCardData] = useState<CardData>(route.params?.cardData || {});
   const [hasCard, setHasCard] = useState(false);
+  const [activeTab, setActiveTab] = useState<'card' | 'links'>('card');
   
   const cardUrl = CARD_URL_BASE + (cardData.slug || 'preview');
 
@@ -107,6 +131,14 @@ export default function MyDigitalCardScreen() {
         return;
       }
 
+      // Also fetch links for this card
+      const { data: linksData } = await supabase
+        .from('card_links')
+        .select('*')
+        .eq('card_id', data.id)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
       const card: CardData = {
         id: data.id,
         slug: data.slug,
@@ -125,6 +157,14 @@ export default function MyDigitalCardScreen() {
         socialLinkedin: data.social_linkedin || '',
         socialTwitter: data.social_twitter || '',
         socialTiktok: data.social_tiktok || '',
+        links: linksData?.map(l => ({
+          id: l.id,
+          title: l.title,
+          url: l.url,
+          icon: l.icon || 'link',
+          sort_order: l.sort_order,
+          is_active: l.is_active,
+        })) || [],
       };
 
       setCardData(card);
@@ -482,6 +522,48 @@ export default function MyDigitalCardScreen() {
             <Text style={styles.poweredByText}>Powered by Tavvy</Text>
           </View>
         </LinearGradient>
+
+        {/* Toggle Tabs - Card / Links */}
+        {cardData.links && cardData.links.length > 0 && (
+          <View style={[styles.toggleContainer, { backgroundColor: theme.card }]}>
+            <TouchableOpacity
+              style={[styles.toggleTab, activeTab === 'card' && styles.toggleTabActive]}
+              onPress={() => setActiveTab('card')}
+            >
+              <Ionicons name="id-card-outline" size={18} color={activeTab === 'card' ? '#fff' : theme.textSecondary} />
+              <Text style={[styles.toggleTabText, activeTab === 'card' && styles.toggleTabTextActive]}>Card</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleTab, activeTab === 'links' && styles.toggleTabActive]}
+              onPress={() => setActiveTab('links')}
+            >
+              <Ionicons name="link-outline" size={18} color={activeTab === 'links' ? '#fff' : theme.textSecondary} />
+              <Text style={[styles.toggleTabText, activeTab === 'links' && styles.toggleTabTextActive]}>Links</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Links Section */}
+        {activeTab === 'links' && cardData.links && cardData.links.length > 0 && (
+          <View style={[styles.linksSection, { backgroundColor: theme.card }]}>
+            <Text style={[styles.linksSectionTitle, { color: theme.text }]}>My Links</Text>
+            {cardData.links.map((link, index) => (
+              <TouchableOpacity
+                key={link.id || index}
+                style={[styles.linkButton, { backgroundColor: cardData.gradientColors[0] }]}
+                onPress={() => Linking.openURL(link.url)}
+              >
+                <Ionicons 
+                  name={(LINK_ICONS[link.icon] || 'link-outline') as any} 
+                  size={20} 
+                  color="#fff" 
+                />
+                <Text style={styles.linkButtonText}>{link.title}</Text>
+                <Ionicons name="open-outline" size={16} color="rgba(255,255,255,0.7)" />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* Share Section */}
         <View style={[styles.shareSection, { backgroundColor: theme.card }]}>
@@ -988,5 +1070,61 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
+  },
+  // Toggle tabs styles
+  toggleContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderRadius: 16,
+    padding: 6,
+  },
+  toggleTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 6,
+  },
+  toggleTabActive: {
+    backgroundColor: '#8B5CF6',
+  },
+  toggleTabText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  toggleTabTextActive: {
+    color: '#fff',
+  },
+  // Links section styles
+  linksSection: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderRadius: 20,
+    padding: 20,
+  },
+  linksSectionTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 16,
+    letterSpacing: -0.3,
+  },
+  linkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    marginBottom: 12,
+    gap: 12,
+  },
+  linkButtonText: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

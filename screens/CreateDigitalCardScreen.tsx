@@ -52,6 +52,40 @@ const GRADIENT_PRESETS = [
   { id: 'slate-gray', colors: ['#475569', '#1E293B'], name: 'Slate Gray' },
 ];
 
+// Link icons available
+const LINK_ICONS = [
+  { id: 'globe', name: 'Website', icon: 'globe-outline' },
+  { id: 'cart', name: 'Shop', icon: 'cart-outline' },
+  { id: 'calendar', name: 'Book', icon: 'calendar-outline' },
+  { id: 'document', name: 'Portfolio', icon: 'document-text-outline' },
+  { id: 'play', name: 'Video', icon: 'play-circle-outline' },
+  { id: 'music', name: 'Music', icon: 'musical-notes-outline' },
+  { id: 'gift', name: 'Merch', icon: 'gift-outline' },
+  { id: 'mail', name: 'Newsletter', icon: 'mail-outline' },
+  { id: 'link', name: 'Link', icon: 'link-outline' },
+];
+
+interface CardLink {
+  id?: string;
+  title: string;
+  url: string;
+  icon: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
+interface CardRecommendation {
+  id?: string;
+  place_id?: string;
+  title: string;
+  description?: string;
+  image_url?: string;
+  url?: string;
+  category?: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
 interface CardData {
   id?: string;
   slug?: string;
@@ -70,6 +104,8 @@ interface CardData {
   socialLinkedin: string;
   socialTwitter: string;
   socialTiktok: string;
+  links?: CardLink[];
+  recommendations?: CardRecommendation[];
 }
 
 const initialCardData: CardData = {
@@ -88,6 +124,8 @@ const initialCardData: CardData = {
   socialLinkedin: '',
   socialTwitter: '',
   socialTiktok: '',
+  links: [],
+  recommendations: [],
 };
 
 export default function CreateDigitalCardScreen() {
@@ -98,7 +136,12 @@ export default function CreateDigitalCardScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showGradientPicker, setShowGradientPicker] = useState(false);
-  const [activeSection, setActiveSection] = useState<'basic' | 'social' | 'preview'>('basic');
+  const [activeSection, setActiveSection] = useState<'basic' | 'social' | 'links' | 'picks' | 'preview'>('basic');
+  const [showAddLinkModal, setShowAddLinkModal] = useState(false);
+  const [editingLink, setEditingLink] = useState<CardLink | null>(null);
+  const [newLinkTitle, setNewLinkTitle] = useState('');
+  const [newLinkUrl, setNewLinkUrl] = useState('');
+  const [newLinkIcon, setNewLinkIcon] = useState('link');
 
   // Load existing card data
   useEffect(() => {
@@ -123,6 +166,20 @@ export default function CreateDigitalCardScreen() {
           .single();
 
         if (data && !error) {
+          // Load links for this card
+          const { data: linksData } = await supabase
+            .from('card_links')
+            .select('*')
+            .eq('card_id', data.id)
+            .order('sort_order', { ascending: true });
+
+          // Load recommendations for this card
+          const { data: recsData } = await supabase
+            .from('card_recommendations')
+            .select('*')
+            .eq('card_id', data.id)
+            .order('sort_order', { ascending: true });
+
           const dbCardData: CardData = {
             id: data.id,
             slug: data.slug,
@@ -141,6 +198,25 @@ export default function CreateDigitalCardScreen() {
             socialLinkedin: data.social_linkedin || '',
             socialTwitter: data.social_twitter || '',
             socialTiktok: data.social_tiktok || '',
+            links: linksData?.map(l => ({
+              id: l.id,
+              title: l.title,
+              url: l.url,
+              icon: l.icon || 'link',
+              sort_order: l.sort_order,
+              is_active: l.is_active,
+            })) || [],
+            recommendations: recsData?.map(r => ({
+              id: r.id,
+              place_id: r.place_id,
+              title: r.title,
+              description: r.description,
+              image_url: r.image_url,
+              url: r.url,
+              category: r.category,
+              sort_order: r.sort_order,
+              is_active: r.is_active,
+            })) || [],
           };
           setCardData(dbCardData);
           // Update local storage
@@ -221,6 +297,8 @@ export default function CreateDigitalCardScreen() {
           is_active: true,
         };
 
+        let cardId = cardData.id;
+
         if (cardData.id) {
           // Update existing
           await supabase
@@ -236,8 +314,58 @@ export default function CreateDigitalCardScreen() {
             .single();
 
           if (data) {
+            cardId = data.id;
             setCardData(prev => ({ ...prev, id: data.id, slug: data.slug }));
           }
+        }
+
+        // Save links if we have a card ID
+        if (cardId && cardData.links && cardData.links.length > 0) {
+          // Delete existing links first
+          await supabase
+            .from('card_links')
+            .delete()
+            .eq('card_id', cardId);
+
+          // Insert new links
+          const linksToInsert = cardData.links.map((link, index) => ({
+            card_id: cardId,
+            title: link.title,
+            url: link.url,
+            icon: link.icon,
+            sort_order: index,
+            is_active: link.is_active,
+          }));
+
+          await supabase
+            .from('card_links')
+            .insert(linksToInsert);
+        }
+
+        // Save recommendations if we have a card ID
+        if (cardId && cardData.recommendations && cardData.recommendations.length > 0) {
+          // Delete existing recommendations first
+          await supabase
+            .from('card_recommendations')
+            .delete()
+            .eq('card_id', cardId);
+
+          // Insert new recommendations
+          const recsToInsert = cardData.recommendations.map((rec, index) => ({
+            card_id: cardId,
+            place_id: rec.place_id,
+            title: rec.title,
+            description: rec.description,
+            image_url: rec.image_url,
+            url: rec.url,
+            category: rec.category,
+            sort_order: index,
+            is_active: rec.is_active,
+          }));
+
+          await supabase
+            .from('card_recommendations')
+            .insert(recsToInsert);
         }
       }
 
@@ -296,12 +424,17 @@ export default function CreateDigitalCardScreen() {
       </View>
 
       {/* Section Tabs */}
-      <View style={[styles.tabContainer, { backgroundColor: theme.card }]}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={[styles.tabContainer, { backgroundColor: theme.card }]}
+        contentContainerStyle={styles.tabScrollContent}
+      >
         <TouchableOpacity 
           style={[styles.tab, activeSection === 'basic' && styles.tabActive]}
           onPress={() => setActiveSection('basic')}
         >
-          <Text style={[styles.tabText, activeSection === 'basic' && styles.tabTextActive]}>Basic Info</Text>
+          <Text style={[styles.tabText, activeSection === 'basic' && styles.tabTextActive]}>Basic</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.tab, activeSection === 'social' && styles.tabActive]}
@@ -310,12 +443,24 @@ export default function CreateDigitalCardScreen() {
           <Text style={[styles.tabText, activeSection === 'social' && styles.tabTextActive]}>Social</Text>
         </TouchableOpacity>
         <TouchableOpacity 
+          style={[styles.tab, activeSection === 'links' && styles.tabActive]}
+          onPress={() => setActiveSection('links')}
+        >
+          <Text style={[styles.tabText, activeSection === 'links' && styles.tabTextActive]}>Links</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tab, activeSection === 'picks' && styles.tabActive]}
+          onPress={() => setActiveSection('picks')}
+        >
+          <Text style={[styles.tabText, activeSection === 'picks' && styles.tabTextActive]}>Picks</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
           style={[styles.tab, activeSection === 'preview' && styles.tabActive]}
           onPress={() => setActiveSection('preview')}
         >
           <Text style={[styles.tabText, activeSection === 'preview' && styles.tabTextActive]}>Preview</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
 
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -514,6 +659,130 @@ export default function CreateDigitalCardScreen() {
                   placeholderTextColor={theme.textSecondary}
                   autoCapitalize="none"
                 />
+              </View>
+            </View>
+          )}
+
+          {activeSection === 'links' && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Custom Links</Text>
+              <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+                Add links to your portfolio, shop, booking page, etc.
+              </Text>
+
+              {/* Existing Links */}
+              {cardData.links && cardData.links.length > 0 && (
+                <View style={styles.linksList}>
+                  {cardData.links.map((link, index) => (
+                    <View key={link.id || index} style={[styles.linkItem, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                      <View style={styles.linkItemLeft}>
+                        <View style={[styles.linkIconContainer, { backgroundColor: cardData.gradientColors[0] + '20' }]}>
+                          <Ionicons name={LINK_ICONS.find(i => i.id === link.icon)?.icon as any || 'link-outline'} size={20} color={cardData.gradientColors[0]} />
+                        </View>
+                        <View style={styles.linkItemText}>
+                          <Text style={[styles.linkItemTitle, { color: theme.text }]}>{link.title}</Text>
+                          <Text style={[styles.linkItemUrl, { color: theme.textSecondary }]} numberOfLines={1}>{link.url}</Text>
+                        </View>
+                      </View>
+                      <TouchableOpacity 
+                        onPress={() => {
+                          const newLinks = cardData.links?.filter((_, i) => i !== index) || [];
+                          setCardData(prev => ({ ...prev, links: newLinks }));
+                        }}
+                        style={styles.linkDeleteButton}
+                      >
+                        <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Add New Link */}
+              <View style={[styles.addLinkContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <Text style={[styles.addLinkLabel, { color: theme.text }]}>Link Title</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                  value={newLinkTitle}
+                  onChangeText={setNewLinkTitle}
+                  placeholder="e.g., My Portfolio"
+                  placeholderTextColor={theme.textSecondary}
+                />
+
+                <Text style={[styles.addLinkLabel, { color: theme.text }]}>URL</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                  value={newLinkUrl}
+                  onChangeText={setNewLinkUrl}
+                  placeholder="https://..."
+                  placeholderTextColor={theme.textSecondary}
+                  autoCapitalize="none"
+                  keyboardType="url"
+                />
+
+                <Text style={[styles.addLinkLabel, { color: theme.text }]}>Icon</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.iconPicker}>
+                  {LINK_ICONS.map((iconOption) => (
+                    <TouchableOpacity
+                      key={iconOption.id}
+                      onPress={() => setNewLinkIcon(iconOption.id)}
+                      style={[
+                        styles.iconOption,
+                        { backgroundColor: theme.background, borderColor: theme.border },
+                        newLinkIcon === iconOption.id && { borderColor: cardData.gradientColors[0], backgroundColor: cardData.gradientColors[0] + '20' },
+                      ]}
+                    >
+                      <Ionicons name={iconOption.icon as any} size={20} color={newLinkIcon === iconOption.id ? cardData.gradientColors[0] : theme.textSecondary} />
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                <TouchableOpacity
+                  style={[styles.addLinkButton, { backgroundColor: cardData.gradientColors[0] }]}
+                  onPress={() => {
+                    if (newLinkTitle.trim() && newLinkUrl.trim()) {
+                      const newLink: CardLink = {
+                        title: newLinkTitle.trim(),
+                        url: newLinkUrl.trim().startsWith('http') ? newLinkUrl.trim() : `https://${newLinkUrl.trim()}`,
+                        icon: newLinkIcon,
+                        sort_order: cardData.links?.length || 0,
+                        is_active: true,
+                      };
+                      setCardData(prev => ({ ...prev, links: [...(prev.links || []), newLink] }));
+                      setNewLinkTitle('');
+                      setNewLinkUrl('');
+                      setNewLinkIcon('link');
+                    } else {
+                      Alert.alert('Missing Info', 'Please enter both title and URL.');
+                    }
+                  }}
+                >
+                  <Ionicons name="add" size={20} color="#fff" />
+                  <Text style={styles.addLinkButtonText}>Add Link</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {activeSection === 'picks' && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>My Picks</Text>
+              <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
+                Share your favorite places and recommendations
+              </Text>
+
+              {/* Coming Soon Message */}
+              <View style={[styles.comingSoonContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <LinearGradient
+                  colors={cardData.gradientColors}
+                  style={styles.comingSoonIcon}
+                >
+                  <Ionicons name="heart" size={32} color="#fff" />
+                </LinearGradient>
+                <Text style={[styles.comingSoonTitle, { color: theme.text }]}>Coming Soon!</Text>
+                <Text style={[styles.comingSoonText, { color: theme.textSecondary }]}>
+                  Soon you'll be able to add your favorite restaurants, cafes, shops, and more to your card. Your friends will see what you recommend!
+                </Text>
               </View>
             </View>
           )}
@@ -928,5 +1197,114 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Tab scroll content
+  tabScrollContent: {
+    paddingHorizontal: 4,
+  },
+  // Links section styles
+  linksList: {
+    marginTop: 16,
+    gap: 12,
+  },
+  linkItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  linkItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  linkIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkItemText: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  linkItemTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  linkItemUrl: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  linkDeleteButton: {
+    padding: 8,
+  },
+  addLinkContainer: {
+    marginTop: 20,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  addLinkLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  iconPicker: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  iconOption: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    borderWidth: 1,
+  },
+  addLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 10,
+    gap: 8,
+    marginTop: 8,
+  },
+  addLinkButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Coming soon (Picks) styles
+  comingSoonContainer: {
+    marginTop: 20,
+    padding: 24,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  comingSoonIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  comingSoonTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  comingSoonText: {
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });
