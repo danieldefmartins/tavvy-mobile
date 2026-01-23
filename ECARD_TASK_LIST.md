@@ -263,9 +263,36 @@ CREATE POLICY "Users can view their own subscription" ON user_subscriptions
 
 ---
 
+## 📱 QR CODE FEATURE (Priority 7)
+
+### 17. QR Code Generation & Sharing
+- [ ] **Generate QR code for each card**
+- [ ] QR code links to tavvy.com/username
+- [ ] Display QR code in mobile app dashboard
+- [ ] Display QR code on web card page
+- [ ] **Download options:**
+  - [ ] Download as PNG (high resolution)
+  - [ ] Download as SVG (scalable)
+  - [ ] Download as PDF (print-ready)
+- [ ] **Customization:**
+  - [ ] QR code with Tavvy logo in center
+  - [ ] Match card color scheme
+  - [ ] Optional: custom background
+- [ ] **Share options:**
+  - [ ] Share QR code image directly
+  - [ ] Copy QR code to clipboard
+  - [ ] Print-friendly version
+- [ ] **Use cases:**
+  - [ ] Print on business cards
+  - [ ] Add to email signatures
+  - [ ] Display at events/booths
+  - [ ] Add to marketing materials
+
+---
+
 ## 📊 ANALYTICS (Future)
 
-### 17. Card Analytics
+### 18. Card Analytics
 - [ ] Total views
 - [ ] Link clicks (per link)
 - [ ] Save to Wallet count
