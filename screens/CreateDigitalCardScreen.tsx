@@ -368,6 +368,15 @@ export default function CreateDigitalCardScreen() {
 
       console.log('[Upload] Starting photo upload from:', uri);
 
+      // Get file info first
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      console.log('[Upload] File info:', fileInfo);
+
+      if (!fileInfo.exists) {
+        console.error('[Upload] File does not exist at:', uri);
+        return uri;
+      }
+
       // Read the file as base64 using expo-file-system
       const base64Data = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
@@ -375,10 +384,54 @@ export default function CreateDigitalCardScreen() {
 
       console.log('[Upload] Read file, base64 length:', base64Data.length);
 
-      // Convert base64 to ArrayBuffer
+      if (!base64Data || base64Data.length === 0) {
+        console.error('[Upload] Base64 data is empty!');
+        return uri;
+      }
+
+      // Convert base64 to ArrayBuffer using decode
       const arrayBuffer = decode(base64Data);
 
       console.log('[Upload] Converted to ArrayBuffer, size:', arrayBuffer.byteLength);
+
+      if (arrayBuffer.byteLength === 0) {
+        console.error('[Upload] ArrayBuffer is empty! Trying alternative method...');
+        
+        // Alternative: Upload using base64 string directly
+        const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
+        const fileName = `${user.id}/card-photo-${Date.now()}.${fileExt}`;
+        const contentType = `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`;
+        
+        // Create a Blob from base64
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        
+        console.log('[Upload] Created Uint8Array, size:', byteArray.length);
+        
+        const { data, error } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, byteArray.buffer, {
+            contentType,
+            upsert: true,
+          });
+
+        if (error) {
+          console.error('[Upload] Alternative upload error:', error);
+          return uri;
+        }
+
+        console.log('[Upload] Alternative upload successful:', data);
+
+        const { data: urlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+
+        return urlData.publicUrl;
+      }
 
       const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${user.id}/card-photo-${Date.now()}.${fileExt}`;
