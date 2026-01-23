@@ -147,6 +147,66 @@ export type RootStackParamList = {
   MyDigitalCard: {
     cardData?: any;
   };
+  
+  // ========== NEW LINKTREE-STYLE ECARD SCREENS ==========
+  ECardOnboardingPlatforms: {
+    templateId?: string;
+    colorSchemeId?: string;
+  };
+  ECardOnboardingProfile: {
+    templateId?: string;
+    colorSchemeId?: string;
+    selectedPlatforms?: string[];
+  };
+  ECardOnboardingLinks: {
+    templateId?: string;
+    colorSchemeId?: string;
+    selectedPlatforms?: string[];
+    profile?: {
+      image?: string;
+      name: string;
+      title?: string;
+      bio?: string;
+    };
+  };
+  ECardOnboardingComplete: {
+    templateId?: string;
+    colorSchemeId?: string;
+    profile?: any;
+    links?: any[];
+  };
+  ECardDashboard: {
+    templateId?: string;
+    colorSchemeId?: string;
+    profile?: any;
+    links?: any[];
+    isNewCard?: boolean;
+    openAppearance?: boolean;
+  };
+  ECardAddLink: {
+    onAdd?: (link: any) => void;
+  };
+  ECardEditLink: {
+    link: any;
+    onSave?: (link: any) => void;
+    onDelete?: () => void;
+  };
+  ECardThemes: {
+    onSelect?: (theme: any) => void;
+    currentTheme?: string;
+  };
+  ECardBackgrounds: undefined;
+  ECardButtons: undefined;
+  ECardFonts: undefined;
+  ECardPremiumUpsell: {
+    feature?: string;
+    themeName?: string;
+  };
+  ECardPreview: {
+    profile?: any;
+    links?: any[];
+    templateId?: string;
+  };
 };
 
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;

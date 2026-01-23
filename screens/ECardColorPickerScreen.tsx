@@ -45,15 +45,15 @@ const ECardColorPickerScreen: React.FC = () => {
   const handleContinue = () => {
     const colorScheme = template.colorSchemes.find(cs => cs.id === selectedColorScheme);
     
-    // Navigate to the block builder with template and color scheme
-    navigation.navigate('ECardBlockBuilder', {
+    // Navigate to the NEW Linktree-style onboarding flow
+    navigation.navigate('ECardOnboardingPlatforms', {
       templateId: params.templateId,
+      colorSchemeId: selectedColorScheme,
       templateConfig: {
         template,
         colorScheme,
       },
       mode: params.mode,
-      existingBlocks: params.existingData?.blocks,
     });
   };
 

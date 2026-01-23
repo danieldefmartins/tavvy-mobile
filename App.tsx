@@ -110,6 +110,18 @@ import ECardColorPickerScreen from './screens/ECardColorPickerScreen';
 import ECardMultiPageUpgradeScreen from './screens/ECardMultiPageUpgradeScreen';
 import ECardBlockBuilderScreen from './screens/ECardBlockBuilderScreen';
 
+// ========== NEW ECARD LINKTREE-STYLE SCREENS ==========
+import {
+  ECardOnboardingPlatformsScreen,
+  ECardOnboardingProfileScreen,
+  ECardOnboardingLinksScreen,
+  ECardOnboardingCompleteScreen,
+  ECardDashboardScreen,
+  ECardAddLinkScreen,
+  ECardThemesScreen,
+  ECardPremiumUpsellScreen,
+} from './screens/ecard';
+
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -263,6 +275,16 @@ function AppsStack() {
       <MenuStackNav.Screen name="CreateDigitalCard" component={CreateDigitalCardScreen} />
       <MenuStackNav.Screen name="MyDigitalCard" component={MyDigitalCardScreen} />
       <MenuStackNav.Screen name="PublicCardView" component={PublicCardViewScreen} />
+      
+      {/* NEW: Linktree-style eCard Flow */}
+      <MenuStackNav.Screen name="ECardOnboardingPlatforms" component={ECardOnboardingPlatformsScreen} />
+      <MenuStackNav.Screen name="ECardOnboardingProfile" component={ECardOnboardingProfileScreen} />
+      <MenuStackNav.Screen name="ECardOnboardingLinks" component={ECardOnboardingLinksScreen} />
+      <MenuStackNav.Screen name="ECardOnboardingComplete" component={ECardOnboardingCompleteScreen} />
+      <MenuStackNav.Screen name="ECardDashboard" component={ECardDashboardScreen} />
+      <MenuStackNav.Screen name="ECardAddLink" component={ECardAddLinkScreen} />
+      <MenuStackNav.Screen name="ECardThemes" component={ECardThemesScreen} />
+      <MenuStackNav.Screen name="ECardPremiumUpsell" component={ECardPremiumUpsellScreen} />
       
       {/* Admin Screens */}
       <MenuStackNav.Screen name="StoryModeration" component={StoryModerationScreen} />
