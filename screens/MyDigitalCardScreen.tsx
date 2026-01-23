@@ -39,8 +39,6 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import QRCode from 'react-native-qrcode-svg';
 import * as Contacts from 'expo-contacts';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_URL_BASE = 'https://tavvy.app/card/';
@@ -171,29 +169,48 @@ export default function MyDigitalCardScreen() {
     Alert.alert('Copied!', 'Card link copied to clipboard.');
   };
 
-  // Share vCard file
+  // Share card link via native share sheet
   const handleShareVCard = async () => {
     setIsSharing(true);
     try {
-      const vcard = generateVCard();
-      const fileName = `${cardData.fullName.replace(/\s+/g, '_')}.vcf`;
-      const filePath = FileSystem.cacheDirectory + fileName;
-      
-      await FileSystem.writeAsStringAsync(filePath, vcard);
-      
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(filePath, {
-          mimeType: 'text/vcard',
-          dialogTitle: 'Share Contact Card',
-        });
-      } else {
-        Alert.alert('Sharing not available', 'Sharing is not available on this device.');
-      }
+      await Share.share({
+        message: `Check out my digital business card: ${cardUrl}`,
+        title: `${cardData.fullName}'s Digital Card`,
+        url: cardUrl,
+      });
     } catch (error) {
-      console.error('Error sharing vCard:', error);
-      Alert.alert('Error', 'Failed to share contact card.');
+      console.error('Error sharing card:', error);
     } finally {
       setIsSharing(false);
+    }
+  };
+
+  // Save contact directly to phone
+  const handleSaveToContacts = async () => {
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow access to contacts to save this card.');
+        return;
+      }
+
+      const contact: Contacts.Contact = {
+        contactType: Contacts.ContactTypes.Person,
+        name: cardData.fullName,
+        firstName: cardData.fullName.split(' ')[0],
+        lastName: cardData.fullName.split(' ').slice(1).join(' '),
+        company: cardData.company,
+        jobTitle: cardData.title,
+        phoneNumbers: cardData.phone ? [{ label: 'mobile', number: cardData.phone }] : [],
+        emails: cardData.email ? [{ label: 'work', email: cardData.email }] : [],
+        urlAddresses: cardData.website ? [{ label: 'website', url: cardData.website }] : [],
+      };
+
+      await Contacts.addContactAsync(contact);
+      Alert.alert('Saved!', `${cardData.fullName} has been added to your contacts.`);
+    } catch (error) {
+      console.error('Error saving contact:', error);
+      Alert.alert('Error', 'Failed to save contact. Please try again.');
     }
   };
 
