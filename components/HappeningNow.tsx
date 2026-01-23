@@ -280,28 +280,56 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
         decelerationRate="fast"
       >
         {showPlaceholder ? (
-          // Placeholder cards when no data - per v1 spec, never show empty states
+          // Placeholder cards per v1 spec - structure first, density later
+          // Cards navigate to /happening-now feed even if sparse
           [
-            { id: 'placeholder-1', title: 'Events coming soon', subtitle: 'Tonight', icon: 'calendar-outline', color: '#8B5CF6' },
-            { id: 'placeholder-2', title: 'Live experiences', subtitle: 'This weekend', icon: 'flash-outline', color: '#F59E0B' },
-            { id: 'placeholder-3', title: 'Local happenings', subtitle: 'Near you', icon: 'location-outline', color: '#10B981' },
+            { 
+              id: 'tonight', 
+              title: 'Tonight', 
+              description: 'Events coming soon', 
+              examples: 'Live music • Pop-ups',
+              icon: 'moon-outline', 
+              color: '#8B5CF6' 
+            },
+            { 
+              id: 'this-weekend', 
+              title: 'This Weekend', 
+              description: 'Local events', 
+              examples: 'Festivals • Special hours',
+              icon: 'calendar-outline', 
+              color: '#F59E0B' 
+            },
+            { 
+              id: 'live-experiences', 
+              title: 'Live Experiences', 
+              description: 'Happening now', 
+              examples: 'Sports • Shows • Events',
+              icon: 'flash-outline', 
+              color: '#EF4444' 
+            },
           ].map((item) => (
-            <View key={item.id} style={styles.card}>
-              <View style={[styles.placeholderImage, { backgroundColor: item.color + '20' }]}>
-                <Ionicons name={item.icon as any} size={40} color={item.color} />
+            <TouchableOpacity 
+              key={item.id} 
+              style={styles.card}
+              onPress={() => (navigation as any).navigate('HappeningNow', { filter: item.id })}
+              activeOpacity={0.9}
+            >
+              <View style={[styles.placeholderImage, { backgroundColor: item.color + '15' }]}>
+                <Ionicons name={item.icon as any} size={48} color={item.color} />
               </View>
               <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.7)']}
+                colors={['transparent', 'rgba(0,0,0,0.85)']}
                 style={styles.gradient}
               />
               <View style={[styles.activityBadge, { backgroundColor: item.color }]}>
-                <Text style={styles.activityText}>{item.subtitle}</Text>
+                <Text style={styles.activityText}>{item.title}</Text>
               </View>
               <View style={styles.content}>
-                <Text style={styles.placeName}>{item.title}</Text>
-                <Text style={styles.placeholderSubtext}>Check back for updates</Text>
+                <Text style={styles.placeName}>{item.description}</Text>
+                <Text style={styles.placeholderSubtext}>{item.examples}</Text>
+                <Text style={styles.checkBackText}>Check back for updates</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         ) : (
           places.map((place, index) => {
@@ -501,9 +529,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   placeholderSubtext: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 12,
-    marginTop: 4,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  checkBackText: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 11,
+    marginTop: 6,
+    fontStyle: 'italic',
   },
 });
 

@@ -424,6 +424,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [exploreItems, setExploreItems] = useState<any[]>([]);
   const [isLoadingExplore, setIsLoadingExplore] = useState(false);
   
+  // How Tavvy Works section - collapsed by default per v1 spec
+  // Home = action, not explanation
+  const [howItWorksExpanded, setHowItWorksExpanded] = useState(false);
+  
   // Parking and saved locations
   const [parkingLocation, setParkingLocation] = useState<ParkingLocation | null>(null);
   const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([]);
@@ -545,15 +549,46 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
    * - Must have address AND phone number
    * - Must be within 20 miles of user's location
    * - Only categories: Restaurants, Coffee Shops, Pros
+   * - Prioritize places with recent activity/signals (reviews in last 30 days)
+   * - Must always feel alive, not random
    */
   const loadTrendingItems = async (userCoords?: [number, number] | null) => {
     setIsLoadingTrending(true);
     try {
       const items: any[] = [];
       const MAX_DISTANCE_MILES = 20;
+      const RECENT_DAYS = 30; // Signals in the last X days
+      const recentDate = new Date(Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000).toISOString();
       
       // Use provided coords or current userLocation
       const coords = userCoords || userLocation;
+      
+      // First, get places with recent reviews/signals (trending = recent activity)
+      const { data: recentReviews, error: reviewsError } = await supabase
+        .from('place_reviews')
+        .select('place_id')
+        .gte('created_at', recentDate)
+        .limit(200);
+      
+      // Get unique place IDs with recent activity
+      const placesWithActivity = new Set<string>();
+      if (recentReviews && !reviewsError) {
+        recentReviews.forEach((r: any) => placesWithActivity.add(r.place_id));
+      }
+      
+      // Also check for recent stories
+      const { data: recentStories, error: storiesError } = await supabase
+        .from('place_stories')
+        .select('place_id')
+        .gte('created_at', recentDate)
+        .eq('status', 'active')
+        .limit(100);
+      
+      if (recentStories && !storiesError) {
+        recentStories.forEach((s: any) => placesWithActivity.add(s.place_id));
+      }
+      
+      console.log('Places with recent activity:', placesWithActivity.size);
       
       // Fetch places - ONLY Restaurants and Coffee Shops
       // Must have address AND phone number
@@ -567,7 +602,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         .not('phone', 'is', null)
         .neq('phone', '')
         .or('fsq_category_labels.ilike.%restaurant%,fsq_category_labels.ilike.%dining%,fsq_category_labels.ilike.%food%,fsq_category_labels.ilike.%coffee%,fsq_category_labels.ilike.%cafe%,fsq_category_labels.ilike.%café%,fsq_category_labels.ilike.%tea house%')
-        .limit(100);
+        .limit(200);
       
       console.log('Trending places query result:', { count: places?.length, error: placesError });
       
@@ -595,6 +630,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           // Skip if not a valid category (Restaurants or Coffee Shops)
           if (!displayCategory) return;
           
+          // Check if this place has recent activity (trending indicator)
+          const hasRecentActivity = placesWithActivity.has(place.fsq_place_id);
+          
           items.push({
             id: place.fsq_place_id,
             name: place.name,
@@ -605,6 +643,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             latitude: place.latitude,
             longitude: place.longitude,
             distance: distance,
+            hasRecentActivity: hasRecentActivity,
+            activityScore: hasRecentActivity ? 100 : 0, // Prioritize places with activity
           });
         });
       }
@@ -644,12 +684,25 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             latitude: pro.latitude,
             longitude: pro.longitude,
             distance: distance,
+            hasRecentActivity: true, // Pros are always considered active
+            activityScore: 50, // Medium priority
           });
         });
       }
       
-      // Sort by distance (closest first) and limit to 10
-      const sorted = items.sort((a, b) => (a.distance || 999) - (b.distance || 999)).slice(0, 10);
+      // Sort by: 1) Recent activity first, 2) Then by distance
+      // This ensures trending feels alive, not random
+      const sorted = items
+        .sort((a, b) => {
+          // First sort by activity score (places with signals first)
+          if (b.activityScore !== a.activityScore) {
+            return b.activityScore - a.activityScore;
+          }
+          // Then by distance (closest first)
+          return (a.distance || 999) - (b.distance || 999);
+        })
+        .slice(0, 10);
+      
       setTrendingItems(sorted);
     } catch (error) {
       console.log('Error loading trending items:', error);
@@ -660,15 +713,16 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   /**
    * Load Explore Tavvy items - Universes Preview
-   * Per v1 spec: Show Airports, Rides & Attractions, RV & Camping as large Universe cards
-   * Future-ready: Nightlife, Family, Shopping, Outdoors
+   * Per v1 spec: Show Airports, Theme Parks, RV & Camping as large Universe cards
+   * Future-ready: Food & Dining, Nightlife
+   * Cards are discoverability, not promises - Coming Soon badge is acceptable
    */
   const loadExploreItems = async () => {
     setIsLoadingExplore(true);
     try {
       const items: any[] = [];
       
-      // 1. Airports Universe
+      // 1. Airports Universe (Coming Soon badge OK per spec)
       const { data: airports } = await supabase
         .from('atlas_universes')
         .select('id, name, location, thumbnail_image_url, category_id')
@@ -682,22 +736,23 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           id: randomAirport.id,
           type: 'universe',
           universeType: 'airports',
-          title: randomAirport.name || 'Airports',
-          subtitle: randomAirport.location || 'Explore terminals & lounges',
+          title: 'Airports',
+          subtitle: randomAirport.location || 'Terminals, lounges & more',
           image: randomAirport.thumbnail_image_url,
           icon: 'airplane-outline',
           color: '#3B82F6',
           route: 'UniverseLanding',
           data: randomAirport,
+          isPlaceholder: false,
         });
       } else {
-        // Placeholder if no airport data
+        // Placeholder with Coming Soon - per spec this is acceptable
         items.push({
           id: 'airports-placeholder',
           type: 'universe',
           universeType: 'airports',
           title: 'Airports',
-          subtitle: 'Explore terminals & lounges',
+          subtitle: 'Terminals, lounges & more',
           image: null,
           icon: 'airplane-outline',
           color: '#3B82F6',
@@ -706,33 +761,34 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         });
       }
       
-      // 2. Rides & Attractions Universe
-      const { data: rides } = await supabase
+      // 2. Theme Parks Universe (renamed from Rides & Attractions per spec)
+      const { data: themeParks } = await supabase
         .from('fsq_places_raw')
         .select('fsq_place_id, name, address, locality, region, fsq_category_labels, latitude, longitude')
-        .or('fsq_category_labels.ilike.%theme park%,fsq_category_labels.ilike.%amusement%,fsq_category_labels.ilike.%attraction%')
-        .limit(5);
+        .or('fsq_category_labels.ilike.%theme park%,fsq_category_labels.ilike.%amusement park%,fsq_category_labels.ilike.%water park%')
+        .limit(20);
       
-      if (rides && rides.length > 0) {
+      if (themeParks && themeParks.length > 0) {
         items.push({
-          id: 'rides-universe',
+          id: 'theme-parks-universe',
           type: 'universe',
-          universeType: 'rides',
-          title: 'Rides & Attractions',
-          subtitle: `${rides.length}+ theme parks to explore`,
+          universeType: 'theme-parks',
+          title: 'Theme Parks',
+          subtitle: `${themeParks.length}+ parks to explore`,
           image: null,
           icon: 'rocket-outline',
           color: '#8B5CF6',
           route: 'RidesBrowse',
-          data: { count: rides.length },
+          data: { count: themeParks.length },
+          isPlaceholder: false,
         });
       } else {
         items.push({
-          id: 'rides-placeholder',
+          id: 'theme-parks-placeholder',
           type: 'universe',
-          universeType: 'rides',
-          title: 'Rides & Attractions',
-          subtitle: 'Theme park experiences',
+          universeType: 'theme-parks',
+          title: 'Theme Parks',
+          subtitle: 'Rides & attractions',
           image: null,
           icon: 'rocket-outline',
           color: '#8B5CF6',
@@ -746,7 +802,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         .from('fsq_places_raw')
         .select('fsq_place_id, name, address, locality, region, fsq_category_labels, latitude, longitude')
         .or('fsq_category_labels.ilike.%rv park%,fsq_category_labels.ilike.%campground%,fsq_category_labels.ilike.%camping%')
-        .limit(5);
+        .limit(20);
       
       if (camping && camping.length > 0) {
         items.push({
@@ -760,6 +816,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           color: '#10B981',
           route: 'RVCampingBrowse',
           data: { count: camping.length },
+          isPlaceholder: false,
         });
       } else {
         items.push({
@@ -775,6 +832,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           isPlaceholder: true,
         });
       }
+      
+      // Future universes can be added here:
+      // - Food & Dining
+      // - Nightlife
       
       setExploreItems(items);
     } catch (error) {
@@ -2791,40 +2852,58 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               </View>
             </View>
 
-            {/* ===== HOW TAVVY WORKS SECTION ===== */}
+            {/* ===== HOW TAVVY WORKS SECTION (COLLAPSIBLE) ===== */}
+            {/* Per v1 spec: Keep collapsed by default. Home = action, not explanation */}
             <View style={styles.howItWorksSection}>
-              <Text style={[styles.howItWorksTitle, { color: isDark ? theme.text : '#000' }]}>
-                ✨ How Tavvy Works
-              </Text>
-              <Text style={[styles.howItWorksSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
-                A smarter way to discover and review places
-              </Text>
-              
-              <View style={[styles.howItWorksCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-                {[
-                  { icon: '👆', title: 'Tap, Don\'t Type', desc: 'Quick 1-3 tap signals instead of writing long reviews. Share your experience in seconds.' },
-                  { icon: '🎯', title: 'Honest Insights', desc: 'See what places are actually good for with The Good, The Vibe, and Heads Up signals.' },
-                  { icon: '👥', title: 'Community Powered', desc: 'Real signals from real people, not algorithms. Authentic experiences you can trust.' },
-                  { icon: '⚡', title: 'Compare Instantly', desc: 'Compare places at a glance without reading paragraphs. Make decisions faster.' },
-                  { icon: '🔄', title: 'Second Chances', desc: 'Bad reviews refresh if not recurring. Everyone deserves a chance to improve.' },
-                ].map((item, index) => (
-                  <View key={index} style={[styles.howItWorksRow, index < 4 && styles.howItWorksRowBorder]}>
-                    <Text style={styles.howItWorksIcon}>{item.icon}</Text>
-                    <View style={styles.howItWorksContent}>
-                      <Text style={[styles.howItWorksItemTitle, { color: isDark ? theme.text : '#000' }]}>{item.title}</Text>
-                      <Text style={[styles.howItWorksItemDesc, { color: isDark ? theme.textSecondary : '#666' }]}>{item.desc}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-              
               <TouchableOpacity 
-                style={styles.learnMoreButton}
-                onPress={() => Linking.openURL('https://tavvy.com/about-us')}
+                style={styles.howItWorksHeader}
+                onPress={() => setHowItWorksExpanded(!howItWorksExpanded)}
+                activeOpacity={0.7}
               >
-                <Text style={styles.learnMoreText}>Learn More About Tavvy</Text>
-                <Ionicons name="arrow-forward" size={16} color="#0A84FF" />
+                <View>
+                  <Text style={[styles.howItWorksTitle, { color: isDark ? theme.text : '#000' }]}>
+                    ✨ How Tavvy Works
+                  </Text>
+                  <Text style={[styles.howItWorksSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
+                    A smarter way to discover and review places
+                  </Text>
+                </View>
+                <Ionicons 
+                  name={howItWorksExpanded ? 'chevron-up' : 'chevron-down'} 
+                  size={24} 
+                  color={isDark ? theme.textSecondary : '#666'} 
+                />
               </TouchableOpacity>
+              
+              {howItWorksExpanded && (
+                <>
+                  <View style={[styles.howItWorksCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+                    {[
+                      { icon: '👆', title: 'Tap, Don\'t Type', desc: 'Quick 1-3 tap signals instead of writing long reviews. Share your experience in seconds.' },
+                      { icon: '🎯', title: 'Honest Insights', desc: 'See what places are actually good for with The Good, The Vibe, and Heads Up signals.' },
+                      { icon: '👥', title: 'Community Powered', desc: 'Real signals from real people, not algorithms. Authentic experiences you can trust.' },
+                      { icon: '⚡', title: 'Compare Instantly', desc: 'Compare places at a glance without reading paragraphs. Make decisions faster.' },
+                      { icon: '🔄', title: 'Second Chances', desc: 'Bad reviews refresh if not recurring. Everyone deserves a chance to improve.' },
+                    ].map((item, index) => (
+                      <View key={index} style={[styles.howItWorksRow, index < 4 && styles.howItWorksRowBorder]}>
+                        <Text style={styles.howItWorksIcon}>{item.icon}</Text>
+                        <View style={styles.howItWorksContent}>
+                          <Text style={[styles.howItWorksItemTitle, { color: isDark ? theme.text : '#000' }]}>{item.title}</Text>
+                          <Text style={[styles.howItWorksItemDesc, { color: isDark ? theme.textSecondary : '#666' }]}>{item.desc}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                  
+                  <TouchableOpacity 
+                    style={styles.learnMoreButton}
+                    onPress={() => Linking.openURL('https://tavvy.com/about-us')}
+                  >
+                    <Text style={styles.learnMoreText}>Learn More About Tavvy</Text>
+                    <Ionicons name="arrow-forward" size={16} color="#0A84FF" />
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
 
             {/* Bottom padding */}
@@ -5295,6 +5374,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 32,
     marginBottom: 16,
+  },
+  howItWorksHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   howItWorksTitle: {
     fontSize: 22,
