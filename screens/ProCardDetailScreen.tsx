@@ -1,31 +1,25 @@
 /**
  * ProCardDetailScreen.tsx
- * Full Pro Card view when tapped from Wallet
+ * Full Pro Card view from wallet
  * Path: screens/ProCardDetailScreen.tsx
- *
- * FEATURES:
- * - Full Pro Card display with gradient header
- * - Contact actions (Call, Text, Email, Quote)
- * - Social links
- * - Share card functionality
- * - Save to contacts
- * - QR code display
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Dimensions,
+  Modal,
   Platform,
   StatusBar,
   Alert,
   Linking,
   Share,
+  ActivityIndicator,
   Image,
-  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,69 +27,179 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import * as Contacts from 'expo-contacts';
 import QRCode from 'react-native-qrcode-svg';
+import { supabase } from '../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const WALLET_STORAGE_KEY = '@tavvy_wallet_cards';
 
 interface ProCardData {
   id: string;
-  companyName: string;
+  slug: string;
+  company_name: string;
   tagline: string;
-  category: string;
+  phone: string;
+  email: string;
   city: string;
   state: string;
-  phone: string;
-  phoneDisplay: string;
-  email: string;
-  gradientColors: [string, string];
-  profilePhoto?: string;
-  logoPhoto?: string;
+  category: string;
+  gradient_color_1: string;
+  gradient_color_2: string;
+  profile_photo_url: string | null;
+  logo_url: string | null;
   verified: boolean;
+  enabled_tabs: string[];
   services: string[];
-  socialLinks: {
-    instagram?: string;
-    facebook?: string;
-    website?: string;
-  };
-  tavvyProfileUrl: string;
-  portfolioUrl: string;
+  social_instagram: string | null;
+  social_facebook: string | null;
+  social_website: string | null;
+  social_tiktok: string | null;
+  about_text: string | null;
 }
-
-// Mock data - will be fetched based on cardId
-const MOCK_CARD_DATA: ProCardData = {
-  id: '1',
-  companyName: 'Martinez Plumbing',
-  tagline: 'Your Trusted Local Plumber',
-  category: 'Plumber',
-  city: 'Orlando',
-  state: 'FL',
-  phone: '+15551234567',
-  phoneDisplay: '(555) 123-4567',
-  email: 'contact@martinezplumbing.com',
-  gradientColors: ['#8B5CF6', '#6366F1'],
-  verified: true,
-  services: ['Leak Repair', 'Water Heater', 'Drain Cleaning', 'Pipe Repair', 'Emergency Services'],
-  socialLinks: {
-    instagram: 'martinezplumbing',
-    facebook: 'martinezplumbingorlando',
-    website: 'www.martinezplumbing.com',
-  },
-  tavvyProfileUrl: 'https://tavvy.com/pros/martinez-plumbing',
-  portfolioUrl: 'https://tavvy.com/pros/martinez-plumbing/portfolio',
-};
 
 export default function ProCardDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { theme, isDark } = useThemeContext();
+  
+  const { cardId, slug, card: passedCard } = route.params || {};
+  
+  const [cardData, setCardData] = useState<ProCardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('contact');
-  const [showQRModal, setShowQRModal] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
-  // In real app, fetch based on route.params.cardId
-  const cardData = MOCK_CARD_DATA;
-  const cardUrl = `https://pros.tavvy.com/pro/${cardData.id}`;
-  const gradient = cardData.gradientColors;
+  // Load card data
+  useEffect(() => {
+    loadCardData();
+    checkIfSaved();
+  }, [cardId, slug]);
+
+  const loadCardData = async () => {
+    try {
+      // If we have a passed card with basic info, use it initially
+      if (passedCard) {
+        setCardData({
+          id: passedCard.id,
+          slug: passedCard.slug || passedCard.id,
+          company_name: passedCard.companyName,
+          tagline: passedCard.tagline || '',
+          phone: passedCard.phone,
+          email: passedCard.email,
+          city: passedCard.city,
+          state: passedCard.state,
+          category: passedCard.category,
+          gradient_color_1: passedCard.gradientColors?.[0] || '#8B5CF6',
+          gradient_color_2: passedCard.gradientColors?.[1] || '#6366F1',
+          profile_photo_url: passedCard.profilePhoto || null,
+          logo_url: null,
+          verified: passedCard.verified || false,
+          enabled_tabs: ['contact', 'services'],
+          services: passedCard.services || [],
+          social_instagram: null,
+          social_facebook: null,
+          social_website: null,
+          social_tiktok: null,
+          about_text: null,
+        });
+        setIsLoading(false);
+      }
+
+      // Fetch full data from database
+      let query;
+      if (slug) {
+        query = supabase.from('pro_cards').select('*').eq('slug', slug).single();
+      } else if (cardId) {
+        query = supabase.from('pro_cards').select('*').eq('id', cardId).single();
+      } else {
+        setIsLoading(false);
+        return;
+      }
+
+      const { data, error } = await query;
+
+      if (!error && data) {
+        setCardData(data);
+        if (data.enabled_tabs && data.enabled_tabs.length > 0) {
+          setActiveTab(data.enabled_tabs[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading card:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const checkIfSaved = async () => {
+    try {
+      const localCards = await AsyncStorage.getItem(WALLET_STORAGE_KEY);
+      if (localCards) {
+        const cards = JSON.parse(localCards);
+        const found = cards.find((c: any) => c.id === cardId || c.slug === slug);
+        setIsSaved(!!found);
+      }
+    } catch (error) {
+      console.error('Error checking saved status:', error);
+    }
+  };
+
+  // Save to wallet
+  const saveToWallet = async () => {
+    if (!cardData) return;
+
+    try {
+      // Get existing cards
+      const localCards = await AsyncStorage.getItem(WALLET_STORAGE_KEY);
+      const cards = localCards ? JSON.parse(localCards) : [];
+
+      // Check if already saved
+      if (cards.find((c: any) => c.id === cardData.id)) {
+        Alert.alert('Already Saved', 'This card is already in your wallet.');
+        return;
+      }
+
+      // Add new card
+      const newCard = {
+        id: cardData.id,
+        slug: cardData.slug,
+        companyName: cardData.company_name,
+        category: cardData.category,
+        city: cardData.city,
+        state: cardData.state,
+        phone: cardData.phone,
+        email: cardData.email,
+        gradientColors: [cardData.gradient_color_1, cardData.gradient_color_2],
+        profilePhoto: cardData.profile_photo_url,
+        verified: cardData.verified,
+        savedAt: new Date().toISOString(),
+      };
+
+      cards.unshift(newCard);
+      await AsyncStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(cards));
+
+      // Also save to database if user is logged in
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('user_wallet').insert({
+          user_id: user.id,
+          card_id: cardData.id,
+        });
+      }
+
+      setIsSaved(true);
+      Alert.alert('Saved!', `${cardData.company_name} has been added to your wallet.`);
+    } catch (error) {
+      console.error('Error saving to wallet:', error);
+      Alert.alert('Error', 'Failed to save card. Please try again.');
+    }
+  };
 
   // Save contact to phone
   const saveContactToPhone = async () => {
+    if (!cardData) return;
+
     try {
       const { status } = await Contacts.requestPermissionsAsync();
       if (status !== 'granted') {
@@ -104,35 +208,27 @@ export default function ProCardDetailScreen() {
       }
 
       const contact: Contacts.Contact = {
-        [Contacts.Fields.FirstName]: cardData.companyName,
-        [Contacts.Fields.Company]: cardData.companyName,
+        [Contacts.Fields.FirstName]: cardData.company_name,
+        [Contacts.Fields.Company]: cardData.company_name,
         [Contacts.Fields.JobTitle]: cardData.category,
-        [Contacts.Fields.PhoneNumbers]: [
-          {
-            label: 'work',
-            number: cardData.phone,
-          },
-        ],
-        [Contacts.Fields.Emails]: [
-          {
-            label: 'work',
-            email: cardData.email,
-          },
-        ],
-        [Contacts.Fields.Addresses]: [
+        [Contacts.Fields.PhoneNumbers]: cardData.phone ? [
+          { label: 'work', number: cardData.phone },
+        ] : [],
+        [Contacts.Fields.Emails]: cardData.email ? [
+          { label: 'work', email: cardData.email },
+        ] : [],
+        [Contacts.Fields.Addresses]: (cardData.city || cardData.state) ? [
           {
             label: 'work',
             city: cardData.city,
             region: cardData.state,
             country: 'USA',
           },
-        ],
+        ] : [],
       };
 
       await Contacts.addContactAsync(contact);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-      Alert.alert('Success', `${cardData.companyName} has been saved to your contacts!`);
+      Alert.alert('Success', `${cardData.company_name} has been saved to your contacts!`);
     } catch (error) {
       Alert.alert('Error', 'Failed to save contact. Please try again.');
     }
@@ -140,35 +236,36 @@ export default function ProCardDetailScreen() {
 
   // Share card
   const shareCard = async () => {
+    if (!cardData) return;
+
+    const cardUrl = `https://pros.tavvy.com/pro/${cardData.slug}`;
     try {
       await Share.share({
-        message: `Check out ${cardData.companyName} - ${cardData.tagline}\n${cardUrl}`,
+        message: `Check out ${cardData.company_name}${cardData.tagline ? ' - ' + cardData.tagline : ''}\n${cardUrl}`,
         url: cardUrl,
-        title: cardData.companyName,
+        title: cardData.company_name,
       });
     } catch (error) {
-      console.log('Share cancelled');
+      console.error('Error sharing:', error);
     }
   };
 
   // Open social link
-  const openSocialLink = (type: string, value?: string) => {
+  const openSocialLink = (type: string, value: string | null) => {
+    if (!value) return;
     let url = '';
     switch (type) {
       case 'instagram':
-        url = `https://instagram.com/${value}`;
+        url = value.startsWith('http') ? value : `https://instagram.com/${value}`;
         break;
       case 'facebook':
-        url = `https://facebook.com/${value}`;
+        url = value.startsWith('http') ? value : `https://facebook.com/${value}`;
         break;
       case 'website':
-        url = value?.startsWith('http') ? value : `https://${value}`;
+        url = value.startsWith('http') ? value : `https://${value}`;
         break;
-      case 'tavvy':
-        url = cardData.tavvyProfileUrl;
-        break;
-      case 'portfolio':
-        url = cardData.portfolioUrl;
+      case 'tiktok':
+        url = value.startsWith('http') ? value : `https://tiktok.com/@${value.replace('@', '')}`;
         break;
     }
     if (url) Linking.openURL(url);
@@ -190,11 +287,22 @@ export default function ProCardDetailScreen() {
     },
   };
 
+  if (isLoading || !cardData) {
+    return (
+      <View style={[styles.container, dynamicStyles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#8B5CF6" />
+      </View>
+    );
+  }
+
+  const gradient: [string, string] = [cardData.gradient_color_1, cardData.gradient_color_2];
+  const cardUrl = `https://pros.tavvy.com/pro/${cardData.slug}`;
+
   return (
     <View style={[styles.container, dynamicStyles.container]}>
       <StatusBar barStyle="light-content" />
-
-      <ScrollView showsVerticalScrollIndicator={false}>
+      
+      <ScrollView style={styles.scrollView} bounces={false}>
         {/* Gradient Header */}
         <LinearGradient
           colors={gradient}
@@ -211,14 +319,17 @@ export default function ProCardDetailScreen() {
           </TouchableOpacity>
 
           {/* Tavvy Badge */}
-          <View style={styles.tavvyBadge}>
-            <Text style={styles.tavvyBadgeText}>Tavvy Pro</Text>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>Tavvy Pro</Text>
           </View>
 
           {/* Profile Photo */}
-          <View style={styles.profilePhotoContainer}>
-            {cardData.profilePhoto ? (
-              <Image source={{ uri: cardData.profilePhoto }} style={styles.profilePhoto} />
+          <View style={styles.profileContainer}>
+            {cardData.profile_photo_url ? (
+              <Image 
+                source={{ uri: cardData.profile_photo_url }} 
+                style={styles.profilePhoto}
+              />
             ) : (
               <View style={styles.profilePhotoPlaceholder}>
                 <Ionicons name="person" size={40} color="rgba(255,255,255,0.6)" />
@@ -228,91 +339,82 @@ export default function ProCardDetailScreen() {
 
           {/* Company Info */}
           <View style={styles.companyInfo}>
-            <View style={styles.companyNameRow}>
-              <Text style={styles.companyName}>{cardData.companyName}</Text>
+            <View style={styles.nameRow}>
+              <Text style={styles.companyName}>{cardData.company_name}</Text>
               {cardData.verified && (
                 <View style={styles.verifiedBadge}>
                   <Ionicons name="checkmark" size={12} color="#fff" />
                 </View>
               )}
             </View>
-            <Text style={styles.tagline}>{cardData.tagline}</Text>
-            <View style={styles.locationRow}>
-              <Ionicons name="location" size={14} color="rgba(255,255,255,0.7)" />
-              <Text style={styles.locationText}>
-                {cardData.category} • {cardData.city}, {cardData.state}
-              </Text>
-            </View>
+            {cardData.tagline && (
+              <Text style={styles.tagline}>{cardData.tagline}</Text>
+            )}
+            <Text style={styles.location}>
+              {cardData.category}
+              {cardData.city && ` • ${cardData.city}`}
+              {cardData.state && `, ${cardData.state}`}
+            </Text>
           </View>
         </LinearGradient>
 
         {/* Card Body */}
-        <View style={[styles.cardBody, dynamicStyles.cardBg]}>
+        <View style={[styles.body, dynamicStyles.cardBg]}>
           {/* Tabs */}
-          <View style={styles.tabsContainer}>
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                activeTab === 'contact' && { backgroundColor: gradient[0] },
-              ]}
-              onPress={() => setActiveTab('contact')}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === 'contact' && styles.tabTextActive,
-                ]}
-              >
-                Contact
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                activeTab === 'services' && { backgroundColor: gradient[0] },
-              ]}
-              onPress={() => setActiveTab('services')}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === 'services' && styles.tabTextActive,
-                ]}
-              >
-                Services
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {cardData.enabled_tabs && cardData.enabled_tabs.length > 0 && (
+            <View style={styles.tabs}>
+              {cardData.enabled_tabs.map((tabId) => (
+                <TouchableOpacity
+                  key={tabId}
+                  style={[
+                    styles.tab,
+                    activeTab === tabId && { backgroundColor: gradient[0] },
+                  ]}
+                  onPress={() => setActiveTab(tabId)}
+                >
+                  <Text style={[
+                    styles.tabText,
+                    activeTab === tabId && styles.tabTextActive,
+                  ]}>
+                    {tabId.charAt(0).toUpperCase() + tabId.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
           {/* Tab Content */}
           <View style={styles.tabContent}>
             {activeTab === 'contact' && (
               <>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => Linking.openURL(`tel:${cardData.phone}`)}
-                >
-                  <Ionicons name="call" size={20} color="#fff" />
-                  <Text style={styles.actionButtonText}>Call Now</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => Linking.openURL(`sms:${cardData.phone}`)}
-                >
-                  <Ionicons name="chatbubble" size={20} color="#fff" />
-                  <Text style={styles.actionButtonText}>Send Text</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => Linking.openURL(`mailto:${cardData.email}`)}
-                >
-                  <Ionicons name="mail" size={20} color="#fff" />
-                  <Text style={styles.actionButtonText}>Email</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => Linking.openURL(`${cardData.tavvyProfileUrl}/quote`)}
-                >
+                {cardData.phone && (
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => Linking.openURL(`tel:${cardData.phone}`)}
+                  >
+                    <Ionicons name="call" size={20} color="#fff" />
+                    <Text style={styles.actionButtonText}>Call Now</Text>
+                  </TouchableOpacity>
+                )}
+                {cardData.phone && (
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => Linking.openURL(`sms:${cardData.phone}`)}
+                  >
+                    <Ionicons name="chatbubble" size={20} color="#fff" />
+                    <Text style={styles.actionButtonText}>Send Text</Text>
+                  </TouchableOpacity>
+                )}
+                {cardData.email && (
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => Linking.openURL(`mailto:${cardData.email}`)}
+                  >
+                    <Ionicons name="mail" size={20} color="#fff" />
+                    <Text style={styles.actionButtonText}>Email</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity style={styles.actionButton}>
                   <Ionicons name="document-text" size={20} color="#fff" />
                   <Text style={styles.actionButtonText}>Request Quote</Text>
                 </TouchableOpacity>
@@ -320,115 +422,156 @@ export default function ProCardDetailScreen() {
             )}
 
             {activeTab === 'services' && (
-              <>
-                {cardData.services.map((service, index) => (
-                  <View key={index} style={styles.serviceItem}>
-                    <Text style={[styles.serviceText, dynamicStyles.text]}>{service}</Text>
-                    <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-                  </View>
-                ))}
-              </>
+              <View style={styles.servicesList}>
+                {cardData.services && cardData.services.length > 0 ? (
+                  cardData.services.map((service, index) => (
+                    <View key={index} style={styles.serviceItem}>
+                      <Text style={[styles.serviceText, dynamicStyles.text]}>{service}</Text>
+                      <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                    </View>
+                  ))
+                ) : (
+                  <Text style={[styles.emptyText, dynamicStyles.textSecondary]}>No services listed</Text>
+                )}
+              </View>
+            )}
+
+            {activeTab === 'about' && (
+              <View style={styles.aboutSection}>
+                {cardData.about_text ? (
+                  <Text style={[styles.aboutText, dynamicStyles.text]}>{cardData.about_text}</Text>
+                ) : (
+                  <Text style={[styles.emptyText, dynamicStyles.textSecondary]}>No about information available</Text>
+                )}
+              </View>
+            )}
+
+            {activeTab === 'reviews' && (
+              <View style={styles.reviewsSection}>
+                <Text style={[styles.emptyText, dynamicStyles.textSecondary]}>Reviews coming soon</Text>
+              </View>
             )}
           </View>
 
           {/* Social Links */}
-          <View style={styles.socialLinksContainer}>
-            {cardData.socialLinks.instagram && (
+          <View style={styles.socialLinks}>
+            {cardData.social_instagram && (
               <TouchableOpacity
                 style={styles.socialButton}
-                onPress={() => openSocialLink('instagram', cardData.socialLinks.instagram)}
+                onPress={() => openSocialLink('instagram', cardData.social_instagram)}
               >
                 <Ionicons name="logo-instagram" size={22} color="#fff" />
               </TouchableOpacity>
             )}
-            {cardData.socialLinks.facebook && (
+            {cardData.social_facebook && (
               <TouchableOpacity
                 style={styles.socialButton}
-                onPress={() => openSocialLink('facebook', cardData.socialLinks.facebook)}
+                onPress={() => openSocialLink('facebook', cardData.social_facebook)}
               >
                 <Ionicons name="logo-facebook" size={22} color="#fff" />
               </TouchableOpacity>
             )}
-            {cardData.socialLinks.website && (
+            {cardData.social_website && (
               <TouchableOpacity
                 style={styles.socialButton}
-                onPress={() => openSocialLink('website', cardData.socialLinks.website)}
+                onPress={() => openSocialLink('website', cardData.social_website)}
               >
                 <Ionicons name="globe" size={22} color="#fff" />
               </TouchableOpacity>
             )}
-            <TouchableOpacity
-              style={styles.socialButton}
-              onPress={() => openSocialLink('tavvy')}
-            >
-              <Text style={styles.tavvyIcon}>T</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.socialButton}
-              onPress={() => openSocialLink('portfolio')}
-            >
-              <Ionicons name="briefcase" size={22} color="#fff" />
+            {cardData.social_tiktok && (
+              <TouchableOpacity
+                style={styles.socialButton}
+                onPress={() => openSocialLink('tiktok', cardData.social_tiktok)}
+              >
+                <Text style={styles.tiktokText}>TT</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.socialButton}>
+              <Text style={styles.tavvyText}>T</Text>
             </TouchableOpacity>
           </View>
 
           {/* Bottom Actions */}
           <View style={styles.bottomActions}>
-            <TouchableOpacity
-              style={styles.shareButton}
-              onPress={shareCard}
-            >
+            <TouchableOpacity style={styles.shareButton} onPress={shareCard}>
               <Ionicons name="share-outline" size={20} color="#374151" />
-              <Text style={styles.shareButtonText}>Share Card</Text>
+              <Text style={styles.shareButtonText}>Share</Text>
             </TouchableOpacity>
+            
             <TouchableOpacity
               style={[styles.saveButton, { backgroundColor: gradient[0] }]}
               onPress={saveContactToPhone}
             >
-              <Ionicons name={saveSuccess ? 'checkmark' : 'download'} size={20} color="#fff" />
-              <Text style={styles.saveButtonText}>
-                {saveSuccess ? 'Saved!' : 'Save Contact'}
-              </Text>
+              <Ionicons name="download-outline" size={20} color="#fff" />
+              <Text style={styles.saveButtonText}>Save Contact</Text>
             </TouchableOpacity>
+            
             <TouchableOpacity
               style={styles.qrButton}
-              onPress={() => setShowQRModal(true)}
+              onPress={() => setShowQR(true)}
             >
               <Ionicons name="qr-code" size={24} color="#374151" />
             </TouchableOpacity>
           </View>
+
+          {/* Save to Wallet */}
+          {!isSaved && (
+            <TouchableOpacity
+              style={styles.walletBanner}
+              onPress={saveToWallet}
+            >
+              <LinearGradient
+                colors={['#F97316', '#EA580C']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.walletBannerGradient}
+              >
+                <View style={styles.walletBannerContent}>
+                  <View style={styles.walletIcon}>
+                    <Ionicons name="wallet" size={20} color="#fff" />
+                  </View>
+                  <View style={styles.walletBannerText}>
+                    <Text style={styles.walletBannerTitle}>Save to Tavvy Wallet</Text>
+                    <Text style={styles.walletBannerSubtitle}>Keep all your contractors in one place</Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={24} color="#fff" />
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 
       {/* QR Code Modal */}
       <Modal
-        visible={showQRModal}
+        visible={showQR}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowQRModal(false)}
+        onRequestClose={() => setShowQR(false)}
       >
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => setShowQRModal(false)}
+          onPress={() => setShowQR(false)}
         >
-          <View style={[styles.qrModalContent, dynamicStyles.cardBg]}>
-            <Text style={[styles.qrModalTitle, dynamicStyles.text]}>Scan to Save</Text>
-            <View style={styles.qrCodeContainer}>
+          <View style={[styles.qrModal, dynamicStyles.cardBg]}>
+            <Text style={[styles.qrTitle, dynamicStyles.text]}>Scan to Save</Text>
+            <View style={styles.qrContainer}>
               <QRCode
                 value={cardUrl}
                 size={200}
-                backgroundColor="white"
-                color="black"
+                backgroundColor="#fff"
               />
             </View>
-            <Text style={[styles.qrModalSubtitle, dynamicStyles.textSecondary]}>
-              Scan this QR code to open {cardData.companyName}'s digital card
+            <Text style={[styles.qrSubtitle, dynamicStyles.textSecondary]}>
+              Scan this QR code to open {cardData.company_name}'s digital card
             </Text>
             <TouchableOpacity
-              style={styles.qrModalClose}
-              onPress={() => setShowQRModal(false)}
+              style={styles.qrCloseButton}
+              onPress={() => setShowQR(false)}
             >
-              <Text style={styles.qrModalCloseText}>Close</Text>
+              <Text style={styles.qrCloseText}>Close</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -441,45 +584,54 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
+  },
   header: {
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 30,
+    paddingBottom: 32,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
   },
   backButton: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 50 : 30,
     left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
     zIndex: 10,
-    padding: 4,
   },
-  tavvyBadge: {
+  badge: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 55 : 35,
+    top: Platform.OS === 'ios' ? 56 : 36,
     right: 20,
     backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 16,
   },
-  tavvyBadgeText: {
+  badgeText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
   },
-  profilePhotoContainer: {
+  profileContainer: {
     alignItems: 'center',
     marginTop: 20,
-    marginBottom: 16,
   },
   profilePhoto: {
     width: 96,
     height: 96,
     borderRadius: 48,
     borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.5)',
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   profilePhotoPlaceholder: {
     width: 96,
@@ -487,14 +639,15 @@ const styles = StyleSheet.create({
     borderRadius: 48,
     backgroundColor: 'rgba(255,255,255,0.2)',
     borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.5)',
+    borderColor: 'rgba(255,255,255,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   companyInfo: {
     alignItems: 'center',
+    marginTop: 16,
   },
-  companyNameRow: {
+  nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -505,10 +658,10 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   verifiedBadge: {
-    backgroundColor: '#3B82F6',
     width: 20,
     height: 20,
     borderRadius: 10,
+    backgroundColor: '#3B82F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -517,37 +670,29 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     marginTop: 4,
   },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 8,
-  },
-  locationText: {
+  location: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 4,
   },
-  cardBody: {
-    marginTop: -20,
-    marginHorizontal: 16,
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
+  body: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -16,
+    paddingTop: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    minHeight: 400,
   },
-  tabsContainer: {
+  tabs: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     marginBottom: 20,
   },
   tab: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 25,
+    borderRadius: 24,
     backgroundColor: '#F3F4F6',
     alignItems: 'center',
   },
@@ -566,15 +711,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
     backgroundColor: '#1F2937',
     paddingVertical: 14,
-    borderRadius: 25,
+    borderRadius: 24,
   },
   actionButtonText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+  },
+  servicesList: {
+    gap: 8,
   },
   serviceItem: {
     flexDirection: 'row',
@@ -586,16 +734,32 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   serviceText: {
-    fontSize: 15,
+    fontSize: 14,
   },
-  socialLinksContainer: {
+  aboutSection: {
+    paddingVertical: 8,
+  },
+  aboutText: {
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  reviewsSection: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: 'center',
+    paddingVertical: 24,
+  },
+  socialLinks: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 12,
     marginTop: 24,
-    paddingTop: 20,
+    paddingTop: 24,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: '#F3F4F6',
   },
   socialButton: {
     width: 44,
@@ -605,9 +769,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  tavvyIcon: {
+  tiktokText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  tavvyText: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: '700',
   },
   bottomActions: {
@@ -621,10 +790,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 14,
-    borderRadius: 25,
     borderWidth: 2,
-    borderColor: '#D1D5DB',
+    borderColor: '#E5E7EB',
+    paddingVertical: 14,
+    borderRadius: 24,
   },
   shareButtonText: {
     color: '#374151',
@@ -638,7 +807,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 14,
-    borderRadius: 25,
+    borderRadius: 24,
   },
   saveButtonText: {
     color: '#fff',
@@ -646,12 +815,47 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   qrButton: {
-    width: 50,
-    height: 50,
+    width: 52,
+    height: 52,
     borderRadius: 12,
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  walletBanner: {
+    marginTop: 24,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  walletBannerGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+  },
+  walletBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  walletIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  walletBannerText: {},
+  walletBannerTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  walletBannerSubtitle: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    marginTop: 2,
   },
   modalOverlay: {
     flex: 1,
@@ -660,38 +864,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
-  qrModalContent: {
-    width: '100%',
-    maxWidth: 320,
+  qrModal: {
     borderRadius: 24,
     padding: 24,
     alignItems: 'center',
+    width: '100%',
+    maxWidth: 320,
   },
-  qrModalTitle: {
-    fontSize: 20,
+  qrTitle: {
+    fontSize: 18,
     fontWeight: '700',
     marginBottom: 20,
   },
-  qrCodeContainer: {
+  qrContainer: {
     padding: 16,
     backgroundColor: '#fff',
     borderRadius: 16,
     marginBottom: 16,
   },
-  qrModalSubtitle: {
-    fontSize: 14,
+  qrSubtitle: {
+    fontSize: 13,
     textAlign: 'center',
     marginBottom: 20,
   },
-  qrModalClose: {
+  qrCloseButton: {
     width: '100%',
     paddingVertical: 14,
     backgroundColor: '#F3F4F6',
-    borderRadius: 25,
+    borderRadius: 24,
     alignItems: 'center',
   },
-  qrModalCloseText: {
-    fontSize: 15,
+  qrCloseText: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#374151',
   },
