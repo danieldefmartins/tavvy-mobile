@@ -3,6 +3,7 @@
 // =============================================
 // Horizontal scrollable row of place story avatars
 // Similar to Instagram/Facebook stories at the top
+// Shows nearby places even without active stories
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -18,6 +19,7 @@ import { supabase } from '../lib/supabaseClient';
 import { getStoryRingStates, getPlaceStories, PlaceStory } from '../lib/storyService';
 import { StoryRing, StoryRingState } from './StoryRing';
 import { StoryViewer } from './StoryViewer';
+import { useNavigation } from '@react-navigation/native';
 
 interface PlaceWithStories {
   place_id: string;
@@ -26,6 +28,7 @@ interface PlaceWithStories {
   category?: string;
   story_count: number;
   ring_state: StoryRingState;
+  has_stories: boolean;
 }
 
 interface StoriesRowProps {
@@ -41,6 +44,7 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
   maxDistance = 20,
   onAddStoryPress,
 }) => {
+  const navigation = useNavigation();
   const [places, setPlaces] = useState<PlaceWithStories[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPlace, setSelectedPlace] = useState<PlaceWithStories | null>(null);
@@ -48,50 +52,87 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
   const [isViewerVisible, setIsViewerVisible] = useState(false);
 
   useEffect(() => {
-    loadPlacesWithStories();
+    loadNearbyPlaces();
   }, [userLocation, currentUserId]);
 
-  const loadPlacesWithStories = async () => {
+  const loadNearbyPlaces = async () => {
     setIsLoading(true);
     try {
-      // Get places that have active stories
-      const { data: storiesData, error } = await supabase
+      // First, get places that have active stories
+      const { data: storiesData } = await supabase
         .from('place_stories')
         .select('place_id')
         .eq('status', 'active')
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      // Count stories per place
+      const storyCountMap = new Map<string, number>();
+      if (storiesData) {
+        storiesData.forEach(s => {
+          const count = storyCountMap.get(s.place_id) || 0;
+          storyCountMap.set(s.place_id, count + 1);
+        });
+      }
 
-      if (!storiesData || storiesData.length === 0) {
-        setPlaces([]);
+      const placeIdsWithStories = Array.from(storyCountMap.keys());
+
+      // Build query for nearby places
+      let placesQuery = supabase
+        .from('places')
+        .select('id, name, cover_image_url, tavvy_category, latitude, longitude')
+        .eq('is_active', true)
+        .limit(50);
+
+      // Add geo-bounding box filter if user location is available
+      if (userLocation) {
+        const DEGREES_PER_MILE = 0.0145;
+        const boxSize = maxDistance * DEGREES_PER_MILE;
+        const userLat = userLocation[1];
+        const userLng = userLocation[0];
+
+        placesQuery = placesQuery
+          .gte('latitude', userLat - boxSize)
+          .lte('latitude', userLat + boxSize)
+          .gte('longitude', userLng - boxSize)
+          .lte('longitude', userLng + boxSize);
+      }
+
+      const { data: nearbyPlaces, error } = await placesQuery;
+
+      if (error) {
+        console.error('[StoriesRow] Error fetching nearby places:', error);
+        throw error;
+      }
+
+      if (!nearbyPlaces || nearbyPlaces.length === 0) {
+        // Fallback: fetch any places if no nearby ones found
+        const { data: fallbackPlaces } = await supabase
+          .from('places')
+          .select('id, name, cover_image_url, tavvy_category, latitude, longitude')
+          .eq('is_active', true)
+          .not('cover_image_url', 'is', null)
+          .limit(20);
+
+        if (fallbackPlaces && fallbackPlaces.length > 0) {
+          const placesWithStories = buildPlacesList(fallbackPlaces, storyCountMap, placeIdsWithStories, new Map());
+          setPlaces(placesWithStories);
+        } else {
+          setPlaces([]);
+        }
         return;
       }
 
-      // Count stories per place and get unique place IDs
-      const storyCountMap = new Map<string, number>();
-      storiesData.forEach(s => {
-        const count = storyCountMap.get(s.place_id) || 0;
-        storyCountMap.set(s.place_id, count + 1);
-      });
+      // Get story ring states for places that have stories
+      const ringStates = placeIdsWithStories.length > 0 
+        ? await getStoryRingStates(placeIdsWithStories, currentUserId)
+        : new Map<string, StoryRingState>();
 
-      const placeIds = Array.from(storyCountMap.keys());
-
-      // Fetch place details from the canonical places table
-      const { data: placeDetails } = await supabase
-        .from('places')
-        .select('id, name, cover_image_url, tavvy_category, latitude, longitude')
-        .in('id', placeIds);
-
-      // Get story ring states
-      const ringStates = await getStoryRingStates(placeIds, currentUserId);
-
-      // Filter by distance if user location is available
-      let filteredPlaces = placeDetails || [];
+      // Filter by exact distance if user location is available
+      let filteredPlaces = nearbyPlaces;
       if (userLocation) {
-        filteredPlaces = filteredPlaces.filter(place => {
-          if (!place.latitude || !place.longitude) return true;
+        filteredPlaces = nearbyPlaces.filter(place => {
+          if (!place.latitude || !place.longitude) return false;
           const distance = calculateDistance(
             userLocation[1], userLocation[0],
             place.latitude, place.longitude
@@ -100,29 +141,49 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
         });
       }
 
-      // Build final list sorted by unseen first, then by story count
-      const placesWithStories: PlaceWithStories[] = filteredPlaces.map(place => ({
+      const placesWithStories = buildPlacesList(filteredPlaces, storyCountMap, placeIdsWithStories, ringStates);
+      setPlaces(placesWithStories);
+
+    } catch (error) {
+      console.error('[StoriesRow] Error loading places:', error);
+      setPlaces([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const buildPlacesList = (
+    placesData: any[],
+    storyCountMap: Map<string, number>,
+    placeIdsWithStories: string[],
+    ringStates: Map<string, StoryRingState>
+  ): PlaceWithStories[] => {
+    const placesWithStories: PlaceWithStories[] = placesData.map(place => {
+      const hasStories = placeIdsWithStories.includes(place.id);
+      return {
         place_id: place.id,
         name: place.name,
         cover_image_url: place.cover_image_url,
         category: extractCategory(place.tavvy_category),
         story_count: storyCountMap.get(place.id) || 0,
-        ring_state: ringStates.get(place.id) || 'unseen',
-      }));
+        ring_state: hasStories ? (ringStates.get(place.id) || 'unseen') : 'none',
+        has_stories: hasStories,
+      };
+    });
 
-      // Sort: unseen first, then by story count
-      placesWithStories.sort((a, b) => {
-        if (a.ring_state === 'unseen' && b.ring_state !== 'unseen') return -1;
-        if (a.ring_state !== 'unseen' && b.ring_state === 'unseen') return 1;
-        return b.story_count - a.story_count;
-      });
+    // Sort: places with unseen stories first, then seen stories, then no stories
+    placesWithStories.sort((a, b) => {
+      // Unseen stories first
+      if (a.ring_state === 'unseen' && b.ring_state !== 'unseen') return -1;
+      if (a.ring_state !== 'unseen' && b.ring_state === 'unseen') return 1;
+      // Then seen stories
+      if (a.ring_state === 'seen' && b.ring_state === 'none') return -1;
+      if (a.ring_state === 'none' && b.ring_state === 'seen') return 1;
+      // Then by story count
+      return b.story_count - a.story_count;
+    });
 
-      setPlaces(placesWithStories.slice(0, 20)); // Limit to 20 places
-    } catch (error) {
-      console.error('Error loading places with stories:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    return placesWithStories.slice(0, 20); // Limit to 20 places
   };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -143,13 +204,19 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
   };
 
   const handlePlacePress = async (place: PlaceWithStories) => {
-    // Load stories for this place
-    const stories = await getPlaceStories(place.place_id, currentUserId);
-    if (stories.length > 0) {
-      setSelectedPlace(place);
-      setSelectedStories(stories);
-      setIsViewerVisible(true);
+    if (place.has_stories && place.story_count > 0) {
+      // Load and show stories
+      const stories = await getPlaceStories(place.place_id, currentUserId);
+      if (stories.length > 0) {
+        setSelectedPlace(place);
+        setSelectedStories(stories);
+        setIsViewerVisible(true);
+        return;
+      }
     }
+    
+    // No stories - navigate to place details
+    navigation.navigate('PlaceDetails' as never, { placeId: place.place_id } as never);
   };
 
   const handleStoryViewed = (storyId: string) => {
@@ -169,7 +236,7 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
     setSelectedPlace(null);
     setSelectedStories([]);
     // Refresh to update ring states
-    loadPlacesWithStories();
+    loadNearbyPlaces();
   };
 
   if (isLoading) {
@@ -180,8 +247,13 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
     );
   }
 
+  // Always show the row, even if no places (will show Add Story button if available)
   if (places.length === 0 && !onAddStoryPress) {
-    return null; // Don't show if no stories and no add button
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>Discovering nearby places...</Text>
+      </View>
+    );
   }
 
   return (
@@ -191,17 +263,17 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Add Story Button (if logged in) */}
+        {/* Add Story Button (if callback provided) */}
         {onAddStoryPress && (
           <TouchableOpacity style={styles.addStoryButton} onPress={onAddStoryPress}>
             <View style={styles.addStoryCircle}>
               <Ionicons name="add" size={28} color="#3B82F6" />
             </View>
-            <Text style={styles.addStoryLabel}>Add Story</Text>
+            <Text style={styles.addStoryLabel}>Your Story</Text>
           </TouchableOpacity>
         )}
 
-        {/* Place Story Avatars */}
+        {/* Place Avatars */}
         {places.map((place) => (
           <StoryRing
             key={place.place_id}
@@ -237,6 +309,16 @@ const styles = StyleSheet.create({
     height: 100,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  emptyContainer: {
+    height: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#999',
   },
   scrollContent: {
     paddingHorizontal: 12,
