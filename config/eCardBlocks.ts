@@ -20,8 +20,13 @@ export type BlockType =
   | 'products'
   | 'gallery'
   | 'video'
+  | 'youtube'
   | 'about'
   | 'testimonials'
+  | 'form'
+  | 'credentials'
+  | 'tavvy_reviews'
+  | 'save_to_wallet'
   | 'divider'
   | 'spacer';
 
@@ -233,7 +238,7 @@ export const BLOCK_CONFIGS: BlockConfig[] = [
     },
     fields: [
       { key: 'title', label: 'Section Title', type: 'text', placeholder: 'About Me', maxLength: 30 },
-      { key: 'content', label: 'Bio', type: 'textarea', placeholder: 'Tell your story...', maxLength: 500 },
+      { key: 'content', label: 'Bio', type: 'textarea', placeholder: 'Tell your story...', maxLength: 300 },
     ],
   },
   {
@@ -345,6 +350,152 @@ export const BLOCK_CONFIGS: BlockConfig[] = [
           { key: 'avatar', label: 'Photo (optional)', type: 'image' },
         ],
       },
+    ],
+  },
+  {
+    id: 'youtube',
+    name: 'YouTube Video',
+    description: 'Embed a YouTube video with thumbnail',
+    icon: 'logo-youtube',
+    isPremium: true,
+    isRequired: false,
+    maxInstances: 5,
+    defaultData: {
+      title: '',
+      videoId: '',
+      showTitle: true,
+    },
+    fields: [
+      { key: 'title', label: 'Video Title', type: 'text', placeholder: 'My Latest Video', maxLength: 100 },
+      { key: 'videoId', label: 'YouTube Video ID or URL', type: 'text', placeholder: 'dQw4w9WgXcQ or full URL', required: true },
+      { key: 'showTitle', label: 'Show Title', type: 'select', options: [
+        { value: 'true', label: 'Yes' },
+        { value: 'false', label: 'No' },
+      ]},
+    ],
+  },
+  {
+    id: 'form',
+    name: 'Contact Form',
+    description: 'Let visitors send you messages',
+    icon: 'mail-outline',
+    isPremium: true,
+    isRequired: false,
+    maxInstances: 1,
+    defaultData: {
+      title: 'Get in Touch',
+      fields: ['name', 'email', 'message'],
+      submitButtonText: 'Send Message',
+      thankYouMessage: 'Thanks! I\'ll get back to you soon.',
+      recipientEmail: '',
+    },
+    fields: [
+      { key: 'title', label: 'Form Title', type: 'text', placeholder: 'Contact Me', maxLength: 50 },
+      { key: 'submitButtonText', label: 'Button Text', type: 'text', placeholder: 'Send Message', maxLength: 30 },
+      { key: 'thankYouMessage', label: 'Thank You Message', type: 'textarea', placeholder: 'Thanks for reaching out!', maxLength: 200 },
+      { key: 'recipientEmail', label: 'Your Email (to receive messages)', type: 'email', placeholder: 'you@example.com', required: true },
+    ],
+  },
+  {
+    id: 'credentials',
+    name: 'Credentials',
+    description: 'Licenses, certifications & service area',
+    icon: 'ribbon-outline',
+    isPremium: true,
+    isRequired: false,
+    maxInstances: 1,
+    defaultData: {
+      title: 'Credentials',
+      yearsInBusiness: '',
+      licenses: [],
+      certifications: [],
+      serviceArea: '',
+      hasInsurance: false,
+      insuranceDetails: '',
+      bookingUrl: '',
+    },
+    fields: [
+      { key: 'title', label: 'Section Title', type: 'text', placeholder: 'Credentials', maxLength: 30 },
+      { key: 'yearsInBusiness', label: 'Years in Business', type: 'text', placeholder: '10+ years', maxLength: 20 },
+      { key: 'serviceArea', label: 'Service Area', type: 'text', placeholder: 'Miami-Dade, Broward County', maxLength: 100 },
+      { key: 'bookingUrl', label: 'Book/Schedule URL', type: 'url', placeholder: 'https://calendly.com/...' },
+      {
+        key: 'licenses',
+        label: 'Licenses',
+        type: 'array',
+        arrayItemFields: [
+          { key: 'name', label: 'License Name', type: 'text', placeholder: 'General Contractor License', required: true, maxLength: 50 },
+          { key: 'number', label: 'License Number', type: 'text', placeholder: 'CGC123456', maxLength: 30 },
+          { key: 'state', label: 'State', type: 'text', placeholder: 'FL', maxLength: 20 },
+        ],
+      },
+      {
+        key: 'certifications',
+        label: 'Certifications',
+        type: 'array',
+        arrayItemFields: [
+          { key: 'name', label: 'Certification', type: 'text', placeholder: 'OSHA Certified', required: true, maxLength: 50 },
+          { key: 'year', label: 'Year', type: 'text', placeholder: '2024', maxLength: 10 },
+        ],
+      },
+    ],
+  },
+
+  // ============ TAVVY-EXCLUSIVE BLOCKS (FREE - Moat Builders) ============
+  {
+    id: 'tavvy_reviews',
+    name: 'Tavvy Reviews',
+    description: 'Show your Tavvy reviews with crown badge',
+    icon: 'star-outline',
+    isPremium: false,
+    isRequired: false,
+    maxInstances: 1,
+    defaultData: {
+      showCrown: true,
+      showReviewCount: true,
+      showLatestReviews: true,
+      maxReviews: 3,
+    },
+    fields: [
+      { key: 'showCrown', label: 'Show Crown Badge', type: 'select', options: [
+        { value: 'true', label: 'Yes' },
+        { value: 'false', label: 'No' },
+      ]},
+      { key: 'maxReviews', label: 'Reviews to Show', type: 'select', options: [
+        { value: '1', label: '1 Review' },
+        { value: '3', label: '3 Reviews' },
+        { value: '5', label: '5 Reviews' },
+      ]},
+    ],
+  },
+  {
+    id: 'save_to_wallet',
+    name: 'Save to Wallet',
+    description: 'Let visitors save you to their Tavvy Wallet',
+    icon: 'wallet-outline',
+    isPremium: false,
+    isRequired: false,
+    maxInstances: 1,
+    defaultData: {
+      buttonText: 'Save to Wallet',
+      showRequestReview: true,
+      category: 'general',
+    },
+    fields: [
+      { key: 'buttonText', label: 'Button Text', type: 'text', placeholder: 'Save to Wallet', maxLength: 30 },
+      { key: 'showRequestReview', label: 'Show "Leave a Review" Button', type: 'select', options: [
+        { value: 'true', label: 'Yes' },
+        { value: 'false', label: 'No' },
+      ]},
+      { key: 'category', label: 'Category', type: 'select', options: [
+        { value: 'general', label: 'General' },
+        { value: 'contractor', label: 'Contractor' },
+        { value: 'realtor', label: 'Realtor' },
+        { value: 'restaurant', label: 'Restaurant' },
+        { value: 'service', label: 'Service Provider' },
+        { value: 'creator', label: 'Creator' },
+        { value: 'business', label: 'Business' },
+      ]},
     ],
   },
 ];
