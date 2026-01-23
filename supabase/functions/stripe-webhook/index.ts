@@ -11,6 +11,92 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+// ============ RBAC Role Management ============
+
+// Get Tavvy user_id from Stripe customer metadata or email
+async function getTavvyUserId(stripeCustomerId: string, customerEmail?: string): Promise<string | null> {
+  // First, check if we have a mapping in our database
+  const { data: mapping } = await supabase
+    .from("stripe_customer_mapping")
+    .select("user_id")
+    .eq("stripe_customer_id", stripeCustomerId)
+    .maybeSingle();
+
+  if (mapping?.user_id) {
+    return mapping.user_id;
+  }
+
+  // Fallback: try to find user by email
+  if (customerEmail) {
+    const { data: user } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", customerEmail)
+      .maybeSingle();
+
+    if (user?.id) {
+      // Save the mapping for future use
+      await supabase.from("stripe_customer_mapping").upsert({
+        stripe_customer_id: stripeCustomerId,
+        user_id: user.id,
+      });
+      return user.id;
+    }
+  }
+
+  return null;
+}
+
+// Grant 'pro' role to user
+async function grantProRole(userId: string, stripeSubscriptionId: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("user_roles").upsert(
+      {
+        user_id: userId,
+        role: "pro",
+        notes: `Stripe subscription: ${stripeSubscriptionId}`,
+        granted_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "user_id,role",
+      }
+    );
+
+    if (error) {
+      console.error("[Webhook] Error granting pro role:", error);
+      return false;
+    }
+
+    console.log(`[Webhook] Granted pro role to user ${userId}`);
+    return true;
+  } catch (err) {
+    console.error("[Webhook] Exception granting pro role:", err);
+    return false;
+  }
+}
+
+// Revoke 'pro' role from user
+async function revokeProRole(userId: string, reason: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from("user_roles")
+      .delete()
+      .eq("user_id", userId)
+      .eq("role", "pro");
+
+    if (error) {
+      console.error("[Webhook] Error revoking pro role:", error);
+      return false;
+    }
+
+    console.log(`[Webhook] Revoked pro role from user ${userId}. Reason: ${reason}`);
+    return true;
+  } catch (err) {
+    console.error("[Webhook] Exception revoking pro role:", err);
+    return false;
+  }
+}
+
 async function stripePost(path: string, params: URLSearchParams) {
   const res = await fetch(`https://api.stripe.com/v1/${path}`, {
     method: "POST",
@@ -106,6 +192,16 @@ Deno.serve(async (req) => {
       });
 
       if (error) throw new Error(error.message);
+
+      // Grant 'pro' role to the user who owns this place
+      const customerId = session.customer as string;
+      const customerEmail = session.customer_email as string | undefined;
+      const userId = await getTavvyUserId(customerId, customerEmail);
+      if (userId) {
+        await grantProRole(userId, subscriptionId);
+      } else {
+        console.warn(`[Webhook] Could not find user for customer ${customerId} to grant pro role`);
+      }
     }
 
     if (type === "invoice.payment_failed") {
@@ -131,10 +227,19 @@ Deno.serve(async (req) => {
     if (type === "customer.subscription.deleted") {
       const sub = event.data.object;
       const subscriptionId = sub.id as string | undefined;
+      const customerId = sub.customer as string | undefined;
       if (subscriptionId) {
         await supabase.from("pro_subscriptions")
           .update({ status: "canceled", updated_at: new Date().toISOString() })
           .eq("stripe_subscription_id", subscriptionId);
+
+        // Revoke 'pro' role from the user
+        if (customerId) {
+          const userId = await getTavvyUserId(customerId);
+          if (userId) {
+            await revokeProRole(userId, "Subscription cancelled");
+          }
+        }
       }
     }
 
