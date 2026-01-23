@@ -595,14 +595,39 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       
       // Fetch places from fsq_places_raw table - Restaurants, Cafes, Bars, Dining
       // Categories in DB are like: "[Dining and Drinking > Restaurant]"
-      // Removed strict tel requirement to get more results
-      const { data: places, error: placesError } = await supabase
+      // Use geo-bounding box to filter by location at database level
+      
+      // Calculate bounding box for 20 mile radius (approx 0.29 degrees per mile at equator)
+      // Using a slightly larger box to account for latitude variations
+      const DEGREES_PER_MILE = 0.0145; // ~1/69 degrees per mile
+      const boxSize = MAX_DISTANCE_MILES * DEGREES_PER_MILE;
+      
+      let placesQuery = supabase
         .from('fsq_places_raw')
         .select('fsq_place_id, name, address, locality, region, fsq_category_labels, latitude, longitude')
         .not('latitude', 'is', null)
         .not('longitude', 'is', null)
-        .or('fsq_category_labels.ilike.%restaurant%,fsq_category_labels.ilike.%dining%,fsq_category_labels.ilike.%cafe%,fsq_category_labels.ilike.%coffee%,fsq_category_labels.ilike.%bar%,fsq_category_labels.ilike.%bakery%')
-        .limit(300);
+        .or('fsq_category_labels.ilike.%restaurant%,fsq_category_labels.ilike.%dining%,fsq_category_labels.ilike.%cafe%,fsq_category_labels.ilike.%coffee%,fsq_category_labels.ilike.%bar%,fsq_category_labels.ilike.%bakery%');
+      
+      // Add geo-bounding box filter if we have user coordinates
+      if (coords) {
+        const userLat = coords[1]; // coords is [lng, lat]
+        const userLng = coords[0];
+        const minLat = userLat - boxSize;
+        const maxLat = userLat + boxSize;
+        const minLng = userLng - boxSize;
+        const maxLng = userLng + boxSize;
+        
+        console.log('[Trending] Geo bounds:', { userLat, userLng, minLat, maxLat, minLng, maxLng });
+        
+        placesQuery = placesQuery
+          .gte('latitude', minLat)
+          .lte('latitude', maxLat)
+          .gte('longitude', minLng)
+          .lte('longitude', maxLng);
+      }
+      
+      const { data: places, error: placesError } = await placesQuery.limit(100);
       
       console.log('[Trending] Query result:', { count: places?.length, error: placesError, hasCoords: !!coords });
       
