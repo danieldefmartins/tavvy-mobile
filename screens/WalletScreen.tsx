@@ -33,7 +33,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import * as Contacts from 'expo-contacts';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

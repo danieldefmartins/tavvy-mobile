@@ -27,7 +27,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import * as Contacts from 'expo-contacts';
 import QRCode from 'react-native-qrcode-svg';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
