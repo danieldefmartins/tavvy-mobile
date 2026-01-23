@@ -144,6 +144,85 @@ Based on reference images provided:
 
 ---
 
+## 🗄️ DATABASE SCHEMA UPDATES
+
+**Run these SQL commands in Supabase SQL Editor:**
+
+```sql
+-- Add template columns to digital_cards (if not already added)
+ALTER TABLE digital_cards ADD COLUMN IF NOT EXISTS template_id VARCHAR(50) DEFAULT 'classic-blue';
+ALTER TABLE digital_cards ADD COLUMN IF NOT EXISTS color_scheme_id VARCHAR(50) DEFAULT 'blue';
+ALTER TABLE digital_cards ADD COLUMN IF NOT EXISTS bio TEXT;
+
+-- Create card_blocks table for block-based cards
+CREATE TABLE IF NOT EXISTS card_blocks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  card_id UUID NOT NULL REFERENCES digital_cards(id) ON DELETE CASCADE,
+  block_type VARCHAR(50) NOT NULL,
+  sort_order INTEGER DEFAULT 0,
+  is_visible BOOLEAN DEFAULT true,
+  data JSONB DEFAULT '{}',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create index for faster queries
+CREATE INDEX IF NOT EXISTS idx_card_blocks_card_id ON card_blocks(card_id);
+CREATE INDEX IF NOT EXISTS idx_card_blocks_sort_order ON card_blocks(card_id, sort_order);
+
+-- Enable RLS
+ALTER TABLE card_blocks ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for card_blocks
+CREATE POLICY "Users can view their own card blocks" ON card_blocks
+  FOR SELECT USING (
+    card_id IN (SELECT id FROM digital_cards WHERE user_id = auth.uid())
+  );
+
+CREATE POLICY "Users can insert their own card blocks" ON card_blocks
+  FOR INSERT WITH CHECK (
+    card_id IN (SELECT id FROM digital_cards WHERE user_id = auth.uid())
+  );
+
+CREATE POLICY "Users can update their own card blocks" ON card_blocks
+  FOR UPDATE USING (
+    card_id IN (SELECT id FROM digital_cards WHERE user_id = auth.uid())
+  );
+
+CREATE POLICY "Users can delete their own card blocks" ON card_blocks
+  FOR DELETE USING (
+    card_id IN (SELECT id FROM digital_cards WHERE user_id = auth.uid())
+  );
+
+-- Public can view blocks for published cards
+CREATE POLICY "Public can view blocks for published cards" ON card_blocks
+  FOR SELECT USING (
+    card_id IN (SELECT id FROM digital_cards WHERE is_published = true)
+  );
+
+-- Create subscriptions table for premium features
+CREATE TABLE IF NOT EXISTS user_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  stripe_customer_id VARCHAR(255),
+  stripe_subscription_id VARCHAR(255),
+  plan_type VARCHAR(50) DEFAULT 'free',
+  status VARCHAR(50) DEFAULT 'active',
+  current_period_start TIMESTAMP WITH TIME ZONE,
+  current_period_end TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS for subscriptions
+ALTER TABLE user_subscriptions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own subscription" ON user_subscriptions
+  FOR SELECT USING (user_id = auth.uid());
+```
+
+---
+
 ## 💳 STRIPE INTEGRATION (Priority 6)
 
 ### 14. Stripe Setup Requirements
