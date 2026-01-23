@@ -98,6 +98,9 @@ import QuickFindResultsScreen from './screens/QuickFindResultsScreen';
 import HappeningNowScreen from './screens/HappeningNowScreen';
 import WalletScreen from './screens/WalletScreen';
 import ProCardDetailScreen from './screens/ProCardDetailScreen';
+import CreateDigitalCardScreen from './screens/CreateDigitalCardScreen';
+import MyDigitalCardScreen from './screens/MyDigitalCardScreen';
+import PublicCardViewScreen from './screens/PublicCardViewScreen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -237,6 +240,11 @@ function AppsStack() {
       {/* Wallet - Pro Cards collection */}
       <MenuStackNav.Screen name="Wallet" component={WalletScreen} />
       <MenuStackNav.Screen name="ProCardDetail" component={ProCardDetailScreen} />
+      
+      {/* Digital Card - Create and share digital business cards */}
+      <MenuStackNav.Screen name="CreateDigitalCard" component={CreateDigitalCardScreen} />
+      <MenuStackNav.Screen name="MyDigitalCard" component={MyDigitalCardScreen} />
+      <MenuStackNav.Screen name="PublicCardView" component={PublicCardViewScreen} />
       
       {/* Admin Screens */}
       <MenuStackNav.Screen name="StoryModeration" component={StoryModerationScreen} />
