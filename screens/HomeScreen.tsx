@@ -360,6 +360,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [trendingItems, setTrendingItems] = useState<any[]>([]);
   const [isLoadingTrending, setIsLoadingTrending] = useState(false);
   
+  // Explore Tavvy items (Atlas, Ride, Airport, Happening Now)
+  const [exploreItems, setExploreItems] = useState<any[]>([]);
+  const [isLoadingExplore, setIsLoadingExplore] = useState(false);
+  
   // Parking and saved locations
   const [parkingLocation, setParkingLocation] = useState<ParkingLocation | null>(null);
   const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([]);
@@ -422,6 +426,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     loadParkingLocation();
     loadSavedLocations();
     loadTrendingItems();
+    loadExploreItems();
     requestLocationPermission();
   };
 
@@ -498,7 +503,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       
       if (places && !placesError) {
         places.forEach((place: any) => {
-          // Filter by distance if we have user location
+          // Filter by distance if we have user location, otherwise include all
           if (coords && place.latitude && place.longitude) {
             const distance = calculateDistanceMiles(
               coords[1], coords[0], // userLocation is [lng, lat]
@@ -506,6 +511,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             );
             if (distance > MAX_DISTANCE_MILES) return;
           }
+          // If no user location, still include the place (no distance filtering)
           
           // Determine category type for display
           const categoryLower = (place.fsq_category_labels || '').toLowerCase();
@@ -569,6 +575,111 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       console.log('Error loading trending items:', error);
     } finally {
       setIsLoadingTrending(false);
+    }
+  };
+
+  /**
+   * Load Explore Tavvy items (Atlas article, Ride, Airport, Happening Now)
+   */
+  const loadExploreItems = async () => {
+    setIsLoadingExplore(true);
+    try {
+      const items: any[] = [];
+      
+      // 1. Fetch a random Atlas article
+      const { data: atlasArticle } = await supabase
+        .from('atlas_articles')
+        .select('id, title, excerpt, featured_image_url, slug')
+        .eq('status', 'published')
+        .limit(10);
+      
+      if (atlasArticle && atlasArticle.length > 0) {
+        const randomArticle = atlasArticle[Math.floor(Math.random() * atlasArticle.length)];
+        items.push({
+          id: randomArticle.id,
+          type: 'atlas',
+          title: randomArticle.title,
+          subtitle: 'Atlas Article',
+          image: randomArticle.featured_image_url,
+          icon: 'book-outline',
+          color: '#10B981',
+          data: randomArticle,
+        });
+      }
+      
+      // 2. Fetch a nearby ride/attraction (theme park related places)
+      const { data: rides } = await supabase
+        .from('fsq_places_raw')
+        .select('fsq_place_id, name, address, locality, region, fsq_category_labels, latitude, longitude')
+        .or('fsq_category_labels.ilike.%theme park%,fsq_category_labels.ilike.%amusement%,fsq_category_labels.ilike.%attraction%,fsq_category_labels.ilike.%roller coaster%')
+        .limit(10);
+      
+      if (rides && rides.length > 0) {
+        const randomRide = rides[Math.floor(Math.random() * rides.length)];
+        items.push({
+          id: randomRide.fsq_place_id,
+          type: 'ride',
+          title: randomRide.name,
+          subtitle: randomRide.locality || 'Theme Park Ride',
+          image: null,
+          icon: 'rocket-outline',
+          color: '#8B5CF6',
+          data: randomRide,
+        });
+      }
+      
+      // 3. Fetch a nearby airport universe
+      const { data: airports } = await supabase
+        .from('atlas_universes')
+        .select('id, name, location, thumbnail_image_url, category_id')
+        .eq('status', 'published')
+        .or('name.ilike.%airport%,name.ilike.%international%')
+        .limit(10);
+      
+      if (airports && airports.length > 0) {
+        const randomAirport = airports[Math.floor(Math.random() * airports.length)];
+        items.push({
+          id: randomAirport.id,
+          type: 'universe',
+          title: randomAirport.name,
+          subtitle: randomAirport.location || 'Airport Universe',
+          image: randomAirport.thumbnail_image_url,
+          icon: 'airplane-outline',
+          color: '#3B82F6',
+          data: randomAirport,
+        });
+      }
+      
+      // 4. Fetch a happening now place (recent story or review)
+      const { data: happeningPlaces } = await supabase
+        .from('place_stories')
+        .select('place_id, fsq_places_raw!inner(fsq_place_id, name, locality, region)')
+        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+        .eq('moderation_status', 'active')
+        .limit(10);
+      
+      if (happeningPlaces && happeningPlaces.length > 0) {
+        const randomHappening = happeningPlaces[Math.floor(Math.random() * happeningPlaces.length)];
+        const place = randomHappening.fsq_places_raw as any;
+        if (place) {
+          items.push({
+            id: place.fsq_place_id,
+            type: 'happening',
+            title: place.name,
+            subtitle: place.locality || 'Happening Now',
+            image: null,
+            icon: 'flash-outline',
+            color: '#F59E0B',
+            data: place,
+          });
+        }
+      }
+      
+      setExploreItems(items);
+    } catch (error) {
+      console.log('Error loading explore items:', error);
+    } finally {
+      setIsLoadingExplore(false);
     }
   };
 
@@ -2214,8 +2325,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               onPlacePress={(placeId) => navigation.navigate("PlaceDetails" as never, { placeId } as never)}
             />
             
-            {/* Quick Finds Buttons */}
-            <QuickFinds />
+            {/* Quick Finds Buttons - Moved to Apps Screen */}
+            {/* <QuickFinds /> */}
             
             {/* ====== END INTEGRATED DISCOVERY ====== */}
 
@@ -2312,36 +2423,97 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               )}
             </ScrollView>
 
-            {/* Explore Categories */}
+            {/* Explore Tavvy - Curated Content Cards */}
             <View style={styles.exploreSection}>
-              <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000', marginBottom: 12 }]}>Explore</Text>
-              <View style={styles.exploreGrid}>
-                {['Restaurants', 'Cafes', 'Bars', 'Shopping', 'Entertainment', 'Services'].map((cat) => (
-                  <TouchableOpacity
-                    key={cat}
-                    style={[styles.exploreItem, { backgroundColor: isDark ? theme.surface : '#F2F2F7' }]}
-                    onPress={() => {
-                      handleCategorySelect(cat);
-                      switchToMapMode();
-                    }}
-                  >
-                    <View style={[styles.exploreIconContainer, { backgroundColor: isDark ? 'rgba(10, 132, 255, 0.15)' : '#F2F7FF' }]}>
-                      <Ionicons
-                        name={
-                          cat === 'Restaurants' ? 'restaurant' :
-                          cat === 'Cafes' ? 'cafe' :
-                          cat === 'Bars' ? 'beer' :
-                          cat === 'Shopping' ? 'cart' :
-                          cat === 'Entertainment' ? 'film' : 'briefcase'
-                        }
-                        size={24}
-                        color="#0A84FF"
-                      />
-                    </View>
-                    <Text style={[styles.exploreText, { color: isDark ? theme.text : '#000' }]}>{cat}</Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>Explore Tavvy</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('Apps')}>
+                  <Text style={[styles.seeAll, { color: ACCENT }]}>See All</Text>
+                </TouchableOpacity>
               </View>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                contentContainerStyle={{ paddingRight: 18 }}
+              >
+                {isLoadingExplore ? (
+                  <View style={{ width: 160, height: 140, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color={ACCENT} />
+                  </View>
+                ) : exploreItems.length > 0 ? (
+                  exploreItems.map((item, index) => (
+                    <TouchableOpacity
+                      key={`explore-${item.type}-${item.id}-${index}`}
+                      style={[styles.exploreCard, { backgroundColor: isDark ? theme.surface : '#111827' }]}
+                      onPress={() => {
+                        if (item.type === 'atlas') {
+                          navigation.navigate('AtlasArticle', { articleId: item.id, slug: item.data?.slug });
+                        } else if (item.type === 'ride') {
+                          navigation.navigate('PlaceDetails', { placeId: item.id });
+                        } else if (item.type === 'universe') {
+                          navigation.navigate('UniverseLanding', { universeId: item.id });
+                        } else if (item.type === 'happening') {
+                          navigation.navigate('PlaceDetails', { placeId: item.id });
+                        }
+                      }}
+                      activeOpacity={0.9}
+                    >
+                      {item.image ? (
+                        <Image source={{ uri: item.image }} style={styles.exploreCardImage} />
+                      ) : (
+                        <View style={[styles.exploreCardImage, { backgroundColor: item.color, justifyContent: 'center', alignItems: 'center' }]}>
+                          <Ionicons name={item.icon} size={32} color="#fff" />
+                        </View>
+                      )}
+                      <View style={styles.exploreCardContent}>
+                        <Text style={[styles.exploreCardTitle, { color: '#E5E7EB' }]} numberOfLines={1}>
+                          {item.title}
+                        </Text>
+                        <View style={styles.exploreCardMeta}>
+                          <View style={[styles.exploreCardBadge, { backgroundColor: item.color }]}>
+                            <Ionicons name={item.icon} size={12} color="#fff" />
+                          </View>
+                          <Text style={[styles.exploreCardSubtitle, { color: '#9CA3AF' }]} numberOfLines={1}>
+                            {item.subtitle}
+                          </Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  // Fallback static cards when no data
+                  [
+                    { type: 'atlas', title: 'Atlas Articles', subtitle: 'Discover Stories', icon: 'book-outline', color: '#10B981', route: 'Atlas' },
+                    { type: 'ride', title: 'Rides & Attractions', subtitle: 'Theme Parks', icon: 'rocket-outline', color: '#8B5CF6', route: 'RidesBrowse' },
+                    { type: 'universe', title: 'Universes', subtitle: 'Airports & More', icon: 'airplane-outline', color: '#3B82F6', route: 'UniverseDiscovery' },
+                    { type: 'happening', title: 'Happening Now', subtitle: 'Live Events', icon: 'flash-outline', color: '#F59E0B', route: 'HappeningNow' },
+                  ].map((item, index) => (
+                    <TouchableOpacity
+                      key={`explore-static-${index}`}
+                      style={[styles.exploreCard, { backgroundColor: isDark ? theme.surface : '#111827' }]}
+                      onPress={() => navigation.navigate(item.route as never)}
+                      activeOpacity={0.9}
+                    >
+                      <View style={[styles.exploreCardImage, { backgroundColor: item.color, justifyContent: 'center', alignItems: 'center' }]}>
+                        <Ionicons name={item.icon as any} size={32} color="#fff" />
+                      </View>
+                      <View style={styles.exploreCardContent}>
+                        <Text style={[styles.exploreCardTitle, { color: '#E5E7EB' }]} numberOfLines={1}>
+                          {item.title}
+                        </Text>
+                        <View style={styles.exploreCardMeta}>
+                          <View style={[styles.exploreCardBadge, { backgroundColor: item.color }]}>
+                            <Ionicons name={item.icon as any} size={12} color="#fff" />
+                          </View>
+                          <Text style={[styles.exploreCardSubtitle, { color: '#9CA3AF' }]} numberOfLines={1}>
+                            {item.subtitle}
+                          </Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                )}
+              </ScrollView>
             </View>
 
             {/* Did You Know */}
@@ -3479,6 +3651,46 @@ const styles = StyleSheet.create({
   exploreText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  // Explore Tavvy Cards (Universe-style)
+  exploreCard: {
+    width: 160,
+    borderRadius: 16,
+    marginRight: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  exploreCardImage: {
+    width: '100%',
+    height: 100,
+  },
+  exploreCardContent: {
+    padding: 10,
+  },
+  exploreCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  exploreCardMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  exploreCardBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 6,
+  },
+  exploreCardSubtitle: {
+    fontSize: 11,
+    flex: 1,
   },
 
   // Did You Know
