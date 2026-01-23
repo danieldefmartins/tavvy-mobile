@@ -134,12 +134,15 @@ const STORAGE_KEYS = {
 };
 
 // Category-specific filter configurations
+// Each category has its own type-specific filters (cuisines, fuel types, amenities, etc.)
 const CATEGORY_FILTERS: { [key: string]: {
-  cuisines?: { name: string; icon: string }[];
-  moreFilters: string[];
+  typeLabel?: string; // Label for the type selector (e.g., "Cuisine", "Fuel Type")
+  types?: { name: string; icon: string }[];
+  amenities: string[];
 }} = {
   Restaurants: {
-    cuisines: [
+    typeLabel: 'Cuisine',
+    types: [
       { name: 'Any', icon: '' },
       { name: 'American', icon: 'restaurant' },
       { name: 'Barbecue', icon: 'flame' },
@@ -155,38 +158,89 @@ const CATEGORY_FILTERS: { [key: string]: {
       { name: 'Steak', icon: 'restaurant' },
       { name: 'Sushi', icon: 'restaurant' },
       { name: 'Thai', icon: 'restaurant' },
+      { name: 'Vegetarian', icon: 'leaf' },
     ],
-    moreFilters: ['Wheelchair accessible', 'Accepts reservations', 'Delivery', 'Beer', 'Wine', 'Takeout', 'Dine-in', 'Dinner', 'Lunch', 'Good for kids', 'Tourists', "Kids' menu", 'Vegetarian options'],
+    amenities: ['Dine-in', 'Takeout', 'Delivery', 'Reservations', 'Outdoor Seating', 'WiFi', 'Parking', 'Wheelchair Accessible', 'Good for Kids', 'Good for Groups', 'Pet Friendly', 'Beer', 'Wine', 'Full Bar', 'Happy Hour'],
   },
   Cafes: {
-    cuisines: [
+    typeLabel: 'Type',
+    types: [
       { name: 'Any', icon: '' },
-      { name: 'Coffee', icon: 'cafe' },
-      { name: 'Tea', icon: 'cafe' },
+      { name: 'Coffee Shop', icon: 'cafe' },
+      { name: 'Tea House', icon: 'cafe' },
       { name: 'Bakery', icon: 'cafe' },
-      { name: 'Dessert', icon: 'ice-cream' },
+      { name: 'Juice Bar', icon: 'nutrition' },
     ],
-    moreFilters: ['Wheelchair accessible', 'WiFi', 'Outdoor seating', 'Takeout', 'Good for work', 'Pet friendly'],
+    amenities: ['WiFi', 'Outdoor Seating', 'Drive-Through', 'Work Friendly', 'Study Friendly', 'Parking', 'Wheelchair Accessible', 'Pet Friendly'],
   },
   Bars: {
-    cuisines: [
+    typeLabel: 'Type',
+    types: [
       { name: 'Any', icon: '' },
-      { name: 'Sports Bar', icon: 'beer' },
-      { name: 'Wine Bar', icon: 'wine' },
-      { name: 'Cocktail Bar', icon: 'beer' },
+      { name: 'Bar', icon: 'beer' },
       { name: 'Pub', icon: 'beer' },
+      { name: 'Nightclub', icon: 'musical-notes' },
+      { name: 'Lounge', icon: 'wine' },
       { name: 'Brewery', icon: 'beer' },
+      { name: 'Wine Bar', icon: 'wine' },
+      { name: 'Sports Bar', icon: 'football' },
     ],
-    moreFilters: ['Wheelchair accessible', 'Live music', 'Happy hour', 'Outdoor seating', 'Late night', 'Dancing'],
+    amenities: ['Live Music', 'DJ', 'Karaoke', 'Pool Tables', 'Darts', 'Trivia Night', 'Happy Hour', 'Outdoor Seating', 'Parking', 'Wheelchair Accessible'],
+  },
+  Gas: {
+    typeLabel: 'Fuel Type',
+    types: [
+      { name: 'Any', icon: '' },
+      { name: 'Regular', icon: 'car' },
+      { name: 'Midgrade', icon: 'car' },
+      { name: 'Premium', icon: 'car' },
+      { name: 'Diesel', icon: 'car' },
+      { name: 'E85', icon: 'leaf' },
+      { name: 'Electric Charging', icon: 'flash' },
+    ],
+    amenities: ['Convenience Store', 'Restrooms', 'ATM', 'Car Wash', 'Air Pump', 'Propane', 'Cash', 'Credit', 'Mobile Pay'],
   },
   Shopping: {
-    moreFilters: ['Wheelchair accessible', 'Accepts credit cards', 'Parking', 'Returns accepted', 'Gift wrapping'],
+    typeLabel: 'Type',
+    types: [
+      { name: 'Any', icon: '' },
+      { name: 'Mall', icon: 'storefront' },
+      { name: 'Boutique', icon: 'shirt' },
+      { name: 'Department Store', icon: 'storefront' },
+      { name: 'Grocery', icon: 'cart' },
+      { name: 'Pharmacy', icon: 'medkit' },
+      { name: 'Electronics', icon: 'phone-portrait' },
+      { name: 'Clothing', icon: 'shirt' },
+      { name: 'Home & Garden', icon: 'home' },
+    ],
+    amenities: ['Parking', 'Wheelchair Accessible', 'Returns Accepted', 'Accepts Credit Cards'],
   },
-  Services: {
-    moreFilters: ['Wheelchair accessible', 'Accepts credit cards', 'By appointment', 'Walk-ins welcome', 'Online booking'],
+  Hotels: {
+    typeLabel: 'Type',
+    types: [
+      { name: 'Any', icon: '' },
+      { name: 'Hotel', icon: 'bed' },
+      { name: 'Motel', icon: 'bed' },
+      { name: 'Resort', icon: 'sunny' },
+      { name: 'Inn', icon: 'bed' },
+      { name: 'Hostel', icon: 'people' },
+      { name: 'Vacation Rental', icon: 'home' },
+    ],
+    amenities: ['Pool', 'Gym/Fitness', 'Free WiFi', 'Free Breakfast', 'Parking', 'Pet Friendly', 'Room Service', 'Spa', 'Kitchen', 'Balcony', 'Ocean View'],
+  },
+  'RV & Camping': {
+    typeLabel: 'Type',
+    types: [
+      { name: 'Any', icon: '' },
+      { name: 'RV Park', icon: 'car' },
+      { name: 'Campground', icon: 'bonfire' },
+      { name: 'Boondocking', icon: 'compass' },
+      { name: 'Dump Station', icon: 'water' },
+    ],
+    amenities: ['Full Hookups', 'Partial Hookups', 'Electric Only', 'No Hookups', 'Restrooms', 'Showers', 'Laundry', 'WiFi', 'Pool', 'Playground', 'Pet Friendly', 'Fire Pits', 'Picnic Tables', 'Propane', 'Dump Station', 'Store'],
   },
   default: {
-    moreFilters: ['Wheelchair accessible', 'Parking', 'Accepts credit cards'],
+    amenities: ['Wheelchair Accessible', 'Parking', 'Accepts Credit Cards'],
   },
 };
 
@@ -318,21 +372,21 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showAdvancedFilterModal, setShowAdvancedFilterModal] = useState(false);
   const [activeFilters, setActiveFilters] = useState<{
-    cuisine: string;
-    priceMin: number;
-    priceMax: number;
-    rating: string;
-    tapCount: string;
+    sortBy: string;
+    distance: string;
     hours: string;
-    moreFilters: string[];
+    tapQuality: string;
+    price: string;
+    type: string; // Category-specific type (cuisine, fuel type, etc.)
+    amenities: string[];
   }>({
-    cuisine: 'Any',
-    priceMin: 1,
-    priceMax: 100,
-    rating: 'any',
-    tapCount: 'Any',
+    sortBy: 'Distance',
+    distance: 'Any',
     hours: 'Any',
-    moreFilters: [],
+    tapQuality: 'Any',
+    price: 'Any',
+    type: 'Any',
+    amenities: [],
   });
   
   // Location states
@@ -1380,13 +1434,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       
       // Reset filters when changing category
       setActiveFilters({
-        cuisine: 'Any',
-        priceMin: 1,
-        priceMax: 100,
-        rating: 'any',
-        tapCount: 'Any',
+        sortBy: 'Distance',
+        distance: 'Any',
         hours: 'Any',
-        moreFilters: [],
+        tapQuality: 'Any',
+        price: 'Any',
+        type: 'Any',
+        amenities: [],
       });
       
       // Fetch places for this category from database
@@ -1567,22 +1621,22 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const clearFilters = () => {
     setActiveFilters({
-      cuisine: 'Any',
-      priceMin: 1,
-      priceMax: 100,
-      rating: 'any',
-      tapCount: 'Any',
+      sortBy: 'Distance',
+      distance: 'Any',
       hours: 'Any',
-      moreFilters: [],
+      tapQuality: 'Any',
+      price: 'Any',
+      type: 'Any',
+      amenities: [],
     });
   };
 
-  const toggleMoreFilter = (filter: string) => {
+  const toggleAmenityFilter = (amenity: string) => {
     setActiveFilters(prev => ({
       ...prev,
-      moreFilters: prev.moreFilters.includes(filter)
-        ? prev.moreFilters.filter(f => f !== filter)
-        : [...prev.moreFilters, filter],
+      amenities: prev.amenities.includes(amenity)
+        ? prev.amenities.filter(a => a !== amenity)
+        : [...prev.amenities, amenity],
     }));
   };
 
@@ -3453,7 +3507,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         </BottomSheet>
       )}
 
-      {/* Filter Modal for Category Results */}
+      {/* Filter Modal for Category Results - Quick Filters */}
       <Modal
         visible={showFilterModal && showCategoryResults}
         animationType="slide"
@@ -3462,7 +3516,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       >
         <SafeAreaView style={[styles.filterModalContainer, { backgroundColor: isDark ? theme.background : '#fff' }]}>
           <View style={[styles.filterModalHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee' }]}>
-            <Text style={[styles.filterModalTitle, { color: isDark ? theme.text : '#000' }]}>Filters</Text>
+            <Text style={[styles.filterModalTitle, { color: isDark ? theme.text : '#000' }]}>
+              {selectedCategory} Filters
+            </Text>
             <TouchableOpacity onPress={() => setShowFilterModal(false)} style={styles.filterModalClose}>
               <View style={[styles.filterModalCloseCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}>
                 <Ionicons name="close" size={20} color={isDark ? theme.text : '#000'} />
@@ -3470,38 +3526,78 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={styles.filterModalContent}>
-            <View style={styles.filterSection}>
-              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Price per person</Text>
-              <View style={styles.priceRangeContainer}>
-                <Text style={[styles.priceRangeLabel, { color: isDark ? theme.text : '#000' }]}>
-                  ${activeFilters.priceMin}–${activeFilters.priceMax}+
-                </Text>
-              </View>
-            </View>
+            {/* Hours - Quick access to Open Now */}
             <View style={styles.filterSection}>
               <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Hours</Text>
               <View style={styles.filterOptionsRow}>
-                {['Any', 'Open now'].map((hours) => (
+                {['Any', 'Open Now', 'Open 24h'].map((hours) => (
                   <TouchableOpacity
                     key={hours}
                     style={[
                       styles.filterOption,
-                      { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
-                      activeFilters.hours === hours && styles.filterOptionActive
+                      activeFilters.hours === hours && styles.filterOptionActive,
+                      { backgroundColor: activeFilters.hours === hours ? '#0F8A8A' : (isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5') },
                     ]}
                     onPress={() => setActiveFilters(prev => ({ ...prev, hours }))}
                   >
                     <Text style={[
                       styles.filterOptionText,
-                      { color: isDark ? theme.text : '#000' },
-                      activeFilters.hours === hours && styles.filterOptionTextActive
+                      { color: activeFilters.hours === hours ? '#fff' : (isDark ? theme.text : '#000') },
                     ]}>{hours}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
+            
+            {/* Sort By */}
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Sort By</Text>
+              <View style={styles.filterOptionsRow}>
+                {['Distance', 'Most Taps', 'Trending'].map((sort) => (
+                  <TouchableOpacity
+                    key={sort}
+                    style={[
+                      styles.filterOption,
+                      activeFilters.sortBy === sort && styles.filterOptionActive,
+                      { backgroundColor: activeFilters.sortBy === sort ? '#0F8A8A' : (isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5') },
+                    ]}
+                    onPress={() => setActiveFilters(prev => ({ ...prev, sortBy: sort }))}
+                  >
+                    <Text style={[
+                      styles.filterOptionText,
+                      { color: activeFilters.sortBy === sort ? '#fff' : (isDark ? theme.text : '#000') },
+                    ]}>{sort}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            
+            {/* Price Range - for relevant categories */}
+            {(selectedCategory === 'Restaurants' || selectedCategory === 'Cafes' || selectedCategory === 'Bars' || selectedCategory === 'Shopping' || selectedCategory === 'Hotels') && (
+              <View style={styles.filterSection}>
+                <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Price Range</Text>
+                <View style={styles.filterOptionsRow}>
+                  {['$', '$$', '$$$', '$$$$', 'Any'].map((price) => (
+                    <TouchableOpacity
+                      key={price}
+                      style={[
+                        styles.filterOption,
+                        activeFilters.price === price && styles.filterOptionActive,
+                        { backgroundColor: activeFilters.price === price ? '#0F8A8A' : (isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5') },
+                      ]}
+                      onPress={() => setActiveFilters(prev => ({ ...prev, price }))}
+                    >
+                      <Text style={[
+                        styles.filterOptionText,
+                        { color: activeFilters.price === price ? '#fff' : (isDark ? theme.text : '#000') },
+                      ]}>{price}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
           </ScrollView>
-          <View style={[styles.filterModalButtons, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee' }]}>
+          <View style={[styles.filterModalButtons, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee', backgroundColor: isDark ? theme.background : '#fff' }]}>
             <TouchableOpacity style={[styles.filterClearBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e8f4f8' }]} onPress={clearFilters}>
               <Text style={[styles.filterClearBtnText, { color: '#0A84FF' }]}>Clear</Text>
             </TouchableOpacity>
@@ -3512,7 +3608,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         </SafeAreaView>
       </Modal>
 
-      {/* Advanced Filter Modal - Opens from Filter icon */}
+      {/* Advanced Filter Modal - Category-Aware Tap System Filters */}
       <Modal
         visible={showAdvancedFilterModal}
         animationType="slide"
@@ -3521,7 +3617,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       >
         <SafeAreaView style={[styles.filterModalContainer, { backgroundColor: isDark ? theme.background : '#fff' }]}>
           <View style={[styles.filterModalHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee' }]}>
-            <Text style={[styles.filterModalTitle, { color: isDark ? theme.text : '#000' }]}>Advanced Filters</Text>
+            <Text style={[styles.filterModalTitle, { color: isDark ? theme.text : '#000' }]}>
+              {selectedCategory !== 'All' && selectedCategory !== 'Filter' ? `${selectedCategory} Filters` : 'Filters'}
+            </Text>
             <TouchableOpacity onPress={() => setShowAdvancedFilterModal(false)} style={styles.filterModalClose}>
               <View style={[styles.filterModalCloseCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}>
                 <Ionicons name="close" size={20} color={isDark ? theme.text : '#000'} />
@@ -3529,7 +3627,53 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={styles.filterModalContent}>
-            {/* Distance Filter */}
+            {/* Sort By - Universal */}
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Sort By</Text>
+              <View style={styles.filterOptionsRow}>
+                {['Distance', 'Most Taps', 'Trending', 'Newest'].map((sort) => (
+                  <TouchableOpacity
+                    key={sort}
+                    style={[
+                      styles.filterOption,
+                      activeFilters.sortBy === sort && styles.filterOptionActive,
+                      { backgroundColor: activeFilters.sortBy === sort ? '#0F8A8A' : (isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5') },
+                    ]}
+                    onPress={() => setActiveFilters(prev => ({ ...prev, sortBy: sort }))}
+                  >
+                    <Text style={[
+                      styles.filterOptionText,
+                      { color: activeFilters.sortBy === sort ? '#fff' : (isDark ? theme.text : '#000') },
+                    ]}>{sort}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Hours - Universal with Open Now priority */}
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Hours</Text>
+              <View style={styles.filterOptionsRow}>
+                {['Any', 'Open Now', 'Open 24h'].map((hours) => (
+                  <TouchableOpacity
+                    key={hours}
+                    style={[
+                      styles.filterOption,
+                      activeFilters.hours === hours && styles.filterOptionActive,
+                      { backgroundColor: activeFilters.hours === hours ? '#0F8A8A' : (isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5') },
+                    ]}
+                    onPress={() => setActiveFilters(prev => ({ ...prev, hours }))}
+                  >
+                    <Text style={[
+                      styles.filterOptionText,
+                      { color: activeFilters.hours === hours ? '#fff' : (isDark ? theme.text : '#000') },
+                    ]}>{hours}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Distance - Universal */}
             <View style={styles.filterSection}>
               <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Distance</Text>
               <View style={styles.filterOptionsRow}>
@@ -3538,139 +3682,196 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                     key={dist}
                     style={[
                       styles.filterOption,
-                      { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
+                      activeFilters.distance === dist && styles.filterOptionActive,
+                      { backgroundColor: activeFilters.distance === dist ? '#0F8A8A' : (isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5') },
                     ]}
-                    onPress={() => {}}
+                    onPress={() => setActiveFilters(prev => ({ ...prev, distance: dist }))}
                   >
                     <Text style={[
                       styles.filterOptionText,
-                      { color: isDark ? theme.text : '#000' },
+                      { color: activeFilters.distance === dist ? '#fff' : (isDark ? theme.text : '#000') },
                     ]}>{dist}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
 
-            {/* Price Range Filter */}
+            {/* Tap Quality - Replaces Rating (Tavvy's Tap System) */}
             <View style={styles.filterSection}>
-              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Price Range</Text>
-              <View style={styles.filterOptionsRow}>
-                {['$', '$$', '$$$', '$$$$', 'Any'].map((price) => (
-                  <TouchableOpacity
-                    key={price}
-                    style={[
-                      styles.filterOption,
-                      { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
-                    ]}
-                    onPress={() => {}}
-                  >
-                    <Text style={[
-                      styles.filterOptionText,
-                      { color: isDark ? theme.text : '#000' },
-                    ]}>{price}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Rating Filter */}
-            <View style={styles.filterSection}>
-              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Rating</Text>
-              <View style={styles.filterOptionsRow}>
-                {['4.5+', '4.0+', '3.5+', 'Any'].map((rating) => (
-                  <TouchableOpacity
-                    key={rating}
-                    style={[
-                      styles.filterOption,
-                      { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
-                    ]}
-                    onPress={() => {}}
-                  >
-                    <Text style={[
-                      styles.filterOptionText,
-                      { color: isDark ? theme.text : '#000' },
-                    ]}>{rating}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Hours Filter */}
-            <View style={styles.filterSection}>
-              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Hours</Text>
-              <View style={styles.filterOptionsRow}>
-                {['Open Now', 'Open 24h', 'Any'].map((hours) => (
-                  <TouchableOpacity
-                    key={hours}
-                    style={[
-                      styles.filterOption,
-                      { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
-                    ]}
-                    onPress={() => {}}
-                  >
-                    <Text style={[
-                      styles.filterOptionText,
-                      { color: isDark ? theme.text : '#000' },
-                    ]}>{hours}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Amenities Filter */}
-            <View style={styles.filterSection}>
-              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Amenities</Text>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Tap Quality</Text>
+              <Text style={[styles.filterSectionSubtitle, { color: isDark ? 'rgba(255,255,255,0.6)' : '#666' }]}>
+                Based on Tavvy's community taps
+              </Text>
               <View style={[styles.filterOptionsRow, { flexWrap: 'wrap' }]}>
-                {['WiFi', 'Parking', 'Outdoor Seating', 'Takeout', 'Delivery', 'Reservations', 'Wheelchair Accessible'].map((amenity) => (
+                {['Any', 'Mostly Positive', 'Highly Rated', 'Trending', 'No Heads Up'].map((quality) => (
+                  <TouchableOpacity
+                    key={quality}
+                    style={[
+                      styles.filterChip,
+                      activeFilters.tapQuality === quality && styles.filterChipActive,
+                      { 
+                        backgroundColor: activeFilters.tapQuality === quality ? '#0F8A8A' : (isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5'),
+                        marginBottom: 8,
+                        marginRight: 8,
+                      },
+                    ]}
+                    onPress={() => setActiveFilters(prev => ({ ...prev, tapQuality: quality }))}
+                  >
+                    <Text style={[
+                      styles.filterChipText,
+                      { color: activeFilters.tapQuality === quality ? '#fff' : (isDark ? theme.text : '#000') },
+                    ]}>{quality}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Price Range - Show for relevant categories */}
+            {(selectedCategory === 'All' || selectedCategory === 'Restaurants' || selectedCategory === 'Cafes' || selectedCategory === 'Bars' || selectedCategory === 'Shopping' || selectedCategory === 'Hotels') && (
+              <View style={styles.filterSection}>
+                <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Price Range</Text>
+                <View style={styles.filterOptionsRow}>
+                  {['$', '$$', '$$$', '$$$$', 'Any'].map((price) => (
+                    <TouchableOpacity
+                      key={price}
+                      style={[
+                        styles.filterOption,
+                        activeFilters.price === price && styles.filterOptionActive,
+                        { backgroundColor: activeFilters.price === price ? '#0F8A8A' : (isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5') },
+                      ]}
+                      onPress={() => setActiveFilters(prev => ({ ...prev, price }))}
+                    >
+                      <Text style={[
+                        styles.filterOptionText,
+                        { color: activeFilters.price === price ? '#fff' : (isDark ? theme.text : '#000') },
+                      ]}>{price}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Category-Specific Type Filter (Cuisine, Fuel Type, etc.) */}
+            {(() => {
+              const categoryConfig = CATEGORY_FILTERS[selectedCategory] || CATEGORY_FILTERS.default;
+              if (categoryConfig.types && categoryConfig.typeLabel) {
+                return (
+                  <View style={styles.filterSection}>
+                    <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>
+                      {categoryConfig.typeLabel}
+                    </Text>
+                    <View style={styles.cuisineGrid}>
+                      {categoryConfig.types.map((type, index) => (
+                        <TouchableOpacity
+                          key={type.name}
+                          style={[
+                            styles.cuisineOption,
+                            activeFilters.type === type.name && styles.cuisineOptionActive,
+                            { 
+                              backgroundColor: activeFilters.type === type.name ? '#0F8A8A' : (isDark ? 'rgba(255,255,255,0.05)' : '#fff'),
+                              borderRightWidth: (index + 1) % 4 === 0 ? 0 : 1,
+                            },
+                          ]}
+                          onPress={() => setActiveFilters(prev => ({ ...prev, type: type.name }))}
+                        >
+                          {type.icon ? (
+                            <Ionicons 
+                              name={type.icon as any} 
+                              size={20} 
+                              color={activeFilters.type === type.name ? '#fff' : (isDark ? theme.text : '#333')} 
+                            />
+                          ) : null}
+                          <Text style={[
+                            styles.cuisineOptionText,
+                            { color: activeFilters.type === type.name ? '#fff' : (isDark ? theme.text : '#333') },
+                          ]}>{type.name}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                );
+              }
+              return null;
+            })()}
+
+            {/* Category-Specific Amenities */}
+            <View style={styles.filterSection}>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>
+                {selectedCategory === 'Gas' ? 'Amenities & Services' : 
+                 selectedCategory === 'RV & Camping' ? 'Amenities & Hookups' : 
+                 selectedCategory === 'Hotels' ? 'Hotel Amenities' : 'Amenities'}
+              </Text>
+              <View style={styles.moreFiltersWrap}>
+                {(CATEGORY_FILTERS[selectedCategory]?.amenities || CATEGORY_FILTERS.default.amenities).map((amenity) => (
                   <TouchableOpacity
                     key={amenity}
                     style={[
-                      styles.filterOption,
-                      { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5', marginBottom: 8 },
+                      styles.moreFilterChip,
+                      activeFilters.amenities.includes(amenity) && styles.moreFilterChipActive,
+                      { backgroundColor: activeFilters.amenities.includes(amenity) ? '#0F8A8A' : (isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5') },
                     ]}
-                    onPress={() => {}}
+                    onPress={() => {
+                      setActiveFilters(prev => ({
+                        ...prev,
+                        amenities: prev.amenities.includes(amenity)
+                          ? prev.amenities.filter(a => a !== amenity)
+                          : [...prev.amenities, amenity]
+                      }));
+                    }}
                   >
                     <Text style={[
-                      styles.filterOptionText,
-                      { color: isDark ? theme.text : '#000' },
+                      styles.moreFilterChipText,
+                      { color: activeFilters.amenities.includes(amenity) ? '#fff' : (isDark ? theme.text : '#000') },
                     ]}>{amenity}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
-
-            {/* Sort By */}
-            <View style={styles.filterSection}>
-              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Sort By</Text>
-              <View style={styles.filterOptionsRow}>
-                {['Distance', 'Rating', 'Most Taps', 'Newest'].map((sort) => (
-                  <TouchableOpacity
-                    key={sort}
-                    style={[
-                      styles.filterOption,
-                      { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f5f5f5' },
-                    ]}
-                    onPress={() => {}}
-                  >
-                    <Text style={[
-                      styles.filterOptionText,
-                      { color: isDark ? theme.text : '#000' },
-                    ]}>{sort}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
           </ScrollView>
-          <View style={[styles.filterModalButtons, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee' }]}>
+          
+          {/* Filter Count Badge */}
+          {(() => {
+            const filterCount = 
+              (activeFilters.sortBy !== 'Distance' ? 1 : 0) +
+              (activeFilters.hours !== 'Any' ? 1 : 0) +
+              (activeFilters.distance !== 'Any' ? 1 : 0) +
+              (activeFilters.tapQuality !== 'Any' ? 1 : 0) +
+              (activeFilters.price !== 'Any' ? 1 : 0) +
+              (activeFilters.type !== 'Any' ? 1 : 0) +
+              activeFilters.amenities.length;
+            
+            return filterCount > 0 ? (
+              <View style={[styles.filterCountBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}>
+                <Text style={[styles.filterCountText, { color: isDark ? theme.text : '#666' }]}>
+                  {filterCount} filter{filterCount !== 1 ? 's' : ''} selected
+                </Text>
+              </View>
+            ) : null;
+          })()}
+          
+          <View style={[styles.filterModalButtons, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee', backgroundColor: isDark ? theme.background : '#fff' }]}>
             <TouchableOpacity 
               style={[styles.filterClearBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e8f4f8' }]} 
-              onPress={() => setShowAdvancedFilterModal(false)}
+              onPress={() => {
+                setActiveFilters({
+                  sortBy: 'Distance',
+                  distance: 'Any',
+                  hours: 'Any',
+                  tapQuality: 'Any',
+                  price: 'Any',
+                  type: 'Any',
+                  amenities: [],
+                });
+              }}
             >
               <Text style={[styles.filterClearBtnText, { color: '#0A84FF' }]}>Reset All</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.filterApplyBtn} 
-              onPress={() => setShowAdvancedFilterModal(false)}
+              onPress={() => {
+                setShowAdvancedFilterModal(false);
+                // TODO: Apply filters to search results
+              }}
             >
               <Text style={styles.filterApplyBtnText}>Apply Filters</Text>
             </TouchableOpacity>
@@ -4938,6 +5139,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  filterSectionSubtitle: {
+    fontSize: 13,
+    marginBottom: 12,
+    marginTop: -8,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  filterChipActive: {
+    borderColor: 'transparent',
+  },
+  filterChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  filterCountBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginHorizontal: 20,
+    marginBottom: 8,
+    borderRadius: 8,
+  },
+  filterCountText: {
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 
   // ===== NEW SECTIONS STYLES =====
