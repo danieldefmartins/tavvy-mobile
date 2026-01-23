@@ -26,7 +26,6 @@ export interface AddressData {
 interface Props {
   value: AddressData;
   onChange: (address: AddressData) => void;
-  googleApiKey?: string;
 }
 
 // Helper function to format text to Title Case
@@ -78,36 +77,40 @@ export const formatDisplayAddress = (address: AddressData): { line1: string; lin
   return { line1, line2 };
 };
 
-export default function AddressAutocomplete({ value, onChange, googleApiKey }: Props) {
+export default function AddressAutocomplete({ value, onChange }: Props) {
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [predictions, setPredictions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // Search for address predictions using Google Places API
+  // Search for address predictions using Nominatim (OpenStreetMap) - FREE, no API key needed
   const searchAddress = async (query: string) => {
     if (!query || query.length < 3) {
       setPredictions([]);
       return;
     }
 
-    if (!googleApiKey) {
-      // Fallback: just use the typed address
-      console.log('No Google API key provided, using manual entry');
-      return;
-    }
-
     setLoading(true);
     try {
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&types=address&components=country:us&key=${googleApiKey}`
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&countrycodes=us&limit=5`,
+        {
+          headers: {
+            'User-Agent': 'TavvyApp/1.0',
+          },
+        }
       );
       const data = await response.json();
       
-      if (data.predictions) {
-        setPredictions(data.predictions);
-      }
+      // Transform Nominatim results to match our prediction format
+      const predictions = data.map((item: any) => ({
+        place_id: item.place_id.toString(),
+        description: item.display_name,
+        address: item.address,
+      }));
+      
+      setPredictions(predictions);
     } catch (error) {
       console.error('Error fetching address predictions:', error);
     } finally {
@@ -128,84 +131,43 @@ export default function AddressAutocomplete({ value, onChange, googleApiKey }: P
     }, 300);
   };
 
-  // Get place details and parse address components
-  const selectPrediction = async (prediction: any) => {
-    if (!googleApiKey) {
-      // Manual entry fallback
-      const parts = prediction.description?.split(',') || [];
-      onChange({
-        address1: toTitleCase(parts[0]?.trim() || ''),
-        address2: '',
-        city: toTitleCase(parts[1]?.trim() || ''),
-        state: formatState(parts[2]?.trim() || ''),
-        zipCode: '',
-        country: 'USA',
-        formattedAddress: prediction.description || '',
-      });
-      setModalVisible(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${prediction.place_id}&fields=address_components,formatted_address&key=${googleApiKey}`
-      );
-      const data = await response.json();
-      
-      if (data.result) {
-        const components = data.result.address_components || [];
-        
-        let streetNumber = '';
-        let route = '';
-        let city = '';
-        let state = '';
-        let zipCode = '';
-        let country = '';
-        
-        components.forEach((component: any) => {
-          const types = component.types;
-          
-          if (types.includes('street_number')) {
-            streetNumber = component.long_name;
-          }
-          if (types.includes('route')) {
-            route = component.long_name;
-          }
-          if (types.includes('locality')) {
-            city = component.long_name;
-          }
-          if (types.includes('administrative_area_level_1')) {
-            state = component.short_name; // Already abbreviated
-          }
-          if (types.includes('postal_code')) {
-            zipCode = component.long_name;
-          }
-          if (types.includes('country')) {
-            country = component.long_name;
-          }
-        });
-        
-        const address1 = toTitleCase(`${streetNumber} ${route}`.trim());
-        
-        onChange({
-          address1,
-          address2: '',
-          city: toTitleCase(city),
-          state: state.toUpperCase(),
-          zipCode,
-          country: country || 'USA',
-          formattedAddress: data.result.formatted_address || '',
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching place details:', error);
-    } finally {
-      setLoading(false);
-      setModalVisible(false);
-      setSearchQuery('');
-      setPredictions([]);
-    }
+  // Parse Nominatim address and update form
+  const selectPrediction = (prediction: any) => {
+    const addr = prediction.address || {};
+    
+    // Build street address from house_number and road
+    let address1 = '';
+    if (addr.house_number) address1 += addr.house_number + ' ';
+    if (addr.road) address1 += addr.road;
+    address1 = toTitleCase(address1.trim());
+    
+    // Get city (try multiple fields as Nominatim uses different ones)
+    const city = toTitleCase(
+      addr.city || addr.town || addr.village || addr.municipality || addr.county || ''
+    );
+    
+    // Get state abbreviation
+    const state = formatState(addr.state || '');
+    
+    // Get zip code
+    const zipCode = addr.postcode || '';
+    
+    // Get country
+    const country = addr.country_code?.toUpperCase() === 'US' ? 'USA' : (addr.country || 'USA');
+    
+    onChange({
+      address1,
+      address2: '',
+      city,
+      state,
+      zipCode,
+      country,
+      formattedAddress: prediction.description || '',
+    });
+    
+    setModalVisible(false);
+    setSearchQuery('');
+    setPredictions([]);
   };
 
   // Check if address is filled
