@@ -162,7 +162,7 @@ const APP_TILES: AppTile[] = [
   },
   {
     id: 'digital-card',
-    name: 'My Card',
+    name: 'eCard',
     icon: 'id-card',
     iconType: 'ionicons',
     gradientColors: ['#EC4899', '#BE185D'],
