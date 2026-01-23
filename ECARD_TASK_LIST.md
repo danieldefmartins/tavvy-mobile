@@ -25,31 +25,54 @@
 - [ ] Ensure template styling is applied
 - [ ] Test with real card data
 
+### 4. Address Fields with Autocomplete
+- [ ] **Add address fields to profile**
+  - [ ] Address (line 1)
+  - [ ] Address 2 (optional)
+  - [ ] City
+  - [ ] State (2-letter abbreviation, UPPERCASE)
+  - [ ] Zip Code
+  - [ ] Country
+- [ ] **Google Places Autocomplete integration**
+- [ ] **Standard formatting:**
+  - [ ] First letter of each word UPPERCASE, rest lowercase
+  - [ ] State always 2-letter abbreviation, both UPPERCASE
+  - [ ] Display format: `433 Plaza Real Suite 275` / `Boca Raton, FL 33432`
+- [ ] Update database schema for address fields
+- [ ] Display address on web card
+
+### 5. Featured Socials Row (Customizable)
+- [ ] **Social icons row under bio is customizable**
+- [ ] User can choose which icons appear (up to 6)
+- [ ] **Exclusive display:** If a platform is in the icon row, it won't appear in links list below
+- [ ] Drag to reorder featured socials
+- [ ] Add/remove from featured row
+
 ---
 
 ## 🟡 NEW BLOCK TYPES (Priority 2)
 
-### 4. YouTube Video Block
+### 6. YouTube Video Block
 - [ ] Create YouTube block type in config
 - [ ] Video URL input field
 - [ ] Thumbnail preview in editor
 - [ ] Embedded player on web card
 - [ ] Support for YouTube Shorts
 
-### 5. Gallery Block
+### 7. Gallery Block
 - [ ] Create Gallery block type
 - [ ] Multi-image upload (up to 10 images)
 - [ ] Grid layout preview
 - [ ] Lightbox view on web card
 - [ ] Image captions (optional)
 
-### 6. Testimonials Block
+### 8. Testimonials Block
 - [ ] Create Testimonials block type
 - [ ] Add testimonial: Name, text, rating (stars), photo (optional)
 - [ ] Carousel display on web card
 - [ ] Up to 10 testimonials
 
-### 7. Form Block
+### 9. Form Block
 - [ ] Create Form block type
 - [ ] Customizable fields: Name, Email, Phone, Message
 - [ ] Form submissions sent to card owner's email
@@ -60,7 +83,7 @@
 
 ## 🟢 PRO CREDENTIALS BLOCK (Priority 3)
 
-### 8. Credentials Block (Pro Section)
+### 10. Credentials Block (Pro Section)
 - [ ] Create Credentials block type
 - [ ] Fields:
   - [ ] Schedule/Book action button (link to booking URL)
@@ -76,7 +99,7 @@
 
 ## 🔵 TAVVY-EXCLUSIVE FEATURES (Priority 4)
 
-### 9. Save to Tavvy Wallet
+### 11. Save to Tavvy Wallet
 - [ ] **"Save to Wallet" button on web card**
 - [ ] Connect to existing Tavvy Wallet system
 - [ ] Customers can save favorite pros
@@ -84,14 +107,14 @@
 - [ ] Re-contact later functionality
 - [ ] Deep link to Tavvy app
 
-### 10. Review Request Button
+### 12. Review Request Button
 - [ ] **"Leave a Tavvy Review" button**
 - [ ] One-tap to open review form
 - [ ] Pre-filled with pro's info
 - [ ] Ties into Tavvy review system
 - [ ] Growth + trust builder
 
-### 11. Smart Follow-Up (Later Phase)
+### 13. Smart Follow-Up (Later Phase)
 - [ ] "Remind me in 6 months" option
 - [ ] "Contact again" button
 - [ ] Push notification integration
@@ -101,7 +124,7 @@
 
 ## 🟣 TEMPLATES (Priority 5)
 
-### 12. Add More Templates
+### 14. Add More Templates
 Based on reference images provided:
 
 - [ ] **Kids/Fun Template** - Colorful, playful, cartoon-style

@@ -49,8 +49,34 @@ interface Props {
   route: any;
 }
 
+// Crown Badge Component for Tavvy Reviews
+const CrownBadge = ({ reviewCount, rating, onPress }: { reviewCount: number; rating: number; onPress: () => void }) => (
+  <TouchableOpacity 
+    style={styles.crownBadge}
+    onPress={onPress}
+    activeOpacity={0.8}
+  >
+    <LinearGradient
+      colors={['#FFD700', '#FFA500']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.crownGradient}
+    >
+      <Text style={styles.crownIcon}>👑</Text>
+      <View style={styles.crownInfo}>
+        <Text style={styles.crownRating}>{rating.toFixed(1)}</Text>
+        <Text style={styles.crownCount}>({reviewCount})</Text>
+      </View>
+    </LinearGradient>
+  </TouchableOpacity>
+);
+
 export default function ECardPreviewScreen({ navigation, route }: Props) {
-  const { profile, links, templateId } = route.params || {};
+  const { profile, links, templateId, reviews } = route.params || {};
+  
+  // Mock reviews data - in production this comes from Tavvy reviews system
+  const reviewData = reviews || { count: 0, rating: 0 };
+  const hasReviews = reviewData.count > 0;
   
   // Generate card URL from profile name
   const generateSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
@@ -145,6 +171,18 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
           end={{ x: 1, y: 1 }}
           style={styles.cardContainer}
         >
+          {/* Crown Badge - Shows if user has Tavvy reviews */}
+          {hasReviews && (
+            <CrownBadge 
+              reviewCount={reviewData.count}
+              rating={reviewData.rating}
+              onPress={() => {
+                // Navigate to reviews or show reviews modal
+                console.log('Show reviews');
+              }}
+            />
+          )}
+
           {/* Profile Section */}
           <View style={styles.profileSection}>
             {profile?.image ? (
@@ -451,5 +489,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
+  },
+  // Crown Badge Styles
+  crownBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 10,
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  crownGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  crownIcon: {
+    fontSize: 18,
+  },
+  crownInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  crownRating: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  crownCount: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#4a4a4a',
   },
 });
