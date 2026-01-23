@@ -11,9 +11,9 @@ export { default as YouTubeBlockPreview } from './YouTubeBlockPreview';
 export { default as GalleryBlockEditor } from './GalleryBlockEditor';
 export { default as GalleryBlockPreview } from './GalleryBlockPreview';
 
-// Testimonials Block (to be implemented)
-// export { default as TestimonialsBlockEditor } from './TestimonialsBlockEditor';
-// export { default as TestimonialsBlockPreview } from './TestimonialsBlockPreview';
+// Testimonials Block
+export { default as TestimonialsBlockEditor } from './TestimonialsBlockEditor';
+export { default as TestimonialsBlockPreview } from './TestimonialsBlockPreview';
 
 // Form Block (to be implemented)
 // export { default as FormBlockEditor } from './FormBlockEditor';
