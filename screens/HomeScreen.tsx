@@ -30,7 +30,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchPlacesInBounds, PlaceCard, getPlaceIdForNavigation, formatDistance } from '../lib/placeService';
-import { searchSuggestions as searchPlaceSuggestions } from '../lib/searchService';
+import { searchSuggestions as searchPlaceSuggestions, searchAddresses, prefetchNearbyPlaces, searchPrefetchedPlaces, SearchResult } from '../lib/searchService';
 import { fetchWeatherData, getDefaultWeatherData, WeatherData } from '../lib/weatherService';
 // Integrated Discovery Components
 import { StoriesRow } from '../components/StoriesRow';
@@ -354,6 +354,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   
   // Search states
   const [searchQuery, setSearchQuery] = useState('');
+  const [prefetchedPlaces, setPrefetchedPlaces] = useState<SearchResult[]>([]); // Pre-fetched nearby places for instant search
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
@@ -1010,6 +1011,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         loadWeatherData(coords);
         loadTrendingItems(coords); // Reload trending with user location for distance filtering
         
+        // Pre-fetch nearby places for instant autocomplete
+        prefetchNearbyPlaces({ latitude: coords[1], longitude: coords[0] }, 100)
+          .then(places => {
+            setPrefetchedPlaces(places);
+            console.log(`[HomeScreen] Pre-fetched ${places.length} nearby places for instant search`);
+          })
+          .catch(err => console.log('[HomeScreen] Pre-fetch error:', err));
+        
         const [address] = await Location.reverseGeocodeAsync({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
@@ -1316,7 +1325,33 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       return;
     }
 
-    // Debounce search by 300ms to reduce API calls
+    // INSTANT: Search pre-fetched places first (sub-millisecond)
+    if (prefetchedPlaces.length > 0) {
+      const instantResults = searchPrefetchedPlaces(text, prefetchedPlaces, 5);
+      if (instantResults.length > 0) {
+        const instantSuggestions: SearchSuggestion[] = instantResults.map(place => ({
+          id: `place-${place.source_id}`,
+          type: 'place' as const,
+          title: place.name,
+          subtitle: `${place.category || 'Other'} • ${place.city || 'Nearby'}`,
+          icon: 'location',
+          data: {
+            id: place.source_id,
+            name: place.name,
+            latitude: place.latitude,
+            longitude: place.longitude,
+            address_line1: place.address || '',
+            city: place.city || '',
+            category: place.category || 'Other',
+            signals: [],
+            photos: [],
+          },
+        }));
+        setSearchSuggestions(instantSuggestions); // Show instant results immediately
+      }
+    }
+
+    // Debounce search by 200ms for faster response (optimized)
     searchDebounceRef.current = setTimeout(async () => {
       const suggestions: SearchSuggestion[] = [];
       const query = text.toLowerCase();
@@ -1399,34 +1434,41 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
     setSearchSuggestions(suggestions);
 
-    // Always search for addresses when query is long enough
+    // Always search for addresses when query is long enough (using optimized location-biased search)
     if (text.length >= 3) {
       setIsSearchingAddress(true);
       try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&limit=3`
+        // Use optimized searchAddresses with location bias for faster, more relevant results
+        const addressResults = await searchAddresses(
+          text,
+          5,
+          userLocation ? { latitude: userLocation[1], longitude: userLocation[0] } : undefined,
+          'us' // Default to US, can be made dynamic based on user's country
         );
-        const results: GeocodingResult[] = await response.json();
         
-        results.forEach((result, index) => {
+        addressResults.forEach((result, index) => {
           suggestions.push({
             id: `address-${index}`,
             type: 'address',
-            title: result.display_name.split(',')[0],
-            subtitle: result.display_name,
+            title: result.shortName,
+            subtitle: result.displayName,
             icon: 'navigate',
-            data: result,
+            data: {
+              display_name: result.displayName,
+              lat: String(result.latitude),
+              lon: String(result.longitude),
+            },
           });
         });
         
         setSearchSuggestions([...suggestions]);
       } catch (error) {
-        console.log('Geocoding error:', error);
+        console.log('Address search error:', error);
       } finally {
         setIsSearchingAddress(false);
       }
     }
-    }, 300); // End of debounce setTimeout
+    }, 200); // End of debounce setTimeout (optimized from 300ms)
   };
 
   const handleSearchFocus = () => {

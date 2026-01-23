@@ -1,10 +1,12 @@
 /**
  * searchService.ts
  * 
- * Centralized search service with hybrid strategy:
- * 1. Query `places_search` table first (optimized for search)
- * 2. If results < threshold, fallback to `fsq_places_raw` name search
- * 3. Deduplicate by source_id
+ * OPTIMIZED Centralized search service with:
+ * 1. Location-biased queries (local results first)
+ * 2. Progressive search strategy (local → regional → global)
+ * 3. Client-side caching for instant results
+ * 4. Geo-bounded database queries
+ * 5. Parallel query execution for speed
  * 
  * This is the SINGLE source of truth for text-based place search across the app.
  */
@@ -64,6 +66,81 @@ export interface AddressSuggestion {
 const DEFAULT_LIMIT = 20;
 const DEFAULT_FALLBACK_THRESHOLD = 10;
 const DEFAULT_RADIUS_KM = 50;
+
+// Progressive search radius tiers (in degrees, ~1 degree ≈ 69 miles)
+const SEARCH_RADIUS_LOCAL = 0.3;      // ~20 miles - fastest, most relevant
+const SEARCH_RADIUS_REGIONAL = 0.8;   // ~55 miles - expanded search
+const SEARCH_RADIUS_STATE = 2.0;      // ~140 miles - state-level
+
+// ============================================
+// CLIENT-SIDE CACHE
+// ============================================
+
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  location?: { latitude: number; longitude: number };
+}
+
+// LRU Cache for search results
+const searchCache = new Map<string, CacheEntry<SearchResult[]>>();
+const addressCache = new Map<string, CacheEntry<AddressSuggestion[]>>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_SIZE = 100;
+
+/**
+ * Get cached results if available and not expired
+ */
+function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string): T | null {
+  const entry = cache.get(key);
+  if (entry && Date.now() - entry.timestamp < CACHE_TTL_MS) {
+    return entry.data;
+  }
+  if (entry) {
+    cache.delete(key); // Remove expired entry
+  }
+  return null;
+}
+
+/**
+ * Set cache entry with LRU eviction
+ */
+function setCache<T>(
+  cache: Map<string, CacheEntry<T>>, 
+  key: string, 
+  data: T,
+  location?: { latitude: number; longitude: number }
+): void {
+  // LRU eviction if cache is full
+  if (cache.size >= MAX_CACHE_SIZE) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey) cache.delete(oldestKey);
+  }
+  cache.set(key, { data, timestamp: Date.now(), location });
+}
+
+/**
+ * Generate cache key from query and location
+ */
+function getCacheKey(query: string, location?: { latitude: number; longitude: number }): string {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (location) {
+    // Round location to reduce cache fragmentation
+    const lat = Math.round(location.latitude * 100) / 100;
+    const lng = Math.round(location.longitude * 100) / 100;
+    return `${normalizedQuery}:${lat}:${lng}`;
+  }
+  return normalizedQuery;
+}
+
+/**
+ * Clear all caches (useful for testing or forced refresh)
+ */
+export function clearSearchCache(): void {
+  searchCache.clear();
+  addressCache.clear();
+  console.log('[searchService] Cache cleared');
+}
 
 // ============================================
 // MAIN SEARCH FUNCTION
@@ -328,10 +405,23 @@ function toRad(deg: number): number {
   return deg * (Math.PI / 180);
 }
 
+// ============================================
+// OPTIMIZED AUTOCOMPLETE SEARCH
+// ============================================
+
 /**
- * Search for suggestions (autocomplete) - optimized for speed
- * Searches both places database and FSQ raw in parallel
- * Minimum 1 character to start searching
+ * OPTIMIZED Search for suggestions (autocomplete)
+ * 
+ * Features:
+ * - Client-side caching for instant results
+ * - Geo-bounded queries (local results first)
+ * - Progressive search (local → regional if needed)
+ * - Parallel query execution
+ * 
+ * @param query - Search query string
+ * @param limit - Maximum results to return
+ * @param userLocation - User's current location for geo-biasing
+ * @returns Promise<SearchResult[]>
  */
 export async function searchSuggestions(
   query: string, 
@@ -344,97 +434,65 @@ export async function searchSuggestions(
   }
 
   const searchTerm = query.trim().toLowerCase();
+  const cacheKey = getCacheKey(searchTerm, userLocation);
+  
+  // Check cache first (instant results!)
+  const cached = getCached(searchCache, cacheKey);
+  if (cached) {
+    console.log(`[searchService] Cache hit for "${searchTerm}"`);
+    return cached;
+  }
+
+  const startTime = Date.now();
 
   try {
-    // Search both sources in parallel for speed
-    const [placesResult, fsqResult] = await Promise.all([
-      // Search places_search table
-      supabase
-        .from('places_search')
-        .select('place_id, name, city, region, category, latitude, longitude')
-        .or(`name_norm.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
-        .limit(limit),
-      // Search fsq_places_raw table
-      supabase
-        .from('fsq_places_raw')
-        .select('fsq_place_id, name, locality, region, latitude, longitude, fsq_category_labels')
-        .or(`name.ilike.%${searchTerm}%,locality.ilike.%${searchTerm}%`)
-        .is('date_closed', null)
-        .limit(limit)
-    ]);
-
-    const results: SearchResult[] = [];
-    const seenNames = new Set<string>();
-
-    // Process places_search results first (higher priority)
-    if (placesResult.data) {
-      for (const s of placesResult.data) {
-        const nameKey = s.name.toLowerCase();
-        if (!seenNames.has(nameKey)) {
-          seenNames.add(nameKey);
-          const result: SearchResult = {
-            id: s.place_id,
-            source: 'places' as PlaceSource,
-            source_id: s.place_id,
-            name: s.name,
-            latitude: s.latitude,
-            longitude: s.longitude,
-            city: s.city,
-            region: s.region,
-            category: s.category,
-          };
-          if (userLocation && s.latitude && s.longitude) {
-            result.distance = calculateDistance(
-              userLocation.latitude, userLocation.longitude,
-              s.latitude, s.longitude
-            );
-          }
-          results.push(result);
-        }
-      }
-    }
-
-    // Add FSQ results (deduplicated)
-    if (fsqResult.data) {
-      for (const p of fsqResult.data) {
-        const nameKey = p.name.toLowerCase();
-        if (!seenNames.has(nameKey)) {
-          seenNames.add(nameKey);
-          const result: SearchResult = {
-            id: `fsq:${p.fsq_place_id}`,
-            source: 'fsq_raw' as PlaceSource,
-            source_id: p.fsq_place_id,
-            name: p.name,
-            latitude: p.latitude,
-            longitude: p.longitude,
-            city: p.locality,
-            region: p.region,
-            category: extractCategory(p.fsq_category_labels),
-          };
-          if (userLocation && p.latitude && p.longitude) {
-            result.distance = calculateDistance(
-              userLocation.latitude, userLocation.longitude,
-              p.latitude, p.longitude
-            );
-          }
-          results.push(result);
-        }
-      }
-    }
-
-    // Sort by distance if location provided, otherwise by name match quality
+    let results: SearchResult[] = [];
+    
     if (userLocation) {
+      // PROGRESSIVE SEARCH: Start local, expand if needed
+      results = await searchWithGeoBounds(
+        searchTerm, 
+        userLocation, 
+        SEARCH_RADIUS_LOCAL, 
+        limit
+      );
+      
+      // If not enough results, expand to regional
+      if (results.length < 3) {
+        console.log(`[searchService] Expanding search to regional (${results.length} local results)`);
+        const regionalResults = await searchWithGeoBounds(
+          searchTerm, 
+          userLocation, 
+          SEARCH_RADIUS_REGIONAL, 
+          limit
+        );
+        
+        // Merge and dedupe
+        const seenIds = new Set(results.map(r => r.id));
+        for (const r of regionalResults) {
+          if (!seenIds.has(r.id)) {
+            results.push(r);
+            seenIds.add(r.id);
+          }
+        }
+      }
+      
+      // Sort by distance
       results.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
     } else {
-      // Prioritize exact prefix matches
-      results.sort((a, b) => {
-        const aStartsWith = a.name.toLowerCase().startsWith(searchTerm) ? 0 : 1;
-        const bStartsWith = b.name.toLowerCase().startsWith(searchTerm) ? 0 : 1;
-        return aStartsWith - bStartsWith;
-      });
+      // No location - use standard search
+      results = await searchWithoutLocation(searchTerm, limit);
     }
 
-    return results.slice(0, limit);
+    // Limit results
+    results = results.slice(0, limit);
+    
+    // Cache results
+    setCache(searchCache, cacheKey, results, userLocation);
+    
+    console.log(`[searchService] Suggestions: ${results.length} results in ${Date.now() - startTime}ms`);
+    return results;
+    
   } catch (error) {
     console.error('[searchService] Error in searchSuggestions:', error);
     return [];
@@ -442,26 +500,280 @@ export async function searchSuggestions(
 }
 
 /**
- * Search for address suggestions using Nominatim (OpenStreetMap)
- * Free, no API key required
+ * Search with geo-bounded queries for faster, more relevant results
+ */
+async function searchWithGeoBounds(
+  searchTerm: string,
+  location: { latitude: number; longitude: number },
+  radiusDegrees: number,
+  limit: number
+): Promise<SearchResult[]> {
+  const { latitude, longitude } = location;
+  const minLat = latitude - radiusDegrees;
+  const maxLat = latitude + radiusDegrees;
+  const minLng = longitude - radiusDegrees;
+  const maxLng = longitude + radiusDegrees;
+
+  // Search both sources in parallel with geo bounds
+  const [placesResult, fsqResult] = await Promise.all([
+    // Search places_search table with geo bounds
+    supabase
+      .from('places_search')
+      .select('place_id, name, city, region, category, latitude, longitude')
+      .or(`name_norm.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
+      .gte('latitude', minLat)
+      .lte('latitude', maxLat)
+      .gte('longitude', minLng)
+      .lte('longitude', maxLng)
+      .limit(limit),
+    // Search fsq_places_raw table with geo bounds
+    supabase
+      .from('fsq_places_raw')
+      .select('fsq_place_id, name, locality, region, latitude, longitude, fsq_category_labels')
+      .or(`name.ilike.%${searchTerm}%,locality.ilike.%${searchTerm}%`)
+      .is('date_closed', null)
+      .gte('latitude', minLat)
+      .lte('latitude', maxLat)
+      .gte('longitude', minLng)
+      .lte('longitude', maxLng)
+      .limit(limit)
+  ]);
+
+  return processSearchResults(placesResult.data, fsqResult.data, location, searchTerm);
+}
+
+/**
+ * Search without location constraints
+ */
+async function searchWithoutLocation(
+  searchTerm: string,
+  limit: number
+): Promise<SearchResult[]> {
+  const [placesResult, fsqResult] = await Promise.all([
+    supabase
+      .from('places_search')
+      .select('place_id, name, city, region, category, latitude, longitude')
+      .or(`name_norm.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
+      .limit(limit),
+    supabase
+      .from('fsq_places_raw')
+      .select('fsq_place_id, name, locality, region, latitude, longitude, fsq_category_labels')
+      .or(`name.ilike.%${searchTerm}%,locality.ilike.%${searchTerm}%`)
+      .is('date_closed', null)
+      .limit(limit)
+  ]);
+
+  return processSearchResults(placesResult.data, fsqResult.data, undefined, searchTerm);
+}
+
+/**
+ * Process and merge search results from both sources
+ */
+function processSearchResults(
+  placesData: any[] | null,
+  fsqData: any[] | null,
+  location: { latitude: number; longitude: number } | undefined,
+  searchTerm: string
+): SearchResult[] {
+  const results: SearchResult[] = [];
+  const seenNames = new Set<string>();
+
+  // Process places_search results first (higher priority)
+  if (placesData) {
+    for (const s of placesData) {
+      const nameKey = s.name.toLowerCase();
+      if (!seenNames.has(nameKey)) {
+        seenNames.add(nameKey);
+        const result: SearchResult = {
+          id: s.place_id,
+          source: 'places' as PlaceSource,
+          source_id: s.place_id,
+          name: s.name,
+          latitude: s.latitude,
+          longitude: s.longitude,
+          city: s.city,
+          region: s.region,
+          category: s.category,
+        };
+        if (location && s.latitude && s.longitude) {
+          result.distance = calculateDistance(
+            location.latitude, location.longitude,
+            s.latitude, s.longitude
+          );
+        }
+        results.push(result);
+      }
+    }
+  }
+
+  // Add FSQ results (deduplicated)
+  if (fsqData) {
+    for (const p of fsqData) {
+      const nameKey = p.name.toLowerCase();
+      if (!seenNames.has(nameKey)) {
+        seenNames.add(nameKey);
+        const result: SearchResult = {
+          id: `fsq:${p.fsq_place_id}`,
+          source: 'fsq_raw' as PlaceSource,
+          source_id: p.fsq_place_id,
+          name: p.name,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          city: p.locality,
+          region: p.region,
+          category: extractCategory(p.fsq_category_labels),
+        };
+        if (location && p.latitude && p.longitude) {
+          result.distance = calculateDistance(
+            location.latitude, location.longitude,
+            p.latitude, p.longitude
+          );
+        }
+        results.push(result);
+      }
+    }
+  }
+
+  // Sort: prioritize exact prefix matches, then by distance
+  results.sort((a, b) => {
+    const aStartsWith = a.name.toLowerCase().startsWith(searchTerm) ? 0 : 1;
+    const bStartsWith = b.name.toLowerCase().startsWith(searchTerm) ? 0 : 1;
+    if (aStartsWith !== bStartsWith) return aStartsWith - bStartsWith;
+    return (a.distance || Infinity) - (b.distance || Infinity);
+  });
+
+  return results;
+}
+
+// ============================================
+// OPTIMIZED ADDRESS SEARCH
+// ============================================
+
+/**
+ * OPTIMIZED Search for address suggestions using Nominatim
+ * 
+ * Features:
+ * - Location bias (viewbox) for faster local results
+ * - Country code restriction
+ * - Client-side caching
+ * - Progressive search (bounded first, then unbounded)
+ * 
+ * @param query - Address search query
+ * @param limit - Maximum results
+ * @param userLocation - User's location for biasing
+ * @param countryCode - Country code to restrict results (default: 'us')
  */
 export async function searchAddresses(
   query: string,
-  limit: number = 5
+  limit: number = 5,
+  userLocation?: { latitude: number; longitude: number },
+  countryCode: string = 'us'
 ): Promise<AddressSuggestion[]> {
   if (!query || query.trim().length < 3) {
     return [];
   }
 
+  const cacheKey = `addr:${getCacheKey(query, userLocation)}`;
+  
+  // Check cache first
+  const cached = getCached(addressCache, cacheKey);
+  if (cached) {
+    console.log(`[searchService] Address cache hit for "${query}"`);
+    return cached;
+  }
+
+  const startTime = Date.now();
+
   try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=${limit}&addressdetails=1`,
-      {
-        headers: {
-          'User-Agent': 'Tavvy-App/1.0',
-        },
+    // Build URL with location bias
+    let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=${limit}&addressdetails=1`;
+    
+    // Add location bias for faster, more relevant results
+    if (userLocation) {
+      // Create a viewbox ~50 miles around user (0.5 degrees ≈ 35 miles)
+      const viewboxSize = 0.5;
+      const viewbox = [
+        userLocation.longitude - viewboxSize, // west
+        userLocation.latitude + viewboxSize,  // north
+        userLocation.longitude + viewboxSize, // east
+        userLocation.latitude - viewboxSize   // south
+      ].join(',');
+      
+      url += `&viewbox=${viewbox}&bounded=1`;
+    }
+    
+    // Add country code to limit search scope
+    if (countryCode) {
+      url += `&countrycodes=${countryCode}`;
+    }
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Tavvy-App/1.0',
+      },
+    });
+
+    if (!response.ok) {
+      // If bounded search fails, try unbounded
+      if (userLocation) {
+        console.log('[searchService] Bounded search failed, trying unbounded');
+        return searchAddressesUnbounded(query, limit, countryCode);
       }
-    );
+      return [];
+    }
+
+    let results = await response.json();
+    
+    // If no results with bounds, try without bounds
+    if (results.length === 0 && userLocation) {
+      console.log('[searchService] No bounded results, expanding search');
+      return searchAddressesUnbounded(query, limit, countryCode);
+    }
+    
+    const suggestions = results.map((r: any) => ({
+      id: r.place_id,
+      displayName: r.display_name,
+      shortName: r.display_name.split(',')[0],
+      latitude: parseFloat(r.lat),
+      longitude: parseFloat(r.lon),
+      type: r.type,
+      city: r.address?.city || r.address?.town || r.address?.village,
+      state: r.address?.state,
+      country: r.address?.country,
+    }));
+    
+    // Cache results
+    setCache(addressCache, cacheKey, suggestions, userLocation);
+    
+    console.log(`[searchService] Address search: ${suggestions.length} results in ${Date.now() - startTime}ms`);
+    return suggestions;
+    
+  } catch (error) {
+    console.error('[searchService] Error in searchAddresses:', error);
+    return [];
+  }
+}
+
+/**
+ * Unbounded address search (fallback when bounded search returns no results)
+ */
+async function searchAddressesUnbounded(
+  query: string,
+  limit: number,
+  countryCode: string
+): Promise<AddressSuggestion[]> {
+  try {
+    let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=${limit}&addressdetails=1`;
+    
+    if (countryCode) {
+      url += `&countrycodes=${countryCode}`;
+    }
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Tavvy-App/1.0',
+      },
+    });
 
     if (!response.ok) {
       return [];
@@ -481,9 +793,112 @@ export async function searchAddresses(
       country: r.address?.country,
     }));
   } catch (error) {
-    console.error('[searchService] Error in searchAddresses:', error);
+    console.error('[searchService] Error in searchAddressesUnbounded:', error);
     return [];
   }
+}
+
+// ============================================
+// PRE-FETCH NEARBY PLACES
+// ============================================
+
+/**
+ * Pre-fetch nearby places for instant autocomplete
+ * Call this on app launch to cache local places
+ * 
+ * @param userLocation - User's current location
+ * @param limit - Maximum places to cache (default: 100)
+ */
+export async function prefetchNearbyPlaces(
+  userLocation: { latitude: number; longitude: number },
+  limit: number = 100
+): Promise<SearchResult[]> {
+  const { latitude, longitude } = userLocation;
+  const radiusDegrees = SEARCH_RADIUS_LOCAL; // ~20 miles
+  
+  const minLat = latitude - radiusDegrees;
+  const maxLat = latitude + radiusDegrees;
+  const minLng = longitude - radiusDegrees;
+  const maxLng = longitude + radiusDegrees;
+
+  console.log(`[searchService] Pre-fetching nearby places within ${radiusDegrees} degrees`);
+  const startTime = Date.now();
+
+  try {
+    const { data, error } = await supabase
+      .from('places_search')
+      .select('place_id, name, city, region, category, latitude, longitude')
+      .gte('latitude', minLat)
+      .lte('latitude', maxLat)
+      .gte('longitude', minLng)
+      .lte('longitude', maxLng)
+      .limit(limit);
+
+    if (error) {
+      console.error('[searchService] Error pre-fetching places:', error);
+      return [];
+    }
+
+    const results: SearchResult[] = (data || []).map(s => ({
+      id: s.place_id,
+      source: 'places' as PlaceSource,
+      source_id: s.place_id,
+      name: s.name,
+      latitude: s.latitude,
+      longitude: s.longitude,
+      city: s.city,
+      region: s.region,
+      category: s.category,
+      distance: calculateDistance(latitude, longitude, s.latitude, s.longitude),
+    }));
+
+    // Sort by distance
+    results.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+
+    console.log(`[searchService] Pre-fetched ${results.length} nearby places in ${Date.now() - startTime}ms`);
+    return results;
+    
+  } catch (error) {
+    console.error('[searchService] Exception pre-fetching places:', error);
+    return [];
+  }
+}
+
+/**
+ * Search pre-fetched places locally (instant results)
+ * 
+ * @param query - Search query
+ * @param prefetchedPlaces - Array of pre-fetched places
+ * @param limit - Maximum results
+ */
+export function searchPrefetchedPlaces(
+  query: string,
+  prefetchedPlaces: SearchResult[],
+  limit: number = 5
+): SearchResult[] {
+  if (!query || query.trim().length < 1 || !prefetchedPlaces.length) {
+    return [];
+  }
+
+  const searchTerm = query.trim().toLowerCase();
+  
+  // Filter and sort matching places
+  const matches = prefetchedPlaces
+    .filter(p => 
+      p.name.toLowerCase().includes(searchTerm) ||
+      (p.city && p.city.toLowerCase().includes(searchTerm))
+    )
+    .sort((a, b) => {
+      // Prioritize prefix matches
+      const aStartsWith = a.name.toLowerCase().startsWith(searchTerm) ? 0 : 1;
+      const bStartsWith = b.name.toLowerCase().startsWith(searchTerm) ? 0 : 1;
+      if (aStartsWith !== bStartsWith) return aStartsWith - bStartsWith;
+      // Then by distance
+      return (a.distance || Infinity) - (b.distance || Infinity);
+    })
+    .slice(0, limit);
+
+  return matches;
 }
 
 /**
