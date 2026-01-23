@@ -38,7 +38,9 @@ import { useThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { decode } from 'base64-arraybuffer';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MY_CARD_STORAGE_KEY = '@tavvy_my_digital_card';
@@ -364,30 +366,47 @@ export default function CreateDigitalCardScreen() {
     try {
       if (!user) return uri; // Return local URI if no user
 
-      const response = await fetch(uri);
-      const blob = await response.blob();
+      console.log('[Upload] Starting photo upload from:', uri);
+
+      // Read the file as base64 using expo-file-system
+      const base64Data = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      console.log('[Upload] Read file, base64 length:', base64Data.length);
+
+      // Convert base64 to ArrayBuffer
+      const arrayBuffer = decode(base64Data);
+
+      console.log('[Upload] Converted to ArrayBuffer, size:', arrayBuffer.byteLength);
+
       const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${user.id}/card-photo-${Date.now()}.${fileExt}`;
 
+      // Upload using ArrayBuffer
       const { data, error } = await supabase.storage
         .from('avatars')
-        .upload(fileName, blob, {
-          contentType: `image/${fileExt}`,
+        .upload(fileName, arrayBuffer, {
+          contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
           upsert: true,
         });
 
       if (error) {
-        console.error('Upload error:', error);
+        console.error('[Upload] Upload error:', error);
         return uri;
       }
+
+      console.log('[Upload] Upload successful:', data);
 
       const { data: urlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
 
+      console.log('[Upload] Public URL:', urlData.publicUrl);
+
       return urlData.publicUrl;
     } catch (error) {
-      console.error('Error uploading photo:', error);
+      console.error('[Upload] Error uploading photo:', error);
       return uri;
     }
   };
