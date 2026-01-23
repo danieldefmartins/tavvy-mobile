@@ -78,11 +78,11 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
 
       const placeIds = Array.from(storyCountMap.keys());
 
-      // Fetch place details
+      // Fetch place details from the canonical places table
       const { data: placeDetails } = await supabase
-        .from('fsq_places_raw')
-        .select('fsq_id, name, cover_image_url, category, latitude, longitude')
-        .in('fsq_id', placeIds);
+        .from('places')
+        .select('id, name, cover_image_url, tavvy_category, latitude, longitude')
+        .in('id', placeIds);
 
       // Get story ring states
       const ringStates = await getStoryRingStates(placeIds, currentUserId);
@@ -102,12 +102,12 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
 
       // Build final list sorted by unseen first, then by story count
       const placesWithStories: PlaceWithStories[] = filteredPlaces.map(place => ({
-        place_id: place.fsq_id,
+        place_id: place.id,
         name: place.name,
         cover_image_url: place.cover_image_url,
-        category: extractCategory(place.category),
-        story_count: storyCountMap.get(place.fsq_id) || 0,
-        ring_state: ringStates.get(place.fsq_id) || 'unseen',
+        category: extractCategory(place.tavvy_category),
+        story_count: storyCountMap.get(place.id) || 0,
+        ring_state: ringStates.get(place.id) || 'unseen',
       }));
 
       // Sort: unseen first, then by story count
