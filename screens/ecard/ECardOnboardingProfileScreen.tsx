@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import AddressAutocomplete, { AddressData, formatDisplayAddress } from '../../components/ecard/AddressAutocomplete';
 
 interface Props {
   navigation: any;
@@ -28,6 +29,15 @@ export default function ECardOnboardingProfileScreen({ navigation, route }: Prop
   const [name, setName] = useState('');
   const [title, setTitle] = useState('');
   const [bio, setBio] = useState('');
+  const [address, setAddress] = useState<AddressData>({
+    address1: '',
+    address2: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    country: 'USA',
+    formattedAddress: '',
+  });
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -52,6 +62,7 @@ export default function ECardOnboardingProfileScreen({ navigation, route }: Prop
         name,
         title,
         bio,
+        address,
       },
     });
   };
@@ -156,9 +167,20 @@ export default function ECardOnboardingProfileScreen({ navigation, route }: Prop
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
-                maxLength={150}
+                maxLength={300}
               />
-              <Text style={styles.charCount}>{bio.length}/150</Text>
+              <Text style={styles.charCount}>{bio.length}/300</Text>
+            </View>
+
+            {/* Address */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Address</Text>
+              <AddressAutocomplete
+                value={address}
+                onChange={setAddress}
+                // Add your Google Places API key here
+                // googleApiKey="YOUR_GOOGLE_PLACES_API_KEY"
+              />
             </View>
           </View>
 
@@ -182,6 +204,12 @@ export default function ECardOnboardingProfileScreen({ navigation, route }: Prop
                 <Text style={styles.previewName}>{name || 'Your Name'}</Text>
                 {title ? <Text style={styles.previewTitle}>{title}</Text> : null}
                 {bio ? <Text style={styles.previewBio} numberOfLines={2}>{bio}</Text> : null}
+                {address.city && address.state ? (
+                  <View style={styles.previewLocation}>
+                    <Ionicons name="location" size={12} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.previewLocationText}>{address.city}, {address.state}</Text>
+                  </View>
+                ) : null}
               </LinearGradient>
             </View>
           </View>
@@ -420,6 +448,20 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  previewLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  previewLocationText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.9)',
+    marginLeft: 4,
   },
   bottomContainer: {
     position: 'absolute',
