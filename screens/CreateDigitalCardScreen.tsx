@@ -1,18 +1,19 @@
 /**
  * CreateDigitalCardScreen.tsx
- * Universal digital card creation for all users
+ * Universal digital card creation with templates and step-by-step wizard
  * Path: screens/CreateDigitalCardScreen.tsx
  *
  * FEATURES:
- * - Anyone can create a digital business card
- * - Gradient color customization
- * - Profile photo upload
+ * - Template selection for quick start
+ * - Step-by-step wizard flow (not confusing tabs)
+ * - Live card preview
+ * - Custom links (Linktree-style)
  * - Social links
- * - All sharing methods (NFC, QR, SMS, WhatsApp, Email, AirDrop, etc.)
+ * - Gradient customization
  * - "Powered by Tavvy" branding
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -27,42 +28,82 @@ import {
   Image,
   KeyboardAvoidingView,
   ActivityIndicator,
+  Modal,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MY_CARD_STORAGE_KEY = '@tavvy_my_digital_card';
+
+// Card Templates
+const CARD_TEMPLATES = [
+  {
+    id: 'professional',
+    name: 'Professional',
+    description: 'Clean business card',
+    icon: 'briefcase-outline',
+    gradient: ['#1E293B', '#334155'],
+  },
+  {
+    id: 'creator',
+    name: 'Creator',
+    description: 'Social media focused',
+    icon: 'sparkles-outline',
+    gradient: ['#8B5CF6', '#EC4899'],
+  },
+  {
+    id: 'entrepreneur',
+    name: 'Entrepreneur',
+    description: 'Business + social',
+    icon: 'rocket-outline',
+    gradient: ['#3B82F6', '#06B6D4'],
+  },
+  {
+    id: 'personal',
+    name: 'Personal',
+    description: 'Simple & friendly',
+    icon: 'person-outline',
+    gradient: ['#22C55E', '#14B8A6'],
+  },
+  {
+    id: 'custom',
+    name: 'Custom',
+    description: 'Start from scratch',
+    icon: 'create-outline',
+    gradient: ['#8B5CF6', '#4F46E5'],
+  },
+];
 
 // Gradient presets
 const GRADIENT_PRESETS = [
-  { id: 'purple-indigo', colors: ['#8B5CF6', '#4F46E5'], name: 'Purple Indigo' },
-  { id: 'blue-cyan', colors: ['#3B82F6', '#06B6D4'], name: 'Blue Cyan' },
-  { id: 'orange-red', colors: ['#F97316', '#EF4444'], name: 'Orange Red' },
-  { id: 'green-teal', colors: ['#22C55E', '#14B8A6'], name: 'Green Teal' },
-  { id: 'pink-rose', colors: ['#EC4899', '#F43F5E'], name: 'Pink Rose' },
-  { id: 'indigo-purple', colors: ['#6366F1', '#A855F7'], name: 'Indigo Purple' },
-  { id: 'teal-green', colors: ['#14B8A6', '#22C55E'], name: 'Teal Green' },
-  { id: 'slate-gray', colors: ['#475569', '#1E293B'], name: 'Slate Gray' },
+  { id: 'purple-indigo', colors: ['#8B5CF6', '#4F46E5'], name: 'Purple' },
+  { id: 'blue-cyan', colors: ['#3B82F6', '#06B6D4'], name: 'Ocean' },
+  { id: 'orange-red', colors: ['#F97316', '#EF4444'], name: 'Sunset' },
+  { id: 'green-teal', colors: ['#22C55E', '#14B8A6'], name: 'Forest' },
+  { id: 'pink-rose', colors: ['#EC4899', '#F43F5E'], name: 'Rose' },
+  { id: 'slate-dark', colors: ['#1E293B', '#334155'], name: 'Dark' },
+  { id: 'indigo-purple', colors: ['#6366F1', '#A855F7'], name: 'Violet' },
+  { id: 'teal-green', colors: ['#14B8A6', '#22C55E'], name: 'Mint' },
 ];
 
-// Link icons available
+// Link icons
 const LINK_ICONS = [
   { id: 'globe', name: 'Website', icon: 'globe-outline' },
   { id: 'cart', name: 'Shop', icon: 'cart-outline' },
-  { id: 'calendar', name: 'Book', icon: 'calendar-outline' },
+  { id: 'calendar', name: 'Booking', icon: 'calendar-outline' },
   { id: 'document', name: 'Portfolio', icon: 'document-text-outline' },
   { id: 'play', name: 'Video', icon: 'play-circle-outline' },
   { id: 'music', name: 'Music', icon: 'musical-notes-outline' },
   { id: 'gift', name: 'Merch', icon: 'gift-outline' },
-  { id: 'mail', name: 'Newsletter', icon: 'mail-outline' },
-  { id: 'link', name: 'Link', icon: 'link-outline' },
+  { id: 'link', name: 'Other', icon: 'link-outline' },
 ];
 
 interface CardLink {
@@ -70,18 +111,6 @@ interface CardLink {
   title: string;
   url: string;
   icon: string;
-  sort_order: number;
-  is_active: boolean;
-}
-
-interface CardRecommendation {
-  id?: string;
-  place_id?: string;
-  title: string;
-  description?: string;
-  image_url?: string;
-  url?: string;
-  category?: string;
   sort_order: number;
   is_active: boolean;
 }
@@ -104,8 +133,7 @@ interface CardData {
   socialLinkedin: string;
   socialTwitter: string;
   socialTiktok: string;
-  links?: CardLink[];
-  recommendations?: CardRecommendation[];
+  links: CardLink[];
 }
 
 const initialCardData: CardData = {
@@ -125,39 +153,48 @@ const initialCardData: CardData = {
   socialTwitter: '',
   socialTiktok: '',
   links: [],
-  recommendations: [],
 };
+
+type Step = 'template' | 'info' | 'social' | 'links' | 'style' | 'preview';
 
 export default function CreateDigitalCardScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { theme, isDark } = useThemeContext();
   const { user } = useAuth();
+  
+  // State
+  const [currentStep, setCurrentStep] = useState<Step>('template');
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [cardData, setCardData] = useState<CardData>(initialCardData);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showGradientPicker, setShowGradientPicker] = useState(false);
-  const [activeSection, setActiveSection] = useState<'basic' | 'social' | 'links' | 'picks' | 'preview'>('basic');
-  const [showAddLinkModal, setShowAddLinkModal] = useState(false);
-  const [editingLink, setEditingLink] = useState<CardLink | null>(null);
-  const [newLinkTitle, setNewLinkTitle] = useState('');
-  const [newLinkUrl, setNewLinkUrl] = useState('');
-  const [newLinkIcon, setNewLinkIcon] = useState('link');
+  const [isEditing, setIsEditing] = useState(false);
+  
+  // Link modal state
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [editingLinkIndex, setEditingLinkIndex] = useState<number | null>(null);
+  const [linkTitle, setLinkTitle] = useState('');
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkIcon, setLinkIcon] = useState('link');
 
-  // Load existing card data
+  // Animation
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  // Load existing card if editing
   useEffect(() => {
-    loadExistingCard();
+    if (route.params?.cardData) {
+      setCardData(route.params.cardData);
+      setIsEditing(true);
+      setCurrentStep('info');
+    } else {
+      loadExistingCard();
+    }
   }, []);
 
   const loadExistingCard = async () => {
     setIsLoading(true);
     try {
-      // First check local storage
-      const localCard = await AsyncStorage.getItem(MY_CARD_STORAGE_KEY);
-      if (localCard) {
-        setCardData(JSON.parse(localCard));
-      }
-
-      // If user is logged in, sync with database
       if (user) {
         const { data, error } = await supabase
           .from('digital_cards')
@@ -166,21 +203,14 @@ export default function CreateDigitalCardScreen() {
           .single();
 
         if (data && !error) {
-          // Load links for this card
+          // Load links
           const { data: linksData } = await supabase
             .from('card_links')
             .select('*')
             .eq('card_id', data.id)
             .order('sort_order', { ascending: true });
 
-          // Load recommendations for this card
-          const { data: recsData } = await supabase
-            .from('card_recommendations')
-            .select('*')
-            .eq('card_id', data.id)
-            .order('sort_order', { ascending: true });
-
-          const dbCardData: CardData = {
+          const loadedCard: CardData = {
             id: data.id,
             slug: data.slug,
             fullName: data.full_name || '',
@@ -206,21 +236,10 @@ export default function CreateDigitalCardScreen() {
               sort_order: l.sort_order,
               is_active: l.is_active,
             })) || [],
-            recommendations: recsData?.map(r => ({
-              id: r.id,
-              place_id: r.place_id,
-              title: r.title,
-              description: r.description,
-              image_url: r.image_url,
-              url: r.url,
-              category: r.category,
-              sort_order: r.sort_order,
-              is_active: r.is_active,
-            })) || [],
           };
-          setCardData(dbCardData);
-          // Update local storage
-          await AsyncStorage.setItem(MY_CARD_STORAGE_KEY, JSON.stringify(dbCardData));
+          setCardData(loadedCard);
+          setIsEditing(true);
+          setCurrentStep('info');
         }
       }
     } catch (error) {
@@ -230,13 +249,31 @@ export default function CreateDigitalCardScreen() {
     }
   };
 
-  const handlePickImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permissionResult.granted) {
-      Alert.alert('Permission Required', 'Please allow access to your photo library to upload a profile photo.');
-      return;
-    }
+  const animateTransition = (callback: () => void) => {
+    Animated.sequence([
+      Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+    ]).start();
+    setTimeout(callback, 150);
+  };
 
+  const selectTemplate = (templateId: string) => {
+    const template = CARD_TEMPLATES.find(t => t.id === templateId);
+    if (template) {
+      setSelectedTemplate(templateId);
+      setCardData(prev => ({
+        ...prev,
+        gradientColors: template.gradient as [string, string],
+      }));
+      animateTransition(() => setCurrentStep('info'));
+    }
+  };
+
+  const goToStep = (step: Step) => {
+    animateTransition(() => setCurrentStep(step));
+  };
+
+  const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -249,151 +286,786 @@ export default function CreateDigitalCardScreen() {
     }
   };
 
-  const generateSlug = (name: string, company: string): string => {
-    const base = company || name;
-    return base
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .substring(0, 50) + '-' + Math.random().toString(36).substring(2, 8);
+  const addOrUpdateLink = () => {
+    if (!linkTitle.trim() || !linkUrl.trim()) {
+      Alert.alert('Error', 'Please enter both title and URL');
+      return;
+    }
+
+    let url = linkUrl.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+
+    const newLink: CardLink = {
+      title: linkTitle.trim(),
+      url: url,
+      icon: linkIcon,
+      sort_order: editingLinkIndex !== null ? cardData.links[editingLinkIndex].sort_order : cardData.links.length,
+      is_active: true,
+    };
+
+    if (editingLinkIndex !== null) {
+      const updatedLinks = [...cardData.links];
+      updatedLinks[editingLinkIndex] = { ...updatedLinks[editingLinkIndex], ...newLink };
+      setCardData(prev => ({ ...prev, links: updatedLinks }));
+    } else {
+      setCardData(prev => ({ ...prev, links: [...prev.links, newLink] }));
+    }
+
+    closeLinkModal();
   };
 
-  const handleSaveCard = async () => {
+  const openLinkModal = (index?: number) => {
+    if (index !== undefined) {
+      const link = cardData.links[index];
+      setLinkTitle(link.title);
+      setLinkUrl(link.url);
+      setLinkIcon(link.icon);
+      setEditingLinkIndex(index);
+    } else {
+      setLinkTitle('');
+      setLinkUrl('');
+      setLinkIcon('link');
+      setEditingLinkIndex(null);
+    }
+    setShowLinkModal(true);
+  };
+
+  const closeLinkModal = () => {
+    setShowLinkModal(false);
+    setLinkTitle('');
+    setLinkUrl('');
+    setLinkIcon('link');
+    setEditingLinkIndex(null);
+  };
+
+  const deleteLink = (index: number) => {
+    Alert.alert('Delete Link', 'Are you sure you want to delete this link?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          const updatedLinks = cardData.links.filter((_, i) => i !== index);
+          setCardData(prev => ({ ...prev, links: updatedLinks }));
+        },
+      },
+    ]);
+  };
+
+  const generateSlug = (name: string): string => {
+    const base = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const random = Math.random().toString(36).substring(2, 8);
+    return `${base}-${random}`;
+  };
+
+  const uploadProfilePhoto = async (uri: string): Promise<string | null> => {
+    try {
+      if (!user) return uri; // Return local URI if no user
+
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileName = `${user.id}/card-photo-${Date.now()}.${fileExt}`;
+
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, blob, {
+          contentType: `image/${fileExt}`,
+          upsert: true,
+        });
+
+      if (error) {
+        console.error('Upload error:', error);
+        return uri;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      return uri;
+    }
+  };
+
+  const saveCard = async () => {
     if (!cardData.fullName.trim()) {
-      Alert.alert('Required Field', 'Please enter your name.');
+      Alert.alert('Error', 'Please enter your name');
       return;
     }
 
     setIsSaving(true);
     try {
-      // Generate slug if new card
-      const slug = cardData.slug || generateSlug(cardData.fullName, cardData.company);
+      const slug = cardData.slug || generateSlug(cardData.fullName);
+      
+      // Upload profile photo if it's a local file
+      let profilePhotoUrl = cardData.profilePhotoUri;
+      if (profilePhotoUrl && profilePhotoUrl.startsWith('file://')) {
+        profilePhotoUrl = await uploadProfilePhoto(profilePhotoUrl);
+      }
 
-      // Save to local storage first
-      const cardToSave = { ...cardData, slug };
-      await AsyncStorage.setItem(MY_CARD_STORAGE_KEY, JSON.stringify(cardToSave));
+      // Prepare card data for database
+      const dbCardData = {
+        user_id: user?.id || null,
+        slug: slug,
+        full_name: cardData.fullName,
+        title: cardData.title,
+        company: cardData.company,
+        phone: cardData.phone,
+        email: cardData.email,
+        website: cardData.website,
+        city: cardData.city,
+        state: cardData.state,
+        gradient_color_1: cardData.gradientColors[0],
+        gradient_color_2: cardData.gradientColors[1],
+        profile_photo_url: profilePhotoUrl,
+        social_instagram: cardData.socialInstagram,
+        social_facebook: cardData.socialFacebook,
+        social_linkedin: cardData.socialLinkedin,
+        social_twitter: cardData.socialTwitter,
+        social_tiktok: cardData.socialTiktok,
+        is_active: true,
+      };
 
-      // If user is logged in, save to database
-      if (user) {
-        const dbData = {
-          user_id: user.id,
-          slug: slug,
-          full_name: cardData.fullName,
-          title: cardData.title,
-          company: cardData.company,
-          phone: cardData.phone,
-          email: cardData.email,
-          website: cardData.website,
-          city: cardData.city,
-          state: cardData.state,
-          gradient_color_1: cardData.gradientColors[0],
-          gradient_color_2: cardData.gradientColors[1],
-          profile_photo_url: cardData.profilePhotoUri,
-          social_instagram: cardData.socialInstagram,
-          social_facebook: cardData.socialFacebook,
-          social_linkedin: cardData.socialLinkedin,
-          social_twitter: cardData.socialTwitter,
-          social_tiktok: cardData.socialTiktok,
-          is_active: true,
-        };
+      let cardId = cardData.id;
 
-        let cardId = cardData.id;
+      if (cardId) {
+        // Update existing card
+        const { error } = await supabase
+          .from('digital_cards')
+          .update(dbCardData)
+          .eq('id', cardId);
+        if (error) throw error;
+      } else {
+        // Create new card
+        const { data, error } = await supabase
+          .from('digital_cards')
+          .insert(dbCardData)
+          .select()
+          .single();
+        if (error) throw error;
+        cardId = data.id;
+      }
 
-        if (cardData.id) {
-          // Update existing
-          await supabase
-            .from('digital_cards')
-            .update(dbData)
-            .eq('id', cardData.id);
-        } else {
-          // Insert new
-          const { data, error } = await supabase
-            .from('digital_cards')
-            .insert(dbData)
-            .select()
-            .single();
-
-          if (data) {
-            cardId = data.id;
-            setCardData(prev => ({ ...prev, id: data.id, slug: data.slug }));
-          }
-        }
-
-        // Save links if we have a card ID
-        if (cardId && cardData.links && cardData.links.length > 0) {
-          // Delete existing links first
-          await supabase
-            .from('card_links')
-            .delete()
-            .eq('card_id', cardId);
-
-          // Insert new links
+      // Save links
+      if (cardId) {
+        // Delete existing links
+        await supabase.from('card_links').delete().eq('card_id', cardId);
+        
+        // Insert new links if any
+        if (cardData.links.length > 0) {
           const linksToInsert = cardData.links.map((link, index) => ({
             card_id: cardId,
             title: link.title,
             url: link.url,
             icon: link.icon,
             sort_order: index,
-            is_active: link.is_active,
+            is_active: true,
           }));
-
-          await supabase
-            .from('card_links')
-            .insert(linksToInsert);
-        }
-
-        // Save recommendations if we have a card ID
-        if (cardId && cardData.recommendations && cardData.recommendations.length > 0) {
-          // Delete existing recommendations first
-          await supabase
-            .from('card_recommendations')
-            .delete()
-            .eq('card_id', cardId);
-
-          // Insert new recommendations
-          const recsToInsert = cardData.recommendations.map((rec, index) => ({
-            card_id: cardId,
-            place_id: rec.place_id,
-            title: rec.title,
-            description: rec.description,
-            image_url: rec.image_url,
-            url: rec.url,
-            category: rec.category,
-            sort_order: index,
-            is_active: rec.is_active,
-          }));
-
-          await supabase
-            .from('card_recommendations')
-            .insert(recsToInsert);
+          
+          const { error: linksError } = await supabase.from('card_links').insert(linksToInsert);
+          if (linksError) console.error('Error saving links:', linksError);
         }
       }
 
-      setCardData(prev => ({ ...prev, slug }));
-      Alert.alert('Success!', 'Your digital card has been saved.', [
-        { text: 'View & Share', onPress: () => navigation.navigate('MyDigitalCard', { cardData: cardToSave }) },
-        { text: 'OK' },
+      // Save to local storage
+      const savedCard = { ...cardData, id: cardId, slug, profilePhotoUri: profilePhotoUrl };
+      await AsyncStorage.setItem(MY_CARD_STORAGE_KEY, JSON.stringify(savedCard));
+
+      Alert.alert('Success', 'Your card has been saved!', [
+        {
+          text: 'View Card',
+          onPress: () => navigation.navigate('MyDigitalCard', { cardData: savedCard }),
+        },
       ]);
     } catch (error) {
       console.error('Error saving card:', error);
-      Alert.alert('Error', 'Failed to save your card. Please try again.');
+      Alert.alert('Error', 'Failed to save card. Please try again.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const updateField = (field: keyof CardData, value: string) => {
-    setCardData(prev => ({ ...prev, [field]: value }));
+  // Render step indicator
+  const renderStepIndicator = () => {
+    const steps: { key: Step; label: string }[] = [
+      { key: 'info', label: 'Info' },
+      { key: 'social', label: 'Social' },
+      { key: 'links', label: 'Links' },
+      { key: 'style', label: 'Style' },
+      { key: 'preview', label: 'Preview' },
+    ];
+
+    if (currentStep === 'template') return null;
+
+    return (
+      <View style={styles.stepIndicator}>
+        {steps.map((step, index) => {
+          const isActive = step.key === currentStep;
+          const stepIndex = steps.findIndex(s => s.key === currentStep);
+          const isPast = index < stepIndex;
+          
+          return (
+            <TouchableOpacity
+              key={step.key}
+              style={styles.stepItem}
+              onPress={() => goToStep(step.key)}
+            >
+              <View style={[
+                styles.stepDot,
+                isActive && styles.stepDotActive,
+                isPast && styles.stepDotPast,
+              ]}>
+                {isPast ? (
+                  <Ionicons name="checkmark" size={12} color="#fff" />
+                ) : (
+                  <Text style={[styles.stepNumber, (isActive || isPast) && styles.stepNumberActive]}>
+                    {index + 1}
+                  </Text>
+                )}
+              </View>
+              <Text style={[styles.stepLabel, isActive && styles.stepLabelActive]}>
+                {step.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  };
+
+  // Render mini card preview
+  const renderMiniPreview = () => {
+    if (currentStep === 'template' || currentStep === 'preview') return null;
+
+    return (
+      <TouchableOpacity 
+        style={styles.miniPreviewContainer}
+        onPress={() => goToStep('preview')}
+      >
+        <LinearGradient
+          colors={cardData.gradientColors}
+          style={styles.miniPreview}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          {cardData.profilePhotoUri ? (
+            <Image source={{ uri: cardData.profilePhotoUri }} style={styles.miniAvatar} />
+          ) : (
+            <View style={styles.miniAvatarPlaceholder}>
+              <Ionicons name="person" size={16} color="rgba(255,255,255,0.5)" />
+            </View>
+          )}
+          <Text style={styles.miniName} numberOfLines={1}>
+            {cardData.fullName || 'Your Name'}
+          </Text>
+        </LinearGradient>
+        <Text style={styles.miniPreviewHint}>Tap to preview</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  // Render template selection
+  const renderTemplateStep = () => (
+    <View style={styles.stepContent}>
+      <Text style={[styles.stepTitle, { color: theme.text }]}>Choose a Template</Text>
+      <Text style={[styles.stepSubtitle, { color: theme.textSecondary }]}>
+        Pick a style that fits you best
+      </Text>
+
+      <View style={styles.templateGrid}>
+        {CARD_TEMPLATES.map((template) => (
+          <TouchableOpacity
+            key={template.id}
+            style={styles.templateCard}
+            onPress={() => selectTemplate(template.id)}
+          >
+            <LinearGradient
+              colors={template.gradient}
+              style={styles.templateGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Ionicons name={template.icon as any} size={32} color="#fff" />
+            </LinearGradient>
+            <Text style={[styles.templateName, { color: theme.text }]}>{template.name}</Text>
+            <Text style={[styles.templateDesc, { color: theme.textSecondary }]}>{template.description}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+
+  // Render info step
+  const renderInfoStep = () => (
+    <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <Text style={[styles.stepTitle, { color: theme.text }]}>Basic Information</Text>
+      <Text style={[styles.stepSubtitle, { color: theme.textSecondary }]}>
+        Tell people who you are
+      </Text>
+
+      {/* Profile Photo */}
+      <TouchableOpacity style={styles.photoSection} onPress={pickImage}>
+        {cardData.profilePhotoUri ? (
+          <Image source={{ uri: cardData.profilePhotoUri }} style={styles.profilePhoto} />
+        ) : (
+          <LinearGradient
+            colors={cardData.gradientColors}
+            style={styles.photoPlaceholder}
+          >
+            <Ionicons name="camera" size={32} color="#fff" />
+            <Text style={styles.photoPlaceholderText}>Add Photo</Text>
+          </LinearGradient>
+        )}
+      </TouchableOpacity>
+
+      {/* Input Fields */}
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: theme.text }]}>Full Name *</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+          placeholder="John Doe"
+          placeholderTextColor={theme.textSecondary}
+          value={cardData.fullName}
+          onChangeText={(text) => setCardData(prev => ({ ...prev, fullName: text }))}
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: theme.text }]}>Title / Role</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+          placeholder="Software Engineer"
+          placeholderTextColor={theme.textSecondary}
+          value={cardData.title}
+          onChangeText={(text) => setCardData(prev => ({ ...prev, title: text }))}
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: theme.text }]}>Company</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+          placeholder="Acme Inc."
+          placeholderTextColor={theme.textSecondary}
+          value={cardData.company}
+          onChangeText={(text) => setCardData(prev => ({ ...prev, company: text }))}
+        />
+      </View>
+
+      <View style={styles.inputRow}>
+        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+          <Text style={[styles.inputLabel, { color: theme.text }]}>Phone</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+            placeholder="+1 234 567 8900"
+            placeholderTextColor={theme.textSecondary}
+            value={cardData.phone}
+            onChangeText={(text) => setCardData(prev => ({ ...prev, phone: text }))}
+            keyboardType="phone-pad"
+          />
+        </View>
+        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+          <Text style={[styles.inputLabel, { color: theme.text }]}>Email</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+            placeholder="john@example.com"
+            placeholderTextColor={theme.textSecondary}
+            value={cardData.email}
+            onChangeText={(text) => setCardData(prev => ({ ...prev, email: text }))}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: theme.text }]}>Website</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+          placeholder="www.yourwebsite.com"
+          placeholderTextColor={theme.textSecondary}
+          value={cardData.website}
+          onChangeText={(text) => setCardData(prev => ({ ...prev, website: text }))}
+          autoCapitalize="none"
+        />
+      </View>
+
+      <View style={styles.inputRow}>
+        <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+          <Text style={[styles.inputLabel, { color: theme.text }]}>City</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+            placeholder="Miami"
+            placeholderTextColor={theme.textSecondary}
+            value={cardData.city}
+            onChangeText={(text) => setCardData(prev => ({ ...prev, city: text }))}
+          />
+        </View>
+        <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+          <Text style={[styles.inputLabel, { color: theme.text }]}>State</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+            placeholder="FL"
+            placeholderTextColor={theme.textSecondary}
+            value={cardData.state}
+            onChangeText={(text) => setCardData(prev => ({ ...prev, state: text }))}
+          />
+        </View>
+      </View>
+
+      <View style={{ height: 100 }} />
+    </ScrollView>
+  );
+
+  // Render social step
+  const renderSocialStep = () => (
+    <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <Text style={[styles.stepTitle, { color: theme.text }]}>Social Media</Text>
+      <Text style={[styles.stepSubtitle, { color: theme.textSecondary }]}>
+        Connect your social profiles
+      </Text>
+
+      {[
+        { key: 'socialInstagram', label: 'Instagram', icon: 'logo-instagram', placeholder: '@username', color: '#E4405F' },
+        { key: 'socialTiktok', label: 'TikTok', icon: 'logo-tiktok', placeholder: '@username', color: '#000000' },
+        { key: 'socialTwitter', label: 'X (Twitter)', icon: 'logo-twitter', placeholder: '@username', color: '#1DA1F2' },
+        { key: 'socialLinkedin', label: 'LinkedIn', icon: 'logo-linkedin', placeholder: 'linkedin.com/in/username', color: '#0A66C2' },
+        { key: 'socialFacebook', label: 'Facebook', icon: 'logo-facebook', placeholder: 'facebook.com/username', color: '#1877F2' },
+      ].map((social) => (
+        <View key={social.key} style={styles.socialInputGroup}>
+          <View style={[styles.socialIconContainer, { backgroundColor: social.color + '15' }]}>
+            <Ionicons name={social.icon as any} size={24} color={social.color} />
+          </View>
+          <View style={styles.socialInputWrapper}>
+            <Text style={[styles.socialLabel, { color: theme.text }]}>{social.label}</Text>
+            <TextInput
+              style={[styles.socialInput, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+              placeholder={social.placeholder}
+              placeholderTextColor={theme.textSecondary}
+              value={cardData[social.key as keyof CardData] as string}
+              onChangeText={(text) => setCardData(prev => ({ ...prev, [social.key]: text }))}
+              autoCapitalize="none"
+            />
+          </View>
+        </View>
+      ))}
+
+      <View style={{ height: 100 }} />
+    </ScrollView>
+  );
+
+  // Render links step
+  const renderLinksStep = () => (
+    <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <Text style={[styles.stepTitle, { color: theme.text }]}>Custom Links</Text>
+      <Text style={[styles.stepSubtitle, { color: theme.textSecondary }]}>
+        Add links to your portfolio, shop, booking, etc.
+      </Text>
+
+      {/* Existing Links */}
+      {cardData.links.map((link, index) => (
+        <View key={index} style={[styles.linkItem, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={[styles.linkIconContainer, { backgroundColor: cardData.gradientColors[0] + '20' }]}>
+            <Ionicons 
+              name={LINK_ICONS.find(i => i.id === link.icon)?.icon as any || 'link-outline'} 
+              size={20} 
+              color={cardData.gradientColors[0]} 
+            />
+          </View>
+          <View style={styles.linkContent}>
+            <Text style={[styles.linkTitle, { color: theme.text }]}>{link.title}</Text>
+            <Text style={[styles.linkUrl, { color: theme.textSecondary }]} numberOfLines={1}>{link.url}</Text>
+          </View>
+          <TouchableOpacity onPress={() => openLinkModal(index)} style={styles.linkAction}>
+            <Ionicons name="pencil" size={18} color={theme.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => deleteLink(index)} style={styles.linkAction}>
+            <Ionicons name="trash-outline" size={18} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
+      ))}
+
+      {/* Add Link Button */}
+      <TouchableOpacity 
+        style={[styles.addLinkButton, { borderColor: cardData.gradientColors[0] }]}
+        onPress={() => openLinkModal()}
+      >
+        <Ionicons name="add-circle-outline" size={24} color={cardData.gradientColors[0]} />
+        <Text style={[styles.addLinkText, { color: cardData.gradientColors[0] }]}>Add Link</Text>
+      </TouchableOpacity>
+
+      {/* Info box */}
+      <View style={[styles.infoBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <Ionicons name="information-circle-outline" size={20} color={theme.textSecondary} />
+        <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+          Links will appear as buttons on your card. Add your portfolio, shop, booking page, or any other important links.
+        </Text>
+      </View>
+
+      <View style={{ height: 100 }} />
+    </ScrollView>
+  );
+
+  // Render style step
+  const renderStyleStep = () => (
+    <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <Text style={[styles.stepTitle, { color: theme.text }]}>Card Style</Text>
+      <Text style={[styles.stepSubtitle, { color: theme.textSecondary }]}>
+        Choose your card's color theme
+      </Text>
+
+      <View style={styles.gradientGrid}>
+        {GRADIENT_PRESETS.map((preset) => (
+          <TouchableOpacity
+            key={preset.id}
+            style={[
+              styles.gradientOption,
+              cardData.gradientColors[0] === preset.colors[0] && styles.gradientOptionSelected,
+            ]}
+            onPress={() => setCardData(prev => ({ ...prev, gradientColors: preset.colors as [string, string] }))}
+          >
+            <LinearGradient
+              colors={preset.colors}
+              style={styles.gradientPreview}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+            <Text style={[styles.gradientName, { color: theme.text }]}>{preset.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={{ height: 100 }} />
+    </ScrollView>
+  );
+
+  // Render preview step
+  const renderPreviewStep = () => (
+    <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false} contentContainerStyle={styles.previewContainer}>
+      <Text style={[styles.stepTitle, { color: theme.text }]}>Preview Your Card</Text>
+      <Text style={[styles.stepSubtitle, { color: theme.textSecondary }]}>
+        This is how your card will look
+      </Text>
+
+      {/* Full Card Preview */}
+      <View style={styles.fullPreviewWrapper}>
+        <LinearGradient
+          colors={cardData.gradientColors}
+          style={styles.fullPreview}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          {/* Avatar */}
+          {cardData.profilePhotoUri ? (
+            <Image source={{ uri: cardData.profilePhotoUri }} style={styles.previewAvatar} />
+          ) : (
+            <View style={styles.previewAvatarPlaceholder}>
+              <Ionicons name="person" size={40} color="rgba(255,255,255,0.5)" />
+            </View>
+          )}
+
+          {/* Name & Title */}
+          <Text style={styles.previewName}>{cardData.fullName || 'Your Name'}</Text>
+          {cardData.title && <Text style={styles.previewTitle}>{cardData.title}</Text>}
+          {cardData.company && <Text style={styles.previewCompany}>{cardData.company}</Text>}
+
+          {/* Location */}
+          {(cardData.city || cardData.state) && (
+            <View style={styles.previewLocation}>
+              <Ionicons name="location-outline" size={14} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.previewLocationText}>
+                {[cardData.city, cardData.state].filter(Boolean).join(', ')}
+              </Text>
+            </View>
+          )}
+
+          {/* Contact Buttons */}
+          <View style={styles.previewActions}>
+            {cardData.phone && (
+              <View style={styles.previewActionButton}>
+                <Ionicons name="call" size={18} color="#fff" />
+                <Text style={styles.previewActionText}>Call</Text>
+              </View>
+            )}
+            {cardData.email && (
+              <View style={styles.previewActionButton}>
+                <Ionicons name="mail" size={18} color="#fff" />
+                <Text style={styles.previewActionText}>Email</Text>
+              </View>
+            )}
+            {cardData.website && (
+              <View style={styles.previewActionButton}>
+                <Ionicons name="globe" size={18} color="#fff" />
+                <Text style={styles.previewActionText}>Website</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Social Icons */}
+          {(cardData.socialInstagram || cardData.socialTiktok || cardData.socialTwitter || cardData.socialLinkedin || cardData.socialFacebook) && (
+            <View style={styles.previewSocials}>
+              {cardData.socialInstagram && <Ionicons name="logo-instagram" size={20} color="#fff" style={styles.previewSocialIcon} />}
+              {cardData.socialTiktok && <Ionicons name="logo-tiktok" size={20} color="#fff" style={styles.previewSocialIcon} />}
+              {cardData.socialTwitter && <Ionicons name="logo-twitter" size={20} color="#fff" style={styles.previewSocialIcon} />}
+              {cardData.socialLinkedin && <Ionicons name="logo-linkedin" size={20} color="#fff" style={styles.previewSocialIcon} />}
+              {cardData.socialFacebook && <Ionicons name="logo-facebook" size={20} color="#fff" style={styles.previewSocialIcon} />}
+            </View>
+          )}
+
+          {/* Links */}
+          {cardData.links.length > 0 && (
+            <View style={styles.previewLinks}>
+              {cardData.links.slice(0, 3).map((link, index) => (
+                <View key={index} style={styles.previewLinkButton}>
+                  <Ionicons 
+                    name={LINK_ICONS.find(i => i.id === link.icon)?.icon as any || 'link-outline'} 
+                    size={16} 
+                    color="#fff" 
+                  />
+                  <Text style={styles.previewLinkText}>{link.title}</Text>
+                </View>
+              ))}
+              {cardData.links.length > 3 && (
+                <Text style={styles.previewMoreLinks}>+{cardData.links.length - 3} more</Text>
+              )}
+            </View>
+          )}
+
+          {/* Powered by Tavvy */}
+          <Text style={styles.previewPoweredBy}>Powered by Tavvy</Text>
+        </LinearGradient>
+      </View>
+
+      <View style={{ height: 100 }} />
+    </ScrollView>
+  );
+
+  // Render link modal
+  const renderLinkModal = () => (
+    <Modal visible={showLinkModal} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              {editingLinkIndex !== null ? 'Edit Link' : 'Add Link'}
+            </Text>
+            <TouchableOpacity onPress={closeLinkModal}>
+              <Ionicons name="close" size={24} color={theme.text} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Link Title</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+              placeholder="My Portfolio"
+              placeholderTextColor={theme.textSecondary}
+              value={linkTitle}
+              onChangeText={setLinkTitle}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>URL</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+              placeholder="https://example.com"
+              placeholderTextColor={theme.textSecondary}
+              value={linkUrl}
+              onChangeText={setLinkUrl}
+              autoCapitalize="none"
+              keyboardType="url"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Icon</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.iconPicker}>
+              {LINK_ICONS.map((icon) => (
+                <TouchableOpacity
+                  key={icon.id}
+                  style={[
+                    styles.iconOption,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                    linkIcon === icon.id && { borderColor: cardData.gradientColors[0], backgroundColor: cardData.gradientColors[0] + '20' },
+                  ]}
+                  onPress={() => setLinkIcon(icon.id)}
+                >
+                  <Ionicons name={icon.icon as any} size={24} color={linkIcon === icon.id ? cardData.gradientColors[0] : theme.text} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          <TouchableOpacity style={[styles.modalButton, { backgroundColor: cardData.gradientColors[0] }]} onPress={addOrUpdateLink}>
+            <Text style={styles.modalButtonText}>
+              {editingLinkIndex !== null ? 'Update Link' : 'Add Link'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Render navigation buttons
+  const renderNavButtons = () => {
+    if (currentStep === 'template') return null;
+
+    const steps: Step[] = ['info', 'social', 'links', 'style', 'preview'];
+    const currentIndex = steps.indexOf(currentStep);
+    const isFirst = currentIndex === 0;
+    const isLast = currentIndex === steps.length - 1;
+
+    return (
+      <View style={[styles.navButtons, { backgroundColor: theme.background, borderTopColor: theme.border }]}>
+        {!isFirst && (
+          <TouchableOpacity
+            style={[styles.navButton, styles.navButtonSecondary, { borderColor: theme.border }]}
+            onPress={() => goToStep(steps[currentIndex - 1])}
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.text} />
+            <Text style={[styles.navButtonText, { color: theme.text }]}>Back</Text>
+          </TouchableOpacity>
+        )}
+        
+        {isLast ? (
+          <TouchableOpacity
+            style={[styles.navButton, styles.navButtonPrimary, { backgroundColor: cardData.gradientColors[0] }]}
+            onPress={saveCard}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                <Text style={[styles.navButtonText, { color: '#fff' }]}>Save Card</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.navButton, styles.navButtonPrimary, { backgroundColor: cardData.gradientColors[0] }]}
+            onPress={() => goToStep(steps[currentIndex + 1])}
+          >
+            <Text style={[styles.navButtonText, { color: '#fff' }]}>Next</Text>
+            <Ionicons name="arrow-forward" size={20} color="#fff" />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
   };
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
-          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading your card...</Text>
-        </View>
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={cardData.gradientColors[0]} />
+        <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading your card...</Text>
       </View>
     );
   }
@@ -403,489 +1075,40 @@ export default function CreateDigitalCardScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.background }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+          <Ionicons name="close" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>
-          {cardData.id ? 'Edit Card' : 'Create Digital Card'}
+          {isEditing ? 'Edit Card' : 'Create Card'}
         </Text>
-        <TouchableOpacity 
-          onPress={handleSaveCard} 
-          style={styles.saveButton}
-          disabled={isSaving}
-        >
-          {isSaving ? (
-            <ActivityIndicator size="small" color="#8B5CF6" />
-          ) : (
-            <Text style={styles.saveButtonText}>Save</Text>
-          )}
-        </TouchableOpacity>
+        {renderMiniPreview()}
       </View>
 
-      {/* Section Tabs */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        style={[styles.tabContainer, { backgroundColor: theme.card }]}
-        contentContainerStyle={styles.tabScrollContent}
-      >
-        <TouchableOpacity 
-          style={[styles.tab, activeSection === 'basic' && styles.tabActive]}
-          onPress={() => setActiveSection('basic')}
-        >
-          <Text style={[styles.tabText, activeSection === 'basic' && styles.tabTextActive]}>Basic</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeSection === 'social' && styles.tabActive]}
-          onPress={() => setActiveSection('social')}
-        >
-          <Text style={[styles.tabText, activeSection === 'social' && styles.tabTextActive]}>Social</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeSection === 'links' && styles.tabActive]}
-          onPress={() => setActiveSection('links')}
-        >
-          <Text style={[styles.tabText, activeSection === 'links' && styles.tabTextActive]}>Links</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeSection === 'picks' && styles.tabActive]}
-          onPress={() => setActiveSection('picks')}
-        >
-          <Text style={[styles.tabText, activeSection === 'picks' && styles.tabTextActive]}>Picks</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeSection === 'preview' && styles.tabActive]}
-          onPress={() => setActiveSection('preview')}
-        >
-          <Text style={[styles.tabText, activeSection === 'preview' && styles.tabTextActive]}>Preview</Text>
-        </TouchableOpacity>
-      </ScrollView>
+      {/* Step Indicator */}
+      {renderStepIndicator()}
 
+      {/* Content */}
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+        style={styles.content}
+        keyboardVerticalOffset={100}
       >
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {activeSection === 'basic' && (
-            <View style={styles.section}>
-              {/* Profile Photo */}
-              <View style={styles.photoSection}>
-                <TouchableOpacity onPress={handlePickImage} style={styles.photoButton}>
-                  {cardData.profilePhotoUri ? (
-                    <Image source={{ uri: cardData.profilePhotoUri }} style={styles.profilePhoto} />
-                  ) : (
-                    <LinearGradient
-                      colors={cardData.gradientColors}
-                      style={styles.photoPlaceholder}
-                    >
-                      <Ionicons name="camera" size={32} color="#fff" />
-                    </LinearGradient>
-                  )}
-                  <View style={styles.photoEditBadge}>
-                    <Ionicons name="pencil" size={12} color="#fff" />
-                  </View>
-                </TouchableOpacity>
-                <Text style={[styles.photoHint, { color: theme.textSecondary }]}>Tap to add photo</Text>
-              </View>
-
-              {/* Gradient Picker */}
-              <Text style={[styles.inputLabel, { color: theme.text }]}>Card Color</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.gradientScroll}>
-                {GRADIENT_PRESETS.map((preset) => (
-                  <TouchableOpacity
-                    key={preset.id}
-                    onPress={() => setCardData(prev => ({ ...prev, gradientColors: preset.colors as [string, string] }))}
-                    style={[
-                      styles.gradientOption,
-                      cardData.gradientColors[0] === preset.colors[0] && styles.gradientOptionSelected,
-                    ]}
-                  >
-                    <LinearGradient colors={preset.colors} style={styles.gradientPreview} />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              {/* Basic Fields */}
-              <Text style={[styles.inputLabel, { color: theme.text }]}>Full Name *</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-                value={cardData.fullName}
-                onChangeText={(v) => updateField('fullName', v)}
-                placeholder="John Smith"
-                placeholderTextColor={theme.textSecondary}
-              />
-
-              <Text style={[styles.inputLabel, { color: theme.text }]}>Title / Role</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-                value={cardData.title}
-                onChangeText={(v) => updateField('title', v)}
-                placeholder="Software Engineer"
-                placeholderTextColor={theme.textSecondary}
-              />
-
-              <Text style={[styles.inputLabel, { color: theme.text }]}>Company / Business</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-                value={cardData.company}
-                onChangeText={(v) => updateField('company', v)}
-                placeholder="Acme Inc."
-                placeholderTextColor={theme.textSecondary}
-              />
-
-              <View style={styles.row}>
-                <View style={styles.halfField}>
-                  <Text style={[styles.inputLabel, { color: theme.text }]}>City</Text>
-                  <TextInput
-                    style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-                    value={cardData.city}
-                    onChangeText={(v) => updateField('city', v)}
-                    placeholder="Orlando"
-                    placeholderTextColor={theme.textSecondary}
-                  />
-                </View>
-                <View style={styles.halfField}>
-                  <Text style={[styles.inputLabel, { color: theme.text }]}>State</Text>
-                  <TextInput
-                    style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-                    value={cardData.state}
-                    onChangeText={(v) => updateField('state', v)}
-                    placeholder="FL"
-                    placeholderTextColor={theme.textSecondary}
-                  />
-                </View>
-              </View>
-
-              <Text style={[styles.inputLabel, { color: theme.text }]}>Phone</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-                value={cardData.phone}
-                onChangeText={(v) => updateField('phone', v)}
-                placeholder="(555) 123-4567"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="phone-pad"
-              />
-
-              <Text style={[styles.inputLabel, { color: theme.text }]}>Email</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-                value={cardData.email}
-                onChangeText={(v) => updateField('email', v)}
-                placeholder="john@example.com"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-
-              <Text style={[styles.inputLabel, { color: theme.text }]}>Website</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-                value={cardData.website}
-                onChangeText={(v) => updateField('website', v)}
-                placeholder="www.example.com"
-                placeholderTextColor={theme.textSecondary}
-                autoCapitalize="none"
-              />
-            </View>
-          )}
-
-          {activeSection === 'social' && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Social Media Links</Text>
-              <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-                Add your social media profiles (optional)
-              </Text>
-
-              <View style={styles.socialInput}>
-                <Ionicons name="logo-instagram" size={24} color="#E4405F" style={styles.socialIcon} />
-                <TextInput
-                  style={[styles.socialField, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-                  value={cardData.socialInstagram}
-                  onChangeText={(v) => updateField('socialInstagram', v)}
-                  placeholder="Instagram username"
-                  placeholderTextColor={theme.textSecondary}
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <View style={styles.socialInput}>
-                <Ionicons name="logo-facebook" size={24} color="#1877F2" style={styles.socialIcon} />
-                <TextInput
-                  style={[styles.socialField, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-                  value={cardData.socialFacebook}
-                  onChangeText={(v) => updateField('socialFacebook', v)}
-                  placeholder="Facebook profile URL"
-                  placeholderTextColor={theme.textSecondary}
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <View style={styles.socialInput}>
-                <Ionicons name="logo-linkedin" size={24} color="#0A66C2" style={styles.socialIcon} />
-                <TextInput
-                  style={[styles.socialField, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-                  value={cardData.socialLinkedin}
-                  onChangeText={(v) => updateField('socialLinkedin', v)}
-                  placeholder="LinkedIn profile URL"
-                  placeholderTextColor={theme.textSecondary}
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <View style={styles.socialInput}>
-                <Ionicons name="logo-twitter" size={24} color="#1DA1F2" style={styles.socialIcon} />
-                <TextInput
-                  style={[styles.socialField, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-                  value={cardData.socialTwitter}
-                  onChangeText={(v) => updateField('socialTwitter', v)}
-                  placeholder="Twitter/X username"
-                  placeholderTextColor={theme.textSecondary}
-                  autoCapitalize="none"
-                />
-              </View>
-
-              <View style={styles.socialInput}>
-                <Ionicons name="logo-tiktok" size={24} color="#000" style={styles.socialIcon} />
-                <TextInput
-                  style={[styles.socialField, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-                  value={cardData.socialTiktok}
-                  onChangeText={(v) => updateField('socialTiktok', v)}
-                  placeholder="TikTok username"
-                  placeholderTextColor={theme.textSecondary}
-                  autoCapitalize="none"
-                />
-              </View>
-            </View>
-          )}
-
-          {activeSection === 'links' && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Custom Links</Text>
-              <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-                Add links to your portfolio, shop, booking page, etc.
-              </Text>
-
-              {/* Existing Links */}
-              {cardData.links && cardData.links.length > 0 && (
-                <View style={styles.linksList}>
-                  {cardData.links.map((link, index) => (
-                    <View key={link.id || index} style={[styles.linkItem, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                      <View style={styles.linkItemLeft}>
-                        <View style={[styles.linkIconContainer, { backgroundColor: cardData.gradientColors[0] + '20' }]}>
-                          <Ionicons name={LINK_ICONS.find(i => i.id === link.icon)?.icon as any || 'link-outline'} size={20} color={cardData.gradientColors[0]} />
-                        </View>
-                        <View style={styles.linkItemText}>
-                          <Text style={[styles.linkItemTitle, { color: theme.text }]}>{link.title}</Text>
-                          <Text style={[styles.linkItemUrl, { color: theme.textSecondary }]} numberOfLines={1}>{link.url}</Text>
-                        </View>
-                      </View>
-                      <TouchableOpacity 
-                        onPress={() => {
-                          const newLinks = cardData.links?.filter((_, i) => i !== index) || [];
-                          setCardData(prev => ({ ...prev, links: newLinks }));
-                        }}
-                        style={styles.linkDeleteButton}
-                      >
-                        <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* Add New Link */}
-              <View style={[styles.addLinkContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <Text style={[styles.addLinkLabel, { color: theme.text }]}>Link Title</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
-                  value={newLinkTitle}
-                  onChangeText={setNewLinkTitle}
-                  placeholder="e.g., My Portfolio"
-                  placeholderTextColor={theme.textSecondary}
-                />
-
-                <Text style={[styles.addLinkLabel, { color: theme.text }]}>URL</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
-                  value={newLinkUrl}
-                  onChangeText={setNewLinkUrl}
-                  placeholder="https://..."
-                  placeholderTextColor={theme.textSecondary}
-                  autoCapitalize="none"
-                  keyboardType="url"
-                />
-
-                <Text style={[styles.addLinkLabel, { color: theme.text }]}>Icon</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.iconPicker}>
-                  {LINK_ICONS.map((iconOption) => (
-                    <TouchableOpacity
-                      key={iconOption.id}
-                      onPress={() => setNewLinkIcon(iconOption.id)}
-                      style={[
-                        styles.iconOption,
-                        { backgroundColor: theme.background, borderColor: theme.border },
-                        newLinkIcon === iconOption.id && { borderColor: cardData.gradientColors[0], backgroundColor: cardData.gradientColors[0] + '20' },
-                      ]}
-                    >
-                      <Ionicons name={iconOption.icon as any} size={20} color={newLinkIcon === iconOption.id ? cardData.gradientColors[0] : theme.textSecondary} />
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-
-                <TouchableOpacity
-                  style={[styles.addLinkButton, { backgroundColor: cardData.gradientColors[0] }]}
-                  onPress={() => {
-                    if (newLinkTitle.trim() && newLinkUrl.trim()) {
-                      const newLink: CardLink = {
-                        title: newLinkTitle.trim(),
-                        url: newLinkUrl.trim().startsWith('http') ? newLinkUrl.trim() : `https://${newLinkUrl.trim()}`,
-                        icon: newLinkIcon,
-                        sort_order: cardData.links?.length || 0,
-                        is_active: true,
-                      };
-                      setCardData(prev => ({ ...prev, links: [...(prev.links || []), newLink] }));
-                      setNewLinkTitle('');
-                      setNewLinkUrl('');
-                      setNewLinkIcon('link');
-                    } else {
-                      Alert.alert('Missing Info', 'Please enter both title and URL.');
-                    }
-                  }}
-                >
-                  <Ionicons name="add" size={20} color="#fff" />
-                  <Text style={styles.addLinkButtonText}>Add Link</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
-          {activeSection === 'picks' && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>My Picks</Text>
-              <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-                Share your favorite places and recommendations
-              </Text>
-
-              {/* Coming Soon Message */}
-              <View style={[styles.comingSoonContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <LinearGradient
-                  colors={cardData.gradientColors}
-                  style={styles.comingSoonIcon}
-                >
-                  <Ionicons name="heart" size={32} color="#fff" />
-                </LinearGradient>
-                <Text style={[styles.comingSoonTitle, { color: theme.text }]}>Coming Soon!</Text>
-                <Text style={[styles.comingSoonText, { color: theme.textSecondary }]}>
-                  Soon you'll be able to add your favorite restaurants, cafes, shops, and more to your card. Your friends will see what you recommend!
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {activeSection === 'preview' && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Card Preview</Text>
-              
-              {/* Card Preview */}
-              <View style={styles.previewContainer}>
-                <LinearGradient
-                  colors={cardData.gradientColors}
-                  style={styles.previewCard}
-                >
-                  {/* Profile Photo */}
-                  <View style={styles.previewPhotoContainer}>
-                    {cardData.profilePhotoUri ? (
-                      <Image source={{ uri: cardData.profilePhotoUri }} style={styles.previewPhoto} />
-                    ) : (
-                      <View style={styles.previewPhotoPlaceholder}>
-                        <Ionicons name="person" size={40} color="#fff" />
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Name & Title */}
-                  <Text style={styles.previewName}>{cardData.fullName || 'Your Name'}</Text>
-                  {cardData.title && <Text style={styles.previewTitle}>{cardData.title}</Text>}
-                  {cardData.company && <Text style={styles.previewCompany}>{cardData.company}</Text>}
-                  
-                  {/* Location */}
-                  {(cardData.city || cardData.state) && (
-                    <View style={styles.previewLocation}>
-                      <Ionicons name="location" size={14} color="rgba(255,255,255,0.8)" />
-                      <Text style={styles.previewLocationText}>
-                        {[cardData.city, cardData.state].filter(Boolean).join(', ')}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Contact Buttons */}
-                  <View style={styles.previewButtons}>
-                    {cardData.phone && (
-                      <View style={styles.previewButton}>
-                        <Ionicons name="call" size={16} color="#fff" />
-                        <Text style={styles.previewButtonText}>Call</Text>
-                      </View>
-                    )}
-                    {cardData.email && (
-                      <View style={styles.previewButton}>
-                        <Ionicons name="mail" size={16} color="#fff" />
-                        <Text style={styles.previewButtonText}>Email</Text>
-                      </View>
-                    )}
-                    {cardData.website && (
-                      <View style={styles.previewButton}>
-                        <Ionicons name="globe" size={16} color="#fff" />
-                        <Text style={styles.previewButtonText}>Website</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Powered by Tavvy */}
-                  <View style={styles.poweredBy}>
-                    <Text style={styles.poweredByText}>Powered by Tavvy</Text>
-                  </View>
-                </LinearGradient>
-              </View>
-
-              {/* Action Buttons */}
-              <TouchableOpacity 
-                style={styles.primaryButton}
-                onPress={handleSaveCard}
-                disabled={isSaving}
-              >
-                <LinearGradient
-                  colors={['#8B5CF6', '#6366F1']}
-                  style={styles.primaryButtonGradient}
-                >
-                  {isSaving ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <>
-                      <Ionicons name="save" size={20} color="#fff" />
-                      <Text style={styles.primaryButtonText}>Save & Share</Text>
-                    </>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-
-              {cardData.slug && (
-                <TouchableOpacity 
-                  style={[styles.secondaryButton, { borderColor: theme.border }]}
-                  onPress={() => navigation.navigate('MyDigitalCard', { cardData })}
-                >
-                  <Ionicons name="share" size={20} color="#8B5CF6" />
-                  <Text style={[styles.secondaryButtonText, { color: '#8B5CF6' }]}>View & Share Card</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-        </ScrollView>
+        <Animated.View style={[styles.animatedContent, { opacity: fadeAnim }]}>
+          {currentStep === 'template' && renderTemplateStep()}
+          {currentStep === 'info' && renderInfoStep()}
+          {currentStep === 'social' && renderSocialStep()}
+          {currentStep === 'links' && renderLinksStep()}
+          {currentStep === 'style' && renderStyleStep()}
+          {currentStep === 'preview' && renderPreviewStep()}
+        </Animated.View>
       </KeyboardAvoidingView>
+
+      {/* Navigation Buttons */}
+      {renderNavButtons()}
+
+      {/* Link Modal */}
+      {renderLinkModal()}
     </View>
   );
 }
@@ -895,90 +1118,157 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   loadingContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 16,
+    fontSize: 14,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight || 20,
     paddingHorizontal: 16,
     paddingBottom: 12,
+    borderBottomWidth: 1,
   },
-  backButton: {
+  headerButton: {
     padding: 8,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
+    marginLeft: 8,
   },
-  saveButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  saveButtonText: {
-    color: '#8B5CF6',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 16,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
+  miniPreviewContainer: {
+    marginLeft: 'auto',
     alignItems: 'center',
-    borderRadius: 8,
   },
-  tabActive: {
+  miniPreview: {
+    width: 60,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    paddingHorizontal: 6,
+  },
+  miniAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    marginRight: 4,
+  },
+  miniAvatarPlaceholder: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
+  },
+  miniName: {
+    fontSize: 8,
+    color: '#fff',
+    fontWeight: '600',
+    maxWidth: 30,
+  },
+  miniPreviewHint: {
+    fontSize: 9,
+    color: '#8B5CF6',
+    marginTop: 2,
+  },
+  stepIndicator: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  stepItem: {
+    alignItems: 'center',
+  },
+  stepDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  stepDotActive: {
     backgroundColor: '#8B5CF6',
   },
-  tabText: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
+  stepDotPast: {
+    backgroundColor: '#22C55E',
   },
-  tabTextActive: {
+  stepNumber: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  stepNumberActive: {
     color: '#fff',
   },
-  keyboardView: {
+  stepLabel: {
+    fontSize: 10,
+    color: '#64748B',
+  },
+  stepLabelActive: {
+    color: '#8B5CF6',
+    fontWeight: '600',
+  },
+  content: {
     flex: 1,
   },
-  scrollView: {
+  animatedContent: {
     flex: 1,
   },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 100,
+  stepContent: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
-  section: {
+  stepTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  stepSubtitle: {
+    fontSize: 14,
     marginBottom: 24,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+  // Template styles
+  templateGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  templateCard: {
+    width: (SCREEN_WIDTH - 52) / 2,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  templateGradient: {
+    width: '100%',
+    height: 100,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 8,
   },
-  sectionSubtitle: {
+  templateName: {
     fontSize: 14,
-    marginBottom: 20,
+    fontWeight: '600',
   },
+  templateDesc: {
+    fontSize: 12,
+  },
+  // Photo styles
   photoSection: {
     alignItems: 'center',
     marginBottom: 24,
-  },
-  photoButton: {
-    position: 'relative',
   },
   profilePhoto: {
     width: 100,
@@ -989,236 +1279,70 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    justifyContent: 'center',
     alignItems: 'center',
-  },
-  photoEditBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#8B5CF6',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
     justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
   },
-  photoHint: {
-    marginTop: 8,
-    fontSize: 14,
+  photoPlaceholderText: {
+    color: '#fff',
+    fontSize: 12,
+    marginTop: 4,
   },
-  gradientScroll: {
-    marginBottom: 20,
-  },
-  gradientOption: {
-    marginRight: 12,
-    borderRadius: 12,
-    padding: 3,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  gradientOptionSelected: {
-    borderColor: '#8B5CF6',
-  },
-  gradientPreview: {
-    width: 50,
-    height: 50,
-    borderRadius: 10,
+  // Input styles
+  inputGroup: {
+    marginBottom: 16,
   },
   inputLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-    marginTop: 12,
+    fontWeight: '500',
+    marginBottom: 6,
   },
   input: {
-    borderWidth: 1,
+    height: 48,
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 14,
     fontSize: 16,
+    borderWidth: 1,
   },
-  row: {
+  inputRow: {
     flexDirection: 'row',
-    gap: 12,
   },
-  halfField: {
-    flex: 1,
-  },
-  socialInput: {
+  // Social styles
+  socialInputGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
   },
-  socialIcon: {
+  socialIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
   },
-  socialField: {
+  socialInputWrapper: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
   },
-  previewContainer: {
-    alignItems: 'center',
-    marginVertical: 24,
-  },
-  previewCard: {
-    width: SCREEN_WIDTH - 56,
-    borderRadius: 24,
-    padding: 28,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 12,
-  },
-  previewPhotoContainer: {
-    marginBottom: 20,
-  },
-  previewPhoto: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  previewPhotoPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  previewName: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-    textAlign: 'center',
-    letterSpacing: -0.5,
-  },
-  previewTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.95)',
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  previewCompany: {
-    fontSize: 16,
+  socialLabel: {
+    fontSize: 12,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: 4,
-    textAlign: 'center',
+    marginBottom: 4,
   },
-  previewLocation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  previewLocationText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.9)',
-    marginLeft: 6,
-  },
-  previewButtons: {
-    flexDirection: 'row',
-    marginTop: 24,
-    gap: 14,
-  },
-  previewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 24,
-    gap: 8,
-  },
-  previewButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  poweredBy: {
-    marginTop: 28,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.2)',
-    width: '100%',
-    alignItems: 'center',
-  },
-  poweredByText: {
+  socialInput: {
+    height: 40,
+    borderRadius: 10,
+    paddingHorizontal: 12,
     fontSize: 14,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
-    letterSpacing: 0.5,
-  },
-  primaryButton: {
-    marginTop: 20,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  primaryButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
     borderWidth: 1,
-    gap: 8,
   },
-  secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  // Tab scroll content
-  tabScrollContent: {
-    paddingHorizontal: 4,
-  },
-  // Links section styles
-  linksList: {
-    marginTop: 16,
-    gap: 12,
-  },
+  // Links styles
   linkItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     padding: 12,
     borderRadius: 12,
+    marginBottom: 12,
     borderWidth: 1,
-  },
-  linkItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
   },
   linkIconContainer: {
     width: 40,
@@ -1226,85 +1350,276 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
-  linkItemText: {
-    marginLeft: 12,
+  linkContent: {
     flex: 1,
   },
-  linkItemTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  linkItemUrl: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  linkDeleteButton: {
-    padding: 8,
-  },
-  addLinkContainer: {
-    marginTop: 20,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  addLinkLabel: {
+  linkTitle: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 8,
-    marginTop: 12,
   },
-  iconPicker: {
-    marginTop: 8,
-    marginBottom: 16,
+  linkUrl: {
+    fontSize: 12,
+    marginTop: 2,
   },
-  iconOption: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-    borderWidth: 1,
+  linkAction: {
+    padding: 8,
   },
   addLinkButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 10,
-    gap: 8,
-    marginTop: 8,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    marginBottom: 16,
   },
-  addLinkButtonText: {
-    color: '#fff',
+  addLinkText: {
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 8,
   },
-  // Coming soon (Picks) styles
-  comingSoonContainer: {
-    marginTop: 20,
-    padding: 24,
-    borderRadius: 16,
+  infoBox: {
+    flexDirection: 'row',
+    padding: 12,
+    borderRadius: 12,
     borderWidth: 1,
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
-  comingSoonIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  infoText: {
+    flex: 1,
+    fontSize: 12,
+    marginLeft: 8,
+    lineHeight: 18,
+  },
+  // Gradient styles
+  gradientGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  gradientOption: {
+    width: (SCREEN_WIDTH - 60) / 4,
+    alignItems: 'center',
+    marginBottom: 16,
+    padding: 4,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  gradientOptionSelected: {
+    borderColor: '#8B5CF6',
+  },
+  gradientPreview: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  gradientName: {
+    fontSize: 10,
+    textAlign: 'center',
+  },
+  // Preview styles
+  previewContainer: {
+    alignItems: 'center',
+    paddingBottom: 20,
+  },
+  fullPreviewWrapper: {
+    width: SCREEN_WIDTH - 40,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  fullPreview: {
+    padding: 24,
+    alignItems: 'center',
+    minHeight: 400,
+  },
+  previewAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.3)',
+    marginBottom: 16,
+  },
+  previewAvatarPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
-  comingSoonTitle: {
-    fontSize: 20,
+  previewName: {
+    fontSize: 24,
     fontWeight: '700',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  previewTitle: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 4,
+  },
+  previewCompany: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
+  },
+  previewLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  previewLocationText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.9)',
+    marginLeft: 4,
+  },
+  previewActions: {
+    flexDirection: 'row',
+    marginTop: 20,
+    gap: 12,
+  },
+  previewActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  previewActionText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  previewSocials: {
+    flexDirection: 'row',
+    marginTop: 20,
+    gap: 16,
+  },
+  previewSocialIcon: {
+    opacity: 0.9,
+  },
+  previewLinks: {
+    width: '100%',
+    marginTop: 20,
+  },
+  previewLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingVertical: 12,
+    borderRadius: 12,
     marginBottom: 8,
   },
-  comingSoonText: {
-    fontSize: 15,
+  previewLinkText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  previewMoreLinks: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
     textAlign: 'center',
-    lineHeight: 22,
+    marginTop: 4,
+  },
+  previewPoweredBy: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.5)',
+    marginTop: 20,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  iconPicker: {
+    flexDirection: 'row',
+    marginTop: 8,
+  },
+  iconOption: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    borderWidth: 2,
+  },
+  modalButton: {
+    height: 52,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Navigation buttons
+  navButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    borderTopWidth: 1,
+  },
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    minWidth: 120,
+  },
+  navButtonPrimary: {
+    marginLeft: 'auto',
+  },
+  navButtonSecondary: {
+    borderWidth: 1,
+  },
+  navButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginHorizontal: 6,
   },
 });
