@@ -405,6 +405,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   } | null>(null);
   const [showSearchThisArea, setShowSearchThisArea] = useState(false);
   const [isSearchingArea, setIsSearchingArea] = useState(false);
+  const [bottomSheetIndex, setBottomSheetIndex] = useState(1); // Track bottom sheet position (0=collapsed, 1=mid, 2=expanded)
   
   // Floating icon popup states
   const [showLegendPopup, setShowLegendPopup] = useState(false);
@@ -3083,16 +3084,18 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
       {/* Search Overlay */}
       <View style={styles.mapSearchOverlay}>
-        {/* Back button */}
-        <TouchableOpacity 
-          style={[styles.backButton, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-          onPress={switchToStandardMode} accessibilityLabel="Back to list view" accessibilityRole="button"
-        >
-          <Ionicons name="arrow-back" size={24} color={isDark ? theme.text : '#000'} />
-        </TouchableOpacity>
-        
-        {/* Search Bar */}
-        <View style={[styles.mapSearchBar, targetLocation && styles.mapSearchBarWithAddress, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+        {/* Search Row - Back button + Search Bar */}
+        <View style={styles.mapSearchRow}>
+          {/* Back button */}
+          <TouchableOpacity 
+            style={[styles.backButton, { backgroundColor: isDark ? theme.surface : '#fff' }]}
+            onPress={switchToStandardMode} accessibilityLabel="Back to list view" accessibilityRole="button"
+          >
+            <Ionicons name="arrow-back" size={24} color={isDark ? theme.text : '#000'} />
+          </TouchableOpacity>
+          
+          {/* Search Bar */}
+          <View style={[styles.mapSearchBar, targetLocation && styles.mapSearchBarWithAddress, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
           {targetLocation ? (
             <Ionicons name="location" size={20} color="#AF52DE" />
           ) : (
@@ -3120,8 +3123,36 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <Ionicons name="close-circle" size={20} color="#999" />
             </TouchableOpacity>
           )}
+          </View>
         </View>
         
+        {/* Category Chips Row - Google Maps Style (always visible under search bar) */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.mapCategoryChipsRow}
+          contentContainerStyle={styles.mapCategoryChipsContent}
+        >
+          {categories.filter(c => c !== 'Filter').map((category) => (
+            <TouchableOpacity
+              key={category}
+              style={[
+                styles.mapCategoryChip,
+                { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : '#fff' },
+                selectedCategory === category && styles.mapCategoryChipActive,
+              ]}
+              onPress={() => handleCategorySelect(category)}
+            >
+              <Text style={[
+                styles.mapCategoryChipText,
+                { color: isDark ? '#fff' : '#333' },
+                selectedCategory === category && styles.mapCategoryChipTextActive,
+              ]}>
+                {category}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
       
       {/* Full-Screen Search Suggestions Overlay - Google Maps Style */}
@@ -3206,8 +3237,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       
       {/* Category Filters moved to bottom sheet for cleaner map view */}
 
-      {/* Search this Area Button */}
-      {showSearchThisArea && viewMode === 'map' && (
+      {/* Search this Area Button - only show when bottom sheet is collapsed (full-screen map view) */}
+      {showSearchThisArea && viewMode === 'map' && bottomSheetIndex === 0 && (
         <TouchableOpacity
           style={[
             styles.searchThisAreaButton,
@@ -3425,6 +3456,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
           enablePanDownToClose={false}
           enableContentPanningGesture={false}
+          onChange={(index) => setBottomSheetIndex(index)}
         >
           {/* Category Chips in Bottom Sheet Header */}
           {!searchedAddress && !selectedPlace && (
@@ -3504,6 +3536,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
           handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
           enablePanDownToClose={false}
+          onChange={(index) => setBottomSheetIndex(index)}
         >
           {/* Category Header - Google Maps Style */}
           <View style={[styles.categorySheetHeader, { backgroundColor: isDark ? theme.background : '#fff' }]}>
@@ -4565,11 +4598,43 @@ const styles = StyleSheet.create({
   mapSearchOverlay: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 60 : 20,
-    left: 16,
-    right: 16,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    zIndex: 10,
+  },
+  mapSearchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 10,
+  },
+  mapCategoryChipsRow: {
+    marginTop: 10,
+    marginLeft: -16,
+    marginRight: -16,
+  },
+  mapCategoryChipsContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  mapCategoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  mapCategoryChipActive: {
+    backgroundColor: '#007AFF',
+  },
+  mapCategoryChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  mapCategoryChipTextActive: {
+    color: '#fff',
   },
   backButton: {
     width: 44,
@@ -4974,20 +5039,25 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   userLocationMarker: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0, 122, 255, 0.2)',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 122, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   userLocationDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#007AFF',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#fff',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 4,
   },
   targetLocationMarker: {
     alignItems: 'center',
