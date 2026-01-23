@@ -27,18 +27,55 @@ interface BlockPreviewProps {
 }
 
 // Profile Block
+// Profile photo size configurations
+const PHOTO_SIZES = {
+  small: { size: 80, borderWidth: 2, initialsSize: 24 },
+  medium: { size: 100, borderWidth: 3, initialsSize: 32 },
+  large: { size: 130, borderWidth: 3, initialsSize: 40 },
+  xlarge: { size: 160, borderWidth: 4, initialsSize: 48 },
+};
+
 export const ProfileBlockPreview: React.FC<BlockPreviewProps> = ({ block, colorScheme }) => {
-  const { fullName, title, company, location, profilePhotoUri } = block.data;
+  const { fullName, title, company, location, profilePhotoUri, profilePhotoSize = 'medium' } = block.data;
+  
+  // Get size configuration
+  const sizeConfig = PHOTO_SIZES[profilePhotoSize as keyof typeof PHOTO_SIZES] || PHOTO_SIZES.medium;
   
   return (
     <View style={styles.profileBlock}>
       {/* Photo */}
-      <View style={styles.profilePhotoContainer}>
+      <View style={[
+        styles.profilePhotoContainer,
+        {
+          width: sizeConfig.size,
+          height: sizeConfig.size,
+          borderRadius: sizeConfig.size / 2,
+          borderWidth: sizeConfig.borderWidth,
+        }
+      ]}>
         {profilePhotoUri ? (
-          <Image source={{ uri: profilePhotoUri }} style={styles.profilePhoto} />
+          <Image 
+            source={{ uri: profilePhotoUri }} 
+            style={[
+              styles.profilePhoto,
+              {
+                width: sizeConfig.size - (sizeConfig.borderWidth * 2),
+                height: sizeConfig.size - (sizeConfig.borderWidth * 2),
+                borderRadius: (sizeConfig.size - (sizeConfig.borderWidth * 2)) / 2,
+              }
+            ]} 
+          />
         ) : (
-          <View style={[styles.profilePhotoPlaceholder, { backgroundColor: colorScheme?.primary || '#333' }]}>
-            <Text style={styles.profileInitials}>
+          <View style={[
+            styles.profilePhotoPlaceholder, 
+            { 
+              backgroundColor: colorScheme?.primary || '#333',
+              width: sizeConfig.size - (sizeConfig.borderWidth * 2),
+              height: sizeConfig.size - (sizeConfig.borderWidth * 2),
+              borderRadius: (sizeConfig.size - (sizeConfig.borderWidth * 2)) / 2,
+            }
+          ]}>
+            <Text style={[styles.profileInitials, { fontSize: sizeConfig.initialsSize }]}>
               {fullName?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
             </Text>
           </View>
@@ -483,26 +520,23 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   profilePhotoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    // Base styles - size is set dynamically
     overflow: 'hidden',
     marginBottom: 16,
-    borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   profilePhoto: {
-    width: '100%',
-    height: '100%',
+    // Size is set dynamically based on profilePhotoSize
   },
   profilePhotoPlaceholder: {
-    width: '100%',
-    height: '100%',
+    // Size is set dynamically based on profilePhotoSize
     alignItems: 'center',
     justifyContent: 'center',
   },
   profileInitials: {
-    fontSize: 32,
+    // fontSize is set dynamically based on profilePhotoSize
     fontWeight: '700',
     color: '#FFFFFF',
   },

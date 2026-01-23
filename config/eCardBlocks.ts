@@ -78,6 +78,7 @@ export const BLOCK_CONFIGS: BlockConfig[] = [
       company: '',
       location: '',
       profilePhotoUri: null,
+      profilePhotoSize: 'medium', // 'small', 'medium', 'large', 'xlarge'
     },
     fields: [
       { key: 'fullName', label: 'Full Name', type: 'text', placeholder: 'John Doe', required: true, maxLength: 50 },
@@ -85,6 +86,12 @@ export const BLOCK_CONFIGS: BlockConfig[] = [
       { key: 'company', label: 'Company', type: 'text', placeholder: 'Acme Inc.', maxLength: 50 },
       { key: 'location', label: 'Location', type: 'text', placeholder: 'Miami, FL', maxLength: 50 },
       { key: 'profilePhotoUri', label: 'Profile Photo', type: 'image' },
+      { key: 'profilePhotoSize', label: 'Photo Size', type: 'select', options: [
+        { value: 'small', label: 'Small (80px)' },
+        { value: 'medium', label: 'Medium (100px)' },
+        { value: 'large', label: 'Large (130px)' },
+        { value: 'xlarge', label: 'Extra Large (160px)' },
+      ]},
     ],
   },
   {
