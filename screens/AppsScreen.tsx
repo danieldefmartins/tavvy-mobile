@@ -5,7 +5,7 @@
  *
  * FEATURES:
  * - Large gradient tiles with white icons
- * - Correct app order: Pros, Realtors, Cities, Atlas, RV & Camping, Universes, Rides, Experiences, Happening Now, then others
+ * - Correct app order: Pros, eCard, Realtors, Atlas, RV & Camping, Universes, Rides, Experiences, Happening Now, then others
  * - Fixed navigation routes
  * - Dark/Light mode toggle (below banner)
  * - Hamburger menu with Help option
@@ -52,7 +52,7 @@ interface AppTile {
 }
 
 const APP_TILES: AppTile[] = [
-  // Row 1: Pros, Realtors, Cities
+  // Row 1: Pros, eCard, Realtors
   {
     id: 'pros',
     name: 'Pros',
@@ -62,20 +62,20 @@ const APP_TILES: AppTile[] = [
     route: 'Pros',
   },
   {
+    id: 'digital-card',
+    name: 'eCard',
+    icon: 'id-card',
+    iconType: 'ionicons',
+    gradientColors: ['#EC4899', '#BE185D'],
+    route: 'ECardTemplateGallery', // New Linktree-style flow
+  },
+  {
     id: 'realtors',
     name: 'Realtors',
     icon: 'home',
     iconType: 'ionicons',
     gradientColors: ['#14B8A6', '#0D9488'],
     route: 'RealtorsHub',
-  },
-  {
-    id: 'cities',
-    name: 'Cities',
-    icon: 'business',
-    iconType: 'ionicons',
-    gradientColors: ['#60A5FA', '#3B82F6'],
-    route: 'CitiesBrowse',
   },
   // Row 2: Atlas, RV & Camping, Universes
   {
@@ -161,12 +161,12 @@ const APP_TILES: AppTile[] = [
     route: 'ProfileMain',
   },
   {
-    id: 'digital-card',
-    name: 'eCard',
-    icon: 'id-card',
+    id: 'cities',
+    name: 'Cities',
+    icon: 'business',
     iconType: 'ionicons',
-    gradientColors: ['#EC4899', '#BE185D'],
-    route: 'MyDigitalCard',
+    gradientColors: ['#60A5FA', '#3B82F6'],
+    route: 'CitiesBrowse',
   },
   {
     id: 'create',
