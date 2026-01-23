@@ -2741,12 +2741,12 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <ScrollView 
                 horizontal 
                 showsHorizontalScrollIndicator={false} 
-                contentContainerStyle={{ paddingRight: 18 }}
-                snapToInterval={width * 0.9}
+                contentContainerStyle={{ paddingHorizontal: 18 }}
+                snapToInterval={width * 0.7 + 12}
                 decelerationRate="fast"
               >
                 {isLoadingExplore ? (
-                  <View style={{ width: width * 0.9 - 18, height: 180, justifyContent: 'center', alignItems: 'center' }}>
+                  <View style={{ width: width * 0.7, height: 180, justifyContent: 'center', alignItems: 'center' }}>
                     <ActivityIndicator size="small" color={ACCENT} />
                   </View>
                 ) : (
@@ -4226,9 +4226,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  // Explore Tavvy Cards (Universe-style) - 90% width for peek effect
+  // Explore Tavvy Cards (Universe-style) - 70% width to match HappeningNow
   exploreCard: {
-    width: width * 0.9 - 18, // 90% of screen width minus padding
+    width: width * 0.7, // Match HappeningNow card width (70%)
+    height: 180, // Match HappeningNow card height
     borderRadius: 16,
     marginRight: 12,
     overflow: 'hidden',
@@ -4240,10 +4241,16 @@ const styles = StyleSheet.create({
   },
   exploreCardImage: {
     width: '100%',
-    height: 160, // Taller for wider cards
+    height: '100%', // Fill entire card
+    position: 'absolute',
   },
   exploreCardContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     padding: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Dark overlay for text readability
   },
   exploreCardTitle: {
     fontSize: 18,
