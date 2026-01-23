@@ -101,6 +101,7 @@ import ProCardDetailScreen from './screens/ProCardDetailScreen';
 import CreateDigitalCardScreen from './screens/CreateDigitalCardScreen';
 import MyDigitalCardScreen from './screens/MyDigitalCardScreen';
 import PublicCardViewScreen from './screens/PublicCardViewScreen';
+import EditProfileScreen from './screens/EditProfileScreen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -188,6 +189,12 @@ function AppsStack() {
     <MenuStackNav.Navigator screenOptions={{ headerShown: false }}>
       <MenuStackNav.Screen name="AppsMain" component={AppsScreen} />
       <MenuStackNav.Screen name="ProfileMain" component={ProfileScreen} />
+      <MenuStackNav.Screen name="EditProfile" component={EditProfileScreen} />
+      <MenuStackNav.Screen 
+        name="StoryUpload" 
+        component={StoryUploadScreen}
+        options={{ presentation: 'modal' }}
+      />
       <MenuStackNav.Screen name="SavedMain" component={SavedScreen} />
 
       {/* Auth */}

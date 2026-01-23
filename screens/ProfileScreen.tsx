@@ -14,9 +14,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import { Colors } from '../constants/Colors';
+import { useProfile } from '../hooks/useProfile';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const TEAL_PRIMARY = '#0F8A8A';
 
 // User level calculation based on points
 const getUserLevel = (points: number) => {
@@ -30,11 +31,9 @@ const getUserLevel = (points: number) => {
 
 export default function ProfileScreen({ navigation }: any) {
   const { user, signOut } = useAuth();
+  const { profile, stats: profileStats, loading: profileLoading, refresh } = useProfile();
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({
-    taps: 0,
-    reviews: 0,
-    savedPlaces: 0,
+  const [gamificationStats, setGamificationStats] = useState({
     points: 0,
     badges: 0,
     streak: 0,
@@ -43,7 +42,7 @@ export default function ProfileScreen({ navigation }: any) {
 
   useEffect(() => {
     if (user) {
-      fetchUserStats();
+      fetchGamificationStats();
       // Format member since date
       if (user.created_at) {
         const date = new Date(user.created_at);
@@ -52,42 +51,32 @@ export default function ProfileScreen({ navigation }: any) {
     }
   }, [user]);
 
-  const fetchUserStats = async () => {
+  // Refresh profile when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (user) {
+        refresh();
+        fetchGamificationStats();
+      }
+    });
+    return unsubscribe;
+  }, [navigation, user, refresh]);
+
+  const fetchGamificationStats = async () => {
     try {
       if (!user) return;
-      
-      // Fetch taps count
-      const { count: tapsCount } = await supabase
-        .from('place_review_signal_taps')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
-
-      // Fetch saved places count
-      const { count: savedCount } = await supabase
-        .from('user_saved_places')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
-
-      // Fetch reviews count
-      const { count: reviewsCount } = await supabase
-        .from('reviews')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
 
       // Fetch gamification data
       const { data: gamificationData } = await supabase
         .rpc('get_user_gamification', { p_user_id: user.id });
 
-      setStats({
-        taps: tapsCount || 0,
-        reviews: reviewsCount || 0,
-        savedPlaces: savedCount || 0,
+      setGamificationStats({
         points: gamificationData?.total_points || 0,
         badges: Array.isArray(gamificationData?.badges) ? gamificationData.badges.length : 0,
         streak: gamificationData?.current_streak || 0,
       });
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      console.error('Error fetching gamification stats:', error);
     }
   };
 
@@ -115,7 +104,17 @@ export default function ProfileScreen({ navigation }: any) {
     );
   };
 
-  const userLevel = getUserLevel(stats.points);
+  const handleAvatarPress = () => {
+    // Navigate to user's stories or story upload
+    navigation.navigate('StoryUpload');
+  };
+
+  const userLevel = getUserLevel(gamificationStats.points);
+
+  // Get display name from profile or auth metadata
+  const displayName = profile?.display_name || user?.user_metadata?.display_name || user?.user_metadata?.full_name || 'Tavvy Explorer';
+  const username = profile?.username;
+  const avatarUrl = profile?.avatar_url;
 
   // 1. NOT LOGGED IN STATE
   if (!user) {
@@ -167,29 +166,41 @@ export default function ProfileScreen({ navigation }: any) {
         colors={['#0F1233', '#1E293B']}
         style={styles.profileHeader}
       >
-        {/* Avatar */}
-        <View style={styles.avatarContainer}>
+        {/* Avatar - Tap for Stories */}
+        <TouchableOpacity style={styles.avatarContainer} onPress={handleAvatarPress}>
           <LinearGradient
-            colors={[userLevel.color, '#3B82F6']}
+            colors={[TEAL_PRIMARY, '#3B82F6']}
             style={styles.avatarGradient}
           >
-            <View style={styles.avatarInner}>
-              <Text style={styles.avatarText}>
-                {user.email?.charAt(0).toUpperCase() || 'U'}
-              </Text>
-            </View>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.avatarInner}>
+                <Text style={styles.avatarText}>
+                  {displayName?.charAt(0).toUpperCase() || 'U'}
+                </Text>
+              </View>
+            )}
           </LinearGradient>
           {/* Level Badge */}
           <View style={[styles.levelBadge, { backgroundColor: userLevel.color }]}>
             <Text style={styles.levelBadgeText}>{userLevel.icon}</Text>
           </View>
-        </View>
+          {/* Story indicator */}
+          <View style={styles.storyIndicator}>
+            <Ionicons name="add" size={12} color="#FFFFFF" />
+          </View>
+        </TouchableOpacity>
 
         {/* User Info */}
-        <Text style={styles.userName}>
-          {user.user_metadata?.full_name || 'Tavvy Explorer'}
-        </Text>
+        <Text style={styles.userName}>{displayName}</Text>
+        {username && <Text style={styles.usernameText}>@{username}</Text>}
         <Text style={styles.userEmail}>{user.email}</Text>
+        
+        {/* Bio */}
+        {profile?.bio && (
+          <Text style={styles.bioText}>{profile.bio}</Text>
+        )}
         
         {/* Level Info */}
         <View style={styles.levelContainer}>
@@ -216,55 +227,47 @@ export default function ProfileScreen({ navigation }: any) {
         {/* Edit Profile Button */}
         <TouchableOpacity 
           style={styles.editProfileButton}
-          onPress={() => Alert.alert('Coming Soon', 'Edit Profile feature will be available soon!')}
+          onPress={() => navigation.navigate('EditProfile')}
         >
           <Ionicons name="pencil" size={14} color="#FFFFFF" />
           <Text style={styles.editProfileText}>Edit Profile</Text>
         </TouchableOpacity>
       </LinearGradient>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - 5 stats in 2 rows */}
       <View style={styles.statsContainer}>
         <View style={styles.statsRow}>
           <TouchableOpacity style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
-              <Ionicons name="finger-print" size={24} color="#3B82F6" />
+            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+              <Ionicons name="star" size={24} color="#10B981" />
             </View>
-            <Text style={styles.statValue}>{stats.taps}</Text>
-            <Text style={styles.statLabel}>Taps</Text>
+            <Text style={styles.statValue}>{profileStats.reviews}</Text>
+            <Text style={styles.statLabel}>Reviews</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.statCard}>
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(249, 115, 22, 0.15)' }]}>
               <Ionicons name="bookmark" size={24} color="#F97316" />
             </View>
-            <Text style={styles.statValue}>{stats.savedPlaces}</Text>
+            <Text style={styles.statValue}>{profileStats.savedPlaces}</Text>
             <Text style={styles.statLabel}>Saved</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-              <Ionicons name="star" size={24} color="#10B981" />
-            </View>
-            <Text style={styles.statValue}>{stats.reviews}</Text>
-            <Text style={styles.statLabel}>Reviews</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.statsRow}>
-          <TouchableOpacity style={styles.statCard}>
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
               <Ionicons name="trophy" size={24} color="#9333EA" />
             </View>
-            <Text style={styles.statValue}>{stats.points}</Text>
+            <Text style={styles.statValue}>{gamificationStats.points}</Text>
             <Text style={styles.statLabel}>Points</Text>
           </TouchableOpacity>
+        </View>
 
+        <View style={styles.statsRowCentered}>
           <TouchableOpacity style={styles.statCard}>
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
               <Ionicons name="ribbon" size={24} color="#EC4899" />
             </View>
-            <Text style={styles.statValue}>{stats.badges}</Text>
+            <Text style={styles.statValue}>{gamificationStats.badges}</Text>
             <Text style={styles.statLabel}>Badges</Text>
           </TouchableOpacity>
 
@@ -272,7 +275,7 @@ export default function ProfileScreen({ navigation }: any) {
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
               <Ionicons name="flame" size={24} color="#F59E0B" />
             </View>
-            <Text style={styles.statValue}>{stats.streak}</Text>
+            <Text style={styles.statValue}>{gamificationStats.streak}</Text>
             <Text style={styles.statLabel}>Day Streak</Text>
           </TouchableOpacity>
         </View>
@@ -291,14 +294,16 @@ export default function ProfileScreen({ navigation }: any) {
         <View style={styles.infoRow}>
           <Ionicons name="shield-checkmark-outline" size={20} color="#64748B" />
           <Text style={styles.infoLabel}>Account Type</Text>
-          <Text style={styles.infoValue}>Free</Text>
+          <Text style={styles.infoValue}>{profile?.is_pro ? 'Pro' : 'Free'}</Text>
         </View>
 
-        <View style={styles.infoRow}>
-          <Ionicons name="location-outline" size={20} color="#64748B" />
-          <Text style={styles.infoLabel}>Location</Text>
-          <Text style={styles.infoValue}>United States</Text>
-        </View>
+        {profile?.trusted_contributor && (
+          <View style={styles.infoRow}>
+            <Ionicons name="checkmark-circle-outline" size={20} color="#10B981" />
+            <Text style={styles.infoLabel}>Status</Text>
+            <Text style={[styles.infoValue, { color: '#10B981' }]}>Trusted Contributor</Text>
+          </View>
+        )}
       </View>
 
       {/* Menu Options */}
@@ -311,17 +316,6 @@ export default function ProfileScreen({ navigation }: any) {
             <Ionicons name="settings-outline" size={22} color="#3B82F6" />
           </View>
           <Text style={styles.menuText}>Settings</Text>
-          <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.menuItem}
-          onPress={() => navigation.navigate('Notifications')}
-        >
-          <View style={[styles.menuIconContainer, { backgroundColor: 'rgba(249, 115, 22, 0.1)' }]}>
-            <Ionicons name="notifications-outline" size={22} color="#F97316" />
-          </View>
-          <Text style={styles.menuText}>Notifications</Text>
           <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
         </TouchableOpacity>
 
@@ -346,17 +340,6 @@ export default function ProfileScreen({ navigation }: any) {
           <Text style={styles.menuText}>Help & Support</Text>
           <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
         </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.menuItem}
-          onPress={() => navigation.navigate('PrivacyPolicy')}
-        >
-          <View style={[styles.menuIconContainer, { backgroundColor: 'rgba(100, 116, 139, 0.1)' }]}>
-            <Ionicons name="document-text-outline" size={22} color="#64748B" />
-          </View>
-          <Text style={styles.menuText}>Privacy Policy</Text>
-          <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
-        </TouchableOpacity>
       </View>
 
       {/* Sign Out Button */}
@@ -375,7 +358,7 @@ export default function ProfileScreen({ navigation }: any) {
         )}
       </TouchableOpacity>
 
-      <Text style={styles.versionText}>Version 1.0.0</Text>
+      <Text style={styles.versionText}>Version 2.0.0</Text>
     </ScrollView>
   );
 }
@@ -478,6 +461,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  avatarImage: {
+    flex: 1,
+    borderRadius: 52,
+    width: '100%',
+    height: '100%',
+  },
   avatarText: {
     fontSize: 44,
     fontWeight: 'bold',
@@ -498,16 +487,42 @@ const styles = StyleSheet.create({
   levelBadgeText: {
     fontSize: 16,
   },
+  storyIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: TEAL_PRIMARY,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#0F1233',
+  },
   userName: {
     fontSize: 26,
     fontWeight: 'bold',
     color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  usernameText: {
+    fontSize: 15,
+    color: TEAL_PRIMARY,
     marginBottom: 4,
   },
   userEmail: {
     fontSize: 14,
     color: '#94A3B8',
+    marginBottom: 8,
+  },
+  bioText: {
+    fontSize: 14,
+    color: '#CBD5E1',
+    textAlign: 'center',
     marginBottom: 12,
+    paddingHorizontal: 20,
+    lineHeight: 20,
   },
   levelContainer: {
     alignItems: 'center',
@@ -562,8 +577,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
+  statsRowCentered: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'center',
+  },
   statCard: {
     flex: 1,
+    maxWidth: (SCREEN_WIDTH - 56) / 3,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
