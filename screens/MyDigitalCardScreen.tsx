@@ -185,35 +185,6 @@ export default function MyDigitalCardScreen() {
     }
   };
 
-  // Save contact directly to phone
-  const handleSaveToContacts = async () => {
-    try {
-      const { status } = await Contacts.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please allow access to contacts to save this card.');
-        return;
-      }
-
-      const contact: Contacts.Contact = {
-        contactType: Contacts.ContactTypes.Person,
-        name: cardData.fullName,
-        firstName: cardData.fullName.split(' ')[0],
-        lastName: cardData.fullName.split(' ').slice(1).join(' '),
-        company: cardData.company,
-        jobTitle: cardData.title,
-        phoneNumbers: cardData.phone ? [{ label: 'mobile', number: cardData.phone }] : [],
-        emails: cardData.email ? [{ label: 'work', email: cardData.email }] : [],
-        urlAddresses: cardData.website ? [{ label: 'website', url: cardData.website }] : [],
-      };
-
-      await Contacts.addContactAsync(contact);
-      Alert.alert('Saved!', `${cardData.fullName} has been added to your contacts.`);
-    } catch (error) {
-      console.error('Error saving contact:', error);
-      Alert.alert('Error', 'Failed to save contact. Please try again.');
-    }
-  };
-
   // Open social links
   const openSocialLink = (platform: string, username: string) => {
     let url = '';
