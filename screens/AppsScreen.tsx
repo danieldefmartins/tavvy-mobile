@@ -7,10 +7,11 @@
  * - Large gradient tiles with white icons
  * - Correct app order: Pros, Realtors, Cities, Atlas, RV & Camping, Universes, Rides, Experiences, Happening Now, then others
  * - Fixed navigation routes
- * - Dark/Light mode toggle
+ * - Dark/Light mode toggle (below banner)
+ * - Hamburger menu with Help option
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -21,6 +22,8 @@ import {
   Platform,
   StatusBar,
   Dimensions,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -163,6 +166,7 @@ export default function AppsScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
   const { theme, isDark, setThemeMode } = useThemeContext();
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const handleTilePress = (tile: AppTile) => {
     if (tile.route) {
@@ -182,6 +186,21 @@ export default function AppsScreen() {
   const handleProLogin = () => {
     // Navigate to Pro Login screen
     navigation.navigate('ProsLogin');
+  };
+
+  const handleMenuItemPress = (action: string) => {
+    setMenuVisible(false);
+    switch (action) {
+      case 'help':
+        navigation.navigate('HelpSupport');
+        break;
+      case 'about':
+        navigation.navigate('HelpSupport'); // Could navigate to About screen
+        break;
+      case 'settings':
+        navigation.navigate('Settings');
+        break;
+    }
   };
 
   const renderIcon = (tile: AppTile, size: number = 48) => {
@@ -240,44 +259,46 @@ export default function AppsScreen() {
     <View style={[styles.container, dynamicStyles.container]}>
       <StatusBar barStyle="light-content" />
       
-      {/* HEADER BANNER - Extends to very top of screen */}
+      {/* HEADER BANNER - Large logo and hamburger menu */}
       <View style={styles.headerBanner}>
-        {/* Toggle - EXACTLY matching HomeScreen style (full-width, no icons) */}
-        <View style={styles.segmentWrap}>
-          <View style={[styles.segment, { 
-            borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,18,51,0.12)', 
-            backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.65)' 
-          }]}>
-            <TouchableOpacity
-              style={[styles.segmentItem, !isDark && [styles.segmentItemActive, { backgroundColor: ACCENT }]]}
-              onPress={() => setThemeMode('light')}
-              activeOpacity={0.9}
-            >
-              <Text style={[styles.segmentText, { color: !isDark ? '#fff' : (isDark ? theme.textSecondary : '#6B6B6B') }]}>Light</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.segmentItem, isDark && [styles.segmentItemActive, { backgroundColor: ACCENT }]]}
-              onPress={() => setThemeMode('dark')}
-              activeOpacity={0.9}
-            >
-              <Text style={[styles.segmentText, { color: isDark ? '#fff' : (isDark ? theme.textSecondary : '#6B6B6B') }]}>Dark</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Logo Row with Help Icon */}
-        <View style={styles.logoRow}>
+        <View style={styles.bannerContent}>
+          {/* Large Logo - Centered */}
           <Image
             source={require('../assets/brand/logo-horizontal.png')}
-            style={styles.headerLogo}
+            style={styles.largeLogo}
             resizeMode="contain"
           />
+          
+          {/* Hamburger Menu Icon - Top Right */}
           <TouchableOpacity 
-            style={styles.helpButton}
-            onPress={() => navigation.navigate('HelpSupport')}
+            style={styles.menuButton}
+            onPress={() => setMenuVisible(true)}
           >
-            <Ionicons name="help-circle-outline" size={28} color="rgba(255,255,255,0.7)" />
+            <Ionicons name="menu" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Theme Toggle - Below Banner, Above "Apps" */}
+      <View style={[styles.toggleContainer, { backgroundColor: isDark ? theme.background : '#F3F4F6' }]}>
+        <View style={[styles.segment, { 
+          borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,18,51,0.12)', 
+          backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.95)' 
+        }]}>
+          <TouchableOpacity
+            style={[styles.segmentItem, !isDark && [styles.segmentItemActive, { backgroundColor: ACCENT }]]}
+            onPress={() => setThemeMode('light')}
+            activeOpacity={0.9}
+          >
+            <Text style={[styles.segmentText, { color: !isDark ? '#fff' : (isDark ? theme.textSecondary : '#6B6B6B') }]}>Light</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.segmentItem, isDark && [styles.segmentItemActive, { backgroundColor: ACCENT }]]}
+            onPress={() => setThemeMode('dark')}
+            activeOpacity={0.9}
+          >
+            <Text style={[styles.segmentText, { color: isDark ? '#fff' : (isDark ? theme.textSecondary : '#6B6B6B') }]}>Dark</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -341,6 +362,54 @@ export default function AppsScreen() {
         {/* Coming Soon */}
         <Text style={[styles.comingSoon, dynamicStyles.comingSoon]}>More tools coming soon</Text>
       </ScrollView>
+
+      {/* Hamburger Menu Modal */}
+      <Modal
+        visible={menuVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={[styles.menuContainer, { backgroundColor: isDark ? theme.cardBackground : '#FFFFFF' }]}>
+            {/* Menu Header */}
+            <View style={styles.menuHeader}>
+              <Text style={[styles.menuTitle, { color: isDark ? theme.text : '#111827' }]}>Menu</Text>
+              <TouchableOpacity onPress={() => setMenuVisible(false)}>
+                <Ionicons name="close" size={24} color={isDark ? theme.text : '#111827'} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Menu Items */}
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => handleMenuItemPress('help')}
+            >
+              <Ionicons name="help-circle-outline" size={24} color={isDark ? theme.text : '#374151'} />
+              <Text style={[styles.menuItemText, { color: isDark ? theme.text : '#374151' }]}>Help</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => handleMenuItemPress('settings')}
+            >
+              <Ionicons name="settings-outline" size={24} color={isDark ? theme.text : '#374151'} />
+              <Text style={[styles.menuItemText, { color: isDark ? theme.text : '#374151' }]}>Settings</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => handleMenuItemPress('about')}
+            >
+              <Ionicons name="information-circle-outline" size={24} color={isDark ? theme.text : '#374151'} />
+              <Text style={[styles.menuItemText, { color: isDark ? theme.text : '#374151' }]}>About Tavvy</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -362,14 +431,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f1233',
     // Use platform-specific padding to account for status bar
     paddingTop: Platform.OS === 'ios' ? 60 : (StatusBar.currentHeight || 24) + 16,
-    paddingBottom: 20,
+    paddingBottom: 24,
+    paddingHorizontal: 18,
   },
 
-  // Segment wrap - EXACTLY matching HomeScreen style
-  segmentWrap: {
+  bannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+
+  largeLogo: {
+    width: 200,
+    height: 60,
+  },
+
+  menuButton: {
+    position: 'absolute',
+    right: 0,
+    padding: 8,
+  },
+
+  // Toggle container - below banner
+  toggleContainer: {
     paddingHorizontal: 18,
-    marginTop: 8,
-    marginBottom: 16,
+    paddingVertical: 12,
   },
 
   // Segment control - EXACTLY matching HomeScreen style
@@ -398,26 +485,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Logo row
-  logoRow: {
-    paddingHorizontal: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  headerLogo: {
-    width: 180,
-    height: 54,
-  },
-
-  helpButton: {
-    padding: 4,
-  },
-
   header: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 8,
     paddingBottom: 20,
   },
   headerTitle: {
@@ -501,5 +571,48 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 32,
     marginBottom: 20,
+  },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+  },
+  menuContainer: {
+    marginTop: Platform.OS === 'ios' ? 60 : (StatusBar.currentHeight || 24) + 16,
+    marginRight: 16,
+    borderRadius: 16,
+    padding: 16,
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  menuHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  menuTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: 12,
+  },
+  menuItemText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
