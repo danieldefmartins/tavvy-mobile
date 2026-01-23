@@ -3475,38 +3475,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           enableContentPanningGesture={false}
           onChange={(index) => setBottomSheetIndex(index)}
         >
-          {/* Category Chips in Bottom Sheet Header */}
-          {!searchedAddress && !selectedPlace && (
-            <View style={styles.bottomSheetCategoryHeader}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.bottomSheetCategoryContent}
-              >
-                {categories.filter(c => c !== 'Filter').map((category) => (
-                  <TouchableOpacity
-                    key={category}
-                    style={[
-                      styles.bottomSheetCategoryChip,
-                      { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.2)' : '#E5E5EA' },
-                      selectedCategory === category && styles.bottomSheetCategoryChipActive,
-                    ]}
-                    onPress={() => handleCategorySelect(category)}
-                  >
-                    <Text
-                      style={[
-                        styles.bottomSheetCategoryChipText,
-                        { color: isDark ? theme.text : '#333' },
-                        selectedCategory === category && styles.bottomSheetCategoryChipTextActive,
-                      ]}
-                    >
-                      {category}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
+          {/* Category chips are now only shown under the search bar - removed duplicate from bottom sheet */}
           
           {searchedAddress ? (
             <ScrollView 
@@ -4929,11 +4898,12 @@ const styles = StyleSheet.create({
   },
   bottomSheetResultsCount: {
     fontSize: 13,
-    marginBottom: 12,
+    marginBottom: 8,
     paddingHorizontal: 4,
   },
   bottomSheetContent: {
     paddingHorizontal: 16,
+    paddingTop: 4, // Reduced top padding
     paddingBottom: 20,
   },
   selectedPlaceHeader: {
@@ -5280,15 +5250,15 @@ const styles = StyleSheet.create({
   // Category Results View
   categorySheetHeader: {
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingTop: 4, // Reduced from 8
+    paddingBottom: 4, // Reduced from 8
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
   categoryResultsHeader: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingTop: 8, // Reduced from 16
+    paddingBottom: 8, // Reduced from 12
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
@@ -5296,7 +5266,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8, // Reduced from 16
   },
   categoryResultsTitle: {
     fontSize: 28,
@@ -5328,7 +5298,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 8, // Reduced from 12
   },
   filterPillIcon: {
     width: 40,

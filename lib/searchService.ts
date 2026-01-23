@@ -183,7 +183,7 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
     // Use ilike for simple matching on name and city
     let searchQuery = supabase
       .from('places')
-      .select('id, name, city, region, tavvy_category, tavvy_subcategory, latitude, longitude, cover_image_url, address, phone, website, photos, status')
+      .select('id, name, city, region, tavvy_category, tavvy_subcategory, latitude, longitude, cover_image_url, street, phone, website, photos, status')
       .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
       .eq('status', 'active')
       .limit(limit);
@@ -287,7 +287,7 @@ function transformToSearchResult(place: any, source: PlaceSource, location?: { l
     name: place.name || 'Unknown',
     latitude: place.latitude,
     longitude: place.longitude,
-    address: place.address,
+    address: place.street, // 'street' column in DB, mapped to 'address' in app
     city: place.city,
     region: place.region,
     country: place.country,
@@ -296,10 +296,6 @@ function transformToSearchResult(place: any, source: PlaceSource, location?: { l
     subcategory: place.tavvy_subcategory,
     phone: place.phone,
     website: place.website,
-    email: place.email,
-    instagram: place.instagram,
-    facebook: place.facebook,
-    twitter: place.twitter,
     cover_image_url: place.cover_image_url,
     photos: place.photos || [],
     status: place.status,
@@ -506,7 +502,7 @@ async function searchWithGeoBounds(
     // Search places table with geo bounds
     supabase
       .from('places')
-      .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, address')
+      .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, street, phone')
       .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
       .eq('status', 'active')
       .gte('latitude', minLat)
@@ -540,7 +536,7 @@ async function searchWithoutLocation(
   const [placesResult, fsqResult] = await Promise.all([
     supabase
       .from('places')
-      .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, address')
+      .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, street, phone')
       .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
       .eq('status', 'active')
       .limit(limit),
@@ -584,7 +580,8 @@ function processSearchResults(
           region: s.region,
           category: s.tavvy_category,
           cover_image_url: s.cover_image_url,
-          address: s.address,
+          address: s.street,
+          phone: s.phone,
         };
         if (location && s.latitude && s.longitude) {
           result.distance = calculateDistance(
@@ -819,7 +816,7 @@ export async function prefetchNearbyPlaces(
     // Use 'places' table (canonical) instead of 'places_search' which may not exist
     const { data, error } = await supabase
       .from('places')
-      .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, address')
+      .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, street, phone')
       .gte('latitude', minLat)
       .lte('latitude', maxLat)
       .gte('longitude', minLng)
@@ -843,7 +840,8 @@ export async function prefetchNearbyPlaces(
       region: s.region,
       category: s.tavvy_category,
       cover_image_url: s.cover_image_url,
-      address: s.address,
+      address: s.street,
+      phone: s.phone,
       distance: calculateDistance(latitude, longitude, s.latitude, s.longitude),
     }));
 
