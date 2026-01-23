@@ -361,7 +361,7 @@ export default function MyDigitalCardScreen() {
           
           <TouchableOpacity 
             style={styles.createCardButton}
-            onPress={() => navigation.navigate('CreateDigitalCard')}
+            onPress={() => navigation.navigate('ECardTemplateGallery', { mode: 'create' })}
           >
             <LinearGradient
               colors={['#8B5CF6', '#4F46E5']}
@@ -400,7 +400,7 @@ export default function MyDigitalCardScreen() {
 
           {/* Edit Button */}
           <TouchableOpacity 
-            onPress={() => navigation.navigate('CreateDigitalCard', { cardData })} 
+            onPress={() => navigation.navigate('ECardTemplateGallery', { mode: 'edit', cardId: cardData.id, existingData: cardData })} 
             style={styles.editButton}
           >
             <Ionicons name="pencil" size={20} color="#fff" />

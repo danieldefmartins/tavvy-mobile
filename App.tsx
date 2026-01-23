@@ -104,6 +104,11 @@ import PublicCardViewScreen from './screens/PublicCardViewScreen';
 import EditProfileScreen from './screens/EditProfileScreen';
 import BusinessStoryModerationScreen from './screens/BusinessStoryModerationScreen';
 
+// ========== ECARD TEMPLATE SCREENS ==========
+import ECardTemplateGalleryScreen from './screens/ECardTemplateGalleryScreen';
+import ECardColorPickerScreen from './screens/ECardColorPickerScreen';
+import ECardMultiPageUpgradeScreen from './screens/ECardMultiPageUpgradeScreen';
+
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -250,6 +255,9 @@ function AppsStack() {
       <MenuStackNav.Screen name="ProCardDetail" component={ProCardDetailScreen} />
       
       {/* Digital Card - Create and share digital business cards */}
+      <MenuStackNav.Screen name="ECardTemplateGallery" component={ECardTemplateGalleryScreen} />
+      <MenuStackNav.Screen name="ECardColorPicker" component={ECardColorPickerScreen} />
+      <MenuStackNav.Screen name="ECardMultiPageUpgrade" component={ECardMultiPageUpgradeScreen} />
       <MenuStackNav.Screen name="CreateDigitalCard" component={CreateDigitalCardScreen} />
       <MenuStackNav.Screen name="MyDigitalCard" component={MyDigitalCardScreen} />
       <MenuStackNav.Screen name="PublicCardView" component={PublicCardViewScreen} />
