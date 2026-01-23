@@ -116,6 +116,37 @@ export type RootStackParamList = {
     state?: string;
     zipCode?: string;
   };
+  
+  // ========== ECARD SCREENS ==========
+  ECardHome: undefined;
+  ECardTemplates: undefined;
+  ECardColorPicker: {
+    templateId: string;
+    templateConfig?: any;
+    mode?: 'create' | 'edit';
+    existingData?: any;
+  };
+  ECardBlockBuilder: {
+    templateId: string;
+    templateConfig: any;
+    existingBlocks?: any[];
+    mode?: 'create' | 'edit';
+  };
+  ECardBlockEditor: {
+    block: any;
+    onSave: (data: any) => void;
+    colorScheme?: { primary: string; secondary: string };
+  };
+  CreateDigitalCard: {
+    templateId?: string;
+    templateConfig?: any;
+    blocks?: any[];
+    mode?: 'create' | 'edit';
+    cardData?: any;
+  };
+  MyDigitalCard: {
+    cardData?: any;
+  };
 };
 
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;
