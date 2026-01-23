@@ -540,8 +540,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   };
 
   /**
-   * Load trending items: Places, Restaurants, Coffee Shops, and Pros
-   * Only shows items within 20 miles of user's location
+   * Load trending items: Restaurants, Coffee Shops, and Pros ONLY
+   * Filtering rules:
+   * - Must have address AND phone number
+   * - Must be within 20 miles of user's location
+   * - Only categories: Restaurants, Coffee Shops, Pros
    */
   const loadTrendingItems = async (userCoords?: [number, number] | null) => {
     setIsLoadingTrending(true);
@@ -552,36 +555,45 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       // Use provided coords or current userLocation
       const coords = userCoords || userLocation;
       
-      // Fetch places (restaurants, coffee shops, and general places with reviews)
+      // Fetch places - ONLY Restaurants and Coffee Shops
+      // Must have address AND phone number
       const { data: places, error: placesError } = await supabase
         .from('fsq_places_raw')
-        .select('fsq_place_id, name, address, locality, region, fsq_category_labels, latitude, longitude')
+        .select('fsq_place_id, name, address, locality, region, fsq_category_labels, latitude, longitude, phone')
         .not('latitude', 'is', null)
         .not('longitude', 'is', null)
+        .not('address', 'is', null)
+        .neq('address', '')
+        .not('phone', 'is', null)
+        .neq('phone', '')
+        .or('fsq_category_labels.ilike.%restaurant%,fsq_category_labels.ilike.%dining%,fsq_category_labels.ilike.%food%,fsq_category_labels.ilike.%coffee%,fsq_category_labels.ilike.%cafe%,fsq_category_labels.ilike.%café%,fsq_category_labels.ilike.%tea house%')
         .limit(100);
       
       console.log('Trending places query result:', { count: places?.length, error: placesError });
       
       if (places && !placesError) {
         places.forEach((place: any) => {
-          // Filter by distance if we have user location, otherwise include all
-          if (coords && place.latitude && place.longitude) {
-            const distance = calculateDistanceMiles(
-              coords[1], coords[0], // userLocation is [lng, lat]
-              Number(place.latitude), Number(place.longitude)
-            );
-            if (distance > MAX_DISTANCE_MILES) return;
-          }
-          // If no user location, still include the place (no distance filtering)
+          // MUST have user location for distance filtering - skip if no coords
+          if (!coords || !place.latitude || !place.longitude) return;
           
-          // Determine category type for display
+          // Calculate distance and filter by 20 miles max
+          const distance = calculateDistanceMiles(
+            coords[1], coords[0], // userLocation is [lng, lat]
+            Number(place.latitude), Number(place.longitude)
+          );
+          if (distance > MAX_DISTANCE_MILES) return;
+          
+          // Determine category type for display (only Restaurants or Coffee Shops)
           const categoryLower = (place.fsq_category_labels || '').toLowerCase();
-          let displayCategory = 'Places';
+          let displayCategory = '';
           if (categoryLower.includes('restaurant') || categoryLower.includes('dining') || categoryLower.includes('food')) {
             displayCategory = 'Restaurants';
           } else if (categoryLower.includes('coffee') || categoryLower.includes('cafe') || categoryLower.includes('café') || categoryLower.includes('tea')) {
             displayCategory = 'Coffee Shops';
           }
+          
+          // Skip if not a valid category (Restaurants or Coffee Shops)
+          if (!displayCategory) return;
           
           items.push({
             id: place.fsq_place_id,
@@ -592,29 +604,35 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             category: displayCategory,
             latitude: place.latitude,
             longitude: place.longitude,
+            distance: distance,
           });
         });
       }
       
-      // Fetch Pros (service providers)
+      // Fetch Pros (service providers) - Must have address and phone
       const { data: pros, error: prosError } = await supabase
         .from('tavvy_pros')
-        .select('id, business_name, service_category, city, state, profile_image_url, latitude, longitude')
+        .select('id, business_name, service_category, city, state, profile_image_url, latitude, longitude, phone, address')
         .eq('status', 'active')
         .not('latitude', 'is', null)
         .not('longitude', 'is', null)
+        .not('address', 'is', null)
+        .neq('address', '')
+        .not('phone', 'is', null)
+        .neq('phone', '')
         .limit(50);
       
       if (pros && !prosError) {
         pros.forEach((pro: any) => {
-          // Filter by distance if we have user location
-          if (coords && pro.latitude && pro.longitude) {
-            const distance = calculateDistanceMiles(
-              coords[1], coords[0], // userLocation is [lng, lat]
-              Number(pro.latitude), Number(pro.longitude)
-            );
-            if (distance > MAX_DISTANCE_MILES) return;
-          }
+          // MUST have user location for distance filtering - skip if no coords
+          if (!coords || !pro.latitude || !pro.longitude) return;
+          
+          // Calculate distance and filter by 20 miles max
+          const distance = calculateDistanceMiles(
+            coords[1], coords[0], // userLocation is [lng, lat]
+            Number(pro.latitude), Number(pro.longitude)
+          );
+          if (distance > MAX_DISTANCE_MILES) return;
           
           items.push({
             id: pro.id,
@@ -625,13 +643,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             category: 'Pros',
             latitude: pro.latitude,
             longitude: pro.longitude,
+            distance: distance,
           });
         });
       }
       
-      // Shuffle items and limit to 10
-      const shuffled = items.sort(() => Math.random() - 0.5).slice(0, 10);
-      setTrendingItems(shuffled);
+      // Sort by distance (closest first) and limit to 10
+      const sorted = items.sort((a, b) => (a.distance || 999) - (b.distance || 999)).slice(0, 10);
+      setTrendingItems(sorted);
     } catch (error) {
       console.log('Error loading trending items:', error);
     } finally {
@@ -2589,24 +2608,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   <Text style={{ color: isDark ? theme.textSecondary : '#999', marginTop: 4, fontSize: 12 }}>Pull down to refresh</Text>
                 </View>
               ) : (
-                // Combine trending items (cities/universes) with filtered places
-                [...trendingItems, ...filteredPlaces
-                  .filter((place) => {
-                    const category = (place.category || place.primary_category || '').toLowerCase();
-                    const trendingCategories = ['restaurant', 'coffee', 'cafe'];
-                    return trendingCategories.some(cat => category.includes(cat));
-                  })
-                  .slice(0, 5)
-                  .map((place) => ({
-                    id: place.id,
-                    name: place.name,
-                    subtitle: place.city || place.primary_category || place.category,
-                    image: place.photos?.[0] || getCategoryFallbackImage(place.category || place.primary_category),
-                    type: 'place',
-                    category: place.primary_category || place.category,
-                    place: place,
-                  }))
-                ]
+                // Only show trendingItems (already filtered for Restaurants, Coffee Shops, Pros)
+                // No longer combining with filteredPlaces to ensure strict filtering
+                trendingItems
                 .slice(0, 10)
                 .map((item, trendingIndex) => (
                 <TouchableOpacity
