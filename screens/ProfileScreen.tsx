@@ -173,7 +173,9 @@ export default function ProfileScreen({ navigation }: any) {
             style={styles.avatarGradient}
           >
             {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+              <View style={styles.avatarInner}>
+                <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+              </View>
             ) : (
               <View style={styles.avatarInner}>
                 <Text style={styles.avatarText}>
@@ -460,12 +462,13 @@ const styles = StyleSheet.create({
     borderRadius: 52,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   avatarImage: {
-    flex: 1,
-    borderRadius: 52,
     width: '100%',
     height: '100%',
+    borderRadius: 52,
+    resizeMode: 'cover',
   },
   avatarText: {
     fontSize: 44,
