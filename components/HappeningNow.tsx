@@ -1,7 +1,7 @@
 // =============================================
 // HAPPENING NOW COMPONENT
 // =============================================
-// Horizontal carousel showing places with high activity scores
+// Horizontal carousel showing real events from Ticketmaster, PredictHQ, and Tavvy
 // "What's Happening Now" - real-time discovery
 
 import React, { useState, useEffect } from 'react';
@@ -18,233 +18,135 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { getHappeningNowPlaces } from '../lib/storyService';
-import { supabase } from '../lib/supabaseClient';
-import { StoryRing, StoryRingState } from './StoryRing';
-import { trackHappeningNowTap, trackStoryRingTap } from '../lib/analyticsService';
+import * as Location from 'expo-location';
+import { getHappeningNowEvents, TavvyEvent } from '../lib/eventsService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.7;
 
-interface HappeningPlace {
-  place_id: string;
-  happening_score: number;
-  last_activity_at: string;
-  // Joined place data
-  name?: string;
-  category?: string;
-  cover_image_url?: string;
-  city?: string;
-  story_ring_state?: StoryRingState;
-  story_count?: number;
-}
+// Default placeholder image for events without images
+const DEFAULT_EVENT_IMAGE = 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600';
 
 interface HappeningNowProps {
-  onPlacePress?: (placeId: string) => void;
-  onStoryPress?: (placeId: string) => void;
+  onEventPress?: (event: TavvyEvent) => void;
 }
 
 export const HappeningNow: React.FC<HappeningNowProps> = ({
-  onPlacePress,
-  onStoryPress,
+  onEventPress,
 }) => {
-  const [places, setPlaces] = useState<HappeningPlace[]>([]);
+  const [events, setEvents] = useState<TavvyEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const navigation = useNavigation();
 
+  // Get user location
   useEffect(() => {
-    loadHappeningPlaces();
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          // Default to Orlando, FL
+          setUserLocation({ lat: 28.5383, lng: -81.3792 });
+          return;
+        }
+        
+        const location = await Location.getCurrentPositionAsync({});
+        setUserLocation({
+          lat: location.coords.latitude,
+          lng: location.coords.longitude,
+        });
+      } catch (err) {
+        console.error('[HappeningNow] Location error:', err);
+        // Default to Orlando, FL
+        setUserLocation({ lat: 28.5383, lng: -81.3792 });
+      }
+    })();
   }, []);
 
-  const loadHappeningPlaces = async () => {
+  // Fetch events when location is available
+  useEffect(() => {
+    if (userLocation) {
+      loadEvents();
+    }
+  }, [userLocation]);
+
+  const loadEvents = async () => {
+    if (!userLocation) return;
+    
     setIsLoading(true);
     try {
-      // First try to get places with high happening scores
-      let happeningData = await getHappeningNowPlaces(10, 25);
-      
-      // If no happening scores, fall back to places with recent stories
-      if (happeningData.length === 0) {
-        happeningData = await getPlacesWithRecentActivity();
-      }
-      
-      if (happeningData.length === 0) {
-        // Final fallback: get places with recent reviews
-        happeningData = await getPlacesWithRecentReviews();
-      }
-
-      if (happeningData.length === 0) {
-        setPlaces([]);
-        return;
-      }
-
-      // Fetch place details for each
-      const placeIds = happeningData.map(h => h.place_id);
-      const { data: placeDetails } = await supabase
-        .from('fsq_places_raw')
-        .select('fsq_id, name, category, cover_image_url, city')
-        .in('fsq_id', placeIds);
-
-      // Merge data
-      const mergedPlaces = happeningData.map(h => {
-        const details = placeDetails?.find(p => p.fsq_id === h.place_id);
-        return {
-          ...h,
-          name: details?.name || 'Unknown Place',
-          category: extractCategory(details?.category),
-          cover_image_url: details?.cover_image_url,
-          city: details?.city,
-          story_ring_state: (h as any).story_count > 0 ? 'unseen' as StoryRingState : 'none' as StoryRingState,
-        };
+      const fetchedEvents = await getHappeningNowEvents({
+        lat: userLocation.lat,
+        lng: userLocation.lng,
+        radiusMiles: 50,
+        timeFilter: 'week', // Show events for the next week
+        limit: 10,
       });
 
-      setPlaces(mergedPlaces);
+      setEvents(fetchedEvents);
     } catch (error) {
-      console.error('Error loading happening places:', error);
+      console.error('[HappeningNow] Error loading events:', error);
+      setEvents([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fallback: Get places with recent stories
-  const getPlacesWithRecentActivity = async (): Promise<HappeningPlace[]> => {
-    try {
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      
-      const { data, error } = await supabase
-        .from('place_stories')
-        .select('place_id, created_at')
-        .eq('status', 'active')
-        .gte('created_at', sevenDaysAgo)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Group by place and count stories
-      const placeMap = new Map<string, { count: number; lastActivity: string }>();
-      data?.forEach(story => {
-        const existing = placeMap.get(story.place_id);
-        if (!existing) {
-          placeMap.set(story.place_id, { count: 1, lastActivity: story.created_at });
-        } else {
-          existing.count++;
-        }
-      });
-
-      // Convert to HappeningPlace format
-      return Array.from(placeMap.entries())
-        .map(([place_id, { count, lastActivity }]) => ({
-          place_id,
-          happening_score: count * 10, // Simple score based on story count
-          last_activity_at: lastActivity,
-          story_count: count,
-        }))
-        .sort((a, b) => b.happening_score - a.happening_score)
-        .slice(0, 10);
-    } catch (error) {
-      console.error('Error getting places with recent activity:', error);
-      return [];
-    }
-  };
-
-  // Final fallback: Get places with recent reviews
-  const getPlacesWithRecentReviews = async (): Promise<HappeningPlace[]> => {
-    try {
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      
-      const { data, error } = await supabase
-        .from('place_reviews')
-        .select('place_id, created_at')
-        .gte('created_at', sevenDaysAgo)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-
-      // Group by place and count reviews
-      const placeMap = new Map<string, { count: number; lastActivity: string }>();
-      data?.forEach(review => {
-        const existing = placeMap.get(review.place_id);
-        if (!existing) {
-          placeMap.set(review.place_id, { count: 1, lastActivity: review.created_at });
-        } else {
-          existing.count++;
-        }
-      });
-
-      // Convert to HappeningPlace format
-      return Array.from(placeMap.entries())
-        .map(([place_id, { count, lastActivity }]) => ({
-          place_id,
-          happening_score: count * 5, // Lower score for reviews
-          last_activity_at: lastActivity,
-          story_count: 0,
-        }))
-        .sort((a, b) => b.happening_score - a.happening_score)
-        .slice(0, 10);
-    } catch (error) {
-      console.error('Error getting places with recent reviews:', error);
-      return [];
-    }
-  };
-
-  const extractCategory = (category?: string): string => {
-    if (!category) return 'Place';
-    // Extract the last part of hierarchical category
-    const parts = category.split('>');
-    return parts[parts.length - 1]?.trim() || 'Place';
-  };
-
-  const formatActivityTime = (dateString: string): string => {
-    const date = new Date(dateString);
+  // Format date for display
+  const formatEventDate = (dateStr: string): string => {
+    const date = new Date(dateStr);
     const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
     
-    if (diffMins < 5) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}d ago`;
-  };
-
-  const getActivityLevel = (score: number): { label: string; color: string } => {
-    if (score >= 100) return { label: '🔥 Very Active', color: '#EF4444' };
-    if (score >= 50) return { label: '⚡ Active', color: '#F59E0B' };
-    if (score >= 20) return { label: '✨ Buzzing', color: '#10B981' };
-    return { label: '📍 Recent', color: '#3B82F6' };
-  };
-
-  const handlePlacePress = async (place: HappeningPlace) => {
-    // Track the tap event
-    try {
-      await trackHappeningNowTap(place.place_id, place.happening_score);
-    } catch (error) {
-      console.error('Error tracking happening now tap:', error);
+    const isToday = date.toDateString() === now.toDateString();
+    const isTomorrow = date.toDateString() === tomorrow.toDateString();
+    
+    if (isToday) return 'Tonight';
+    if (isTomorrow) return 'Tomorrow';
+    
+    // Check if this weekend
+    const dayOfWeek = now.getDay();
+    const daysUntilSaturday = (6 - dayOfWeek + 7) % 7;
+    const saturday = new Date(now);
+    saturday.setDate(saturday.getDate() + daysUntilSaturday);
+    const sunday = new Date(saturday);
+    sunday.setDate(sunday.getDate() + 1);
+    
+    if (date >= saturday && date <= sunday) {
+      return 'This Weekend';
     }
+    
+    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  };
 
-    if (onPlacePress) {
-      onPlacePress(place.place_id);
+  // Get time context badge color
+  const getTimeBadgeColor = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const hoursUntil = (date.getTime() - now.getTime()) / (1000 * 60 * 60);
+    
+    if (hoursUntil < 0) return '#EF4444'; // Already started - red
+    if (hoursUntil < 6) return '#8B5CF6'; // Tonight - purple
+    if (hoursUntil < 24) return '#F59E0B'; // Tomorrow - amber
+    if (hoursUntil < 72) return '#10B981'; // This weekend - green
+    return '#3B82F6'; // Later - blue
+  };
+
+  // Format distance
+  const formatDistance = (miles?: number): string => {
+    if (!miles) return '';
+    if (miles < 1) return `${Math.round(miles * 5280)} ft`;
+    return `${miles.toFixed(1)} mi`;
+  };
+
+  const handleEventPress = (event: TavvyEvent) => {
+    if (onEventPress) {
+      onEventPress(event);
     } else {
-      (navigation as any).navigate('PlaceDetails', { placeId: place.place_id });
-    }
-  };
-
-  const handleStoryPress = async (place: HappeningPlace) => {
-    // Track the tap event
-    try {
-      await trackStoryRingTap(place.place_id);
-    } catch (error) {
-      console.error('Error tracking story ring tap:', error);
-    }
-
-    if (onStoryPress) {
-      onStoryPress(place.place_id);
-    } else {
-      // Navigate to story viewer for this place
-      (navigation as any).navigate('PlaceDetails', { 
-        placeId: place.place_id,
-        openStories: true,
+      (navigation as any).navigate('HappeningNowDetail', { 
+        eventId: event.id,
+        event: event,
       });
     }
   };
@@ -257,8 +159,8 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
     );
   }
 
-  // Per v1 spec: Never show empty states, always render section with placeholder
-  const showPlaceholder = places.length === 0;
+  // Show placeholder cards if no events found
+  const showPlaceholder = events.length === 0;
 
   return (
     <View style={styles.container}>
@@ -280,8 +182,7 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
         decelerationRate="fast"
       >
         {showPlaceholder ? (
-          // Placeholder cards per v1 spec - structure first, density later
-          // Cards navigate to /happening-now feed even if sparse
+          // Placeholder cards when no events available
           [
             { 
               id: 'tonight', 
@@ -298,14 +199,6 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
               examples: 'Festivals • Special hours',
               icon: 'calendar-outline', 
               color: '#F59E0B' 
-            },
-            { 
-              id: 'live-experiences', 
-              title: 'Live Experiences', 
-              description: 'Happening now', 
-              examples: 'Sports • Shows • Events',
-              icon: 'flash-outline', 
-              color: '#EF4444' 
             },
           ].map((item) => (
             <TouchableOpacity 
@@ -332,28 +225,22 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
             </TouchableOpacity>
           ))
         ) : (
-          places.map((place, index) => {
-            const activity = getActivityLevel(place.happening_score);
+          events.map((event) => {
+            const badgeColor = getTimeBadgeColor(event.start_time);
             
             return (
               <TouchableOpacity
-                key={place.place_id}
+                key={event.id}
                 style={styles.card}
-                onPress={() => handlePlacePress(place)}
+                onPress={() => handleEventPress(event)}
                 activeOpacity={0.9}
               >
                 {/* Background Image */}
                 <View style={styles.imageContainer}>
-                  {place.cover_image_url ? (
-                    <Image
-                      source={{ uri: place.cover_image_url }}
-                      style={styles.backgroundImage}
-                    />
-                  ) : (
-                    <View style={styles.placeholderImage}>
-                      <Ionicons name="business" size={40} color="#9CA3AF" />
-                    </View>
-                  )}
+                  <Image
+                    source={{ uri: event.image_url || DEFAULT_EVENT_IMAGE }}
+                    style={styles.backgroundImage}
+                  />
                   <LinearGradient
                     colors={['transparent', 'rgba(0,0,0,0.8)']}
                     style={styles.gradient}
@@ -361,41 +248,42 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
                 </View>
 
                 {/* Time Context Badge */}
-                <View style={[styles.activityBadge, { backgroundColor: activity.color }]}>
-                  <Text style={styles.activityText}>{activity.label}</Text>
+                <View style={[styles.activityBadge, { backgroundColor: badgeColor }]}>
+                  <Text style={styles.activityText}>{formatEventDate(event.start_time)}</Text>
                 </View>
 
-                {/* Story Ring (if has stories) */}
-                {place.story_ring_state !== 'none' && (
-                  <TouchableOpacity
-                    style={styles.storyRingContainer}
-                    onPress={() => handleStoryPress(place)}
-                  >
-                    <StoryRing
-                      imageUrl={place.cover_image_url}
-                      size={48}
-                      state={place.story_ring_state || 'none'}
-                    />
-                  </TouchableOpacity>
-                )}
+                {/* Source Badge */}
+                <View style={[styles.sourceBadge, { 
+                  backgroundColor: event.source === 'ticketmaster' ? '#009CDE' : 
+                                   event.source === 'predicthq' ? '#FF6B6B' : '#0F8A8A' 
+                }]}>
+                  <Text style={styles.sourceBadgeText}>
+                    {event.source === 'ticketmaster' ? 'TM' : 
+                     event.source === 'predicthq' ? 'PHQ' : 'Tavvy'}
+                  </Text>
+                </View>
 
                 {/* Content */}
                 <View style={styles.content}>
-                  <Text style={styles.placeName} numberOfLines={1}>
-                    {place.name}
+                  <Text style={styles.placeName} numberOfLines={2}>
+                    {event.title}
                   </Text>
                   <View style={styles.metaRow}>
-                    <Text style={styles.category}>{place.category}</Text>
-                    {place.city && (
+                    {event.venue_name && (
+                      <Text style={styles.category} numberOfLines={1}>{event.venue_name}</Text>
+                    )}
+                    {event.distance && (
                       <>
                         <Text style={styles.dot}>•</Text>
-                        <Text style={styles.city}>{place.city}</Text>
+                        <Text style={styles.city}>{formatDistance(event.distance)}</Text>
                       </>
                     )}
                   </View>
-                  <Text style={styles.lastActivity}>
-                    {formatActivityTime(place.last_activity_at)}
-                  </Text>
+                  {event.price_min !== undefined && (
+                    <Text style={styles.lastActivity}>
+                      {event.price_min === 0 ? 'Free' : `From $${event.price_min}`}
+                    </Text>
+                  )}
                 </View>
               </TouchableOpacity>
             );
@@ -435,9 +323,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     marginTop: 4,
-  },
-  refreshButton: {
-    padding: 8,
   },
   seeAllButton: {
     paddingVertical: 4,
@@ -489,10 +374,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  storyRingContainer: {
+  sourceBadge: {
     position: 'absolute',
     top: 12,
     right: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  sourceBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
   content: {
     position: 'absolute',
@@ -516,6 +409,7 @@ const styles = StyleSheet.create({
   category: {
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 12,
+    flex: 1,
   },
   dot: {
     color: 'rgba(255, 255, 255, 0.5)',

@@ -3,8 +3,9 @@
  * Install path: screens/HappeningNowScreen.tsx
  * 
  * Discover seasonal and live experiences nearby – events, holiday lights, concerts, games, and more.
+ * Fetches real events from Ticketmaster, PredictHQ, and Tavvy community.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,12 +15,16 @@ import {
   Image,
   Dimensions,
   FlatList,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Location from 'expo-location';
+import { getHappeningNowEvents, TavvyEvent } from '../lib/eventsService';
 
 const { width } = Dimensions.get('window');
 
@@ -47,121 +52,177 @@ const CATEGORIES = [
   { id: 'arts', name: 'Arts', icon: 'color-palette' },
 ];
 
-// Mock events data
-const MOCK_EVENTS = [
-  {
-    id: '1',
-    title: 'Winter Lights Festival',
-    description: 'Experience millions of lights across 50 acres of magical displays',
-    image: 'https://images.unsplash.com/photo-1512389142860-9c449e58a814?w=600',
-    category: 'holiday',
-    date: 'Dec 15 - Jan 5',
-    time: '5:00 PM - 10:00 PM',
-    location: 'Botanical Gardens',
-    distance: '2.3 mi',
-    price: '$25',
-    featured: true,
-    attendees: 1250,
-  },
-  {
-    id: '2',
-    title: 'Downtown Jazz Night',
-    description: 'Live jazz performances from local and touring artists',
-    image: 'https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=600',
-    category: 'concerts',
-    date: 'Tonight',
-    time: '7:00 PM',
-    location: 'Blue Note Club',
-    distance: '0.8 mi',
-    price: '$15',
-    featured: false,
-    attendees: 89,
-  },
-  {
-    id: '3',
-    title: 'Food Truck Rally',
-    description: '30+ food trucks, live music, and family fun',
-    image: 'https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?w=600',
-    category: 'food',
-    date: 'This Weekend',
-    time: '11:00 AM - 8:00 PM',
-    location: 'Central Park',
-    distance: '1.5 mi',
-    price: 'Free Entry',
-    featured: true,
-    attendees: 3400,
-  },
-  {
-    id: '4',
-    title: 'Basketball: Home Game',
-    description: 'Catch the action as our team takes on the rivals',
-    image: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=600',
-    category: 'sports',
-    date: 'Tomorrow',
-    time: '7:30 PM',
-    location: 'City Arena',
-    distance: '4.2 mi',
-    price: 'From $45',
-    featured: false,
-    attendees: 15000,
-  },
-  {
-    id: '5',
-    title: 'Art Walk Friday',
-    description: 'Explore galleries, meet artists, and enjoy refreshments',
-    image: 'https://images.unsplash.com/photo-1531243269054-5ebf6f34081e?w=600',
-    category: 'arts',
-    date: 'Friday',
-    time: '6:00 PM - 9:00 PM',
-    location: 'Arts District',
-    distance: '1.1 mi',
-    price: 'Free',
-    featured: false,
-    attendees: 450,
-  },
-  {
-    id: '6',
-    title: 'Summer Music Festival',
-    description: '3 days of music, art, and community celebration',
-    image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600',
-    category: 'festivals',
-    date: 'Jan 20-22',
-    time: 'All Day',
-    location: 'Riverside Park',
-    distance: '3.7 mi',
-    price: 'From $75',
-    featured: true,
-    attendees: 8500,
-  },
+// Time filters
+const TIME_FILTERS = [
+  { id: 'all', name: 'All' },
+  { id: 'tonight', name: 'Tonight' },
+  { id: 'weekend', name: 'This Weekend' },
+  { id: 'week', name: 'This Week' },
 ];
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
+// Format date for display
+function formatEventDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  const isToday = date.toDateString() === now.toDateString();
+  const isTomorrow = date.toDateString() === tomorrow.toDateString();
+  
+  if (isToday) {
+    return 'Today';
+  } else if (isTomorrow) {
+    return 'Tomorrow';
+  } else {
+    // Check if this weekend
+    const dayOfWeek = now.getDay();
+    const daysUntilSaturday = (6 - dayOfWeek + 7) % 7;
+    const saturday = new Date(now);
+    saturday.setDate(saturday.getDate() + daysUntilSaturday);
+    const sunday = new Date(saturday);
+    sunday.setDate(sunday.getDate() + 1);
+    
+    if (date >= saturday && date <= sunday) {
+      return 'This Weekend';
+    }
+    
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+}
+
+// Format time for display
+function formatEventTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+// Format price for display
+function formatPrice(min?: number, max?: number, currency?: string): string {
+  if (!min && !max) return 'Free';
+  if (min === 0 && !max) return 'Free';
+  
+  const currencySymbol = currency === 'USD' ? '$' : currency || '$';
+  
+  if (min && max && min !== max) {
+    return `${currencySymbol}${min} - ${currencySymbol}${max}`;
+  }
+  return `From ${currencySymbol}${min || max}`;
+}
+
+// Format distance for display
+function formatDistance(miles?: number): string {
+  if (!miles) return '';
+  if (miles < 1) return `${Math.round(miles * 5280)} ft`;
+  return `${miles.toFixed(1)} mi`;
+}
+
+// Default placeholder image
+const DEFAULT_EVENT_IMAGE = 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600';
+
 export default function HappeningNowScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedTimeFilter, setSelectedTimeFilter] = useState<'all' | 'tonight' | 'weekend' | 'week'>('all');
+  const [events, setEvents] = useState<TavvyEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Get user location
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          // Default to Orlando, FL
+          setUserLocation({ lat: 28.5383, lng: -81.3792 });
+          return;
+        }
+        
+        const location = await Location.getCurrentPositionAsync({});
+        setUserLocation({
+          lat: location.coords.latitude,
+          lng: location.coords.longitude,
+        });
+      } catch (err) {
+        console.error('[HappeningNow] Location error:', err);
+        // Default to Orlando, FL
+        setUserLocation({ lat: 28.5383, lng: -81.3792 });
+      }
+    })();
+  }, []);
+
+  // Fetch events
+  const fetchEvents = useCallback(async (showRefreshing = false) => {
+    if (!userLocation) return;
+    
+    if (showRefreshing) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    setError(null);
+
+    try {
+      const fetchedEvents = await getHappeningNowEvents({
+        lat: userLocation.lat,
+        lng: userLocation.lng,
+        radiusMiles: 50,
+        timeFilter: selectedTimeFilter,
+        category: selectedCategory === 'all' ? undefined : selectedCategory,
+        limit: 50,
+      });
+
+      setEvents(fetchedEvents);
+    } catch (err) {
+      console.error('[HappeningNow] Error fetching events:', err);
+      setError('Unable to load events. Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [userLocation, selectedTimeFilter, selectedCategory]);
+
+  // Fetch events when location or filters change
+  useEffect(() => {
+    if (userLocation) {
+      fetchEvents();
+    }
+  }, [userLocation, selectedTimeFilter, selectedCategory, fetchEvents]);
 
   const handleBack = () => {
     navigation.goBack();
   };
 
-  const handleEventPress = (event: typeof MOCK_EVENTS[0]) => {
-    navigation.navigate('HappeningNowDetail', { eventId: event.id });
+  const handleEventPress = (event: TavvyEvent) => {
+    navigation.navigate('HappeningNowDetail', { 
+      eventId: event.id,
+      event: event, // Pass full event data
+    });
   };
 
-  const filteredEvents = selectedCategory === 'all' 
-    ? MOCK_EVENTS 
-    : MOCK_EVENTS.filter(e => e.category === selectedCategory);
+  const handleRefresh = () => {
+    fetchEvents(true);
+  };
 
-  const featuredEvents = MOCK_EVENTS.filter(e => e.featured);
+  // Filter events for featured section (top ranked)
+  const featuredEvents = events.slice(0, 3);
+  const allEvents = events;
 
-  const renderFeaturedEvent = ({ item }: { item: typeof MOCK_EVENTS[0] }) => (
+  const renderFeaturedEvent = ({ item }: { item: TavvyEvent }) => (
     <TouchableOpacity 
       style={styles.featuredCard}
       onPress={() => handleEventPress(item)}
       activeOpacity={0.9}
     >
-      <Image source={{ uri: item.image }} style={styles.featuredImage} />
+      <Image 
+        source={{ uri: item.image_url || DEFAULT_EVENT_IMAGE }} 
+        style={styles.featuredImage} 
+      />
       <LinearGradient
         colors={['transparent', 'rgba(0,0,0,0.8)']}
         style={styles.featuredGradient}
@@ -171,51 +232,89 @@ export default function HappeningNowScreen() {
           <Ionicons name="sparkles" size={12} color="#FFFFFF" />
           <Text style={styles.featuredBadgeText}>Featured</Text>
         </View>
-        <Text style={styles.featuredTitle}>{item.title}</Text>
+        <Text style={styles.featuredTitle} numberOfLines={2}>{item.title}</Text>
         <View style={styles.featuredMeta}>
           <Ionicons name="calendar-outline" size={14} color="#FFFFFF" />
-          <Text style={styles.featuredMetaText}>{item.date}</Text>
-          <Ionicons name="location-outline" size={14} color="#FFFFFF" style={{ marginLeft: 12 }} />
-          <Text style={styles.featuredMetaText}>{item.distance}</Text>
+          <Text style={styles.featuredMetaText}>{formatEventDate(item.start_time)}</Text>
+          {item.distance && (
+            <>
+              <Ionicons name="location-outline" size={14} color="#FFFFFF" style={{ marginLeft: 12 }} />
+              <Text style={styles.featuredMetaText}>{formatDistance(item.distance)}</Text>
+            </>
+          )}
         </View>
+      </View>
+      {/* Source badge */}
+      <View style={[styles.sourceBadge, { backgroundColor: item.source === 'ticketmaster' ? '#009CDE' : item.source === 'predicthq' ? '#FF6B6B' : '#0F8A8A' }]}>
+        <Text style={styles.sourceBadgeText}>
+          {item.source === 'ticketmaster' ? 'TM' : item.source === 'predicthq' ? 'PHQ' : 'Tavvy'}
+        </Text>
       </View>
     </TouchableOpacity>
   );
 
-  const renderEventCard = ({ item }: { item: typeof MOCK_EVENTS[0] }) => (
+  const renderEventCard = ({ item }: { item: TavvyEvent }) => (
     <TouchableOpacity 
       style={styles.eventCard}
       onPress={() => handleEventPress(item)}
       activeOpacity={0.7}
     >
-      <Image source={{ uri: item.image }} style={styles.eventImage} />
+      <Image 
+        source={{ uri: item.image_url || DEFAULT_EVENT_IMAGE }} 
+        style={styles.eventImage} 
+      />
       <View style={styles.eventInfo}>
         <View style={styles.eventDateBadge}>
-          <Text style={styles.eventDateText}>{item.date}</Text>
+          <Text style={styles.eventDateText}>{formatEventDate(item.start_time)}</Text>
         </View>
         <Text style={styles.eventTitle} numberOfLines={2}>{item.title}</Text>
-        <Text style={styles.eventDescription} numberOfLines={2}>{item.description}</Text>
+        {item.description && (
+          <Text style={styles.eventDescription} numberOfLines={2}>{item.description}</Text>
+        )}
         <View style={styles.eventMeta}>
-          <View style={styles.eventMetaItem}>
-            <Ionicons name="location-outline" size={14} color={HappeningColors.textLight} />
-            <Text style={styles.eventMetaText}>{item.location}</Text>
-          </View>
+          {item.venue_name && (
+            <View style={styles.eventMetaItem}>
+              <Ionicons name="location-outline" size={14} color={HappeningColors.textLight} />
+              <Text style={styles.eventMetaText} numberOfLines={1}>{item.venue_name}</Text>
+            </View>
+          )}
           <View style={styles.eventMetaItem}>
             <Ionicons name="time-outline" size={14} color={HappeningColors.textLight} />
-            <Text style={styles.eventMetaText}>{item.time}</Text>
+            <Text style={styles.eventMetaText}>{formatEventTime(item.start_time)}</Text>
           </View>
         </View>
         <View style={styles.eventFooter}>
-          <Text style={styles.eventPrice}>{item.price}</Text>
-          <View style={styles.eventAttendees}>
-            <Ionicons name="people-outline" size={14} color={HappeningColors.textMuted} />
-            <Text style={styles.eventAttendeesText}>
-              {item.attendees > 1000 ? `${(item.attendees / 1000).toFixed(1)}k` : item.attendees} interested
-            </Text>
-          </View>
+          <Text style={styles.eventPrice}>{formatPrice(item.price_min, item.price_max, item.currency)}</Text>
+          {item.distance && (
+            <View style={styles.eventDistance}>
+              <Ionicons name="navigate-outline" size={14} color={HappeningColors.textMuted} />
+              <Text style={styles.eventDistanceText}>{formatDistance(item.distance)}</Text>
+            </View>
+          )}
         </View>
       </View>
     </TouchableOpacity>
+  );
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Ionicons name="calendar-outline" size={64} color={HappeningColors.textMuted} />
+      <Text style={styles.emptyStateTitle}>No Events Found</Text>
+      <Text style={styles.emptyStateText}>
+        {selectedCategory !== 'all' 
+          ? `No ${CATEGORIES.find(c => c.id === selectedCategory)?.name} events found nearby.`
+          : 'No events found in your area. Try expanding your search.'}
+      </Text>
+      <TouchableOpacity 
+        style={styles.emptyStateButton}
+        onPress={() => {
+          setSelectedCategory('all');
+          setSelectedTimeFilter('all');
+        }}
+      >
+        <Text style={styles.emptyStateButtonText}>Clear Filters</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -245,7 +344,43 @@ export default function HappeningNowScreen() {
         </SafeAreaView>
       </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={HappeningColors.primary}
+          />
+        }
+      >
+        {/* Time Filter Pills */}
+        <View style={styles.timeFiltersContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.timeFiltersScroll}
+          >
+            {TIME_FILTERS.map((filter) => (
+              <TouchableOpacity
+                key={filter.id}
+                style={[
+                  styles.timeFilterPill,
+                  selectedTimeFilter === filter.id && styles.timeFilterPillActive,
+                ]}
+                onPress={() => setSelectedTimeFilter(filter.id as any)}
+              >
+                <Text style={[
+                  styles.timeFilterText,
+                  selectedTimeFilter === filter.id && styles.timeFilterTextActive,
+                ]}>
+                  {filter.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
         {/* Category Pills */}
         <View style={styles.categoriesContainer}>
           <ScrollView 
@@ -278,39 +413,66 @@ export default function HappeningNowScreen() {
           </ScrollView>
         </View>
 
-        {/* Featured Events */}
-        {selectedCategory === 'all' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Featured Events</Text>
-            <FlatList
-              data={featuredEvents}
-              renderItem={renderFeaturedEvent}
-              keyExtractor={(item) => item.id}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.featuredList}
-            />
+        {/* Loading State */}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={HappeningColors.primary} />
+            <Text style={styles.loadingText}>Finding events near you...</Text>
           </View>
         )}
 
-        {/* All Events */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            {selectedCategory === 'all' ? 'Upcoming Events' : CATEGORIES.find(c => c.id === selectedCategory)?.name}
-          </Text>
-          {filteredEvents.map((event) => (
-            <View key={event.id}>
-              {renderEventCard({ item: event })}
-            </View>
-          ))}
-          {filteredEvents.length === 0 && (
-            <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={48} color={HappeningColors.textMuted} />
-              <Text style={styles.emptyStateText}>No events found</Text>
-              <Text style={styles.emptyStateSubtext}>Check back later for new events</Text>
-            </View>
-          )}
-        </View>
+        {/* Error State */}
+        {error && !loading && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={48} color={HappeningColors.primary} />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => fetchEvents()}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Events Content */}
+        {!loading && !error && (
+          <>
+            {events.length === 0 ? (
+              renderEmptyState()
+            ) : (
+              <>
+                {/* Featured Events */}
+                {selectedCategory === 'all' && featuredEvents.length > 0 && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Featured Events</Text>
+                    <FlatList
+                      data={featuredEvents}
+                      renderItem={renderFeaturedEvent}
+                      keyExtractor={(item) => item.id}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.featuredList}
+                    />
+                  </View>
+                )}
+
+                {/* All Events */}
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>
+                    {selectedCategory === 'all' ? 'All Events' : CATEGORIES.find(c => c.id === selectedCategory)?.name}
+                    {' '}({allEvents.length})
+                  </Text>
+                  {allEvents.map((event) => (
+                    <View key={event.id}>
+                      {renderEventCard({ item: event })}
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
+          </>
+        )}
+
+        {/* Bottom Padding */}
+        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );
@@ -330,11 +492,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 8,
   },
   backButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -344,37 +507,67 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerLogo: {
-    width: 80,
-    height: 24,
+    width: 28,
+    height: 28,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: '#FFFFFF',
   },
   searchButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  categoriesContainer: {
+  timeFiltersContainer: {
+    paddingTop: 16,
+  },
+  timeFiltersScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  timeFilterPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderWidth: 1,
+    borderColor: HappeningColors.textMuted,
+    marginRight: 8,
+  },
+  timeFilterPillActive: {
+    backgroundColor: HappeningColors.primary,
+    borderColor: HappeningColors.primary,
+  },
+  timeFilterText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: HappeningColors.text,
+  },
+  timeFilterTextActive: {
+    color: '#FFFFFF',
+  },
+  categoriesContainer: {
+    paddingTop: 12,
   },
   categoriesScroll: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: 8,
   },
   categoryPill: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: HappeningColors.primary,
     gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#FEE2E2',
     marginRight: 8,
   },
   categoryPillActive: {
@@ -388,32 +581,67 @@ const styles = StyleSheet.create({
   categoryPillTextActive: {
     color: '#FFFFFF',
   },
+  loadingContainer: {
+    padding: 60,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: HappeningColors.textLight,
+  },
+  errorContainer: {
+    padding: 60,
+    alignItems: 'center',
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: HappeningColors.textLight,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: HappeningColors.primary,
+    borderRadius: 24,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
   section: {
-    paddingVertical: 16,
+    marginTop: 24,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: HappeningColors.text,
     paddingHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   featuredList: {
     paddingHorizontal: 16,
   },
   featuredCard: {
-    width: width * 0.8,
+    width: width * 0.75,
     height: 200,
     borderRadius: 16,
     overflow: 'hidden',
     marginRight: 12,
+    backgroundColor: HappeningColors.cardBg,
   },
   featuredImage: {
     width: '100%',
     height: '100%',
   },
   featuredGradient: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '60%',
   },
   featuredContent: {
     position: 'absolute',
@@ -425,21 +653,21 @@ const styles = StyleSheet.create({
   featuredBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
     backgroundColor: HappeningColors.primary,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
     alignSelf: 'flex-start',
+    gap: 4,
     marginBottom: 8,
   },
   featuredBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
     color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
   featuredTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 8,
@@ -449,21 +677,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   featuredMetaText: {
-    fontSize: 13,
     color: '#FFFFFF',
+    fontSize: 13,
     marginLeft: 4,
+  },
+  sourceBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  sourceBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
   eventCard: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: HappeningColors.cardBg,
+    borderRadius: 16,
     marginHorizontal: 16,
     marginBottom: 12,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 2,
   },
   eventImage: {
@@ -475,29 +716,29 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   eventDateBadge: {
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    backgroundColor: HappeningColors.primary + '15',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 8,
     alignSelf: 'flex-start',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   eventDateText: {
-    fontSize: 11,
-    fontWeight: '600',
     color: HappeningColors.primary,
+    fontSize: 12,
+    fontWeight: '600',
   },
   eventTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
     color: HappeningColors.text,
     marginBottom: 4,
   },
   eventDescription: {
-    fontSize: 12,
+    fontSize: 13,
     color: HappeningColors.textLight,
-    lineHeight: 16,
     marginBottom: 8,
+    lineHeight: 18,
   },
   eventMeta: {
     gap: 4,
@@ -511,39 +752,54 @@ const styles = StyleSheet.create({
   eventMetaText: {
     fontSize: 12,
     color: HappeningColors.textLight,
+    flex: 1,
   },
   eventFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 'auto',
   },
   eventPrice: {
     fontSize: 14,
     fontWeight: '700',
     color: HappeningColors.primary,
   },
-  eventAttendees: {
+  eventDistance: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  eventAttendeesText: {
-    fontSize: 11,
+  eventDistanceText: {
+    fontSize: 12,
     color: HappeningColors.textMuted,
   },
   emptyState: {
+    padding: 60,
     alignItems: 'center',
-    paddingVertical: 40,
   },
-  emptyStateText: {
-    fontSize: 16,
-    fontWeight: '600',
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: '700',
     color: HappeningColors.text,
     marginTop: 16,
   },
-  emptyStateSubtext: {
+  emptyStateText: {
     fontSize: 14,
     color: HappeningColors.textLight,
-    marginTop: 4,
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  emptyStateButton: {
+    marginTop: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: HappeningColors.primary,
+    borderRadius: 24,
+  },
+  emptyStateButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
