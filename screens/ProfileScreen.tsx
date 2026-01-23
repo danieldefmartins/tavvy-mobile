@@ -216,7 +216,7 @@ export default function ProfileScreen({ navigation }: any) {
         {/* Edit Profile Button */}
         <TouchableOpacity 
           style={styles.editProfileButton}
-          onPress={() => navigation.navigate('EditProfile')}
+          onPress={() => Alert.alert('Coming Soon', 'Edit Profile feature will be available soon!')}
         >
           <Ionicons name="pencil" size={14} color="#FFFFFF" />
           <Text style={styles.editProfileText}>Edit Profile</Text>
