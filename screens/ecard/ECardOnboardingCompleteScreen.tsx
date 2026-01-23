@@ -83,17 +83,6 @@ export default function ECardOnboardingCompleteScreen({ navigation, route }: Pro
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      
-      {/* Confetti */}
-      <ConfettiCannon
-        ref={confettiRef}
-        count={100}
-        origin={{ x: width / 2, y: -20 }}
-        autoStart={false}
-        fadeOut
-        fallSpeed={2500}
-        colors={['#00C853', '#00E676', '#69F0AE', '#B9F6CA', '#FFD700', '#FF6B6B']}
-      />
 
       <View style={styles.content}>
         {/* Celebration Text */}
@@ -216,6 +205,19 @@ export default function ECardOnboardingCompleteScreen({ navigation, route }: Pro
           </LinearGradient>
         </TouchableOpacity>
       </View>
+      
+      {/* Confetti - Positioned at the end with high zIndex to appear in front of everything */}
+      <View style={styles.confettiContainer} pointerEvents="none">
+        <ConfettiCannon
+          ref={confettiRef}
+          count={150}
+          origin={{ x: width / 2, y: -20 }}
+          autoStart={false}
+          fadeOut
+          fallSpeed={2500}
+          colors={['#00C853', '#00E676', '#69F0AE', '#B9F6CA', '#FFD700', '#FF6B6B', '#EC4899', '#8B5CF6']}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -224,6 +226,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FAFAFA',
+  },
+  confettiContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999,
+    elevation: 9999,
   },
   content: {
     flex: 1,
