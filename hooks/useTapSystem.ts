@@ -185,7 +185,7 @@ export function useUserGamification() {
           totalTaps: data.total_taps || 0,
           currentStreak: data.current_streak || 0,
           longestStreak: data.longest_streak || 0,
-          badges: data.badges || [],
+          badges: Array.isArray(data.badges) ? data.badges : [],
           impactCount: data.impact_count || 0,
         });
       }
@@ -201,8 +201,8 @@ export function useUserGamification() {
     fetchGamification();
   }, [fetchGamification]);
 
-  // Get badge objects for user's badges
-  const userBadges = gamification.badges
+  // Get badge objects for user's badges (with null safety)
+  const userBadges = (gamification.badges || [])
     .map(badgeId => BADGES[badgeId])
     .filter(Boolean);
 
