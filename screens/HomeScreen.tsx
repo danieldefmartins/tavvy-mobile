@@ -498,8 +498,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         .select('fsq_place_id, name, address, locality, region, fsq_category_labels, latitude, longitude')
         .not('latitude', 'is', null)
         .not('longitude', 'is', null)
-        .order('date_created', { ascending: false })
         .limit(100);
+      
+      console.log('Trending places query result:', { count: places?.length, error: placesError });
       
       if (places && !placesError) {
         places.forEach((place: any) => {
@@ -2349,6 +2350,12 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 <View style={{ width: cardWidth, height: 200, justifyContent: 'center', alignItems: 'center' }}>
                   <ActivityIndicator size="small" color={ACCENT} />
                 </View>
+              ) : trendingItems.length === 0 && filteredPlaces.length === 0 ? (
+                <View style={{ width: cardWidth, height: 200, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? theme.surface : '#f5f5f5', borderRadius: 16, marginRight: 12 }}>
+                  <Ionicons name="location-outline" size={32} color={isDark ? theme.textSecondary : '#999'} />
+                  <Text style={{ color: isDark ? theme.textSecondary : '#666', marginTop: 8, fontSize: 14 }}>Discovering places...</Text>
+                  <Text style={{ color: isDark ? theme.textSecondary : '#999', marginTop: 4, fontSize: 12 }}>Pull down to refresh</Text>
+                </View>
               ) : (
                 // Combine trending items (cities/universes) with filtered places
                 [...trendingItems, ...filteredPlaces
@@ -3652,9 +3659,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  // Explore Tavvy Cards (Universe-style)
+  // Explore Tavvy Cards (Universe-style) - 90% width for peek effect
   exploreCard: {
-    width: 160,
+    width: width * 0.9 - 18, // 90% of screen width minus padding
     borderRadius: 16,
     marginRight: 12,
     overflow: 'hidden',
@@ -3666,15 +3673,15 @@ const styles = StyleSheet.create({
   },
   exploreCardImage: {
     width: '100%',
-    height: 100,
+    height: 160, // Taller for wider cards
   },
   exploreCardContent: {
-    padding: 10,
+    padding: 14,
   },
   exploreCardTitle: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   exploreCardMeta: {
     flexDirection: 'row',
@@ -3689,7 +3696,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   exploreCardSubtitle: {
-    fontSize: 11,
+    fontSize: 14,
     flex: 1,
   },
 
