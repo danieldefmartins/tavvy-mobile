@@ -127,7 +127,15 @@ const APP_TILES: AppTile[] = [
     gradientColors: ['#F472B6', '#EC4899'],
     route: 'HappeningNow',
   },
-  // Row 4+: Quick Finds, Saved, Account, Create
+  // Row 4: Wallet, Quick Finds, Saved
+  {
+    id: 'wallet',
+    name: 'Wallet',
+    icon: 'wallet',
+    iconType: 'ionicons',
+    gradientColors: ['#8B5CF6', '#6366F1'],
+    route: 'Wallet',
+  },
   {
     id: 'quick-finds',
     name: 'Quick Finds',

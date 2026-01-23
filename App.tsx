@@ -96,6 +96,8 @@ import StoryModerationScreen from './screens/StoryModerationScreen';
 import StoryAnalyticsScreen from './screens/StoryAnalyticsScreen';
 import QuickFindResultsScreen from './screens/QuickFindResultsScreen';
 import HappeningNowScreen from './screens/HappeningNowScreen';
+import WalletScreen from './screens/WalletScreen';
+import ProCardDetailScreen from './screens/ProCardDetailScreen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -231,6 +233,10 @@ function AppsStack() {
       
       {/* Happening Now - accessible from Apps */}
       <MenuStackNav.Screen name="HappeningNow" component={HappeningNowScreen} />
+      
+      {/* Wallet - Pro Cards collection */}
+      <MenuStackNav.Screen name="Wallet" component={WalletScreen} />
+      <MenuStackNav.Screen name="ProCardDetail" component={ProCardDetailScreen} />
       
       {/* Admin Screens */}
       <MenuStackNav.Screen name="StoryModeration" component={StoryModerationScreen} />
