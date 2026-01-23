@@ -36,6 +36,7 @@ import { fetchWeatherData, getDefaultWeatherData, WeatherData } from '../lib/wea
 import { StoriesRow } from '../components/StoriesRow';
 import { HappeningNow } from '../components/HappeningNow';
 import { QuickFinds } from '../components/QuickFinds';
+import { CategoryIconRow } from '../components/CategoryIconRow';
 
 const { width, height } = Dimensions.get('window');
 
@@ -2589,36 +2590,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         {/* Only show rest of content when not focused on search */}
         {!isSearchFocused && (
           <>
-            {/* Category Pills - Text only, no icons, rounded */}
-            <View style={styles.categoriesRow}>
-              {categories.map((cat) => {
-                const active = selectedCategory === cat;
-                return (
-                  <TouchableOpacity
-                    key={cat}
-                    style={[
-                      styles.catPill,
-                      {
-                        backgroundColor: active ? ACCENT : (isDark ? 'rgba(255,255,255,0.06)' : '#FDFBF6'),
-                        borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,18,51,0.14)',
-                      },
-                    ]}
-                    onPress={() => handleCategorySelect(cat)}
-                    activeOpacity={0.9}
-                  >
-                    <Text 
-                      style={[
-                        styles.catText, 
-                        { color: active ? '#fff' : (isDark ? theme.text : '#1C1C1C') }
-                      ]} 
-                      numberOfLines={1}
-                    >
-                      {cat}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            {/* Category Icon Row - Icon-based shortcuts (replaces text pills) */}
+            {/* Tap-first Tavvy design: cleaner, faster to scan */}
+            <CategoryIconRow
+              selectedCategory={selectedCategory}
+              onCategorySelect={handleCategorySelect}
+              isDark={isDark}
+              theme={theme}
+            />
 
             {/* Hint Text */}
             <Text style={[styles.hint, { color: isDark ? theme.textSecondary : '#666' }]}>
@@ -4001,12 +3980,12 @@ const styles = StyleSheet.create({
   // Title - Smaller for smaller screens
   title: {
     paddingHorizontal: 18,
-    marginTop: 6,
-    marginBottom: 14,
-    fontSize: 26, // Further reduced for smaller screens
+    marginTop: 8,
+    marginBottom: 16,
+    fontSize: 29, // Increased ~10% for headline emphasis - Tavvy's core promise
     fontWeight: '800',
-    letterSpacing: -0.4,
-    lineHeight: 30,
+    letterSpacing: -0.5,
+    lineHeight: 34, // Increased line height for readability
   },
 
   // Search
