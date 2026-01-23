@@ -291,7 +291,9 @@ export function useHasUserTapped(placeId: string) {
 
   useEffect(() => {
     const checkUserTaps = async () => {
-      if (!user?.id || !placeId) {
+      // Validate that placeId is a valid UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!user?.id || !placeId || !uuidRegex.test(placeId)) {
         setLoading(false);
         return;
       }
