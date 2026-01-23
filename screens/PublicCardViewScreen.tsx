@@ -1,0 +1,688 @@
+/**
+ * PublicCardViewScreen.tsx
+ * View a shared digital card (public view)
+ * Path: screens/PublicCardViewScreen.tsx
+ *
+ * FEATURES:
+ * - View anyone's digital card
+ * - Save to Tavvy Wallet
+ * - Save to phone contacts
+ * - Call, Text, Email actions
+ * - "Powered by Tavvy" branding
+ */
+
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Dimensions,
+  Platform,
+  StatusBar,
+  Alert,
+  Linking,
+  Image,
+  ActivityIndicator,
+  Share,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useThemeContext } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabaseClient';
+import * as Contacts from 'expo-contacts';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const WALLET_STORAGE_KEY = '@tavvy_wallet_cards';
+
+interface CardData {
+  id: string;
+  slug: string;
+  fullName: string;
+  title: string;
+  company: string;
+  phone: string;
+  email: string;
+  website: string;
+  city: string;
+  state: string;
+  gradientColors: [string, string];
+  profilePhotoUrl: string | null;
+  socialInstagram: string;
+  socialFacebook: string;
+  socialLinkedin: string;
+  socialTwitter: string;
+  socialTiktok: string;
+  viewCount: number;
+}
+
+export default function PublicCardViewScreen() {
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const { theme, isDark } = useThemeContext();
+  const { user } = useAuth();
+  const [cardData, setCardData] = useState<CardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSavedToWallet, setIsSavedToWallet] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const cardSlug = route.params?.slug;
+  const cardId = route.params?.cardId;
+
+  useEffect(() => {
+    if (cardSlug || cardId) {
+      loadCardData();
+    }
+  }, [cardSlug, cardId]);
+
+  const loadCardData = async () => {
+    setIsLoading(true);
+    try {
+      let query = supabase.from('digital_cards').select('*');
+      
+      if (cardSlug) {
+        query = query.eq('slug', cardSlug);
+      } else if (cardId) {
+        query = query.eq('id', cardId);
+      }
+
+      const { data, error } = await query.single();
+
+      if (error || !data) {
+        Alert.alert('Card Not Found', 'This digital card could not be found.');
+        navigation.goBack();
+        return;
+      }
+
+      const card: CardData = {
+        id: data.id,
+        slug: data.slug,
+        fullName: data.full_name,
+        title: data.title || '',
+        company: data.company || '',
+        phone: data.phone || '',
+        email: data.email || '',
+        website: data.website || '',
+        city: data.city || '',
+        state: data.state || '',
+        gradientColors: [data.gradient_color_1 || '#8B5CF6', data.gradient_color_2 || '#4F46E5'],
+        profilePhotoUrl: data.profile_photo_url,
+        socialInstagram: data.social_instagram || '',
+        socialFacebook: data.social_facebook || '',
+        socialLinkedin: data.social_linkedin || '',
+        socialTwitter: data.social_twitter || '',
+        socialTiktok: data.social_tiktok || '',
+        viewCount: data.view_count || 0,
+      };
+
+      setCardData(card);
+
+      // Increment view count
+      await supabase
+        .from('digital_cards')
+        .update({ view_count: (data.view_count || 0) + 1 })
+        .eq('id', data.id);
+
+      // Check if already saved to wallet
+      const savedCards = await AsyncStorage.getItem(WALLET_STORAGE_KEY);
+      if (savedCards) {
+        const cards = JSON.parse(savedCards);
+        setIsSavedToWallet(cards.some((c: any) => c.id === data.id));
+      }
+    } catch (error) {
+      console.error('Error loading card:', error);
+      Alert.alert('Error', 'Failed to load the card. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveToWallet = async () => {
+    if (!cardData) return;
+    setIsSaving(true);
+
+    try {
+      // Save to local storage
+      const savedCards = await AsyncStorage.getItem(WALLET_STORAGE_KEY);
+      let cards = savedCards ? JSON.parse(savedCards) : [];
+      
+      if (!cards.some((c: any) => c.id === cardData.id)) {
+        const walletCard = {
+          id: cardData.id,
+          slug: cardData.slug,
+          companyName: cardData.company || cardData.fullName,
+          category: cardData.title || 'Contact',
+          city: cardData.city,
+          state: cardData.state,
+          phone: cardData.phone,
+          email: cardData.email,
+          gradientColors: cardData.gradientColors,
+          profilePhoto: cardData.profilePhotoUrl,
+          verified: false,
+          savedAt: new Date().toISOString(),
+        };
+        cards.unshift(walletCard);
+        await AsyncStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(cards));
+      }
+
+      // If user is logged in, also save to database
+      if (user) {
+        await supabase.from('user_wallet').upsert({
+          user_id: user.id,
+          card_id: cardData.id,
+          saved_at: new Date().toISOString(),
+        });
+      }
+
+      setIsSavedToWallet(true);
+      Alert.alert('Saved!', 'This card has been added to your Tavvy Wallet.');
+    } catch (error) {
+      console.error('Error saving to wallet:', error);
+      Alert.alert('Error', 'Failed to save to wallet. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveToContacts = async () => {
+    if (!cardData) return;
+
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow access to contacts to save this card.');
+        return;
+      }
+
+      const contact: Contacts.Contact = {
+        contactType: Contacts.ContactTypes.Person,
+        name: cardData.fullName,
+        firstName: cardData.fullName.split(' ')[0],
+        lastName: cardData.fullName.split(' ').slice(1).join(' '),
+        company: cardData.company,
+        jobTitle: cardData.title,
+        phoneNumbers: cardData.phone ? [{ label: 'mobile', number: cardData.phone }] : [],
+        emails: cardData.email ? [{ label: 'work', email: cardData.email }] : [],
+        urlAddresses: cardData.website ? [{ label: 'website', url: cardData.website }] : [],
+        note: `Tavvy Card: https://tavvy.app/card/${cardData.slug}`,
+      };
+
+      await Contacts.addContactAsync(contact);
+      Alert.alert('Success!', `${cardData.fullName} has been saved to your contacts.`);
+    } catch (error) {
+      console.error('Error saving contact:', error);
+      Alert.alert('Error', 'Failed to save contact. Please try again.');
+    }
+  };
+
+  const handleShare = async () => {
+    if (!cardData) return;
+    
+    try {
+      await Share.share({
+        message: `Check out ${cardData.fullName}'s digital card: https://tavvy.app/card/${cardData.slug}`,
+        url: `https://tavvy.app/card/${cardData.slug}`,
+        title: `${cardData.fullName}'s Digital Card`,
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
+  const openSocialLink = (platform: string, username: string) => {
+    let url = '';
+    switch (platform) {
+      case 'instagram':
+        url = `https://instagram.com/${username}`;
+        break;
+      case 'facebook':
+        url = username.startsWith('http') ? username : `https://facebook.com/${username}`;
+        break;
+      case 'linkedin':
+        url = username.startsWith('http') ? username : `https://linkedin.com/in/${username}`;
+        break;
+      case 'twitter':
+        url = `https://twitter.com/${username}`;
+        break;
+      case 'tiktok':
+        url = `https://tiktok.com/@${username}`;
+        break;
+    }
+    if (url) Linking.openURL(url);
+  };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#8B5CF6" />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading card...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (!cardData) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View style={styles.loadingContainer}>
+          <Ionicons name="alert-circle" size={48} color={theme.textSecondary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Card not found</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const hasSocialLinks = cardData.socialInstagram || cardData.socialFacebook || 
+                         cardData.socialLinkedin || cardData.socialTwitter || cardData.socialTiktok;
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle="light-content" />
+      
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Card Display */}
+        <LinearGradient
+          colors={cardData.gradientColors}
+          style={styles.card}
+        >
+          {/* Back Button */}
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()} 
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+
+          {/* Share Button */}
+          <TouchableOpacity 
+            onPress={handleShare} 
+            style={styles.shareButton}
+          >
+            <Ionicons name="share-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+
+          {/* Profile Photo */}
+          <View style={styles.photoContainer}>
+            {cardData.profilePhotoUrl ? (
+              <Image source={{ uri: cardData.profilePhotoUrl }} style={styles.profilePhoto} />
+            ) : (
+              <View style={styles.photoPlaceholder}>
+                <Ionicons name="person" size={50} color="#fff" />
+              </View>
+            )}
+          </View>
+
+          {/* Name & Info */}
+          <Text style={styles.name}>{cardData.fullName}</Text>
+          {cardData.title && <Text style={styles.title}>{cardData.title}</Text>}
+          {cardData.company && <Text style={styles.company}>{cardData.company}</Text>}
+          
+          {(cardData.city || cardData.state) && (
+            <View style={styles.locationRow}>
+              <Ionicons name="location" size={16} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.location}>
+                {[cardData.city, cardData.state].filter(Boolean).join(', ')}
+              </Text>
+            </View>
+          )}
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            {cardData.phone && (
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => Linking.openURL(`tel:${cardData.phone}`)}
+              >
+                <Ionicons name="call" size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>Call</Text>
+              </TouchableOpacity>
+            )}
+            {cardData.phone && (
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => Linking.openURL(`sms:${cardData.phone}`)}
+              >
+                <Ionicons name="chatbubble" size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>Text</Text>
+              </TouchableOpacity>
+            )}
+            {cardData.email && (
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => Linking.openURL(`mailto:${cardData.email}`)}
+              >
+                <Ionicons name="mail" size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>Email</Text>
+              </TouchableOpacity>
+            )}
+            {cardData.website && (
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => Linking.openURL(cardData.website.startsWith('http') ? cardData.website : `https://${cardData.website}`)}
+              >
+                <Ionicons name="globe" size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>Web</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Social Links */}
+          {hasSocialLinks && (
+            <View style={styles.socialLinks}>
+              {cardData.socialInstagram && (
+                <TouchableOpacity 
+                  style={styles.socialButton}
+                  onPress={() => openSocialLink('instagram', cardData.socialInstagram)}
+                >
+                  <Ionicons name="logo-instagram" size={24} color="#fff" />
+                </TouchableOpacity>
+              )}
+              {cardData.socialFacebook && (
+                <TouchableOpacity 
+                  style={styles.socialButton}
+                  onPress={() => openSocialLink('facebook', cardData.socialFacebook)}
+                >
+                  <Ionicons name="logo-facebook" size={24} color="#fff" />
+                </TouchableOpacity>
+              )}
+              {cardData.socialLinkedin && (
+                <TouchableOpacity 
+                  style={styles.socialButton}
+                  onPress={() => openSocialLink('linkedin', cardData.socialLinkedin)}
+                >
+                  <Ionicons name="logo-linkedin" size={24} color="#fff" />
+                </TouchableOpacity>
+              )}
+              {cardData.socialTwitter && (
+                <TouchableOpacity 
+                  style={styles.socialButton}
+                  onPress={() => openSocialLink('twitter', cardData.socialTwitter)}
+                >
+                  <Ionicons name="logo-twitter" size={24} color="#fff" />
+                </TouchableOpacity>
+              )}
+              {cardData.socialTiktok && (
+                <TouchableOpacity 
+                  style={styles.socialButton}
+                  onPress={() => openSocialLink('tiktok', cardData.socialTiktok)}
+                >
+                  <Ionicons name="logo-tiktok" size={24} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {/* Powered by Tavvy */}
+          <TouchableOpacity 
+            style={styles.poweredBy}
+            onPress={() => navigation.navigate('Home')}
+          >
+            <Text style={styles.poweredByText}>Powered by Tavvy</Text>
+          </TouchableOpacity>
+        </LinearGradient>
+
+        {/* Save Actions */}
+        <View style={styles.saveActions}>
+          {/* Save to Wallet */}
+          <TouchableOpacity 
+            style={[styles.saveButton, isSavedToWallet && styles.saveButtonDisabled]}
+            onPress={handleSaveToWallet}
+            disabled={isSavedToWallet || isSaving}
+          >
+            <LinearGradient
+              colors={isSavedToWallet ? ['#9CA3AF', '#6B7280'] : ['#8B5CF6', '#6366F1']}
+              style={styles.saveButtonGradient}
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons 
+                    name={isSavedToWallet ? 'checkmark-circle' : 'wallet'} 
+                    size={20} 
+                    color="#fff" 
+                  />
+                  <Text style={styles.saveButtonText}>
+                    {isSavedToWallet ? 'Saved to Wallet' : 'Save to Tavvy Wallet'}
+                  </Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Save to Contacts */}
+          <TouchableOpacity 
+            style={[styles.contactButton, { borderColor: theme.border }]}
+            onPress={handleSaveToContacts}
+          >
+            <Ionicons name="person-add" size={20} color="#8B5CF6" />
+            <Text style={[styles.contactButtonText, { color: '#8B5CF6' }]}>
+              Save to Contacts
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Create Your Own Card CTA */}
+        <View style={[styles.ctaSection, { backgroundColor: theme.card }]}>
+          <Text style={[styles.ctaTitle, { color: theme.text }]}>Want your own digital card?</Text>
+          <Text style={[styles.ctaSubtitle, { color: theme.textSecondary }]}>
+            Create a free digital business card and share it with anyone!
+          </Text>
+          <TouchableOpacity 
+            style={styles.ctaButton}
+            onPress={() => navigation.navigate('CreateDigitalCard')}
+          >
+            <Text style={styles.ctaButtonText}>Create My Card</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  card: {
+    margin: 16,
+    borderRadius: 24,
+    padding: 24,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
+    alignItems: 'center',
+  },
+  backButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 40,
+    left: 16,
+    padding: 8,
+  },
+  shareButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 40,
+    right: 16,
+    padding: 8,
+  },
+  photoContainer: {
+    marginBottom: 16,
+  },
+  profilePhoto: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  photoPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  name: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  title: {
+    fontSize: 18,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  company: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  location: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginLeft: 4,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 24,
+    gap: 12,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    gap: 8,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  socialLinks: {
+    flexDirection: 'row',
+    marginTop: 20,
+    gap: 16,
+  },
+  socialButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  poweredBy: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.2)',
+    width: '100%',
+    alignItems: 'center',
+  },
+  poweredByText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+  },
+  saveActions: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  saveButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  saveButtonDisabled: {
+    opacity: 0.8,
+  },
+  saveButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  contactButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  contactButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  ctaSection: {
+    margin: 16,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+  },
+  ctaTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  ctaSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  ctaButton: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  ctaButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});

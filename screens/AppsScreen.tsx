@@ -161,6 +161,14 @@ const APP_TILES: AppTile[] = [
     route: 'ProfileMain',
   },
   {
+    id: 'digital-card',
+    name: 'My Card',
+    icon: 'id-card',
+    iconType: 'ionicons',
+    gradientColors: ['#EC4899', '#BE185D'],
+    route: 'MyDigitalCard',
+  },
+  {
     id: 'create',
     name: 'Create',
     icon: 'add-circle',
