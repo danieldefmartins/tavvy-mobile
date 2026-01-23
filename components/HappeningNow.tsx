@@ -14,6 +14,8 @@ import {
   Image,
   ActivityIndicator,
   Dimensions,
+  Linking,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -140,14 +142,31 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
     return `${miles.toFixed(1)} mi`;
   };
 
-  const handleEventPress = (event: TavvyEvent) => {
+  const handleEventPress = async (event: TavvyEvent) => {
     if (onEventPress) {
       onEventPress(event);
     } else {
-      (navigation as any).navigate('HappeningNowDetail', { 
-        eventId: event.id,
-        event: event,
-      });
+      // Open event URL in browser if available
+      if (event.url) {
+        try {
+          const canOpen = await Linking.canOpenURL(event.url);
+          if (canOpen) {
+            await Linking.openURL(event.url);
+          } else {
+            Alert.alert('Cannot Open', 'Unable to open this event link.');
+          }
+        } catch (error) {
+          console.error('Error opening event URL:', error);
+          Alert.alert('Error', 'Failed to open event link.');
+        }
+      } else {
+        // If no URL, show event details in an alert
+        Alert.alert(
+          event.title,
+          `${event.venue_name ? event.venue_name + '\n' : ''}${event.address || ''}\n\nStarts: ${new Date(event.start_time).toLocaleString()}`,
+          [{ text: 'OK' }]
+        );
+      }
     }
   };
 

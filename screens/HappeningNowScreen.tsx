@@ -17,6 +17,8 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  Linking,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -198,11 +200,28 @@ export default function HappeningNowScreen() {
     navigation.goBack();
   };
 
-  const handleEventPress = (event: TavvyEvent) => {
-    navigation.navigate('HappeningNowDetail', { 
-      eventId: event.id,
-      event: event, // Pass full event data
-    });
+  const handleEventPress = async (event: TavvyEvent) => {
+    // Open event URL in browser if available
+    if (event.url) {
+      try {
+        const canOpen = await Linking.canOpenURL(event.url);
+        if (canOpen) {
+          await Linking.openURL(event.url);
+        } else {
+          Alert.alert('Cannot Open', 'Unable to open this event link.');
+        }
+      } catch (error) {
+        console.error('Error opening event URL:', error);
+        Alert.alert('Error', 'Failed to open event link.');
+      }
+    } else {
+      // If no URL, show event details in an alert
+      Alert.alert(
+        event.title,
+        `${event.venue_name ? event.venue_name + '\n' : ''}${event.address || ''}\n\nStarts: ${new Date(event.start_time).toLocaleString()}${event.price_min !== undefined ? '\n\nPrice: ' + (event.price_min === 0 ? 'Free' : 'From $' + event.price_min) : ''}`,
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const handleRefresh = () => {
