@@ -865,7 +865,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(15, 18, 51, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -874,6 +874,12 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     padding: 28,
     alignItems: 'center',
+    backgroundColor: '#1E293B',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
   },
   modalClose: {
     position: 'absolute',
