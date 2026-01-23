@@ -1057,7 +1057,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       // 3. Sort by distance from user location
       const result = await fetchPlacesInBounds({
         bounds: { minLat, maxLat, minLng, maxLng },
-        userLocation: userLocation ? { latitude: userLocation.latitude, longitude: userLocation.longitude } : undefined,
+        userLocation: userLocation ? { latitude: userLocation[1], longitude: userLocation[0] } : undefined,
         limit: 150,
         fallbackThreshold: 40,
         sortByDistance: true,
@@ -1185,7 +1185,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
       const result = await fetchPlacesInBounds({
         bounds,
-        userLocation: userLocation ? { latitude: userLocation.latitude, longitude: userLocation.longitude } : undefined,
+        userLocation: userLocation ? { latitude: userLocation[1], longitude: userLocation[0] } : undefined,
         limit: dynamicLimit,
         fallbackThreshold: 40,
         sortByDistance: true,
@@ -3080,97 +3080,89 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           )}
         </View>
         
-        {/* Search Suggestions Dropdown for Map Mode */}
-        {searchQuery.trim().length > 0 && searchSuggestions.length > 0 && (
-          <View style={[styles.mapSearchSuggestions, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-            <ScrollView style={{ maxHeight: 250 }} keyboardShouldPersistTaps="handled">
-              {searchSuggestions.map((suggestion) => (
-                <TouchableOpacity
-                  key={suggestion.id}
-                  style={styles.mapSuggestionItem}
-                  onPress={() => handleSuggestionSelect(suggestion)}
-                >
-                  <View style={[
-                    styles.suggestionIconContainer,
-                    suggestion.type === 'place' && styles.suggestionIconPlace,
-                    suggestion.type === 'category' && styles.suggestionIconCategory,
-                    suggestion.type === 'address' && styles.suggestionIconAddress,
-                    suggestion.type === 'recent' && styles.suggestionIconRecent,
-                  ]}>
-                    <Ionicons
-                      name={suggestion.icon as any}
-                      size={18}
-                      color={
-                        suggestion.type === 'place' ? '#0A84FF' :
-                        suggestion.type === 'category' ? '#34C759' :
-                        suggestion.type === 'address' ? '#AF52DE' : '#8E8E93'
-                      }
-                    />
-                  </View>
-                  <View style={styles.suggestionTextContainer}>
-                    <Text style={[styles.suggestionTitle, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>
-                      {suggestion.title}
-                    </Text>
-                    {suggestion.subtitle && (
-                      <Text style={[styles.suggestionSubtitle, { color: isDark ? theme.textSecondary : '#8E8E93' }]} numberOfLines={1}>
-                        {suggestion.subtitle}
-                      </Text>
-                    )}
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
-                </TouchableOpacity>
-              ))}
-              
-              {isSearchingAddress && (
-                <View style={styles.mapSuggestionItem}>
-                  <View style={[styles.suggestionIconContainer, styles.suggestionIconAddress]}>
-                    <ActivityIndicator size="small" color="#AF52DE" />
-                  </View>
-                  <View style={styles.suggestionTextContainer}>
-                    <Text style={[styles.suggestionTitle, { color: isDark ? theme.text : '#000' }]}>Searching addresses...</Text>
-                  </View>
-                </View>
-              )}
-            </ScrollView>
-          </View>
-        )}
       </View>
       
-      {/* Category Filters - Filter icon first, then text chips */}
-      <View style={styles.mapCategoryOverlay}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.mapCategoryContent}
-        >
-          {categories.map((category) => (
-            <TouchableOpacity
-              key={category}
-              style={[
-                styles.mapCategoryChip,
-                { backgroundColor: isDark ? theme.surface : '#fff' },
-                category === 'Filter' && styles.mapFilterChip,
-                selectedCategory === category && category !== 'Filter' && styles.mapCategoryChipActive,
-              ]}
-              onPress={() => handleCategorySelect(category)}
+      {/* Full-Screen Search Suggestions Overlay - Google Maps Style */}
+      {searchQuery.trim().length > 0 && (searchSuggestions.length > 0 || isSearchingAddress) && (
+        <View style={[styles.fullScreenSearchOverlay, { backgroundColor: isDark ? theme.background : '#fff' }]}>
+          {/* Search Header */}
+          <SafeAreaView style={styles.fullScreenSearchHeader}>
+            <TouchableOpacity 
+              style={styles.fullScreenBackButton}
+              onPress={() => {
+                setSearchQuery('');
+                setSearchSuggestions([]);
+              }}
             >
-              {category === 'Filter' ? (
-                <Ionicons name="options" size={18} color={isDark ? theme.text : '#333'} />
-              ) : (
-                <Text
-                  style={[
-                    styles.mapCategoryChipText,
-                    { color: isDark ? theme.text : '#333' },
-                    selectedCategory === category && styles.mapCategoryChipTextActive,
-                  ]}
-                >
-                  {category}
-                </Text>
-              )}
+              <Ionicons name="chevron-back" size={28} color={isDark ? theme.text : '#000'} />
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+            <View style={[styles.fullScreenSearchInputContainer, { backgroundColor: isDark ? theme.surface : '#f5f5f5' }]}>
+              <TextInput
+                style={[styles.fullScreenSearchInput, { color: isDark ? theme.text : '#000' }]}
+                value={searchQuery}
+                onChangeText={handleSearchInputChange}
+                placeholder="Search places or locations"
+                placeholderTextColor={isDark ? theme.textSecondary : '#999'}
+                autoFocus
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={20} color="#999" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </SafeAreaView>
+          
+          {/* Suggestions List */}
+          <ScrollView style={styles.fullScreenSuggestionsList} keyboardShouldPersistTaps="handled">
+            {searchSuggestions.map((suggestion) => (
+              <TouchableOpacity
+                key={suggestion.id}
+                style={styles.fullScreenSuggestionItem}
+                onPress={() => handleSuggestionSelect(suggestion)}
+              >
+                <View style={[
+                  styles.fullScreenSuggestionIcon,
+                  { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }
+                ]}>
+                  <Ionicons
+                    name={suggestion.type === 'address' ? 'location-outline' : (suggestion.icon as any)}
+                    size={20}
+                    color={isDark ? theme.textSecondary : '#666'}
+                  />
+                </View>
+                <View style={styles.fullScreenSuggestionText}>
+                  <Text style={[styles.fullScreenSuggestionTitle, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>
+                    {suggestion.title}
+                  </Text>
+                  {suggestion.subtitle && (
+                    <Text style={[styles.fullScreenSuggestionSubtitle, { color: isDark ? theme.textSecondary : '#666' }]} numberOfLines={1}>
+                      {suggestion.subtitle}
+                    </Text>
+                  )}
+                </View>
+                <Ionicons name="arrow-up-back" size={20} color="#999" style={{ transform: [{ rotate: '45deg' }] }} />
+              </TouchableOpacity>
+            ))}
+            
+            {isSearchingAddress && (
+              <View style={styles.fullScreenSuggestionItem}>
+                <View style={[
+                  styles.fullScreenSuggestionIcon,
+                  { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }
+                ]}>
+                  <ActivityIndicator size="small" color="#666" />
+                </View>
+                <View style={styles.fullScreenSuggestionText}>
+                  <Text style={[styles.fullScreenSuggestionTitle, { color: isDark ? theme.text : '#000' }]}>Searching addresses...</Text>
+                </View>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      )}
+      
+      {/* Category Filters moved to bottom sheet for cleaner map view */}
 
       {/* Search this Area Button */}
       {showSearchThisArea && viewMode === 'map' && (
@@ -3392,6 +3384,39 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           enablePanDownToClose={false}
           enableContentPanningGesture={false}
         >
+          {/* Category Chips in Bottom Sheet Header */}
+          {!searchedAddress && !selectedPlace && (
+            <View style={styles.bottomSheetCategoryHeader}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.bottomSheetCategoryContent}
+              >
+                {categories.filter(c => c !== 'Filter').map((category) => (
+                  <TouchableOpacity
+                    key={category}
+                    style={[
+                      styles.bottomSheetCategoryChip,
+                      { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.2)' : '#E5E5EA' },
+                      selectedCategory === category && styles.bottomSheetCategoryChipActive,
+                    ]}
+                    onPress={() => handleCategorySelect(category)}
+                  >
+                    <Text
+                      style={[
+                        styles.bottomSheetCategoryChipText,
+                        { color: isDark ? theme.text : '#333' },
+                        selectedCategory === category && styles.bottomSheetCategoryChipTextActive,
+                      ]}
+                    >
+                      {category}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+          
           {searchedAddress ? (
             <ScrollView 
               style={styles.addressCardScrollView}
@@ -3417,6 +3442,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               renderItem={renderPlaceCard}
               contentContainerStyle={styles.bottomSheetContent}
               showsVerticalScrollIndicator={false}
+              ListHeaderComponent={
+                <Text style={[styles.bottomSheetResultsCount, { color: isDark ? theme.textSecondary : '#666' }]}>
+                  {filteredPlaces.length} places nearby
+                </Text>
+              }
             />
           )}
         </BottomSheet>
@@ -4544,6 +4574,74 @@ const styles = StyleSheet.create({
     elevation: 3,
     overflow: 'hidden',
   },
+  // Full-Screen Search Overlay - Google Maps Style
+  fullScreenSearchOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+  },
+  fullScreenSearchHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingTop: Platform.OS === 'ios' ? 0 : 10,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
+  },
+  fullScreenBackButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullScreenSearchInputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 44,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    marginRight: 8,
+  },
+  fullScreenSearchInput: {
+    flex: 1,
+    fontSize: 17,
+    paddingVertical: 0,
+  },
+  fullScreenSuggestionsList: {
+    flex: 1,
+  },
+  fullScreenSuggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
+  },
+  fullScreenSuggestionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  fullScreenSuggestionText: {
+    flex: 1,
+  },
+  fullScreenSuggestionTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  fullScreenSuggestionSubtitle: {
+    fontSize: 14,
+    marginTop: 2,
+  },
   mapSuggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -4628,6 +4726,38 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
+  },
+  // Bottom Sheet Category Header (moved from map overlay)
+  bottomSheetCategoryHeader: {
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5EA',
+  },
+  bottomSheetCategoryContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  bottomSheetCategoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  bottomSheetCategoryChipActive: {
+    backgroundColor: '#0A84FF',
+    borderColor: '#0A84FF',
+  },
+  bottomSheetCategoryChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  bottomSheetCategoryChipTextActive: {
+    color: '#fff',
+  },
+  bottomSheetResultsCount: {
+    fontSize: 13,
+    marginBottom: 12,
+    paddingHorizontal: 4,
   },
   bottomSheetContent: {
     paddingHorizontal: 16,
