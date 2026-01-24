@@ -2,11 +2,16 @@ import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
 
 const { width } = Dimensions.get('window');
 const CARD_ASPECT_RATIO = 1.586;
 const SCAN_AREA_WIDTH = width * 0.85;
 const SCAN_AREA_HEIGHT = SCAN_AREA_WIDTH / CARD_ASPECT_RATIO;
+
+// OCR.space API configuration
+const OCR_API_KEY = 'K84783289688957';
+const OCR_API_URL = 'https://api.ocr.space/parse/image';
 
 interface BusinessCardScannerScreenProps {
   navigation: any;
@@ -22,11 +27,184 @@ export interface ScannedBusinessCard {
   address: string;
   phone: string;
   website?: string;
+  email?: string;
+  rawText?: string;
+}
+
+/**
+ * Parse OCR text to extract business card information
+ */
+function parseBusinessCardText(text: string): ScannedBusinessCard {
+  const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  
+  let name = '';
+  let address = '';
+  let phone = '';
+  let website = '';
+  let email = '';
+  
+  // Patterns for extraction
+  const phonePattern = /(?:\+?1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}/g;
+  const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi;
+  const websitePattern = /(?:www\.)?[a-zA-Z0-9][a-zA-Z0-9-]*\.[a-zA-Z]{2,}(?:\.[a-zA-Z]{2,})?(?:\/[^\s]*)?/gi;
+  const addressPattern = /\d+\s+[\w\s]+(?:street|st|avenue|ave|road|rd|boulevard|blvd|drive|dr|lane|ln|way|court|ct|place|pl|circle|cir)[\s,]*(?:[\w\s]+)?(?:,\s*)?(?:[A-Z]{2})?\s*\d{5}(?:-\d{4})?/gi;
+  const zipPattern = /[A-Z]{2}\s*\d{5}(?:-\d{4})?/gi;
+  
+  const fullText = text;
+  
+  // Extract phone numbers
+  const phoneMatches = fullText.match(phonePattern);
+  if (phoneMatches && phoneMatches.length > 0) {
+    phone = phoneMatches[0];
+  }
+  
+  // Extract email
+  const emailMatches = fullText.match(emailPattern);
+  if (emailMatches && emailMatches.length > 0) {
+    email = emailMatches[0];
+  }
+  
+  // Extract website
+  const websiteMatches = fullText.match(websitePattern);
+  if (websiteMatches && websiteMatches.length > 0) {
+    // Filter out email domains
+    const websites = websiteMatches.filter(w => !w.includes('@'));
+    if (websites.length > 0) {
+      website = websites[0];
+      if (!website.startsWith('www.') && !website.startsWith('http')) {
+        website = 'www.' + website;
+      }
+    }
+  }
+  
+  // Extract address - look for lines with numbers and common street suffixes
+  const addressMatches = fullText.match(addressPattern);
+  if (addressMatches && addressMatches.length > 0) {
+    address = addressMatches[0];
+  } else {
+    // Try to find address by looking for zip codes and building address from nearby lines
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      // Check if line contains a zip code pattern
+      if (zipPattern.test(line) || /\d{5}/.test(line)) {
+        // This line likely contains part of an address
+        // Look at previous line too
+        if (i > 0) {
+          address = lines[i - 1] + ', ' + line;
+        } else {
+          address = line;
+        }
+        break;
+      }
+      // Check for street indicators
+      if (/\d+\s+\w+\s+(st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|way|ct|court)/i.test(line)) {
+        address = line;
+        // Check if next line has city/state/zip
+        if (i + 1 < lines.length && /[A-Z]{2}\s*\d{5}|,\s*[A-Z]{2}/i.test(lines[i + 1])) {
+          address += ', ' + lines[i + 1];
+        }
+        break;
+      }
+    }
+  }
+  
+  // Extract business name - usually the first prominent line that's not contact info
+  for (const line of lines) {
+    // Skip if it looks like contact info
+    if (phonePattern.test(line)) continue;
+    if (emailPattern.test(line)) continue;
+    if (websitePattern.test(line)) continue;
+    if (/\d{5}/.test(line)) continue; // Skip lines with zip codes
+    if (/\d+\s+\w+\s+(st|street|ave|avenue|rd|road|blvd|boulevard)/i.test(line)) continue;
+    
+    // Skip very short lines or lines that look like titles
+    if (line.length < 3) continue;
+    
+    // This is likely the business name or person name
+    if (!name) {
+      name = line;
+    }
+    break;
+  }
+  
+  // If we still don't have a name, use the first non-empty line
+  if (!name && lines.length > 0) {
+    name = lines[0];
+  }
+  
+  return {
+    name: name || '',
+    address: address || '',
+    phone: phone || '',
+    website: website || '',
+    email: email || '',
+    rawText: text,
+  };
+}
+
+/**
+ * Call OCR.space API to extract text from image
+ */
+async function performOCR(imageUri: string): Promise<string> {
+  try {
+    // Read the image file and convert to base64
+    const base64Image = await FileSystem.readAsStringAsync(imageUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    
+    // Determine the file type from the URI
+    const fileExtension = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
+    const mimeType = fileExtension === 'png' ? 'image/png' : 'image/jpeg';
+    
+    // Create form data for the API request
+    const formData = new FormData();
+    formData.append('apikey', OCR_API_KEY);
+    formData.append('base64Image', `data:${mimeType};base64,${base64Image}`);
+    formData.append('language', 'eng');
+    formData.append('isOverlayRequired', 'false');
+    formData.append('detectOrientation', 'true');
+    formData.append('scale', 'true');
+    formData.append('OCREngine', '2'); // Engine 2 is better for business cards
+    
+    console.log('Sending image to OCR.space API...');
+    
+    const response = await fetch(OCR_API_URL, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`OCR API returned status ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('OCR API Response:', JSON.stringify(result, null, 2));
+    
+    if (result.IsErroredOnProcessing) {
+      throw new Error(result.ErrorMessage || 'OCR processing failed');
+    }
+    
+    if (result.ParsedResults && result.ParsedResults.length > 0) {
+      const parsedText = result.ParsedResults[0].ParsedText;
+      if (parsedText) {
+        return parsedText;
+      }
+    }
+    
+    throw new Error('No text found in the image');
+  } catch (error) {
+    console.error('OCR Error:', error);
+    throw error;
+  }
 }
 
 export default function BusinessCardScannerScreen({ navigation, route }: BusinessCardScannerScreenProps) {
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
+  const [scanStatus, setScanStatus] = useState('');
   const [cameraReady, setCameraReady] = useState(false);
   const cameraRef = useRef<CameraView>(null);
 
@@ -50,6 +228,8 @@ export default function BusinessCardScannerScreen({ navigation, route }: Busines
     }
 
     setIsScanning(true);
+    setScanStatus('Taking photo...');
+    
     try {
       console.log('Attempting to take picture...');
       
@@ -57,37 +237,68 @@ export default function BusinessCardScannerScreen({ navigation, route }: Busines
       await new Promise(resolve => setTimeout(resolve, 100));
 
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
-        skipProcessing: true,
+        quality: 0.9,
+        skipProcessing: false,
       });
 
+      if (!photo || !photo.uri) {
+        throw new Error('Failed to capture photo');
+      }
+
       console.log('Photo taken successfully:', photo.uri);
+      setScanStatus('Processing image...');
 
-      // Simulate OCR Processing (In production, send to Google Cloud Vision API)
-      setTimeout(() => {
-        const mockData: ScannedBusinessCard = {
-          name: "The Coffee House",
-          address: "123 Main St, Seattle, WA 98101",
-          phone: "(206) 555-0123",
-          website: "www.coffeehouse.com"
-        };
+      // Perform OCR on the captured image
+      const extractedText = await performOCR(photo.uri);
+      console.log('Extracted text:', extractedText);
+      
+      setScanStatus('Extracting information...');
+      
+      // Parse the extracted text to get business card data
+      const businessCardData = parseBusinessCardText(extractedText);
+      console.log('Parsed business card data:', businessCardData);
 
-        setIsScanning(false);
-        
-        if (route.params?.onScanComplete) {
-          route.params.onScanComplete(mockData);
-          navigation.goBack();
-        } else {
-          Alert.alert("Scanned Data", JSON.stringify(mockData, null, 2));
-        }
-      }, 2000);
+      setIsScanning(false);
+      setScanStatus('');
+      
+      // Check if we got meaningful data
+      if (!businessCardData.name && !businessCardData.phone && !businessCardData.address) {
+        Alert.alert(
+          'Scan Result',
+          'Could not extract clear information from the business card. The raw text was:\n\n' + extractedText.substring(0, 200) + '...',
+          [
+            { text: 'Try Again', onPress: () => {} },
+            { 
+              text: 'Use Anyway', 
+              onPress: () => {
+                if (route.params?.onScanComplete) {
+                  route.params.onScanComplete(businessCardData);
+                  navigation.goBack();
+                }
+              }
+            },
+          ]
+        );
+        return;
+      }
+      
+      if (route.params?.onScanComplete) {
+        route.params.onScanComplete(businessCardData);
+        navigation.goBack();
+      } else {
+        Alert.alert(
+          "Scanned Data",
+          `Name: ${businessCardData.name}\nAddress: ${businessCardData.address}\nPhone: ${businessCardData.phone}\nWebsite: ${businessCardData.website || 'N/A'}\nEmail: ${businessCardData.email || 'N/A'}`
+        );
+      }
     } catch (error) {
       setIsScanning(false);
-      console.error('Camera error:', error);
+      setScanStatus('');
+      console.error('Scan error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      Alert.alert('Error', `Failed to scan card: ${errorMessage}`);
+      Alert.alert('Scan Failed', `Could not process the business card: ${errorMessage}\n\nPlease try again with better lighting and ensure the card is clearly visible.`);
     }
-  }
+  };
 
   if (!permission) {
     return <View style={styles.container}><ActivityIndicator size="large" color="#2DD4BF" /></View>;
@@ -134,7 +345,7 @@ export default function BusinessCardScannerScreen({ navigation, route }: Busines
               {isScanning && (
                 <View style={styles.scanningOverlay}>
                   <ActivityIndicator size="large" color="#2DD4BF" />
-                  <Text style={styles.scanningText}>Processing...</Text>
+                  <Text style={styles.scanningText}>{scanStatus || 'Processing...'}</Text>
                 </View>
               )}
             </View>
