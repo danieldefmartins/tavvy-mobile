@@ -53,6 +53,11 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   
   const [links, setLinks] = useState<LinkItem[]>(initialLinks || []);
   const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'analytics'>('links');
+  // Appearance state
+  const [selectedTheme, setSelectedTheme] = useState('classic');
+  const [selectedBackground, setSelectedBackground] = useState('solid');
+  const [selectedButtonStyle, setSelectedButtonStyle] = useState('fill');
+  const [selectedFont, setSelectedFont] = useState('Default');
   // Generate card URL from profile name (will be dynamic based on saved slug)
   const generateSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
   const [cardUrl] = useState(`tavvy.com/${profile?.name ? generateSlug(profile.name) : 'yourname'}`);
@@ -209,7 +214,15 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.themesScroll}>
           {['classic', 'modern', 'minimal', 'bold', 'elegant'].map((theme, index) => (
-            <TouchableOpacity key={theme} style={styles.themeCard}>
+            <TouchableOpacity 
+              key={theme} 
+              style={[styles.themeCard, selectedTheme === theme && styles.selectedOption]}
+              onPress={() => {
+                setSelectedTheme(theme);
+                Alert.alert('Theme Selected', `${theme.charAt(0).toUpperCase() + theme.slice(1)} theme applied!`);
+              }}
+              activeOpacity={0.7}
+            >
               <LinearGradient
                 colors={index === 0 ? ['#667eea', '#764ba2'] : index === 1 ? ['#00C853', '#00E676'] : index === 2 ? ['#fff', '#f5f5f5'] : index === 3 ? ['#FF6B6B', '#FF8E53'] : ['#1A1A1A', '#333']}
                 style={styles.themePreview}
@@ -235,21 +248,51 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           </TouchableOpacity>
         </View>
         <View style={styles.backgroundOptions}>
-          <TouchableOpacity style={styles.backgroundOption}>
+          <TouchableOpacity 
+            style={[styles.backgroundOption, selectedBackground === 'solid' && styles.selectedOption]}
+            onPress={() => {
+              setSelectedBackground('solid');
+              Alert.alert('Background Selected', 'Solid background applied!');
+            }}
+            activeOpacity={0.7}
+          >
             <View style={[styles.backgroundPreview, { backgroundColor: '#667eea' }]} />
             <Text style={styles.backgroundName}>Solid</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.backgroundOption}>
+          <TouchableOpacity 
+            style={[styles.backgroundOption, selectedBackground === 'gradient' && styles.selectedOption]}
+            onPress={() => {
+              setSelectedBackground('gradient');
+              Alert.alert('Background Selected', 'Gradient background applied!');
+            }}
+            activeOpacity={0.7}
+          >
             <LinearGradient colors={['#667eea', '#764ba2']} style={styles.backgroundPreview} />
             <Text style={styles.backgroundName}>Gradient</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.backgroundOption}>
+          <TouchableOpacity 
+            style={[styles.backgroundOption, selectedBackground === 'image' && styles.selectedOption]}
+            onPress={() => {
+              setSelectedBackground('image');
+              Alert.alert('Background Selected', 'Image background - choose an image from your gallery!');
+            }}
+            activeOpacity={0.7}
+          >
             <View style={[styles.backgroundPreview, { backgroundColor: '#F5F5F5' }]}>
               <Ionicons name="image" size={20} color="#9E9E9E" />
             </View>
             <Text style={styles.backgroundName}>Image</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.backgroundOption}>
+          <TouchableOpacity 
+            style={[styles.backgroundOption, selectedBackground === 'video' && styles.selectedOption]}
+            onPress={() => {
+              Alert.alert('Pro Feature', 'Video backgrounds are available with Tavvy Pro!', [
+                { text: 'Maybe Later', style: 'cancel' },
+                { text: 'Upgrade', onPress: () => navigation.navigate('ECardPremiumUpsell') }
+              ]);
+            }}
+            activeOpacity={0.7}
+          >
             <View style={[styles.backgroundPreview, { backgroundColor: '#1A1A1A' }]}>
               <Ionicons name="videocam" size={20} color="#fff" />
               <View style={styles.proBadge}>
@@ -270,22 +313,50 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           </TouchableOpacity>
         </View>
         <View style={styles.buttonOptions}>
-          <TouchableOpacity style={styles.buttonOption}>
+          <TouchableOpacity 
+            style={[styles.buttonOption, selectedButtonStyle === 'fill' && styles.selectedButtonOption]}
+            onPress={() => {
+              setSelectedButtonStyle('fill');
+              Alert.alert('Button Style', 'Fill button style applied!');
+            }}
+            activeOpacity={0.7}
+          >
             <View style={[styles.buttonPreview, { backgroundColor: '#1A1A1A' }]}>
               <Text style={styles.buttonPreviewText}>Fill</Text>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.buttonOption}>
+          <TouchableOpacity 
+            style={[styles.buttonOption, selectedButtonStyle === 'outline' && styles.selectedButtonOption]}
+            onPress={() => {
+              setSelectedButtonStyle('outline');
+              Alert.alert('Button Style', 'Outline button style applied!');
+            }}
+            activeOpacity={0.7}
+          >
             <View style={[styles.buttonPreview, { borderWidth: 2, borderColor: '#1A1A1A', backgroundColor: 'transparent' }]}>
               <Text style={[styles.buttonPreviewText, { color: '#1A1A1A' }]}>Outline</Text>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.buttonOption}>
+          <TouchableOpacity 
+            style={[styles.buttonOption, selectedButtonStyle === 'rounded' && styles.selectedButtonOption]}
+            onPress={() => {
+              setSelectedButtonStyle('rounded');
+              Alert.alert('Button Style', 'Rounded button style applied!');
+            }}
+            activeOpacity={0.7}
+          >
             <View style={[styles.buttonPreview, { backgroundColor: '#1A1A1A', borderRadius: 8 }]}>
               <Text style={styles.buttonPreviewText}>Rounded</Text>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.buttonOption}>
+          <TouchableOpacity 
+            style={[styles.buttonOption, selectedButtonStyle === 'shadow' && styles.selectedButtonOption]}
+            onPress={() => {
+              setSelectedButtonStyle('shadow');
+              Alert.alert('Button Style', 'Shadow button style applied!');
+            }}
+            activeOpacity={0.7}
+          >
             <View style={[styles.buttonPreview, { backgroundColor: '#1A1A1A', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 }]}>
               <Text style={styles.buttonPreviewText}>Shadow</Text>
             </View>
@@ -303,7 +374,15 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         </View>
         <View style={styles.fontOptions}>
           {['Default', 'Modern', 'Classic', 'Bold'].map((font) => (
-            <TouchableOpacity key={font} style={styles.fontOption}>
+            <TouchableOpacity 
+              key={font} 
+              style={[styles.fontOption, selectedFont === font && styles.selectedFontOption]}
+              onPress={() => {
+                setSelectedFont(font);
+                Alert.alert('Font Selected', `${font} font applied!`);
+              }}
+              activeOpacity={0.7}
+            >
               <Text style={[
                 styles.fontPreviewText,
                 font === 'Modern' && { fontWeight: '300' },
@@ -839,6 +918,22 @@ const styles = StyleSheet.create({
   fontName: {
     fontSize: 11,
     color: '#9E9E9E',
+  },
+  // Selected option styles
+  selectedOption: {
+    borderWidth: 2,
+    borderColor: '#00C853',
+    borderRadius: 14,
+  },
+  selectedButtonOption: {
+    borderWidth: 2,
+    borderColor: '#00C853',
+    borderRadius: 24,
+    padding: 2,
+  },
+  selectedFontOption: {
+    borderWidth: 2,
+    borderColor: '#00C853',
   },
   analyticsCard: {
     backgroundColor: '#fff',
