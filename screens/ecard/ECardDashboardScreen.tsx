@@ -192,46 +192,82 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const createNewCard = async () => {
     if (!user || !profile) return;
     
-    try {
-      const slug = generateSlug(profile.name || 'user');
-      
-      let finalSlug = slug;
-      let attempts = 0;
-      while (attempts < 10) {
+    const baseSlug = generateSlug(profile.name || 'user');
+    let insertedCard = null;
+    let lastError = null;
+    
+    // Try up to 5 times with increasingly unique slugs
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        // Generate unique slug: first try base, then add timestamp + random
+        let finalSlug = baseSlug;
+        if (attempt > 0) {
+          const timestamp = Date.now().toString(36); // Base36 timestamp
+          const random = Math.random().toString(36).substring(2, 6); // 4 random chars
+          finalSlug = `${baseSlug}${timestamp}${random}`;
+        }
+        
+        // Check availability first
         const isAvailable = await checkSlugAvailability(finalSlug);
-        if (isAvailable) break;
-        finalSlug = `${slug}${Math.floor(Math.random() * 10000)}`;
-        attempts++;
+        if (!isAvailable && attempt === 0) {
+          // First attempt with base slug failed, continue to next attempt
+          continue;
+        }
+        
+        const newCardData = {
+          user_id: user.id,
+          slug: finalSlug,
+          full_name: profile.name || '',
+          title: profile.title || '',
+          company: '',
+          phone: '',
+          email: '',
+          website: '',
+          city: profile.address?.city || '',
+          state: profile.address?.state || '',
+          gradient_color_1: '#667eea',
+          gradient_color_2: '#764ba2',
+          profile_photo_url: profile.image || null,
+          theme: 'classic',
+          background_type: 'gradient',
+          button_style: 'fill',
+          font_style: 'default',
+          is_active: true,
+        };
+        
+        const { data, error: insertError } = await supabase
+          .from('digital_cards')
+          .insert(newCardData)
+          .select()
+          .single();
+        
+        if (insertError) {
+          // If duplicate key error, try again with different slug
+          if (insertError.code === '23505') {
+            lastError = insertError;
+            continue;
+          }
+          throw insertError;
+        }
+        
+        insertedCard = data;
+        break; // Success, exit loop
+        
+      } catch (error: any) {
+        lastError = error;
+        if (error.code !== '23505') {
+          throw error; // Non-duplicate error, throw immediately
+        }
       }
-      
-      const newCardData = {
-        user_id: user.id,
-        slug: finalSlug,
-        full_name: profile.name || '',
-        title: profile.title || '',
-        company: '',
-        phone: '',
-        email: '',
-        website: '',
-        city: profile.address?.city || '',
-        state: profile.address?.state || '',
-        gradient_color_1: '#667eea',
-        gradient_color_2: '#764ba2',
-        profile_photo_url: profile.image || null,
-        theme: 'classic',
-        background_type: 'gradient',
-        button_style: 'fill',
-        font_style: 'default',
-        is_active: true,
-      };
-      
-      const { data: insertedCard, error: insertError } = await supabase
-        .from('digital_cards')
-        .insert(newCardData)
-        .select()
-        .single();
-      
-      if (insertError) throw insertError;
+    }
+    
+    if (!insertedCard) {
+      console.error('Failed to create card after 5 attempts:', lastError);
+      Alert.alert('Error', 'Failed to create your card. Please try again.');
+      return;
+    }
+    
+    try {
       
       if (initialLinks && initialLinks.length > 0) {
         const linksToInsert = initialLinks
@@ -275,8 +311,8 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       setSelectedFont(insertedCard.font_style || 'default');
       
     } catch (error: any) {
-      console.error('Error creating card:', error);
-      Alert.alert('Error', 'Failed to create your card. Please try again.');
+      console.error('Error inserting links:', error);
+      // Card was created, just links failed - still show the card
     }
   };
 
