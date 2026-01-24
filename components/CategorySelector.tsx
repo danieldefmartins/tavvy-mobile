@@ -5,10 +5,12 @@
  * - Content type selection (Place, Service Business, City, Universe)
  * - Primary category selection
  * - Subcategory selection
- * - Search/filter functionality
+ * - Search/filter functionality (searches BOTH categories and subcategories)
  * - "Other" category with custom input
  * 
  * Path: components/CategorySelector.tsx
+ * 
+ * UPDATED: Search now shows subcategory matches with parent category context
  */
 
 import React, { useState, useMemo, useCallback } from 'react';
@@ -57,6 +59,16 @@ interface CategoryItemProps {
   isSelected: boolean;
   onSelect: () => void;
   isPrimary?: boolean;
+  parentCategoryName?: string; // For showing parent context on subcategory search results
+}
+
+// Search result type for unified display
+interface SearchResultItem {
+  type: 'primary' | 'subcategory';
+  primary: PrimaryCategory;
+  subcategory?: SubCategory;
+  displayName: string;
+  parentName?: string;
 }
 
 // ============================================
@@ -194,14 +206,21 @@ const styles = StyleSheet.create({
   categoryIconSelected: {
     backgroundColor: '#6366F1',
   },
+  categoryTextContainer: {
+    flex: 1,
+  },
   categoryName: {
     fontSize: 16,
     color: '#374151',
-    flex: 1,
   },
   categoryNameSelected: {
     color: '#4F46E5',
     fontWeight: '600',
+  },
+  parentCategoryName: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
   checkmark: {
     marginLeft: 8,
@@ -301,11 +320,88 @@ const styles = StyleSheet.create({
     color: '#6366F1',
     marginLeft: 4,
   },
+
+  // Search result type badge
+  searchResultBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  subcategoryBadge: {
+    backgroundColor: '#DBEAFE',
+  },
+  subcategoryBadgeText: {
+    fontSize: 10,
+    color: '#1D4ED8',
+    fontWeight: '600',
+  },
 });
 
 // ============================================
-// CATEGORY ITEM COMPONENT
+// SEARCH RESULT ITEM COMPONENT
 // ============================================
+
+interface SearchResultItemProps {
+  item: SearchResultItem;
+  isSelected: boolean;
+  onSelect: () => void;
+}
+
+const SearchResultItemComponent: React.FC<SearchResultItemProps> = ({
+  item,
+  isSelected,
+  onSelect,
+}) => {
+  const iconKey = item.type === 'subcategory' && item.subcategory 
+    ? item.subcategory.iconKey 
+    : item.primary.iconKey;
+  
+  return (
+    <TouchableOpacity
+      style={[styles.categoryItem, isSelected && styles.categoryItemSelected]}
+      onPress={onSelect}
+      activeOpacity={0.7}
+    >
+      <View style={[styles.categoryIcon, isSelected && styles.categoryIconSelected]}>
+        <Ionicons
+          name={iconKey as any}
+          size={20}
+          color={isSelected ? '#FFFFFF' : '#6B7280'}
+        />
+      </View>
+      <View style={styles.categoryTextContainer}>
+        <Text style={[styles.categoryName, isSelected && styles.categoryNameSelected]}>
+          {item.displayName}
+        </Text>
+        {item.parentName && (
+          <Text style={styles.parentCategoryName}>
+            in {item.parentName}
+          </Text>
+        )}
+      </View>
+      {isSelected && (
+        <Ionicons
+          name="checkmark-circle"
+          size={24}
+          color="#6366F1"
+          style={styles.checkmark}
+        />
+      )}
+    </TouchableOpacity>
+  );
+};
+
+// ============================================
+// CATEGORY ITEM COMPONENT (for non-search mode)
+// ============================================
+
+interface CategoryItemProps {
+  category: PrimaryCategory | SubCategory;
+  isSelected: boolean;
+  onSelect: () => void;
+  isPrimary?: boolean;
+}
 
 const CategoryItem: React.FC<CategoryItemProps> = ({
   category,
@@ -379,28 +475,90 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
     return selectedPrimary.subcategories.find(sub => sub.slug === subcategory);
   }, [selectedPrimary, subcategory]);
 
-  // Filter categories based on search
+  // Check if we're in search mode
+  const isSearching = searchQuery.trim().length > 0;
+
+  // Build search results that include both primary categories and subcategories
+  const searchResults = useMemo((): SearchResultItem[] => {
+    if (!isSearching) return [];
+
+    const results = searchCategories(searchQuery);
+    const items: SearchResultItem[] = [];
+
+    // Track which primary categories we've already added (to avoid duplicates)
+    const addedPrimarySlugs = new Set<string>();
+
+    for (const result of results) {
+      if (result.subcategory) {
+        // This is a subcategory match - show it with parent context
+        items.push({
+          type: 'subcategory',
+          primary: result.primary,
+          subcategory: result.subcategory,
+          displayName: result.subcategory.name,
+          parentName: result.primary.name,
+        });
+      } else {
+        // This is a primary category match
+        if (!addedPrimarySlugs.has(result.primary.slug)) {
+          items.push({
+            type: 'primary',
+            primary: result.primary,
+            displayName: result.primary.name,
+          });
+          addedPrimarySlugs.add(result.primary.slug);
+        }
+      }
+    }
+
+    return items;
+  }, [searchQuery, isSearching]);
+
+  // Filter categories based on search (for non-search mode)
   const filteredCategories = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return modalMode === 'primary' 
-        ? availableCategories 
-        : selectedPrimary?.subcategories || [];
+    if (isSearching) {
+      // In search mode, we use searchResults instead
+      return [];
     }
 
-    if (modalMode === 'primary') {
-      const results = searchCategories(searchQuery);
-      // Filter to only show primary categories that match
-      const primarySlugs = new Set(results.map(r => r.primary.slug));
-      return availableCategories.filter(cat => primarySlugs.has(cat.slug));
+    return modalMode === 'primary' 
+      ? availableCategories 
+      : selectedPrimary?.subcategories || [];
+  }, [isSearching, modalMode, availableCategories, selectedPrimary]);
+
+  // Handle search result selection - this is the key function!
+  const handleSearchResultSelect = useCallback((item: SearchResultItem) => {
+    if (item.type === 'subcategory' && item.subcategory) {
+      // User selected a subcategory from search
+      // Set BOTH the primary category AND the subcategory
+      onPrimaryCategoryChange(item.primary.slug);
+      onSubcategoryChange(item.subcategory.slug);
+      setModalVisible(false);
+      setSearchQuery('');
+      setModalMode('primary');
     } else {
-      const query = searchQuery.toLowerCase();
-      return (selectedPrimary?.subcategories || []).filter(sub =>
-        sub.name.toLowerCase().includes(query)
-      );
+      // User selected a primary category from search
+      onPrimaryCategoryChange(item.primary.slug);
+      onSubcategoryChange(null);
+      
+      // Check if this category has subcategories
+      if (item.primary.subcategories.length > 1) {
+        // Switch to subcategory selection
+        setModalMode('subcategory');
+        setSearchQuery('');
+      } else if (item.primary.subcategories.length === 1) {
+        // Auto-select the only subcategory
+        onSubcategoryChange(item.primary.subcategories[0].slug);
+        setModalVisible(false);
+        setSearchQuery('');
+      } else {
+        setModalVisible(false);
+        setSearchQuery('');
+      }
     }
-  }, [searchQuery, modalMode, availableCategories, selectedPrimary]);
+  }, [onPrimaryCategoryChange, onSubcategoryChange]);
 
-  // Handle primary category selection
+  // Handle primary category selection (non-search mode)
   const handlePrimarySelect = useCallback((slug: string) => {
     onPrimaryCategoryChange(slug);
     onSubcategoryChange(null);
@@ -420,7 +578,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
     }
   }, [onPrimaryCategoryChange, onSubcategoryChange]);
 
-  // Handle subcategory selection
+  // Handle subcategory selection (non-search mode)
   const handleSubcategorySelect = useCallback((slug: string) => {
     onSubcategoryChange(slug);
     setModalVisible(false);
@@ -451,6 +609,14 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
 
   // Check if "Other" category is selected
   const isOtherSelected = primaryCategory === 'other' || subcategory === 'custom_category';
+
+  // Check if a search result is selected
+  const isSearchResultSelected = useCallback((item: SearchResultItem): boolean => {
+    if (item.type === 'subcategory' && item.subcategory) {
+      return item.primary.slug === primaryCategory && item.subcategory.slug === subcategory;
+    }
+    return item.primary.slug === primaryCategory && !subcategory;
+  }, [primaryCategory, subcategory]);
 
   return (
     <View style={styles.container}>
@@ -618,8 +784,8 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
                 </TouchableOpacity>
               </View>
 
-              {/* Back Button (for subcategory mode) */}
-              {modalMode === 'subcategory' && (
+              {/* Back Button (for subcategory mode when not searching) */}
+              {modalMode === 'subcategory' && !isSearching && (
                 <TouchableOpacity style={styles.backButton} onPress={goBackToPrimary}>
                   <Ionicons name="arrow-back" size={20} color="#6366F1" />
                   <Text style={styles.backButtonText}>Back to Categories</Text>
@@ -634,7 +800,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
                     style={styles.searchInputText}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
-                    placeholder={`Search ${modalMode === 'primary' ? 'categories' : 'subcategories'}...`}
+                    placeholder="Search categories or subcategories..."
                     placeholderTextColor="#9CA3AF"
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -647,33 +813,59 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
                 </View>
               </View>
 
-              {/* Category List */}
-              <FlatList
-                data={filteredCategories}
-                keyExtractor={(item) => item.slug}
-                style={styles.categoryList}
-                renderItem={({ item }) => (
-                  <CategoryItem
-                    category={item}
-                    isSelected={
-                      modalMode === 'primary'
-                        ? item.slug === primaryCategory
-                        : item.slug === subcategory
-                    }
-                    onSelect={() =>
-                      modalMode === 'primary'
-                        ? handlePrimarySelect(item.slug)
-                        : handleSubcategorySelect(item.slug)
-                    }
-                    isPrimary={modalMode === 'primary'}
-                  />
-                )}
-                ListEmptyComponent={
-                  <View style={{ padding: 20, alignItems: 'center' }}>
-                    <Text style={{ color: '#6B7280' }}>No categories found</Text>
-                  </View>
-                }
-              />
+              {/* Category List - Show search results or regular list */}
+              {isSearching ? (
+                // Search mode - show unified search results
+                <FlatList
+                  data={searchResults}
+                  keyExtractor={(item) => 
+                    item.type === 'subcategory' && item.subcategory 
+                      ? `${item.primary.slug}-${item.subcategory.slug}`
+                      : item.primary.slug
+                  }
+                  style={styles.categoryList}
+                  renderItem={({ item }) => (
+                    <SearchResultItemComponent
+                      item={item}
+                      isSelected={isSearchResultSelected(item)}
+                      onSelect={() => handleSearchResultSelect(item)}
+                    />
+                  )}
+                  ListEmptyComponent={
+                    <View style={{ padding: 20, alignItems: 'center' }}>
+                      <Text style={{ color: '#6B7280' }}>No categories found</Text>
+                    </View>
+                  }
+                />
+              ) : (
+                // Regular mode - show categories or subcategories
+                <FlatList
+                  data={filteredCategories}
+                  keyExtractor={(item) => item.slug}
+                  style={styles.categoryList}
+                  renderItem={({ item }) => (
+                    <CategoryItem
+                      category={item}
+                      isSelected={
+                        modalMode === 'primary'
+                          ? item.slug === primaryCategory
+                          : item.slug === subcategory
+                      }
+                      onSelect={() =>
+                        modalMode === 'primary'
+                          ? handlePrimarySelect(item.slug)
+                          : handleSubcategorySelect(item.slug)
+                      }
+                      isPrimary={modalMode === 'primary'}
+                    />
+                  )}
+                  ListEmptyComponent={
+                    <View style={{ padding: 20, alignItems: 'center' }}>
+                      <Text style={{ color: '#6B7280' }}>No categories found</Text>
+                    </View>
+                  }
+                />
+              )}
             </View>
           </TouchableOpacity>
         </KeyboardAvoidingView>
