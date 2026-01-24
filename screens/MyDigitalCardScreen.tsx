@@ -236,15 +236,18 @@ export default function MyDigitalCardScreen() {
   // Share via native share sheet (AirDrop, Messages, etc.)
   const handleNativeShare = async () => {
     try {
-      const message = cardData.company 
-        ? `Check out ${cardData.fullName}'s digital card from ${cardData.company}: ${cardUrl}`
-        : `Check out ${cardData.fullName}'s digital card: ${cardUrl}`;
-      
-      await Share.share({
-        message,
-        url: cardUrl,
-        title: `${cardData.fullName}'s Digital Card`,
-      });
+      // On iOS, only pass URL so Copy copies just the URL
+      // On Android, pass message since it doesn't support url separately
+      if (Platform.OS === 'ios') {
+        await Share.share({
+          url: cardUrl,
+        });
+      } else {
+        await Share.share({
+          message: cardUrl,
+          title: `${cardData.fullName}'s Digital Card`,
+        });
+      }
     } catch (error) {
       console.error('Error sharing:', error);
     }
@@ -276,18 +279,25 @@ export default function MyDigitalCardScreen() {
   // Copy link to clipboard
   const handleCopyLink = () => {
     Clipboard.setString(cardUrl);
-    Alert.alert('Copied!', 'Card link copied to clipboard.');
+    Alert.alert('Copied!', `${cardUrl} copied to clipboard.`);
   };
 
   // Share card link via native share sheet
   const handleShareVCard = async () => {
     setIsSharing(true);
     try {
-      await Share.share({
-        message: `Check out my digital business card: ${cardUrl}`,
-        title: `${cardData.fullName}'s Digital Card`,
-        url: cardUrl,
-      });
+      // On iOS, only pass URL so Copy copies just the URL
+      // On Android, pass message since it doesn't support url separately
+      if (Platform.OS === 'ios') {
+        await Share.share({
+          url: cardUrl,
+        });
+      } else {
+        await Share.share({
+          message: cardUrl,
+          title: `${cardData.fullName}'s Digital Card`,
+        });
+      }
     } catch (error) {
       console.error('Error sharing card:', error);
     } finally {
