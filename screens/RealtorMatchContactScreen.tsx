@@ -56,9 +56,21 @@ export default function RealtorMatchContactScreen() {
 
     setIsSubmitting(true);
     try {
-      // Submit the match request to Supabase
+      // Map camelCase params to snake_case database columns
+      const params = route.params || {};
       const matchData = {
-        ...route.params,
+        looking_to: params.lookingTo || null,
+        property_type: params.propertyType || null,
+        location: params.location || null,
+        timeline: params.timeline || null,
+        price_range: params.priceRange || null,
+        main_goal: params.mainGoal || null,
+        realtor_personality: params.realtorPersonality || [],
+        languages: params.languages || [],
+        communication_prefs: params.communicationPrefs || [],
+        realtor_count: params.realtorCount || null,
+        share_contact_info: params.shareContactInfo || false,
+        additional_notes: params.additionalNotes || null,
         contact_name: name.trim(),
         contact_phone: phone.trim(),
         contact_email: email.trim(),
