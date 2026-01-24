@@ -8,3 +8,4 @@ export { default as ECardAddLinkScreen } from './ECardAddLinkScreen';
 export { default as ECardThemesScreen } from './ECardThemesScreen';
 export { default as ECardPremiumUpsellScreen } from './ECardPremiumUpsellScreen';
 export { default as ECardPreviewScreen } from './ECardPreviewScreen';
+export { default as ECardNFCWriteScreen } from './ECardNFCWriteScreen';

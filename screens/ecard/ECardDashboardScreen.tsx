@@ -1177,6 +1177,12 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           <TouchableOpacity style={styles.actionButton} onPress={generateQRCode}>
             <Ionicons name="qr-code-outline" size={18} color="#666" />
           </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={() => navigation.navigate('ECardNFCWrite', { cardSlug: cardData?.slug, cardName: cardData?.full_name })}
+          >
+            <Ionicons name="wifi" size={18} color="#666" style={{ transform: [{ rotate: '90deg' }] }} />
+          </TouchableOpacity>
         </View>
       </View>
 
