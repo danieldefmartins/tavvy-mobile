@@ -186,6 +186,7 @@ export default function CreateDigitalCardScreen() {
 
   // Slug state
   const [slugInput, setSlugInput] = useState('');
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [slugError, setSlugError] = useState<string | null>(null);
@@ -199,6 +200,7 @@ export default function CreateDigitalCardScreen() {
     if (route.params?.cardData) {
       setCardData(route.params.cardData);
       setSlugInput(route.params.cardData.slug || '');
+      setSlugManuallyEdited(true); // Don't auto-generate for existing cards
       setIsEditing(true);
       setCurrentStep('info');
     } else if (route.params?.templateConfig) {
@@ -301,6 +303,7 @@ export default function CreateDigitalCardScreen() {
           };
           setCardData(loadedCard);
           setSlugInput(data.slug || '');
+          setSlugManuallyEdited(true); // Don't auto-generate for existing cards
           setIsEditing(true);
           setCurrentStep('info');
         }
@@ -496,6 +499,7 @@ export default function CreateDigitalCardScreen() {
     setCardData(prev => ({ ...prev, slug: formatted }));
     setSlugAvailable(null);
     setSlugError(null);
+    setSlugManuallyEdited(true); // User is manually editing the slug
 
     // Clear previous timeout
     if (slugCheckTimeout.current) {
@@ -514,6 +518,7 @@ export default function CreateDigitalCardScreen() {
       const base = cardData.fullName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
       setSlugInput(base);
       setCardData(prev => ({ ...prev, slug: base }));
+      setSlugManuallyEdited(true); // User explicitly regenerated, treat as manual
       checkSlugAvailability(base);
     }
   };
@@ -885,8 +890,8 @@ export default function CreateDigitalCardScreen() {
           value={cardData.fullName}
           onChangeText={(text) => {
             setCardData(prev => ({ ...prev, fullName: text }));
-            // Auto-generate slug from name if slug is empty or matches previous auto-generated slug
-            if (!slugInput || slugInput === generateSlug(cardData.fullName)) {
+            // Auto-generate slug from name only if user hasn't manually edited it
+            if (!slugManuallyEdited && !isEditing) {
               const newSlug = generateSlug(text);
               setSlugInput(newSlug);
               setCardData(prev => ({ ...prev, slug: newSlug }));
