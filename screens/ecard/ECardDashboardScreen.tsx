@@ -158,93 +158,13 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     }
   };
 
-  // Create or update card from onboarding data
+  // Create a new card from onboarding data
   const createNewCard = async () => {
     if (!user || !profile) return;
     
     try {
-      // First, check if user already has a card
-      const { data: existingCard, error: fetchError } = await supabase
-        .from('digital_cards')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-      
-      if (existingCard && !fetchError) {
-        // User already has a card - update it instead
-        const updateData = {
-          full_name: profile.name || existingCard.full_name,
-          title: profile.title || existingCard.title,
-          city: profile.address?.city || existingCard.city,
-          state: profile.address?.state || existingCard.state,
-          profile_photo_url: profile.image || existingCard.profile_photo_url,
-        };
-        
-        const { data: updatedCard, error: updateError } = await supabase
-          .from('digital_cards')
-          .update(updateData)
-          .eq('id', existingCard.id)
-          .select()
-          .single();
-        
-        if (updateError) throw updateError;
-        
-        // Update links if any new ones provided
-        if (initialLinks && initialLinks.length > 0) {
-          // Get existing links count
-          const { data: existingLinks } = await supabase
-            .from('card_links')
-            .select('id')
-            .eq('card_id', existingCard.id);
-          
-          const startOrder = existingLinks?.length || 0;
-          
-          const linksToInsert = initialLinks
-            .filter((link: any) => link.value && link.value.trim())
-            .map((link: any, index: number) => {
-              const platform = link.platform || 'other';
-              let url = link.value;
-              
-              // Build full URL based on platform
-              if (platform === 'instagram') url = `https://instagram.com/${link.value}`;
-              else if (platform === 'tiktok') url = `https://tiktok.com/@${link.value}`;
-              else if (platform === 'youtube') url = `https://youtube.com/${link.value}`;
-              else if (platform === 'twitter') url = `https://x.com/${link.value}`;
-              else if (platform === 'linkedin') url = `https://linkedin.com/in/${link.value}`;
-              else if (platform === 'facebook') url = `https://facebook.com/${link.value}`;
-              else if (platform === 'whatsapp') url = `https://wa.me/${link.value}`;
-              else if (platform === 'phone') url = `tel:${link.value}`;
-              else if (platform === 'email') url = `mailto:${link.value}`;
-              else if (!url.startsWith('http')) url = `https://${url}`;
-              
-              return {
-                card_id: existingCard.id,
-                title: platform.charAt(0).toUpperCase() + platform.slice(1),
-                url: url,
-                icon: platform,
-                sort_order: startOrder + index,
-                is_active: true,
-              };
-            });
-          
-          if (linksToInsert.length > 0) {
-            await supabase.from('card_links').insert(linksToInsert);
-          }
-        }
-        
-        // Update local state
-        setCardData(updatedCard || existingCard);
-        setCardUrl(`tavvy.com/${existingCard.slug}`);
-        setSlugInput(existingCard.slug);
-        
-        // Reload to get all data
-        await loadCardData();
-        return;
-      }
-      
-      // No existing card - create a new one
+      // Always create a new card when isNewCard is true
+      // The card limit check is done in MyCardsScreen before navigating here
       // Generate slug from name
       const slug = generateSlug(profile.name || 'user');
       

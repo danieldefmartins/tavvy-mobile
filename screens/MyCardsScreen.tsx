@@ -85,7 +85,7 @@ export default function MyCardsScreen() {
           'Free users can only have 1 card. Upgrade to Pro to create up to 5 cards!',
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Upgrade', onPress: () => navigation.navigate('Subscription') },
+            { text: 'Upgrade', onPress: () => navigation.navigate('ECardPremiumUpsell', { reason: 'card_limit' }) },
           ]
         );
       } else {
@@ -98,19 +98,20 @@ export default function MyCardsScreen() {
       return;
     }
 
-    // Navigate to create new card
-    navigation.navigate('CreateDigitalCard', { mode: 'create', isNewCard: true });
+    // Navigate to create new card using the new ECard flow
+    navigation.navigate('ECardTemplateGallery', { mode: 'create' });
   };
 
   const handleEditCard = (card: DigitalCard) => {
-    navigation.navigate('CreateDigitalCard', { 
-      mode: 'edit', 
+    // Navigate to ECardDashboard for editing
+    navigation.navigate('ECardDashboard', { 
       cardId: card.id,
     });
   };
 
   const handleViewCard = (card: DigitalCard) => {
-    navigation.navigate('MyDigitalCard', { 
+    // Navigate to ECardDashboard for viewing/editing
+    navigation.navigate('ECardDashboard', { 
       cardId: card.id,
     });
   };
