@@ -179,6 +179,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   // YouTube Video state
   const [youtubeVideoUrl, setYoutubeVideoUrl] = useState<string>('');
   const [showYoutubeModal, setShowYoutubeModal] = useState(false);
+  const [tempYoutubeUrl, setTempYoutubeUrl] = useState<string>('');
   
   // Pro Credentials state
   const [proCredentials, setProCredentials] = useState<ProCredentials>({
@@ -1101,7 +1102,10 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       {/* Add YouTube Video Block Button */}
       <TouchableOpacity 
         style={styles.addYoutubeButton}
-        onPress={() => setShowYoutubeModal(true)}
+        onPress={() => {
+          setTempYoutubeUrl(youtubeVideoUrl);
+          setShowYoutubeModal(true);
+        }}
         activeOpacity={0.8}
       >
         <View style={styles.addYoutubeContent}>
@@ -1534,7 +1538,6 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
 
   // Render YouTube Modal
   const renderYoutubeModal = () => {
-    const [tempYoutubeUrl, setTempYoutubeUrl] = useState(youtubeVideoUrl);
     const videoId = extractYoutubeVideoId(tempYoutubeUrl);
     
     return (
