@@ -12,10 +12,16 @@ import {
   Dimensions,
   Share,
   Alert,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -35,6 +41,34 @@ const PLATFORM_ICONS: Record<string, { icon: string; color: string }> = {
   other: { icon: 'link', color: '#8E8E93' },
 };
 
+// Theme configurations
+const THEMES = [
+  { id: 'classic', name: 'Classic', colors: ['#667eea', '#764ba2'] },
+  { id: 'modern', name: 'Modern', colors: ['#00C853', '#00E676'] },
+  { id: 'minimal', name: 'Minimal', colors: ['#ffffff', '#f5f5f5'] },
+  { id: 'bold', name: 'Bold', colors: ['#FF6B6B', '#FF8E53'] },
+  { id: 'elegant', name: 'Elegant', colors: ['#1A1A1A', '#333333'] },
+  { id: 'ocean', name: 'Ocean', colors: ['#0077B6', '#00B4D8'] },
+  { id: 'sunset', name: 'Sunset', colors: ['#F97316', '#FACC15'] },
+  { id: 'forest', name: 'Forest', colors: ['#059669', '#34D399'] },
+];
+
+// Font configurations
+const FONTS = [
+  { id: 'default', name: 'Default', style: {} },
+  { id: 'modern', name: 'Modern', style: { fontWeight: '300' as const } },
+  { id: 'classic', name: 'Classic', style: { fontStyle: 'italic' as const } },
+  { id: 'bold', name: 'Bold', style: { fontWeight: '900' as const } },
+];
+
+// Button style configurations
+const BUTTON_STYLES = [
+  { id: 'fill', name: 'Fill' },
+  { id: 'outline', name: 'Outline' },
+  { id: 'rounded', name: 'Rounded' },
+  { id: 'shadow', name: 'Shadow' },
+];
+
 interface LinkItem {
   id: string;
   platform: string;
@@ -43,26 +77,55 @@ interface LinkItem {
   clicks?: number;
 }
 
+interface CardData {
+  id: string;
+  slug: string;
+  theme: string;
+  background_type: string;
+  button_style: string;
+  font_style: string;
+  gradient_color_1: string;
+  gradient_color_2: string;
+  full_name: string;
+  title: string;
+  company: string;
+}
+
 interface Props {
   navigation: any;
   route: any;
 }
 
 export default function ECardDashboardScreen({ navigation, route }: Props) {
-  const { templateId, colorSchemeId, profile, links: initialLinks, isNewCard, openAppearance } = route.params || {};
+  const { user } = useAuth();
+  const { templateId, colorSchemeId, profile, links: initialLinks, isNewCard, openAppearance, cardId } = route.params || {};
   
   const [links, setLinks] = useState<LinkItem[]>(initialLinks || []);
   const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'analytics'>('links');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [cardData, setCardData] = useState<CardData | null>(null);
+  
   // Appearance state
   const [selectedTheme, setSelectedTheme] = useState('classic');
-  const [selectedBackground, setSelectedBackground] = useState('solid');
+  const [selectedBackground, setSelectedBackground] = useState('gradient');
   const [selectedButtonStyle, setSelectedButtonStyle] = useState('fill');
-  const [selectedFont, setSelectedFont] = useState('Default');
-  // Generate card URL from profile name (will be dynamic based on saved slug)
-  const generateSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
-  const [cardUrl] = useState(`tavvy.com/${profile?.name ? generateSlug(profile.name) : 'yourname'}`);
+  const [selectedFont, setSelectedFont] = useState('default');
+  const [gradientColors, setGradientColors] = useState<[string, string]>(['#667eea', '#764ba2']);
+  
+  // QR Code state
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  
+  // Card URL
+  const [cardUrl, setCardUrl] = useState('tavvy.com/yourname');
   
   const slideAnim = useRef(new Animated.Value(0)).current;
+
+  // Load card data on mount
+  useEffect(() => {
+    loadCardData();
+  }, []);
 
   useEffect(() => {
     if (openAppearance) {
@@ -70,11 +133,172 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     }
   }, [openAppearance]);
 
-  const handleShare = async () => {
+  const loadCardData = async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      let query = supabase
+        .from('digital_cards')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (cardId) {
+        query = query.eq('id', cardId);
+      } else {
+        query = query.limit(1);
+      }
+
+      const { data, error } = await query.single();
+
+      if (data && !error) {
+        setCardData(data);
+        setSelectedTheme(data.theme || 'classic');
+        setSelectedBackground(data.background_type || 'gradient');
+        setSelectedButtonStyle(data.button_style || 'fill');
+        setSelectedFont(data.font_style || 'default');
+        setGradientColors([data.gradient_color_1 || '#667eea', data.gradient_color_2 || '#764ba2']);
+        setCardUrl(`tavvy.com/${data.slug || 'yourname'}`);
+
+        // Load links
+        const { data: linksData } = await supabase
+          .from('card_links')
+          .select('*')
+          .eq('card_id', data.id)
+          .order('sort_order', { ascending: true });
+
+        if (linksData) {
+          setLinks(linksData.map(l => ({
+            id: l.id,
+            platform: l.icon || 'other',
+            value: l.url,
+            title: l.title,
+            clicks: l.clicks || 0,
+          })));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading card:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveAppearanceSettings = async (settings: Partial<{
+    theme: string;
+    background_type: string;
+    button_style: string;
+    font_style: string;
+    gradient_color_1: string;
+    gradient_color_2: string;
+  }>) => {
+    if (!cardData?.id) return;
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('digital_cards')
+        .update(settings)
+        .eq('id', cardData.id);
+
+      if (error) throw error;
+      
+      // Update local state
+      setCardData(prev => prev ? { ...prev, ...settings } : null);
+    } catch (error) {
+      console.error('Error saving appearance:', error);
+      Alert.alert('Error', 'Failed to save changes. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleThemeSelect = (themeId: string) => {
+    const theme = THEMES.find(t => t.id === themeId);
+    if (theme) {
+      setSelectedTheme(themeId);
+      setGradientColors(theme.colors as [string, string]);
+      saveAppearanceSettings({
+        theme: themeId,
+        gradient_color_1: theme.colors[0],
+        gradient_color_2: theme.colors[1],
+      });
+    }
+  };
+
+  const handleBackgroundSelect = (bgType: string) => {
+    if (bgType === 'video') {
+      Alert.alert('Pro Feature', 'Video backgrounds are available with Tavvy Pro!', [
+        { text: 'Maybe Later', style: 'cancel' },
+        { text: 'Upgrade', onPress: () => navigation.navigate('ECardPremiumUpsell') }
+      ]);
+      return;
+    }
+    setSelectedBackground(bgType);
+    saveAppearanceSettings({ background_type: bgType });
+  };
+
+  const handleButtonStyleSelect = (styleId: string) => {
+    setSelectedButtonStyle(styleId);
+    saveAppearanceSettings({ button_style: styleId });
+  };
+
+  const handleFontSelect = (fontId: string) => {
+    setSelectedFont(fontId);
+    saveAppearanceSettings({ font_style: fontId });
+  };
+
+  const generateQRCode = () => {
+    if (!cardData?.slug) {
+      Alert.alert('Error', 'Please save your card first to generate a QR code.');
+      return;
+    }
+    
+    const cardFullUrl = `https://tavvy.com/${cardData.slug}`;
+    // Using QR Server API for QR code generation
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(cardFullUrl)}&bgcolor=ffffff&color=000000&format=png`;
+    setQrCodeUrl(qrUrl);
+    setShowQRModal(true);
+  };
+
+  const downloadQRCode = async () => {
+    try {
+      const fileName = `tavvy-qr-${cardData?.slug || 'card'}.png`;
+      const fileUri = FileSystem.documentDirectory + fileName;
+      
+      const downloadResult = await FileSystem.downloadAsync(qrCodeUrl, fileUri);
+      
+      if (downloadResult.status === 200) {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(downloadResult.uri);
+        } else {
+          Alert.alert('Success', 'QR code saved to your device!');
+        }
+      }
+    } catch (error) {
+      console.error('Error downloading QR code:', error);
+      Alert.alert('Error', 'Failed to download QR code. Please try again.');
+    }
+  };
+
+  const shareQRCode = async () => {
     try {
       await Share.share({
-        message: `Check out my digital card: https://${cardUrl}`,
-        url: `https://${cardUrl}`,
+        message: `Scan this QR code to view my digital card: https://tavvy.com/${cardData?.slug}`,
+        url: qrCodeUrl,
+      });
+    } catch (error) {
+      console.error('Error sharing QR code:', error);
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      const fullUrl = `https://${cardUrl}`;
+      await Share.share({
+        url: fullUrl,
       });
     } catch (error) {
       console.error(error);
@@ -83,7 +307,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
 
   const handleCopyLink = async () => {
     await Clipboard.setStringAsync(`https://${cardUrl}`);
-    Alert.alert('Copied!', 'Link copied to clipboard');
+    Alert.alert('Copied!', `https://${cardUrl}`);
   };
 
   const handleAddLink = () => {
@@ -204,6 +428,13 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
 
   const renderAppearanceTab = () => (
     <View style={styles.tabContent}>
+      {isSaving && (
+        <View style={styles.savingIndicator}>
+          <ActivityIndicator size="small" color="#00C853" />
+          <Text style={styles.savingText}>Saving...</Text>
+        </View>
+      )}
+
       {/* Themes Section */}
       <View style={styles.appearanceSection}>
         <View style={styles.sectionHeader}>
@@ -213,18 +444,15 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           </TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.themesScroll}>
-          {['classic', 'modern', 'minimal', 'bold', 'elegant'].map((theme, index) => (
+          {THEMES.slice(0, 5).map((theme) => (
             <TouchableOpacity 
-              key={theme} 
-              style={[styles.themeCard, selectedTheme === theme && styles.selectedOption]}
-              onPress={() => {
-                setSelectedTheme(theme);
-                Alert.alert('Theme Selected', `${theme.charAt(0).toUpperCase() + theme.slice(1)} theme applied!`);
-              }}
+              key={theme.id} 
+              style={[styles.themeCard, selectedTheme === theme.id && styles.selectedOption]}
+              onPress={() => handleThemeSelect(theme.id)}
               activeOpacity={0.7}
             >
               <LinearGradient
-                colors={index === 0 ? ['#667eea', '#764ba2'] : index === 1 ? ['#00C853', '#00E676'] : index === 2 ? ['#fff', '#f5f5f5'] : index === 3 ? ['#FF6B6B', '#FF8E53'] : ['#1A1A1A', '#333']}
+                colors={theme.colors}
                 style={styles.themePreview}
               >
                 <View style={styles.themePreviewContent}>
@@ -233,7 +461,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
                   <View style={styles.themePreviewLineShort} />
                 </View>
               </LinearGradient>
-              <Text style={styles.themeName}>{theme.charAt(0).toUpperCase() + theme.slice(1)}</Text>
+              <Text style={styles.themeName}>{theme.name}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -250,32 +478,23 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         <View style={styles.backgroundOptions}>
           <TouchableOpacity 
             style={[styles.backgroundOption, selectedBackground === 'solid' && styles.selectedOption]}
-            onPress={() => {
-              setSelectedBackground('solid');
-              Alert.alert('Background Selected', 'Solid background applied!');
-            }}
+            onPress={() => handleBackgroundSelect('solid')}
             activeOpacity={0.7}
           >
-            <View style={[styles.backgroundPreview, { backgroundColor: '#667eea' }]} />
+            <View style={[styles.backgroundPreview, { backgroundColor: gradientColors[0] }]} />
             <Text style={styles.backgroundName}>Solid</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.backgroundOption, selectedBackground === 'gradient' && styles.selectedOption]}
-            onPress={() => {
-              setSelectedBackground('gradient');
-              Alert.alert('Background Selected', 'Gradient background applied!');
-            }}
+            onPress={() => handleBackgroundSelect('gradient')}
             activeOpacity={0.7}
           >
-            <LinearGradient colors={['#667eea', '#764ba2']} style={styles.backgroundPreview} />
+            <LinearGradient colors={gradientColors} style={styles.backgroundPreview} />
             <Text style={styles.backgroundName}>Gradient</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.backgroundOption, selectedBackground === 'image' && styles.selectedOption]}
-            onPress={() => {
-              setSelectedBackground('image');
-              Alert.alert('Background Selected', 'Image background - choose an image from your gallery!');
-            }}
+            onPress={() => handleBackgroundSelect('image')}
             activeOpacity={0.7}
           >
             <View style={[styles.backgroundPreview, { backgroundColor: '#F5F5F5' }]}>
@@ -285,12 +504,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.backgroundOption, selectedBackground === 'video' && styles.selectedOption]}
-            onPress={() => {
-              Alert.alert('Pro Feature', 'Video backgrounds are available with Tavvy Pro!', [
-                { text: 'Maybe Later', style: 'cancel' },
-                { text: 'Upgrade', onPress: () => navigation.navigate('ECardPremiumUpsell') }
-              ]);
-            }}
+            onPress={() => handleBackgroundSelect('video')}
             activeOpacity={0.7}
           >
             <View style={[styles.backgroundPreview, { backgroundColor: '#1A1A1A' }]}>
@@ -313,54 +527,26 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           </TouchableOpacity>
         </View>
         <View style={styles.buttonOptions}>
-          <TouchableOpacity 
-            style={[styles.buttonOption, selectedButtonStyle === 'fill' && styles.selectedButtonOption]}
-            onPress={() => {
-              setSelectedButtonStyle('fill');
-              Alert.alert('Button Style', 'Fill button style applied!');
-            }}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.buttonPreview, { backgroundColor: '#1A1A1A' }]}>
-              <Text style={styles.buttonPreviewText}>Fill</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.buttonOption, selectedButtonStyle === 'outline' && styles.selectedButtonOption]}
-            onPress={() => {
-              setSelectedButtonStyle('outline');
-              Alert.alert('Button Style', 'Outline button style applied!');
-            }}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.buttonPreview, { borderWidth: 2, borderColor: '#1A1A1A', backgroundColor: 'transparent' }]}>
-              <Text style={[styles.buttonPreviewText, { color: '#1A1A1A' }]}>Outline</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.buttonOption, selectedButtonStyle === 'rounded' && styles.selectedButtonOption]}
-            onPress={() => {
-              setSelectedButtonStyle('rounded');
-              Alert.alert('Button Style', 'Rounded button style applied!');
-            }}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.buttonPreview, { backgroundColor: '#1A1A1A', borderRadius: 8 }]}>
-              <Text style={styles.buttonPreviewText}>Rounded</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.buttonOption, selectedButtonStyle === 'shadow' && styles.selectedButtonOption]}
-            onPress={() => {
-              setSelectedButtonStyle('shadow');
-              Alert.alert('Button Style', 'Shadow button style applied!');
-            }}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.buttonPreview, { backgroundColor: '#1A1A1A', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 }]}>
-              <Text style={styles.buttonPreviewText}>Shadow</Text>
-            </View>
-          </TouchableOpacity>
+          {BUTTON_STYLES.map((style) => (
+            <TouchableOpacity 
+              key={style.id}
+              style={[styles.buttonOption, selectedButtonStyle === style.id && styles.selectedButtonOption]}
+              onPress={() => handleButtonStyleSelect(style.id)}
+              activeOpacity={0.7}
+            >
+              <View style={[
+                styles.buttonPreview, 
+                style.id === 'fill' && { backgroundColor: '#1A1A1A' },
+                style.id === 'outline' && { borderWidth: 2, borderColor: '#1A1A1A', backgroundColor: 'transparent' },
+                style.id === 'rounded' && { backgroundColor: '#1A1A1A', borderRadius: 8 },
+                style.id === 'shadow' && { backgroundColor: '#1A1A1A', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+              ]}>
+                <Text style={[styles.buttonPreviewText, style.id === 'outline' && { color: '#1A1A1A' }]}>
+                  {style.name}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
@@ -373,23 +559,15 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           </TouchableOpacity>
         </View>
         <View style={styles.fontOptions}>
-          {['Default', 'Modern', 'Classic', 'Bold'].map((font) => (
+          {FONTS.map((font) => (
             <TouchableOpacity 
-              key={font} 
-              style={[styles.fontOption, selectedFont === font && styles.selectedFontOption]}
-              onPress={() => {
-                setSelectedFont(font);
-                Alert.alert('Font Selected', `${font} font applied!`);
-              }}
+              key={font.id} 
+              style={[styles.fontOption, selectedFont === font.id && styles.selectedFontOption]}
+              onPress={() => handleFontSelect(font.id)}
               activeOpacity={0.7}
             >
-              <Text style={[
-                styles.fontPreviewText,
-                font === 'Modern' && { fontWeight: '300' },
-                font === 'Classic' && { fontStyle: 'italic' },
-                font === 'Bold' && { fontWeight: '900' },
-              ]}>Aa</Text>
-              <Text style={styles.fontName}>{font}</Text>
+              <Text style={[styles.fontPreviewText, font.style]}>Aa</Text>
+              <Text style={styles.fontName}>{font.name}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -444,90 +622,149 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     </View>
   );
 
+  // QR Code Modal
+  const renderQRModal = () => (
+    <Modal
+      visible={showQRModal}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowQRModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.qrModalContent}>
+          <View style={styles.qrModalHeader}>
+            <Text style={styles.qrModalTitle}>Your QR Code</Text>
+            <TouchableOpacity onPress={() => setShowQRModal(false)}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.qrCodeContainer}>
+            {qrCodeUrl ? (
+              <Image 
+                source={{ uri: qrCodeUrl }} 
+                style={styles.qrCodeImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <ActivityIndicator size="large" color="#00C853" />
+            )}
+          </View>
+          
+          <Text style={styles.qrCodeUrl}>tavvy.com/{cardData?.slug}</Text>
+          
+          <View style={styles.qrActions}>
+            <TouchableOpacity style={styles.qrActionButton} onPress={downloadQRCode}>
+              <Ionicons name="download-outline" size={24} color="#00C853" />
+              <Text style={styles.qrActionText}>Save</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.qrActionButton} onPress={shareQRCode}>
+              <Ionicons name="share-outline" size={24} color="#00C853" />
+              <Text style={styles.qrActionText}>Share</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#00C853" />
+          <Text style={styles.loadingText}>Loading your card...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#000" />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Card</Text>
-        <TouchableOpacity 
-          style={styles.previewButton}
-          onPress={() => navigation.navigate('ECardPreview', { profile, links, templateId })}
-        >
-          <Ionicons name="eye-outline" size={24} color="#000" />
+        <TouchableOpacity onPress={() => navigation.navigate('ECardPreview', { cardData })} style={styles.previewButton}>
+          <Ionicons name="eye-outline" size={24} color="#1A1A1A" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Profile Preview Card */}
-        <View style={styles.profileCard}>
-          <LinearGradient
-            colors={['#667eea', '#764ba2']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.profileGradient}
-          >
-            {profile?.image ? (
-              <Image source={{ uri: profile.image }} style={styles.profileImage} />
-            ) : (
-              <View style={styles.profileImagePlaceholder}>
-                <Ionicons name="person" size={24} color="#fff" />
-              </View>
-            )}
-            <Text style={styles.profileName}>{profile?.name || 'Your Name'}</Text>
-            {profile?.title ? <Text style={styles.profileTitle}>{profile.title}</Text> : null}
-          </LinearGradient>
-          
-          {/* Share Bar */}
-          <View style={styles.shareBar}>
-            <View style={styles.urlContainer}>
-              <Ionicons name="link" size={16} color="#9E9E9E" />
-              <Text style={styles.urlText} numberOfLines={1}>{cardUrl}</Text>
-            </View>
-            <TouchableOpacity style={styles.copyButton} onPress={handleCopyLink}>
-              <Ionicons name="copy-outline" size={18} color="#00C853" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-              <Ionicons name="share-outline" size={18} color="#fff" />
-            </TouchableOpacity>
-          </View>
+      {/* Card URL & Actions */}
+      <View style={styles.cardUrlSection}>
+        <View style={styles.cardUrlBox}>
+          <Ionicons name="link" size={18} color="#666" />
+          <Text style={styles.cardUrlText}>{cardUrl}</Text>
         </View>
-
-        {/* Tab Bar */}
-        <View style={styles.tabBar}>
-          {(['links', 'appearance', 'analytics'] as const).map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tab, activeTab === tab && styles.tabActive]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Ionicons 
-                name={tab === 'links' ? 'link' : tab === 'appearance' ? 'color-palette' : 'bar-chart'} 
-                size={20} 
-                color={activeTab === tab ? '#00C853' : '#9E9E9E'} 
-              />
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        <View style={styles.cardActions}>
+          <TouchableOpacity style={styles.actionButton} onPress={handleCopyLink}>
+            <Ionicons name="copy-outline" size={20} color="#666" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+            <Ionicons name="share-outline" size={20} color="#666" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={generateQRCode}>
+            <Ionicons name="qr-code-outline" size={20} color="#666" />
+          </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Tab Content */}
+      {/* Tabs */}
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'links' && styles.activeTab]}
+          onPress={() => setActiveTab('links')}
+        >
+          <Ionicons 
+            name="link" 
+            size={18} 
+            color={activeTab === 'links' ? '#00C853' : '#9E9E9E'} 
+          />
+          <Text style={[styles.tabText, activeTab === 'links' && styles.activeTabText]}>
+            Links
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'appearance' && styles.activeTab]}
+          onPress={() => setActiveTab('appearance')}
+        >
+          <Ionicons 
+            name="color-palette" 
+            size={18} 
+            color={activeTab === 'appearance' ? '#00C853' : '#9E9E9E'} 
+          />
+          <Text style={[styles.tabText, activeTab === 'appearance' && styles.activeTabText]}>
+            Appearance
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'analytics' && styles.activeTab]}
+          onPress={() => setActiveTab('analytics')}
+        >
+          <Ionicons 
+            name="bar-chart" 
+            size={18} 
+            color={activeTab === 'analytics' ? '#00C853' : '#9E9E9E'} 
+          />
+          <Text style={[styles.tabText, activeTab === 'analytics' && styles.activeTabText]}>
+            Analytics
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Tab Content */}
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {activeTab === 'links' && renderLinksTab()}
         {activeTab === 'appearance' && renderAppearanceTab()}
         {activeTab === 'analytics' && renderAnalyticsTab()}
       </ScrollView>
+
+      {/* QR Code Modal */}
+      {renderQRModal()}
     </SafeAreaView>
   );
 }
@@ -535,174 +772,125 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F8F9FA',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    backgroundColor: '#fff',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 4,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#1A1A1A',
   },
   previewButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 4,
   },
-  scrollView: {
-    flex: 1,
-  },
-  profileCard: {
-    marginHorizontal: 20,
-    borderRadius: 20,
-    overflow: 'hidden',
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    elevation: 8,
-  },
-  profileGradient: {
-    padding: 24,
-    alignItems: 'center',
-  },
-  profileImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.3)',
-    marginBottom: 12,
-  },
-  profileImagePlaceholder: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  profileName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  profileTitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 4,
-  },
-  shareBar: {
+  cardUrlSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
-  urlContainer: {
-    flex: 1,
+  cardUrlBox: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F5F5F5',
-    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    marginRight: 8,
-  },
-  urlText: {
+    borderRadius: 8,
     flex: 1,
-    fontSize: 14,
-    color: '#666',
+    marginRight: 12,
+  },
+  cardUrlText: {
     marginLeft: 8,
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
   },
-  copyButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#E8F5E9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  shareButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#00C853',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabBar: {
+  cardActions: {
     flexDirection: 'row',
-    marginHorizontal: 20,
-    marginTop: 20,
+    gap: 8,
+  },
+  actionButton: {
+    padding: 8,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+  },
+  tabsContainer: {
+    flexDirection: 'row',
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 10,
+    borderRadius: 20,
     gap: 6,
   },
-  tabActive: {
+  activeTab: {
     backgroundColor: '#E8F5E9',
   },
   tabText: {
     fontSize: 14,
-    fontWeight: '600',
     color: '#9E9E9E',
+    fontWeight: '500',
   },
-  tabTextActive: {
+  activeTabText: {
     color: '#00C853',
   },
-  tabContent: {
-    padding: 20,
+  scrollView: {
+    flex: 1,
   },
+  tabContent: {
+    padding: 16,
+  },
+  // Links Tab Styles
   addLinkButton: {
-    borderRadius: 16,
+    marginBottom: 16,
+    borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 20,
   },
   addLinkGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: 14,
     gap: 8,
   },
   addLinkText: {
-    fontSize: 16,
-    fontWeight: '700',
     color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   linksList: {
     gap: 12,
@@ -711,7 +899,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -720,7 +908,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   dragHandle: {
-    paddingRight: 8,
+    marginRight: 8,
   },
   linkIcon: {
     width: 40,
@@ -734,14 +922,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   linkTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#1A1A1A',
+    marginBottom: 2,
   },
   linkValue: {
     fontSize: 13,
     color: '#9E9E9E',
-    marginTop: 2,
   },
   linkStats: {
     flexDirection: 'row',
@@ -757,7 +945,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   reorderBtn: {
-    padding: 4,
+    padding: 2,
   },
   reorderBtnDisabled: {
     opacity: 0.3,
@@ -775,8 +963,21 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 14,
     color: '#9E9E9E',
-    marginTop: 8,
     textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 32,
+  },
+  // Appearance Tab Styles
+  savingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    gap: 8,
+  },
+  savingText: {
+    fontSize: 14,
+    color: '#00C853',
   },
   appearanceSection: {
     marginBottom: 24,
@@ -794,22 +995,29 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     fontSize: 14,
-    fontWeight: '600',
     color: '#00C853',
+    fontWeight: '600',
   },
   themesScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
+    marginHorizontal: -16,
+    paddingHorizontal: 16,
   },
   themeCard: {
     marginRight: 12,
     alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    padding: 4,
+  },
+  selectedOption: {
+    borderColor: '#00C853',
   },
   themePreview: {
     width: 80,
-    height: 120,
-    borderRadius: 12,
-    padding: 12,
+    height: 100,
+    borderRadius: 8,
+    padding: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -827,19 +1035,20 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: 'rgba(255,255,255,0.5)',
     marginBottom: 4,
   },
   themePreviewLineShort: {
     width: 28,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
   themeName: {
+    marginTop: 8,
     fontSize: 12,
     color: '#666',
-    marginTop: 8,
+    fontWeight: '500',
   },
   backgroundOptions: {
     flexDirection: 'row',
@@ -848,44 +1057,56 @@ const styles = StyleSheet.create({
   backgroundOption: {
     flex: 1,
     alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    padding: 4,
   },
   backgroundPreview: {
     width: '100%',
-    aspectRatio: 1,
-    borderRadius: 12,
-    alignItems: 'center',
+    height: 70,
+    borderRadius: 8,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   backgroundName: {
+    marginTop: 8,
     fontSize: 12,
     color: '#666',
-    marginTop: 8,
+    fontWeight: '500',
   },
   proBadge: {
     position: 'absolute',
     top: 4,
     right: 4,
     backgroundColor: '#FFD700',
-    borderRadius: 4,
-    paddingHorizontal: 4,
+    paddingHorizontal: 6,
     paddingVertical: 2,
+    borderRadius: 4,
   },
   proBadgeText: {
     fontSize: 8,
     fontWeight: '700',
-    color: '#fff',
+    color: '#1A1A1A',
   },
   buttonOptions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
   buttonOption: {
     flex: 1,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    padding: 4,
+  },
+  selectedButtonOption: {
+    borderColor: '#00C853',
   },
   buttonPreview: {
     paddingVertical: 10,
     paddingHorizontal: 8,
-    borderRadius: 20,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -903,42 +1124,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    paddingVertical: 16,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+  },
+  selectedFontOption: {
+    borderColor: '#00C853',
   },
   fontPreviewText: {
-    fontSize: 24,
+    fontSize: 28,
     color: '#1A1A1A',
     marginBottom: 4,
   },
   fontName: {
-    fontSize: 11,
-    color: '#9E9E9E',
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
   },
-  // Selected option styles
-  selectedOption: {
-    borderWidth: 2,
-    borderColor: '#00C853',
-    borderRadius: 14,
-  },
-  selectedButtonOption: {
-    borderWidth: 2,
-    borderColor: '#00C853',
-    borderRadius: 24,
-    padding: 2,
-  },
-  selectedFontOption: {
-    borderWidth: 2,
-    borderColor: '#00C853',
-  },
+  // Analytics Tab Styles
   analyticsCard: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 12,
+    padding: 16,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -962,17 +1169,17 @@ const styles = StyleSheet.create({
     color: '#9E9E9E',
   },
   analyticsNumber: {
-    fontSize: 48,
+    fontSize: 36,
     fontWeight: '700',
-    color: '#00C853',
+    color: '#1A1A1A',
+    marginBottom: 12,
   },
   analyticsChart: {
     height: 100,
     backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    marginTop: 16,
-    alignItems: 'center',
+    borderRadius: 8,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   analyticsPlaceholder: {
     fontSize: 14,
@@ -998,17 +1205,16 @@ const styles = StyleSheet.create({
   },
   topLinkClicks: {
     fontSize: 14,
-    color: '#00C853',
-    fontWeight: '600',
+    color: '#9E9E9E',
   },
   proUpsell: {
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   proUpsellGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
     gap: 12,
   },
   proUpsellText: {
@@ -1016,12 +1222,76 @@ const styles = StyleSheet.create({
   },
   proUpsellTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#fff',
   },
   proUpsellSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
+  },
+  // QR Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  qrModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    alignItems: 'center',
+  },
+  qrModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 20,
+  },
+  qrModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  qrCodeContainer: {
+    width: 200,
+    height: 200,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  qrCodeImage: {
+    width: 180,
+    height: 180,
+  },
+  qrCodeUrl: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 20,
+  },
+  qrActions: {
+    flexDirection: 'row',
+    gap: 24,
+  },
+  qrActionButton: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  qrActionText: {
+    fontSize: 14,
+    color: '#00C853',
+    fontWeight: '500',
   },
 });
