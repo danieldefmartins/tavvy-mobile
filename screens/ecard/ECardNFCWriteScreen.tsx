@@ -152,14 +152,53 @@ export default function ECardNFCWriteScreen({ navigation, route }: Props) {
   const renderNfcNotSupported = () => (
     <View style={styles.centerContent}>
       <View style={styles.iconContainer}>
-        <Ionicons name="warning-outline" size={60} color="#F97316" />
+        <Ionicons name="wifi-outline" size={60} color="#F97316" style={{ transform: [{ rotate: '90deg' }] }} />
       </View>
       <Text style={styles.title}>NFC Not Available</Text>
       <Text style={styles.subtitle}>
         {!NfcManager 
-          ? 'NFC functionality requires a development build. Please rebuild the app with NFC support.'
+          ? 'NFC functionality requires a development build. This feature will be available in the production app.'
           : 'Your device does not support NFC.'}
       </Text>
+      
+      <View style={styles.alternativesSection}>
+        <Text style={styles.alternativesTitle}>Other ways to share your card:</Text>
+        
+        <TouchableOpacity 
+          style={styles.alternativeOption}
+          onPress={() => {
+            navigation.goBack();
+            // The QR code option is available on the main screen
+          }}
+        >
+          <View style={styles.alternativeIcon}>
+            <Ionicons name="qr-code-outline" size={24} color="#22C55E" />
+          </View>
+          <View style={styles.alternativeText}>
+            <Text style={styles.alternativeLabel}>QR Code</Text>
+            <Text style={styles.alternativeDesc}>Let others scan to view your card</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#9E9E9E" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.alternativeOption}
+          onPress={() => {
+            navigation.goBack();
+            // Share link option
+          }}
+        >
+          <View style={styles.alternativeIcon}>
+            <Ionicons name="share-outline" size={24} color="#3B82F6" />
+          </View>
+          <View style={styles.alternativeText}>
+            <Text style={styles.alternativeLabel}>Share Link</Text>
+            <Text style={styles.alternativeDesc}>Send your card URL via text or email</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#9E9E9E" />
+        </TouchableOpacity>
+      </View>
+      
       <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.goBack()}>
         <Text style={styles.secondaryButtonText}>Go Back</Text>
       </TouchableOpacity>
@@ -451,5 +490,52 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: '#666',
+  },
+  
+  // Alternatives section styles
+  alternativesSection: {
+    width: '100%',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+  },
+  alternativesTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  alternativeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  alternativeIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  alternativeText: {
+    flex: 1,
+  },
+  alternativeLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  alternativeDesc: {
+    fontSize: 13,
+    color: '#6B7280',
   },
 });

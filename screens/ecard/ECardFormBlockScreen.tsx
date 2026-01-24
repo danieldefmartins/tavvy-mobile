@@ -24,9 +24,10 @@ const FORM_PROVIDERS = [
     icon: 'rocket-outline',
     color: '#FF6B35',
     description: 'CRM & Marketing Automation',
-    placeholder: 'https://link.yourdomain.com/widget/form/...',
-    helpText: 'Paste your GoHighLevel form embed URL',
+    placeholder: '<iframe src="https://link.yourdomain.com/widget/form/..." ...',
+    helpText: 'Paste your GoHighLevel form embed code (iframe)',
     premium: false,
+    acceptsEmbed: true,
   },
   {
     id: 'typeform',
@@ -37,6 +38,7 @@ const FORM_PROVIDERS = [
     placeholder: 'https://yourname.typeform.com/to/...',
     helpText: 'Paste your Typeform share URL',
     premium: false,
+    acceptsEmbed: false,
   },
   {
     id: 'google',
@@ -47,6 +49,7 @@ const FORM_PROVIDERS = [
     placeholder: 'https://docs.google.com/forms/d/e/.../viewform',
     helpText: 'Paste your Google Form share link',
     premium: false,
+    acceptsEmbed: false,
   },
   {
     id: 'jotform',
@@ -57,6 +60,7 @@ const FORM_PROVIDERS = [
     placeholder: 'https://form.jotform.com/...',
     helpText: 'Paste your JotForm share URL',
     premium: false,
+    acceptsEmbed: false,
   },
   {
     id: 'calendly',
@@ -67,6 +71,7 @@ const FORM_PROVIDERS = [
     placeholder: 'https://calendly.com/yourname/...',
     helpText: 'Paste your Calendly scheduling link',
     premium: false,
+    acceptsEmbed: false,
   },
   {
     id: 'hubspot',
@@ -77,16 +82,18 @@ const FORM_PROVIDERS = [
     placeholder: 'https://share.hsforms.com/...',
     helpText: 'Paste your HubSpot form or meeting link',
     premium: true,
+    acceptsEmbed: false,
   },
   {
     id: 'custom',
     name: 'Custom Embed',
     icon: 'code-slash-outline',
     color: '#22C55E',
-    description: 'Any embed URL',
-    placeholder: 'https://...',
-    helpText: 'Paste any embeddable form URL',
+    description: 'Any embed code or URL',
+    placeholder: '<iframe src="..." ...> or https://...',
+    helpText: 'Paste any embeddable form URL or iframe code',
     premium: true,
+    acceptsEmbed: true,
   },
   {
     id: 'native',
@@ -97,18 +104,21 @@ const FORM_PROVIDERS = [
     placeholder: '',
     helpText: 'Create a native contact form',
     premium: false,
+    acceptsEmbed: false,
   },
 ];
 
 interface FormConfig {
   provider: string;
   url: string;
+  embedCode?: string;
   title: string;
   buttonText: string;
   enabled: boolean;
   fields?: string[]; // For native form
   webhookUrl?: string; // For native form
   emailNotification?: boolean;
+  isPremiumFeature?: boolean;
 }
 
 interface Props {
@@ -123,7 +133,7 @@ export default function ECardFormBlockScreen({ navigation, route }: Props) {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(
     existingConfig?.provider || null
   );
-  const [formUrl, setFormUrl] = useState(existingConfig?.url || '');
+  const [formUrl, setFormUrl] = useState(existingConfig?.url || existingConfig?.embedCode || '');
   const [formTitle, setFormTitle] = useState(existingConfig?.title || 'Contact Me');
   const [buttonText, setButtonText] = useState(existingConfig?.buttonText || 'Get in Touch');
   const [isEnabled, setIsEnabled] = useState(existingConfig?.enabled ?? true);
@@ -141,38 +151,76 @@ export default function ECardFormBlockScreen({ navigation, route }: Props) {
 
   const selectedProviderConfig = FORM_PROVIDERS.find(p => p.id === selectedProvider);
 
+  // Allow selection of premium providers - will check on publish
   const handleProviderSelect = (providerId: string) => {
-    const provider = FORM_PROVIDERS.find(p => p.id === providerId);
-    if (provider?.premium && !isPro) {
-      Alert.alert(
-        'Pro Feature',
-        `${provider.name} integration is available for Pro users. Upgrade to unlock this feature.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Upgrade', onPress: () => navigation.navigate('ECardPremiumUpsell') },
-        ]
-      );
-      return;
-    }
     setSelectedProvider(providerId);
     setFormUrl('');
   };
 
-  const validateUrl = (url: string): boolean => {
-    if (!url) return false;
+  // Validate URL or embed code
+  const validateInput = (input: string, provider: typeof FORM_PROVIDERS[0]): boolean => {
+    if (!input || !input.trim()) return false;
+    
+    const trimmedInput = input.trim();
+    
+    // If provider accepts embed code, check for iframe
+    if (provider.acceptsEmbed) {
+      // Check if it's an iframe embed code (case insensitive, allowing various whitespace)
+      const lowerInput = trimmedInput.toLowerCase();
+      if (lowerInput.includes('<iframe') && lowerInput.includes('src')) {
+        // Verify there's actually a src attribute with a value
+        const srcMatch = trimmedInput.match(/src\s*=\s*["']([^"']+)["']/i);
+        if (srcMatch && srcMatch[1]) {
+          return true;
+        }
+      }
+      // Also accept URLs
+      try {
+        new URL(trimmedInput);
+        return true;
+      } catch {
+        // For embed-accepting providers, also check if it looks like a partial URL
+        if (trimmedInput.startsWith('http://') || trimmedInput.startsWith('https://')) {
+          return true;
+        }
+        return false;
+      }
+    }
+    
+    // For URL-only providers
     try {
-      new URL(url);
+      new URL(trimmedInput);
       return true;
     } catch {
       return false;
     }
   };
 
+  // Extract URL from iframe embed code
+  const extractUrlFromEmbed = (input: string): string => {
+    const trimmedInput = input.trim();
+    if (trimmedInput.toLowerCase().includes('<iframe')) {
+      const srcMatch = input.match(/src\s*=\s*["']([^"']+)["']/i);
+      if (srcMatch && srcMatch[1]) {
+        return srcMatch[1];
+      }
+    }
+    return input;
+  };
+
   const handleSave = async () => {
-    if (selectedProvider !== 'native' && !validateUrl(formUrl)) {
-      Alert.alert('Invalid URL', 'Please enter a valid form URL.');
+    if (!selectedProviderConfig) return;
+    
+    if (selectedProvider !== 'native' && !validateInput(formUrl, selectedProviderConfig)) {
+      const errorMsg = selectedProviderConfig.acceptsEmbed 
+        ? 'Please enter a valid URL or iframe embed code.'
+        : 'Please enter a valid form URL.';
+      Alert.alert('Invalid Input', errorMsg);
       return;
     }
+
+    // Check if this is a premium feature and user is not pro
+    const isPremiumFeature = selectedProviderConfig.premium && !isPro;
 
     setIsSaving(true);
 
@@ -183,12 +231,18 @@ export default function ECardFormBlockScreen({ navigation, route }: Props) {
       if (collectPhone) fields.push('phone');
       if (collectMessage) fields.push('message');
 
+      // Determine if input is embed code or URL
+      const isEmbedCode = formUrl.trim().startsWith('<iframe');
+      const extractedUrl = extractUrlFromEmbed(formUrl);
+
       const formConfig: FormConfig = {
         provider: selectedProvider!,
-        url: formUrl,
+        url: extractedUrl,
+        ...(isEmbedCode && { embedCode: formUrl }),
         title: formTitle,
         buttonText: buttonText,
         enabled: isEnabled,
+        isPremiumFeature: isPremiumFeature,
         ...(selectedProvider === 'native' && {
           fields,
           webhookUrl,
@@ -203,7 +257,11 @@ export default function ECardFormBlockScreen({ navigation, route }: Props) {
 
       if (error) throw error;
 
-      Alert.alert('Success', 'Form block saved successfully!', [
+      const successMsg = isPremiumFeature 
+        ? 'Form block saved! Note: This is a Pro feature. You\'ll need to upgrade before publishing.'
+        : 'Form block saved successfully!';
+
+      Alert.alert('Success', successMsg, [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
@@ -273,6 +331,14 @@ export default function ECardFormBlockScreen({ navigation, route }: Props) {
           </TouchableOpacity>
         ))}
       </View>
+      
+      {/* Info about premium features */}
+      <View style={styles.premiumInfo}>
+        <Ionicons name="information-circle-outline" size={16} color="#666" />
+        <Text style={styles.premiumInfoText}>
+          PRO features can be configured now. You'll be prompted to upgrade when publishing.
+        </Text>
+      </View>
     </View>
   );
 
@@ -282,6 +348,16 @@ export default function ECardFormBlockScreen({ navigation, route }: Props) {
     return (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Configure Form</Text>
+        
+        {/* Premium feature notice */}
+        {selectedProviderConfig.premium && !isPro && (
+          <View style={styles.premiumNotice}>
+            <Ionicons name="star" size={16} color="#F59E0B" />
+            <Text style={styles.premiumNoticeText}>
+              This is a Pro feature. You can configure it now, but you'll need to upgrade before publishing your card.
+            </Text>
+          </View>
+        )}
         
         {/* Form Title */}
         <View style={styles.inputGroup}>
@@ -348,18 +424,34 @@ export default function ECardFormBlockScreen({ navigation, route }: Props) {
             </View>
           </>
         ) : (
-          // External form URL
+          // External form URL or embed code
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>{selectedProviderConfig.name} URL</Text>
+            <Text style={styles.inputLabel}>
+              {selectedProviderConfig.acceptsEmbed 
+                ? `${selectedProviderConfig.name} Embed Code or URL`
+                : `${selectedProviderConfig.name} URL`
+              }
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, selectedProviderConfig.acceptsEmbed && styles.embedInput]}
               value={formUrl}
               onChangeText={setFormUrl}
               placeholder={selectedProviderConfig.placeholder}
               autoCapitalize="none"
               keyboardType="url"
+              multiline={selectedProviderConfig.acceptsEmbed}
+              numberOfLines={selectedProviderConfig.acceptsEmbed ? 4 : 1}
             />
             <Text style={styles.helpText}>{selectedProviderConfig.helpText}</Text>
+            
+            {selectedProviderConfig.acceptsEmbed && (
+              <View style={styles.embedTip}>
+                <Ionicons name="bulb-outline" size={14} color="#22C55E" />
+                <Text style={styles.embedTipText}>
+                  Tip: Copy the entire iframe code from your form provider
+                </Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -521,6 +613,40 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
   },
+  premiumInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+  },
+  premiumInfoText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 18,
+  },
+  premiumNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+  },
+  premiumNoticeText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#92400E',
+    lineHeight: 18,
+  },
   inputGroup: {
     marginBottom: 16,
   },
@@ -538,10 +664,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000',
   },
+  embedInput: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+    paddingTop: 14,
+  },
   helpText: {
     fontSize: 12,
     color: '#999',
     marginTop: 6,
+  },
+  embedTip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 6,
+  },
+  embedTipText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#166534',
   },
   toggleRow: {
     flexDirection: 'row',

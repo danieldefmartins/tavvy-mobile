@@ -144,6 +144,7 @@ interface CardData {
   pro_credentials?: ProCredentials;
   review_count?: number;
   review_rating?: number;
+  is_published?: boolean;
 }
 
 interface Props {
@@ -198,6 +199,11 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   
+  // Publish slug modal state - shown before publishing
+  const [showPublishSlugModal, setShowPublishSlugModal] = useState(false);
+  const [pendingSlug, setPendingSlug] = useState('');
+  const [isPublishing, setIsPublishing] = useState(false);
+  
   // Color picker modal state
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [editingColorIndex, setEditingColorIndex] = useState<0 | 1>(0);
@@ -240,20 +246,31 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       .substring(0, 30);
   };
 
-  // Check if slug is available
+  // Check if slug is available (only checks against PUBLISHED cards)
   const checkSlugAvailability = async (slug: string): Promise<boolean> => {
     if (!slug || slug.length < 3) return false;
     
+    // If the slug is the same as current card's slug and it's published, it's available (user owns it)
+    if (cardData?.slug === slug && cardData?.is_published) return true;
+    
     try {
+      // Only check against published cards to avoid blocking slugs from abandoned drafts
       const { data, error } = await supabase
         .from('digital_cards')
-        .select('id')
+        .select('id, is_published')
         .eq('slug', slug)
-        .neq('user_id', user?.id || '')
+        .eq('is_published', true)
         .limit(1);
       
       if (error) throw error;
-      return !data || data.length === 0;
+      
+      // If no published card found with this slug, it's available
+      if (!data || data.length === 0) return true;
+      
+      // If the found card is the current user's card, it's available
+      if (cardData?.id && data[0]?.id === cardData.id) return true;
+      
+      return false;
     } catch (error) {
       console.error('Error checking slug:', error);
       return false;
@@ -264,73 +281,56 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const createNewCard = async () => {
     if (!user || !profile) return;
     
-    const baseSlug = generateSlug(profile.name || 'user');
+    // Generate a temporary unique slug for draft cards
+    // The real slug will be chosen when publishing
+    const tempSlug = `draft_${user.id.substring(0, 8)}_${Date.now().toString(36)}`;
+    const suggestedSlug = generateSlug(profile.name || 'user');
+    
     let insertedCard = null;
     let lastError = null;
     
-    for (let attempt = 0; attempt < 5; attempt++) {
-      try {
-        let finalSlug = baseSlug;
-        if (attempt > 0) {
-          const timestamp = Date.now().toString(36);
-          const random = Math.random().toString(36).substring(2, 6);
-          finalSlug = `${baseSlug}${timestamp}${random}`;
-        }
-        
-        const isAvailable = await checkSlugAvailability(finalSlug);
-        if (!isAvailable && attempt === 0) {
-          continue;
-        }
-        
-        const newCardData = {
-          user_id: user.id,
-          slug: finalSlug,
-          full_name: profile.name || '',
-          title: profile.title || '',
-          company: '',
-          phone: '',
-          email: '',
-          website: '',
-          city: profile.address?.city || '',
-          state: profile.address?.state || '',
-          gradient_color_1: '#667eea',
-          gradient_color_2: '#764ba2',
-          profile_photo_url: profile.image || null,
-          profile_photo_size: 'medium',
-          theme: 'classic',
-          background_type: 'gradient',
-          button_style: 'fill',
-          font_style: 'default',
-          is_active: true,
-        };
-        
-        const { data, error: insertError } = await supabase
-          .from('digital_cards')
-          .insert(newCardData)
-          .select()
-          .single();
-        
-        if (insertError) {
-          if (insertError.code === '23505') {
-            lastError = insertError;
-            continue;
-          }
-          throw insertError;
-        }
-        
-        insertedCard = data;
-        break;
-        
-      } catch (error: any) {
-        lastError = error;
-        if (error.code !== '23505') {
-          throw error;
-        }
+    try {
+      const newCardData = {
+        user_id: user.id,
+        slug: tempSlug, // Temporary slug for draft
+        full_name: profile.name || '',
+        title: profile.title || '',
+        company: '',
+        phone: '',
+        email: '',
+        website: '',
+        city: profile.address?.city || '',
+        state: profile.address?.state || '',
+        gradient_color_1: '#667eea',
+        gradient_color_2: '#764ba2',
+        profile_photo_url: profile.image || null,
+        profile_photo_size: 'medium',
+        theme: 'classic',
+        background_type: 'gradient',
+        button_style: 'fill',
+        font_style: 'default',
+        is_active: true,
+        is_published: false, // Draft until published
+      };
+      
+      const { data, error: insertError } = await supabase
+        .from('digital_cards')
+        .insert(newCardData)
+        .select()
+        .single();
+      
+      if (insertError) {
+        throw insertError;
       }
-    }
-    
-    if (!insertedCard) {
-      console.error('Failed to create card after 5 attempts:', lastError);
+      
+      insertedCard = data;
+      
+      // Set the suggested slug as pending (user will confirm when publishing)
+      setPendingSlug(suggestedSlug);
+      
+    } catch (error: any) {
+      lastError = error;
+      console.error('Failed to create card:', lastError);
       Alert.alert('Error', 'Failed to create your card. Please try again.');
       return;
     }
@@ -370,7 +370,8 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       }
       
       setCardData(insertedCard);
-      setCardUrl(`tavvy.com/${insertedCard.slug}`);
+      // For draft cards, show the suggested slug (not the temp slug)
+      setCardUrl(`tavvy.com/${suggestedSlug}`);
       setGradientColors([insertedCard.gradient_color_1, insertedCard.gradient_color_2]);
       setSelectedTheme(insertedCard.theme || 'classic');
       setSelectedBackground(insertedCard.background_type || 'gradient');
@@ -632,8 +633,9 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     Alert.alert('Saved', 'Your credentials have been updated.');
   };
 
-  // Publish & Share handler - check for premium features
+  // Publish & Share handler - check for premium features and show slug selection
   const handlePublishShare = () => {
+    // Check for premium features first
     if (!isPro && hasPremiumFeatures()) {
       Alert.alert(
         'Premium Features Detected',
@@ -646,8 +648,70 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       return;
     }
     
-    // Proceed with sharing
+    // If card is not published yet, show slug selection modal
+    if (!cardData?.is_published) {
+      // Initialize with pending slug or generate from name
+      const suggestedSlug = pendingSlug || generateSlug(cardData?.full_name || 'user');
+      setSlugInput(suggestedSlug);
+      setSlugAvailable(null);
+      setShowPublishSlugModal(true);
+      return;
+    }
+    
+    // Card is already published, just share
     handleShare();
+  };
+  
+  // Actually publish the card with the chosen slug
+  const handleConfirmPublish = async () => {
+    if (!slugAvailable || !cardData?.id) {
+      Alert.alert('Check Availability', 'Please check if your URL is available before publishing.');
+      return;
+    }
+    
+    setIsPublishing(true);
+    
+    try {
+      // Update the card with the final slug and mark as published
+      const { error } = await supabase
+        .from('digital_cards')
+        .update({ 
+          slug: slugInput,
+          is_published: true 
+        })
+        .eq('id', cardData.id);
+      
+      if (error) {
+        if (error.code === '23505') {
+          Alert.alert('URL Taken', 'This URL was just taken by someone else. Please choose a different one.');
+          setSlugAvailable(false);
+          return;
+        }
+        throw error;
+      }
+      
+      // Update local state
+      setCardData(prev => prev ? { ...prev, slug: slugInput, is_published: true } : null);
+      setCardUrl(`tavvy.com/${slugInput}`);
+      setPendingSlug(slugInput);
+      setShowPublishSlugModal(false);
+      
+      // Show success and share
+      Alert.alert(
+        '🎉 Card Published!',
+        `Your card is now live at:\ntavvy.com/${slugInput}`,
+        [
+          { text: 'Share Now', onPress: handleShare },
+          { text: 'Done', style: 'cancel' },
+        ]
+      );
+      
+    } catch (error) {
+      console.error('Error publishing card:', error);
+      Alert.alert('Error', 'Failed to publish your card. Please try again.');
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   // Remove premium features
@@ -1556,7 +1620,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     </Modal>
   );
 
-  // Render Slug Modal
+  // Render Slug Modal (for editing URL of published cards)
   const renderSlugModal = () => (
     <Modal
       visible={showSlugModal}
@@ -1647,6 +1711,115 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               </LinearGradient>
             </TouchableOpacity>
           </View>
+        </View>
+      </View>
+    </Modal>
+  );
+  
+  // Render Publish Slug Modal (shown before first publish)
+  const renderPublishSlugModal = () => (
+    <Modal
+      visible={showPublishSlugModal}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowPublishSlugModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.slugModalContent}>
+          <View style={styles.slugModalHeader}>
+            <Text style={styles.slugModalTitle}>🎉 Choose Your Card URL</Text>
+            <TouchableOpacity onPress={() => setShowPublishSlugModal(false)}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+          
+          <Text style={styles.publishSlugDescription}>
+            This will be your permanent card link. Choose something memorable!
+          </Text>
+          
+          <View style={styles.slugInputContainer}>
+            <Text style={styles.slugPrefix}>tavvy.com/</Text>
+            <TextInput
+              style={styles.slugInput}
+              value={slugInput}
+              onChangeText={(text) => {
+                const formatted = text.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 30);
+                setSlugInput(formatted);
+                setSlugAvailable(null);
+              }}
+              placeholder="yourname"
+              placeholderTextColor="#BDBDBD"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+          
+          {slugInput.length > 0 && slugInput.length < 3 && (
+            <View style={styles.slugStatusRow}>
+              <Ionicons name="information-circle" size={18} color="#F59E0B" />
+              <Text style={styles.slugWarningText}>URL must be at least 3 characters</Text>
+            </View>
+          )}
+          
+          {slugAvailable === true && (
+            <View style={styles.slugStatusRow}>
+              <Ionicons name="checkmark-circle" size={18} color="#00C853" />
+              <Text style={styles.slugAvailableText}>Available! This URL is yours.</Text>
+            </View>
+          )}
+          
+          {slugAvailable === false && (
+            <View style={styles.slugStatusRow}>
+              <Ionicons name="close-circle" size={18} color="#F44336" />
+              <Text style={styles.slugUnavailableText}>Already taken - try another</Text>
+            </View>
+          )}
+          
+          <View style={styles.slugModalActions}>
+            <TouchableOpacity
+              style={styles.checkButton}
+              onPress={async () => {
+                if (slugInput.length < 3) {
+                  Alert.alert('Too Short', 'Your URL must be at least 3 characters.');
+                  return;
+                }
+                setIsCheckingSlug(true);
+                const available = await checkSlugAvailability(slugInput);
+                setSlugAvailable(available);
+                setIsCheckingSlug(false);
+              }}
+              disabled={isCheckingSlug || slugInput.length < 3}
+            >
+              {isCheckingSlug ? (
+                <ActivityIndicator size="small" color="#00C853" />
+              ) : (
+                <Text style={styles.checkButtonText}>Check</Text>
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.saveSlugButton, (!slugAvailable || isPublishing) && styles.saveSlugButtonDisabled]}
+              onPress={handleConfirmPublish}
+              disabled={!slugAvailable || isPublishing}
+            >
+              <LinearGradient
+                colors={slugAvailable ? ['#00C853', '#00E676'] : ['#E0E0E0', '#BDBDBD']}
+                style={styles.saveSlugGradient}
+              >
+                {isPublishing ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={[styles.saveSlugText, !slugAvailable && { color: '#9E9E9E' }]}>
+                    Publish
+                  </Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+          
+          <Text style={styles.publishSlugHint}>
+            💡 Tip: Use your name, business name, or something easy to remember
+          </Text>
         </View>
       </View>
     </Modal>
@@ -1832,6 +2005,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       {/* Modals */}
       {renderQRModal()}
       {renderSlugModal()}
+      {renderPublishSlugModal()}
       {renderColorPickerModal()}
       {renderGalleryModal()}
       {renderCredentialsModal()}
@@ -2907,6 +3081,26 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#fff',
+  },
+  
+  // Publish Slug Modal
+  publishSlugDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  slugWarningText: {
+    fontSize: 13,
+    color: '#F59E0B',
+    marginLeft: 6,
+  },
+  publishSlugHint: {
+    fontSize: 12,
+    color: '#9E9E9E',
+    marginTop: 16,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   
   // Color Picker Modal
