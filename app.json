@@ -45,6 +45,12 @@
       ],
       "@maplibre/maplibre-react-native",
       "expo-localization",
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
+      ],
       "./plugins/withPodfileFix"
     ],
     "ios": {
