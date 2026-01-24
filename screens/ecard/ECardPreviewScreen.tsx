@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import CrownBadge from '../../components/ecard/CrownBadge';
 
 const { width } = Dimensions.get('window');
 
@@ -75,35 +76,16 @@ interface Props {
   route: any;
 }
 
-// Crown Badge Component for Tavvy Reviews
-const CrownBadge = ({ reviewCount, rating, onPress }: { reviewCount: number; rating: number; onPress: () => void }) => (
-  <TouchableOpacity 
-    style={styles.crownBadge}
-    onPress={onPress}
-    activeOpacity={0.8}
-  >
-    <LinearGradient
-      colors={['#FFD700', '#FFA500']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.crownGradient}
-    >
-      <Text style={styles.crownIcon}>👑</Text>
-      <View style={styles.crownInfo}>
-        <Text style={styles.crownRating}>{rating.toFixed(1)}</Text>
-        <Text style={styles.crownCount}>({reviewCount})</Text>
-      </View>
-    </LinearGradient>
-  </TouchableOpacity>
-);
+// CrownBadge is now imported from components/ecard/CrownBadge
 
 export default function ECardPreviewScreen({ navigation, route }: Props) {
   const { user } = useAuth();
-  const { cardData: passedCardData, profile, links: passedLinks, templateId, reviews } = route.params || {};
+  const { cardData: passedCardData, profile, links: passedLinks, featuredSocials: passedFeaturedSocials, templateId, reviews } = route.params || {};
   
   const [isLoading, setIsLoading] = useState(true);
   const [cardData, setCardData] = useState<CardData | null>(null);
   const [links, setLinks] = useState<LinkData[]>([]);
+  const [featuredSocials, setFeaturedSocials] = useState<{platformId: string; url: string}[]>(passedFeaturedSocials || []);
   
   // Mock reviews data - in production this comes from Tavvy reviews system
   const reviewData = reviews || { count: 0, rating: 0 };
@@ -324,17 +306,17 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
           end={{ x: 1, y: 1 }}
           style={styles.cardContainer}
         >
-          {/* Crown Badge - Shows if user has Tavvy reviews */}
-          {hasReviews && (
+          {/* Crown Badge - Shows validation tap count */}
+          <View style={styles.crownBadgeContainer}>
             <CrownBadge 
-              reviewCount={reviewData.count}
-              rating={reviewData.rating}
+              tapCount={reviewData.count || 0}
+              size="large"
               onPress={() => {
                 // Navigate to reviews or show reviews modal
-                console.log('Show reviews');
+                console.log('Show validation taps');
               }}
             />
-          )}
+          </View>
 
           {/* Profile Section */}
           <View style={styles.profileSection}>
@@ -354,55 +336,80 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
             ) : null}
           </View>
 
-          {/* Social Icons Row */}
-          {links.length > 0 && (
+          {/* Social Icons Row - Show featured socials or first 6 links */}
+          {(featuredSocials.length > 0 || links.length > 0) && (
             <View style={styles.socialIconsRow}>
-              {links.slice(0, 6).map((link) => {
-                const platformConfig = PLATFORM_ICONS[link.platform || link.icon] || PLATFORM_ICONS.other;
-                return (
-                  <TouchableOpacity
-                    key={link.id}
-                    style={styles.socialIconButton}
-                    onPress={() => handleLinkPress(link)}
-                  >
-                    <Ionicons 
-                      name={platformConfig.icon as any} 
-                      size={22} 
-                      color="#fff" 
-                    />
-                  </TouchableOpacity>
-                );
-              })}
+              {featuredSocials.length > 0 ? (
+                featuredSocials.map((social) => {
+                  const platformConfig = PLATFORM_ICONS[social.platformId] || PLATFORM_ICONS.other;
+                  const link = links.find(l => l.platform === social.platformId);
+                  return (
+                    <TouchableOpacity
+                      key={social.platformId}
+                      style={styles.socialIconButton}
+                      onPress={() => link && handleLinkPress(link)}
+                    >
+                      <Ionicons 
+                        name={platformConfig.icon as any} 
+                        size={22} 
+                        color="#fff" 
+                      />
+                    </TouchableOpacity>
+                  );
+                })
+              ) : (
+                links.slice(0, 6).map((link) => {
+                  const platformConfig = PLATFORM_ICONS[link.platform || link.icon] || PLATFORM_ICONS.other;
+                  return (
+                    <TouchableOpacity
+                      key={link.id}
+                      style={styles.socialIconButton}
+                      onPress={() => handleLinkPress(link)}
+                    >
+                      <Ionicons 
+                        name={platformConfig.icon as any} 
+                        size={22} 
+                        color="#fff" 
+                      />
+                    </TouchableOpacity>
+                  );
+                })
+              )}
             </View>
           )}
 
-          {/* Links List */}
-          {links.length > 0 && (
-            <View style={styles.linksSection}>
-              {links.map((link) => {
-                const platformConfig = PLATFORM_ICONS[link.platform || link.icon] || PLATFORM_ICONS.other;
-                return (
-                  <TouchableOpacity
-                    key={link.id}
-                    style={styles.linkButton}
-                    onPress={() => handleLinkPress(link)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.linkIconContainer}>
-                      <Ionicons 
-                        name={platformConfig.icon as any} 
-                        size={18} 
-                        color="#fff" 
-                      />
-                    </View>
-                    <Text style={styles.linkButtonText}>
-                      {link.title || (link.platform ? link.platform.charAt(0).toUpperCase() + link.platform.slice(1) : 'Link')}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
+          {/* Links List - Exclude featured socials */}
+          {(() => {
+            const nonFeaturedLinks = featuredSocials.length > 0 
+              ? links.filter(link => !featuredSocials.some(f => f.platformId === link.platform))
+              : links;
+            return nonFeaturedLinks.length > 0 ? (
+              <View style={styles.linksSection}>
+                {nonFeaturedLinks.map((link) => {
+                  const platformConfig = PLATFORM_ICONS[link.platform || link.icon] || PLATFORM_ICONS.other;
+                  return (
+                    <TouchableOpacity
+                      key={link.id}
+                      style={styles.linkButton}
+                      onPress={() => handleLinkPress(link)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.linkIconContainer}>
+                        <Ionicons 
+                          name={platformConfig.icon as any} 
+                          size={18} 
+                          color="#fff" 
+                        />
+                      </View>
+                      <Text style={styles.linkButtonText}>
+                        {link.title || (link.platform ? link.platform.charAt(0).toUpperCase() + link.platform.slice(1) : 'Link')}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : null;
+          })()}
 
           {/* Empty State */}
           {links.length === 0 && (
@@ -424,7 +431,14 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
       <View style={styles.bottomActions}>
         <TouchableOpacity
           style={styles.editButton}
-          onPress={() => navigation.navigate('ECardTemplateGallery', { mode: 'edit', cardId: cardData?.id, existingData: cardData })}
+          onPress={() => navigation.navigate('ECardTemplateGallery', { 
+            mode: 'edit', 
+            cardId: cardData?.id, 
+            existingData: cardData,
+            existingLinks: links,
+            existingFeaturedSocials: featuredSocials,
+            preserveData: true 
+          })}
         >
           <Ionicons name="pencil" size={20} color="#00C853" />
           <Text style={styles.editButtonText}>Edit Card</Text>
@@ -509,12 +523,11 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 12,
   },
-  crownBadge: {
+  crownBadgeContainer: {
     position: 'absolute',
-    top: 16,
-    right: 16,
-    borderRadius: 20,
-    overflow: 'hidden',
+    top: 20,
+    right: 20,
+    zIndex: 10,
   },
   crownGradient: {
     flexDirection: 'row',

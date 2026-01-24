@@ -22,6 +22,9 @@ interface RouteParams {
   mode: 'create' | 'edit';
   cardId?: string;
   existingData?: any;
+  existingLinks?: any[];
+  existingFeaturedSocials?: any[];
+  preserveData?: boolean;
 }
 
 const ECardColorPickerScreen: React.FC = () => {
@@ -45,7 +48,26 @@ const ECardColorPickerScreen: React.FC = () => {
   const handleContinue = () => {
     const colorScheme = template.colorSchemes.find(cs => cs.id === selectedColorScheme);
     
-    // Navigate to the NEW Linktree-style onboarding flow
+    // If preserving data (editing template), go directly to dashboard with existing data
+    if (params.preserveData && params.existingData) {
+      navigation.navigate('ECardDashboard', {
+        templateId: params.templateId,
+        colorSchemeId: selectedColorScheme,
+        profile: {
+          name: params.existingData.name,
+          title: params.existingData.title,
+          bio: params.existingData.bio,
+          photo: params.existingData.profile_photo_url,
+        },
+        links: params.existingLinks || [],
+        cardId: params.cardId,
+        isNewCard: false,
+        openAppearance: true, // Open appearance tab to show new template
+      });
+      return;
+    }
+    
+    // Navigate to the NEW Linktree-style onboarding flow for new cards
     navigation.navigate('ECardOnboardingPlatforms', {
       templateId: params.templateId,
       colorSchemeId: selectedColorScheme,

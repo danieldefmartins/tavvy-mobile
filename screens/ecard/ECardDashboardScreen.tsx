@@ -24,6 +24,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../../lib/supabaseClient';
 import { FONTS, PREMIUM_FONT_COUNT } from '../../config/eCardFonts';
 import { useAuth } from '../../contexts/AuthContext';
+import FeaturedSocialsSelector from '../../components/ecard/FeaturedSocialsSelector';
 
 const { width, height } = Dimensions.get('window');
 const PREVIEW_HEIGHT = height * 0.32;
@@ -157,6 +158,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const { templateId, colorSchemeId, profile, links: initialLinks, isNewCard, openAppearance, cardId } = route.params || {};
   
   const [links, setLinks] = useState<LinkItem[]>(initialLinks || []);
+  const [featuredSocials, setFeaturedSocials] = useState<{platformId: string; url: string}[]>([]);
   const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'analytics'>(openAppearance ? 'appearance' : 'links');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -173,6 +175,10 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   // Gallery state
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [showGalleryModal, setShowGalleryModal] = useState(false);
+  
+  // YouTube Video state
+  const [youtubeVideoUrl, setYoutubeVideoUrl] = useState<string>('');
+  const [showYoutubeModal, setShowYoutubeModal] = useState(false);
   
   // Pro Credentials state
   const [proCredentials, setProCredentials] = useState<ProCredentials>({
@@ -1005,6 +1011,22 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         </View>
       )}
       
+      {/* Featured Socials Selector */}
+      {links.length > 0 && (
+        <View style={styles.featuredSocialsSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Featured Icons</Text>
+            <Text style={styles.sectionSubtitle}>Choose up to 6 links to show as icons</Text>
+          </View>
+          <FeaturedSocialsSelector
+            featuredSocials={featuredSocials}
+            allLinks={links.map(l => ({ platformId: l.platform, url: l.value }))}
+            onChange={setFeaturedSocials}
+            maxFeatured={6}
+          />
+        </View>
+      )}
+
       {/* Add New Link Button */}
       <TouchableOpacity 
         style={styles.addLinkButton}
@@ -1049,6 +1071,21 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             {galleryImages.length > 0 ? `Gallery (${galleryImages.length} images)` : 'Add Photo Gallery'}
           </Text>
           {!isPro && <View style={styles.proBadgeSmall}><Text style={styles.proBadgeSmallText}>PRO</Text></View>}
+          <Ionicons name="chevron-forward" size={18} color="#9E9E9E" />
+        </View>
+      </TouchableOpacity>
+
+      {/* Add YouTube Video Block Button */}
+      <TouchableOpacity 
+        style={styles.addYoutubeButton}
+        onPress={() => setShowYoutubeModal(true)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.addYoutubeContent}>
+          <Ionicons name="logo-youtube" size={20} color="#FF0000" />
+          <Text style={styles.addYoutubeText}>
+            {youtubeVideoUrl ? 'Edit YouTube Video' : 'Add YouTube Video'}
+          </Text>
           <Ionicons name="chevron-forward" size={18} color="#9E9E9E" />
         </View>
       </TouchableOpacity>
@@ -1298,26 +1335,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         </ScrollView>
       </View>
 
-      {!isPro && (
-        <TouchableOpacity 
-          style={styles.upgradeCard}
-          onPress={() => navigation.navigate('ECardPremiumUpsell')}
-        >
-          <LinearGradient
-            colors={['#F97316', '#FACC15']}
-            style={styles.upgradeGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <Ionicons name="star" size={24} color="#fff" />
-            <View style={styles.upgradeTextContainer}>
-              <Text style={styles.upgradeTitle}>Unlock All Premium Features</Text>
-              <Text style={styles.upgradeSubtitle}>Themes, fonts, video backgrounds & more</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
-      )}
+      {/* Premium upsell removed - only prompt on publish */}
     </View>
   );
 
@@ -1477,6 +1495,119 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       </View>
     </Modal>
   );
+
+  // Helper function to extract YouTube video ID
+  const extractYoutubeVideoId = (url: string): string | null => {
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+      /youtube\.com\/shorts\/([^&\n?#]+)/,
+    ];
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) return match[1];
+    }
+    return null;
+  };
+
+  // Render YouTube Modal
+  const renderYoutubeModal = () => {
+    const [tempYoutubeUrl, setTempYoutubeUrl] = useState(youtubeVideoUrl);
+    const videoId = extractYoutubeVideoId(tempYoutubeUrl);
+    
+    return (
+      <Modal
+        visible={showYoutubeModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowYoutubeModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.youtubeModalContent}>
+            <View style={styles.youtubeModalHeader}>
+              <Text style={styles.youtubeModalTitle}>YouTube Video</Text>
+              <TouchableOpacity onPress={() => setShowYoutubeModal(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.youtubeModalSubtitle}>
+              Add a YouTube video to display on your card
+            </Text>
+            
+            <View style={styles.youtubeInputContainer}>
+              <Ionicons name="logo-youtube" size={20} color="#FF0000" style={styles.youtubeInputIcon} />
+              <TextInput
+                style={styles.youtubeInput}
+                placeholder="Paste YouTube URL here..."
+                placeholderTextColor="#9E9E9E"
+                value={tempYoutubeUrl}
+                onChangeText={setTempYoutubeUrl}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {tempYoutubeUrl.length > 0 && (
+                <TouchableOpacity onPress={() => setTempYoutubeUrl('')}>
+                  <Ionicons name="close-circle" size={20} color="#9E9E9E" />
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {videoId && (
+              <View style={styles.youtubePreviewContainer}>
+                <Text style={styles.youtubePreviewLabel}>Preview:</Text>
+                <View style={styles.youtubePreview}>
+                  <Image 
+                    source={{ uri: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` }}
+                    style={styles.youtubeThumbnail}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.youtubePlayButton}>
+                    <Ionicons name="play" size={32} color="#fff" />
+                  </View>
+                </View>
+              </View>
+            )}
+            
+            {tempYoutubeUrl.length > 0 && !videoId && (
+              <View style={styles.youtubeErrorContainer}>
+                <Ionicons name="alert-circle" size={16} color="#EF4444" />
+                <Text style={styles.youtubeErrorText}>Invalid YouTube URL. Please paste a valid YouTube link.</Text>
+              </View>
+            )}
+            
+            <View style={styles.youtubeModalButtons}>
+              {youtubeVideoUrl && (
+                <TouchableOpacity 
+                  style={styles.youtubeRemoveButton}
+                  onPress={() => {
+                    setYoutubeVideoUrl('');
+                    setTempYoutubeUrl('');
+                    setShowYoutubeModal(false);
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                  <Text style={styles.youtubeRemoveText}>Remove</Text>
+                </TouchableOpacity>
+              )}
+              
+              <TouchableOpacity 
+                style={[styles.youtubeSaveButton, !videoId && styles.youtubeSaveButtonDisabled]}
+                onPress={() => {
+                  if (videoId) {
+                    setYoutubeVideoUrl(tempYoutubeUrl);
+                    setShowYoutubeModal(false);
+                  }
+                }}
+                disabled={!videoId}
+              >
+                <Text style={styles.youtubeSaveText}>Save Video</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
 
   // Render Credentials Modal
   const renderCredentialsModal = () => (
@@ -1907,7 +2038,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Card</Text>
         <TouchableOpacity 
-          onPress={() => navigation.navigate('ECardPreview', { cardData, gradientColors })} 
+          onPress={() => navigation.navigate('ECardPreview', { cardData, gradientColors, links, featuredSocials })} 
           style={styles.previewButton}
         >
           <Ionicons name="eye-outline" size={24} color="#1A1A1A" />
@@ -2008,6 +2139,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       {renderPublishSlugModal()}
       {renderColorPickerModal()}
       {renderGalleryModal()}
+      {renderYoutubeModal()}
       {renderCredentialsModal()}
       
       {/* Saving Indicator */}
@@ -2533,6 +2665,14 @@ const styles = StyleSheet.create({
   sectionSubtitle: {
     fontSize: 12,
     color: '#9E9E9E',
+  },
+  
+  // Featured Socials Section
+  featuredSocialsSection: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
   },
   
   // Themes
@@ -3265,6 +3405,148 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#fff',
+  },
+  
+  // YouTube Modal
+  youtubeModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: width - 32,
+  },
+  youtubeModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  youtubeModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  youtubeModalSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 20,
+  },
+  youtubeInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  youtubeInputIcon: {
+    marginRight: 10,
+  },
+  youtubeInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1A1A1A',
+  },
+  youtubePreviewContainer: {
+    marginBottom: 16,
+  },
+  youtubePreviewLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  youtubePreview: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  youtubeThumbnail: {
+    width: '100%',
+    height: 180,
+    backgroundColor: '#1A1A1A',
+  },
+  youtubePlayButton: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -28 }, { translateY: -28 }],
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  youtubeErrorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 16,
+    gap: 8,
+  },
+  youtubeErrorText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#DC2626',
+  },
+  youtubeModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  youtubeRemoveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    gap: 6,
+  },
+  youtubeRemoveText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  youtubeSaveButton: {
+    flex: 1,
+    backgroundColor: '#FF0000',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  youtubeSaveButtonDisabled: {
+    backgroundColor: '#D1D5DB',
+  },
+  youtubeSaveText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  addYoutubeButton: {
+    backgroundColor: '#FFF5F5',
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderStyle: 'dashed',
+  },
+  addYoutubeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  addYoutubeText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#DC2626',
   },
   
   // Credentials Modal

@@ -22,6 +22,9 @@ interface RouteParams {
   mode?: 'create' | 'edit';
   cardId?: string;
   existingData?: any;
+  existingLinks?: any[];
+  existingFeaturedSocials?: any[];
+  preserveData?: boolean;
 }
 
 const ECardTemplateGalleryScreen: React.FC = () => {
@@ -36,12 +39,15 @@ const ECardTemplateGalleryScreen: React.FC = () => {
   const allTemplates = TEMPLATES;
 
   const handleSelectTemplate = (template: Template) => {
-    // Navigate to color scheme picker
+    // Navigate to color scheme picker, preserving existing data if editing
     navigation.navigate('ECardColorPicker', {
       templateId: template.id,
       mode: params.mode || 'create',
       cardId: params.cardId,
       existingData: params.existingData,
+      existingLinks: params.existingLinks,
+      existingFeaturedSocials: params.existingFeaturedSocials,
+      preserveData: params.preserveData,
     });
   };
 
