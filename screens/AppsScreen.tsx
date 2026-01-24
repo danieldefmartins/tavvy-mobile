@@ -36,9 +36,14 @@ import { useUnreadMessagesContext } from '../contexts/UnreadMessagesContext';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const IS_TABLET = SCREEN_WIDTH >= 768;
 const COLUMNS = IS_TABLET ? 4 : 3;
-const MAX_TILE_SIZE = 95; // Reduced from 120 for more compact design
-const CALCULATED_TILE_SIZE = (SCREEN_WIDTH - 40 - (COLUMNS - 1) * 12) / COLUMNS;
+// iPad needs larger tiles for better touch targets - Apple requires minimum 44pt touch targets
+const MAX_TILE_SIZE_PHONE = 95;
+const MAX_TILE_SIZE_TABLET = 140; // Larger tiles for iPad
+const MAX_TILE_SIZE = IS_TABLET ? MAX_TILE_SIZE_TABLET : MAX_TILE_SIZE_PHONE;
+const CALCULATED_TILE_SIZE = (SCREEN_WIDTH - 40 - (COLUMNS - 1) * (IS_TABLET ? 20 : 12)) / COLUMNS;
 const TILE_SIZE = Math.min(CALCULATED_TILE_SIZE, MAX_TILE_SIZE);
+// Minimum touch target size per Apple HIG (44pt)
+const MIN_TOUCH_TARGET = 44;
 
 // Match HomeScreen's ACCENT color exactly
 const ACCENT = '#0F1233';
@@ -205,6 +210,25 @@ export default function AppsScreen() {
         navigation.navigate('Login');
         return;
       }
+      
+      // Special handling for bottom tab navigation
+      // These are tabs, not screens in the current stack
+      if (tile.route === 'Atlas') {
+        // Navigate to Atlas tab
+        navigation.navigate('Atlas', { screen: 'AtlasMain' });
+        return;
+      }
+      if (tile.route === 'Pros') {
+        // Navigate to Pros tab
+        navigation.navigate('Pros', { screen: 'ProsHome' });
+        return;
+      }
+      if (tile.route === 'Home') {
+        // Navigate to Home tab
+        navigation.navigate('Home', { screen: 'HomeMain' });
+        return;
+      }
+      
       navigation.navigate(tile.route, tile.params || {});
     }
   };
@@ -233,7 +257,7 @@ export default function AppsScreen() {
     }
   };
 
-  const renderIcon = (tile: AppTile, size: number = 48) => {
+  const renderIcon = (tile: AppTile, size: number = IS_TABLET ? 56 : 48) => {
     if (tile.iconType === 'material') {
       return (
         <MaterialCommunityIcons
@@ -385,9 +409,14 @@ export default function AppsScreen() {
           {APP_TILES.map((tile) => (
             <TouchableOpacity
               key={tile.id}
-              style={styles.tile}
+              style={[styles.tile, IS_TABLET && styles.tileTablet]}
               onPress={() => handleTilePress(tile)}
-              activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} delayPressIn={0}
+              activeOpacity={0.7}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              delayPressIn={0}
+              accessible={true}
+              accessibilityLabel={`${tile.name} button`}
+              accessibilityRole="button"
             >
               <View style={styles.tileGradientContainer}>
                 <LinearGradient
@@ -581,23 +610,31 @@ const styles = StyleSheet.create({
   tilesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    gap: 12,
+    paddingHorizontal: IS_TABLET ? 40 : 20,
+    gap: IS_TABLET ? 20 : 12,
     justifyContent: 'space-between',
   },
   tile: {
     width: TILE_SIZE,
+    minWidth: MIN_TOUCH_TARGET, // Ensure minimum touch target
+    minHeight: MIN_TOUCH_TARGET, // Ensure minimum touch target
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: IS_TABLET ? 20 : 12,
+  },
+  tileTablet: {
+    width: TILE_SIZE,
+    paddingVertical: 8,
   },
   tileGradientContainer: {
     position: 'relative',
     marginBottom: 8,
   },
   tileGradient: {
-    width: TILE_SIZE - 12, // Smaller box, same icon
-    height: TILE_SIZE - 12, // Smaller box, same icon
-    borderRadius: 20, // Adjusted for smaller box
+    width: IS_TABLET ? TILE_SIZE - 20 : TILE_SIZE - 12,
+    height: IS_TABLET ? TILE_SIZE - 20 : TILE_SIZE - 12,
+    minWidth: MIN_TOUCH_TARGET, // Ensure minimum touch target per Apple HIG
+    minHeight: MIN_TOUCH_TARGET, // Ensure minimum touch target per Apple HIG
+    borderRadius: IS_TABLET ? 24 : 20,
     justifyContent: 'center',
     alignItems: 'center',
     // Shadow for depth
@@ -608,7 +645,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   tileName: {
-    fontSize: 13,
+    fontSize: IS_TABLET ? 15 : 13,
     fontWeight: '600',
     color: '#374151',
     textAlign: 'center',
