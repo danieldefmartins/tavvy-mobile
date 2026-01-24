@@ -129,6 +129,7 @@ import {
   ECardNFCWriteScreen,
   ECardFormBlockScreen,
 } from './screens/ecard';
+import VerificationUploadScreen from './screens/VerificationUploadScreen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -298,6 +299,7 @@ function AppsStack() {
       <MenuStackNav.Screen name="ECardPreview" component={ECardPreviewScreen} />
       <MenuStackNav.Screen name="ECardNFCWrite" component={ECardNFCWriteScreen} />
       <MenuStackNav.Screen name="ECardFormBlock" component={ECardFormBlockScreen} />
+      <MenuStackNav.Screen name="VerificationUpload" component={VerificationUploadScreen} />
       
       {/* Admin Screens */}
       <MenuStackNav.Screen name="StoryModeration" component={StoryModerationScreen} />

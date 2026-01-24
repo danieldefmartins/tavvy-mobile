@@ -117,6 +117,7 @@ interface GalleryImage {
 }
 
 interface ProCredentials {
+  // User toggle states (what user wants to show)
   isLicensed: boolean;
   licenseNumber?: string;
   isInsured: boolean;
@@ -124,6 +125,19 @@ interface ProCredentials {
   isTavvyVerified: boolean;
   yearsInBusiness?: number;
   serviceArea?: string;
+}
+
+interface VerificationStatus {
+  // Admin verification states (what admin has verified)
+  is_licensed_verified: boolean;
+  is_insured_verified: boolean;
+  is_bonded_verified: boolean;
+  is_tavvy_verified: boolean;
+  verification_status: 'pending' | 'approved' | 'rejected' | 'needs_more_info' | null;
+  // Document URLs
+  license_document_url?: string;
+  insurance_document_url?: string;
+  bonding_document_url?: string;
 }
 
 interface CardData {
@@ -192,6 +206,15 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     isTavvyVerified: false,
   });
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  
+  // Verification status (from admin approval)
+  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>({
+    is_licensed_verified: false,
+    is_insured_verified: false,
+    is_bonded_verified: false,
+    is_tavvy_verified: false,
+    verification_status: null,
+  });
   
   // Premium features tracking - allow selection, prompt on publish
   const [selectedPremiumFeatures, setSelectedPremiumFeatures] = useState<string[]>([]);
@@ -475,7 +498,38 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
                 clicks: link.click_count || 0,
               })));
             }
+            
+            // Load badge display settings from card
+            setProCredentials({
+              isLicensed: card.show_licensed_badge || false,
+              isInsured: card.show_insured_badge || false,
+              isBonded: card.show_bonded_badge || false,
+              isTavvyVerified: card.show_tavvy_verified_badge || false,
+              yearsInBusiness: card.pro_credentials?.yearsInBusiness,
+              serviceArea: card.pro_credentials?.serviceArea,
+              licenseNumber: card.pro_credentials?.licenseNumber,
+            });
           }
+        }
+        
+        // Load verification status from user_verifications table
+        const { data: verification, error: verificationError } = await supabase
+          .from('user_verifications')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (!verificationError && verification) {
+          setVerificationStatus({
+            is_licensed_verified: verification.is_licensed_verified || false,
+            is_insured_verified: verification.is_insured_verified || false,
+            is_bonded_verified: verification.is_bonded_verified || false,
+            is_tavvy_verified: verification.is_tavvy_verified || false,
+            verification_status: verification.verification_status,
+            license_document_url: verification.license_document_url,
+            insurance_document_url: verification.insurance_document_url,
+            bonding_document_url: verification.bonding_document_url,
+          });
         }
       } catch (error) {
         console.error('Error loading card:', error);
@@ -660,10 +714,53 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   };
 
   // Save Pro Credentials
-  const handleSaveCredentials = () => {
-    saveAppearanceSettings({ pro_credentials: proCredentials });
-    setShowCredentialsModal(false);
-    Alert.alert('Saved', 'Your credentials have been updated.');
+  const handleSaveCredentials = async () => {
+    if (!cardData?.id) return;
+    
+    setIsSaving(true);
+    try {
+      // Save badge display toggles to digital_cards table
+      const { error } = await supabase
+        .from('digital_cards')
+        .update({
+          show_licensed_badge: proCredentials.isLicensed,
+          show_insured_badge: proCredentials.isInsured,
+          show_bonded_badge: proCredentials.isBonded,
+          show_tavvy_verified_badge: proCredentials.isTavvyVerified,
+          pro_credentials: {
+            yearsInBusiness: proCredentials.yearsInBusiness,
+            serviceArea: proCredentials.serviceArea,
+            licenseNumber: proCredentials.licenseNumber,
+          },
+        })
+        .eq('id', cardData.id);
+      
+      if (error) throw error;
+      
+      setShowCredentialsModal(false);
+      
+      // Show appropriate message based on verification status
+      const unverifiedBadges = [];
+      if (proCredentials.isLicensed && !verificationStatus.is_licensed_verified) unverifiedBadges.push('Licensed');
+      if (proCredentials.isInsured && !verificationStatus.is_insured_verified) unverifiedBadges.push('Insured');
+      if (proCredentials.isBonded && !verificationStatus.is_bonded_verified) unverifiedBadges.push('Bonded');
+      if (proCredentials.isTavvyVerified && !verificationStatus.is_tavvy_verified) unverifiedBadges.push('Tavvy Verified');
+      
+      if (unverifiedBadges.length > 0) {
+        Alert.alert(
+          'Settings Saved',
+          `Your preferences have been saved. Note: ${unverifiedBadges.join(', ')} badge(s) will only appear on your public card after verification. Go to Profile > Get Verified to submit your documents.`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Saved', 'Your credentials have been updated.');
+      }
+    } catch (error) {
+      console.error('Error saving credentials:', error);
+      Alert.alert('Error', 'Failed to save credentials. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Publish & Share handler - check for premium features and show slug selection
@@ -938,13 +1035,16 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           {/* Crown Badge */}
           {renderCrownBadge()}
           
-          {/* Pro Badges */}
-          {(proCredentials.isLicensed || proCredentials.isInsured || proCredentials.isBonded || proCredentials.isTavvyVerified) && (
+          {/* Pro Badges - Only show if BOTH user toggled ON AND admin verified */}
+          {((proCredentials.isLicensed && verificationStatus.is_licensed_verified) || 
+            (proCredentials.isInsured && verificationStatus.is_insured_verified) || 
+            (proCredentials.isBonded && verificationStatus.is_bonded_verified) || 
+            (proCredentials.isTavvyVerified && verificationStatus.is_tavvy_verified)) && (
             <View style={styles.proBadgesRow}>
-              {proCredentials.isLicensed && <Text style={styles.proBadgeIcon}>✅</Text>}
-              {proCredentials.isInsured && <Text style={styles.proBadgeIcon}>✅</Text>}
-              {proCredentials.isBonded && <Text style={styles.proBadgeIcon}>🛡️</Text>}
-              {proCredentials.isTavvyVerified && <Text style={styles.proBadgeIcon}>🟢</Text>}
+              {proCredentials.isLicensed && verificationStatus.is_licensed_verified && <Text style={styles.proBadgeIcon}>✅</Text>}
+              {proCredentials.isInsured && verificationStatus.is_insured_verified && <Text style={styles.proBadgeIcon}>✅</Text>}
+              {proCredentials.isBonded && verificationStatus.is_bonded_verified && <Text style={styles.proBadgeIcon}>🛡️</Text>}
+              {proCredentials.isTavvyVerified && verificationStatus.is_tavvy_verified && <Text style={styles.proBadgeIcon}>🟢</Text>}
             </View>
           )}
           
@@ -1650,6 +1750,24 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     );
   };
 
+  // Helper to render verification status badge
+  const renderVerificationBadge = (isVerified: boolean) => {
+    if (isVerified) {
+      return (
+        <View style={styles.verifiedBadge}>
+          <Ionicons name="checkmark-circle" size={14} color="#059669" />
+          <Text style={styles.verifiedBadgeText}>Verified</Text>
+        </View>
+      );
+    }
+    return (
+      <View style={styles.unverifiedBadge}>
+        <Ionicons name="time-outline" size={14} color="#F59E0B" />
+        <Text style={styles.unverifiedBadgeText}>Not Verified</Text>
+      </View>
+    );
+  };
+
   // Render Credentials Modal
   const renderCredentialsModal = () => (
     <Modal
@@ -1675,6 +1793,24 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               </TouchableOpacity>
             </View>
             
+            {/* Verification Status Banner */}
+            {!verificationStatus.is_licensed_verified && !verificationStatus.is_insured_verified && !verificationStatus.is_bonded_verified && !verificationStatus.is_tavvy_verified && (
+              <TouchableOpacity 
+                style={styles.verificationBanner}
+                onPress={() => {
+                  setShowCredentialsModal(false);
+                  navigation.navigate('VerificationUpload');
+                }}
+              >
+                <Ionicons name="shield-checkmark-outline" size={20} color="#059669" />
+                <View style={styles.verificationBannerText}>
+                  <Text style={styles.verificationBannerTitle}>Get Verified</Text>
+                  <Text style={styles.verificationBannerSubtitle}>Upload documents to display badges</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#059669" />
+              </TouchableOpacity>
+            )}
+            
             <ScrollView 
               style={styles.credentialsList}
               keyboardShouldPersistTaps="handled"
@@ -1684,12 +1820,19 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               <View style={styles.credentialItem}>
                 <View style={styles.credentialRow}>
                   <Text style={styles.credentialEmoji}>✅</Text>
-                  <Text style={styles.credentialLabel}>Licensed</Text>
+                  <View style={styles.credentialLabelContainer}>
+                    <Text style={styles.credentialLabel}>Licensed</Text>
+                    {renderVerificationBadge(verificationStatus.is_licensed_verified)}
+                  </View>
                   <Switch
                     value={proCredentials.isLicensed}
                     onValueChange={(value) => setProCredentials(prev => ({ ...prev, isLicensed: value }))}
+                    trackColor={{ false: '#E0E0E0', true: verificationStatus.is_licensed_verified ? '#34D399' : '#FCD34D' }}
                   />
                 </View>
+                {proCredentials.isLicensed && !verificationStatus.is_licensed_verified && (
+                  <Text style={styles.credentialWarning}>Badge will show after verification</Text>
+                )}
                 {proCredentials.isLicensed && (
                   <TextInput
                     style={styles.credentialInput}
@@ -1706,38 +1849,57 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               <View style={styles.credentialItem}>
                 <View style={styles.credentialRow}>
                   <Text style={styles.credentialEmoji}>✅</Text>
-                  <Text style={styles.credentialLabel}>Insured</Text>
+                  <View style={styles.credentialLabelContainer}>
+                    <Text style={styles.credentialLabel}>Insured</Text>
+                    {renderVerificationBadge(verificationStatus.is_insured_verified)}
+                  </View>
                   <Switch
                     value={proCredentials.isInsured}
                     onValueChange={(value) => setProCredentials(prev => ({ ...prev, isInsured: value }))}
+                    trackColor={{ false: '#E0E0E0', true: verificationStatus.is_insured_verified ? '#34D399' : '#FCD34D' }}
                   />
                 </View>
+                {proCredentials.isInsured && !verificationStatus.is_insured_verified && (
+                  <Text style={styles.credentialWarning}>Badge will show after verification</Text>
+                )}
               </View>
               
               {/* Bonded */}
               <View style={styles.credentialItem}>
                 <View style={styles.credentialRow}>
                   <Text style={styles.credentialEmoji}>🛡️</Text>
-                  <Text style={styles.credentialLabel}>Bonded</Text>
+                  <View style={styles.credentialLabelContainer}>
+                    <Text style={styles.credentialLabel}>Bonded</Text>
+                    {renderVerificationBadge(verificationStatus.is_bonded_verified)}
+                  </View>
                   <Switch
                     value={proCredentials.isBonded}
                     onValueChange={(value) => setProCredentials(prev => ({ ...prev, isBonded: value }))}
+                    trackColor={{ false: '#E0E0E0', true: verificationStatus.is_bonded_verified ? '#34D399' : '#FCD34D' }}
                   />
                 </View>
+                {proCredentials.isBonded && !verificationStatus.is_bonded_verified && (
+                  <Text style={styles.credentialWarning}>Badge will show after verification</Text>
+                )}
               </View>
               
               {/* Tavvy Verified */}
               <View style={styles.credentialItem}>
                 <View style={styles.credentialRow}>
                   <Text style={styles.credentialEmoji}>🟢</Text>
-                  <Text style={styles.credentialLabel}>Tavvy Verified</Text>
+                  <View style={styles.credentialLabelContainer}>
+                    <Text style={styles.credentialLabel}>Tavvy Verified</Text>
+                    {renderVerificationBadge(verificationStatus.is_tavvy_verified)}
+                  </View>
                   <Switch
                     value={proCredentials.isTavvyVerified}
                     onValueChange={(value) => setProCredentials(prev => ({ ...prev, isTavvyVerified: value }))}
-                    disabled={true}
+                    trackColor={{ false: '#E0E0E0', true: verificationStatus.is_tavvy_verified ? '#34D399' : '#FCD34D' }}
                   />
                 </View>
-                <Text style={styles.credentialHint}>Submit verification documents to earn this badge</Text>
+                {!verificationStatus.is_tavvy_verified && (
+                  <Text style={styles.credentialHint}>Complete verification to earn this badge</Text>
+                )}
               </View>
               
               {/* Years in Business */}
@@ -3678,6 +3840,72 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9E9E9E',
     marginTop: 4,
+  },
+  credentialWarning: {
+    fontSize: 12,
+    color: '#F59E0B',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  credentialLabelContainer: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginTop: 2,
+    alignSelf: 'flex-start',
+  },
+  verifiedBadgeText: {
+    fontSize: 10,
+    color: '#059669',
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  unverifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginTop: 2,
+    alignSelf: 'flex-start',
+  },
+  unverifiedBadgeText: {
+    fontSize: 10,
+    color: '#D97706',
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  verificationBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  verificationBannerText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  verificationBannerTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#059669',
+  },
+  verificationBannerSubtitle: {
+    fontSize: 12,
+    color: '#10B981',
+    marginTop: 2,
   },
   credentialsSaveButton: {
     borderRadius: 12,
