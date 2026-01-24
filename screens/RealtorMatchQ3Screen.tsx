@@ -3,6 +3,7 @@
  * Install path: screens/RealtorMatchQ3Screen.tsx
  * 
  * Question 3: Where is the property located?
+ * Uses AddressAutocomplete component for location suggestions
  */
 import React, { useState } from 'react';
 import {
@@ -10,14 +11,15 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { AddressAutocomplete } from '../components/AddressAutocomplete';
 
 type RouteParams = {
   params: {
@@ -40,14 +42,26 @@ export default function RealtorMatchQ3Screen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<RouteParams, 'params'>>();
   const [location, setLocation] = useState('');
+  const [locationDetails, setLocationDetails] = useState<any>(null);
 
   const progress = (3 / 12) * 100;
+
+  const handleLocationSelect = (address: string, details: any) => {
+    // Format as "City, State" for cleaner display
+    const city = details.city || '';
+    const state = details.state || '';
+    const formattedLocation = city && state ? `${city}, ${state}` : address;
+    
+    setLocation(formattedLocation);
+    setLocationDetails(details);
+  };
 
   const handleNext = () => {
     if (location.trim()) {
       navigation.navigate('RealtorMatchQ4', { 
         ...route.params,
-        location: location.trim()
+        location: location.trim(),
+        locationDetails: locationDetails,
       });
     }
   };
@@ -58,6 +72,11 @@ export default function RealtorMatchQ3Screen() {
 
   const handleClose = () => {
     navigation.navigate('RealtorsBrowse');
+  };
+
+  const handleQuickSelect = (city: string) => {
+    setLocation(city);
+    setLocationDetails({ city: city.split(',')[0], state: city.split(',')[1]?.trim() });
   };
 
   return (
@@ -84,48 +103,47 @@ export default function RealtorMatchQ3Screen() {
         <KeyboardAvoidingView 
           style={styles.contentContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
-          <View style={styles.content}>
+          <ScrollView 
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
             <Text style={styles.question}>Where is the property located?</Text>
             <Text style={styles.subtitle}>
               Enter a city, state, or ZIP code to find realtors in that area.
             </Text>
 
-            <View style={styles.inputContainer}>
-              <Ionicons name="location-outline" size={24} color={RealtorColors.textMuted} />
-              <TextInput
-                style={styles.textInput}
+            {/* Address Autocomplete with dropdown suggestions */}
+            <View style={styles.autocompleteContainer}>
+              <AddressAutocomplete
                 value={location}
-                onChangeText={setLocation}
+                onSelect={handleLocationSelect}
+                onChange={(text) => setLocation(text)}
                 placeholder="City, State or ZIP code"
-                placeholderTextColor={RealtorColors.textMuted}
-                autoFocus
-                returnKeyType="done"
-                onSubmitEditing={handleNext}
+                mode="area"
               />
-              {location.length > 0 && (
-                <TouchableOpacity onPress={() => setLocation('')}>
-                  <Ionicons name="close-circle" size={20} color={RealtorColors.textMuted} />
-                </TouchableOpacity>
-              )}
             </View>
 
-            {/* Popular locations suggestion */}
-            <View style={styles.suggestionsContainer}>
-              <Text style={styles.suggestionsTitle}>Popular areas</Text>
-              <View style={styles.suggestionsRow}>
-                {['Miami, FL', 'Los Angeles, CA', 'New York, NY', 'Houston, TX'].map((city) => (
-                  <TouchableOpacity 
-                    key={city}
-                    style={styles.suggestionChip}
-                    onPress={() => setLocation(city)}
-                  >
-                    <Text style={styles.suggestionText}>{city}</Text>
-                  </TouchableOpacity>
-                ))}
+            {/* Popular locations suggestion - only show when no input */}
+            {!location && (
+              <View style={styles.suggestionsContainer}>
+                <Text style={styles.suggestionsTitle}>Popular areas</Text>
+                <View style={styles.suggestionsRow}>
+                  {['Miami, FL', 'Los Angeles, CA', 'New York, NY', 'Houston, TX'].map((city) => (
+                    <TouchableOpacity 
+                      key={city}
+                      style={styles.suggestionChip}
+                      onPress={() => handleQuickSelect(city)}
+                    >
+                      <Text style={styles.suggestionText}>{city}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
-            </View>
-          </View>
+            )}
+          </ScrollView>
 
           {/* Bottom Button */}
           <View style={styles.bottomContainer}>
@@ -200,10 +218,13 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 24,
     paddingTop: 16,
+    paddingBottom: 24,
   },
   question: {
     fontSize: 26,
@@ -215,24 +236,11 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 15,
     color: RealtorColors.textLight,
-    marginBottom: 32,
+    marginBottom: 24,
     lineHeight: 22,
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderWidth: 2,
-    borderColor: RealtorColors.border,
-    gap: 12,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: 16,
-    color: RealtorColors.text,
+  autocompleteContainer: {
+    zIndex: 1000, // Ensure dropdown appears above other content
   },
   suggestionsContainer: {
     marginTop: 32,
