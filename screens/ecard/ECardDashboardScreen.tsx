@@ -254,10 +254,18 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
 
   // Check if slug is available (only checks against PUBLISHED cards)
   const checkSlugAvailability = async (slug: string): Promise<boolean> => {
-    if (!slug || slug.length < 3) return false;
+    console.log('Checking slug availability:', slug);
+    
+    if (!slug || slug.length < 3) {
+      console.log('Slug too short');
+      return false;
+    }
     
     // If the slug is the same as current card's slug and it's published, it's available (user owns it)
-    if (cardData?.slug === slug && cardData?.is_published) return true;
+    if (cardData?.slug === slug && cardData?.is_published) {
+      console.log('User owns this slug');
+      return true;
+    }
     
     try {
       // Only check against published cards to avoid blocking slugs from abandoned drafts
@@ -268,17 +276,32 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         .eq('is_published', true)
         .limit(1);
       
-      if (error) throw error;
+      console.log('Slug check result:', { data, error });
+      
+      if (error) {
+        console.error('Slug check error:', error);
+        // On error, assume available to not block the user
+        Alert.alert('Connection Issue', 'Could not verify URL availability. Please try again.');
+        return false;
+      }
       
       // If no published card found with this slug, it's available
-      if (!data || data.length === 0) return true;
+      if (!data || data.length === 0) {
+        console.log('Slug is available!');
+        return true;
+      }
       
       // If the found card is the current user's card, it's available
-      if (cardData?.id && data[0]?.id === cardData.id) return true;
+      if (cardData?.id && data[0]?.id === cardData.id) {
+        console.log('Found card is current user card');
+        return true;
+      }
       
+      console.log('Slug is taken');
       return false;
     } catch (error) {
       console.error('Error checking slug:', error);
+      Alert.alert('Error', 'Failed to check URL availability. Please try again.');
       return false;
     }
   };
@@ -2038,7 +2061,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Card</Text>
         <TouchableOpacity 
-          onPress={() => navigation.navigate('ECardPreview', { cardData, gradientColors, links, featuredSocials })} 
+          onPress={() => navigation.navigate('ECardPreview', { cardData, gradientColors, links, featuredSocials })}
           style={styles.previewButton}
         >
           <Ionicons name="eye-outline" size={24} color="#1A1A1A" />
@@ -2048,39 +2071,41 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       {/* Live Card Preview */}
       {renderLivePreview()}
 
-      {/* Card URL & Actions */}
-      <View style={styles.cardUrlSection}>
-        <TouchableOpacity 
-          style={styles.cardUrlBox}
-          onPress={() => {
-            setSlugInput(cardData?.slug || '');
-            setSlugAvailable(null);
-            setShowSlugModal(true);
-          }}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="link" size={16} color="#666" />
-          <Text style={styles.cardUrlText} numberOfLines={1}>{cardUrl}</Text>
-          <Ionicons name="pencil" size={12} color="#00C853" />
-        </TouchableOpacity>
-        <View style={styles.cardActions}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleCopyLink}>
-            <Ionicons name="copy-outline" size={18} color="#666" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-            <Ionicons name="share-outline" size={18} color="#666" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={generateQRCode}>
-            <Ionicons name="qr-code-outline" size={18} color="#666" />
-          </TouchableOpacity>
+      {/* Card URL & Actions - Only show for published cards */}
+      {cardData?.is_published && (
+        <View style={styles.cardUrlSection}>
           <TouchableOpacity 
-            style={styles.actionButton} 
-            onPress={() => navigation.navigate('ECardNFCWrite', { cardSlug: cardData?.slug, cardName: cardData?.full_name })}
+            style={styles.cardUrlBox}
+            onPress={() => {
+              setSlugInput(cardData?.slug || '');
+              setSlugAvailable(null);
+              setShowSlugModal(true);
+            }}
+            activeOpacity={0.7}
           >
-            <Ionicons name="wifi" size={18} color="#666" style={{ transform: [{ rotate: '90deg' }] }} />
+            <Ionicons name="link" size={16} color="#666" />
+            <Text style={styles.cardUrlText} numberOfLines={1}>{cardUrl}</Text>
+            <Ionicons name="pencil" size={12} color="#00C853" />
           </TouchableOpacity>
+          <View style={styles.cardActions}>
+            <TouchableOpacity style={styles.actionButton} onPress={handleCopyLink}>
+              <Ionicons name="copy-outline" size={18} color="#666" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+              <Ionicons name="share-outline" size={18} color="#666" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={generateQRCode}>
+              <Ionicons name="qr-code-outline" size={18} color="#666" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={() => navigation.navigate('ECardNFCWrite', { cardSlug: cardData?.slug, cardName: cardData?.full_name })}
+            >
+              <Ionicons name="wifi" size={18} color="#666" style={{ transform: [{ rotate: '90deg' }] }} />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Tabs */}
       <View style={styles.tabsContainer}>

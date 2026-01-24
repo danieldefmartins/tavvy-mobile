@@ -1,179 +1,199 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Animated,
+  Easing,
+} from 'react-native';
 
 interface CrownBadgeProps {
   tapCount: number;
-  size?: 'small' | 'medium' | 'large';
   onPress?: () => void;
+  size?: 'small' | 'medium' | 'large';
   showAnimation?: boolean;
 }
 
+/**
+ * CrownBadge Component
+ * 
+ * Displays a crown badge with the number of validation taps an eCard has received.
+ * The crown represents how many people have validated/liked the digital card.
+ * 
+ * Format: 👑 x [tap_count]
+ * 
+ * Features:
+ * - Gold pulsing glow animation
+ * - Tappable to show validation details
+ * - Three sizes: small, medium, large
+ */
 export default function CrownBadge({ 
   tapCount, 
-  size = 'medium', 
-  onPress,
+  onPress, 
+  size = 'medium',
   showAnimation = true 
 }: CrownBadgeProps) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0.3)).current;
 
+  // Pulse animation for the crown
   useEffect(() => {
-    if (showAnimation && tapCount > 0) {
-      // Pulse animation
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.1,
-            duration: 1000,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1000,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+    if (!showAnimation || tapCount === 0) return;
 
-      // Glow animation
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(glowAnim, {
-            toValue: 0.8,
-            duration: 1500,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(glowAnim, {
-            toValue: 0.3,
-            duration: 1500,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    }
+    const pulseAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    const glowAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 0.8,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0.3,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    pulseAnimation.start();
+    glowAnimation.start();
+
+    return () => {
+      pulseAnimation.stop();
+      glowAnimation.stop();
+    };
   }, [showAnimation, tapCount]);
 
-  const getSizeStyles = () => {
-    switch (size) {
-      case 'small':
-        return {
-          container: { width: 60, height: 50, borderRadius: 12 },
-          crown: { fontSize: 20 },
-          count: { fontSize: 14 },
-          x: { fontSize: 10 },
-        };
-      case 'large':
-        return {
-          container: { width: 100, height: 80, borderRadius: 20 },
-          crown: { fontSize: 36 },
-          count: { fontSize: 24 },
-          x: { fontSize: 14 },
-        };
-      default: // medium
-        return {
-          container: { width: 80, height: 65, borderRadius: 16 },
-          crown: { fontSize: 28 },
-          count: { fontSize: 18 },
-          x: { fontSize: 12 },
-        };
-    }
+  // Size configurations
+  const sizeConfig = {
+    small: {
+      container: { paddingHorizontal: 8, paddingVertical: 4 },
+      crown: 14,
+      text: 12,
+      glow: 20,
+    },
+    medium: {
+      container: { paddingHorizontal: 12, paddingVertical: 6 },
+      crown: 18,
+      text: 14,
+      glow: 28,
+    },
+    large: {
+      container: { paddingHorizontal: 16, paddingVertical: 8 },
+      crown: 24,
+      text: 18,
+      glow: 36,
+    },
   };
 
-  const sizeStyles = getSizeStyles();
+  const config = sizeConfig[size];
 
-  const content = (
-    <Animated.View 
+  // Format the tap count for display
+  const formatTapCount = (count: number): string => {
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M`;
+    }
+    if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}K`;
+    }
+    return count.toString();
+  };
+
+  if (tapCount === 0) {
+    return null; // Don't show badge if no taps
+  }
+
+  const BadgeContent = (
+    <Animated.View
       style={[
-        styles.container, 
-        sizeStyles.container,
-        { transform: [{ scale: pulseAnim }] }
+        styles.container,
+        config.container,
+        { transform: [{ scale: pulseAnim }] },
       ]}
     >
-      {/* Glow effect */}
-      <Animated.View 
+      {/* Gold glow effect */}
+      <Animated.View
         style={[
-          styles.glowEffect,
-          sizeStyles.container,
-          { opacity: glowAnim }
-        ]} 
+          styles.glow,
+          {
+            width: config.glow,
+            height: config.glow,
+            opacity: glowAnim,
+          },
+        ]}
       />
       
-      <LinearGradient
-        colors={['#FFD700', '#FFA500', '#FF8C00']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.gradient, sizeStyles.container]}
-      >
-        <Text style={[styles.crown, { fontSize: sizeStyles.crown.fontSize }]}>👑</Text>
-        <View style={styles.countRow}>
-          <Text style={[styles.x, { fontSize: sizeStyles.x.fontSize }]}>x</Text>
-          <Text style={[styles.count, { fontSize: sizeStyles.count.fontSize }]}>
-            {tapCount >= 1000 ? `${(tapCount / 1000).toFixed(1)}k` : tapCount}
-          </Text>
-        </View>
-      </LinearGradient>
+      {/* Crown emoji */}
+      <Text style={[styles.crown, { fontSize: config.crown }]}>👑</Text>
+      
+      {/* Tap count */}
+      <Text style={[styles.tapCount, { fontSize: config.text }]}>
+        x {formatTapCount(tapCount)}
+      </Text>
     </Animated.View>
   );
 
   if (onPress) {
     return (
       <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
-        {content}
+        {BadgeContent}
       </TouchableOpacity>
     );
   }
 
-  return content;
+  return BadgeContent;
 }
 
 const styles = StyleSheet.create({
   container: {
-    shadowColor: '#FFD700',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  glowEffect: {
-    position: 'absolute',
-    backgroundColor: '#FFD700',
-    shadowColor: '#FFD700',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  gradient: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.4)',
+    gap: 4,
+    position: 'relative',
+    overflow: 'visible',
+  },
+  glow: {
+    position: 'absolute',
+    left: -4,
+    top: '50%',
+    marginTop: -14,
+    borderRadius: 20,
+    backgroundColor: '#FFD700',
   },
   crown: {
-    marginBottom: -2,
+    textShadowColor: 'rgba(255, 215, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
   },
-  countRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  x: {
-    color: '#fff',
-    fontWeight: '600',
-    marginRight: 2,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  count: {
-    color: '#fff',
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
+  tapCount: {
+    color: '#FFD700',
+    fontWeight: '700',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
 });

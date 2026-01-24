@@ -9,6 +9,7 @@
  * - Fixed navigation routes
  * - Dark/Light mode toggle (below banner)
  * - Hamburger menu with Help option
+ * - Messages tile with unread badge notification
  */
 
 import React, { useState } from 'react';
@@ -30,6 +31,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { useUnreadMessagesContext } from '../contexts/UnreadMessagesContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const IS_TABLET = SCREEN_WIDTH >= 768;
@@ -49,6 +51,7 @@ interface AppTile {
   gradientColors: string[];
   route?: string;
   params?: object;
+  showBadge?: boolean; // Flag to show unread badge
 }
 
 const APP_TILES: AppTile[] = [
@@ -127,7 +130,16 @@ const APP_TILES: AppTile[] = [
     gradientColors: ['#F472B6', '#EC4899'],
     route: 'HappeningNow',
   },
-  // Row 4: Wallet, Quick Finds, Saved
+  // Row 4: Messages, Wallet, Quick Finds
+  {
+    id: 'messages',
+    name: 'Messages',
+    icon: 'chatbubbles',
+    iconType: 'ionicons',
+    gradientColors: ['#EF4444', '#DC2626'],
+    route: 'ProsMessages',
+    showBadge: true, // Show unread badge on this tile
+  },
   {
     id: 'wallet',
     name: 'Wallet',
@@ -144,6 +156,7 @@ const APP_TILES: AppTile[] = [
     gradientColors: ['#FBBF24', '#F59E0B'],
     route: 'Home',
   },
+  // Row 5: Saved, Account, Cities
   {
     id: 'saved',
     name: 'Saved',
@@ -182,12 +195,13 @@ export default function AppsScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
   const { theme, isDark, setThemeMode } = useThemeContext();
+  const { unreadCount } = useUnreadMessagesContext();
   const [menuVisible, setMenuVisible] = useState(false);
 
   const handleTilePress = (tile: AppTile) => {
     if (tile.route) {
       // Special handling for routes that require login
-      if ((tile.id === 'saved' || tile.id === 'account') && !user) {
+      if ((tile.id === 'saved' || tile.id === 'account' || tile.id === 'messages') && !user) {
         navigation.navigate('Login');
         return;
       }
@@ -236,6 +250,19 @@ export default function AppsScreen() {
         size={size}
         color="#FFFFFF"
       />
+    );
+  };
+
+  // Render badge for tiles that need it
+  const renderBadge = (tile: AppTile) => {
+    if (!tile.showBadge || unreadCount <= 0) return null;
+    
+    return (
+      <View style={styles.tileBadge}>
+        <Text style={styles.tileBadgeText}>
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </Text>
+      </View>
     );
   };
 
@@ -362,14 +389,17 @@ export default function AppsScreen() {
               onPress={() => handleTilePress(tile)}
               activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} delayPressIn={0}
             >
-              <LinearGradient
-                colors={tile.gradientColors}
-                style={styles.tileGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                {renderIcon(tile)}
-              </LinearGradient>
+              <View style={styles.tileGradientContainer}>
+                <LinearGradient
+                  colors={tile.gradientColors}
+                  style={styles.tileGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  {renderIcon(tile)}
+                </LinearGradient>
+                {renderBadge(tile)}
+              </View>
               <Text style={[styles.tileName, dynamicStyles.tileName]}>{tile.name}</Text>
             </TouchableOpacity>
           ))}
@@ -560,13 +590,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  tileGradientContainer: {
+    position: 'relative',
+    marginBottom: 8,
+  },
   tileGradient: {
     width: TILE_SIZE - 12, // Smaller box, same icon
     height: TILE_SIZE - 12, // Smaller box, same icon
     borderRadius: 20, // Adjusted for smaller box
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
     // Shadow for depth
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -579,6 +612,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#374151',
     textAlign: 'center',
+  },
+  // Badge styles for tiles
+  tileBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    minWidth: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  tileBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
 
   comingSoon: {

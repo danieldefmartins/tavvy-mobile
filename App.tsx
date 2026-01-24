@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -9,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider, useThemeContext } from './contexts/ThemeContext';
+import { UnreadMessagesProvider, useUnreadMessagesContext } from './contexts/UnreadMessagesContext';
 import { Colors, darkTheme } from './constants/Colors';
 
 // Animated Splash Screen (replaces VideoSplashScreen)
@@ -120,6 +122,7 @@ import {
   ECardOnboardingCompleteScreen,
   ECardDashboardScreen,
   ECardAddLinkScreen,
+  ECardEditLinkScreen,
   ECardThemesScreen,
   ECardPremiumUpsellScreen,
   ECardPreviewScreen,
@@ -223,7 +226,6 @@ function AppsStack() {
 
       {/* Auth */}
       <MenuStackNav.Screen name="Login" component={LoginScreen} />
-      <MenuStackNav.Screen name="SignUp" component={SignUpScreen} />
       <MenuStackNav.Screen name="ProsLogin" component={ProsLoginScreen} />
 
       {/* Shared screens accessible from menu */}
@@ -290,6 +292,7 @@ function AppsStack() {
       <MenuStackNav.Screen name="ECardOnboardingComplete" component={ECardOnboardingCompleteScreen} />
       <MenuStackNav.Screen name="ECardDashboard" component={ECardDashboardScreen} />
       <MenuStackNav.Screen name="ECardAddLink" component={ECardAddLinkScreen} />
+      <MenuStackNav.Screen name="ECardEditLink" component={ECardEditLinkScreen} />
       <MenuStackNav.Screen name="ECardThemes" component={ECardThemesScreen} />
       <MenuStackNav.Screen name="ECardPremiumUpsell" component={ECardPremiumUpsellScreen} />
       <MenuStackNav.Screen name="ECardPreview" component={ECardPreviewScreen} />
@@ -349,10 +352,58 @@ function ProsStack() {
 }
 
 // --------------------
+// Tab Icon with Badge Component
+// --------------------
+interface TabIconWithBadgeProps {
+  iconName: keyof typeof Ionicons.glyphMap;
+  color: string;
+  size: number;
+  badgeCount?: number;
+}
+
+function TabIconWithBadge({ iconName, color, size, badgeCount = 0 }: TabIconWithBadgeProps) {
+  return (
+    <View style={{ width: size + 10, height: size + 10, alignItems: 'center', justifyContent: 'center' }}>
+      <Ionicons name={iconName} size={size} color={color} />
+      {badgeCount > 0 && (
+        <View style={badgeStyles.badge}>
+          <Text style={badgeStyles.badgeText}>
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const badgeStyles = StyleSheet.create({
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+});
+
+// --------------------
 // Tabs
 // --------------------
 function TabNavigator() {
   const { theme, isDark } = useThemeContext();
+  const { unreadCount } = useUnreadMessagesContext();
   
   return (
     <Tab.Navigator
@@ -383,7 +434,15 @@ function TabNavigator() {
               break;
             case 'Apps':
               iconName = focused ? 'apps' : 'apps-outline';
-              break;
+              // Show badge on Apps tab for unread messages
+              return (
+                <TabIconWithBadge 
+                  iconName={iconName} 
+                  color={color} 
+                  size={size} 
+                  badgeCount={unreadCount} 
+                />
+              );
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -488,11 +547,13 @@ export default function App() {
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
               <ThemeProvider>
-                {showSplash ? (
-                  <AnimatedSplash onAnimationComplete={handleSplashComplete} />
-                ) : (
-                  <AppContent />
-                )}
+                <UnreadMessagesProvider>
+                  {showSplash ? (
+                    <AnimatedSplash onAnimationComplete={handleSplashComplete} />
+                  ) : (
+                    <AppContent />
+                  )}
+                </UnreadMessagesProvider>
               </ThemeProvider>
             </AuthProvider>
           </QueryClientProvider>
