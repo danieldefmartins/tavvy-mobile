@@ -8,9 +8,15 @@ import {
   SafeAreaView,
   StatusBar,
   Dimensions,
+  Alert,
+  ActivityIndicator,
+  Linking,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -54,16 +60,116 @@ interface Props {
 
 export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
   const { feature, themeName } = route.params || {};
+  const { user, refreshProfile } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
 
-  const handleSubscribe = () => {
-    // TODO: Implement subscription flow
-    console.log('Subscribe to', selectedPlan);
+  const handleSubscribe = async () => {
+    if (!user) {
+      Alert.alert('Sign In Required', 'Please sign in to subscribe to Pro.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Call the Edge Function to create a Stripe checkout session
+      const { data, error } = await supabase.functions.invoke('ecard-stripe-create-checkout', {
+        body: { plan_type: selectedPlan === 'yearly' ? 'annual' : 'monthly' },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to create checkout session');
+      }
+
+      if (data?.url) {
+        // Open Stripe Checkout in browser
+        const supported = await Linking.canOpenURL(data.url);
+        if (supported) {
+          await Linking.openURL(data.url);
+          
+          // Show success message after returning from checkout
+          Alert.alert(
+            'Complete Your Purchase',
+            'You\'ll be redirected to complete your subscription. After payment, return to the app and your Pro features will be activated.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          throw new Error('Cannot open checkout URL');
+        }
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (error: any) {
+      console.error('Subscription error:', error);
+      Alert.alert(
+        'Subscription Error',
+        error.message || 'Failed to start subscription. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleRestore = () => {
-    // TODO: Implement restore purchases
-    console.log('Restore purchases');
+  const handleRestore = async () => {
+    if (!user) {
+      Alert.alert('Sign In Required', 'Please sign in to restore purchases.');
+      return;
+    }
+
+    setIsRestoring(true);
+
+    try {
+      // Check if user has an active subscription in the database
+      const { data: subscription, error } = await supabase
+        .from('user_subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .in('status', ['active', 'trialing'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      if (subscription) {
+        // User has an active subscription, update their profile
+        await supabase
+          .from('profiles')
+          .update({ is_pro: true })
+          .eq('id', user.id);
+
+        // Refresh the auth context
+        if (refreshProfile) {
+          await refreshProfile();
+        }
+
+        Alert.alert(
+          'Subscription Restored',
+          'Your Pro subscription has been restored successfully!',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      } else {
+        Alert.alert(
+          'No Active Subscription',
+          'We couldn\'t find an active subscription for your account. If you believe this is an error, please contact support.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error: any) {
+      console.error('Restore error:', error);
+      Alert.alert(
+        'Restore Error',
+        'Failed to restore purchases. Please try again or contact support.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsRestoring(false);
+    }
   };
 
   return (
@@ -147,14 +253,14 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
                 </View>
                 <View style={styles.planInfo}>
                   <Text style={styles.planName}>Yearly</Text>
-                  <Text style={styles.planSavings}>Save 50%</Text>
+                  <Text style={styles.planSavings}>Save 33%</Text>
                 </View>
                 <View style={styles.planPrice}>
-                  <Text style={styles.priceAmount}>$2.49</Text>
+                  <Text style={styles.priceAmount}>$3.33</Text>
                   <Text style={styles.pricePeriod}>/month</Text>
                 </View>
               </View>
-              <Text style={styles.billedText}>Billed $29.99/year</Text>
+              <Text style={styles.billedText}>Billed $39.99/year</Text>
             </TouchableOpacity>
 
             {/* Monthly Plan */}
@@ -191,14 +297,25 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
             <Ionicons name="gift" size={20} color="#00C853" />
             <Text style={styles.trialText}>Start with a 7-day free trial</Text>
           </View>
+
+          {/* Platform Notice */}
+          {Platform.OS === 'ios' && (
+            <View style={styles.platformNotice}>
+              <Ionicons name="information-circle-outline" size={16} color="rgba(255,255,255,0.5)" />
+              <Text style={styles.platformNoticeText}>
+                You'll be redirected to complete payment securely via Stripe
+              </Text>
+            </View>
+          )}
         </ScrollView>
 
         {/* Bottom CTA */}
         <View style={styles.bottomContainer}>
           <TouchableOpacity
-            style={styles.subscribeButton}
+            style={[styles.subscribeButton, isLoading && styles.subscribeButtonDisabled]}
             onPress={handleSubscribe}
             activeOpacity={0.9}
+            disabled={isLoading}
           >
             <LinearGradient
               colors={['#FFD700', '#FFA500']}
@@ -206,15 +323,24 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
               end={{ x: 1, y: 0 }}
               style={styles.subscribeGradient}
             >
-              <Text style={styles.subscribeText}>Start Free Trial</Text>
+              {isLoading ? (
+                <ActivityIndicator color="#1A1A1A" size="small" />
+              ) : (
+                <Text style={styles.subscribeText}>Start Free Trial</Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity 
             style={styles.restoreButton}
             onPress={handleRestore}
+            disabled={isRestoring}
           >
-            <Text style={styles.restoreText}>Restore Purchases</Text>
+            {isRestoring ? (
+              <ActivityIndicator color="rgba(255,255,255,0.6)" size="small" />
+            ) : (
+              <Text style={styles.restoreText}>Restore Purchases</Text>
+            )}
           </TouchableOpacity>
 
           <Text style={styles.termsText}>
@@ -403,11 +529,24 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,200,83,0.1)',
     borderRadius: 12,
     padding: 12,
+    marginBottom: 16,
   },
   trialText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#00C853',
+  },
+  platformNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+  },
+  platformNoticeText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
   },
   bottomContainer: {
     position: 'absolute',
@@ -426,9 +565,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 12,
   },
+  subscribeButtonDisabled: {
+    opacity: 0.7,
+  },
   subscribeGradient: {
     paddingVertical: 18,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 56,
   },
   subscribeText: {
     fontSize: 18,
@@ -438,6 +582,8 @@ const styles = StyleSheet.create({
   restoreButton: {
     alignItems: 'center',
     paddingVertical: 12,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   restoreText: {
     fontSize: 14,
