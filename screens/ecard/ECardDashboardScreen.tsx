@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system';
 import { supabase } from '../../lib/supabaseClient';
+import { FONTS, PREMIUM_FONT_COUNT } from '../../config/eCardFonts';
 import { useAuth } from '../../contexts/AuthContext';
 
 const { width, height } = Dimensions.get('window');
@@ -88,17 +89,7 @@ const BUTTON_STYLES = [
   { id: 'minimal', name: 'Minimal' },
 ];
 
-// Font configurations - expanded to 50+
-const FONTS = [
-  { id: 'default', name: 'Default', style: {}, preview: 'Aa' },
-  { id: 'modern', name: 'Modern', style: { fontWeight: '300' as const }, preview: 'Aa' },
-  { id: 'classic', name: 'Classic', style: { fontStyle: 'italic' as const }, preview: 'Aa' },
-  { id: 'bold', name: 'Bold', style: { fontWeight: '900' as const }, preview: 'Aa' },
-  { id: 'light', name: 'Light', style: { fontWeight: '200' as const }, preview: 'Aa' },
-  { id: 'medium', name: 'Medium', style: { fontWeight: '500' as const }, preview: 'Aa' },
-  { id: 'semibold', name: 'Semi Bold', style: { fontWeight: '600' as const }, preview: 'Aa' },
-  { id: 'extrabold', name: 'Extra Bold', style: { fontWeight: '800' as const }, preview: 'Aa' },
-];
+// FONTS imported from config/eCardFonts.ts (50+ fonts: 8 free, 42+ premium)
 
 interface LinkItem {
   id: string;
@@ -448,6 +439,51 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     saveAppearanceSettings({ font_style: fontId });
   };
 
+  // Delete card function
+  const handleDeleteCard = () => {
+    Alert.alert(
+      'Delete Card',
+      'Are you sure you want to delete this card? This will permanently delete your card, all links, and free up your URL slug. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsSaving(true);
+              
+              // Delete all links first
+              if (cardData?.id) {
+                await supabase
+                  .from('card_links')
+                  .delete()
+                  .eq('card_id', cardData.id);
+                
+                // Delete the card
+                const { error } = await supabase
+                  .from('digital_cards')
+                  .delete()
+                  .eq('id', cardData.id);
+                
+                if (error) throw error;
+                
+                Alert.alert('Success', 'Your card has been deleted.', [
+                  { text: 'OK', onPress: () => navigation.navigate('MyCards') }
+                ]);
+              }
+            } catch (error) {
+              console.error('Error deleting card:', error);
+              Alert.alert('Error', 'Failed to delete card. Please try again.');
+            } finally {
+              setIsSaving(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // Share functions
   const handleShare = async () => {
     try {
@@ -788,14 +824,26 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       <View style={styles.appearanceSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Fonts</Text>
+          <Text style={styles.sectionSubtitle}>{FONTS.length} fonts ({PREMIUM_FONT_COUNT} premium)</Text>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.fontsScroll}>
           {FONTS.map((font) => (
             <TouchableOpacity
               key={font.id}
               style={[styles.fontOption, selectedFont === font.id && styles.selectedFont]}
-              onPress={() => handleFontSelect(font.id)}
+              onPress={() => {
+                if (font.isPremium && !isPro) {
+                  navigation.navigate('ECardPremiumUpsell');
+                } else {
+                  handleFontSelect(font.id);
+                }
+              }}
             >
+              {font.isPremium && (
+                <View style={styles.fontProBadge}>
+                  <Text style={styles.fontProBadgeText}>PRO</Text>
+                </View>
+              )}
               <Text style={[styles.fontPreview, font.style]}>{font.preview}</Text>
               <Text style={styles.fontName}>{font.name}</Text>
             </TouchableOpacity>
@@ -869,6 +917,16 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         ) : (
           <Text style={styles.noLinksText}>Add links to see their performance</Text>
         )}
+      </View>
+
+      {/* Delete Card Section */}
+      <View style={styles.dangerZone}>
+        <Text style={styles.dangerZoneTitle}>Danger Zone</Text>
+        <TouchableOpacity style={styles.deleteCardButton} onPress={handleDeleteCard}>
+          <Ionicons name="trash-outline" size={20} color="#EF4444" />
+          <Text style={styles.deleteCardText}>Delete This Card</Text>
+        </TouchableOpacity>
+        <Text style={styles.deleteCardHint}>This will permanently delete your card, all links, and free up your URL slug.</Text>
       </View>
     </View>
   );
@@ -1687,6 +1745,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#666',
   },
+  fontProBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: '#FACC15',
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  fontProBadgeText: {
+    fontSize: 7,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: '#9E9E9E',
+  },
+  fontNameDummy: {
+    color: '#666',
+  },
   
   // Analytics
   analyticsCard: {
@@ -2026,5 +2105,43 @@ const styles = StyleSheet.create({
   savingText: {
     fontSize: 14,
     color: '#fff',
+  },
+  
+  // Danger Zone / Delete Card
+  dangerZone: {
+    marginTop: 32,
+    padding: 16,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  dangerZoneTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#991B1B',
+    marginBottom: 12,
+  },
+  deleteCardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    borderRadius: 8,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  deleteCardText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  deleteCardHint: {
+    fontSize: 12,
+    color: '#991B1B',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
