@@ -43,8 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, display_name, avatar_url, subscription_status, subscription_plan, subscription_expires_at, max_cards')
-        .eq('id', userId)
+        .select('user_id, display_name, avatar_url, subscription_status, subscription_plan, subscription_expires_at, max_cards')
+        .eq('user_id', userId)
         .single();
 
       if (error) {
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setProfile({
-        id: data.id,
+        id: data.user_id,
         display_name: data.display_name,
         avatar_url: data.avatar_url,
         subscription_status: data.subscription_status || 'free',
