@@ -15,17 +15,26 @@ import {
   Modal,
   ActivityIndicator,
   TextInput,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
-import * as FileSystem from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../../lib/supabaseClient';
 import { FONTS, PREMIUM_FONT_COUNT } from '../../config/eCardFonts';
 import { useAuth } from '../../contexts/AuthContext';
 
 const { width, height } = Dimensions.get('window');
-const PREVIEW_HEIGHT = height * 0.32; // 32% of screen for preview
+const PREVIEW_HEIGHT = height * 0.32;
+
+// Profile photo size options
+const PHOTO_SIZES = [
+  { id: 'small', name: 'Small', size: 80 },
+  { id: 'medium', name: 'Medium', size: 110 },
+  { id: 'large', name: 'Large', size: 140 },
+  { id: 'xl', name: 'Extra Large', size: 180 },
+];
 
 // Platform icons mapping
 const PLATFORM_ICONS: Record<string, { icon: string; color: string; bgColor: string }> = {
@@ -43,19 +52,19 @@ const PLATFORM_ICONS: Record<string, { icon: string; color: string; bgColor: str
   other: { icon: 'link', color: '#fff', bgColor: '#8E8E93' },
 };
 
-// Theme configurations with better minimal theme
+// Theme configurations
 const THEMES = [
-  { id: 'classic', name: 'Classic', colors: ['#667eea', '#764ba2'], textColor: '#fff' },
-  { id: 'modern', name: 'Modern', colors: ['#00C853', '#00E676'], textColor: '#fff' },
-  { id: 'minimal', name: 'Minimal', colors: ['#FAFAFA', '#F5F5F5'], textColor: '#1A1A1A', hasBorder: true },
-  { id: 'bold', name: 'Bold', colors: ['#FF6B6B', '#FF8E53'], textColor: '#fff' },
-  { id: 'elegant', name: 'Elegant', colors: ['#1A1A1A', '#333333'], textColor: '#fff' },
-  { id: 'ocean', name: 'Ocean', colors: ['#0077B6', '#00B4D8'], textColor: '#fff' },
-  { id: 'sunset', name: 'Sunset', colors: ['#F97316', '#FACC15'], textColor: '#fff' },
-  { id: 'forest', name: 'Forest', colors: ['#059669', '#34D399'], textColor: '#fff' },
+  { id: 'classic', name: 'Classic', colors: ['#667eea', '#764ba2'], textColor: '#fff', isPremium: false },
+  { id: 'modern', name: 'Modern', colors: ['#00C853', '#00E676'], textColor: '#fff', isPremium: false },
+  { id: 'minimal', name: 'Minimal', colors: ['#FAFAFA', '#F5F5F5'], textColor: '#1A1A1A', hasBorder: true, isPremium: false },
+  { id: 'bold', name: 'Bold', colors: ['#FF6B6B', '#FF8E53'], textColor: '#fff', isPremium: false },
+  { id: 'elegant', name: 'Elegant', colors: ['#1A1A1A', '#333333'], textColor: '#fff', isPremium: true },
+  { id: 'ocean', name: 'Ocean', colors: ['#0077B6', '#00B4D8'], textColor: '#fff', isPremium: true },
+  { id: 'sunset', name: 'Sunset', colors: ['#F97316', '#FACC15'], textColor: '#fff', isPremium: true },
+  { id: 'forest', name: 'Forest', colors: ['#059669', '#34D399'], textColor: '#fff', isPremium: true },
 ];
 
-// Preset gradient colors for quick selection
+// Preset gradient colors
 const PRESET_GRADIENTS = [
   { id: 'purple', name: 'Purple', colors: ['#667eea', '#764ba2'] },
   { id: 'ocean', name: 'Ocean', colors: ['#0077B6', '#00B4D8'] },
@@ -89,14 +98,28 @@ const BUTTON_STYLES = [
   { id: 'minimal', name: 'Minimal' },
 ];
 
-// FONTS imported from config/eCardFonts.ts (50+ fonts: 8 free, 42+ premium)
-
 interface LinkItem {
   id: string;
   platform: string;
   value: string;
   title?: string;
   clicks?: number;
+}
+
+interface GalleryImage {
+  id: string;
+  url: string;
+  caption?: string;
+}
+
+interface ProCredentials {
+  isLicensed: boolean;
+  licenseNumber?: string;
+  isInsured: boolean;
+  isBonded: boolean;
+  isTavvyVerified: boolean;
+  yearsInBusiness?: number;
+  serviceArea?: string;
 }
 
 interface CardData {
@@ -112,7 +135,15 @@ interface CardData {
   title: string;
   company: string;
   profile_photo_url?: string;
+  profile_photo_size?: string;
   bio?: string;
+  view_count?: number;
+  tap_count?: number;
+  form_block?: any;
+  gallery_images?: GalleryImage[];
+  pro_credentials?: ProCredentials;
+  review_count?: number;
+  review_rating?: number;
 }
 
 interface Props {
@@ -136,6 +167,23 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const [selectedButtonStyle, setSelectedButtonStyle] = useState('fill');
   const [selectedFont, setSelectedFont] = useState('default');
   const [gradientColors, setGradientColors] = useState<[string, string]>(['#667eea', '#764ba2']);
+  const [profilePhotoSize, setProfilePhotoSize] = useState('medium');
+  
+  // Gallery state
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [showGalleryModal, setShowGalleryModal] = useState(false);
+  
+  // Pro Credentials state
+  const [proCredentials, setProCredentials] = useState<ProCredentials>({
+    isLicensed: false,
+    isInsured: false,
+    isBonded: false,
+    isTavvyVerified: false,
+  });
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  
+  // Premium features tracking - allow selection, prompt on publish
+  const [selectedPremiumFeatures, setSelectedPremiumFeatures] = useState<string[]>([]);
   
   // QR Code state
   const [showQRModal, setShowQRModal] = useState(false);
@@ -158,6 +206,30 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   // Link limit for free users
   const FREE_LINK_LIMIT = 5;
   const canAddMoreLinks = isPro || links.length < FREE_LINK_LIMIT;
+
+  // Check if user has selected premium features
+  const hasPremiumFeatures = () => {
+    if (selectedPremiumFeatures.length > 0) return true;
+    
+    // Check theme
+    const theme = THEMES.find(t => t.id === selectedTheme);
+    if (theme?.isPremium) return true;
+    
+    // Check font
+    const font = FONTS.find(f => f.id === selectedFont);
+    if (font?.isPremium) return true;
+    
+    // Check video background
+    if (selectedBackground === 'video') return true;
+    
+    // Check link limit exceeded
+    if (links.length > FREE_LINK_LIMIT) return true;
+    
+    // Check gallery (premium feature)
+    if (galleryImages.length > 0) return true;
+    
+    return false;
+  };
 
   // Generate slug from name
   const generateSlug = (name: string): string => {
@@ -196,21 +268,17 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     let insertedCard = null;
     let lastError = null;
     
-    // Try up to 5 times with increasingly unique slugs
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
-        // Generate unique slug: first try base, then add timestamp + random
         let finalSlug = baseSlug;
         if (attempt > 0) {
-          const timestamp = Date.now().toString(36); // Base36 timestamp
-          const random = Math.random().toString(36).substring(2, 6); // 4 random chars
+          const timestamp = Date.now().toString(36);
+          const random = Math.random().toString(36).substring(2, 6);
           finalSlug = `${baseSlug}${timestamp}${random}`;
         }
         
-        // Check availability first
         const isAvailable = await checkSlugAvailability(finalSlug);
         if (!isAvailable && attempt === 0) {
-          // First attempt with base slug failed, continue to next attempt
           continue;
         }
         
@@ -228,6 +296,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           gradient_color_1: '#667eea',
           gradient_color_2: '#764ba2',
           profile_photo_url: profile.image || null,
+          profile_photo_size: 'medium',
           theme: 'classic',
           background_type: 'gradient',
           button_style: 'fill',
@@ -242,7 +311,6 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           .single();
         
         if (insertError) {
-          // If duplicate key error, try again with different slug
           if (insertError.code === '23505') {
             lastError = insertError;
             continue;
@@ -251,12 +319,12 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         }
         
         insertedCard = data;
-        break; // Success, exit loop
+        break;
         
       } catch (error: any) {
         lastError = error;
         if (error.code !== '23505') {
-          throw error; // Non-duplicate error, throw immediately
+          throw error;
         }
       }
     }
@@ -268,7 +336,6 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     }
     
     try {
-      
       if (initialLinks && initialLinks.length > 0) {
         const linksToInsert = initialLinks
           .filter((link: any) => link.value && link.value.trim())
@@ -279,18 +346,18 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             if (platform === 'instagram') url = `https://instagram.com/${link.value}`;
             else if (platform === 'tiktok') url = `https://tiktok.com/@${link.value}`;
             else if (platform === 'youtube') url = `https://youtube.com/@${link.value}`;
-            else if (platform === 'twitter') url = `https://twitter.com/${link.value}`;
+            else if (platform === 'twitter') url = `https://x.com/${link.value}`;
             else if (platform === 'linkedin') url = `https://linkedin.com/in/${link.value}`;
             else if (platform === 'facebook') url = `https://facebook.com/${link.value}`;
-            else if (platform === 'snapchat') url = `https://snapchat.com/add/${link.value}`;
-            else if (platform === 'whatsapp') url = `https://wa.me/${link.value.replace(/\D/g, '')}`;
-            else if (platform === 'phone') url = `tel:${link.value}`;
             else if (platform === 'email') url = `mailto:${link.value}`;
+            else if (platform === 'phone') url = `tel:${link.value}`;
+            else if (platform === 'whatsapp') url = `https://wa.me/${link.value.replace(/\D/g, '')}`;
+            else if (!url.startsWith('http')) url = `https://${url}`;
             
             return {
               card_id: insertedCard.id,
-              platform,
-              url,
+              platform: platform,
+              url: url,
               title: link.title || platform.charAt(0).toUpperCase() + platform.slice(1),
               display_order: index,
               is_active: true,
@@ -309,10 +376,10 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       setSelectedBackground(insertedCard.background_type || 'gradient');
       setSelectedButtonStyle(insertedCard.button_style || 'fill');
       setSelectedFont(insertedCard.font_style || 'default');
+      setProfilePhotoSize(insertedCard.profile_photo_size || 'medium');
       
     } catch (error: any) {
       console.error('Error inserting links:', error);
-      // Card was created, just links failed - still show the card
     }
   };
 
@@ -350,6 +417,14 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             setSelectedBackground(card.background_type || 'gradient');
             setSelectedButtonStyle(card.button_style || 'fill');
             setSelectedFont(card.font_style || 'default');
+            setProfilePhotoSize(card.profile_photo_size || 'medium');
+            setGalleryImages(card.gallery_images || []);
+            setProCredentials(card.pro_credentials || {
+              isLicensed: false,
+              isInsured: false,
+              isBonded: false,
+              isTavvyVerified: false,
+            });
 
             const { data: cardLinks, error: linksError } = await supabase
               .from('card_links')
@@ -399,12 +474,23 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     }
   };
 
-  // Theme selection handler
+  // Theme selection handler - allow premium selection, track it
   const handleThemeSelect = (themeId: string) => {
     const theme = THEMES.find(t => t.id === themeId);
     if (theme) {
+      // Allow selection even for premium themes
       setSelectedTheme(themeId);
       setGradientColors(theme.colors as [string, string]);
+      
+      // Track if premium feature selected
+      if (theme.isPremium && !isPro) {
+        if (!selectedPremiumFeatures.includes('premium_theme')) {
+          setSelectedPremiumFeatures(prev => [...prev, 'premium_theme']);
+        }
+      } else {
+        setSelectedPremiumFeatures(prev => prev.filter(f => f !== 'premium_theme'));
+      }
+      
       saveAppearanceSettings({
         theme: themeId,
         gradient_color_1: theme.colors[0],
@@ -413,16 +499,19 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     }
   };
 
-  // Background selection handler
+  // Background selection handler - allow premium selection
   const handleBackgroundSelect = (bgType: string) => {
-    if (bgType === 'video' && !isPro) {
-      Alert.alert('Pro Feature', 'Video backgrounds are available with Tavvy Pro!', [
-        { text: 'Maybe Later', style: 'cancel' },
-        { text: 'Upgrade', onPress: () => navigation.navigate('ECardPremiumUpsell') }
-      ]);
-      return;
-    }
     setSelectedBackground(bgType);
+    
+    // Track video as premium
+    if (bgType === 'video' && !isPro) {
+      if (!selectedPremiumFeatures.includes('video_background')) {
+        setSelectedPremiumFeatures(prev => [...prev, 'video_background']);
+      }
+    } else {
+      setSelectedPremiumFeatures(prev => prev.filter(f => f !== 'video_background'));
+    }
+    
     saveAppearanceSettings({ background_type: bgType });
   };
 
@@ -469,10 +558,129 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     saveAppearanceSettings({ button_style: styleId });
   };
 
-  // Font selection
+  // Font selection - allow premium selection
   const handleFontSelect = (fontId: string) => {
+    const font = FONTS.find(f => f.id === fontId);
     setSelectedFont(fontId);
+    
+    // Track premium font
+    if (font?.isPremium && !isPro) {
+      if (!selectedPremiumFeatures.includes('premium_font')) {
+        setSelectedPremiumFeatures(prev => [...prev, 'premium_font']);
+      }
+    } else {
+      setSelectedPremiumFeatures(prev => prev.filter(f => f !== 'premium_font'));
+    }
+    
     saveAppearanceSettings({ font_style: fontId });
+  };
+
+  // Profile photo size selection
+  const handlePhotoSizeSelect = (sizeId: string) => {
+    setProfilePhotoSize(sizeId);
+    saveAppearanceSettings({ profile_photo_size: sizeId });
+  };
+
+  // Gallery image picker
+  const handleAddGalleryImage = async () => {
+    if (galleryImages.length >= 10) {
+      Alert.alert('Limit Reached', 'You can add up to 10 images to your gallery.');
+      return;
+    }
+    
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    
+    if (!result.canceled && result.assets[0]) {
+      const newImage: GalleryImage = {
+        id: Date.now().toString(),
+        url: result.assets[0].uri,
+      };
+      
+      const updatedGallery = [...galleryImages, newImage];
+      setGalleryImages(updatedGallery);
+      
+      // Track as premium feature
+      if (!isPro && !selectedPremiumFeatures.includes('gallery')) {
+        setSelectedPremiumFeatures(prev => [...prev, 'gallery']);
+      }
+      
+      saveAppearanceSettings({ gallery_images: updatedGallery });
+    }
+  };
+
+  // Remove gallery image
+  const handleRemoveGalleryImage = (imageId: string) => {
+    const updatedGallery = galleryImages.filter(img => img.id !== imageId);
+    setGalleryImages(updatedGallery);
+    
+    if (updatedGallery.length === 0) {
+      setSelectedPremiumFeatures(prev => prev.filter(f => f !== 'gallery'));
+    }
+    
+    saveAppearanceSettings({ gallery_images: updatedGallery });
+  };
+
+  // Save Pro Credentials
+  const handleSaveCredentials = () => {
+    saveAppearanceSettings({ pro_credentials: proCredentials });
+    setShowCredentialsModal(false);
+    Alert.alert('Saved', 'Your credentials have been updated.');
+  };
+
+  // Publish & Share handler - check for premium features
+  const handlePublishShare = () => {
+    if (!isPro && hasPremiumFeatures()) {
+      Alert.alert(
+        'Premium Features Detected',
+        'Your card includes premium features. Upgrade to Tavvy Pro to publish with:\n\n• Premium Themes\n• Premium Fonts\n• Video Backgrounds\n• Unlimited Links\n• Photo Gallery',
+        [
+          { text: 'Remove Premium Features', style: 'destructive', onPress: removePremiumFeatures },
+          { text: 'Upgrade to Pro', onPress: () => navigation.navigate('ECardPremiumUpsell') },
+        ]
+      );
+      return;
+    }
+    
+    // Proceed with sharing
+    handleShare();
+  };
+
+  // Remove premium features
+  const removePremiumFeatures = () => {
+    // Reset to free theme
+    const freeTheme = THEMES.find(t => !t.isPremium);
+    if (freeTheme) {
+      setSelectedTheme(freeTheme.id);
+      setGradientColors(freeTheme.colors as [string, string]);
+    }
+    
+    // Reset to free font
+    const freeFont = FONTS.find(f => !f.isPremium);
+    if (freeFont) {
+      setSelectedFont(freeFont.id);
+    }
+    
+    // Reset background
+    if (selectedBackground === 'video') {
+      setSelectedBackground('gradient');
+    }
+    
+    // Clear gallery
+    setGalleryImages([]);
+    
+    // Trim links
+    if (links.length > FREE_LINK_LIMIT) {
+      setLinks(links.slice(0, FREE_LINK_LIMIT));
+    }
+    
+    setSelectedPremiumFeatures([]);
+    
+    Alert.alert('Done', 'Premium features have been removed. You can now publish your card.');
   };
 
   // Delete card function
@@ -489,14 +697,12 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             try {
               setIsSaving(true);
               
-              // Delete all links first
               if (cardData?.id) {
                 await supabase
                   .from('card_links')
                   .delete()
                   .eq('card_id', cardData.id);
                 
-                // Delete the card
                 const { error } = await supabase
                   .from('digital_cards')
                   .delete()
@@ -534,6 +740,20 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     Alert.alert('Copied!', `https://${cardUrl}`);
   };
 
+  // Save to Wallet deep link
+  const handleSaveToWallet = () => {
+    const walletUrl = `tavvy://wallet/save?card=${cardData?.slug}`;
+    Alert.alert(
+      'Save to Tavvy Wallet',
+      'Share this link with others so they can save your card to their Tavvy Wallet:',
+      [
+        { text: 'Copy Link', onPress: () => Clipboard.setStringAsync(walletUrl) },
+        { text: 'Share', onPress: () => Share.share({ url: walletUrl }) },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
   // QR Code generation
   const generateQRCode = () => {
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://${cardUrl}`;
@@ -544,15 +764,10 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   // Add link handler
   const handleAddLink = () => {
     if (!canAddMoreLinks) {
-      Alert.alert(
-        'Link Limit Reached',
-        `Free users can add up to ${FREE_LINK_LIMIT} links. Upgrade to Pro for unlimited links!`,
-        [
-          { text: 'Maybe Later', style: 'cancel' },
-          { text: 'Upgrade', onPress: () => navigation.navigate('ECardPremiumUpsell') }
-        ]
-      );
-      return;
+      // Allow adding but track as premium
+      if (!selectedPremiumFeatures.includes('unlimited_links')) {
+        setSelectedPremiumFeatures(prev => [...prev, 'unlimited_links']);
+      }
     }
     
     navigation.navigate('ECardAddLink', {
@@ -586,12 +801,31 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     return theme.textColor || '#fff';
   };
 
+  // Get current photo size
+  const getCurrentPhotoSize = () => {
+    return PHOTO_SIZES.find(s => s.id === profilePhotoSize) || PHOTO_SIZES[1];
+  };
+
+  // Render Crown Badge for Tavvy Reviews
+  const renderCrownBadge = () => {
+    const reviewCount = cardData?.review_count || 0;
+    if (reviewCount === 0) return null;
+    
+    return (
+      <View style={styles.crownBadge}>
+        <Text style={styles.crownIcon}>👑</Text>
+        <Text style={styles.crownText}>x {reviewCount}</Text>
+      </View>
+    );
+  };
 
   // Render Live Card Preview
   const renderLivePreview = () => {
     const theme = getCurrentTheme();
     const textColor = getTextColor();
     const hasLightBg = theme.id === 'minimal';
+    const photoSize = getCurrentPhotoSize();
+    const previewPhotoSize = Math.min(photoSize.size * 0.5, 70);
     
     return (
       <View style={styles.previewContainer}>
@@ -604,12 +838,32 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
+          {/* Crown Badge */}
+          {renderCrownBadge()}
+          
+          {/* Pro Badges */}
+          {(proCredentials.isLicensed || proCredentials.isInsured || proCredentials.isBonded || proCredentials.isTavvyVerified) && (
+            <View style={styles.proBadgesRow}>
+              {proCredentials.isLicensed && <Text style={styles.proBadgeIcon}>✅</Text>}
+              {proCredentials.isInsured && <Text style={styles.proBadgeIcon}>✅</Text>}
+              {proCredentials.isBonded && <Text style={styles.proBadgeIcon}>🛡️</Text>}
+              {proCredentials.isTavvyVerified && <Text style={styles.proBadgeIcon}>🟢</Text>}
+            </View>
+          )}
+          
           {/* Profile Photo */}
-          <View style={[styles.previewPhotoContainer, hasLightBg && styles.previewPhotoBorderDark]}>
+          <View style={[
+            styles.previewPhotoContainer, 
+            hasLightBg && styles.previewPhotoBorderDark,
+            { width: previewPhotoSize, height: previewPhotoSize, borderRadius: previewPhotoSize / 2 }
+          ]}>
             {cardData?.profile_photo_url ? (
-              <Image source={{ uri: cardData.profile_photo_url }} style={styles.previewPhoto} />
+              <Image 
+                source={{ uri: cardData.profile_photo_url }} 
+                style={[styles.previewPhoto, { width: previewPhotoSize - 4, height: previewPhotoSize - 4, borderRadius: (previewPhotoSize - 4) / 2 }]} 
+              />
             ) : (
-              <Ionicons name="person" size={28} color={hasLightBg ? '#666' : 'rgba(255,255,255,0.5)'} />
+              <Ionicons name="person" size={previewPhotoSize * 0.5} color={hasLightBg ? '#666' : 'rgba(255,255,255,0.5)'} />
             )}
           </View>
           
@@ -650,7 +904,23 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               </View>
             )}
           </View>
+          
+          {/* Gallery indicator */}
+          {galleryImages.length > 0 && (
+            <View style={styles.galleryIndicator}>
+              <Ionicons name="images" size={12} color={textColor} />
+              <Text style={[styles.galleryIndicatorText, { color: textColor }]}>{galleryImages.length}</Text>
+            </View>
+          )}
         </LinearGradient>
+        
+        {/* Premium Features Indicator */}
+        {!isPro && hasPremiumFeatures() && (
+          <View style={styles.premiumIndicator}>
+            <Ionicons name="star" size={14} color="#F59E0B" />
+            <Text style={styles.premiumIndicatorText}>Premium features selected</Text>
+          </View>
+        )}
       </View>
     );
   };
@@ -673,18 +943,18 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       
       {/* Add New Link Button */}
       <TouchableOpacity 
-        style={[styles.addLinkButton, !canAddMoreLinks && styles.addLinkButtonDisabled]}
+        style={styles.addLinkButton}
         onPress={handleAddLink}
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={canAddMoreLinks ? ['#00C853', '#00E676'] : ['#E0E0E0', '#BDBDBD']}
+          colors={['#00C853', '#00E676']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.addLinkGradient}
         >
-          <Ionicons name="add-circle" size={24} color={canAddMoreLinks ? '#fff' : '#9E9E9E'} />
-          <Text style={[styles.addLinkText, !canAddMoreLinks && styles.addLinkTextDisabled]}>Add New Link</Text>
+          <Ionicons name="add-circle" size={24} color="#fff" />
+          <Text style={styles.addLinkText}>Add New Link</Text>
         </LinearGradient>
       </TouchableOpacity>
 
@@ -699,6 +969,48 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           <Text style={styles.addFormText}>
             {cardData?.form_block ? 'Edit Form Block' : 'Add Form Block'}
           </Text>
+          <Ionicons name="chevron-forward" size={18} color="#9E9E9E" />
+        </View>
+      </TouchableOpacity>
+
+      {/* Add Gallery Block Button */}
+      <TouchableOpacity 
+        style={styles.addGalleryButton}
+        onPress={() => setShowGalleryModal(true)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.addGalleryContent}>
+          <Ionicons name="images-outline" size={20} color="#8B5CF6" />
+          <Text style={styles.addGalleryText}>
+            {galleryImages.length > 0 ? `Gallery (${galleryImages.length} images)` : 'Add Photo Gallery'}
+          </Text>
+          {!isPro && <View style={styles.proBadgeSmall}><Text style={styles.proBadgeSmallText}>PRO</Text></View>}
+          <Ionicons name="chevron-forward" size={18} color="#9E9E9E" />
+        </View>
+      </TouchableOpacity>
+
+      {/* Pro Credentials Button */}
+      <TouchableOpacity 
+        style={styles.addCredentialsButton}
+        onPress={() => setShowCredentialsModal(true)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.addCredentialsContent}>
+          <Ionicons name="shield-checkmark-outline" size={20} color="#059669" />
+          <Text style={styles.addCredentialsText}>Pro Credentials & Badges</Text>
+          <Ionicons name="chevron-forward" size={18} color="#9E9E9E" />
+        </View>
+      </TouchableOpacity>
+
+      {/* Save to Wallet Button */}
+      <TouchableOpacity 
+        style={styles.walletButton}
+        onPress={handleSaveToWallet}
+        activeOpacity={0.8}
+      >
+        <View style={styles.walletContent}>
+          <Ionicons name="wallet-outline" size={20} color="#F59E0B" />
+          <Text style={styles.walletText}>Get Wallet Save Link</Text>
           <Ionicons name="chevron-forward" size={18} color="#9E9E9E" />
         </View>
       </TouchableOpacity>
@@ -747,6 +1059,27 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   // Render Appearance Tab
   const renderAppearanceTab = () => (
     <View style={styles.tabContent}>
+      {/* Profile Photo Size Section */}
+      <View style={styles.appearanceSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Profile Photo Size</Text>
+        </View>
+        <View style={styles.photoSizeOptions}>
+          {PHOTO_SIZES.map((size) => (
+            <TouchableOpacity
+              key={size.id}
+              style={[styles.photoSizeOption, profilePhotoSize === size.id && styles.selectedPhotoSize]}
+              onPress={() => handlePhotoSizeSelect(size.id)}
+            >
+              <View style={[styles.photoSizePreview, { width: size.size * 0.3, height: size.size * 0.3, borderRadius: size.size * 0.15 }]}>
+                <Ionicons name="person" size={size.size * 0.15} color="#9E9E9E" />
+              </View>
+              <Text style={styles.photoSizeName}>{size.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
       {/* Themes Section */}
       <View style={styles.appearanceSection}>
         <View style={styles.sectionHeader}>
@@ -760,6 +1093,11 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               onPress={() => handleThemeSelect(theme.id)}
               activeOpacity={0.7}
             >
+              {theme.isPremium && (
+                <View style={styles.themePremiumBadge}>
+                  <Text style={styles.themePremiumText}>PRO</Text>
+                </View>
+              )}
               <LinearGradient
                 colors={theme.colors}
                 style={[styles.themePreview, theme.hasBorder && styles.themePreviewBorder]}
@@ -882,13 +1220,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             <TouchableOpacity
               key={font.id}
               style={[styles.fontOption, selectedFont === font.id && styles.selectedFont]}
-              onPress={() => {
-                if (font.isPremium && !isPro) {
-                  navigation.navigate('ECardPremiumUpsell');
-                } else {
-                  handleFontSelect(font.id);
-                }
-              }}
+              onPress={() => handleFontSelect(font.id)}
             >
               {font.isPremium && (
                 <View style={styles.fontProBadge}>
@@ -901,6 +1233,27 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           ))}
         </ScrollView>
       </View>
+
+      {!isPro && (
+        <TouchableOpacity 
+          style={styles.upgradeCard}
+          onPress={() => navigation.navigate('ECardPremiumUpsell')}
+        >
+          <LinearGradient
+            colors={['#F97316', '#FACC15']}
+            style={styles.upgradeGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Ionicons name="star" size={24} color="#fff" />
+            <View style={styles.upgradeTextContainer}>
+              <Text style={styles.upgradeTitle}>Unlock All Premium Features</Text>
+              <Text style={styles.upgradeSubtitle}>Themes, fonts, video backgrounds & more</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#fff" />
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -924,13 +1277,28 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           </View>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>
-              {cardData?.view_count > 0 
+              {cardData?.view_count && cardData.view_count > 0 
                 ? Math.round((links.reduce((sum, link) => sum + (link.clicks || 0), 0) / cardData.view_count) * 100) 
                 : 0}%
             </Text>
             <Text style={styles.statLabel}>Click Rate</Text>
           </View>
         </View>
+      </View>
+
+      {/* Tavvy Reviews Section */}
+      <View style={styles.reviewsCard}>
+        <View style={styles.reviewsHeader}>
+          <Text style={styles.crownLarge}>👑</Text>
+          <Text style={styles.reviewsTitle}>Tavvy Reviews</Text>
+        </View>
+        <View style={styles.reviewsStats}>
+          <Text style={styles.reviewsCount}>x {cardData?.review_count || 0}</Text>
+          <Text style={styles.reviewsLabel}>Good Taps</Text>
+        </View>
+        <Text style={styles.reviewsHint}>
+          Reviews from the Tavvy community appear here
+        </Text>
       </View>
 
       {!isPro && (
@@ -984,6 +1352,179 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         <Text style={styles.deleteCardHint}>This will permanently delete your card, all links, and free up your URL slug.</Text>
       </View>
     </View>
+  );
+
+  // Render Gallery Modal
+  const renderGalleryModal = () => (
+    <Modal
+      visible={showGalleryModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowGalleryModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.galleryModalContent}>
+          <View style={styles.galleryModalHeader}>
+            <Text style={styles.galleryModalTitle}>Photo Gallery</Text>
+            <TouchableOpacity onPress={() => setShowGalleryModal(false)}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+          
+          {!isPro && (
+            <View style={styles.galleryProBanner}>
+              <Ionicons name="star" size={16} color="#F59E0B" />
+              <Text style={styles.galleryProText}>Gallery is a Pro feature. You can add images, but upgrade to publish.</Text>
+            </View>
+          )}
+          
+          <ScrollView style={styles.galleryGrid}>
+            <View style={styles.galleryImagesRow}>
+              {galleryImages.map((image) => (
+                <View key={image.id} style={styles.galleryImageContainer}>
+                  <Image source={{ uri: image.url }} style={styles.galleryImage} />
+                  <TouchableOpacity 
+                    style={styles.galleryRemoveButton}
+                    onPress={() => handleRemoveGalleryImage(image.id)}
+                  >
+                    <Ionicons name="close-circle" size={24} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              
+              {galleryImages.length < 10 && (
+                <TouchableOpacity style={styles.galleryAddButton} onPress={handleAddGalleryImage}>
+                  <Ionicons name="add" size={32} color="#9E9E9E" />
+                  <Text style={styles.galleryAddText}>Add Photo</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </ScrollView>
+          
+          <Text style={styles.galleryHint}>{galleryImages.length}/10 images</Text>
+          
+          <TouchableOpacity 
+            style={styles.galleryDoneButton}
+            onPress={() => setShowGalleryModal(false)}
+          >
+            <Text style={styles.galleryDoneText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Render Credentials Modal
+  const renderCredentialsModal = () => (
+    <Modal
+      visible={showCredentialsModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowCredentialsModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.credentialsModalContent}>
+          <View style={styles.credentialsModalHeader}>
+            <Text style={styles.credentialsModalTitle}>Pro Credentials</Text>
+            <TouchableOpacity onPress={() => setShowCredentialsModal(false)}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.credentialsList}>
+            {/* Licensed */}
+            <View style={styles.credentialItem}>
+              <View style={styles.credentialRow}>
+                <Text style={styles.credentialEmoji}>✅</Text>
+                <Text style={styles.credentialLabel}>Licensed</Text>
+                <Switch
+                  value={proCredentials.isLicensed}
+                  onValueChange={(value) => setProCredentials(prev => ({ ...prev, isLicensed: value }))}
+                />
+              </View>
+              {proCredentials.isLicensed && (
+                <TextInput
+                  style={styles.credentialInput}
+                  placeholder="License Number (optional)"
+                  value={proCredentials.licenseNumber || ''}
+                  onChangeText={(text) => setProCredentials(prev => ({ ...prev, licenseNumber: text }))}
+                />
+              )}
+            </View>
+            
+            {/* Insured */}
+            <View style={styles.credentialItem}>
+              <View style={styles.credentialRow}>
+                <Text style={styles.credentialEmoji}>✅</Text>
+                <Text style={styles.credentialLabel}>Insured</Text>
+                <Switch
+                  value={proCredentials.isInsured}
+                  onValueChange={(value) => setProCredentials(prev => ({ ...prev, isInsured: value }))}
+                />
+              </View>
+            </View>
+            
+            {/* Bonded */}
+            <View style={styles.credentialItem}>
+              <View style={styles.credentialRow}>
+                <Text style={styles.credentialEmoji}>🛡️</Text>
+                <Text style={styles.credentialLabel}>Bonded</Text>
+                <Switch
+                  value={proCredentials.isBonded}
+                  onValueChange={(value) => setProCredentials(prev => ({ ...prev, isBonded: value }))}
+                />
+              </View>
+            </View>
+            
+            {/* Tavvy Verified */}
+            <View style={styles.credentialItem}>
+              <View style={styles.credentialRow}>
+                <Text style={styles.credentialEmoji}>🟢</Text>
+                <Text style={styles.credentialLabel}>Tavvy Verified</Text>
+                <Switch
+                  value={proCredentials.isTavvyVerified}
+                  onValueChange={(value) => setProCredentials(prev => ({ ...prev, isTavvyVerified: value }))}
+                  disabled={true}
+                />
+              </View>
+              <Text style={styles.credentialHint}>Submit verification documents to earn this badge</Text>
+            </View>
+            
+            {/* Years in Business */}
+            <View style={styles.credentialItem}>
+              <Text style={styles.credentialLabel}>Years in Business</Text>
+              <TextInput
+                style={styles.credentialInput}
+                placeholder="e.g., 10"
+                keyboardType="numeric"
+                value={proCredentials.yearsInBusiness?.toString() || ''}
+                onChangeText={(text) => setProCredentials(prev => ({ ...prev, yearsInBusiness: parseInt(text) || undefined }))}
+              />
+            </View>
+            
+            {/* Service Area */}
+            <View style={styles.credentialItem}>
+              <Text style={styles.credentialLabel}>Service Area</Text>
+              <TextInput
+                style={styles.credentialInput}
+                placeholder="e.g., Miami-Dade County, FL"
+                value={proCredentials.serviceArea || ''}
+                onChangeText={(text) => setProCredentials(prev => ({ ...prev, serviceArea: text }))}
+              />
+            </View>
+          </ScrollView>
+          
+          <TouchableOpacity 
+            style={styles.credentialsSaveButton}
+            onPress={handleSaveCredentials}
+          >
+            <LinearGradient colors={['#00C853', '#00E676']} style={styles.credentialsSaveGradient}>
+              <Text style={styles.credentialsSaveText}>Save Credentials</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
   );
 
   // Render QR Modal
@@ -1193,7 +1734,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Card</Text>
         <TouchableOpacity 
-          onPress={() => navigation.navigate('ECardPreview', { cardData })} 
+          onPress={() => navigation.navigate('ECardPreview', { cardData, gradientColors })} 
           style={styles.previewButton}
         >
           <Ionicons name="eye-outline" size={24} color="#1A1A1A" />
@@ -1269,10 +1810,31 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         {activeTab === 'analytics' && renderAnalyticsTab()}
       </ScrollView>
 
+      {/* Publish Button - Fixed at bottom */}
+      <View style={styles.publishContainer}>
+        <TouchableOpacity 
+          style={styles.publishButton}
+          onPress={handlePublishShare}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#00C853', '#00E676']}
+            style={styles.publishGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Ionicons name="rocket" size={20} color="#fff" />
+            <Text style={styles.publishText}>Publish & Share</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+
       {/* Modals */}
       {renderQRModal()}
       {renderSlugModal()}
       {renderColorPickerModal()}
+      {renderGalleryModal()}
+      {renderCredentialsModal()}
       
       {/* Saving Indicator */}
       {isSaving && (
@@ -1344,9 +1906,6 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
   },
   previewPhotoContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1359,9 +1918,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   previewPhoto: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    // Dynamic size set inline
   },
   previewName: {
     fontSize: 18,
@@ -1396,6 +1953,71 @@ const styles = StyleSheet.create({
   previewMoreText: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  
+  // Crown Badge
+  crownBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,215,0,0.9)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  crownIcon: {
+    fontSize: 14,
+  },
+  crownText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  
+  // Pro Badges Row
+  proBadgesRow: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    flexDirection: 'row',
+    gap: 4,
+  },
+  proBadgeIcon: {
+    fontSize: 12,
+  },
+  
+  // Gallery Indicator
+  galleryIndicator: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  galleryIndicatorText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  
+  // Premium Indicator
+  premiumIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 4,
+  },
+  premiumIndicatorText: {
+    fontSize: 12,
+    color: '#F59E0B',
+    fontWeight: '500',
   },
   
   // Card URL Section
@@ -1473,6 +2095,7 @@ const styles = StyleSheet.create({
   },
   tabContent: {
     padding: 16,
+    paddingBottom: 100,
   },
   
   // Link Limit Banner
@@ -1498,12 +2121,9 @@ const styles = StyleSheet.create({
   
   // Add Link Button
   addLinkButton: {
-    marginBottom: 16,
+    marginBottom: 12,
     borderRadius: 12,
     overflow: 'hidden',
-  },
-  addLinkButtonDisabled: {
-    opacity: 0.7,
   },
   addLinkGradient: {
     flexDirection: 'row',
@@ -1517,13 +2137,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
-  addLinkTextDisabled: {
-    color: '#9E9E9E',
-  },
   
   // Form Block Button
   addFormButton: {
-    marginBottom: 16,
+    marginBottom: 12,
     backgroundColor: '#EFF6FF',
     borderRadius: 12,
     borderWidth: 1,
@@ -1533,8 +2150,8 @@ const styles = StyleSheet.create({
   addFormContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: 14,
+    paddingHorizontal: 16,
     gap: 8,
   },
   addFormText: {
@@ -1542,6 +2159,88 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#3B82F6',
+  },
+  
+  // Gallery Block Button
+  addGalleryButton: {
+    marginBottom: 12,
+    backgroundColor: '#F5F3FF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    borderStyle: 'dashed',
+  },
+  addGalleryContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  addGalleryText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#8B5CF6',
+  },
+  
+  // Credentials Button
+  addCredentialsButton: {
+    marginBottom: 12,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderStyle: 'dashed',
+  },
+  addCredentialsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  addCredentialsText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#059669',
+  },
+  
+  // Wallet Button
+  walletButton: {
+    marginBottom: 16,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderStyle: 'dashed',
+  },
+  walletContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  walletText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#F59E0B',
+  },
+  
+  // Pro Badge Small
+  proBadgeSmall: {
+    backgroundColor: '#FACC15',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  proBadgeSmallText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
   
   // Links List
@@ -1613,6 +2312,35 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   
+  // Photo Size Options
+  photoSizeOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  photoSizeOption: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    backgroundColor: '#fff',
+  },
+  selectedPhotoSize: {
+    borderColor: '#00C853',
+  },
+  photoSizePreview: {
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  photoSizeName: {
+    fontSize: 11,
+    color: '#666',
+  },
+  
   // Appearance Section
   appearanceSection: {
     marginBottom: 24,
@@ -1627,6 +2355,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#1A1A1A',
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: '#9E9E9E',
   },
   
   // Themes
@@ -1676,6 +2408,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 6,
+  },
+  themePremiumBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: '#FACC15',
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    zIndex: 1,
+  },
+  themePremiumText: {
+    fontSize: 7,
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
   
   // Colors
@@ -1843,13 +2590,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1A1A1A',
   },
-  sectionSubtitle: {
-    fontSize: 12,
-    color: '#9E9E9E',
-  },
-  fontNameDummy: {
-    color: '#666',
-  },
   
   // Analytics
   analyticsCard: {
@@ -1891,6 +2631,49 @@ const styles = StyleSheet.create({
     color: '#9E9E9E',
     marginTop: 4,
   },
+  
+  // Reviews Card
+  reviewsCard: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  reviewsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  crownLarge: {
+    fontSize: 24,
+  },
+  reviewsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  reviewsStats: {
+    alignItems: 'center',
+  },
+  reviewsCount: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#F59E0B',
+  },
+  reviewsLabel: {
+    fontSize: 14,
+    color: '#92400E',
+  },
+  reviewsHint: {
+    fontSize: 12,
+    color: '#9E9E9E',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  
+  // Upgrade Card
   upgradeCard: {
     marginBottom: 16,
     borderRadius: 12,
@@ -1915,6 +2698,8 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
   },
+  
+  // Link Analytics
   linkAnalytics: {
     backgroundColor: '#fff',
     borderRadius: 16,
@@ -1956,6 +2741,34 @@ const styles = StyleSheet.create({
     color: '#9E9E9E',
     textAlign: 'center',
     paddingVertical: 20,
+  },
+  
+  // Publish Button Container
+  publishContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  publishButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  publishGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  publishText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
   },
   
   // Modals
@@ -2172,10 +2985,169 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   
+  // Gallery Modal
+  galleryModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: width - 32,
+    maxHeight: height * 0.8,
+  },
+  galleryModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  galleryModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  galleryProBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 16,
+    gap: 8,
+  },
+  galleryProText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#92400E',
+  },
+  galleryGrid: {
+    maxHeight: 300,
+  },
+  galleryImagesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  galleryImageContainer: {
+    position: 'relative',
+  },
+  galleryImage: {
+    width: (width - 80) / 3 - 8,
+    height: (width - 80) / 3 - 8,
+    borderRadius: 8,
+  },
+  galleryRemoveButton: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+  },
+  galleryAddButton: {
+    width: (width - 80) / 3 - 8,
+    height: (width - 80) / 3 - 8,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  galleryAddText: {
+    fontSize: 11,
+    color: '#9E9E9E',
+    marginTop: 4,
+  },
+  galleryHint: {
+    fontSize: 12,
+    color: '#9E9E9E',
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  galleryDoneButton: {
+    backgroundColor: '#00C853',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  galleryDoneText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  
+  // Credentials Modal
+  credentialsModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: width - 32,
+    maxHeight: height * 0.8,
+  },
+  credentialsModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  credentialsModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  credentialsList: {
+    maxHeight: 400,
+  },
+  credentialItem: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  credentialRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  credentialEmoji: {
+    fontSize: 20,
+  },
+  credentialLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1A1A1A',
+  },
+  credentialInput: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#1A1A1A',
+    marginTop: 8,
+  },
+  credentialHint: {
+    fontSize: 12,
+    color: '#9E9E9E',
+    marginTop: 4,
+  },
+  credentialsSaveButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 16,
+  },
+  credentialsSaveGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  credentialsSaveText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  
   // Saving Indicator
   savingIndicator: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 100,
     left: 24,
     right: 24,
     backgroundColor: '#1A1A1A',
