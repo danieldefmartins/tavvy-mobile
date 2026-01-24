@@ -70,6 +70,30 @@ const BUTTON_STYLES = [
   { id: 'shadow', name: 'Shadow' },
 ];
 
+// Preset gradient colors for quick selection
+const PRESET_GRADIENTS = [
+  { id: 'purple', name: 'Purple', colors: ['#667eea', '#764ba2'] },
+  { id: 'ocean', name: 'Ocean', colors: ['#0077B6', '#00B4D8'] },
+  { id: 'sunset', name: 'Sunset', colors: ['#F97316', '#EC4899'] },
+  { id: 'forest', name: 'Forest', colors: ['#059669', '#34D399'] },
+  { id: 'fire', name: 'Fire', colors: ['#EF4444', '#F97316'] },
+  { id: 'pink', name: 'Pink', colors: ['#EC4899', '#F472B6'] },
+  { id: 'teal', name: 'Teal', colors: ['#14B8A6', '#06B6D4'] },
+  { id: 'gold', name: 'Gold', colors: ['#D4AF37', '#F59E0B'] },
+  { id: 'midnight', name: 'Midnight', colors: ['#1E1B4B', '#312E81'] },
+  { id: 'coral', name: 'Coral', colors: ['#FB7185', '#F43F5E'] },
+  { id: 'lavender', name: 'Lavender', colors: ['#A78BFA', '#8B5CF6'] },
+  { id: 'mint', name: 'Mint', colors: ['#6EE7B7', '#34D399'] },
+];
+
+// Solid color presets
+const PRESET_COLORS = [
+  '#667eea', '#764ba2', '#00C853', '#00E676', '#FF6B6B', '#FF8E53',
+  '#1A1A1A', '#333333', '#0077B6', '#00B4D8', '#F97316', '#FACC15',
+  '#059669', '#34D399', '#EC4899', '#F472B6', '#14B8A6', '#06B6D4',
+  '#EF4444', '#D4AF37', '#8B5CF6', '#A78BFA', '#FFFFFF', '#F5F5F5',
+];
+
 interface LinkItem {
   id: string;
   platform: string;
@@ -126,6 +150,11 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const [slugInput, setSlugInput] = useState('');
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
+  
+  // Color picker modal state
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [editingColorIndex, setEditingColorIndex] = useState<0 | 1>(0); // 0 = first color, 1 = second color
+  const [tempColor, setTempColor] = useState('#667eea');
   
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -380,6 +409,43 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     }
     setSelectedBackground(bgType);
     saveAppearanceSettings({ background_type: bgType });
+  };
+
+  // Handle preset gradient selection
+  const handlePresetGradientSelect = (gradient: { id: string; name: string; colors: string[] }) => {
+    setGradientColors(gradient.colors as [string, string]);
+    saveAppearanceSettings({
+      gradient_color_1: gradient.colors[0],
+      gradient_color_2: gradient.colors[1],
+    });
+  };
+
+  // Handle solid color selection
+  const handleSolidColorSelect = (color: string) => {
+    setGradientColors([color, color]);
+    saveAppearanceSettings({
+      gradient_color_1: color,
+      gradient_color_2: color,
+    });
+  };
+
+  // Open color picker for custom color
+  const openColorPicker = (index: 0 | 1) => {
+    setEditingColorIndex(index);
+    setTempColor(gradientColors[index]);
+    setShowColorPicker(true);
+  };
+
+  // Apply custom color from picker
+  const applyCustomColor = () => {
+    const newColors: [string, string] = [...gradientColors];
+    newColors[editingColorIndex] = tempColor;
+    setGradientColors(newColors);
+    saveAppearanceSettings({
+      gradient_color_1: newColors[0],
+      gradient_color_2: newColors[1],
+    });
+    setShowColorPicker(false);
   };
 
   const handleButtonStyleSelect = (styleId: string) => {
@@ -657,6 +723,76 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             </View>
             <Text style={styles.backgroundName}>Video</Text>
           </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Color Picker Section */}
+      <View style={styles.appearanceSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Colors</Text>
+        </View>
+        
+        {/* Current Colors Display */}
+        <View style={styles.currentColorsRow}>
+          <TouchableOpacity 
+            style={styles.currentColorBox}
+            onPress={() => openColorPicker(0)}
+          >
+            <View style={[styles.colorSwatch, { backgroundColor: gradientColors[0] }]} />
+            <Text style={styles.colorLabel}>Color 1</Text>
+            <Text style={styles.colorHex}>{gradientColors[0]}</Text>
+          </TouchableOpacity>
+          <View style={styles.colorArrow}>
+            <Ionicons name="arrow-forward" size={20} color="#9E9E9E" />
+          </View>
+          <TouchableOpacity 
+            style={styles.currentColorBox}
+            onPress={() => openColorPicker(1)}
+          >
+            <View style={[styles.colorSwatch, { backgroundColor: gradientColors[1] }]} />
+            <Text style={styles.colorLabel}>Color 2</Text>
+            <Text style={styles.colorHex}>{gradientColors[1]}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Preset Gradients */}
+        <Text style={styles.colorSubtitle}>Preset Gradients</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetScroll}>
+          {PRESET_GRADIENTS.map((gradient) => (
+            <TouchableOpacity
+              key={gradient.id}
+              style={[
+                styles.presetGradientItem,
+                gradientColors[0] === gradient.colors[0] && gradientColors[1] === gradient.colors[1] && styles.selectedPreset
+              ]}
+              onPress={() => handlePresetGradientSelect(gradient)}
+            >
+              <LinearGradient
+                colors={gradient.colors}
+                style={styles.presetGradientPreview}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              />
+              <Text style={styles.presetName}>{gradient.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Solid Colors */}
+        <Text style={styles.colorSubtitle}>Solid Colors</Text>
+        <View style={styles.solidColorsGrid}>
+          {PRESET_COLORS.map((color, index) => (
+            <TouchableOpacity
+              key={`${color}-${index}`}
+              style={[
+                styles.solidColorItem,
+                gradientColors[0] === color && gradientColors[1] === color && styles.selectedSolidColor
+              ]}
+              onPress={() => handleSolidColorSelect(color)}
+            >
+              <View style={[styles.solidColorSwatch, { backgroundColor: color }]} />
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
@@ -1026,6 +1162,89 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
                     styles.saveSlugText,
                     (!slugAvailable || slugInput.length < 3) && styles.saveSlugTextDisabled
                   ]}>Save URL</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Color Picker Modal */}
+      <Modal
+        visible={showColorPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowColorPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.colorPickerModalContent}>
+            <View style={styles.colorPickerHeader}>
+              <Text style={styles.colorPickerTitle}>
+                {editingColorIndex === 0 ? 'Select Color 1' : 'Select Color 2'}
+              </Text>
+              <TouchableOpacity onPress={() => setShowColorPicker(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Color Preview */}
+            <View style={styles.colorPreviewSection}>
+              <View style={[styles.colorPreviewLarge, { backgroundColor: tempColor }]} />
+              <Text style={styles.colorPreviewHex}>{tempColor}</Text>
+            </View>
+            
+            {/* Hex Input */}
+            <View style={styles.hexInputContainer}>
+              <Text style={styles.hexInputLabel}>Hex Code:</Text>
+              <TextInput
+                style={styles.hexInput}
+                value={tempColor}
+                onChangeText={(text) => {
+                  let formatted = text.toUpperCase();
+                  if (!formatted.startsWith('#')) formatted = '#' + formatted;
+                  if (formatted.length <= 7) setTempColor(formatted);
+                }}
+                placeholder="#667EEA"
+                placeholderTextColor="#BDBDBD"
+                autoCapitalize="characters"
+                maxLength={7}
+              />
+            </View>
+            
+            {/* Quick Colors */}
+            <Text style={styles.quickColorsLabel}>Quick Select:</Text>
+            <View style={styles.quickColorsGrid}>
+              {PRESET_COLORS.slice(0, 18).map((color, index) => (
+                <TouchableOpacity
+                  key={`quick-${color}-${index}`}
+                  style={[
+                    styles.quickColorItem,
+                    tempColor === color && styles.quickColorSelected
+                  ]}
+                  onPress={() => setTempColor(color)}
+                >
+                  <View style={[styles.quickColorSwatch, { backgroundColor: color }]} />
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            {/* Actions */}
+            <View style={styles.colorPickerActions}>
+              <TouchableOpacity 
+                style={styles.colorPickerCancelButton}
+                onPress={() => setShowColorPicker(false)}
+              >
+                <Text style={styles.colorPickerCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.colorPickerApplyButton}
+                onPress={applyCustomColor}
+              >
+                <LinearGradient
+                  colors={['#00C853', '#00E676']}
+                  style={styles.colorPickerApplyGradient}
+                >
+                  <Text style={styles.colorPickerApplyText}>Apply Color</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -1665,5 +1884,210 @@ const styles = StyleSheet.create({
   },
   saveSlugTextDisabled: {
     color: '#9E9E9E',
+  },
+  // Color Picker Section Styles
+  currentColorsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    gap: 12,
+  },
+  currentColorBox: {
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    minWidth: 100,
+  },
+  colorSwatch: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+  },
+  colorLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  colorHex: {
+    fontSize: 12,
+    color: '#1A1A1A',
+    fontWeight: '600',
+  },
+  colorArrow: {
+    padding: 8,
+  },
+  colorSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 12,
+    marginTop: 4,
+  },
+  presetScroll: {
+    marginBottom: 20,
+  },
+  presetGradientItem: {
+    alignItems: 'center',
+    marginRight: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  selectedPreset: {
+    borderColor: '#00C853',
+  },
+  presetGradientPreview: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+  },
+  presetName: {
+    fontSize: 11,
+    color: '#666',
+    marginTop: 4,
+  },
+  solidColorsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  solidColorItem: {
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  selectedSolidColor: {
+    borderColor: '#00C853',
+  },
+  solidColorSwatch: {
+    width: 36,
+    height: 36,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  // Color Picker Modal Styles
+  colorPickerModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: width - 40,
+    maxWidth: 400,
+  },
+  colorPickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  colorPickerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  colorPreviewSection: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  colorPreviewLarge: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
+    borderColor: '#E0E0E0',
+    marginBottom: 8,
+  },
+  colorPreviewHex: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  hexInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 12,
+  },
+  hexInputLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  hexInput: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  quickColorsLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  quickColorsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+  },
+  quickColorItem: {
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  quickColorSelected: {
+    borderColor: '#00C853',
+  },
+  quickColorSwatch: {
+    width: 32,
+    height: 32,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  colorPickerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  colorPickerCancelButton: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  colorPickerCancelText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '600',
+  },
+  colorPickerApplyButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  colorPickerApplyGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  colorPickerApplyText: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '600',
   },
 });
