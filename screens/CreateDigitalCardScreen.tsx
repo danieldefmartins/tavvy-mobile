@@ -184,6 +184,13 @@ export default function CreateDigitalCardScreen() {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkIcon, setLinkIcon] = useState('link');
 
+  // Slug state
+  const [slugInput, setSlugInput] = useState('');
+  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
+  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
+  const [slugError, setSlugError] = useState<string | null>(null);
+  const slugCheckTimeout = useRef<NodeJS.Timeout | null>(null);
+
   // Animation
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -191,6 +198,7 @@ export default function CreateDigitalCardScreen() {
   useEffect(() => {
     if (route.params?.cardData) {
       setCardData(route.params.cardData);
+      setSlugInput(route.params.cardData.slug || '');
       setIsEditing(true);
       setCurrentStep('info');
     } else if (route.params?.templateConfig) {
@@ -274,6 +282,7 @@ export default function CreateDigitalCardScreen() {
             })) || [],
           };
           setCardData(loadedCard);
+          setSlugInput(data.slug || '');
           setIsEditing(true);
           setCurrentStep('info');
         }
@@ -396,6 +405,101 @@ export default function CreateDigitalCardScreen() {
     return `${base}-${random}`;
   };
 
+  // Format slug input (lowercase, alphanumeric and hyphens only)
+  const formatSlugInput = (text: string): string => {
+    return text.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-');
+  };
+
+  // Check if slug is available
+  const checkSlugAvailability = async (slug: string) => {
+    if (!slug || slug.length < 3) {
+      setSlugAvailable(null);
+      setSlugError(slug.length > 0 ? 'Slug must be at least 3 characters' : null);
+      return;
+    }
+
+    // Reserved slugs
+    const RESERVED_SLUGS = [
+      'home', 'login', 'signup', 'register', 'logout', 'auth', 'api', 'admin', 'dashboard',
+      'pros', 'atlas', 'universe', 'universes', 'explore', 'discover', 'search', 'places',
+      'cities', 'rides', 'realtors', 'wallet', 'apps', 'menu', 'settings', 'profile', 'account',
+      'card', 'cards', 'ecard', 'ecards', 'create', 'edit', 'preview', 'templates', 'themes',
+      'shop', 'store', 'marketplace', 'events', 'tickets', 'booking', 'bookings', 'jobs', 'careers',
+      'blog', 'news', 'help', 'support', 'contact', 'about', 'terms', 'privacy', 'legal',
+      'faq', 'pricing', 'plans', 'premium', 'pro', 'business', 'enterprise',
+      'tavvy', 'tavvyapp', 'official', 'verified', 'team', 'staff', 'app', 'www'
+    ];
+
+    if (RESERVED_SLUGS.includes(slug.toLowerCase())) {
+      setSlugAvailable(false);
+      setSlugError('This URL is reserved');
+      return;
+    }
+
+    setIsCheckingSlug(true);
+    setSlugError(null);
+
+    try {
+      const { data, error } = await supabase
+        .from('digital_cards')
+        .select('id')
+        .eq('slug', slug)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking slug:', error);
+        setSlugError('Error checking availability');
+        setSlugAvailable(null);
+        return;
+      }
+
+      // If editing and the slug belongs to current card, it's available
+      if (data && cardData.id && data.id === cardData.id) {
+        setSlugAvailable(true);
+      } else {
+        setSlugAvailable(!data);
+        if (data) {
+          setSlugError('This URL is already taken');
+        }
+      }
+    } catch (err) {
+      console.error('Error checking slug:', err);
+      setSlugError('Error checking availability');
+      setSlugAvailable(null);
+    } finally {
+      setIsCheckingSlug(false);
+    }
+  };
+
+  // Handle slug input change with debounce
+  const handleSlugChange = (text: string) => {
+    const formatted = formatSlugInput(text);
+    setSlugInput(formatted);
+    setCardData(prev => ({ ...prev, slug: formatted }));
+    setSlugAvailable(null);
+    setSlugError(null);
+
+    // Clear previous timeout
+    if (slugCheckTimeout.current) {
+      clearTimeout(slugCheckTimeout.current);
+    }
+
+    // Debounce the availability check
+    slugCheckTimeout.current = setTimeout(() => {
+      checkSlugAvailability(formatted);
+    }, 500);
+  };
+
+  // Auto-generate slug from name
+  const autoGenerateSlug = () => {
+    if (cardData.fullName) {
+      const base = cardData.fullName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
+      setSlugInput(base);
+      setCardData(prev => ({ ...prev, slug: base }));
+      checkSlugAvailability(base);
+    }
+  };
+
   const uploadProfilePhoto = async (uri: string): Promise<string | null> => {
     try {
       if (!user) return uri; // Return local URI if no user
@@ -504,9 +608,21 @@ export default function CreateDigitalCardScreen() {
       return;
     }
 
+    // Validate slug
+    const slug = slugInput || cardData.slug || generateSlug(cardData.fullName);
+    if (slug.length < 3) {
+      Alert.alert('Error', 'Card URL must be at least 3 characters');
+      return;
+    }
+
+    // Check if slug is available (unless editing same card)
+    if (slugAvailable === false) {
+      Alert.alert('Error', 'This Card URL is not available. Please choose a different one.');
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const slug = cardData.slug || generateSlug(cardData.fullName);
       
       // Upload profile photo if it's a local file
       let profilePhotoUrl = cardData.profilePhotoUri;
@@ -751,6 +867,48 @@ export default function CreateDigitalCardScreen() {
           value={cardData.fullName}
           onChangeText={(text) => setCardData(prev => ({ ...prev, fullName: text }))}
         />
+      </View>
+
+      {/* Card URL (Slug) */}
+      <View style={styles.inputGroup}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={[styles.inputLabel, { color: theme.text }]}>Card URL *</Text>
+          {cardData.fullName && !slugInput && (
+            <TouchableOpacity onPress={autoGenerateSlug}>
+              <Text style={{ color: '#8B5CF6', fontSize: 12, fontWeight: '600' }}>Auto-generate</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        <View style={[
+          styles.slugInputContainer,
+          { backgroundColor: theme.card, borderColor: slugError ? '#EF4444' : slugAvailable === true ? '#22C55E' : theme.border }
+        ]}>
+          <Text style={[styles.slugPrefix, { color: theme.textSecondary }]}>tavvy.com/</Text>
+          <TextInput
+            style={[styles.slugInput, { color: theme.text }]}
+            placeholder="yourname"
+            placeholderTextColor={theme.textSecondary}
+            value={slugInput}
+            onChangeText={handleSlugChange}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {isCheckingSlug && (
+            <ActivityIndicator size="small" color="#8B5CF6" style={{ marginLeft: 8 }} />
+          )}
+          {!isCheckingSlug && slugAvailable === true && (
+            <Ionicons name="checkmark-circle" size={20} color="#22C55E" style={{ marginLeft: 8 }} />
+          )}
+          {!isCheckingSlug && slugAvailable === false && (
+            <Ionicons name="close-circle" size={20} color="#EF4444" style={{ marginLeft: 8 }} />
+          )}
+        </View>
+        {slugError && (
+          <Text style={styles.slugError}>{slugError}</Text>
+        )}
+        {slugAvailable === true && slugInput && (
+          <Text style={styles.slugSuccess}>This URL is available!</Text>
+        )}
       </View>
 
       <View style={styles.inputGroup}>
@@ -1457,6 +1615,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 16,
     borderWidth: 1,
+  },
+  // Slug input styles
+  slugInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+  },
+  slugPrefix: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  slugInput: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 0,
+  },
+  slugError: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  slugSuccess: {
+    color: '#22C55E',
+    fontSize: 12,
+    marginTop: 4,
   },
   inputRow: {
     flexDirection: 'row',
