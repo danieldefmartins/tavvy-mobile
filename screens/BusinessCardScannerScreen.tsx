@@ -25,10 +25,109 @@ interface BusinessCardScannerScreenProps {
 export interface ScannedBusinessCard {
   name: string;
   address: string;
+  address_line1?: string;
+  city?: string;
+  state_region?: string;
+  postal_code?: string;
+  country?: string;
   phone: string;
   website?: string;
   email?: string;
   rawText?: string;
+}
+
+/**
+ * Parse address string into components
+ */
+function parseAddressComponents(address: string): {
+  address_line1: string;
+  city: string;
+  state_region: string;
+  postal_code: string;
+  country: string;
+} {
+  let address_line1 = '';
+  let city = '';
+  let state_region = '';
+  let postal_code = '';
+  let country = 'US'; // Default to US
+  
+  if (!address) {
+    return { address_line1, city, state_region, postal_code, country };
+  }
+  
+  // Common US state abbreviations
+  const stateAbbreviations = [
+    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+    'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+    'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+    'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'
+  ];
+  
+  // Extract ZIP code (5 digits or 5+4 format)
+  const zipMatch = address.match(/(\d{5})(?:[-\s]?(\d{4}))?/);
+  if (zipMatch) {
+    postal_code = zipMatch[1] + (zipMatch[2] ? `-${zipMatch[2]}` : '');
+  }
+  
+  // Extract state abbreviation
+  const statePattern = new RegExp(`\\b(${stateAbbreviations.join('|')})\\b`, 'i');
+  const stateMatch = address.match(statePattern);
+  if (stateMatch) {
+    state_region = stateMatch[1].toUpperCase();
+  }
+  
+  // Split address by comma or common separators
+  const parts = address.split(/[,\n]+/).map(p => p.trim()).filter(p => p.length > 0);
+  
+  if (parts.length >= 1) {
+    // First part is usually street address
+    address_line1 = parts[0];
+    
+    // Try to extract city from remaining parts
+    for (let i = 1; i < parts.length; i++) {
+      const part = parts[i];
+      
+      // Skip if this part contains the zip code
+      if (postal_code && part.includes(postal_code.substring(0, 5))) {
+        // This part might have city, state, zip together
+        // Try to extract city before state
+        const cityStateZip = part.match(/^([\w\s]+?)\s*,?\s*([A-Z]{2})\s*\d{5}/i);
+        if (cityStateZip) {
+          city = cityStateZip[1].trim();
+        }
+        continue;
+      }
+      
+      // Skip if this part is just the state abbreviation
+      if (stateAbbreviations.includes(part.toUpperCase())) {
+        continue;
+      }
+      
+      // Check if this part contains state abbreviation
+      if (stateMatch && part.toUpperCase().includes(stateMatch[1].toUpperCase())) {
+        // Extract city from before the state
+        const cityMatch = part.match(/^([\w\s]+?)\s*,?\s*[A-Z]{2}/i);
+        if (cityMatch) {
+          city = cityMatch[1].trim();
+        }
+        continue;
+      }
+      
+      // If we haven't found a city yet, this might be it
+      if (!city && part.length > 1) {
+        city = part;
+      }
+    }
+  }
+  
+  // Clean up address_line1 - remove city/state/zip if accidentally included
+  if (city && address_line1.includes(city)) {
+    address_line1 = address_line1.split(city)[0].trim().replace(/,\s*$/, '');
+  }
+  
+  return { address_line1, city, state_region, postal_code, country };
 }
 
 /**
@@ -132,9 +231,17 @@ function parseBusinessCardText(text: string): ScannedBusinessCard {
     name = lines[0];
   }
   
+  // Parse address into components
+  const addressComponents = parseAddressComponents(address);
+  
   return {
     name: name || '',
     address: address || '',
+    address_line1: addressComponents.address_line1,
+    city: addressComponents.city,
+    state_region: addressComponents.state_region,
+    postal_code: addressComponents.postal_code,
+    country: addressComponents.country,
     phone: phone || '',
     website: website || '',
     email: email || '',

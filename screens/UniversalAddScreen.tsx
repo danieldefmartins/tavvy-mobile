@@ -1074,11 +1074,16 @@ export default function UniversalAddScreenV2() {
   const handleScanComplete = useCallback((data: ScannedBusinessCard) => {
     setScannedData(data);
     
-    // Map scanned data to form fields
+    // Map scanned data to form fields, using parsed address components
     setFormData(prev => ({
       ...prev,
       name: data.name || prev.name,
-      address_line1: data.address || prev.address_line1,
+      // Use parsed address components if available, otherwise fall back to full address
+      address_line1: data.address_line1 || data.address || prev.address_line1,
+      city: data.city || prev.city,
+      state_region: data.state_region || prev.state_region,
+      postal_code: data.postal_code || prev.postal_code,
+      country: data.country || prev.country,
       phone_e164: data.phone || prev.phone_e164,
       website_url: data.website || prev.website_url,
       email: data.email || prev.email,
@@ -1087,9 +1092,24 @@ export default function UniversalAddScreenV2() {
     setShowScanOption(false);
     setCurrentStep('basic_info');
     
+    // Build a summary of what was extracted
+    const extractedFields = [];
+    if (data.name) extractedFields.push('Name');
+    if (data.address_line1 || data.address) extractedFields.push('Address');
+    if (data.city) extractedFields.push('City');
+    if (data.state_region) extractedFields.push('State');
+    if (data.postal_code) extractedFields.push('ZIP Code');
+    if (data.phone) extractedFields.push('Phone');
+    if (data.email) extractedFields.push('Email');
+    if (data.website) extractedFields.push('Website');
+    
+    const fieldsText = extractedFields.length > 0 
+      ? `Extracted: ${extractedFields.join(', ')}.`
+      : 'Some fields may need manual entry.';
+    
     Alert.alert(
       'Card Scanned!',
-      'Form has been pre-filled with business card details. Review and edit as needed.',
+      `Form has been pre-filled with business card details. ${fieldsText} Review and edit as needed.`,
       [{ text: 'OK' }]
     );
   }, []);

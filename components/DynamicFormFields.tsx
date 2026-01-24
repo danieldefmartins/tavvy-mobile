@@ -44,6 +44,7 @@ interface FieldRendererProps {
   field: CategoryField;
   value: any;
   onChange: (value: any) => void;
+  onChangeField: (field: string, value: any) => void;
   error?: string;
   disabled?: boolean;
   allValues: Record<string, any>;
@@ -270,6 +271,7 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
   field,
   value,
   onChange,
+  onChangeField,
   error,
   disabled,
   allValues,
@@ -304,24 +306,30 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
           <AddressAutocomplete
             value={value || ''}
             onSelect={(address, details) => {
-              // Set the full address
-              onChange(address);
+              // Build the street address from components
+              const streetAddress = details.streetNumber && details.street
+                ? `${details.streetNumber} ${details.street}`
+                : details.street || address.split(',')[0];
               
-              // Auto-fill related fields
+              // Set the street address in the address field
+              onChange(streetAddress);
+              
+              // Auto-fill related fields using the parent onChange
               if (details.city) {
-                onChange('city', details.city);
+                onChangeField('city', details.city);
               }
               if (details.state) {
-                onChange('state', details.state);
+                onChangeField('state_region', details.state);
               }
               if (details.postalCode) {
-                onChange('postal_code', details.postalCode);
+                onChangeField('postal_code', details.postalCode);
               }
-              if (details.street) {
-                onChange('street_address', details.street);
+              if (details.country) {
+                onChangeField('country', details.country);
               }
-              if (details.streetNumber) {
-                onChange('street_number', details.streetNumber);
+              if (details.latitude && details.longitude) {
+                onChangeField('latitude', details.latitude);
+                onChangeField('longitude', details.longitude);
               }
             }}
             onChange={onChange}
@@ -345,15 +353,15 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
               // Set the service area
               onChange(area);
               
-              // Auto-fill related location fields if available
+              // Auto-fill related location fields if available using parent onChange
               if (details.city) {
-                onChange('service_area_city', details.city);
+                onChangeField('service_area_city', details.city);
               }
               if (details.state) {
-                onChange('service_area_state', details.state);
+                onChangeField('service_area_state', details.state);
               }
               if (details.country) {
-                onChange('service_area_country', details.country);
+                onChangeField('service_area_country', details.country);
               }
             }}
             onChange={onChange}
@@ -724,6 +732,7 @@ export const DynamicFormFields: React.FC<DynamicFormFieldsProps> = ({
               field={field}
               value={values[field.field]}
               onChange={(value) => onChange(field.field, value)}
+              onChangeField={onChange}
               error={errors[field.field]}
               disabled={disabled}
               allValues={values}
