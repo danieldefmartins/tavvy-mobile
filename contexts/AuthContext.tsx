@@ -1,15 +1,29 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Session, User } from '@supabase/supabase-js';
+
+interface UserProfile {
+  id: string;
+  display_name?: string;
+  avatar_url?: string;
+  subscription_status: 'free' | 'active' | 'cancelled' | 'expired';
+  subscription_plan: 'free' | 'pro' | 'premium';
+  subscription_expires_at?: string;
+  max_cards: number;
+}
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  profile: UserProfile | null;
   loading: boolean;
+  isPro: boolean;
+  maxCards: number;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName?: string) => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,13 +31,66 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Computed values
+  const isPro = profile?.subscription_status === 'active' && profile?.subscription_plan !== 'free';
+  const maxCards = profile?.max_cards || 1;
+
+  // Fetch user profile from database
+  const fetchProfile = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url, subscription_status, subscription_plan, subscription_expires_at, max_cards')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        // Profile might not exist yet, create default
+        if (error.code === 'PGRST116') {
+          const defaultProfile: UserProfile = {
+            id: userId,
+            subscription_status: 'free',
+            subscription_plan: 'free',
+            max_cards: 1,
+          };
+          setProfile(defaultProfile);
+          return;
+        }
+        console.error('Error fetching profile:', error);
+        return;
+      }
+
+      setProfile({
+        id: data.id,
+        display_name: data.display_name,
+        avatar_url: data.avatar_url,
+        subscription_status: data.subscription_status || 'free',
+        subscription_plan: data.subscription_plan || 'free',
+        subscription_expires_at: data.subscription_expires_at,
+        max_cards: data.max_cards || 1,
+      });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (user) {
+      await fetchProfile(user.id);
+    }
+  }, [user, fetchProfile]);
 
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      }
       setLoading(false);
     });
 
@@ -31,10 +98,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      } else {
+        setProfile(null);
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchProfile]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -94,7 +166,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Error deleting favorites:', favoritesError);
       }
 
-      // Step 4: Call the delete_user RPC function to delete the auth user
+      // Step 4: Delete user's digital cards
+      const { error: cardsError } = await supabase
+        .from('digital_cards')
+        .delete()
+        .eq('user_id', user.id);
+      
+      if (cardsError) {
+        console.error('Error deleting digital cards:', cardsError);
+      }
+
+      // Step 5: Call the delete_user RPC function to delete the auth user
       // This requires a Supabase Edge Function or database function
       const { error: deleteError } = await supabase.rpc('delete_user_account');
       
@@ -118,7 +200,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, deleteAccount }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      profile,
+      loading, 
+      isPro,
+      maxCards,
+      signIn, 
+      signUp, 
+      signOut, 
+      deleteAccount,
+      refreshProfile,
+    }}>
       {children}
     </AuthContext.Provider>
   );

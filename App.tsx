@@ -100,6 +100,8 @@ import WalletScreen from './screens/WalletScreen';
 import ProCardDetailScreen from './screens/ProCardDetailScreen';
 import CreateDigitalCardScreen from './screens/CreateDigitalCardScreen';
 import MyDigitalCardScreen from './screens/MyDigitalCardScreen';
+import MyCardsScreen from './screens/MyCardsScreen';
+import CardSettingsScreen from './screens/CardSettingsScreen';
 import PublicCardViewScreen from './screens/PublicCardViewScreen';
 import EditProfileScreen from './screens/EditProfileScreen';
 import BusinessStoryModerationScreen from './screens/BusinessStoryModerationScreen';
@@ -275,6 +277,8 @@ function AppsStack() {
       <MenuStackNav.Screen name="ECardMultiPageUpgrade" component={ECardMultiPageUpgradeScreen} />
       <MenuStackNav.Screen name="CreateDigitalCard" component={CreateDigitalCardScreen} />
       <MenuStackNav.Screen name="MyDigitalCard" component={MyDigitalCardScreen} />
+      <MenuStackNav.Screen name="MyCards" component={MyCardsScreen} />
+      <MenuStackNav.Screen name="CardSettings" component={CardSettingsScreen} />
       <MenuStackNav.Screen name="PublicCardView" component={PublicCardViewScreen} />
       
       {/* NEW: Linktree-style eCard Flow */}

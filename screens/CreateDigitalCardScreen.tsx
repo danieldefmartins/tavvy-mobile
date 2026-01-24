@@ -237,12 +237,30 @@ export default function CreateDigitalCardScreen() {
   const loadExistingCard = async () => {
     setIsLoading(true);
     try {
+      // Check if we're creating a new card
+      if (route.params?.isNewCard) {
+        setIsLoading(false);
+        return; // Don't load existing card, start fresh
+      }
+
+      // Check if we have a specific cardId to load
+      const cardIdToLoad = route.params?.cardId;
+
       if (user) {
-        const { data, error } = await supabase
+        let query = supabase
           .from('digital_cards')
           .select('*')
-          .eq('user_id', user.id)
-          .single();
+          .eq('user_id', user.id);
+
+        if (cardIdToLoad) {
+          // Load specific card by ID
+          query = query.eq('id', cardIdToLoad);
+        } else {
+          // Load first card (for backward compatibility)
+          query = query.limit(1);
+        }
+
+        const { data, error } = await query.single();
 
         if (data && !error) {
           // Load links
