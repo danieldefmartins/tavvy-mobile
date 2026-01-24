@@ -16,6 +16,9 @@ import {
   ActivityIndicator,
   TextInput,
   Switch,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -1547,90 +1550,102 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         animationType="slide"
         onRequestClose={() => setShowYoutubeModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.youtubeModalContent}>
-            <View style={styles.youtubeModalHeader}>
-              <Text style={styles.youtubeModalTitle}>YouTube Video</Text>
-              <TouchableOpacity onPress={() => setShowYoutubeModal(false)}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            
-            <Text style={styles.youtubeModalSubtitle}>
-              Add a YouTube video to display on your card
-            </Text>
-            
-            <View style={styles.youtubeInputContainer}>
-              <Ionicons name="logo-youtube" size={20} color="#FF0000" style={styles.youtubeInputIcon} />
-              <TextInput
-                style={styles.youtubeInput}
-                placeholder="Paste YouTube URL here..."
-                placeholderTextColor="#9E9E9E"
-                value={tempYoutubeUrl}
-                onChangeText={setTempYoutubeUrl}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              {tempYoutubeUrl.length > 0 && (
-                <TouchableOpacity onPress={() => setTempYoutubeUrl('')}>
-                  <Ionicons name="close-circle" size={20} color="#9E9E9E" />
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <TouchableOpacity 
+            style={styles.modalOverlayTouchable} 
+            activeOpacity={1} 
+            onPress={() => Keyboard.dismiss()}
+          >
+            <View style={styles.youtubeModalContent}>
+              <View style={styles.youtubeModalHeader}>
+                <Text style={styles.youtubeModalTitle}>YouTube Video</Text>
+                <TouchableOpacity onPress={() => setShowYoutubeModal(false)}>
+                  <Ionicons name="close" size={24} color="#333" />
                 </TouchableOpacity>
-              )}
-            </View>
-            
-            {videoId && (
-              <View style={styles.youtubePreviewContainer}>
-                <Text style={styles.youtubePreviewLabel}>Preview:</Text>
-                <View style={styles.youtubePreview}>
-                  <Image 
-                    source={{ uri: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` }}
-                    style={styles.youtubeThumbnail}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.youtubePlayButton}>
-                    <Ionicons name="play" size={32} color="#fff" />
+              </View>
+              
+              <Text style={styles.youtubeModalSubtitle}>
+                Add a YouTube video to display on your card
+              </Text>
+              
+              <View style={styles.youtubeInputContainer}>
+                <Ionicons name="logo-youtube" size={20} color="#FF0000" style={styles.youtubeInputIcon} />
+                <TextInput
+                  style={styles.youtubeInput}
+                  placeholder="Paste YouTube URL here..."
+                  placeholderTextColor="#9E9E9E"
+                  value={tempYoutubeUrl}
+                  onChangeText={setTempYoutubeUrl}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="done"
+                  onSubmitEditing={() => Keyboard.dismiss()}
+                />
+                {tempYoutubeUrl.length > 0 && (
+                  <TouchableOpacity onPress={() => setTempYoutubeUrl('')}>
+                    <Ionicons name="close-circle" size={20} color="#9E9E9E" />
+                  </TouchableOpacity>
+                )}
+              </View>
+              
+              {videoId && (
+                <View style={styles.youtubePreviewContainer}>
+                  <Text style={styles.youtubePreviewLabel}>Preview:</Text>
+                  <View style={styles.youtubePreview}>
+                    <Image 
+                      source={{ uri: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` }}
+                      style={styles.youtubeThumbnail}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.youtubePlayButton}>
+                      <Ionicons name="play" size={32} color="#fff" />
+                    </View>
                   </View>
                 </View>
-              </View>
-            )}
-            
-            {tempYoutubeUrl.length > 0 && !videoId && (
-              <View style={styles.youtubeErrorContainer}>
-                <Ionicons name="alert-circle" size={16} color="#EF4444" />
-                <Text style={styles.youtubeErrorText}>Invalid YouTube URL. Please paste a valid YouTube link.</Text>
-              </View>
-            )}
-            
-            <View style={styles.youtubeModalButtons}>
-              {youtubeVideoUrl && (
-                <TouchableOpacity 
-                  style={styles.youtubeRemoveButton}
-                  onPress={() => {
-                    setYoutubeVideoUrl('');
-                    setTempYoutubeUrl('');
-                    setShowYoutubeModal(false);
-                  }}
-                >
-                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                  <Text style={styles.youtubeRemoveText}>Remove</Text>
-                </TouchableOpacity>
               )}
               
-              <TouchableOpacity 
-                style={[styles.youtubeSaveButton, !videoId && styles.youtubeSaveButtonDisabled]}
-                onPress={() => {
-                  if (videoId) {
-                    setYoutubeVideoUrl(tempYoutubeUrl);
-                    setShowYoutubeModal(false);
-                  }
-                }}
-                disabled={!videoId}
-              >
-                <Text style={styles.youtubeSaveText}>Save Video</Text>
-              </TouchableOpacity>
+              {tempYoutubeUrl.length > 0 && !videoId && (
+                <View style={styles.youtubeErrorContainer}>
+                  <Ionicons name="alert-circle" size={16} color="#EF4444" />
+                  <Text style={styles.youtubeErrorText}>Invalid YouTube URL. Please paste a valid YouTube link.</Text>
+                </View>
+              )}
+              
+              <View style={styles.youtubeModalButtons}>
+                {youtubeVideoUrl && (
+                  <TouchableOpacity 
+                    style={styles.youtubeRemoveButton}
+                    onPress={() => {
+                      setYoutubeVideoUrl('');
+                      setTempYoutubeUrl('');
+                      setShowYoutubeModal(false);
+                    }}
+                  >
+                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                    <Text style={styles.youtubeRemoveText}>Remove</Text>
+                  </TouchableOpacity>
+                )}
+                
+                <TouchableOpacity 
+                  style={[styles.youtubeSaveButton, !videoId && styles.youtubeSaveButtonDisabled]}
+                  onPress={() => {
+                    if (videoId) {
+                      setYoutubeVideoUrl(tempYoutubeUrl);
+                      setShowYoutubeModal(false);
+                      Keyboard.dismiss();
+                    }
+                  }}
+                  disabled={!videoId}
+                >
+                  <Text style={styles.youtubeSaveText}>Save Video</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
     );
   };
@@ -3117,6 +3132,12 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalOverlayTouchable: {
+    flex: 1,
+    width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
   },
