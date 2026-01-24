@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,13 @@ import {
   Dimensions,
   Share,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
+import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -44,6 +48,28 @@ const PLATFORM_ICONS: Record<string, { icon: string; color: string }> = {
   other: { icon: 'link', color: '#8E8E93' },
 };
 
+interface CardData {
+  id: string;
+  slug: string;
+  full_name: string;
+  title: string;
+  company: string;
+  profile_photo_url: string | null;
+  gradient_color_1: string;
+  gradient_color_2: string;
+  bio?: string;
+  city?: string;
+  state?: string;
+}
+
+interface LinkData {
+  id: string;
+  title: string;
+  url: string;
+  icon: string;
+  platform?: string;
+}
+
 interface Props {
   navigation: any;
   route: any;
@@ -72,21 +98,130 @@ const CrownBadge = ({ reviewCount, rating, onPress }: { reviewCount: number; rat
 );
 
 export default function ECardPreviewScreen({ navigation, route }: Props) {
-  const { profile, links, templateId, reviews } = route.params || {};
+  const { user } = useAuth();
+  const { cardData: passedCardData, profile, links: passedLinks, templateId, reviews } = route.params || {};
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [cardData, setCardData] = useState<CardData | null>(null);
+  const [links, setLinks] = useState<LinkData[]>([]);
   
   // Mock reviews data - in production this comes from Tavvy reviews system
   const reviewData = reviews || { count: 0, rating: 0 };
   const hasReviews = reviewData.count > 0;
-  
-  // Generate card URL from profile name
-  const generateSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
-  const cardSlug = profile?.name ? generateSlug(profile.name) : 'preview';
-  const cardUrl = `https://tavvy.com/${cardSlug}`;
+
+  // Load card data from database or use passed data
+  const loadCardData = useCallback(async () => {
+    setIsLoading(true);
+    
+    try {
+      // If cardData was passed directly, use it
+      if (passedCardData?.id) {
+        setCardData(passedCardData);
+        
+        // Load links for this card
+        const { data: linksData } = await supabase
+          .from('card_links')
+          .select('*')
+          .eq('card_id', passedCardData.id)
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+        
+        if (linksData) {
+          setLinks(linksData.map(l => ({
+            id: l.id,
+            title: l.title,
+            url: l.url,
+            icon: l.icon || 'link',
+            platform: l.icon || 'other',
+          })));
+        }
+        setIsLoading(false);
+        return;
+      }
+      
+      // If profile was passed (from onboarding), use that
+      if (profile) {
+        setCardData({
+          id: '',
+          slug: profile.name ? profile.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'preview',
+          full_name: profile.name || 'Your Name',
+          title: profile.title || '',
+          company: '',
+          profile_photo_url: profile.image || null,
+          gradient_color_1: '#667eea',
+          gradient_color_2: '#764ba2',
+          bio: profile.bio || '',
+          city: profile.address?.city || '',
+          state: profile.address?.state || '',
+        });
+        
+        if (passedLinks) {
+          setLinks(passedLinks.map((l: any) => ({
+            id: l.id || l.platform,
+            title: l.platform?.charAt(0).toUpperCase() + l.platform?.slice(1) || 'Link',
+            url: l.value || '',
+            icon: l.platform || 'link',
+            platform: l.platform || 'other',
+          })));
+        }
+        setIsLoading(false);
+        return;
+      }
+      
+      // Otherwise, load from database
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+      
+      const { data, error } = await supabase
+        .from('digital_cards')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (data && !error) {
+        setCardData(data);
+        
+        // Load links
+        const { data: linksData } = await supabase
+          .from('card_links')
+          .select('*')
+          .eq('card_id', data.id)
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+        
+        if (linksData) {
+          setLinks(linksData.map(l => ({
+            id: l.id,
+            title: l.title,
+            url: l.url,
+            icon: l.icon || 'link',
+            platform: l.icon || 'other',
+          })));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading card:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, passedCardData, profile, passedLinks]);
+
+  // Load on focus
+  useFocusEffect(
+    useCallback(() => {
+      loadCardData();
+    }, [loadCardData])
+  );
+
+  const cardUrl = `https://tavvy.com/${cardData?.slug || 'preview'}`;
 
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Check out my digital card: ${cardUrl}`,
         url: cardUrl,
       });
     } catch (error) {
@@ -94,49 +229,67 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
     }
   };
 
-  const handleLinkPress = (link: any) => {
-    let url = link.value;
+  const handleLinkPress = (link: LinkData) => {
+    let url = link.url;
     
-    // Build full URL based on platform
-    switch (link.platform) {
-      case 'instagram':
-        url = `https://instagram.com/${link.value}`;
-        break;
-      case 'tiktok':
-        url = `https://tiktok.com/@${link.value.replace('@', '')}`;
-        break;
-      case 'twitter':
-        url = `https://x.com/${link.value}`;
-        break;
-      case 'linkedin':
-        url = `https://linkedin.com/in/${link.value}`;
-        break;
-      case 'facebook':
-        url = `https://facebook.com/${link.value}`;
-        break;
-      case 'youtube':
-        url = `https://youtube.com/${link.value}`;
-        break;
-      case 'github':
-        url = `https://github.com/${link.value}`;
-        break;
-      case 'email':
-        url = `mailto:${link.value}`;
-        break;
-      case 'phone':
-        url = `tel:${link.value}`;
-        break;
-      case 'whatsapp':
-        url = `https://wa.me/${link.value.replace(/\D/g, '')}`;
-        break;
-      default:
-        if (!url.startsWith('http')) {
+    // If URL doesn't start with http, it might be a username
+    if (!url.startsWith('http') && !url.startsWith('mailto:') && !url.startsWith('tel:')) {
+      const platform = link.platform || link.icon;
+      switch (platform) {
+        case 'instagram':
+          url = `https://instagram.com/${url}`;
+          break;
+        case 'tiktok':
+          url = `https://tiktok.com/@${url.replace('@', '')}`;
+          break;
+        case 'twitter':
+          url = `https://x.com/${url}`;
+          break;
+        case 'linkedin':
+          url = `https://linkedin.com/in/${url}`;
+          break;
+        case 'facebook':
+          url = `https://facebook.com/${url}`;
+          break;
+        case 'youtube':
+          url = `https://youtube.com/${url}`;
+          break;
+        case 'github':
+          url = `https://github.com/${url}`;
+          break;
+        case 'email':
+          url = `mailto:${url}`;
+          break;
+        case 'phone':
+          url = `tel:${url}`;
+          break;
+        case 'whatsapp':
+          url = `https://wa.me/${url.replace(/\D/g, '')}`;
+          break;
+        default:
           url = `https://${url}`;
-        }
+      }
     }
     
     Linking.openURL(url).catch(err => console.error('Error opening URL:', err));
   };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>Loading your card...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const gradientColors: [string, string] = [
+    cardData?.gradient_color_1 || '#667eea',
+    cardData?.gradient_color_2 || '#764ba2'
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -166,7 +319,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <LinearGradient
-          colors={['#667eea', '#764ba2']}
+          colors={gradientColors}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.cardContainer}
@@ -185,27 +338,27 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
 
           {/* Profile Section */}
           <View style={styles.profileSection}>
-            {profile?.image ? (
-              <Image source={{ uri: profile.image }} style={styles.profileImage} />
+            {cardData?.profile_photo_url ? (
+              <Image source={{ uri: cardData.profile_photo_url }} style={styles.profileImage} />
             ) : (
               <View style={styles.profileImagePlaceholder}>
                 <Ionicons name="person" size={40} color="#fff" />
               </View>
             )}
-            <Text style={styles.profileName}>{profile?.name || 'Your Name'}</Text>
-            {profile?.title ? (
-              <Text style={styles.profileTitle}>{profile.title}</Text>
+            <Text style={styles.profileName}>{cardData?.full_name || 'Your Name'}</Text>
+            {cardData?.title ? (
+              <Text style={styles.profileTitle}>{cardData.title}</Text>
             ) : null}
-            {profile?.bio ? (
-              <Text style={styles.profileBio}>{profile.bio}</Text>
+            {cardData?.bio ? (
+              <Text style={styles.profileBio}>{cardData.bio}</Text>
             ) : null}
           </View>
 
           {/* Social Icons Row */}
-          {links && links.length > 0 && (
+          {links.length > 0 && (
             <View style={styles.socialIconsRow}>
-              {links.slice(0, 6).map((link: any) => {
-                const platformConfig = PLATFORM_ICONS[link.platform] || PLATFORM_ICONS.other;
+              {links.slice(0, 6).map((link) => {
+                const platformConfig = PLATFORM_ICONS[link.platform || link.icon] || PLATFORM_ICONS.other;
                 return (
                   <TouchableOpacity
                     key={link.id}
@@ -224,10 +377,10 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
           )}
 
           {/* Links List */}
-          {links && links.length > 0 && (
+          {links.length > 0 && (
             <View style={styles.linksSection}>
-              {links.map((link: any) => {
-                const platformConfig = PLATFORM_ICONS[link.platform] || PLATFORM_ICONS.other;
+              {links.map((link) => {
+                const platformConfig = PLATFORM_ICONS[link.platform || link.icon] || PLATFORM_ICONS.other;
                 return (
                   <TouchableOpacity
                     key={link.id}
@@ -243,7 +396,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                       />
                     </View>
                     <Text style={styles.linkButtonText}>
-                      {link.title || link.platform.charAt(0).toUpperCase() + link.platform.slice(1)}
+                      {link.title || (link.platform ? link.platform.charAt(0).toUpperCase() + link.platform.slice(1) : 'Link')}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -252,7 +405,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
           )}
 
           {/* Empty State */}
-          {(!links || links.length === 0) && (
+          {links.length === 0 && (
             <View style={styles.emptyState}>
               <Ionicons name="link-outline" size={32} color="rgba(255,255,255,0.5)" />
               <Text style={styles.emptyStateText}>No links added yet</Text>
@@ -271,7 +424,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
       <View style={styles.bottomActions}>
         <TouchableOpacity
           style={styles.editButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('ECardTemplateGallery', { mode: 'edit', cardId: cardData?.id, existingData: cardData })}
         >
           <Ionicons name="pencil" size={20} color="#00C853" />
           <Text style={styles.editButtonText}>Edit Card</Text>
@@ -300,31 +453,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0a0a0a',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.7)',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   closeButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#fff',
   },
   shareButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -333,12 +496,49 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 100,
+    paddingBottom: 40,
   },
   cardContainer: {
     borderRadius: 24,
     padding: 24,
-    minHeight: 500,
+    minHeight: 400,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  crownBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  crownGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 4,
+  },
+  crownIcon: {
+    fontSize: 14,
+  },
+  crownInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  crownRating: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  crownCount: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
   },
   profileSection: {
     alignItems: 'center',
@@ -348,7 +548,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.3)',
     marginBottom: 16,
   },
@@ -366,80 +566,79 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     textAlign: 'center',
+    marginBottom: 4,
   },
   profileTitle: {
     fontSize: 16,
     color: 'rgba(255,255,255,0.8)',
-    marginTop: 4,
     textAlign: 'center',
   },
   profileBio: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.7)',
-    marginTop: 12,
     textAlign: 'center',
+    marginTop: 8,
     lineHeight: 20,
     paddingHorizontal: 16,
   },
   socialIconsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 12,
+    gap: 16,
     marginBottom: 24,
   },
   socialIconButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   linksSection: {
+    width: '100%',
     gap: 12,
   },
   linkButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
   },
   linkIconContainer: {
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
   linkButtonText: {
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
-    textAlign: 'center',
-    marginRight: 44, // Balance the icon
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 48,
+    paddingVertical: 40,
+    gap: 8,
   },
   emptyStateText: {
-    fontSize: 16,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.5)',
-    marginTop: 12,
   },
   poweredBy: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 32,
-    paddingTop: 24,
+    marginTop: 24,
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.1)',
+    width: '100%',
+    justifyContent: 'center',
   },
   poweredByText: {
     fontSize: 12,
@@ -489,43 +688,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
-  },
-  // Crown Badge Styles
-  crownBadge: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    zIndex: 10,
-    shadowColor: '#FFD700',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  crownGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6,
-  },
-  crownIcon: {
-    fontSize: 18,
-  },
-  crownInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  crownRating: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  crownCount: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#4a4a4a',
   },
 });

@@ -14,6 +14,7 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -120,11 +121,146 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   // Card URL
   const [cardUrl, setCardUrl] = useState('tavvy.com/yourname');
   
+  // Slug editing modal state
+  const [showSlugModal, setShowSlugModal] = useState(false);
+  const [slugInput, setSlugInput] = useState('');
+  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
+  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
+  
   const slideAnim = useRef(new Animated.Value(0)).current;
+
+  // Generate slug from name
+  const generateSlug = (name: string): string => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, '')
+      .substring(0, 30);
+  };
+
+  // Check if slug is available
+  const checkSlugAvailability = async (slug: string): Promise<boolean> => {
+    if (!slug || slug.length < 3) return false;
+    
+    try {
+      const { data, error } = await supabase
+        .from('digital_cards')
+        .select('id')
+        .eq('slug', slug)
+        .neq('user_id', user?.id || '')
+        .limit(1);
+      
+      if (error) throw error;
+      return !data || data.length === 0;
+    } catch (error) {
+      console.error('Error checking slug:', error);
+      return false;
+    }
+  };
+
+  // Create new card from onboarding data
+  const createNewCard = async () => {
+    if (!user || !profile) return;
+    
+    try {
+      // Generate slug from name
+      const slug = generateSlug(profile.name || 'user');
+      
+      // Check if slug is available, if not add random suffix
+      let finalSlug = slug;
+      const isAvailable = await checkSlugAvailability(slug);
+      if (!isAvailable) {
+        finalSlug = `${slug}${Math.floor(Math.random() * 1000)}`;
+      }
+      
+      // Prepare card data
+      const newCardData = {
+        user_id: user.id,
+        slug: finalSlug,
+        full_name: profile.name || '',
+        title: profile.title || '',
+        company: '',
+        phone: '',
+        email: '',
+        website: '',
+        city: profile.address?.city || '',
+        state: profile.address?.state || '',
+        gradient_color_1: '#667eea',
+        gradient_color_2: '#764ba2',
+        profile_photo_url: profile.image || null,
+        theme: 'classic',
+        background_type: 'gradient',
+        button_style: 'fill',
+        font_style: 'default',
+        is_active: true,
+      };
+      
+      // Insert the card
+      const { data: insertedCard, error: insertError } = await supabase
+        .from('digital_cards')
+        .insert(newCardData)
+        .select()
+        .single();
+      
+      if (insertError) throw insertError;
+      
+      // Insert links if any
+      if (initialLinks && initialLinks.length > 0) {
+        const linksToInsert = initialLinks
+          .filter((link: any) => link.value && link.value.trim())
+          .map((link: any, index: number) => {
+            const platform = link.platform || 'other';
+            let url = link.value;
+            
+            // Build full URL based on platform
+            if (platform === 'instagram') url = `https://instagram.com/${link.value}`;
+            else if (platform === 'tiktok') url = `https://tiktok.com/@${link.value}`;
+            else if (platform === 'youtube') url = `https://youtube.com/${link.value}`;
+            else if (platform === 'twitter') url = `https://x.com/${link.value}`;
+            else if (platform === 'linkedin') url = `https://linkedin.com/in/${link.value}`;
+            else if (platform === 'facebook') url = `https://facebook.com/${link.value}`;
+            else if (platform === 'whatsapp') url = `https://wa.me/${link.value}`;
+            else if (platform === 'phone') url = `tel:${link.value}`;
+            else if (platform === 'email') url = `mailto:${link.value}`;
+            else if (!url.startsWith('http')) url = `https://${url}`;
+            
+            return {
+              card_id: insertedCard.id,
+              title: platform.charAt(0).toUpperCase() + platform.slice(1),
+              url: url,
+              icon: platform,
+              sort_order: index,
+              is_active: true,
+            };
+          });
+        
+        if (linksToInsert.length > 0) {
+          await supabase.from('card_links').insert(linksToInsert);
+        }
+      }
+      
+      // Update local state
+      setCardData(insertedCard);
+      setCardUrl(`tavvy.com/${finalSlug}`);
+      setSlugInput(finalSlug);
+      
+      // Reload to get links
+      await loadCardData();
+      
+    } catch (error) {
+      console.error('Error creating card:', error);
+      Alert.alert('Error', 'Failed to create your card. Please try again.');
+    }
+  };
 
   // Load card data on mount
   useEffect(() => {
-    loadCardData();
+    if (isNewCard && profile) {
+      // Create new card from onboarding data
+      createNewCard();
+    } else {
+      loadCardData();
+    }
   }, []);
 
   useEffect(() => {
@@ -697,10 +833,19 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
 
       {/* Card URL & Actions */}
       <View style={styles.cardUrlSection}>
-        <View style={styles.cardUrlBox}>
+        <TouchableOpacity 
+          style={styles.cardUrlBox}
+          onPress={() => {
+            setSlugInput(cardData?.slug || '');
+            setSlugAvailable(null);
+            setShowSlugModal(true);
+          }}
+          activeOpacity={0.7}
+        >
           <Ionicons name="link" size={18} color="#666" />
           <Text style={styles.cardUrlText}>{cardUrl}</Text>
-        </View>
+          <Ionicons name="pencil" size={14} color="#00C853" style={{ marginLeft: 8 }} />
+        </TouchableOpacity>
         <View style={styles.cardActions}>
           <TouchableOpacity style={styles.actionButton} onPress={handleCopyLink}>
             <Ionicons name="copy-outline" size={20} color="#666" />
@@ -766,6 +911,122 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
 
       {/* QR Code Modal */}
       {renderQRModal()}
+      
+      {/* Slug Editing Modal */}
+      <Modal
+        visible={showSlugModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSlugModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.slugModalContent}>
+            <View style={styles.slugModalHeader}>
+              <Text style={styles.slugModalTitle}>Edit Card URL</Text>
+              <TouchableOpacity onPress={() => setShowSlugModal(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.slugModalSubtitle}>
+              Choose a custom URL for your digital card
+            </Text>
+            
+            <View style={styles.slugInputContainer}>
+              <Text style={styles.slugPrefix}>tavvy.com/</Text>
+              <TextInput
+                style={styles.slugInput}
+                value={slugInput}
+                onChangeText={(text) => {
+                  const formatted = text.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 30);
+                  setSlugInput(formatted);
+                  setSlugAvailable(null);
+                }}
+                placeholder="yourname"
+                placeholderTextColor="#BDBDBD"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+            
+            {slugInput.length > 0 && slugInput.length < 3 && (
+              <Text style={styles.slugError}>Slug must be at least 3 characters</Text>
+            )}
+            
+            {slugAvailable === true && (
+              <View style={styles.slugAvailableRow}>
+                <Ionicons name="checkmark-circle" size={18} color="#00C853" />
+                <Text style={styles.slugAvailableText}>This URL is available!</Text>
+              </View>
+            )}
+            
+            {slugAvailable === false && (
+              <View style={styles.slugAvailableRow}>
+                <Ionicons name="close-circle" size={18} color="#F44336" />
+                <Text style={styles.slugUnavailableText}>This URL is already taken</Text>
+              </View>
+            )}
+            
+            <View style={styles.slugModalActions}>
+              <TouchableOpacity 
+                style={styles.checkAvailabilityButton}
+                onPress={async () => {
+                  if (slugInput.length < 3) return;
+                  setIsCheckingSlug(true);
+                  const available = await checkSlugAvailability(slugInput);
+                  setSlugAvailable(available);
+                  setIsCheckingSlug(false);
+                }}
+                disabled={isCheckingSlug || slugInput.length < 3}
+              >
+                {isCheckingSlug ? (
+                  <ActivityIndicator size="small" color="#00C853" />
+                ) : (
+                  <Text style={styles.checkAvailabilityText}>Check Availability</Text>
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[
+                  styles.saveSlugButton,
+                  (!slugAvailable || slugInput.length < 3) && styles.saveSlugButtonDisabled
+                ]}
+                onPress={async () => {
+                  if (!slugAvailable || !cardData?.id) return;
+                  
+                  try {
+                    const { error } = await supabase
+                      .from('digital_cards')
+                      .update({ slug: slugInput })
+                      .eq('id', cardData.id);
+                    
+                    if (error) throw error;
+                    
+                    setCardData(prev => prev ? { ...prev, slug: slugInput } : null);
+                    setCardUrl(`tavvy.com/${slugInput}`);
+                    setShowSlugModal(false);
+                    Alert.alert('Success', 'Your card URL has been updated!');
+                  } catch (error) {
+                    console.error('Error updating slug:', error);
+                    Alert.alert('Error', 'Failed to update URL. Please try again.');
+                  }
+                }}
+                disabled={!slugAvailable || slugInput.length < 3}
+              >
+                <LinearGradient
+                  colors={slugAvailable && slugInput.length >= 3 ? ['#00C853', '#00E676'] : ['#E0E0E0', '#BDBDBD']}
+                  style={styles.saveSlugGradient}
+                >
+                  <Text style={[
+                    styles.saveSlugText,
+                    (!slugAvailable || slugInput.length < 3) && styles.saveSlugTextDisabled
+                  ]}>Save URL</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1294,5 +1555,110 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#00C853',
     fontWeight: '500',
+  },
+  // Slug Modal Styles
+  slugModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+  },
+  slugModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  slugModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  slugModalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+  },
+  slugInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  slugPrefix: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  slugInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1A1A1A',
+    fontWeight: '600',
+    padding: 0,
+  },
+  slugError: {
+    fontSize: 12,
+    color: '#F44336',
+    marginBottom: 8,
+  },
+  slugAvailableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 16,
+  },
+  slugAvailableText: {
+    fontSize: 14,
+    color: '#00C853',
+    fontWeight: '500',
+  },
+  slugUnavailableText: {
+    fontSize: 14,
+    color: '#F44336',
+    fontWeight: '500',
+  },
+  slugModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  checkAvailabilityButton: {
+    flex: 1,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkAvailabilityText: {
+    fontSize: 14,
+    color: '#00C853',
+    fontWeight: '600',
+  },
+  saveSlugButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  saveSlugButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveSlugGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveSlugText: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  saveSlugTextDisabled: {
+    color: '#9E9E9E',
   },
 });
