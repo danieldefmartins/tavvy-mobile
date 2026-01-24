@@ -19,6 +19,7 @@ import {
   ScrollView,
   Dimensions,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -87,11 +89,13 @@ type NavigationProp = NativeStackNavigationProp<any>;
 
 export default function RealtorsBrowseScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('all');
   const [realtors, setRealtors] = useState<Realtor[]>([]);
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Load realtors on mount
   useEffect(() => {
@@ -157,6 +161,29 @@ export default function RealtorsBrowseScreen() {
 
   const handleBack = () => {
     navigation.goBack();
+  };
+
+  const handleLoginPress = () => {
+    if (user) {
+      // User is already logged in, go to profile
+      navigation.navigate('ProfileMain');
+    } else {
+      setShowLoginModal(true);
+    }
+  };
+
+  const handleCustomerLogin = () => {
+    setShowLoginModal(false);
+    navigation.navigate('Login', { userType: 'customer' });
+  };
+
+  const handleRealtorLogin = () => {
+    setShowLoginModal(false);
+    navigation.navigate('Login', { userType: 'realtor' });
+  };
+
+  const handleFindRealtor = () => {
+    navigation.navigate('RealtorMatchStart');
   };
 
   const handleSearch = useCallback(async () => {
@@ -366,7 +393,9 @@ export default function RealtorsBrowseScreen() {
               />
               <Text style={styles.headerTitle}>Realtors</Text>
             </View>
-            <View style={styles.headerRight} />
+            <TouchableOpacity style={styles.loginButton} onPress={handleLoginPress}>
+              <Ionicons name={user ? 'person-circle' : 'person-circle-outline'} size={28} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
 
           {/* Search Bar */}
@@ -427,6 +456,31 @@ export default function RealtorsBrowseScreen() {
         </ScrollView>
       </View>
 
+      {/* Find the Right Realtor CTA */}
+      <TouchableOpacity 
+        style={styles.findRealtorCard}
+        onPress={() => navigation.navigate('RealtorMatchStart')}
+        activeOpacity={0.9}
+      >
+        <LinearGradient
+          colors={[RealtorColors.secondary, '#D4AF37']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.findRealtorGradient}
+        >
+          <View style={styles.findRealtorContent}>
+            <View style={styles.findRealtorIcon}>
+              <Ionicons name="people" size={28} color={RealtorColors.primary} />
+            </View>
+            <View style={styles.findRealtorText}>
+              <Text style={styles.findRealtorTitle}>Find the Right Realtor</Text>
+              <Text style={styles.findRealtorSubtitle}>Answer a few questions to get matched</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color={RealtorColors.primary} />
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+
       {/* Results */}
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -449,6 +503,60 @@ export default function RealtorsBrowseScreen() {
           }
         />
       )}
+
+      {/* Login Type Modal */}
+      <Modal
+        visible={showLoginModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowLoginModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowLoginModal(false)}
+        >
+          <View style={styles.loginModalContent}>
+            <Text style={styles.loginModalTitle}>Sign In As</Text>
+            <Text style={styles.loginModalSubtitle}>Choose your account type</Text>
+            
+            <TouchableOpacity 
+              style={styles.loginOptionButton}
+              onPress={handleCustomerLogin}
+            >
+              <View style={styles.loginOptionIcon}>
+                <Ionicons name="home-outline" size={24} color={RealtorColors.primary} />
+              </View>
+              <View style={styles.loginOptionText}>
+                <Text style={styles.loginOptionTitle}>Customer</Text>
+                <Text style={styles.loginOptionDesc}>Looking to buy, sell, or rent</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={RealtorColors.textMuted} />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.loginOptionButton}
+              onPress={handleRealtorLogin}
+            >
+              <View style={[styles.loginOptionIcon, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="briefcase-outline" size={24} color={RealtorColors.secondary} />
+              </View>
+              <View style={styles.loginOptionText}>
+                <Text style={styles.loginOptionTitle}>Realtor</Text>
+                <Text style={styles.loginOptionDesc}>Real estate professional</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={RealtorColors.textMuted} />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.cancelButton}
+              onPress={() => setShowLoginModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -481,16 +589,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerLogo: {
-    width: 80,
-    height: 24,
+    width: 100,
+    height: 28,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  headerRight: {
-    width: 40,
+  loginButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   searchContainer: {
     paddingHorizontal: 16,
@@ -700,5 +811,117 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  // Login Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loginModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+  },
+  loginModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: RealtorColors.text,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  loginModalSubtitle: {
+    fontSize: 14,
+    color: RealtorColors.textMuted,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  loginOptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: RealtorColors.border,
+  },
+  loginOptionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  loginOptionText: {
+    flex: 1,
+  },
+  loginOptionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: RealtorColors.text,
+    marginBottom: 2,
+  },
+  loginOptionDesc: {
+    fontSize: 13,
+    color: RealtorColors.textMuted,
+  },
+  cancelButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: RealtorColors.textMuted,
+  },
+  // Find the Right Realtor Card
+  findRealtorCard: {
+    marginHorizontal: 16,
+    marginVertical: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  findRealtorGradient: {
+    padding: 16,
+  },
+  findRealtorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  findRealtorIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  findRealtorText: {
+    flex: 1,
+  },
+  findRealtorTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: RealtorColors.primary,
+    marginBottom: 2,
+  },
+  findRealtorSubtitle: {
+    fontSize: 13,
+    color: RealtorColors.primary,
+    opacity: 0.8,
   },
 });

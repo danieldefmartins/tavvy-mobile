@@ -15,6 +15,8 @@ import {
   Platform,
   ActivityIndicator,
   SafeAreaView,
+  Modal,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -31,6 +33,8 @@ export default function ProsMessagesScreen() {
   const [messageText, setMessageText] = useState('');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [userType, setUserType] = useState<'customer' | 'pro'>('customer');
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [isBlocking, setIsBlocking] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   const { 
@@ -117,6 +121,55 @@ export default function ProsMessagesScreen() {
     }
   };
 
+  const handleBlockUser = async () => {
+    Alert.alert(
+      'Block User',
+      'Are you sure you want to block this user? You will no longer receive messages from them.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            setIsBlocking(true);
+            try {
+              // Get the other user's ID from the conversation
+              const conversation = conversations.find(c => c.id === activeConversationId);
+              const otherUserId = conversation?.customer_id === currentUserId 
+                ? conversation?.pro_id 
+                : conversation?.customer_id;
+
+              if (otherUserId && currentUserId) {
+                // Insert into blocked_users table
+                await supabase.from('blocked_users').insert({
+                  blocker_id: currentUserId,
+                  blocked_id: otherUserId,
+                  conversation_id: activeConversationId,
+                });
+
+                // Update conversation status
+                await supabase
+                  .from('conversations')
+                  .update({ status: 'blocked' })
+                  .eq('id', activeConversationId);
+
+                Alert.alert('User Blocked', 'You will no longer receive messages from this user.');
+                setShowOptionsModal(false);
+                setActiveConversationId(null);
+                fetchConversations();
+              }
+            } catch (error) {
+              console.error('Failed to block user:', error);
+              Alert.alert('Error', 'Failed to block user. Please try again.');
+            } finally {
+              setIsBlocking(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderConversationItem = ({ item }: { item: any }) => {
     const otherParty = item.project_request?.customer_name || 'Customer';
     const projectTitle = item.project_request?.description || 'Project';
@@ -189,8 +242,44 @@ export default function ProsMessagesScreen() {
             <Ionicons name="arrow-back" size={24} color="#374151" />
           </TouchableOpacity>
           <Text style={styles.chatTitle}>{customerName || 'Chat'}</Text>
-          <View style={{ width: 24 }} />
+          <TouchableOpacity onPress={() => setShowOptionsModal(true)}>
+            <Ionicons name="ellipsis-vertical" size={24} color="#374151" />
+          </TouchableOpacity>
         </View>
+
+        {/* Options Modal */}
+        <Modal
+          visible={showOptionsModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowOptionsModal(false)}
+        >
+          <TouchableOpacity 
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowOptionsModal(false)}
+          >
+            <View style={styles.optionsModal}>
+              <TouchableOpacity 
+                style={styles.optionItem}
+                onPress={handleBlockUser}
+                disabled={isBlocking}
+              >
+                <Ionicons name="ban-outline" size={22} color="#EF4444" />
+                <Text style={styles.optionTextDanger}>
+                  {isBlocking ? 'Blocking...' : 'Block User'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.optionItem}
+                onPress={() => setShowOptionsModal(false)}
+              >
+                <Ionicons name="close-outline" size={22} color="#6B7280" />
+                <Text style={styles.optionText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
 
         <FlatList
           ref={flatListRef}
@@ -296,4 +385,33 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   sendDisabled: { opacity: 0.5 },
+  // Options Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  optionsModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 8,
+    width: '80%',
+    maxWidth: 300,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#374151',
+  },
+  optionTextDanger: {
+    fontSize: 16,
+    color: '#EF4444',
+    fontWeight: '500',
+  },
 });

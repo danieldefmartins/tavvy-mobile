@@ -86,6 +86,25 @@ import RealtorsHubScreen from './screens/RealtorsHubScreen';
 import RealtorsBrowseScreen from './screens/RealtorsBrowseScreen';
 import RealtorDetailScreen from './screens/RealtorDetailScreen';
 
+// ========== REALTOR MATCH QUESTIONNAIRE SCREENS ==========
+import RealtorMatchStartScreen from './screens/RealtorMatchStartScreen';
+import RealtorMatchQ1Screen from './screens/RealtorMatchQ1Screen';
+import RealtorMatchQ2Screen from './screens/RealtorMatchQ2Screen';
+import RealtorMatchQ3Screen from './screens/RealtorMatchQ3Screen';
+import {
+  RealtorMatchQ4Screen,
+  RealtorMatchQ5Screen,
+  RealtorMatchQ6Screen,
+  RealtorMatchQ7Screen,
+  RealtorMatchQ8Screen,
+  RealtorMatchQ9Screen,
+  RealtorMatchQ10Screen,
+  RealtorMatchQ11Screen,
+  RealtorMatchQ12Screen,
+} from './screens/RealtorMatchQ4to12Screens';
+import RealtorMatchContactScreen from './screens/RealtorMatchContactScreen';
+import RealtorMatchCompleteScreen from './screens/RealtorMatchCompleteScreen';
+
 // ========== MISSING SCREENS (Referenced but not in navigation) ==========
 import SettingsScreen from './screens/SettingsScreen';
 import HelpSupportScreen from './screens/HelpSupportScreen';
@@ -258,6 +277,23 @@ function AppsStack() {
       <MenuStackNav.Screen name="RealtorsHub" component={RealtorsHubScreen} />
       <MenuStackNav.Screen name="RealtorsBrowse" component={RealtorsBrowseScreen} />
       <MenuStackNav.Screen name="RealtorDetail" component={RealtorDetailScreen} />
+      
+      {/* Realtor Match Questionnaire Flow */}
+      <MenuStackNav.Screen name="RealtorMatchStart" component={RealtorMatchStartScreen} />
+      <MenuStackNav.Screen name="RealtorMatchQ1" component={RealtorMatchQ1Screen} />
+      <MenuStackNav.Screen name="RealtorMatchQ2" component={RealtorMatchQ2Screen} />
+      <MenuStackNav.Screen name="RealtorMatchQ3" component={RealtorMatchQ3Screen} />
+      <MenuStackNav.Screen name="RealtorMatchQ4" component={RealtorMatchQ4Screen} />
+      <MenuStackNav.Screen name="RealtorMatchQ5" component={RealtorMatchQ5Screen} />
+      <MenuStackNav.Screen name="RealtorMatchQ6" component={RealtorMatchQ6Screen} />
+      <MenuStackNav.Screen name="RealtorMatchQ7" component={RealtorMatchQ7Screen} />
+      <MenuStackNav.Screen name="RealtorMatchQ8" component={RealtorMatchQ8Screen} />
+      <MenuStackNav.Screen name="RealtorMatchQ9" component={RealtorMatchQ9Screen} />
+      <MenuStackNav.Screen name="RealtorMatchQ10" component={RealtorMatchQ10Screen} />
+      <MenuStackNav.Screen name="RealtorMatchQ11" component={RealtorMatchQ11Screen} />
+      <MenuStackNav.Screen name="RealtorMatchQ12" component={RealtorMatchQ12Screen} />
+      <MenuStackNav.Screen name="RealtorMatchContact" component={RealtorMatchContactScreen} />
+      <MenuStackNav.Screen name="RealtorMatchComplete" component={RealtorMatchCompleteScreen} />
       
       {/* Pro Dashboard accessible from Menu */}
       <MenuStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
