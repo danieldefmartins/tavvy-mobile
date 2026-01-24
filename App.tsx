@@ -120,6 +120,7 @@ import {
   ECardOnboardingCompleteScreen,
   ECardDashboardScreen,
   ECardAddLinkScreen,
+  ECardEditLinkScreen,
   ECardThemesScreen,
   ECardPremiumUpsellScreen,
   ECardPreviewScreen,
@@ -290,6 +291,7 @@ function AppsStack() {
       <MenuStackNav.Screen name="ECardOnboardingComplete" component={ECardOnboardingCompleteScreen} />
       <MenuStackNav.Screen name="ECardDashboard" component={ECardDashboardScreen} />
       <MenuStackNav.Screen name="ECardAddLink" component={ECardAddLinkScreen} />
+      <MenuStackNav.Screen name="ECardEditLink" component={ECardEditLinkScreen} />
       <MenuStackNav.Screen name="ECardThemes" component={ECardThemesScreen} />
       <MenuStackNav.Screen name="ECardPremiumUpsell" component={ECardPremiumUpsellScreen} />
       <MenuStackNav.Screen name="ECardPreview" component={ECardPreviewScreen} />

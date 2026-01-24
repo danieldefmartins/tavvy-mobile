@@ -111,6 +111,9 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
 
   // Load card data from database or use passed data
   const loadCardData = useCallback(async () => {
+    console.log('ECardPreview - Loading card data');
+    console.log('passedCardData:', passedCardData);
+    console.log('passedLinks:', passedLinks);
     setIsLoading(true);
     
     try {
@@ -118,22 +121,38 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
       if (passedCardData?.id) {
         setCardData(passedCardData);
         
-        // Load links for this card
-        const { data: linksData } = await supabase
-          .from('card_links')
-          .select('*')
-          .eq('card_id', passedCardData.id)
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true });
-        
-        if (linksData) {
-          setLinks(linksData.map(l => ({
-            id: l.id,
-            title: l.title,
-            url: l.url,
-            icon: l.icon || 'link',
-            platform: l.icon || 'other',
-          })));
+        // Use passed links if available, otherwise load from database
+        console.log('Checking passedLinks:', passedLinks, 'length:', passedLinks?.length);
+        if (passedLinks && passedLinks.length > 0) {
+          console.log('Using passed links');
+          const mappedLinks = passedLinks.map((l: any) => ({
+            id: l.id || l.platform,
+            title: l.title || l.platform?.charAt(0).toUpperCase() + l.platform?.slice(1) || 'Link',
+            url: l.value || l.url || '',
+            icon: l.platform || l.icon || 'link',
+            platform: l.platform || l.icon || 'other',
+          }));
+          console.log('Mapped links:', mappedLinks);
+          setLinks(mappedLinks);
+        } else {
+          console.log('No passed links, loading from database');
+          // Load links from database
+          const { data: linksData } = await supabase
+            .from('card_links')
+            .select('*')
+            .eq('card_id', passedCardData.id)
+            .eq('is_active', true)
+            .order('sort_order', { ascending: true });
+          
+          if (linksData) {
+            setLinks(linksData.map(l => ({
+              id: l.id,
+              title: l.title,
+              url: l.url,
+              icon: l.icon || 'link',
+              platform: l.icon || 'other',
+            })));
+          }
         }
         setIsLoading(false);
         return;
