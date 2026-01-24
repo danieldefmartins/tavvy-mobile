@@ -124,6 +124,7 @@ import {
   ECardPremiumUpsellScreen,
   ECardPreviewScreen,
   ECardNFCWriteScreen,
+  ECardFormBlockScreen,
 } from './screens/ecard';
 
 // ✅ Create QueryClient instance
@@ -293,6 +294,7 @@ function AppsStack() {
       <MenuStackNav.Screen name="ECardPremiumUpsell" component={ECardPremiumUpsellScreen} />
       <MenuStackNav.Screen name="ECardPreview" component={ECardPreviewScreen} />
       <MenuStackNav.Screen name="ECardNFCWrite" component={ECardNFCWriteScreen} />
+      <MenuStackNav.Screen name="ECardFormBlock" component={ECardFormBlockScreen} />
       
       {/* Admin Screens */}
       <MenuStackNav.Screen name="StoryModeration" component={StoryModerationScreen} />

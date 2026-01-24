@@ -652,6 +652,21 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         </LinearGradient>
       </TouchableOpacity>
 
+      {/* Add Form Block Button */}
+      <TouchableOpacity 
+        style={styles.addFormButton}
+        onPress={() => navigation.navigate('ECardFormBlock', { cardId: cardData?.id, existingConfig: cardData?.form_block })}
+        activeOpacity={0.8}
+      >
+        <View style={styles.addFormContent}>
+          <Ionicons name="document-text-outline" size={20} color="#3B82F6" />
+          <Text style={styles.addFormText}>
+            {cardData?.form_block ? 'Edit Form Block' : 'Add Form Block'}
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color="#9E9E9E" />
+        </View>
+      </TouchableOpacity>
+
       {/* Links List */}
       {links.length > 0 ? (
         <View style={styles.linksList}>
@@ -1468,6 +1483,29 @@ const styles = StyleSheet.create({
   },
   addLinkTextDisabled: {
     color: '#9E9E9E',
+  },
+  
+  // Form Block Button
+  addFormButton: {
+    marginBottom: 16,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderStyle: 'dashed',
+  },
+  addFormContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 8,
+  },
+  addFormText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#3B82F6',
   },
   
   // Links List
