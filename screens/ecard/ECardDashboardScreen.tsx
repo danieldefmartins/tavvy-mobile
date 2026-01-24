@@ -148,7 +148,8 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       if (cardId) {
         query = query.eq('id', cardId);
       } else {
-        query = query.limit(1);
+        // Get the most recently created card
+        query = query.order('created_at', { ascending: false }).limit(1);
       }
 
       const { data, error } = await query.single();

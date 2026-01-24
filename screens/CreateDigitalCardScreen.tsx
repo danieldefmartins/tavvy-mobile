@@ -256,8 +256,8 @@ export default function CreateDigitalCardScreen() {
           // Load specific card by ID
           query = query.eq('id', cardIdToLoad);
         } else {
-          // Load first card (for backward compatibility)
-          query = query.limit(1);
+          // Load most recent card
+          query = query.order('created_at', { ascending: false }).limit(1);
         }
 
         const { data, error } = await query.single();
@@ -418,9 +418,9 @@ export default function CreateDigitalCardScreen() {
   };
 
   const generateSlug = (name: string): string => {
+    // Generate slug from name without random suffix
     const base = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-    const random = Math.random().toString(36).substring(2, 8);
-    return `${base}-${random}`;
+    return base || 'my-card';
   };
 
   // Format slug input (lowercase, alphanumeric and hyphens only)
@@ -883,7 +883,18 @@ export default function CreateDigitalCardScreen() {
           placeholder="John Doe"
           placeholderTextColor={theme.textSecondary}
           value={cardData.fullName}
-          onChangeText={(text) => setCardData(prev => ({ ...prev, fullName: text }))}
+          onChangeText={(text) => {
+            setCardData(prev => ({ ...prev, fullName: text }));
+            // Auto-generate slug from name if slug is empty or matches previous auto-generated slug
+            if (!slugInput || slugInput === generateSlug(cardData.fullName)) {
+              const newSlug = generateSlug(text);
+              setSlugInput(newSlug);
+              setCardData(prev => ({ ...prev, slug: newSlug }));
+              // Check availability after a short delay
+              if (slugCheckTimeout.current) clearTimeout(slugCheckTimeout.current);
+              slugCheckTimeout.current = setTimeout(() => checkSlugAvailability(newSlug), 500);
+            }
+          }}
         />
       </View>
 

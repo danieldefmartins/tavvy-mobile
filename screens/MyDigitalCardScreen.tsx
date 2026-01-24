@@ -123,6 +123,8 @@ export default function MyDigitalCardScreen() {
         .from('digital_cards')
         .select('*')
         .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .single();
 
       if (error || !data) {
