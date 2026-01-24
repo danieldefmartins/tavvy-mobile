@@ -864,15 +864,19 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         
         <View style={styles.statsGrid}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statValue}>{cardData?.view_count || 0}</Text>
             <Text style={styles.statLabel}>Total Views</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statValue}>{links.reduce((sum, link) => sum + (link.clicks || 0), 0)}</Text>
             <Text style={styles.statLabel}>Link Clicks</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>0%</Text>
+            <Text style={styles.statValue}>
+              {cardData?.view_count > 0 
+                ? Math.round((links.reduce((sum, link) => sum + (link.clicks || 0), 0) / cardData.view_count) * 100) 
+                : 0}%
+            </Text>
             <Text style={styles.statLabel}>Click Rate</Text>
           </View>
         </View>
