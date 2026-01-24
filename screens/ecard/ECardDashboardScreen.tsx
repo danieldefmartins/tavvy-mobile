@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+// Using React Native Share instead of expo-sharing
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -271,11 +271,11 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       const downloadResult = await FileSystem.downloadAsync(qrCodeUrl, fileUri);
       
       if (downloadResult.status === 200) {
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(downloadResult.uri);
-        } else {
-          Alert.alert('Success', 'QR code saved to your device!');
-        }
+        // Use React Native Share to share the downloaded file
+        await Share.share({
+          url: downloadResult.uri,
+          title: 'My Tavvy QR Code',
+        });
       }
     } catch (error) {
       console.error('Error downloading QR code:', error);
