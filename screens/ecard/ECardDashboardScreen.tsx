@@ -1658,108 +1658,133 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       animationType="slide"
       onRequestClose={() => setShowCredentialsModal(false)}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.credentialsModalContent}>
-          <View style={styles.credentialsModalHeader}>
-            <Text style={styles.credentialsModalTitle}>Pro Credentials</Text>
-            <TouchableOpacity onPress={() => setShowCredentialsModal(false)}>
-              <Ionicons name="close" size={24} color="#333" />
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView style={styles.credentialsList}>
-            {/* Licensed */}
-            <View style={styles.credentialItem}>
-              <View style={styles.credentialRow}>
-                <Text style={styles.credentialEmoji}>✅</Text>
-                <Text style={styles.credentialLabel}>Licensed</Text>
-                <Switch
-                  value={proCredentials.isLicensed}
-                  onValueChange={(value) => setProCredentials(prev => ({ ...prev, isLicensed: value }))}
-                />
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.modalOverlay}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlayTouchable} 
+          activeOpacity={1} 
+          onPress={() => Keyboard.dismiss()}
+        >
+          <View style={styles.credentialsModalContent}>
+            <View style={styles.credentialsModalHeader}>
+              <Text style={styles.credentialsModalTitle}>Pro Credentials</Text>
+              <TouchableOpacity onPress={() => setShowCredentialsModal(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView 
+              style={styles.credentialsList}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={true}
+            >
+              {/* Licensed */}
+              <View style={styles.credentialItem}>
+                <View style={styles.credentialRow}>
+                  <Text style={styles.credentialEmoji}>✅</Text>
+                  <Text style={styles.credentialLabel}>Licensed</Text>
+                  <Switch
+                    value={proCredentials.isLicensed}
+                    onValueChange={(value) => setProCredentials(prev => ({ ...prev, isLicensed: value }))}
+                  />
+                </View>
+                {proCredentials.isLicensed && (
+                  <TextInput
+                    style={styles.credentialInput}
+                    placeholder="License Number (optional)"
+                    value={proCredentials.licenseNumber || ''}
+                    onChangeText={(text) => setProCredentials(prev => ({ ...prev, licenseNumber: text }))}
+                    returnKeyType="done"
+                    onSubmitEditing={() => Keyboard.dismiss()}
+                  />
+                )}
               </View>
-              {proCredentials.isLicensed && (
+              
+              {/* Insured */}
+              <View style={styles.credentialItem}>
+                <View style={styles.credentialRow}>
+                  <Text style={styles.credentialEmoji}>✅</Text>
+                  <Text style={styles.credentialLabel}>Insured</Text>
+                  <Switch
+                    value={proCredentials.isInsured}
+                    onValueChange={(value) => setProCredentials(prev => ({ ...prev, isInsured: value }))}
+                  />
+                </View>
+              </View>
+              
+              {/* Bonded */}
+              <View style={styles.credentialItem}>
+                <View style={styles.credentialRow}>
+                  <Text style={styles.credentialEmoji}>🛡️</Text>
+                  <Text style={styles.credentialLabel}>Bonded</Text>
+                  <Switch
+                    value={proCredentials.isBonded}
+                    onValueChange={(value) => setProCredentials(prev => ({ ...prev, isBonded: value }))}
+                  />
+                </View>
+              </View>
+              
+              {/* Tavvy Verified */}
+              <View style={styles.credentialItem}>
+                <View style={styles.credentialRow}>
+                  <Text style={styles.credentialEmoji}>🟢</Text>
+                  <Text style={styles.credentialLabel}>Tavvy Verified</Text>
+                  <Switch
+                    value={proCredentials.isTavvyVerified}
+                    onValueChange={(value) => setProCredentials(prev => ({ ...prev, isTavvyVerified: value }))}
+                    disabled={true}
+                  />
+                </View>
+                <Text style={styles.credentialHint}>Submit verification documents to earn this badge</Text>
+              </View>
+              
+              {/* Years in Business */}
+              <View style={styles.credentialItem}>
+                <Text style={styles.credentialLabel}>Years in Business</Text>
                 <TextInput
                   style={styles.credentialInput}
-                  placeholder="License Number (optional)"
-                  value={proCredentials.licenseNumber || ''}
-                  onChangeText={(text) => setProCredentials(prev => ({ ...prev, licenseNumber: text }))}
-                />
-              )}
-            </View>
-            
-            {/* Insured */}
-            <View style={styles.credentialItem}>
-              <View style={styles.credentialRow}>
-                <Text style={styles.credentialEmoji}>✅</Text>
-                <Text style={styles.credentialLabel}>Insured</Text>
-                <Switch
-                  value={proCredentials.isInsured}
-                  onValueChange={(value) => setProCredentials(prev => ({ ...prev, isInsured: value }))}
+                  placeholder="e.g., 10"
+                  keyboardType="numeric"
+                  value={proCredentials.yearsInBusiness?.toString() || ''}
+                  onChangeText={(text) => setProCredentials(prev => ({ ...prev, yearsInBusiness: parseInt(text) || undefined }))}
+                  returnKeyType="done"
+                  onSubmitEditing={() => Keyboard.dismiss()}
                 />
               </View>
-            </View>
-            
-            {/* Bonded */}
-            <View style={styles.credentialItem}>
-              <View style={styles.credentialRow}>
-                <Text style={styles.credentialEmoji}>🛡️</Text>
-                <Text style={styles.credentialLabel}>Bonded</Text>
-                <Switch
-                  value={proCredentials.isBonded}
-                  onValueChange={(value) => setProCredentials(prev => ({ ...prev, isBonded: value }))}
+              
+              {/* Service Area */}
+              <View style={styles.credentialItem}>
+                <Text style={styles.credentialLabel}>Service Area</Text>
+                <TextInput
+                  style={styles.credentialInput}
+                  placeholder="e.g., Miami-Dade County, FL"
+                  value={proCredentials.serviceArea || ''}
+                  onChangeText={(text) => setProCredentials(prev => ({ ...prev, serviceArea: text }))}
+                  returnKeyType="done"
+                  onSubmitEditing={() => Keyboard.dismiss()}
                 />
               </View>
-            </View>
+              
+              {/* Add padding at bottom for keyboard */}
+              <View style={{ height: 20 }} />
+            </ScrollView>
             
-            {/* Tavvy Verified */}
-            <View style={styles.credentialItem}>
-              <View style={styles.credentialRow}>
-                <Text style={styles.credentialEmoji}>🟢</Text>
-                <Text style={styles.credentialLabel}>Tavvy Verified</Text>
-                <Switch
-                  value={proCredentials.isTavvyVerified}
-                  onValueChange={(value) => setProCredentials(prev => ({ ...prev, isTavvyVerified: value }))}
-                  disabled={true}
-                />
-              </View>
-              <Text style={styles.credentialHint}>Submit verification documents to earn this badge</Text>
-            </View>
-            
-            {/* Years in Business */}
-            <View style={styles.credentialItem}>
-              <Text style={styles.credentialLabel}>Years in Business</Text>
-              <TextInput
-                style={styles.credentialInput}
-                placeholder="e.g., 10"
-                keyboardType="numeric"
-                value={proCredentials.yearsInBusiness?.toString() || ''}
-                onChangeText={(text) => setProCredentials(prev => ({ ...prev, yearsInBusiness: parseInt(text) || undefined }))}
-              />
-            </View>
-            
-            {/* Service Area */}
-            <View style={styles.credentialItem}>
-              <Text style={styles.credentialLabel}>Service Area</Text>
-              <TextInput
-                style={styles.credentialInput}
-                placeholder="e.g., Miami-Dade County, FL"
-                value={proCredentials.serviceArea || ''}
-                onChangeText={(text) => setProCredentials(prev => ({ ...prev, serviceArea: text }))}
-              />
-            </View>
-          </ScrollView>
-          
-          <TouchableOpacity 
-            style={styles.credentialsSaveButton}
-            onPress={handleSaveCredentials}
-          >
-            <LinearGradient colors={['#00C853', '#00E676']} style={styles.credentialsSaveGradient}>
-              <Text style={styles.credentialsSaveText}>Save Credentials</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </View>
+            <TouchableOpacity 
+              style={styles.credentialsSaveButton}
+              onPress={() => {
+                Keyboard.dismiss();
+                handleSaveCredentials();
+              }}
+            >
+              <LinearGradient colors={['#00C853', '#00E676']} style={styles.credentialsSaveGradient}>
+                <Text style={styles.credentialsSaveText}>Save Credentials</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
     </Modal>
   );
 
