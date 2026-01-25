@@ -262,8 +262,20 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
     if (!isPro && hasPremiumFeatures()) {
       Alert.alert(
         'Premium Features Detected',
-        'Your card includes premium features. To share this card, you can either:\n\n• Upgrade to Tavvy Pro\n• Use the free version of your card',
+        'Your card includes premium features. To share this card, you need to upgrade to Tavvy Pro.\n\nYou can also save your card and come back later.',
         [
+          { 
+            text: 'Save for Later', 
+            style: 'cancel', 
+            onPress: () => {
+              // Card is already saved as draft, just go back to dashboard
+              Alert.alert(
+                'Card Saved!',
+                'Your card has been saved. You can access it anytime from the Apps tab.',
+                [{ text: 'OK', onPress: () => navigation.navigate('ECardDashboard') }]
+              );
+            }
+          },
           { 
             text: 'Use Free Version', 
             style: 'destructive', 

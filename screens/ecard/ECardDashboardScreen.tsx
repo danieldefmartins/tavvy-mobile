@@ -781,9 +781,21 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     if (!isPro && hasPremiumFeatures()) {
       Alert.alert(
         'Premium Features Detected',
-        'Your card includes premium features. Upgrade to Tavvy Pro to publish with:\n\n• Premium Themes\n• Premium Fonts\n• Video Backgrounds\n• Unlimited Links\n• Photo Gallery',
+        'Your card includes premium features. To share this card, you need to upgrade to Tavvy Pro.\n\nYou can also save your card and come back later.',
         [
-          { text: 'Remove Premium Features', style: 'destructive', onPress: removePremiumFeatures },
+          { 
+            text: 'Save for Later', 
+            style: 'cancel',
+            onPress: () => {
+              // Card is already saved as draft, just confirm
+              Alert.alert(
+                'Card Saved!',
+                'Your card has been saved as a draft. You can access it anytime from the Apps tab.',
+                [{ text: 'OK' }]
+              );
+            }
+          },
+          { text: 'Use Free Version', style: 'destructive', onPress: removePremiumFeatures },
           { text: 'Upgrade to Pro', onPress: () => navigation.navigate('ECardPremiumUpsell') },
         ]
       );
