@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   featuredBadge: {
-    backgroundColor: TEAL_PRIMARY,
+    backgroundColor: ATLAS_PRIMARY,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
