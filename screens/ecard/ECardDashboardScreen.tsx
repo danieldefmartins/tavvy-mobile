@@ -264,6 +264,11 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [editingColorIndex, setEditingColorIndex] = useState<0 | 1>(0);
   const [tempColor, setTempColor] = useState('#667eea');
+  
+  // Industry icons modal state
+  const [iconSelectedCategory, setIconSelectedCategory] = useState('Real Estate');
+  const [iconSelectedIcon, setIconSelectedIcon] = useState<string | null>(null);
+  const [iconSelectedPosition, setIconSelectedPosition] = useState<IndustryIcon['position']>('top-right');
 
   // Link limit for free users
   const FREE_LINK_LIMIT = 5;
@@ -2566,10 +2571,6 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       { id: 'bottom-right', name: 'Bottom Right' },
     ];
     
-    const [selectedCategory, setSelectedCategory] = useState('Real Estate');
-    const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
-    const [selectedPosition, setSelectedPosition] = useState<IndustryIcon['position']>('top-right');
-    
     return (
       <Modal
         visible={showIconsModal}
@@ -2597,13 +2598,13 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
                   key={category}
                   style={[
                     styles.categoryTab,
-                    selectedCategory === category && styles.categoryTabActive
+                    iconSelectedCategory === category && styles.categoryTabActive
                   ]}
-                  onPress={() => setSelectedCategory(category)}
+                  onPress={() => setIconSelectedCategory(category)}
                 >
                   <Text style={[
                     styles.categoryTabText,
-                    selectedCategory === category && styles.categoryTabTextActive
+                    iconSelectedCategory === category && styles.categoryTabTextActive
                   ]}>{category}</Text>
                 </TouchableOpacity>
               ))}
@@ -2611,23 +2612,23 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             
             {/* Icons Grid */}
             <View style={styles.iconsGrid}>
-              {INDUSTRY_ICONS[selectedCategory as keyof typeof INDUSTRY_ICONS].map((item) => (
+              {INDUSTRY_ICONS[iconSelectedCategory as keyof typeof INDUSTRY_ICONS].map((item) => (
                 <TouchableOpacity
                   key={item.icon}
                   style={[
                     styles.iconItem,
-                    selectedIcon === item.icon && styles.iconItemSelected
+                    iconSelectedIcon === item.icon && styles.iconItemSelected
                   ]}
-                  onPress={() => setSelectedIcon(item.icon)}
+                  onPress={() => setIconSelectedIcon(item.icon)}
                 >
-                  <Ionicons name={item.icon as any} size={28} color={selectedIcon === item.icon ? '#00C853' : '#666'} />
+                  <Ionicons name={item.icon as any} size={28} color={iconSelectedIcon === item.icon ? '#00C853' : '#666'} />
                   <Text style={styles.iconItemName}>{item.name}</Text>
                 </TouchableOpacity>
               ))}
             </View>
             
             {/* Position Selection */}
-            {selectedIcon && (
+            {iconSelectedIcon && (
               <View style={styles.positionSection}>
                 <Text style={styles.positionTitle}>Select Position</Text>
                 <View style={styles.positionGrid}>
@@ -2636,13 +2637,13 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
                       key={pos.id}
                       style={[
                         styles.positionItem,
-                        selectedPosition === pos.id && styles.positionItemSelected
+                        iconSelectedPosition === pos.id && styles.positionItemSelected
                       ]}
-                      onPress={() => setSelectedPosition(pos.id)}
+                      onPress={() => setIconSelectedPosition(pos.id)}
                     >
                       <Text style={[
                         styles.positionItemText,
-                        selectedPosition === pos.id && styles.positionItemTextSelected
+                        iconSelectedPosition === pos.id && styles.positionItemTextSelected
                       ]}>{pos.name}</Text>
                     </TouchableOpacity>
                   ))}
@@ -2654,23 +2655,23 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             <TouchableOpacity
               style={[
                 styles.addIconButton,
-                !selectedIcon && styles.addIconButtonDisabled
+                !iconSelectedIcon && styles.addIconButtonDisabled
               ]}
               onPress={() => {
-                if (selectedIcon) {
-                  handleAddIndustryIcon(selectedIcon, selectedPosition);
-                  setSelectedIcon(null);
+                if (iconSelectedIcon) {
+                  handleAddIndustryIcon(iconSelectedIcon, iconSelectedPosition);
+                  setIconSelectedIcon(null);
                   setShowIconsModal(false);
                 }
               }}
-              disabled={!selectedIcon}
+              disabled={!iconSelectedIcon}
             >
               <LinearGradient
-                colors={selectedIcon ? ['#00C853', '#00E676'] : ['#E0E0E0', '#BDBDBD']}
+                colors={iconSelectedIcon ? ['#00C853', '#00E676'] : ['#E0E0E0', '#BDBDBD']}
                 style={styles.addIconGradient}
               >
-                <Ionicons name="add" size={20} color={selectedIcon ? '#fff' : '#9E9E9E'} />
-                <Text style={[styles.addIconButtonText, !selectedIcon && { color: '#9E9E9E' }]}>
+                <Ionicons name="add" size={20} color={iconSelectedIcon ? '#fff' : '#9E9E9E'} />
+                <Text style={[styles.addIconButtonText, !iconSelectedIcon && { color: '#9E9E9E' }]}>
                   Add Icon to Card
                 </Text>
               </LinearGradient>
