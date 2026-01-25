@@ -5,6 +5,8 @@
  *
  * FEATURES:
  * - Full-screen map showing all live On The Go businesses
+ * - Purple gradient header with search bar (standardized design)
+ * - Filter bar with white shade separator effect
  * - Category filtering (Food Trucks, Mobile Services, etc.)
  * - Real-time updates (refreshes every 30 seconds)
  * - Pulsing markers for live businesses
@@ -35,6 +37,7 @@ import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabaseClient';
+import { UnifiedHeader } from '../components/UnifiedHeader';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -43,6 +46,20 @@ const SUPABASE_URL = 'https://scasgwrikoqdwlwlwcff.supabase.co';
 
 // Map style
 const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
+
+// On The Go Purple Colors
+const OnTheGoColors = {
+  primary: '#7C3AED',      // Purple
+  primaryDark: '#6D28D9',  // Darker purple
+  primaryLight: '#A78BFA', // Lighter purple
+  background: '#F8F9FA',
+  cardBg: '#FFFFFF',
+  text: '#1F2937',
+  textLight: '#6B7280',
+  textMuted: '#9CA3AF',
+  success: '#10B981',
+  border: '#E5E7EB',
+};
 
 // Category icons mapping
 const CATEGORY_ICONS: Record<string, string> = {
@@ -67,6 +84,16 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Tacos': '#EAB308',
   'default': '#10B981',
 };
+
+// Filter categories for the filter bar
+const FILTER_CATEGORIES = [
+  { id: 'all', name: 'All', icon: 'grid-outline' },
+  { id: 'live', name: 'Live Now', icon: 'radio-outline' },
+  { id: 'food-trucks', name: 'Food Trucks', icon: 'fast-food-outline' },
+  { id: 'coffee', name: 'Coffee', icon: 'cafe-outline' },
+  { id: 'services', name: 'Services', icon: 'construct-outline' },
+  { id: 'pop-ups', name: 'Pop-ups', icon: 'storefront-outline' },
+];
 
 interface LiveSession {
   session_id?: string;
@@ -129,11 +156,11 @@ export default function OnTheGoScreen() {
   const [sessions, setSessions] = useState<LiveSession[]>([]);
   const [scheduledPlaces, setScheduledPlaces] = useState<ScheduledPlace[]>([]);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedSession, setSelectedSession] = useState<LiveSession | null>(null);
   const [selectedScheduledPlace, setSelectedScheduledPlace] = useState<ScheduledPlace | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [showCategoryFilter, setShowCategoryFilter] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Animation for pulsing markers
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -176,8 +203,17 @@ export default function OnTheGoScreen() {
   const fetchSessions = useCallback(async () => {
     try {
       let url = `${SUPABASE_URL}/functions/v1/live-onthego-map-data?include_scheduled=true`;
-      if (selectedCategory) {
-        url += `&category=${encodeURIComponent(selectedCategory)}`;
+      
+      // Map filter to category for API
+      const categoryMap: Record<string, string> = {
+        'food-trucks': 'Food Trucks',
+        'coffee': 'Coffee',
+        'services': 'Mobile Services',
+        'pop-ups': 'Pop-ups',
+      };
+      
+      if (selectedFilter && selectedFilter !== 'all' && selectedFilter !== 'live' && categoryMap[selectedFilter]) {
+        url += `&category=${encodeURIComponent(categoryMap[selectedFilter])}`;
       }
       
       const response = await fetch(url);
@@ -186,8 +222,15 @@ export default function OnTheGoScreen() {
       if (data.success) {
         // Add is_live: true to all sessions for consistency
         const sessionsWithLive = data.sessions.map(s => ({ ...s, is_live: true }));
-        setSessions(sessionsWithLive);
-        setScheduledPlaces(data.scheduled_places || []);
+        
+        // If "live" filter is selected, only show live sessions
+        if (selectedFilter === 'live') {
+          setSessions(sessionsWithLive);
+          setScheduledPlaces([]);
+        } else {
+          setSessions(sessionsWithLive);
+          setScheduledPlaces(data.scheduled_places || []);
+        }
         setAvailableCategories(data.available_categories);
       }
     } catch (error) {
@@ -195,7 +238,7 @@ export default function OnTheGoScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedCategory]);
+  }, [selectedFilter]);
 
   // Initial fetch and periodic refresh
   useEffect(() => {
@@ -278,6 +321,23 @@ export default function OnTheGoScreen() {
     return CATEGORY_COLORS[category] || CATEGORY_COLORS.default;
   };
 
+  // Center on user location
+  const centerOnUser = () => {
+    if (userLocation) {
+      cameraRef.current?.setCamera({
+        centerCoordinate: userLocation,
+        zoomLevel: 13,
+        animationDuration: 500,
+      });
+    }
+  };
+
+  // Handle search
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+    // Could implement search filtering here
+  };
+
   // Dynamic styles
   const dynamicStyles = {
     container: {
@@ -298,90 +358,60 @@ export default function OnTheGoScreen() {
     <View style={[styles.container, dynamicStyles.container]}>
       <StatusBar barStyle="light-content" />
       
-      {/* Header */}
-      <View style={styles.header}>
-        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-          <View style={styles.headerContent}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            
-            <View style={styles.headerTitleContainer}>
-              <Text style={styles.headerTitle}>On The Go</Text>
-              <View style={styles.liveIndicator}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveCount}>
-                  {sessions.length} Live{scheduledPlaces.length > 0 ? ` · ${scheduledPlaces.length} Scheduled` : ''}
-                </Text>
-              </View>
-            </View>
-            
-            <TouchableOpacity 
-              style={styles.filterButton}
-              onPress={() => setShowCategoryFilter(!showCategoryFilter)}
-            >
-              <Ionicons 
-                name="filter" 
-                size={22} 
-                color={selectedCategory ? '#10B981' : '#FFFFFF'} 
-              />
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </View>
+      {/* Unified Header with Purple Gradient */}
+      <UnifiedHeader
+        screenKey="onTheGo"
+        title="On The Go"
+        searchPlaceholder="Search mobile businesses..."
+        onSearch={handleSearch}
+        showBackButton={true}
+      />
 
-      {/* Category Filter */}
-      {showCategoryFilter && (
-        <View style={[styles.categoryFilterContainer, dynamicStyles.card]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      {/* Filter Bar - Standardized Design with White Shade Separator */}
+      <View style={styles.filterBarContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterBarContent}
+        >
+          {FILTER_CATEGORIES.map((filter) => (
             <TouchableOpacity
+              key={filter.id}
               style={[
-                styles.categoryChip,
-                !selectedCategory && styles.categoryChipActive,
+                styles.filterPill,
+                selectedFilter === filter.id && styles.filterPillActive,
               ]}
-              onPress={() => setSelectedCategory(null)}
+              onPress={() => setSelectedFilter(filter.id)}
             >
+              <Ionicons
+                name={filter.icon as any}
+                size={16}
+                color={selectedFilter === filter.id ? '#FFFFFF' : OnTheGoColors.primary}
+              />
               <Text style={[
-                styles.categoryChipText,
-                !selectedCategory && styles.categoryChipTextActive,
+                styles.filterPillText,
+                selectedFilter === filter.id && styles.filterPillTextActive,
               ]}>
-                All
+                {filter.name}
               </Text>
             </TouchableOpacity>
-            {availableCategories.map((category) => (
-              <TouchableOpacity
-                key={category}
-                style={[
-                  styles.categoryChip,
-                  selectedCategory === category && styles.categoryChipActive,
-                ]}
-                onPress={() => setSelectedCategory(category)}
-              >
-                <Ionicons 
-                  name={getMarkerIcon(category) as any} 
-                  size={16} 
-                  color={selectedCategory === category ? '#FFFFFF' : '#6B7280'} 
-                />
-                <Text style={[
-                  styles.categoryChipText,
-                  selectedCategory === category && styles.categoryChipTextActive,
-                ]}>
-                  {category}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          ))}
+        </ScrollView>
+        
+        {/* Live Count Badge */}
+        <View style={styles.liveCountBadge}>
+          <View style={styles.liveDot} />
+          <Text style={styles.liveCountText}>
+            {sessions.length} Live{scheduledPlaces.length > 0 ? ` · ${scheduledPlaces.length} Scheduled` : ''}
+          </Text>
         </View>
-      )}
+      </View>
 
       {/* Map */}
       <View style={styles.mapContainer}>
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#10B981" />
+            <ActivityIndicator size="large" color={OnTheGoColors.primary} />
             <Text style={[styles.loadingText, dynamicStyles.textSecondary]}>
               Finding live businesses...
             </Text>
@@ -448,44 +478,36 @@ export default function OnTheGoScreen() {
                 </MapLibreGL.PointAnnotation>
               ))}
 
-              {/* Scheduled place markers (offline with upcoming events) */}
-              {scheduledPlaces.map((place) => place.next_event && (
-                <MapLibreGL.PointAnnotation
-                  key={`scheduled-${place.tavvy_place_id}`}
-                  id={`scheduled-${place.tavvy_place_id}`}
-                  coordinate={[place.next_event.longitude, place.next_event.latitude]}
-                  onSelected={() => handleScheduledPlacePress(place)}
-                >
-                  <View style={styles.markerContainer}>
+              {/* Scheduled place markers (dimmed) */}
+              {scheduledPlaces.map((place) => (
+                place.next_event && (
+                  <MapLibreGL.PointAnnotation
+                    key={`scheduled-${place.tavvy_place_id}`}
+                    id={`scheduled-${place.tavvy_place_id}`}
+                    coordinate={[place.next_event.longitude, place.next_event.latitude]}
+                    onSelected={() => handleScheduledPlacePress(place)}
+                  >
                     <View style={[
                       styles.scheduledMarker,
                       { borderColor: getMarkerColor(place.category) },
                     ]}>
                       <Ionicons
-                        name="calendar"
+                        name={getMarkerIcon(place.category) as any}
                         size={18}
                         color={getMarkerColor(place.category)}
                       />
                     </View>
-                  </View>
-                </MapLibreGL.PointAnnotation>
+                  </MapLibreGL.PointAnnotation>
+                )
               ))}
             </MapLibreGL.MapView>
 
             {/* My Location Button */}
             <TouchableOpacity
               style={styles.myLocationButton}
-              onPress={() => {
-                if (userLocation) {
-                  cameraRef.current?.setCamera({
-                    centerCoordinate: userLocation,
-                    zoomLevel: 14,
-                    animationDuration: 500,
-                  });
-                }
-              }}
+              onPress={centerOnUser}
             >
-              <Ionicons name="locate" size={24} color="#374151" />
+              <Ionicons name="locate" size={24} color={OnTheGoColors.primary} />
             </TouchableOpacity>
 
             {/* Refresh Button */}
@@ -493,7 +515,7 @@ export default function OnTheGoScreen() {
               style={styles.refreshButton}
               onPress={fetchSessions}
             >
-              <Ionicons name="refresh" size={20} color="#374151" />
+              <Ionicons name="refresh" size={18} color="#374151" />
               <Text style={styles.refreshButtonText}>Refresh</Text>
             </TouchableOpacity>
           </>
@@ -501,7 +523,7 @@ export default function OnTheGoScreen() {
       </View>
 
       {/* Empty State */}
-      {!isLoading && sessions.length === 0 && (
+      {!isLoading && sessions.length === 0 && scheduledPlaces.length === 0 && (
         <View style={styles.emptyState}>
           <View style={styles.emptyStateContent}>
             <Text style={styles.emptyStateEmoji}>🚚</Text>
@@ -509,15 +531,15 @@ export default function OnTheGoScreen() {
               No one's live right now
             </Text>
             <Text style={[styles.emptyStateText, dynamicStyles.textSecondary]}>
-              {selectedCategory 
-                ? `No ${selectedCategory} businesses are live in this area.`
+              {selectedFilter !== 'all'
+                ? `No businesses matching this filter are live in this area.`
                 : 'Check back later to see mobile businesses near you.'
               }
             </Text>
-            {selectedCategory && (
+            {selectedFilter !== 'all' && (
               <TouchableOpacity
                 style={styles.clearFilterButton}
-                onPress={() => setSelectedCategory(null)}
+                onPress={() => setSelectedFilter('all')}
               >
                 <Text style={styles.clearFilterText}>Show all categories</Text>
               </TouchableOpacity>
@@ -569,7 +591,7 @@ export default function OnTheGoScreen() {
                 </Text>
               )}
               <Text style={styles.sessionCardTime}>
-                {getTimeRemaining(selectedSession.scheduled_end_at)}
+                {getTimeRemaining(selectedSession.scheduled_end_at || '')}
               </Text>
             </View>
           </View>
@@ -596,7 +618,7 @@ export default function OnTheGoScreen() {
                 style={[styles.sessionCardButton, styles.sessionCardButtonSecondary]}
                 onPress={() => callBusiness(selectedSession.phone!)}
               >
-                <Ionicons name="call" size={20} color="#10B981" />
+                <Ionicons name="call" size={20} color={OnTheGoColors.primary} />
                 <Text style={[styles.sessionCardButtonText, styles.sessionCardButtonTextSecondary]}>
                   Call
                 </Text>
@@ -693,7 +715,7 @@ export default function OnTheGoScreen() {
                 style={[styles.sessionCardButton, styles.sessionCardButtonSecondary]}
                 onPress={() => callBusiness(selectedScheduledPlace.phone!)}
               >
-                <Ionicons name="call" size={20} color="#10B981" />
+                <Ionicons name="call" size={20} color={OnTheGoColors.primary} />
                 <Text style={[styles.sessionCardButtonText, styles.sessionCardButtonTextSecondary]}>
                   Call
                 </Text>
@@ -712,79 +734,64 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
   },
   
-  // Header
-  header: {
-    backgroundColor: '#0F1233',
-    zIndex: 10,
+  // Filter Bar - Standardized Design with White Shade Separator
+  filterBarContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  headerSafeArea: {
-    backgroundColor: '#0F1233',
-  },
-  headerContent: {
+  filterBarContent: {
+    paddingHorizontal: 16,
+    gap: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
   },
-  backButton: {
-    padding: 8,
-  },
-  headerTitleContainer: {
+  filterPill: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(124, 58, 237, 0.1)', // Purple 10% opacity
+    gap: 6,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+  filterPillActive: {
+    backgroundColor: OnTheGoColors.primary,
+  },
+  filterPillText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: OnTheGoColors.primary,
+  },
+  filterPillTextActive: {
     color: '#FFFFFF',
   },
-  liveIndicator: {
+  
+  // Live Count Badge
+  liveCountBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    gap: 6,
   },
   liveDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#EF4444',
-    marginRight: 6,
   },
-  liveCount: {
+  liveCountText: {
     fontSize: 12,
-    color: '#9CA3AF',
-  },
-  filterButton: {
-    padding: 8,
-  },
-
-  // Category Filter
-  categoryFilterContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
-  },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-    marginRight: 8,
-    gap: 6,
-  },
-  categoryChipActive: {
-    backgroundColor: '#10B981',
-  },
-  categoryChipText: {
-    fontSize: 14,
-    fontWeight: '500',
     color: '#6B7280',
-  },
-  categoryChipTextActive: {
-    color: '#FFFFFF',
+    fontWeight: '500',
   },
 
   // Map
@@ -834,7 +841,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    backgroundColor: 'rgba(124, 58, 237, 0.2)', // Purple tint
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -842,7 +849,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#3B82F6',
+    backgroundColor: OnTheGoColors.primary,
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
@@ -890,7 +897,7 @@ const styles = StyleSheet.create({
   // Empty State
   emptyState: {
     position: 'absolute',
-    top: 0,
+    top: 200,
     left: 0,
     right: 0,
     bottom: 0,
@@ -922,7 +929,7 @@ const styles = StyleSheet.create({
   clearFilterText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#10B981',
+    color: OnTheGoColors.primary,
   },
 
   // Session Card
@@ -1015,13 +1022,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: '#10B981',
+    backgroundColor: OnTheGoColors.primary,
     gap: 8,
   },
   sessionCardButtonSecondary: {
     backgroundColor: '#F3F4F6',
     borderWidth: 1,
-    borderColor: '#10B981',
+    borderColor: OnTheGoColors.primary,
   },
   sessionCardButtonText: {
     fontSize: 15,
@@ -1029,7 +1036,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   sessionCardButtonTextSecondary: {
-    color: '#10B981',
+    color: OnTheGoColors.primary,
   },
 
   // Scheduled Marker styles

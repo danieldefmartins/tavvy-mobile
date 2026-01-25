@@ -32,6 +32,7 @@ export const SCREEN_COLORS = {
   wallet: { start: '#475569', end: '#64748B' },
   rvCamping: { start: '#166534', end: '#15803D' },
   rides: { start: '#D946EF', end: '#F472B6' },
+  onTheGo: { start: '#7C3AED', end: '#6D28D9' },
 } as const;
 
 export type ScreenColorKey = keyof typeof SCREEN_COLORS;
