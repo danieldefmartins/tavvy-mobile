@@ -347,6 +347,64 @@ export default function HappeningNowScreen() {
         showBackButton={true}
       />
 
+      {/* Filter Bar - Realtors-style design */}
+      <View style={styles.filterBarContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterBarContent}
+        >
+          {/* Time Filters */}
+          {TIME_FILTERS.map((filter) => (
+            <TouchableOpacity
+              key={filter.id}
+              style={[
+                styles.filterPill,
+                selectedTimeFilter === filter.id && styles.filterPillActive,
+              ]}
+              onPress={() => setSelectedTimeFilter(filter.id as any)}
+            >
+              <Ionicons 
+                name={filter.id === 'all' ? 'calendar-outline' : filter.id === 'tonight' ? 'moon-outline' : filter.id === 'weekend' ? 'sunny-outline' : 'time-outline'} 
+                size={16} 
+                color={selectedTimeFilter === filter.id ? '#FFFFFF' : HappeningColors.primary} 
+              />
+              <Text style={[
+                styles.filterPillText,
+                selectedTimeFilter === filter.id && styles.filterPillTextActive,
+              ]}>
+                {filter.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          {/* Separator */}
+          <View style={styles.filterSeparator} />
+          {/* Category Filters */}
+          {CATEGORIES.map((category) => (
+            <TouchableOpacity
+              key={category.id}
+              style={[
+                styles.filterPill,
+                selectedCategory === category.id && styles.filterPillActive,
+              ]}
+              onPress={() => setSelectedCategory(category.id)}
+            >
+              <Ionicons 
+                name={category.icon as any} 
+                size={16} 
+                color={selectedCategory === category.id ? '#FFFFFF' : HappeningColors.primary} 
+              />
+              <Text style={[
+                styles.filterPillText,
+                selectedCategory === category.id && styles.filterPillTextActive,
+              ]}>
+                {category.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
       <ScrollView 
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -357,64 +415,6 @@ export default function HappeningNowScreen() {
           />
         }
       >
-        {/* Time Filter Pills */}
-        <View style={styles.timeFiltersContainer}>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.timeFiltersScroll}
-          >
-            {TIME_FILTERS.map((filter) => (
-              <TouchableOpacity
-                key={filter.id}
-                style={[
-                  styles.timeFilterPill,
-                  selectedTimeFilter === filter.id && styles.timeFilterPillActive,
-                ]}
-                onPress={() => setSelectedTimeFilter(filter.id as any)}
-              >
-                <Text style={[
-                  styles.timeFilterText,
-                  selectedTimeFilter === filter.id && styles.timeFilterTextActive,
-                ]}>
-                  {filter.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Category Pills */}
-        <View style={styles.categoriesContainer}>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesScroll}
-          >
-            {CATEGORIES.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                style={[
-                  styles.categoryPill,
-                  selectedCategory === category.id && styles.categoryPillActive,
-                ]}
-                onPress={() => setSelectedCategory(category.id)}
-              >
-                <Ionicons 
-                  name={category.icon as any} 
-                  size={16} 
-                  color={selectedCategory === category.id ? '#FFFFFF' : HappeningColors.primary} 
-                />
-                <Text style={[
-                  styles.categoryPillText,
-                  selectedCategory === category.id && styles.categoryPillTextActive,
-                ]}>
-                  {category.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
 
         {/* Loading State */}
         {loading && (
@@ -526,6 +526,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Filter Bar - Realtors-style design with elegant white shade separator
+  filterBarContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  filterBarContent: {
+    paddingHorizontal: 16,
+    gap: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 45, 85, 0.1)',
+    gap: 6,
+  },
+  filterPillActive: {
+    backgroundColor: HappeningColors.primary,
+  },
+  filterPillText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: HappeningColors.primary,
+  },
+  filterPillTextActive: {
+    color: '#FFFFFF',
+  },
+  filterSeparator: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    marginHorizontal: 4,
+  },
+  // Legacy filter styles (kept for compatibility)
   timeFiltersContainer: {
     paddingTop: 16,
   },

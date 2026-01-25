@@ -430,6 +430,17 @@ export default function AtlasHomeScreen() {
         showBackButton={false}
       />
 
+      {/* Category Filters - Fixed outside ScrollView */}
+      <View style={styles.filterBarContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterBarContent}
+        >
+          {FILTER_OPTIONS.map(renderFilterChip)}
+        </ScrollView>
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -443,15 +454,6 @@ export default function AtlasHomeScreen() {
           />
         }
       >
-        {/* Category Filters */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filtersContainer}
-          contentContainerStyle={styles.filtersContent}
-        >
-          {FILTER_OPTIONS.map(renderFilterChip)}
-        </ScrollView>
 
         {/* Results count */}
         <View style={styles.resultsHeader}>
@@ -544,26 +546,51 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
 
-  // Filters
+  // Filter Bar - Realtors-style design with elegant white shade separator
+  filterBarContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  filterBarContent: {
+    paddingHorizontal: 16,
+    gap: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  // Legacy filter styles (kept for compatibility)
   filtersContainer: {
-    marginBottom: 8,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   filtersContent: {
     paddingHorizontal: 16,
+    paddingVertical: 12,
     gap: 8,
     flexDirection: 'row',
   },
   filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
     marginRight: 8,
+    backgroundColor: `rgba(124, 58, 237, 0.1)`,
+    gap: 6,
   },
   filterChipSelected: {
     backgroundColor: ATLAS_PRIMARY,
   },
   filterChipUnselected: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: `rgba(124, 58, 237, 0.1)`,
   },
   filterChipText: {
     fontSize: 14,
@@ -573,7 +600,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   filterChipTextUnselected: {
-    color: '#374151',
+    color: ATLAS_PRIMARY,
   },
 
   // Results header

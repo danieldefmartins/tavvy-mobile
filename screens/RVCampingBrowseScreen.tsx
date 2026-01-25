@@ -274,48 +274,53 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
         showBackButton={true}
       />
 
-      {/* Filter Options */}
-      <View style={[styles.filterContainer, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+      {/* Filter Bar - Realtors-style design */}
+      <View style={styles.filterBarContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterBarContent}>
           {(['all', 'rv_park', 'campground', 'dump_station'] as FilterOption[]).map((option) => (
             <TouchableOpacity
               key={option}
               style={[
-                styles.filterButton,
-                filterBy === option && styles.filterButtonActive,
-                { backgroundColor: filterBy === option ? '#15803D' : (isDark ? theme.background : '#F2F2F7') }
+                styles.filterPill,
+                filterBy === option && styles.filterPillActive,
               ]}
               onPress={() => setFilterBy(option)}
             >
+              <Ionicons 
+                name={option === 'all' ? 'grid-outline' : option === 'rv_park' ? 'car-outline' : option === 'campground' ? 'bonfire-outline' : 'water-outline'} 
+                size={16} 
+                color={filterBy === option ? '#FFFFFF' : '#15803D'} 
+              />
               <Text style={[
-                styles.filterButtonText,
-                { color: filterBy === option ? '#fff' : (isDark ? theme.text : '#000') }
+                styles.filterPillText,
+                filterBy === option && styles.filterPillTextActive,
               ]}>
                 {getFilterLabel(option)}
               </Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
-      </View>
-
-      {/* Sort Options */}
-      <View style={[styles.sortContainer, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortScroll}>
+          {/* Separator */}
+          <View style={styles.filterSeparator} />
+          {/* Sort Options */}
           {(['popular', 'recent', 'nearby'] as SortOption[]).map((option) => (
             <TouchableOpacity
               key={option}
               style={[
-                styles.sortButton,
-                sortBy === option && styles.sortButtonActive,
-                { backgroundColor: sortBy === option ? '#15803D' : (isDark ? theme.background : '#F2F2F7') }
+                styles.filterPill,
+                sortBy === option && styles.filterPillActive,
               ]}
               onPress={() => setSortBy(option)}
             >
+              <Ionicons 
+                name={option === 'popular' ? 'flame-outline' : option === 'recent' ? 'time-outline' : 'location-outline'} 
+                size={16} 
+                color={sortBy === option ? '#FFFFFF' : '#15803D'} 
+              />
               <Text style={[
-                styles.sortButtonText,
-                { color: sortBy === option ? '#fff' : (isDark ? theme.text : '#000') }
+                styles.filterPillText,
+                sortBy === option && styles.filterPillTextActive,
               ]}>
-                {option === 'popular' ? 'Most Popular' : option === 'recent' ? 'Recently Added' : 'Nearby'}
+                {option === 'popular' ? 'Popular' : option === 'recent' ? 'Recent' : 'Nearby'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -392,6 +397,51 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 2,
   },
+  // Filter Bar - Realtors-style design with elegant white shade separator
+  filterBarContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  filterBarContent: {
+    paddingHorizontal: 16,
+    gap: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(21, 128, 61, 0.1)',
+    gap: 6,
+  },
+  filterPillActive: {
+    backgroundColor: '#15803D',
+  },
+  filterPillText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#15803D',
+  },
+  filterPillTextActive: {
+    color: '#FFFFFF',
+  },
+  filterSeparator: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    marginHorizontal: 4,
+  },
+  // Legacy filter styles (kept for compatibility)
   filterContainer: {
     paddingVertical: 12,
     borderBottomWidth: 1,

@@ -175,18 +175,17 @@ export default function UniverseDiscoveryScreen() {
         showBackButton={false}
       />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Categories */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesContainer}>
+      {/* Filter Bar - Realtors-style design */}
+      <View style={styles.filterBarContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterBarContent}>
           {categoryChips.map((cat) => {
             const isActive = activeCategory === cat.id;
             return (
               <TouchableOpacity
                 key={cat.id}
                 style={[
-                  styles.categoryChip,
-                  { backgroundColor: isDark ? theme.surface : (isActive ? '#14B8A6' : '#E5E7EB') },
-                  isActive && styles.categoryChipActive,
+                  styles.filterPill,
+                  isActive && styles.filterPillActive,
                 ]}
                 onPress={() => setActiveCategory(cat.id)}
               >
@@ -194,15 +193,17 @@ export default function UniverseDiscoveryScreen() {
                   <Ionicons
                     name={cat.icon as any}
                     size={16}
-                    color={isActive ? '#fff' : '#9CA3AF'}
-                    style={{ marginRight: 6 }}
+                    color={isActive ? '#FFFFFF' : '#0EA5E9'}
                   />
                 )}
-                <Text style={[styles.categoryText, { color: isActive ? '#fff' : (isDark ? '#E5E7EB' : '#374151') }]}>{cat.label}</Text>
+                <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>{cat.label}</Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
         {/* Featured Universe */}
         <View style={styles.section}>
@@ -348,7 +349,46 @@ const styles = StyleSheet.create({
   // Content
   scrollContent: { paddingTop: 16 },
 
-  // Categories
+  // Filter Bar - Realtors-style design with elegant white shade separator
+  filterBarContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  filterBarContent: {
+    paddingHorizontal: 16,
+    gap: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(14, 165, 233, 0.1)',
+    gap: 6,
+  },
+  filterPillActive: {
+    backgroundColor: '#0EA5E9',
+  },
+  filterPillText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0EA5E9',
+  },
+  filterPillTextActive: {
+    color: '#FFFFFF',
+  },
+
+  // Legacy category styles (kept for compatibility)
   categoriesContainer: {
     paddingHorizontal: 16,
     paddingBottom: 16,

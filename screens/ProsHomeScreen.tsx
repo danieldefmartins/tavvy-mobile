@@ -52,6 +52,7 @@ export default function ProsHomeScreen() {
   const [location, setLocation] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<'user' | 'pro'>('user');
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
   const { pros, loading, searchPros } = useSearchPros();
   const { categories, loading: categoriesLoading, error: categoriesError } = useCategories();
@@ -247,6 +248,43 @@ export default function ProsHomeScreen() {
         showBackButton={false}
       />
 
+      {/* Filter Bar */}
+      <View style={styles.filterBarContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterBarContent}
+        >
+          <TouchableOpacity
+            style={[styles.filterPill, selectedCategory === 'all' && styles.filterPillActive]}
+            onPress={() => setSelectedCategory('all')}
+          >
+            <Ionicons name="grid-outline" size={16} color={selectedCategory === 'all' ? '#FFFFFF' : ProsColors.primary} />
+            <Text style={[styles.filterPillText, selectedCategory === 'all' && styles.filterPillTextActive]}>All</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterPill, selectedCategory === 'popular' && styles.filterPillActive]}
+            onPress={() => setSelectedCategory('popular')}
+          >
+            <Ionicons name="flame-outline" size={16} color={selectedCategory === 'popular' ? '#FFFFFF' : ProsColors.primary} />
+            <Text style={[styles.filterPillText, selectedCategory === 'popular' && styles.filterPillTextActive]}>Popular</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterPill, selectedCategory === 'nearby' && styles.filterPillActive]}
+            onPress={() => setSelectedCategory('nearby')}
+          >
+            <Ionicons name="location-outline" size={16} color={selectedCategory === 'nearby' ? '#FFFFFF' : ProsColors.primary} />
+            <Text style={[styles.filterPillText, selectedCategory === 'nearby' && styles.filterPillTextActive]}>Nearby</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterPill, selectedCategory === 'top-rated' && styles.filterPillActive]}
+            onPress={() => setSelectedCategory('top-rated')}
+          >
+            <Ionicons name="star-outline" size={16} color={selectedCategory === 'top-rated' ? '#FFFFFF' : ProsColors.primary} />
+            <Text style={[styles.filterPillText, selectedCategory === 'top-rated' && styles.filterPillTextActive]}>Top Rated</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
 
       <ScrollView
         style={styles.scrollView}
@@ -462,6 +500,44 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+  },
+  // Filter Bar - Realtors-style design
+  filterBarContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  filterBarContent: {
+    paddingHorizontal: 16,
+    gap: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(5, 150, 104, 0.1)',
+    gap: 6,
+  },
+  filterPillActive: {
+    backgroundColor: ProsColors.primary,
+  },
+  filterPillText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: ProsColors.primary,
+  },
+  filterPillTextActive: {
+    color: '#FFFFFF',
   },
   // Header
   header: {

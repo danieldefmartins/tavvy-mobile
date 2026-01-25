@@ -301,24 +301,28 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
         showBackButton={true}
       />
 
-      {/* Sort Options */}
-      <View style={[styles.sortContainer, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortScroll}>
+      {/* Filter Bar - Realtors-style design */}
+      <View style={styles.filterBarContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterBarContent}>
           {(['popular', 'recent', 'nearby'] as SortOption[]).map((option) => (
             <TouchableOpacity
               key={option}
               style={[
-                styles.sortButton,
-                sortBy === option && styles.sortButtonActive,
-                { backgroundColor: sortBy === option ? '#D946EF' : (isDark ? theme.background : '#F2F2F7') }
+                styles.filterPill,
+                sortBy === option && styles.filterPillActive,
               ]}
               onPress={() => setSortBy(option)}
             >
+              <Ionicons 
+                name={option === 'popular' ? 'flame-outline' : option === 'recent' ? 'time-outline' : 'location-outline'} 
+                size={16} 
+                color={sortBy === option ? '#FFFFFF' : '#D946EF'} 
+              />
               <Text style={[
-                styles.sortButtonText,
-                { color: sortBy === option ? '#fff' : (isDark ? theme.textSecondary : '#666') }
+                styles.filterPillText,
+                sortBy === option && styles.filterPillTextActive,
               ]}>
-                {option === 'popular' ? '🔥 Popular' : option === 'recent' ? '🆕 Recent' : '📍 Nearby'}
+                {option === 'popular' ? 'Popular' : option === 'recent' ? 'Recent' : 'Nearby'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -396,6 +400,45 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 2,
   },
+  // Filter Bar - Realtors-style design with elegant white shade separator
+  filterBarContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  filterBarContent: {
+    paddingHorizontal: 16,
+    gap: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(217, 70, 239, 0.1)',
+    gap: 6,
+  },
+  filterPillActive: {
+    backgroundColor: '#D946EF',
+  },
+  filterPillText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#D946EF',
+  },
+  filterPillTextActive: {
+    color: '#FFFFFF',
+  },
+  // Legacy sort styles (kept for compatibility)
   sortContainer: {
     paddingVertical: 12,
     borderBottomWidth: 1,
