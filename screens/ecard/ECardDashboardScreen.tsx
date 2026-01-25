@@ -28,6 +28,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { FONTS, PREMIUM_FONT_COUNT } from '../../config/eCardFonts';
 import { useAuth } from '../../contexts/AuthContext';
 import FeaturedSocialsSelector from '../../components/ecard/FeaturedSocialsSelector';
+import { getTemplateById, getColorSchemeById } from '../../config/eCardTemplates';
 
 const { width, height } = Dimensions.get('window');
 const PREVIEW_HEIGHT = height * 0.32;
@@ -342,6 +343,17 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     const tempSlug = `draft_${user.id.substring(0, 8)}_${Date.now().toString(36)}`;
     const suggestedSlug = generateSlug(profile.name || 'user');
     
+    // Get the selected template and color scheme from route params
+    const selectedTemplate = templateId ? getTemplateById(templateId) : null;
+    const selectedColorScheme = templateId && colorSchemeId 
+      ? getColorSchemeById(templateId, colorSchemeId) 
+      : null;
+    
+    // Use template colors if available, otherwise fall back to defaults
+    const gradientColor1 = selectedColorScheme?.primary || '#667eea';
+    const gradientColor2 = selectedColorScheme?.secondary || '#764ba2';
+    const buttonStyle = selectedTemplate?.layout?.buttonStyle || 'fill';
+    
     let insertedCard = null;
     let lastError = null;
     
@@ -357,13 +369,13 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         website: '',
         city: profile.address?.city || '',
         state: profile.address?.state || '',
-        gradient_color_1: '#667eea',
-        gradient_color_2: '#764ba2',
+        gradient_color_1: gradientColor1,
+        gradient_color_2: gradientColor2,
         profile_photo_url: profile.image || null,
-        profile_photo_size: 'medium',
-        theme: 'classic',
+        profile_photo_size: selectedTemplate?.layout?.photoSize || 'medium',
+        theme: templateId || 'classic',
         background_type: 'gradient',
-        button_style: 'fill',
+        button_style: buttonStyle,
         font_style: 'default',
         is_active: true,
         is_published: false, // Draft until published
