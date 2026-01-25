@@ -3,10 +3,7 @@
  * Explore themed universes (theme parks, airports, campuses, etc.)
  * Path: screens/UniverseDiscoveryScreen.tsx
  *
- * HEADER LAYOUT:
- * Left  = Logo
- * Center = "Universes"
- * Right = Profile icon
+ * UNIFIED HEADER DESIGN - Teal gradient (#0EA5E9 → #14B8A6)
  * 
  * NOW CONNECTED TO SUPABASE - Fetches real data from atlas_universes table
  */
@@ -19,19 +16,15 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  TextInput,
   Dimensions,
-  SafeAreaView,
-  StatusBar,
-  Platform,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabaseClient';
 import { getCategories, type AtlasCategory, type AtlasUniverse } from '../lib/atlas';
+import { UnifiedHeader } from '../components/UnifiedHeader';
 
 const { width } = Dimensions.get('window');
 
@@ -163,7 +156,7 @@ export default function UniverseDiscoveryScreen() {
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer, { backgroundColor: isDark ? theme.background : '#F9FAFB' }]}>
-        <ActivityIndicator size="large" color="#06B6D4" />
+        <ActivityIndicator size="large" color="#0EA5E9" />
         <Text style={[styles.loadingText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
           Loading universes...
         </Text>
@@ -173,45 +166,14 @@ export default function UniverseDiscoveryScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F9FAFB' }]}>
-      <StatusBar barStyle="light-content" />
-
-      {/* Full-width gradient header */}
-      <LinearGradient
-        colors={['#06B6D4', '#0891B2']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.headerGradient}
-      >
-        <SafeAreaView>
-          {/* Header row: Title (L) / Icon (R) */}
-          <View style={styles.headerRow}>
-            {/* Left: Title */}
-            <View style={styles.headerLeft}>
-              <Text style={styles.headerTitle}>Universes</Text>
-            </View>
-
-            {/* Right: Profile */}
-            <TouchableOpacity style={styles.headerRight}>
-              <Ionicons name="person-circle-outline" size={28} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Subtitle */}
-          <Text style={styles.headerSubtitle}>Explore worlds with many places inside</Text>
-
-          {/* Search bar */}
-          <View style={[styles.searchContainer, { backgroundColor: isDark ? theme.surface : '#F3F4F6', borderWidth: isDark ? 0 : 1, borderColor: '#E5E7EB' }]}>
-            <Ionicons name="search" size={20} color={isDark ? '#9CA3AF' : '#6B7280'} style={styles.searchIcon} />
-            <TextInput
-              placeholder="Find a universe..."
-              placeholderTextColor={isDark ? '#9CA3AF' : '#9CA3AF'}
-              style={[styles.searchInput, { color: isDark ? '#fff' : '#111827' }]}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
+      {/* Unified Header */}
+      <UnifiedHeader
+        screenKey="universes"
+        title="Universes"
+        searchPlaceholder="Find a universe..."
+        onSearch={setSearchQuery}
+        showBackButton={false}
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Categories */}
@@ -223,7 +185,7 @@ export default function UniverseDiscoveryScreen() {
                 key={cat.id}
                 style={[
                   styles.categoryChip,
-                  { backgroundColor: isDark ? theme.surface : (isActive ? '#06B6D4' : '#E5E7EB') },
+                  { backgroundColor: isDark ? theme.surface : (isActive ? '#0EA5E9' : '#E5E7EB') },
                   isActive && styles.categoryChipActive,
                 ]}
                 onPress={() => setActiveCategory(cat.id)}
@@ -244,7 +206,7 @@ export default function UniverseDiscoveryScreen() {
 
         {/* Featured Universe */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#E5E7EB' }]}>Featured Universe</Text>
+          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#1F2937' }]}>Featured Universe</Text>
 
           {featuredUniverse ? (
             <TouchableOpacity
@@ -280,8 +242,8 @@ export default function UniverseDiscoveryScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionHeaderLeft}>
-              <Ionicons name="navigate" size={18} color="#06B6D4" />
-              <Text style={[styles.sectionTitleInline, { color: isDark ? theme.text : '#E5E7EB' }]}>
+              <Ionicons name="navigate" size={18} color="#0EA5E9" />
+              <Text style={[styles.sectionTitleInline, { color: isDark ? theme.text : '#1F2937' }]}>
                 Nearby Universes
               </Text>
             </View>
@@ -318,7 +280,7 @@ export default function UniverseDiscoveryScreen() {
 
         {/* Popular Grid */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#E5E7EB' }]}>Popular Destinations</Text>
+          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#1F2937' }]}>Popular Destinations</Text>
 
           {popularUniverses.length > 0 ? (
             <View style={styles.gridContainer}>
@@ -383,75 +345,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  headerGradient: {
-    paddingBottom: 14,
-  },
-
-  // Header layout
-  headerRow: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 12 : 8,
-    height: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  headerLeft: {
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-
-  headerRight: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 4,
-  },
-
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.5,
-  },
-
-  headerSubtitle: {
-    paddingHorizontal: 20,
-    marginTop: 2,
-    marginBottom: 10,
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-    textAlign: 'left',
-  },
-
-  // Search
-  searchContainer: {
-    marginHorizontal: 20,
-    height: 52,
-    borderRadius: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-
-  searchIcon: { marginRight: 12 },
-
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-  },
-
   // Content
   scrollContent: { paddingTop: 16 },
 
+  // Categories
   categoriesContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 8,
   },
 
   categoryChip: {
@@ -460,11 +361,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    marginRight: 10,
+    marginRight: 8,
   },
 
   categoryChipActive: {
-    backgroundColor: '#06B6D4',
+    backgroundColor: '#0EA5E9',
   },
 
   categoryText: {
@@ -472,12 +373,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  section: { marginBottom: 28 },
+  // Sections
+  section: {
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
 
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    marginLeft: 20,
     marginBottom: 12,
   },
 
@@ -485,14 +389,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
     marginBottom: 12,
   },
 
   sectionHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
 
   sectionTitleInline: {
@@ -502,147 +405,146 @@ const styles = StyleSheet.create({
 
   seeAllText: {
     fontSize: 14,
+    color: '#0EA5E9',
     fontWeight: '600',
-    color: '#06B6D4',
   },
 
-  // Featured
+  // Featured Card
   featuredCard: {
-    marginHorizontal: 20,
-    height: 220,
-    borderRadius: 24,
+    borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#111827',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    elevation: 8,
+    height: 200,
   },
 
-  featuredImage: { width: '100%', height: '100%' },
+  featuredImage: {
+    width: '100%',
+    height: '100%',
+  },
 
   featuredOverlay: {
     position: 'absolute',
-    top: 0,
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 20,
-    paddingTop: 60,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    padding: 16,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
 
   popularTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
     marginBottom: 8,
   },
 
   popularTagText: {
-    color: '#fff',
+    color: '#F59E0B',
     fontSize: 12,
     fontWeight: '600',
     marginLeft: 4,
   },
 
   featuredName: {
-    fontSize: 24,
-    fontWeight: '800',
     color: '#fff',
-    marginBottom: 6,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 4,
   },
 
-  featuredMeta: { flexDirection: 'row', alignItems: 'center' },
+  featuredMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 
   featuredMetaText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
+    color: '#E5E7EB',
+    fontSize: 13,
     marginLeft: 4,
   },
 
-  featuredDot: { color: '#fff', marginHorizontal: 8 },
+  featuredDot: {
+    color: '#9CA3AF',
+    marginHorizontal: 8,
+  },
 
-  // Nearby
-  nearbyContainer: { paddingHorizontal: 20 },
+  // Nearby Cards
+  nearbyContainer: {
+    paddingRight: 16,
+  },
 
   nearbyCard: {
     width: 160,
-    borderRadius: 16,
-    marginRight: 12,
+    borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
+    marginRight: 12,
   },
 
-  nearbyImage: { width: '100%', height: 100 },
+  nearbyImage: {
+    width: '100%',
+    height: 100,
+  },
 
-  nearbyContent: { padding: 10 },
+  nearbyContent: {
+    padding: 12,
+  },
 
   nearbyName: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     marginBottom: 4,
   },
 
   nearbyMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
   },
 
-  nearbyType: { fontSize: 11 },
+  nearbyType: {
+    fontSize: 12,
+  },
 
   nearbyDist: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#06B6D4',
+    fontSize: 12,
+    color: '#0EA5E9',
   },
 
-  // Grid
+  // Grid Cards
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 20,
     justifyContent: 'space-between',
   },
 
   gridCard: {
-    width: (width - 52) / 2,
-    borderRadius: 16,
-    marginBottom: 16,
+    width: (width - 48) / 2,
+    borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
+    marginBottom: 12,
   },
 
-  gridImage: { width: '100%', height: 110 },
+  gridImage: {
+    width: '100%',
+    height: 100,
+  },
 
-  gridContent: { padding: 12 },
+  gridContent: {
+    padding: 12,
+  },
 
   gridName: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
     marginBottom: 2,
   },
 
-  gridLocation: { fontSize: 12, marginBottom: 8 },
+  gridLocation: {
+    fontSize: 12,
+    marginBottom: 8,
+  },
 
   gridFooter: {
     flexDirection: 'row',
@@ -652,18 +554,17 @@ const styles = StyleSheet.create({
 
   gridType: {
     fontSize: 11,
-    color: '#06B6D4',
-    fontWeight: '700',
+    color: '#9CA3AF',
   },
 
   gridBadge: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 8,
   },
 
   gridBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 11,
+    fontWeight: '600',
   },
 });

@@ -38,6 +38,7 @@ import {
   type AtlasCategory,
 } from '../lib/atlas';
 import { getCoverImageUrl, getThumbnailUrl } from '../lib/imageUtils';
+import { UnifiedHeader } from '../components/UnifiedHeader';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2; // 2 columns with padding
@@ -418,30 +419,16 @@ export default function AtlasHomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F9FAFB' }]}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle="light-content" />
 
-      {/* Header */}
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('AtlasSearch', {})}
-            style={styles.searchButton}
-          >
-            <Ionicons name="search" size={24} color={isDark ? '#fff' : '#374151'} />
-          </TouchableOpacity>
-
-          <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#111827' }]}>
-            Atlas
-          </Text>
-
-          <TouchableOpacity style={styles.profileButton}>
-            <Image
-              source={{ uri: PLACEHOLDER_AVATAR }}
-              style={styles.profileAvatar}
-            />
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      {/* Unified Header */}
+      <UnifiedHeader
+        screenKey="atlas"
+        title="Atlas"
+        searchPlaceholder="Search articles..."
+        onSearch={(text) => navigation.navigate('AtlasSearch', { query: text })}
+        showBackButton={false}
+      />
 
       <ScrollView
         style={styles.scrollView}

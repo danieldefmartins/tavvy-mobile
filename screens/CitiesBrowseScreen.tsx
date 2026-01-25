@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useTheme, spacing, borderRadius, shadows } from '../constants/Colors';
+import { UnifiedHeader } from '../components/UnifiedHeader';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 32;
@@ -323,19 +324,14 @@ export default function CitiesBrowseScreen({ navigation }: { navigation: any }) 
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? theme.background : '#F2F2F7' }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={isDark ? theme.text : '#000'} />
-        </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={[styles.headerTitle, { color: isDark ? theme.text : '#000' }]}>🏙️ Cities</Text>
-          <Text style={[styles.headerSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
-            Discover and review cities around the world
-          </Text>
-        </View>
-      </View>
+    <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F2F2F7' }]}>
+      {/* Unified Header */}
+      <UnifiedHeader
+        screenKey="cities"
+        title="Cities"
+        searchPlaceholder="Search cities..."
+        showBackButton={true}
+      />
 
       {/* Sort Options */}
       <View style={[styles.sortContainer, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
@@ -397,7 +393,7 @@ export default function CitiesBrowseScreen({ navigation }: { navigation: any }) 
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

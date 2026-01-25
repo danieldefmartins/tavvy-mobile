@@ -22,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabaseClient';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { UnifiedHeader } from '../components/UnifiedHeader';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 32;
@@ -264,19 +265,14 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? theme.background : '#F2F2F7' }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={isDark ? theme.text : '#000'} />
-        </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={[styles.headerTitle, { color: isDark ? theme.text : '#000' }]}>🏕️ RV & Camping</Text>
-          <Text style={[styles.headerSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
-            Campgrounds and RV parks with real traveler insights
-          </Text>
-        </View>
-      </View>
+    <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F2F2F7' }]}>
+      {/* Unified Header */}
+      <UnifiedHeader
+        screenKey="rvCamping"
+        title="RV & Camping"
+        searchPlaceholder="Search campgrounds..."
+        showBackButton={true}
+      />
 
       {/* Filter Options */}
       <View style={[styles.filterContainer, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
@@ -357,7 +353,7 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

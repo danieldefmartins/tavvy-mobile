@@ -28,6 +28,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
+import { UnifiedHeader } from '../components/UnifiedHeader';
 
 const { width } = Dimensions.get('window');
 
@@ -375,54 +376,18 @@ export default function RealtorsBrowseScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header with Gradient */}
-      <LinearGradient
-        colors={[RealtorColors.gradientStart, RealtorColors.gradientEnd]}
-        style={styles.headerGradient}
-      >
-        <SafeAreaView edges={['top']}>
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <View style={styles.headerTitleContainer}>
-              <Image 
-                source={require('../assets/brand/tavvy-logo-white.png')} 
-                style={styles.headerLogo}
-                resizeMode="contain"
-              />
-              <Text style={styles.headerTitle}>Realtors</Text>
-            </View>
-            <TouchableOpacity style={styles.loginButton} onPress={handleLoginPress}>
-              <Ionicons name={user ? 'person-circle' : 'person-circle-outline'} size={28} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <View style={styles.searchBar}>
-              <Ionicons name="search" size={20} color={RealtorColors.textMuted} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search realtors..."
-                placeholderTextColor={RealtorColors.textMuted}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onSubmitEditing={handleSearch}
-                returnKeyType="search"
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => {
-                  setSearchQuery('');
-                  loadRealtors();
-                }}>
-                  <Ionicons name="close-circle" size={20} color={RealtorColors.textMuted} />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
+      {/* Unified Header */}
+      <UnifiedHeader
+        screenKey="realtors"
+        title="Realtors"
+        searchPlaceholder="Search realtors..."
+        onSearch={(text) => {
+          setSearchQuery(text);
+          if (text.length === 0) loadRealtors();
+        }}
+        onProfilePress={handleLoginPress}
+        showBackButton={true}
+      />
 
       {/* Specialty Pills */}
       <View style={styles.specialtiesContainer}>

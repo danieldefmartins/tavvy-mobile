@@ -40,6 +40,7 @@ import { useSearchPros } from '../hooks/usePros';
 import { useCategories } from '../hooks/useCategories';
 import { useProsPendingRequests } from '../hooks/useProsPendingRequests';
 import { Pro } from '../lib/ProsTypes';
+import { UnifiedHeader } from '../components/UnifiedHeader';
 
 const { width } = Dimensions.get('window');
 
@@ -236,28 +237,34 @@ export default function ProsHomeScreen() {
 
   // User Mode (default) - Find Pros
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Tavvy Pros</Text>
-        <View style={styles.headerToggle}>
-          <TouchableOpacity
-            style={[styles.modeToggle, viewMode === 'user' && styles.modeToggleActive]}
-            onPress={() => setViewMode('user')}
-          >
-            <Text style={[styles.modeToggleText, viewMode === 'user' && styles.modeToggleTextActive]}>
-              Find Pros
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeToggle, viewMode === 'pro' && styles.modeToggleActive]}
-            onPress={() => setViewMode('pro')}
-          >
-            <Text style={[styles.modeToggleText, viewMode === 'pro' && styles.modeToggleTextActive]}>
-              I'm a Pro
-            </Text>
-          </TouchableOpacity>
-        </View>
+    <View style={styles.container}>
+      {/* Unified Header */}
+      <UnifiedHeader
+        screenKey="pros"
+        title="Pros"
+        searchPlaceholder="Search pros..."
+        onSearch={setSearchQuery}
+        showBackButton={false}
+      />
+
+      {/* Mode Toggle below header */}
+      <View style={styles.modeToggleRow}>
+        <TouchableOpacity
+          style={[styles.modeToggle, viewMode === 'user' && styles.modeToggleActive]}
+          onPress={() => setViewMode('user')}
+        >
+          <Text style={[styles.modeToggleText, viewMode === 'user' && styles.modeToggleTextActive]}>
+            Find Pros
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.modeToggle, viewMode === 'pro' && styles.modeToggleActive]}
+          onPress={() => setViewMode('pro')}
+        >
+          <Text style={[styles.modeToggleText, viewMode === 'pro' && styles.modeToggleTextActive]}>
+            I'm a Pro
+          </Text>
+        </TouchableOpacity>
       </View>
       <ScrollView
         style={styles.scrollView}

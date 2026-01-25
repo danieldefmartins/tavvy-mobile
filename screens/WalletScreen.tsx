@@ -35,6 +35,7 @@ import { useThemeContext } from '../contexts/ThemeContext';
 import * as Contacts from 'expo-contacts';
 import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { UnifiedHeader } from '../components/UnifiedHeader';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_HEIGHT = 80;
@@ -294,21 +295,17 @@ export default function WalletScreen() {
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle="light-content" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>Tavvy Wallet</Text>
-          <Text style={[styles.headerSubtitle, dynamicStyles.subtitle]}>Your saved contractors</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => setMenuVisible(true)}
-        >
-          <Ionicons name="ellipsis-horizontal-circle" size={28} color={dynamicStyles.menuIcon.color} />
-        </TouchableOpacity>
-      </View>
+      {/* Unified Header */}
+      <UnifiedHeader
+        screenKey="wallet"
+        title="Wallet"
+        searchPlaceholder="Search saved pros..."
+        showBackButton={false}
+        rightIcon="ellipsis-horizontal-circle"
+        onRightIconPress={() => setMenuVisible(true)}
+      />
 
       {/* Cards Stack */}
       <ScrollView

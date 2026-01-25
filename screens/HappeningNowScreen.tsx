@@ -27,6 +27,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { getHappeningNowEvents, TavvyEvent } from '../lib/eventsService';
+import { UnifiedHeader } from '../components/UnifiedHeader';
 
 const { width } = Dimensions.get('window');
 
@@ -338,30 +339,13 @@ export default function HappeningNowScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header with Gradient */}
-      <LinearGradient
-        colors={[HappeningColors.gradientStart, HappeningColors.gradientEnd]}
-        style={styles.headerGradient}
-      >
-        <SafeAreaView edges={['top']}>
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <View style={styles.headerTitleContainer}>
-              <Image 
-                source={require('../assets/brand/tavvy-logo-white.png')} 
-                style={styles.headerLogo}
-                resizeMode="contain"
-              />
-              <Text style={styles.headerTitle}>Happening Now</Text>
-            </View>
-            <TouchableOpacity style={styles.searchButton}>
-              <Ionicons name="search" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
+      {/* Unified Header */}
+      <UnifiedHeader
+        screenKey="happeningNow"
+        title="Happening Now"
+        searchPlaceholder="Search events..."
+        showBackButton={true}
+      />
 
       <ScrollView 
         showsVerticalScrollIndicator={false}
