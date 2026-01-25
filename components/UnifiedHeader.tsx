@@ -59,7 +59,7 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
       onProfilePress();
     } else {
       // Default navigation to profile
-      (navigation as any).navigate('Profile');
+      (navigation as any).navigate('ProfileMain');
     }
   };
 
