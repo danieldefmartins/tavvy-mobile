@@ -293,14 +293,14 @@ export default function ProsHomeScreen() {
         activeOpacity={0.9}
       >
         <LinearGradient
-          colors={[ProsColors.primary, '#047857']}
+          colors={['#0EA5E9', '#0284C7']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.startProjectGradient}
         >
           <View style={styles.startProjectContent}>
             <View style={styles.startProjectIconContainer}>
-              <Ionicons name="add-circle" size={28} color={ProsColors.primary} />
+              <Ionicons name="add-circle" size={28} color="#0EA5E9" />
             </View>
             <View style={styles.startProjectTextContainer}>
               <Text style={styles.startProjectTitle}>Start a Project</Text>
