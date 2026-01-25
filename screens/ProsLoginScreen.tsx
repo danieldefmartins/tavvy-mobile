@@ -149,27 +149,9 @@ export default function ProsLoginScreen({ navigation }: any) {
             <Text style={styles.subtitleText}>Service Provider Portal</Text>
           </View>
 
-          {/* Benefits Card */}
-          <View style={styles.benefitsCard}>
-            <View style={styles.benefitItem}>
-              <View style={styles.checkCircle}>
-                <Ionicons name="checkmark" size={14} color="#fff" />
-              </View>
-              <Text style={styles.benefitText}>Get discovered by local customers</Text>
-            </View>
-            <View style={styles.benefitItem}>
-              <View style={styles.checkCircle}>
-                <Ionicons name="checkmark" size={14} color="#fff" />
-              </View>
-              <Text style={styles.benefitText}>Flat annual fee - no per-lead charges</Text>
-            </View>
-            <View style={styles.benefitItem}>
-              <View style={styles.checkCircle}>
-                <Ionicons name="checkmark" size={14} color="#fff" />
-              </View>
-              <Text style={styles.benefitText}>Manage leads and messages in one place</Text>
-            </View>
-          </View>
+          {/* Value Proposition Tagline */}
+          <Text style={styles.tagline}>No per-lead fees. No bidding wars.</Text>
+          <Text style={styles.taglineSubtext}>Just real customers finding you.</Text>
 
           {/* Login Form Card */}
           <View style={styles.formCard}>
@@ -321,11 +303,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 20,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    marginBottom: 8,
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    marginBottom: 4,
   },
   backButton: {
     alignSelf: 'flex-start',
@@ -342,15 +324,15 @@ const styles = StyleSheet.create({
   },
   logoSection: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   logoContainer: {
     position: 'relative',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   logoImage: {
-    width: 200,
-    height: 65,
+    width: 160,
+    height: 50,
     zIndex: 1,
   },
   logoGlow: {
@@ -368,14 +350,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 2,
     borderColor: PROS_GREEN,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginBottom: 8,
   },
   prosBadgeText: {
     color: PROS_GREEN,
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: 2,
   },
@@ -383,38 +365,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: 'rgba(255, 255, 255, 0.7)',
   },
-  benefitsCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  benefitItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  checkCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: PROS_GREEN,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  benefitText: {
-    fontSize: 14,
+  tagline: {
+    fontSize: 18,
+    fontWeight: '600',
     color: '#fff',
-    flex: 1,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  taglineSubtext: {
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+    marginBottom: 20,
   },
   formCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 20,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
@@ -422,29 +390,29 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   inputGroup: {
-    marginBottom: 18,
+    marginBottom: 14,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#1E293B',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   inputIcon: {
-    paddingLeft: 14,
+    paddingLeft: 12,
   },
   input: {
     flex: 1,
-    padding: 14,
-    fontSize: 16,
+    padding: 12,
+    fontSize: 15,
     color: '#1E293B',
   },
   passwordInput: {
@@ -456,8 +424,8 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   loginButton: {
-    marginTop: 8,
-    borderRadius: 14,
+    marginTop: 4,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   loginButtonDisabled: {
@@ -467,16 +435,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
+    padding: 14,
   },
   loginButtonText: {
     color: '#fff',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
   },
   forgotPassword: {
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 12,
   },
   forgotPasswordText: {
     fontSize: 14,
@@ -484,12 +452,12 @@ const styles = StyleSheet.create({
     color: PROS_GREEN,
   },
   createAccountSection: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   dividerLine: {
     flex: 1,
@@ -505,14 +473,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
-    borderRadius: 14,
+    padding: 14,
+    borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   createAccountText: {
     color: PROS_GREEN,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     marginLeft: 8,
   },
