@@ -96,9 +96,26 @@ export default function ECardOnboardingCompleteScreen({ navigation, route }: Pro
     });
   };
 
+  const handleClose = () => {
+    // Navigate back to Apps screen, resetting the eCard stack
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Apps' }],
+    });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
+
+      {/* Close Button */}
+      <TouchableOpacity 
+        style={styles.closeButton} 
+        onPress={handleClose}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="close" size={24} color="#666" />
+      </TouchableOpacity>
 
       <View style={styles.content}>
         {/* Celebration Text */}
@@ -153,9 +170,9 @@ export default function ECardOnboardingCompleteScreen({ navigation, route }: Pro
             {links && links.length > 0 && (
               <View style={styles.linksPreview}>
                 {links.slice(0, 3).map((link: any, index: number) => (
-                  <View key={index} style={[styles.linkButton, { backgroundColor: accentColor }]}>
-                    <Text style={[styles.linkButtonText, { color: textColor }]}>
-                      {link.platform.charAt(0).toUpperCase() + link.platform.slice(1)}
+                  <View key={index} style={[styles.linkButton, { backgroundColor: 'rgba(255,255,255,0.9)' }]}>
+                    <Text style={[styles.linkButtonText, { color: gradientColors[0] }]}>
+                      {link.platform ? link.platform.charAt(0).toUpperCase() + link.platform.slice(1) : 'Link'}
                     </Text>
                   </View>
                 ))}
@@ -242,6 +259,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FAFAFA',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F0F0F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
   },
   confettiContainer: {
     position: 'absolute',

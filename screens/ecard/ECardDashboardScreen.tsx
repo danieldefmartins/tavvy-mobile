@@ -39,6 +39,7 @@ const PHOTO_SIZES = [
   { id: 'medium', name: 'Medium', size: 110 },
   { id: 'large', name: 'Large', size: 140 },
   { id: 'xl', name: 'Extra Large', size: 180 },
+  { id: 'cover', name: 'Cover', size: -1 }, // Full width cover photo
 ];
 
 // Platform icons mapping
@@ -1043,7 +1044,8 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     const textColor = getTextColor();
     const hasLightBg = theme.id === 'minimal';
     const photoSize = getCurrentPhotoSize();
-    const previewPhotoSize = Math.min(photoSize.size * 0.5, 70);
+    const isCoverPhoto = photoSize.id === 'cover';
+    const previewPhotoSize = isCoverPhoto ? width - 48 : Math.min(photoSize.size * 0.5, 70);
     
     return (
       <View style={styles.previewContainer}>
@@ -1073,20 +1075,38 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           )}
           
           {/* Profile Photo */}
-          <View style={[
-            styles.previewPhotoContainer, 
-            hasLightBg && styles.previewPhotoBorderDark,
-            { width: previewPhotoSize, height: previewPhotoSize, borderRadius: previewPhotoSize / 2 }
-          ]}>
-            {cardData?.profile_photo_url ? (
-              <Image 
-                source={{ uri: cardData.profile_photo_url }} 
-                style={[styles.previewPhoto, { width: previewPhotoSize - 4, height: previewPhotoSize - 4, borderRadius: (previewPhotoSize - 4) / 2 }]} 
-              />
-            ) : (
-              <Ionicons name="person" size={previewPhotoSize * 0.5} color={hasLightBg ? '#666' : 'rgba(255,255,255,0.5)'} />
-            )}
-          </View>
+          {isCoverPhoto ? (
+            // Cover photo style - full width at top
+            <View style={styles.coverPhotoContainer}>
+              {cardData?.profile_photo_url ? (
+                <Image 
+                  source={{ uri: cardData.profile_photo_url }} 
+                  style={styles.coverPhoto}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={[styles.coverPhotoPlaceholder, { backgroundColor: hasLightBg ? '#E0E0E0' : 'rgba(255,255,255,0.2)' }]}>
+                  <Ionicons name="person" size={40} color={hasLightBg ? '#666' : 'rgba(255,255,255,0.5)'} />
+                </View>
+              )}
+            </View>
+          ) : (
+            // Regular circular photo
+            <View style={[
+              styles.previewPhotoContainer, 
+              hasLightBg && styles.previewPhotoBorderDark,
+              { width: previewPhotoSize, height: previewPhotoSize, borderRadius: previewPhotoSize / 2 }
+            ]}>
+              {cardData?.profile_photo_url ? (
+                <Image 
+                  source={{ uri: cardData.profile_photo_url }} 
+                  style={[styles.previewPhoto, { width: previewPhotoSize - 4, height: previewPhotoSize - 4, borderRadius: (previewPhotoSize - 4) / 2 }]} 
+                />
+              ) : (
+                <Ionicons name="person" size={previewPhotoSize * 0.5} color={hasLightBg ? '#666' : 'rgba(255,255,255,0.5)'} />
+              )}
+            </View>
+          )}
           
           {/* Name & Title */}
           <Text style={[styles.previewName, { color: textColor }]} numberOfLines={1}>
@@ -1326,13 +1346,24 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               style={[styles.photoSizeOption, profilePhotoSize === size.id && styles.selectedPhotoSize]}
               onPress={() => handlePhotoSizeSelect(size.id)}
             >
-              <View style={[styles.photoSizePreview, { width: size.size * 0.3, height: size.size * 0.3, borderRadius: size.size * 0.15 }]}>
-                <Ionicons name="person" size={size.size * 0.15} color="#9E9E9E" />
-              </View>
+              {size.id === 'cover' ? (
+                // Cover photo preview - rectangular
+                <View style={[styles.photoSizePreview, { width: 50, height: 30, borderRadius: 6 }]}>
+                  <Ionicons name="image" size={16} color="#9E9E9E" />
+                </View>
+              ) : (
+                // Regular circular preview
+                <View style={[styles.photoSizePreview, { width: size.size * 0.3, height: size.size * 0.3, borderRadius: size.size * 0.15 }]}>
+                  <Ionicons name="person" size={size.size * 0.15} color="#9E9E9E" />
+                </View>
+              )}
               <Text style={styles.photoSizeName}>{size.name}</Text>
             </TouchableOpacity>
           ))}
         </View>
+        {profilePhotoSize === 'cover' && (
+          <Text style={styles.coverPhotoHint}>Cover photo displays full-width at the top of your card - perfect for realtors and influencers!</Text>
+        )}
       </View>
 
       {/* Themes Section */}
@@ -2480,6 +2511,23 @@ const styles = StyleSheet.create({
   previewPhoto: {
     // Dynamic size set inline
   },
+  coverPhotoContainer: {
+    width: '100%',
+    height: 120,
+    marginBottom: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  coverPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  coverPhotoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   previewName: {
     fontSize: 18,
     fontWeight: '700',
@@ -2899,6 +2947,14 @@ const styles = StyleSheet.create({
   photoSizeName: {
     fontSize: 11,
     color: '#666',
+  },
+  coverPhotoHint: {
+    fontSize: 12,
+    color: '#00C853',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 16,
   },
   
   // Appearance Section
