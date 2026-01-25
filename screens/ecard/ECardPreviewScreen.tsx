@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { getTemplateById, getColorSchemeById } from '../../config/eCardTemplates';
 import {
   View,
   Text,
@@ -12,6 +13,7 @@ import {
   Share,
   Linking,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -78,9 +80,22 @@ interface Props {
 
 // CrownBadge is now imported from components/ecard/CrownBadge
 
+// Free tier limits
+const FREE_LINK_LIMIT = 5;
+
 export default function ECardPreviewScreen({ navigation, route }: Props) {
-  const { user } = useAuth();
-  const { cardData: passedCardData, profile, links: passedLinks, featuredSocials: passedFeaturedSocials, templateId, reviews } = route.params || {};
+  const { user, isPro } = useAuth();
+  const { cardData: passedCardData, profile, links: passedLinks, featuredSocials: passedFeaturedSocials, templateId, colorSchemeId, reviews } = route.params || {};
+  
+  // Get the selected template and color scheme for proper colors
+  const selectedTemplate = templateId ? getTemplateById(templateId) : null;
+  const selectedColorScheme = templateId && colorSchemeId 
+    ? getColorSchemeById(templateId, colorSchemeId) 
+    : null;
+  
+  // Determine gradient colors from template or defaults
+  const templateGradientColor1 = selectedColorScheme?.primary || '#667eea';
+  const templateGradientColor2 = selectedColorScheme?.secondary || '#764ba2';
   
   const [isLoading, setIsLoading] = useState(true);
   const [cardData, setCardData] = useState<CardData | null>(null);
@@ -149,8 +164,8 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
           title: profile.title || '',
           company: '',
           profile_photo_url: profile.image || null,
-          gradient_color_1: '#667eea',
-          gradient_color_2: '#764ba2',
+          gradient_color_1: templateGradientColor1,
+          gradient_color_2: templateGradientColor2,
           bio: profile.bio || '',
           city: profile.address?.city || '',
           state: profile.address?.state || '',
@@ -219,6 +234,59 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
   );
 
   const cardUrl = `https://tavvy.com/${cardData?.slug || 'preview'}`;
+
+  // Check if card has premium features that require payment
+  const hasPremiumFeatures = (): boolean => {
+    // Check if template is premium
+    if (selectedTemplate?.isPremium) return true;
+    
+    // Check link limit exceeded
+    if (links.length > FREE_LINK_LIMIT) return true;
+    
+    // Check for premium blocks in passedCardData
+    // Premium blocks: gallery, video, youtube, testimonials, form, credentials
+    const premiumBlockTypes = ['gallery', 'video', 'youtube', 'testimonials', 'form', 'credentials'];
+    if (passedCardData?.blocks) {
+      const hasPremiumBlock = passedCardData.blocks.some((block: any) => 
+        premiumBlockTypes.includes(block.type)
+      );
+      if (hasPremiumBlock) return true;
+    }
+    
+    return false;
+  };
+
+  // Handle publish/share with payment gating
+  const handlePublishShare = () => {
+    // Check for premium features first
+    if (!isPro && hasPremiumFeatures()) {
+      Alert.alert(
+        'Premium Features Detected',
+        'Your card includes premium features. To share this card, you can either:\n\n• Upgrade to Tavvy Pro\n• Use the free version of your card',
+        [
+          { 
+            text: 'Use Free Version', 
+            style: 'destructive', 
+            onPress: () => {
+              // Navigate back to dashboard to remove premium features
+              navigation.navigate('ECardDashboard', {
+                showRemovePremiumPrompt: true,
+                cardData: passedCardData,
+              });
+            }
+          },
+          { 
+            text: 'Upgrade to Pro', 
+            onPress: () => navigation.navigate('ECardPremiumUpsell') 
+          },
+        ]
+      );
+      return;
+    }
+    
+    // No premium features or user is Pro, proceed with share
+    handleShare();
+  };
 
   const handleShare = async () => {
     try {
@@ -307,7 +375,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
         <Text style={styles.headerTitle}>Preview</Text>
         <TouchableOpacity 
           style={styles.shareButton}
-          onPress={handleShare}
+          onPress={handlePublishShare}
         >
           <Ionicons name="share-outline" size={24} color="#fff" />
         </TouchableOpacity>
@@ -464,7 +532,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.publishButton}
-          onPress={handleShare}
+          onPress={handlePublishShare}
         >
           <LinearGradient
             colors={['#00C853', '#00E676']}

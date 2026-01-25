@@ -427,7 +427,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               platform: platform,
               url: url,
               title: link.title || platform.charAt(0).toUpperCase() + platform.slice(1),
-              display_order: index,
+              sort_order: index,
               is_active: true,
             };
           });
@@ -499,7 +499,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               .from('card_links')
               .select('*')
               .eq('card_id', card.id)
-              .order('display_order', { ascending: true });
+              .order('sort_order', { ascending: true });
 
             if (!linksError && cardLinks) {
               setLinks(cardLinks.map(link => ({

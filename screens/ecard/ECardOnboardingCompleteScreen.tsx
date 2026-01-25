@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import ConfettiCannon from 'react-native-confetti-cannon';
+import { getTemplateById, getColorSchemeById } from '../../config/eCardTemplates';
 
 const { width } = Dimensions.get('window');
 
@@ -24,6 +25,21 @@ interface Props {
 export default function ECardOnboardingCompleteScreen({ navigation, route }: Props) {
   const { templateId, colorSchemeId, profile, links } = route.params || {};
   const confettiRef = useRef<any>(null);
+  
+  // Get the selected template and color scheme
+  const selectedTemplate = templateId ? getTemplateById(templateId) : null;
+  const selectedColorScheme = templateId && colorSchemeId 
+    ? getColorSchemeById(templateId, colorSchemeId) 
+    : null;
+  
+  // Use template colors or fall back to defaults
+  const gradientColors: [string, string] = selectedColorScheme 
+    ? [selectedColorScheme.primary, selectedColorScheme.secondary]
+    : ['#667eea', '#764ba2'];
+  
+  const textColor = selectedColorScheme?.text || '#fff';
+  const textSecondaryColor = selectedColorScheme?.textSecondary || 'rgba(255,255,255,0.8)';
+  const accentColor = selectedColorScheme?.accent || 'rgba(255,255,255,0.2)';
   
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -102,7 +118,7 @@ export default function ECardOnboardingCompleteScreen({ navigation, route }: Pro
           </Text>
         </Animated.View>
 
-        {/* Preview Card */}
+        {/* Preview Card - Now uses selected template colors */}
         <Animated.View 
           style={[
             styles.cardContainer,
@@ -112,39 +128,39 @@ export default function ECardOnboardingCompleteScreen({ navigation, route }: Pro
           ]}
         >
           <LinearGradient
-            colors={['#667eea', '#764ba2']}
+            colors={gradientColors}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.previewCard}
           >
             {/* Profile Section */}
             {profile?.image ? (
-              <Image source={{ uri: profile.image }} style={styles.profileImage} />
+              <Image source={{ uri: profile.image }} style={[styles.profileImage, { borderColor: accentColor }]} />
             ) : (
-              <View style={styles.profileImagePlaceholder}>
-                <Ionicons name="person" size={32} color="#fff" />
+              <View style={[styles.profileImagePlaceholder, { backgroundColor: accentColor }]}>
+                <Ionicons name="person" size={32} color={textColor} />
               </View>
             )}
-            <Text style={styles.profileName}>{profile?.name || 'Your Name'}</Text>
+            <Text style={[styles.profileName, { color: textColor }]}>{profile?.name || 'Your Name'}</Text>
             {profile?.title ? (
-              <Text style={styles.profileTitle}>{profile.title}</Text>
+              <Text style={[styles.profileTitle, { color: textSecondaryColor }]}>{profile.title}</Text>
             ) : null}
             {profile?.bio ? (
-              <Text style={styles.profileBio} numberOfLines={2}>{profile.bio}</Text>
+              <Text style={[styles.profileBio, { color: textSecondaryColor }]} numberOfLines={2}>{profile.bio}</Text>
             ) : null}
 
             {/* Links Preview */}
             {links && links.length > 0 && (
               <View style={styles.linksPreview}>
                 {links.slice(0, 3).map((link: any, index: number) => (
-                  <View key={index} style={styles.linkButton}>
-                    <Text style={styles.linkButtonText}>
+                  <View key={index} style={[styles.linkButton, { backgroundColor: accentColor }]}>
+                    <Text style={[styles.linkButtonText, { color: textColor }]}>
                       {link.platform.charAt(0).toUpperCase() + link.platform.slice(1)}
                     </Text>
                   </View>
                 ))}
                 {links.length > 3 && (
-                  <Text style={styles.moreLinks}>+{links.length - 3} more</Text>
+                  <Text style={[styles.moreLinks, { color: textSecondaryColor }]}>+{links.length - 3} more</Text>
                 )}
               </View>
             )}
@@ -281,14 +297,12 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.3)',
     marginBottom: 16,
   },
   profileImagePlaceholder: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -296,18 +310,15 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#fff',
     textAlign: 'center',
   },
   profileTitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
     marginTop: 4,
     textAlign: 'center',
   },
   profileBio: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
     marginTop: 8,
     textAlign: 'center',
     lineHeight: 18,
@@ -318,7 +329,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   linkButton: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -327,11 +337,9 @@ const styles = StyleSheet.create({
   linkButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
   },
   moreLinks: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
     textAlign: 'center',
     marginTop: 4,
   },
