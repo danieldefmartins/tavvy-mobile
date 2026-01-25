@@ -284,11 +284,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 20,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    marginBottom: 10,
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    marginBottom: 4,
   },
   backButton: {
     alignSelf: 'flex-start',
@@ -305,15 +305,15 @@ const styles = StyleSheet.create({
   },
   logoSection: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 16,
   },
   logoContainer: {
     position: 'relative',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   logoImage: {
-    width: 180,
-    height: 60,
+    width: 160,
+    height: 50,
     zIndex: 1,
   },
   logoGlow: {
@@ -328,10 +328,10 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
   welcomeText: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '600',
     color: '#F1F5F9',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   subtitleText: {
     fontSize: 15,
@@ -339,9 +339,9 @@ const styles = StyleSheet.create({
   },
   formCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 24,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
@@ -349,29 +349,29 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 14,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#1E293B',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   inputIcon: {
-    paddingLeft: 14,
+    paddingLeft: 12,
   },
   input: {
     flex: 1,
-    padding: 14,
-    fontSize: 16,
+    padding: 12,
+    fontSize: 15,
     color: '#1E293B',
   },
   passwordInput: {
@@ -383,8 +383,8 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   loginButton: {
-    marginTop: 8,
-    borderRadius: 14,
+    marginTop: 4,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   loginButtonDisabled: {
@@ -394,16 +394,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
+    padding: 14,
   },
   loginButtonText: {
     color: '#fff',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
   },
   forgotPassword: {
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 12,
   },
   forgotPasswordText: {
     fontSize: 14,
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   dividerLine: {
     flex: 1,
@@ -428,13 +428,13 @@ const styles = StyleSheet.create({
   socialContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 16,
-    marginBottom: 32,
+    gap: 12,
+    marginBottom: 20,
   },
   socialButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 50,
+    height: 50,
+    borderRadius: 14,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -459,8 +459,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 16,
-    paddingVertical: 8,
+    marginTop: 12,
+    paddingVertical: 6,
   },
   proLinkText: {
     fontSize: 14,
