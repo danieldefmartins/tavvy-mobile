@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: 'rgba(255,255,255,0.5)',
     fontSize: 14,
-    marginBottom: 20,
+    marginBottom: 12,
   },
   flatListContent: {
     alignItems: 'center',
@@ -429,9 +429,9 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     width: SCREEN_WIDTH * 0.75,
-    height: SCREEN_HEIGHT * 0.5,
+    height: SCREEN_HEIGHT * 0.42,
     borderRadius: 24,
-    padding: 24,
+    padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -519,20 +519,25 @@ const styles = StyleSheet.create({
     borderStyle: 'solid',
   },
   templateInfo: {
-    marginTop: 24,
+    marginTop: 16,
     alignItems: 'center',
+    paddingHorizontal: 20,
+    minHeight: 80,
   },
   templateName: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: 6,
+    textAlign: 'center',
   },
   templateDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: 'rgba(255,255,255,0.6)',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
+    lineHeight: 18,
+    paddingHorizontal: 10,
   },
   colorCount: {
     fontSize: 12,
@@ -542,7 +547,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 12,
     gap: 6,
   },
   paginationDot: {
@@ -551,7 +556,7 @@ const styles = StyleSheet.create({
   },
   bottomContainer: {
     paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingBottom: 16,
   },
   selectButton: {
     backgroundColor: '#3b82f6',
@@ -612,7 +617,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 12,
     paddingHorizontal: 24,
   },
   filterTab: {
