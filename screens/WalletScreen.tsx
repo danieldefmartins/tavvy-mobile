@@ -301,7 +301,7 @@ export default function WalletScreen() {
       <UnifiedHeader
         screenKey="wallet"
         title="Wallet"
-        searchPlaceholder="Search saved pros..."
+        searchPlaceholder="Search your cards..."
         showBackButton={false}
         rightIcon="ellipsis-horizontal-circle"
         onRightIconPress={() => setMenuVisible(true)}

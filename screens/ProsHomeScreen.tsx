@@ -247,25 +247,7 @@ export default function ProsHomeScreen() {
         showBackButton={false}
       />
 
-      {/* Mode Toggle below header */}
-      <View style={styles.modeToggleRow}>
-        <TouchableOpacity
-          style={[styles.modeToggle, viewMode === 'user' && styles.modeToggleActive]}
-          onPress={() => setViewMode('user')}
-        >
-          <Text style={[styles.modeToggleText, viewMode === 'user' && styles.modeToggleTextActive]}>
-            Find Pros
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.modeToggle, viewMode === 'pro' && styles.modeToggleActive]}
-          onPress={() => setViewMode('pro')}
-        >
-          <Text style={[styles.modeToggleText, viewMode === 'pro' && styles.modeToggleTextActive]}>
-            I'm a Pro
-          </Text>
-        </TouchableOpacity>
-      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -277,7 +259,7 @@ export default function ProsHomeScreen() {
 
         {/* Hero Section */}
         <LinearGradient
-          colors={[ProsColors.heroBg, '#FFFFFF']}
+          colors={['#F9FAFB', '#FFFFFF']}
           style={styles.heroSection}
         >
           {/* Resume Pending Project Banner */}

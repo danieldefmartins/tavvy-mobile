@@ -310,7 +310,7 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
               style={[
                 styles.sortButton,
                 sortBy === option && styles.sortButtonActive,
-                { backgroundColor: sortBy === option ? '#0A84FF' : (isDark ? theme.background : '#F2F2F7') }
+                { backgroundColor: sortBy === option ? '#D946EF' : (isDark ? theme.background : '#F2F2F7') }
               ]}
               onPress={() => setSortBy(option)}
             >
@@ -328,7 +328,7 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
       {/* Places List */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0A84FF" />
+          <ActivityIndicator size="large" color="#D946EF" />
           <Text style={[styles.loadingText, { color: isDark ? theme.textSecondary : '#666' }]}>
             Loading rides...
           </Text>
@@ -344,8 +344,8 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#0A84FF"
-              colors={['#0A84FF']}
+              tintColor="#D946EF"
+              colors={['#D946EF']}
             />
           }
           ListEmptyComponent={
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   sortButtonActive: {
-    shadowColor: '#0A84FF',
+    shadowColor: '#D946EF',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,

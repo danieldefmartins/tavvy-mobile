@@ -43,10 +43,10 @@ import { UnifiedHeader } from '../components/UnifiedHeader';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2; // 2 columns with padding
 
-// Tavvy brand colors
-const TEAL_PRIMARY = '#0D9488';
-const TEAL_LIGHT = '#5EEAD4';
-const TEAL_BG = '#F0FDFA';
+// Atlas brand colors (Purple theme)
+const ATLAS_PRIMARY = '#7C3AED';
+const ATLAS_LIGHT = '#A78BFA';
+const ATLAS_BG = '#F5F3FF';
 
 // Default placeholder images
 const PLACEHOLDER_ARTICLE = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800';
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   filterChipSelected: {
-    backgroundColor: TEAL_PRIMARY,
+    backgroundColor: ATLAS_PRIMARY,
   },
   filterChipUnselected: {
     backgroundColor: '#E5E7EB',
@@ -784,7 +784,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyStateButton: {
-    backgroundColor: TEAL_PRIMARY,
+    backgroundColor: ATLAS_PRIMARY,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,

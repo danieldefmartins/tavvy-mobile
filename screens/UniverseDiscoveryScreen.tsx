@@ -185,7 +185,7 @@ export default function UniverseDiscoveryScreen() {
                 key={cat.id}
                 style={[
                   styles.categoryChip,
-                  { backgroundColor: isDark ? theme.surface : (isActive ? '#0EA5E9' : '#E5E7EB') },
+                  { backgroundColor: isDark ? theme.surface : (isActive ? '#14B8A6' : '#E5E7EB') },
                   isActive && styles.categoryChipActive,
                 ]}
                 onPress={() => setActiveCategory(cat.id)}

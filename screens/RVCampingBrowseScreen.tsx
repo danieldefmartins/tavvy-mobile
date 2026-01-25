@@ -283,7 +283,7 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
               style={[
                 styles.filterButton,
                 filterBy === option && styles.filterButtonActive,
-                { backgroundColor: filterBy === option ? '#34C759' : (isDark ? theme.background : '#F2F2F7') }
+                { backgroundColor: filterBy === option ? '#15803D' : (isDark ? theme.background : '#F2F2F7') }
               ]}
               onPress={() => setFilterBy(option)}
             >
@@ -307,7 +307,7 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
               style={[
                 styles.sortButton,
                 sortBy === option && styles.sortButtonActive,
-                { backgroundColor: sortBy === option ? '#0A84FF' : (isDark ? theme.background : '#F2F2F7') }
+                { backgroundColor: sortBy === option ? '#15803D' : (isDark ? theme.background : '#F2F2F7') }
               ]}
               onPress={() => setSortBy(option)}
             >
@@ -325,7 +325,7 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
       {/* Places List */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#34C759" />
+          <ActivityIndicator size="large" color="#15803D" />
           <Text style={[styles.loadingText, { color: isDark ? theme.textSecondary : '#666' }]}>
             Loading camping spots...
           </Text>
@@ -338,7 +338,7 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#34C759" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#15803D" />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
