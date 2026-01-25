@@ -1389,7 +1389,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           </View>
           <FeaturedSocialsSelector
             featuredSocials={featuredSocials}
-            allLinks={links.map(l => ({ platformId: l.platform, url: l.value }))}
+            allLinks={links.filter(l => l.platform).map(l => ({ platformId: l.platform, url: l.value }))}
             onChange={setFeaturedSocials}
             maxFeatured={6}
           />
