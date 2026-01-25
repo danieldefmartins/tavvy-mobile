@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { TEMPLATES, Template, getFreeTemplates, getPremiumTemplates } from '../config/eCardTemplates';
+import { TEMPLATES, Template, getFreeTemplates, getPremiumTemplates, getProOnlyTemplates, getTemplatesForUser } from '../config/eCardTemplates';
+import { useAuth } from '../contexts/AuthContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -31,12 +32,40 @@ const ECardTemplateGalleryScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const params = route.params as RouteParams || {};
+  const { user, isPro } = useAuth();
   
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'free' | 'premium' | 'pro'>('all');
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
 
-  const allTemplates = TEMPLATES;
+  // Filter templates based on user status and selected category
+  const allTemplates = useMemo(() => {
+    let templates = TEMPLATES;
+    
+    // Filter by category
+    switch (selectedCategory) {
+      case 'free':
+        templates = templates.filter(t => !t.isPremium && !t.isProOnly);
+        break;
+      case 'premium':
+        templates = templates.filter(t => t.isPremium);
+        break;
+      case 'pro':
+        templates = templates.filter(t => t.isProOnly);
+        break;
+      default:
+        // Show all, but put Pro templates first if user is Pro
+        if (isPro) {
+          const proTemplates = templates.filter(t => t.isProOnly);
+          const otherTemplates = templates.filter(t => !t.isProOnly);
+          templates = [...proTemplates, ...otherTemplates];
+        }
+        break;
+    }
+    
+    return templates;
+  }, [selectedCategory, isPro]);
 
   const handleSelectTemplate = (template: Template) => {
     // Navigate to color scheme picker, preserving existing data if editing
@@ -101,8 +130,18 @@ const ECardTemplateGalleryScreen: React.FC = () => {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
+            {/* Pro-Only Badge */}
+            {item.isProOnly && (
+              <View style={[styles.premiumBadge, styles.proBadge]}>
+                <Ionicons name="briefcase" size={12} color="#fff" />
+                <Text style={[styles.premiumBadgeText, styles.proBadgeText]}>
+                  {isPro ? 'PRO' : 'PRO ONLY'}
+                </Text>
+              </View>
+            )}
+
             {/* Premium Badge */}
-            {item.isPremium && (
+            {item.isPremium && !item.isProOnly && (
               <View style={styles.premiumBadge}>
                 <Ionicons name="star" size={12} color="#000" />
                 <Text style={styles.premiumBadgeText}>$4.99/mo</Text>
@@ -110,9 +149,17 @@ const ECardTemplateGalleryScreen: React.FC = () => {
             )}
 
             {/* Free Badge */}
-            {!item.isPremium && (
+            {!item.isPremium && !item.isProOnly && (
               <View style={styles.freeBadge}>
                 <Text style={styles.freeBadgeText}>FREE</Text>
+              </View>
+            )}
+
+            {/* Lock overlay for Pro templates if user is not Pro */}
+            {item.isProOnly && !isPro && (
+              <View style={styles.lockOverlay}>
+                <Ionicons name="lock-closed" size={32} color="rgba(255,255,255,0.9)" />
+                <Text style={styles.lockText}>Pro Membership Required</Text>
               </View>
             )}
 
@@ -240,12 +287,44 @@ const ECardTemplateGalleryScreen: React.FC = () => {
                 {
                   width: dotWidth,
                   opacity: dotOpacity,
-                  backgroundColor: allTemplates[index].isPremium ? '#d4af37' : '#fff',
+                  backgroundColor: allTemplates[index].isProOnly ? '#10b981' : 
+                                   allTemplates[index].isPremium ? '#d4af37' : '#fff',
                 },
               ]}
             />
           );
         })}
+      </View>
+
+      {/* Category Filter Tabs */}
+      <View style={styles.filterTabs}>
+        {(['all', 'free', 'premium', 'pro'] as const).map((cat) => (
+          <TouchableOpacity
+            key={cat}
+            style={[
+              styles.filterTab,
+              selectedCategory === cat && styles.filterTabActive,
+              cat === 'pro' && styles.filterTabPro,
+              cat === 'pro' && selectedCategory === cat && styles.filterTabProActive,
+            ]}
+            onPress={() => {
+              setSelectedCategory(cat);
+              setCurrentIndex(0);
+              flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+            }}
+          >
+            <Text style={[
+              styles.filterTabText,
+              selectedCategory === cat && styles.filterTabTextActive,
+              cat === 'pro' && styles.filterTabTextPro,
+            ]}>
+              {cat === 'all' ? 'All' : cat === 'free' ? 'Free' : cat === 'premium' ? 'Premium' : 'Pro'}
+            </Text>
+            {cat === 'pro' && !isPro && (
+              <Ionicons name="lock-closed" size={10} color="#10b981" style={{ marginLeft: 4 }} />
+            )}
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Select Button */}
@@ -254,16 +333,36 @@ const ECardTemplateGalleryScreen: React.FC = () => {
           style={[
             styles.selectButton,
             currentTemplate?.isPremium && styles.selectButtonPremium,
+            currentTemplate?.isProOnly && styles.selectButtonPro,
+            currentTemplate?.isProOnly && !isPro && styles.selectButtonDisabled,
           ]}
-          onPress={() => currentTemplate && handleSelectTemplate(currentTemplate)}
+          onPress={() => {
+            if (currentTemplate?.isProOnly && !isPro) {
+              // Navigate to Pro upgrade screen
+              navigation.navigate('ProMembership');
+            } else if (currentTemplate) {
+              handleSelectTemplate(currentTemplate);
+            }
+          }}
         >
           <Text style={styles.selectButtonText}>
-            {currentTemplate?.isPremium ? 'Select Premium Template' : 'Use This Template'}
+            {currentTemplate?.isProOnly && !isPro 
+              ? 'Upgrade to Pro' 
+              : currentTemplate?.isProOnly 
+                ? 'Use Pro Template' 
+                : currentTemplate?.isPremium 
+                  ? 'Select Premium Template' 
+                  : 'Use This Template'}
           </Text>
-          <Ionicons name="arrow-forward" size={20} color="#fff" style={styles.selectButtonIcon} />
+          <Ionicons 
+            name={currentTemplate?.isProOnly && !isPro ? 'arrow-up-circle' : 'arrow-forward'} 
+            size={20} 
+            color="#fff" 
+            style={styles.selectButtonIcon} 
+          />
         </TouchableOpacity>
 
-        {/* Category Filter */}
+        {/* Template Count */}
         <View style={styles.categoryFilter}>
           <Text style={styles.categoryLabel}>
             {currentIndex + 1} of {allTemplates.length} templates
@@ -455,6 +554,12 @@ const styles = StyleSheet.create({
   selectButtonPremium: {
     backgroundColor: '#d4af37',
   },
+  selectButtonPro: {
+    backgroundColor: '#10b981',
+  },
+  selectButtonDisabled: {
+    backgroundColor: '#374151',
+  },
   selectButtonText: {
     color: '#fff',
     fontSize: 16,
@@ -469,6 +574,65 @@ const styles = StyleSheet.create({
   categoryLabel: {
     color: 'rgba(255,255,255,0.4)',
     fontSize: 12,
+  },
+  // Pro Badge Styles
+  proBadge: {
+    backgroundColor: '#10b981',
+  },
+  proBadgeText: {
+    color: '#fff',
+  },
+  // Lock Overlay for Pro templates
+  lockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 24,
+  },
+  lockText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  // Filter Tabs
+  filterTabs: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 16,
+    paddingHorizontal: 24,
+  },
+  filterTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  filterTabActive: {
+    backgroundColor: '#3b82f6',
+  },
+  filterTabPro: {
+    borderWidth: 1,
+    borderColor: '#10b981',
+  },
+  filterTabProActive: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
+  },
+  filterTabText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  filterTabTextActive: {
+    color: '#fff',
+  },
+  filterTabTextPro: {
+    color: '#10b981',
   },
 });
 
