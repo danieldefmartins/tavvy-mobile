@@ -37,9 +37,9 @@ const PREVIEW_HEIGHT = height * 0.32;
 const PHOTO_SIZES = [
   { id: 'small', name: 'Small', size: 80 },
   { id: 'medium', name: 'Medium', size: 110 },
-  { id: 'large', name: 'Large', size: 140 },
-  { id: 'xl', name: 'Extra Large', size: 180 },
-  { id: 'cover', name: 'Cover', size: -1 }, // Full width cover photo
+  { id: 'large', name: 'Large', size: 150 },
+  { id: 'xl', name: 'Extra\nLarge', size: 200 },
+  { id: 'cover', name: 'Cover', size: -1 }, // Full width banner photo
 ];
 
 // Platform icons mapping
@@ -1183,6 +1183,86 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     const isCoverPhoto = photoSize.id === 'cover';
     const previewPhotoSize = isCoverPhoto ? width - 48 : Math.min(photoSize.size * 0.5, 70);
     
+    // Cover photo mode - completely different layout
+    if (isCoverPhoto) {
+      return (
+        <View style={styles.previewContainerCover}>
+          {/* Full-bleed banner photo */}
+          <View style={styles.coverBannerContainer}>
+            {cardData?.profile_photo_url ? (
+              <Image 
+                source={{ uri: cardData.profile_photo_url }} 
+                style={styles.coverBannerPhoto}
+                resizeMode="cover"
+              />
+            ) : (
+              <LinearGradient
+                colors={gradientColors}
+                style={styles.coverBannerPlaceholder}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name="image" size={40} color="rgba(255,255,255,0.5)" />
+                <Text style={styles.coverBannerPlaceholderText}>Add Cover Photo</Text>
+              </LinearGradient>
+            )}
+            {/* Gradient overlay for text readability */}
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.7)']}
+              style={styles.coverBannerOverlay}
+            />
+            {/* Name & Title overlay on banner */}
+            <View style={styles.coverBannerTextContainer}>
+              <Text style={styles.coverBannerName} numberOfLines={1}>
+                {cardData?.full_name || 'Your Name'}
+              </Text>
+              <Text style={styles.coverBannerTitle} numberOfLines={1}>
+                {cardData?.title || 'Your Title'}
+              </Text>
+            </View>
+          </View>
+          
+          {/* Links below banner */}
+          <LinearGradient
+            colors={gradientColors}
+            style={styles.coverLinksContainer}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.previewLinksRow}>
+              {links.slice(0, 4).map((link, index) => {
+                const platformConfig = PLATFORM_ICONS[link.platform] || PLATFORM_ICONS.other;
+                return (
+                  <View 
+                    key={link.id || index} 
+                    style={[
+                      styles.previewLinkIcon,
+                      selectedButtonStyle === 'outline' && { backgroundColor: 'transparent', borderWidth: 1, borderColor: textColor },
+                      selectedButtonStyle === 'rounded' && { borderRadius: 8 },
+                      selectedButtonStyle === 'pill' && { borderRadius: 20 },
+                      selectedButtonStyle === 'minimal' && { backgroundColor: 'transparent' },
+                    ]}
+                  >
+                    <Ionicons 
+                      name={platformConfig.icon as any} 
+                      size={16} 
+                      color={selectedButtonStyle === 'outline' || selectedButtonStyle === 'minimal' ? textColor : platformConfig.color} 
+                    />
+                  </View>
+                );
+              })}
+              {links.length > 4 && (
+                <View style={styles.previewMoreLinks}>
+                  <Text style={[styles.previewMoreText, { color: textColor }]}>+{links.length - 4}</Text>
+                </View>
+              )}
+            </View>
+          </LinearGradient>
+        </View>
+      );
+    }
+    
+    // Regular layout (non-cover)
     return (
       <View style={styles.previewContainer}>
         <LinearGradient
@@ -1210,39 +1290,21 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             </View>
           )}
           
-          {/* Profile Photo */}
-          {isCoverPhoto ? (
-            // Cover photo style - full width at top
-            <View style={styles.coverPhotoContainer}>
-              {cardData?.profile_photo_url ? (
-                <Image 
-                  source={{ uri: cardData.profile_photo_url }} 
-                  style={styles.coverPhoto}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={[styles.coverPhotoPlaceholder, { backgroundColor: hasLightBg ? '#E0E0E0' : 'rgba(255,255,255,0.2)' }]}>
-                  <Ionicons name="person" size={40} color={hasLightBg ? '#666' : 'rgba(255,255,255,0.5)'} />
-                </View>
-              )}
-            </View>
-          ) : (
-            // Regular circular photo
-            <View style={[
-              styles.previewPhotoContainer, 
-              hasLightBg && styles.previewPhotoBorderDark,
-              { width: previewPhotoSize, height: previewPhotoSize, borderRadius: previewPhotoSize / 2 }
-            ]}>
-              {cardData?.profile_photo_url ? (
-                <Image 
-                  source={{ uri: cardData.profile_photo_url }} 
-                  style={[styles.previewPhoto, { width: previewPhotoSize - 4, height: previewPhotoSize - 4, borderRadius: (previewPhotoSize - 4) / 2 }]} 
-                />
-              ) : (
-                <Ionicons name="person" size={previewPhotoSize * 0.5} color={hasLightBg ? '#666' : 'rgba(255,255,255,0.5)'} />
-              )}
-            </View>
-          )}
+          {/* Regular circular photo */}
+          <View style={[
+            styles.previewPhotoContainer, 
+            hasLightBg && styles.previewPhotoBorderDark,
+            { width: previewPhotoSize, height: previewPhotoSize, borderRadius: previewPhotoSize / 2 }
+          ]}>
+            {cardData?.profile_photo_url ? (
+              <Image 
+                source={{ uri: cardData.profile_photo_url }} 
+                style={[styles.previewPhoto, { width: previewPhotoSize - 4, height: previewPhotoSize - 4, borderRadius: (previewPhotoSize - 4) / 2 }]} 
+              />
+            ) : (
+              <Ionicons name="person" size={previewPhotoSize * 0.5} color={hasLightBg ? '#666' : 'rgba(255,255,255,0.5)'} />
+            )}
+          </View>
           
           {/* Name & Title */}
           <Text style={[styles.previewName, { color: textColor }]} numberOfLines={1}>
@@ -2911,6 +2973,64 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // New Cover Banner Styles (full-bleed)
+  previewContainerCover: {
+    backgroundColor: '#fff',
+  },
+  coverBannerContainer: {
+    width: width,
+    height: height * 0.25,
+    position: 'relative',
+  },
+  coverBannerPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  coverBannerPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  coverBannerPlaceholderText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    marginTop: 8,
+  },
+  coverBannerOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+  },
+  coverBannerTextContainer: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+  },
+  coverBannerName: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  coverBannerTitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 2,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  coverLinksContainer: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     alignItems: 'center',
   },
   previewName: {
