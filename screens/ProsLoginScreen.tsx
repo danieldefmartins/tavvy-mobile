@@ -243,7 +243,7 @@ export default function ProsLoginScreen({ navigation }: any) {
               onPress={handleCreateAccount}
               activeOpacity={0.8}
             >
-              <Ionicons name="add-circle-outline" size={22} color={PROS_GREEN} />
+              <Ionicons name="add-circle-outline" size={22} color="#fff" />
               <Text style={styles.createAccountText}>Create Pro Account</Text>
             </TouchableOpacity>
 
@@ -476,11 +476,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 14,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
     marginBottom: 10,
   },
   createAccountText: {
-    color: PROS_GREEN,
+    color: '#fff',
     fontSize: 15,
     fontWeight: '600',
     marginLeft: 8,

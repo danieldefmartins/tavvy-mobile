@@ -237,11 +237,6 @@ export default function AppsScreen() {
     navigation.navigate('Login');
   };
 
-  const handleProLogin = () => {
-    // Navigate to Pro Login screen
-    navigation.navigate('ProsLogin');
-  };
-
   const handleMenuItemPress = (action: string) => {
     setMenuVisible(false);
     switch (action) {
@@ -307,12 +302,6 @@ export default function AppsScreen() {
     },
     loginButtonText: {
       color: isDark ? theme.primary : '#14B8A6',
-    },
-    proLoginButton: {
-      borderColor: isDark ? theme.border : '#D1D5DB',
-    },
-    proLoginText: {
-      color: isDark ? theme.textSecondary : '#6B7280',
     },
     tileName: {
       color: isDark ? theme.text : '#374151',
@@ -388,18 +377,8 @@ export default function AppsScreen() {
               style={[styles.loginButton, dynamicStyles.loginButton]}
               onPress={handlePersonalLogin}
             >
-              <Ionicons name="person-outline" size={18} color={isDark ? theme.primary : '#14B8A6'} />
-              <Text style={[styles.loginButtonText, dynamicStyles.loginButtonText]}>Personal Login</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.loginButton, dynamicStyles.loginButton, dynamicStyles.proLoginButton]}
-              onPress={handleProLogin}
-            >
-              <Ionicons name="briefcase-outline" size={18} color={isDark ? theme.textSecondary : '#6B7280'} />
-              <Text style={[styles.loginButtonText, dynamicStyles.proLoginText]}>
-                Pro Login
-              </Text>
+              <Ionicons name="log-in-outline" size={18} color={isDark ? theme.primary : '#14B8A6'} />
+              <Text style={[styles.loginButtonText, dynamicStyles.loginButtonText]}>Sign In</Text>
             </TouchableOpacity>
           </View>
         )}
