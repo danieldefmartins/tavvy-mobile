@@ -390,7 +390,7 @@ export default function AtlasHomeScreen() {
     
     return (
       <View style={styles.loadMoreContainer}>
-        <ActivityIndicator size="small" color={TEAL_PRIMARY} />
+        <ActivityIndicator size="small" color={ATLAS_PRIMARY} />
         <Text style={styles.loadMoreText}>Loading more articles...</Text>
       </View>
     );
@@ -409,7 +409,7 @@ export default function AtlasHomeScreen() {
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: isDark ? theme.background : '#fff' }]}>
-        <ActivityIndicator size="large" color={TEAL_PRIMARY} />
+        <ActivityIndicator size="large" color={ATLAS_PRIMARY} />
         <Text style={[styles.loadingText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
           Loading articles...
         </Text>
@@ -439,7 +439,7 @@ export default function AtlasHomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={TEAL_PRIMARY}
+            tintColor={ATLAS_PRIMARY}
           />
         }
       >
