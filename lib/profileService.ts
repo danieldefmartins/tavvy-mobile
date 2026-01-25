@@ -188,19 +188,20 @@ export async function uploadAvatar(
   imageUri: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
-    // Generate unique filename
-    const fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
-    const fileName = `${userId}/avatar_${Date.now()}.${fileExt}`;
+    // Generate unique filename - always use jpg for consistency
+    const fileName = `${userId}/avatar_${Date.now()}.jpg`;
 
-    // Fetch the image and convert to blob
+    // For React Native, we need to convert the file URI to array buffer
+    // Using fetch + arrayBuffer for better compatibility
     const response = await fetch(imageUri);
-    const blob = await response.blob();
+    const arrayBuffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
 
-    // Upload to Supabase Storage
+    // Upload to Supabase Storage using the array buffer
     const { data, error } = await supabase.storage
       .from('avatars')
-      .upload(fileName, blob, {
-        contentType: `image/${fileExt}`,
+      .upload(fileName, uint8Array, {
+        contentType: 'image/jpeg',
         upsert: true,
       });
 
@@ -209,12 +210,15 @@ export async function uploadAvatar(
       return { success: false, error: error.message };
     }
 
-    // Get public URL
+    // Get public URL with cache busting
     const { data: urlData } = supabase.storage
       .from('avatars')
       .getPublicUrl(fileName);
 
-    return { success: true, url: urlData.publicUrl };
+    // Add timestamp to URL to bust cache
+    const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+    return { success: true, url: publicUrl };
   } catch (error: any) {
     console.error('Error in uploadAvatar:', error);
     return { success: false, error: error.message };
