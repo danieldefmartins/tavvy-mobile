@@ -110,7 +110,15 @@ const APP_TILES: AppTile[] = [
     gradientColors: ['#2DD4BF', '#14B8A6'],
     route: 'UniverseDiscovery',
   },
-  // Row 3: Rides, Experiences, Happening Now
+  // Row 3: On The Go, Rides, Experiences
+  {
+    id: 'on-the-go',
+    name: 'On The Go',
+    icon: 'location',
+    iconType: 'ionicons',
+    gradientColors: ['#10B981', '#059669'],
+    route: 'OnTheGo',
+  },
   {
     id: 'rides',
     name: 'Rides',
@@ -127,6 +135,7 @@ const APP_TILES: AppTile[] = [
     gradientColors: ['#A78BFA', '#8B5CF6'],
     route: 'Home', // TODO: Create ExperiencesBrowse screen
   },
+  // Row 4: Happening Now, Messages, Wallet
   {
     id: 'happening',
     name: 'Happening Now',
@@ -135,7 +144,7 @@ const APP_TILES: AppTile[] = [
     gradientColors: ['#F472B6', '#EC4899'],
     route: 'HappeningNow',
   },
-  // Row 4: Messages, Wallet, Quick Finds
+  // Row 5: Messages, Wallet, Quick Finds
   {
     id: 'messages',
     name: 'Messages',

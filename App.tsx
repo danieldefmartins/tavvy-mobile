@@ -110,6 +110,9 @@ import SettingsScreen from './screens/SettingsScreen';
 import HelpSupportScreen from './screens/HelpSupportScreen';
 import ProsLeadDetailScreen from './screens/ProsLeadDetailScreen';
 
+// ========== ON THE GO SCREEN ==========
+import OnTheGoScreen from './screens/OnTheGoScreen';
+
 // ========== STORY & DISCOVERY SCREENS ==========
 import StoryUploadScreen from './screens/StoryUploadScreen';
 import OwnerHighlightsScreen from './screens/OwnerHighlightsScreen';
@@ -307,6 +310,9 @@ function AppsStack() {
       
       {/* Happening Now - accessible from Apps */}
       <MenuStackNav.Screen name="HappeningNow" component={HappeningNowScreen} />
+      
+      {/* On The Go - Live mobile businesses map */}
+      <MenuStackNav.Screen name="OnTheGo" component={OnTheGoScreen} />
       
       {/* Wallet - Pro Cards collection */}
       <MenuStackNav.Screen name="Wallet" component={WalletScreen} />
