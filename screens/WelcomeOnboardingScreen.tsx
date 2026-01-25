@@ -1,6 +1,8 @@
 /**
- * WelcomeOnboardingScreen
- * 5-screen onboarding flow shown after signup to introduce Tavvy's main features
+ * WelcomeOnboardingScreen v2 - "Experience First"
+ * 6-screen onboarding flow that explains what life feels like with Tavvy
+ * 
+ * Core philosophy: Don't explain features. Explain what life feels like with Tavvy.
  */
 
 import React, { useState, useRef } from 'react';
@@ -12,10 +14,8 @@ import {
   TouchableOpacity,
   FlatList,
   Animated,
-  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useThemeContext } from '../contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
@@ -24,7 +24,11 @@ interface OnboardingSlide {
   id: string;
   title: string;
   subtitle: string;
-  description: string;
+  body: string;
+  footer?: string;
+  bullets?: { emoji: string; text: string }[];
+  chips?: string[];
+  trustBadges?: string[];
   icon: keyof typeof Ionicons.glyphMap;
   gradientColors: string[];
   accentColor: string;
@@ -33,27 +37,44 @@ interface OnboardingSlide {
 const ONBOARDING_SLIDES: OnboardingSlide[] = [
   {
     id: 'welcome',
-    title: 'Welcome to Tavvy!',
-    subtitle: 'Your Local Discovery Companion',
-    description: 'Thank you for joining! Tavvy helps you discover, connect, and explore your community like never before. Let us show you what you can do.',
+    title: 'Welcome to Tavvy',
+    subtitle: 'Discover places the way people actually experience them.',
+    body: 'Find spots you\'ll love — based on real experiences, vibes, and honest heads-ups from the community.',
     icon: 'sparkles',
     gradientColors: ['#1E3A5F', '#0F172A'],
     accentColor: '#3B82F6',
   },
   {
+    id: 'difference',
+    title: 'No Star Ratings.\nNo Long Reviews.',
+    subtitle: 'Just real reactions.',
+    body: '',
+    bullets: [
+      { emoji: '👍', text: 'Did you like it or not?' },
+      { emoji: '✨', text: 'What was the vibe?' },
+      { emoji: '⚠️', text: 'Any heads-up for others?' },
+    ],
+    footer: 'Every 20 positive experiences balance out one negative one.',
+    icon: 'thumbs-up',
+    gradientColors: ['#7C3AED', '#4C1D95'],
+    accentColor: '#A78BFA',
+  },
+  {
     id: 'universes',
     title: 'Universes',
-    subtitle: 'Explore Curated Collections',
-    description: 'Discover themed collections of places - from hidden gems to local favorites. Each Universe is a curated journey through your city\'s best spots.',
+    subtitle: 'Curated experiences, not endless scrolling.',
+    body: 'From hidden gems to local favorites — each Universe is a hand-picked journey built around a vibe, a moment, or a lifestyle.',
+    chips: ['🍔 Best Late-Night Eats', '🎢 Theme Park Rides', '🏕 RV-Friendly Stops'],
     icon: 'planet',
     gradientColors: ['#4C1D95', '#1E1B4B'],
     accentColor: '#8B5CF6',
   },
   {
     id: 'pros',
-    title: 'Find Local Pros',
-    subtitle: 'Trusted Service Professionals',
-    description: 'Need a plumber, electrician, or contractor? Connect with verified local professionals. Get quotes, read reviews, and hire with confidence.',
+    title: 'Find Local Pros\nYou Can Trust',
+    subtitle: 'Real feedback. Real people.',
+    body: 'Hire plumbers, electricians, and contractors based on real experiences — not paid ads or fake reviews.',
+    trustBadges: ['Community-driven', 'No review bombing', 'Experience-weighted feedback'],
     icon: 'construct',
     gradientColors: ['#065F46', '#064E3B'],
     accentColor: '#10B981',
@@ -61,25 +82,27 @@ const ONBOARDING_SLIDES: OnboardingSlide[] = [
   {
     id: 'ecards',
     title: 'Digital Business Cards',
-    subtitle: 'Your Professional Identity',
-    description: 'Create stunning digital business cards in seconds. Share via NFC, QR code, or link. Perfect for networking and growing your business.',
+    subtitle: 'Connect beyond the first contact.',
+    body: 'Save trusted pros, share contact info instantly, and keep everything organized — no paper, no hassle.',
     icon: 'card',
     gradientColors: ['#9D174D', '#831843'],
     accentColor: '#EC4899',
   },
   {
     id: 'more',
-    title: 'And So Much More',
+    title: 'One App.\nMany Ways to Explore.',
     subtitle: 'Realtors • RV & Camping • On The Go',
-    description: 'Find your perfect realtor, discover RV parks and campgrounds, or explore mobile businesses near you. Tavvy is your all-in-one local companion.',
+    body: 'Whether you\'re traveling, moving, or just exploring nearby — Tavvy adapts to how you live.',
     icon: 'apps',
     gradientColors: ['#B45309', '#92400E'],
     accentColor: '#F59E0B',
   },
 ];
 
+// The review system screen is the soul of Tavvy - Skip should jump here
+const REVIEW_SYSTEM_SCREEN_INDEX = 1;
+
 export default function WelcomeOnboardingScreen({ navigation }: any) {
-  const { theme } = useThemeContext();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -89,17 +112,22 @@ export default function WelcomeOnboardingScreen({ navigation }: any) {
       flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
       setCurrentIndex(currentIndex + 1);
     } else {
-      // Last slide - go to home
       handleGetStarted();
     }
   };
 
   const handleSkip = () => {
-    handleGetStarted();
+    // Skip jumps to the Review System screen (Screen 2) - the soul of Tavvy
+    if (currentIndex < REVIEW_SYSTEM_SCREEN_INDEX) {
+      flatListRef.current?.scrollToIndex({ index: REVIEW_SYSTEM_SCREEN_INDEX });
+      setCurrentIndex(REVIEW_SYSTEM_SCREEN_INDEX);
+    } else {
+      // If already past review system, go to home
+      handleGetStarted();
+    }
   };
 
   const handleGetStarted = () => {
-    // Navigate to Home tab
     navigation.reset({
       index: 0,
       routes: [{ name: 'Home' }],
@@ -116,7 +144,7 @@ export default function WelcomeOnboardingScreen({ navigation }: any) {
     itemVisiblePercentThreshold: 50,
   }).current;
 
-  const renderSlide = ({ item, index }: { item: OnboardingSlide; index: number }) => {
+  const renderSlide = ({ item }: { item: OnboardingSlide }) => {
     return (
       <LinearGradient
         colors={item.gradientColors}
@@ -127,15 +155,57 @@ export default function WelcomeOnboardingScreen({ navigation }: any) {
         <View style={styles.slideContent}>
           {/* Icon */}
           <View style={[styles.iconContainer, { backgroundColor: item.accentColor + '30' }]}>
-            <Ionicons name={item.icon} size={60} color={item.accentColor} />
+            <Ionicons name={item.icon} size={56} color={item.accentColor} />
           </View>
 
           {/* Title */}
           <Text style={styles.title}>{item.title}</Text>
           <Text style={[styles.subtitle, { color: item.accentColor }]}>{item.subtitle}</Text>
 
-          {/* Description */}
-          <Text style={styles.description}>{item.description}</Text>
+          {/* Body text */}
+          {item.body ? (
+            <Text style={styles.body}>{item.body}</Text>
+          ) : null}
+
+          {/* Bullets (for review system screen) */}
+          {item.bullets && (
+            <View style={styles.bulletsContainer}>
+              {item.bullets.map((bullet, index) => (
+                <View key={index} style={styles.bulletRow}>
+                  <Text style={styles.bulletEmoji}>{bullet.emoji}</Text>
+                  <Text style={styles.bulletText}>{bullet.text}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Chips (for universes screen) */}
+          {item.chips && (
+            <View style={styles.chipsContainer}>
+              {item.chips.map((chip, index) => (
+                <View key={index} style={[styles.chip, { borderColor: item.accentColor + '50' }]}>
+                  <Text style={styles.chipText}>{chip}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Trust badges (for pros screen) */}
+          {item.trustBadges && (
+            <View style={styles.trustBadgesContainer}>
+              {item.trustBadges.map((badge, index) => (
+                <View key={index} style={styles.trustBadgeRow}>
+                  <Ionicons name="checkmark-circle" size={18} color={item.accentColor} />
+                  <Text style={styles.trustBadgeText}>{badge}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Footer (for review system screen) */}
+          {item.footer && (
+            <Text style={styles.footer}>{item.footer}</Text>
+          )}
         </View>
       </LinearGradient>
     );
@@ -245,36 +315,99 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: 32,
     paddingBottom: 180,
   },
   iconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
     color: '#fff',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+    lineHeight: 36,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
-  description: {
-    fontSize: 16,
+  body: {
+    fontSize: 15,
     color: '#CBD5E1',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
+    maxWidth: 320,
   },
+  // Bullets (review system)
+  bulletsContainer: {
+    marginTop: 8,
+    alignItems: 'flex-start',
+  },
+  bulletRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  bulletEmoji: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  bulletText: {
+    fontSize: 16,
+    color: '#E2E8F0',
+    fontWeight: '500',
+  },
+  footer: {
+    fontSize: 13,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 24,
+    fontStyle: 'italic',
+  },
+  // Chips (universes)
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 20,
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  chipText: {
+    fontSize: 13,
+    color: '#E2E8F0',
+  },
+  // Trust badges (pros)
+  trustBadgesContainer: {
+    marginTop: 20,
+    alignItems: 'flex-start',
+  },
+  trustBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 6,
+  },
+  trustBadgeText: {
+    fontSize: 14,
+    color: '#E2E8F0',
+    marginLeft: 8,
+  },
+  // Bottom controls
   bottomContainer: {
     position: 'absolute',
     bottom: 0,
