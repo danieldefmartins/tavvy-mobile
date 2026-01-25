@@ -28,11 +28,22 @@ interface RouteParams {
   preserveData?: boolean;
 }
 
+// Super admin emails that have full access to all templates
+const SUPER_ADMIN_EMAILS = [
+  'daniel@360forbusiness.com',
+];
+
 const ECardTemplateGalleryScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const params = route.params as RouteParams || {};
   const { user, isPro } = useAuth();
+  
+  // Check if user is a super admin (has full access to everything)
+  const isSuperAdmin = user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase());
+  
+  // Super admins have Pro-level access
+  const hasProAccess = isPro || isSuperAdmin;
   
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'free' | 'premium' | 'pro'>('all');
@@ -55,8 +66,8 @@ const ECardTemplateGalleryScreen: React.FC = () => {
         templates = templates.filter(t => t.isProOnly);
         break;
       default:
-        // Show all, but put Pro templates first if user is Pro
-        if (isPro) {
+        // Show all, but put Pro templates first if user has Pro access
+        if (hasProAccess) {
           const proTemplates = templates.filter(t => t.isProOnly);
           const otherTemplates = templates.filter(t => !t.isProOnly);
           templates = [...proTemplates, ...otherTemplates];
@@ -65,7 +76,7 @@ const ECardTemplateGalleryScreen: React.FC = () => {
     }
     
     return templates;
-  }, [selectedCategory, isPro]);
+  }, [selectedCategory, hasProAccess]);
 
   const handleSelectTemplate = (template: Template) => {
     // Navigate to color scheme picker, preserving existing data if editing
@@ -135,7 +146,7 @@ const ECardTemplateGalleryScreen: React.FC = () => {
               <View style={[styles.premiumBadge, styles.proBadge]}>
                 <Ionicons name="briefcase" size={12} color="#fff" />
                 <Text style={[styles.premiumBadgeText, styles.proBadgeText]}>
-                  {isPro ? 'PRO' : 'PRO ONLY'}
+                  {hasProAccess ? 'PRO' : 'PRO ONLY'}
                 </Text>
               </View>
             )}
@@ -155,8 +166,8 @@ const ECardTemplateGalleryScreen: React.FC = () => {
               </View>
             )}
 
-            {/* Lock overlay for Pro templates if user is not Pro */}
-            {item.isProOnly && !isPro && (
+            {/* Lock overlay for Pro templates if user does not have Pro access */}
+            {item.isProOnly && !hasProAccess && (
               <View style={styles.lockOverlay}>
                 <Ionicons name="lock-closed" size={32} color="rgba(255,255,255,0.9)" />
                 <Text style={styles.lockText}>Pro Membership Required</Text>
@@ -320,7 +331,7 @@ const ECardTemplateGalleryScreen: React.FC = () => {
             ]}>
               {cat === 'all' ? 'All' : cat === 'free' ? 'Free' : cat === 'premium' ? 'Premium' : 'Pro'}
             </Text>
-            {cat === 'pro' && !isPro && (
+            {cat === 'pro' && !hasProAccess && (
               <Ionicons name="lock-closed" size={10} color="#10b981" style={{ marginLeft: 4 }} />
             )}
           </TouchableOpacity>
@@ -334,10 +345,10 @@ const ECardTemplateGalleryScreen: React.FC = () => {
             styles.selectButton,
             currentTemplate?.isPremium && styles.selectButtonPremium,
             currentTemplate?.isProOnly && styles.selectButtonPro,
-            currentTemplate?.isProOnly && !isPro && styles.selectButtonDisabled,
+            currentTemplate?.isProOnly && !hasProAccess && styles.selectButtonDisabled,
           ]}
           onPress={() => {
-            if (currentTemplate?.isProOnly && !isPro) {
+            if (currentTemplate?.isProOnly && !hasProAccess) {
               // Navigate to Pro upgrade screen
               navigation.navigate('ProMembership');
             } else if (currentTemplate) {
@@ -346,7 +357,7 @@ const ECardTemplateGalleryScreen: React.FC = () => {
           }}
         >
           <Text style={styles.selectButtonText}>
-            {currentTemplate?.isProOnly && !isPro 
+            {currentTemplate?.isProOnly && !hasProAccess 
               ? 'Upgrade to Pro' 
               : currentTemplate?.isProOnly 
                 ? 'Use Pro Template' 
@@ -355,7 +366,7 @@ const ECardTemplateGalleryScreen: React.FC = () => {
                   : 'Use This Template'}
           </Text>
           <Ionicons 
-            name={currentTemplate?.isProOnly && !isPro ? 'arrow-up-circle' : 'arrow-forward'} 
+            name={currentTemplate?.isProOnly && !hasProAccess ? 'arrow-up-circle' : 'arrow-forward'} 
             size={20} 
             color="#fff" 
             style={styles.selectButtonIcon} 
