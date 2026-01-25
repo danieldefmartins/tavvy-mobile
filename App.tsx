@@ -395,6 +395,9 @@ function ProsStack() {
       <ProsStackNav.Screen name="ProsRequestStep4" component={ProsRequestStep4Screen} />
       <ProsStackNav.Screen name="ProsRequestStep5" component={ProsRequestStep5Screen} />
       <ProsStackNav.Screen name="ProsProjectStatus" component={ProsProjectStatusScreen} />
+      {/* Auth screens accessible from Pros flow */}
+      <ProsStackNav.Screen name="SignUp" component={SignUpScreen} />
+      <ProsStackNav.Screen name="Login" component={LoginScreen} />
     </ProsStackNav.Navigator>
   );
 }
