@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import AddressAutocomplete, { AddressData, formatDisplayAddress } from '../../components/ecard/AddressAutocomplete';
+import { getTemplateById, getColorSchemeById } from '../../config/eCardTemplates';
 
 interface Props {
   navigation: any;
@@ -24,6 +25,21 @@ interface Props {
 
 export default function ECardOnboardingProfileScreen({ navigation, route }: Props) {
   const { templateId, colorSchemeId, selectedPlatforms } = route.params || {};
+  
+  // Get the selected template and color scheme for preview colors
+  const selectedTemplate = useMemo(() => templateId ? getTemplateById(templateId) : null, [templateId]);
+  const selectedColorScheme = useMemo(() => 
+    templateId && colorSchemeId ? getColorSchemeById(templateId, colorSchemeId) : null, 
+    [templateId, colorSchemeId]
+  );
+  
+  // Determine gradient colors from template or defaults
+  const gradientColors: [string, string] = useMemo(() => [
+    selectedColorScheme?.primary || '#667eea',
+    selectedColorScheme?.secondary || '#764ba2'
+  ], [selectedColorScheme]);
+  
+  const textColor = selectedColorScheme?.text || '#fff';
   
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -189,7 +205,7 @@ export default function ECardOnboardingProfileScreen({ navigation, route }: Prop
             <Text style={styles.previewLabel}>Preview</Text>
             <View style={styles.previewCard}>
               <LinearGradient
-                colors={['#667eea', '#764ba2']}
+                colors={gradientColors}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.previewGradient}
@@ -198,16 +214,16 @@ export default function ECardOnboardingProfileScreen({ navigation, route }: Prop
                   <Image source={{ uri: profileImage }} style={styles.previewImage} />
                 ) : (
                   <View style={styles.previewImagePlaceholder}>
-                    <Ionicons name="person" size={24} color="#fff" />
+                    <Ionicons name="person" size={24} color={textColor} />
                   </View>
                 )}
-                <Text style={styles.previewName}>{name || 'Your Name'}</Text>
-                {title ? <Text style={styles.previewTitle}>{title}</Text> : null}
-                {bio ? <Text style={styles.previewBio} numberOfLines={2}>{bio}</Text> : null}
+                <Text style={[styles.previewName, { color: textColor }]}>{name || 'Your Name'}</Text>
+                {title ? <Text style={[styles.previewTitle, { color: textColor }]}>{title}</Text> : null}
+                {bio ? <Text style={[styles.previewBio, { color: textColor }]} numberOfLines={2}>{bio}</Text> : null}
                 {address.city && address.state ? (
                   <View style={styles.previewLocation}>
-                    <Ionicons name="location" size={12} color="rgba(255,255,255,0.8)" />
-                    <Text style={styles.previewLocationText}>{address.city}, {address.state}</Text>
+                    <Ionicons name="location" size={12} color={textColor} style={{ opacity: 0.8 }} />
+                    <Text style={[styles.previewLocationText, { color: textColor }]}>{address.city}, {address.state}</Text>
                   </View>
                 ) : null}
               </LinearGradient>
