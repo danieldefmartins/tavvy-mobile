@@ -305,11 +305,11 @@ const styles = StyleSheet.create({
   },
   logoSection: {
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: 40,
   },
   logoContainer: {
     position: 'relative',
-    marginBottom: 20,
+    marginBottom: 32,
   },
   logoImage: {
     width: 160,
