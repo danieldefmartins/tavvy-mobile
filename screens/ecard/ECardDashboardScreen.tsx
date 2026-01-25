@@ -147,6 +147,8 @@ interface CardData {
   slug: string;
   theme: string;
   background_type: string;
+  background_image_url?: string;
+  background_video_url?: string;
   button_style: string;
   font_style: string;
   gradient_color_1: string;
@@ -165,6 +167,16 @@ interface CardData {
   review_count?: number;
   review_rating?: number;
   is_published?: boolean;
+  industry_icons?: IndustryIcon[];
+}
+
+// Industry icons for Pro templates
+interface IndustryIcon {
+  id: string;
+  icon: string;
+  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center-left' | 'center-right';
+  size: 'small' | 'medium' | 'large';
+  opacity: number;
 }
 
 interface Props {
@@ -190,6 +202,15 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const [selectedFont, setSelectedFont] = useState('default');
   const [gradientColors, setGradientColors] = useState<[string, string]>(['#667eea', '#764ba2']);
   const [profilePhotoSize, setProfilePhotoSize] = useState('medium');
+  
+  // Background image/video state
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
+  const [backgroundVideoUrl, setBackgroundVideoUrl] = useState<string | null>(null);
+  const [isUploadingBackground, setIsUploadingBackground] = useState(false);
+  
+  // Industry Icons state (Pro feature)
+  const [industryIcons, setIndustryIcons] = useState<IndustryIcon[]>([]);
+  const [showIconsModal, setShowIconsModal] = useState(false);
   
   // Gallery state
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
@@ -601,19 +622,96 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   };
 
   // Background selection handler - allow premium selection
-  const handleBackgroundSelect = (bgType: string) => {
-    setSelectedBackground(bgType);
+  const handleBackgroundSelect = async (bgType: string) => {
+    // For image/video, open picker first
+    if (bgType === 'image') {
+      await pickBackgroundImage();
+      return;
+    }
     
+    if (bgType === 'video') {
+      await pickBackgroundVideo();
+      return;
+    }
+    
+    setSelectedBackground(bgType);
+    saveAppearanceSettings({ background_type: bgType });
+  };
+  
+  // Pick background image
+  const pickBackgroundImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [9, 16], // Vertical card aspect ratio
+        quality: 0.8,
+      });
+      
+      if (!result.canceled && result.assets[0]) {
+        setIsUploadingBackground(true);
+        
+        // For now, store the local URI - in production, upload to Supabase Storage
+        const imageUri = result.assets[0].uri;
+        setBackgroundImageUrl(imageUri);
+        setSelectedBackground('image');
+        
+        // Track as premium feature if not Pro
+        if (!isPro && !selectedPremiumFeatures.includes('image_background')) {
+          setSelectedPremiumFeatures(prev => [...prev, 'image_background']);
+        }
+        
+        saveAppearanceSettings({ 
+          background_type: 'image',
+          background_image_url: imageUri,
+        });
+        
+        setIsUploadingBackground(false);
+      }
+    } catch (error) {
+      console.error('Error picking background image:', error);
+      Alert.alert('Error', 'Failed to select background image. Please try again.');
+      setIsUploadingBackground(false);
+    }
+  };
+  
+  // Pick background video
+  const pickBackgroundVideo = async () => {
     // Track video as premium
-    if (bgType === 'video' && !isPro) {
+    if (!isPro) {
       if (!selectedPremiumFeatures.includes('video_background')) {
         setSelectedPremiumFeatures(prev => [...prev, 'video_background']);
       }
-    } else {
-      setSelectedPremiumFeatures(prev => prev.filter(f => f !== 'video_background'));
     }
     
-    saveAppearanceSettings({ background_type: bgType });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: true,
+        quality: 0.8,
+        videoMaxDuration: 15, // 15 second max for background videos
+      });
+      
+      if (!result.canceled && result.assets[0]) {
+        setIsUploadingBackground(true);
+        
+        // For now, store the local URI - in production, upload to Supabase Storage
+        const videoUri = result.assets[0].uri;
+        setBackgroundVideoUrl(videoUri);
+        setSelectedBackground('video');
+        
+        saveAppearanceSettings({ 
+          background_type: 'video',
+          background_video_url: videoUri,
+        });
+        
+        setIsUploadingBackground(false);
+      }
+    } catch (error) {
+      console.error('Error picking background video:', error);
+      Alert.alert('Error', 'Failed to select background video. Please try again.');
+      setIsUploadingBackground(false);
+    }
   };
 
   // Preset gradient selection
@@ -724,6 +822,39 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     }
     
     saveAppearanceSettings({ gallery_images: updatedGallery });
+  };
+
+  // Add industry icon
+  const handleAddIndustryIcon = (iconName: string, position: IndustryIcon['position']) => {
+    const newIcon: IndustryIcon = {
+      id: Date.now().toString(),
+      icon: iconName,
+      position,
+      size: 'medium',
+      opacity: 0.15,
+    };
+    
+    const updatedIcons = [...industryIcons, newIcon];
+    setIndustryIcons(updatedIcons);
+    
+    // Track as premium feature
+    if (!isPro && !selectedPremiumFeatures.includes('industry_icons')) {
+      setSelectedPremiumFeatures(prev => [...prev, 'industry_icons']);
+    }
+    
+    saveAppearanceSettings({ industry_icons: updatedIcons });
+  };
+  
+  // Remove industry icon
+  const handleRemoveIndustryIcon = (iconId: string) => {
+    const updatedIcons = industryIcons.filter(icon => icon.id !== iconId);
+    setIndustryIcons(updatedIcons);
+    
+    if (updatedIcons.length === 0) {
+      setSelectedPremiumFeatures(prev => prev.filter(f => f !== 'industry_icons'));
+    }
+    
+    saveAppearanceSettings({ industry_icons: updatedIcons });
   };
 
   // Save Pro Credentials
@@ -1438,6 +1569,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       <View style={styles.appearanceSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Backgrounds</Text>
+          {isUploadingBackground && <ActivityIndicator size="small" color="#00C853" />}
         </View>
         <View style={styles.backgroundOptions}>
           {['solid', 'gradient', 'image', 'video'].map((bgType) => (
@@ -1445,13 +1577,18 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               key={bgType}
               style={[styles.backgroundOption, selectedBackground === bgType && styles.selectedBackground]}
               onPress={() => handleBackgroundSelect(bgType)}
+              disabled={isUploadingBackground}
             >
               {bgType === 'solid' && <View style={[styles.bgPreview, { backgroundColor: gradientColors[0] }]} />}
               {bgType === 'gradient' && <LinearGradient colors={gradientColors} style={styles.bgPreview} />}
               {bgType === 'image' && (
-                <View style={[styles.bgPreview, styles.bgPreviewIcon]}>
-                  <Ionicons name="image" size={20} color="#9E9E9E" />
-                </View>
+                backgroundImageUrl && selectedBackground === 'image' ? (
+                  <Image source={{ uri: backgroundImageUrl }} style={styles.bgPreview} resizeMode="cover" />
+                ) : (
+                  <View style={[styles.bgPreview, styles.bgPreviewIcon]}>
+                    <Ionicons name="image" size={20} color="#9E9E9E" />
+                  </View>
+                )
               )}
               {bgType === 'video' && (
                 <View style={[styles.bgPreview, styles.bgPreviewDark]}>
@@ -1463,6 +1600,17 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             </TouchableOpacity>
           ))}
         </View>
+        
+        {/* Show change button when image/video is selected */}
+        {(selectedBackground === 'image' || selectedBackground === 'video') && (
+          <TouchableOpacity 
+            style={styles.changeBackgroundButton}
+            onPress={() => selectedBackground === 'image' ? pickBackgroundImage() : pickBackgroundVideo()}
+          >
+            <Ionicons name="refresh" size={16} color="#00C853" />
+            <Text style={styles.changeBackgroundText}>Change {selectedBackground}</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Button Styles Section */}
@@ -1518,6 +1666,48 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             </TouchableOpacity>
           ))}
         </ScrollView>
+      </View>
+
+      {/* Industry Icons Section - Pro Feature */}
+      <View style={styles.appearanceSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Industry Icons</Text>
+          <View style={styles.proBadgeSmall}>
+            <Text style={styles.proBadgeSmallText}>PRO</Text>
+          </View>
+        </View>
+        <Text style={styles.sectionDescription}>
+          Add professional icons to personalize your card for your industry
+        </Text>
+        
+        <TouchableOpacity 
+          style={styles.addIconsButton}
+          onPress={() => setShowIconsModal(true)}
+        >
+          <Ionicons name="add-circle" size={20} color="#00C853" />
+          <Text style={styles.addIconsText}>
+            {industryIcons.length > 0 
+              ? `Edit Icons (${industryIcons.length} selected)` 
+              : 'Add Industry Icons'}
+          </Text>
+        </TouchableOpacity>
+        
+        {/* Preview selected icons */}
+        {industryIcons.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectedIconsScroll}>
+            {industryIcons.map((icon) => (
+              <View key={icon.id} style={styles.selectedIconPreview}>
+                <Ionicons name={icon.icon as any} size={24} color="#1A1A1A" />
+                <TouchableOpacity 
+                  style={styles.removeIconButton}
+                  onPress={() => handleRemoveIndustryIcon(icon.id)}
+                >
+                  <Ionicons name="close-circle" size={16} color="#FF6B6B" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        )}
       </View>
 
       {/* Premium upsell removed - only prompt on publish */}
@@ -2297,6 +2487,199 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     </Modal>
   );
 
+  // Industry Icons Modal
+  const renderIndustryIconsModal = () => {
+    // Industry-specific icon categories
+    const INDUSTRY_ICONS = {
+      'Real Estate': [
+        { icon: 'home', name: 'House' },
+        { icon: 'key', name: 'Keys' },
+        { icon: 'business', name: 'Building' },
+        { icon: 'location', name: 'Location' },
+        { icon: 'ribbon', name: 'Sold' },
+        { icon: 'trending-up', name: 'Growth' },
+      ],
+      'Construction': [
+        { icon: 'construct', name: 'Tools' },
+        { icon: 'hammer', name: 'Hammer' },
+        { icon: 'build', name: 'Build' },
+        { icon: 'cube', name: 'Materials' },
+        { icon: 'layers', name: 'Layers' },
+        { icon: 'shield-checkmark', name: 'Safety' },
+      ],
+      'Beauty & Wellness': [
+        { icon: 'sparkles', name: 'Sparkle' },
+        { icon: 'heart', name: 'Heart' },
+        { icon: 'flower', name: 'Flower' },
+        { icon: 'star', name: 'Star' },
+        { icon: 'leaf', name: 'Natural' },
+        { icon: 'water', name: 'Water' },
+      ],
+      'Food & Beverage': [
+        { icon: 'restaurant', name: 'Dining' },
+        { icon: 'cafe', name: 'Coffee' },
+        { icon: 'wine', name: 'Wine' },
+        { icon: 'pizza', name: 'Pizza' },
+        { icon: 'nutrition', name: 'Nutrition' },
+        { icon: 'ice-cream', name: 'Dessert' },
+      ],
+      'Technology': [
+        { icon: 'code-slash', name: 'Code' },
+        { icon: 'laptop', name: 'Laptop' },
+        { icon: 'phone-portrait', name: 'Mobile' },
+        { icon: 'cloud', name: 'Cloud' },
+        { icon: 'analytics', name: 'Analytics' },
+        { icon: 'settings', name: 'Settings' },
+      ],
+      'Finance': [
+        { icon: 'cash', name: 'Cash' },
+        { icon: 'card', name: 'Card' },
+        { icon: 'wallet', name: 'Wallet' },
+        { icon: 'trending-up', name: 'Growth' },
+        { icon: 'pie-chart', name: 'Chart' },
+        { icon: 'calculator', name: 'Calculator' },
+      ],
+      'Healthcare': [
+        { icon: 'medkit', name: 'Medical' },
+        { icon: 'heart', name: 'Heart' },
+        { icon: 'fitness', name: 'Fitness' },
+        { icon: 'pulse', name: 'Pulse' },
+        { icon: 'bandage', name: 'Care' },
+        { icon: 'shield-checkmark', name: 'Protection' },
+      ],
+      'General': [
+        { icon: 'briefcase', name: 'Business' },
+        { icon: 'people', name: 'Team' },
+        { icon: 'trophy', name: 'Award' },
+        { icon: 'ribbon', name: 'Badge' },
+        { icon: 'checkmark-circle', name: 'Verified' },
+        { icon: 'flash', name: 'Fast' },
+      ],
+    };
+    
+    const ICON_POSITIONS: { id: IndustryIcon['position']; name: string }[] = [
+      { id: 'top-left', name: 'Top Left' },
+      { id: 'top-right', name: 'Top Right' },
+      { id: 'center-left', name: 'Center Left' },
+      { id: 'center-right', name: 'Center Right' },
+      { id: 'bottom-left', name: 'Bottom Left' },
+      { id: 'bottom-right', name: 'Bottom Right' },
+    ];
+    
+    const [selectedCategory, setSelectedCategory] = useState('Real Estate');
+    const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
+    const [selectedPosition, setSelectedPosition] = useState<IndustryIcon['position']>('top-right');
+    
+    return (
+      <Modal
+        visible={showIconsModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowIconsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: height * 0.85 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Industry Icons</Text>
+              <TouchableOpacity onPress={() => setShowIconsModal(false)}>
+                <Ionicons name="close" size={24} color="#1A1A1A" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.iconModalDescription}>
+              Add watermark icons that represent your industry. These appear subtly on your card background.
+            </Text>
+            
+            {/* Category Tabs */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryTabs}>
+              {Object.keys(INDUSTRY_ICONS).map((category) => (
+                <TouchableOpacity
+                  key={category}
+                  style={[
+                    styles.categoryTab,
+                    selectedCategory === category && styles.categoryTabActive
+                  ]}
+                  onPress={() => setSelectedCategory(category)}
+                >
+                  <Text style={[
+                    styles.categoryTabText,
+                    selectedCategory === category && styles.categoryTabTextActive
+                  ]}>{category}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            
+            {/* Icons Grid */}
+            <View style={styles.iconsGrid}>
+              {INDUSTRY_ICONS[selectedCategory as keyof typeof INDUSTRY_ICONS].map((item) => (
+                <TouchableOpacity
+                  key={item.icon}
+                  style={[
+                    styles.iconItem,
+                    selectedIcon === item.icon && styles.iconItemSelected
+                  ]}
+                  onPress={() => setSelectedIcon(item.icon)}
+                >
+                  <Ionicons name={item.icon as any} size={28} color={selectedIcon === item.icon ? '#00C853' : '#666'} />
+                  <Text style={styles.iconItemName}>{item.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            {/* Position Selection */}
+            {selectedIcon && (
+              <View style={styles.positionSection}>
+                <Text style={styles.positionTitle}>Select Position</Text>
+                <View style={styles.positionGrid}>
+                  {ICON_POSITIONS.map((pos) => (
+                    <TouchableOpacity
+                      key={pos.id}
+                      style={[
+                        styles.positionItem,
+                        selectedPosition === pos.id && styles.positionItemSelected
+                      ]}
+                      onPress={() => setSelectedPosition(pos.id)}
+                    >
+                      <Text style={[
+                        styles.positionItemText,
+                        selectedPosition === pos.id && styles.positionItemTextSelected
+                      ]}>{pos.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+            
+            {/* Add Button */}
+            <TouchableOpacity
+              style={[
+                styles.addIconButton,
+                !selectedIcon && styles.addIconButtonDisabled
+              ]}
+              onPress={() => {
+                if (selectedIcon) {
+                  handleAddIndustryIcon(selectedIcon, selectedPosition);
+                  setSelectedIcon(null);
+                  setShowIconsModal(false);
+                }
+              }}
+              disabled={!selectedIcon}
+            >
+              <LinearGradient
+                colors={selectedIcon ? ['#00C853', '#00E676'] : ['#E0E0E0', '#BDBDBD']}
+                style={styles.addIconGradient}
+              >
+                <Ionicons name="add" size={20} color={selectedIcon ? '#fff' : '#9E9E9E'} />
+                <Text style={[styles.addIconButtonText, !selectedIcon && { color: '#9E9E9E' }]}>
+                  Add Icon to Card
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
 
   // Loading state
   if (isLoading) {
@@ -2426,6 +2809,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       {renderGalleryModal()}
       {renderYoutubeModal()}
       {renderCredentialsModal()}
+      {renderIndustryIconsModal()}
       
       {/* Saving Indicator */}
       {isSaving && (
@@ -3142,6 +3526,23 @@ const styles = StyleSheet.create({
   bgName: {
     fontSize: 12,
     color: '#666',
+  },
+  changeBackgroundButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 8,
+    gap: 6,
+  },
+  changeBackgroundText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#00C853',
+    textTransform: 'capitalize',
   },
   
   // Button Styles
@@ -4057,5 +4458,166 @@ const styles = StyleSheet.create({
     color: '#991B1B',
     marginTop: 8,
     textAlign: 'center',
+  },
+  
+  // Industry Icons Section
+  proBadgeSmall: {
+    backgroundColor: '#FACC15',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 8,
+  },
+  proBadgeSmallText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  sectionDescription: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  addIconsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E8F5E9',
+    borderRadius: 12,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  addIconsText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#00C853',
+  },
+  selectedIconsScroll: {
+    marginTop: 12,
+  },
+  selectedIconPreview: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    position: 'relative',
+  },
+  removeIconButton: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+  },
+  
+  // Industry Icons Modal
+  iconModalDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  categoryTabs: {
+    marginBottom: 16,
+    marginHorizontal: -24,
+    paddingHorizontal: 24,
+  },
+  categoryTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    marginRight: 8,
+  },
+  categoryTabActive: {
+    backgroundColor: '#00C853',
+  },
+  categoryTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  categoryTabTextActive: {
+    color: '#fff',
+  },
+  iconsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 20,
+  },
+  iconItem: {
+    width: (width - 96) / 3 - 8,
+    aspectRatio: 1,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  iconItemSelected: {
+    borderColor: '#00C853',
+    backgroundColor: '#E8F5E9',
+  },
+  iconItemName: {
+    fontSize: 11,
+    color: '#666',
+    marginTop: 4,
+  },
+  positionSection: {
+    marginBottom: 20,
+  },
+  positionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 12,
+  },
+  positionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  positionItem: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  positionItemSelected: {
+    borderColor: '#00C853',
+    backgroundColor: '#E8F5E9',
+  },
+  positionItemText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#666',
+  },
+  positionItemTextSelected: {
+    color: '#00C853',
+  },
+  addIconButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  addIconButtonDisabled: {
+    opacity: 0.7,
+  },
+  addIconGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  addIconButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
