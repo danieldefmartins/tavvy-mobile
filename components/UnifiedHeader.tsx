@@ -1,3 +1,11 @@
+/**
+ * UnifiedHeader Component
+ * Install path: components/UnifiedHeader.tsx
+ * 
+ * A unified header component with gradient background and search bar.
+ * Used across all main screens in the app.
+ */
+
 import React from 'react';
 import {
   View,
@@ -11,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../contexts/AuthContext';
 
 // Screen color configurations
 export const SCREEN_COLORS = {
@@ -37,6 +46,8 @@ interface UnifiedHeaderProps {
   showSearch?: boolean;
   rightIcon?: string;
   onRightIconPress?: () => void;
+  /** If true, uses custom onProfilePress instead of default navigation */
+  customProfileHandler?: boolean;
 }
 
 export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
@@ -49,17 +60,23 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   showSearch = true,
   rightIcon,
   onRightIconPress,
+  customProfileHandler = false,
 }) => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const colors = SCREEN_COLORS[screenKey];
+  const { user } = useAuth();
 
   const handleProfilePress = () => {
-    if (onProfilePress) {
+    if (customProfileHandler && onProfilePress) {
+      // Use custom handler
       onProfilePress();
+    } else if (user) {
+      // User is logged in, navigate to profile
+      navigation.navigate('ProfileMain');
     } else {
-      // Default navigation to profile
-      (navigation as any).navigate('ProfileMain');
+      // User not logged in, go directly to login screen
+      navigation.navigate('Login');
     }
   };
 
