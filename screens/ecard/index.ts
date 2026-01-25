@@ -1,4 +1,5 @@
 // eCard Screens - Linktree-style flow
+export { default as ECardHubScreen } from './ECardHubScreen';
 export { default as ECardOnboardingPlatformsScreen } from './ECardOnboardingPlatformsScreen';
 export { default as ECardOnboardingProfileScreen } from './ECardOnboardingProfileScreen';
 export { default as ECardOnboardingLinksScreen } from './ECardOnboardingLinksScreen';

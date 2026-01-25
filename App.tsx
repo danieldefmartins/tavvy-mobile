@@ -135,6 +135,7 @@ import ECardBlockBuilderScreen from './screens/ECardBlockBuilderScreen';
 
 // ========== NEW ECARD LINKTREE-STYLE SCREENS ==========
 import {
+  ECardHubScreen,
   ECardOnboardingPlatformsScreen,
   ECardOnboardingProfileScreen,
   ECardOnboardingLinksScreen,
@@ -323,6 +324,7 @@ function AppsStack() {
       <MenuStackNav.Screen name="PublicCardView" component={PublicCardViewScreen} />
       
       {/* NEW: Linktree-style eCard Flow */}
+      <MenuStackNav.Screen name="ECardHub" component={ECardHubScreen} />
       <MenuStackNav.Screen name="ECardOnboardingPlatforms" component={ECardOnboardingPlatformsScreen} />
       <MenuStackNav.Screen name="ECardOnboardingProfile" component={ECardOnboardingProfileScreen} />
       <MenuStackNav.Screen name="ECardOnboardingLinks" component={ECardOnboardingLinksScreen} />
