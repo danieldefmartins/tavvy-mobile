@@ -286,6 +286,31 @@ export default function ProsHomeScreen() {
         </ScrollView>
       </View>
 
+      {/* Start a Project CTA - positioned under filter bar like Realtors */}
+      <TouchableOpacity 
+        style={styles.startProjectCard}
+        onPress={() => navigation.navigate('ProsRequestStep0')}
+        activeOpacity={0.9}
+      >
+        <LinearGradient
+          colors={[ProsColors.primary, '#047857']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.startProjectGradient}
+        >
+          <View style={styles.startProjectContent}>
+            <View style={styles.startProjectIconContainer}>
+              <Ionicons name="add-circle" size={28} color={ProsColors.primary} />
+            </View>
+            <View style={styles.startProjectTextContainer}>
+              <Text style={styles.startProjectTitle}>Start a Project</Text>
+              <Text style={styles.startProjectSubtitle}>Get quotes from multiple pros in minutes</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#FFFFFF" />
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -374,29 +399,7 @@ export default function ProsHomeScreen() {
             </View>
           </View>
 
-          {/* Start a Project CTA */}
-          <TouchableOpacity 
-            style={styles.startProjectButton}
-            onPress={() => navigation.navigate('ProsRequestStep0')}
-          >
-            <LinearGradient
-              colors={['#0EA5E9', '#0284C7']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.startProjectGradient}
-            >
-              <View style={styles.startProjectContent}>
-                <View style={styles.startProjectIconContainer}>
-                  <Ionicons name="add-circle" size={28} color="#FFFFFF" />
-                </View>
-                <View style={styles.startProjectTextContainer}>
-                  <Text style={styles.startProjectTitle}>Start a Project</Text>
-                  <Text style={styles.startProjectSubtitle}>Get quotes from multiple pros in minutes</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color="#FFFFFF" />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
+
         </LinearGradient>
 
         {/* Browse by Service - Horizontal Scroll */}
@@ -941,7 +944,19 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
     fontSize: 12,
   },
-  // Start a Project CTA styles
+  // Start a Project CTA styles - positioned under filter bar like Realtors
+  startProjectCard: {
+    marginHorizontal: 16,
+    marginVertical: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  // Legacy style kept for compatibility
   startProjectButton: {
     marginHorizontal: 16,
     marginTop: 16,
@@ -955,7 +970,6 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   startProjectGradient: {
-    borderRadius: 16,
     padding: 16,
   },
   startProjectContent: {
@@ -963,19 +977,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   startProjectIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
   startProjectTextContainer: {
     flex: 1,
   },
   startProjectTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 2,
