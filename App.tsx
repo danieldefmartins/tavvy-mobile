@@ -57,6 +57,7 @@ import ProfileScreen from './screens/ProfileScreen';
 import SavedScreen from './screens/SavedScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
+import WelcomeOnboardingScreen from './screens/WelcomeOnboardingScreen';
 
 // ========== PROS SCREENS (NEW) ==========
 import ProsHomeScreen from './screens/ProsHomeScreen';
@@ -398,6 +399,7 @@ function ProsStack() {
       {/* Auth screens accessible from Pros flow */}
       <ProsStackNav.Screen name="SignUp" component={SignUpScreen} />
       <ProsStackNav.Screen name="Login" component={LoginScreen} />
+      <ProsStackNav.Screen name="WelcomeOnboarding" component={WelcomeOnboardingScreen} />
     </ProsStackNav.Navigator>
   );
 }
