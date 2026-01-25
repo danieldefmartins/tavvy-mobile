@@ -112,6 +112,7 @@ import ProsLeadDetailScreen from './screens/ProsLeadDetailScreen';
 
 // ========== ON THE GO SCREEN ==========
 import OnTheGoScreen from './screens/OnTheGoScreen';
+import PlaceScheduleScreen from './screens/PlaceScheduleScreen';
 
 // ========== STORY & DISCOVERY SCREENS ==========
 import StoryUploadScreen from './screens/StoryUploadScreen';
@@ -313,6 +314,7 @@ function AppsStack() {
       
       {/* On The Go - Live mobile businesses map */}
       <MenuStackNav.Screen name="OnTheGo" component={OnTheGoScreen} />
+      <MenuStackNav.Screen name="PlaceSchedule" component={PlaceScheduleScreen} />
       
       {/* Wallet - Pro Cards collection */}
       <MenuStackNav.Screen name="Wallet" component={WalletScreen} />

@@ -69,10 +69,10 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 interface LiveSession {
-  session_id: string;
+  session_id?: string;
   tavvy_place_id: string;
-  session_lat: number;
-  session_lng: number;
+  session_lat?: number;
+  session_lng?: number;
   place_name: string;
   category?: string;
   subcategory?: string;
@@ -82,15 +82,41 @@ interface LiveSession {
   location_label?: string;
   session_address?: string;
   today_note?: string;
-  started_at: string;
-  scheduled_end_at: string;
+  started_at?: string;
+  scheduled_end_at?: string;
+  is_live: boolean;
+  has_schedule?: boolean;
+}
+
+interface ScheduledPlace {
+  tavvy_place_id: string;
+  place_name: string;
+  category?: string;
+  subcategory?: string;
+  cover_image_url?: string;
+  phone?: string;
+  service_area?: string;
+  is_live: boolean;
+  has_schedule: boolean;
+  next_event_label?: string;
+  next_event?: {
+    location_name: string;
+    location_address?: string;
+    latitude: number;
+    longitude: number;
+    scheduled_start: string;
+    scheduled_end: string;
+  };
 }
 
 interface MapDataResponse {
   success: boolean;
-  count: number;
+  live_count: number;
+  scheduled_count: number;
+  total_count: number;
   available_categories: string[];
   sessions: LiveSession[];
+  scheduled_places: ScheduledPlace[];
 }
 
 export default function OnTheGoScreen() {
@@ -101,9 +127,11 @@ export default function OnTheGoScreen() {
   // State
   const [isLoading, setIsLoading] = useState(true);
   const [sessions, setSessions] = useState<LiveSession[]>([]);
+  const [scheduledPlaces, setScheduledPlaces] = useState<ScheduledPlace[]>([]);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSession, setSelectedSession] = useState<LiveSession | null>(null);
+  const [selectedScheduledPlace, setSelectedScheduledPlace] = useState<ScheduledPlace | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   
@@ -144,19 +172,22 @@ export default function OnTheGoScreen() {
     })();
   }, []);
 
-  // Fetch live sessions
+  // Fetch live sessions and scheduled places
   const fetchSessions = useCallback(async () => {
     try {
-      let url = `${SUPABASE_URL}/functions/v1/live-onthego-map-data`;
+      let url = `${SUPABASE_URL}/functions/v1/live-onthego-map-data?include_scheduled=true`;
       if (selectedCategory) {
-        url += `?category=${encodeURIComponent(selectedCategory)}`;
+        url += `&category=${encodeURIComponent(selectedCategory)}`;
       }
       
       const response = await fetch(url);
       const data: MapDataResponse = await response.json();
       
       if (data.success) {
-        setSessions(data.sessions);
+        // Add is_live: true to all sessions for consistency
+        const sessionsWithLive = data.sessions.map(s => ({ ...s, is_live: true }));
+        setSessions(sessionsWithLive);
+        setScheduledPlaces(data.scheduled_places || []);
         setAvailableCategories(data.available_categories);
       }
     } catch (error) {
@@ -173,15 +204,37 @@ export default function OnTheGoScreen() {
     return () => clearInterval(interval);
   }, [fetchSessions]);
 
-  // Handle marker press
+  // Handle marker press for live session
   const handleMarkerPress = (session: LiveSession) => {
+    setSelectedScheduledPlace(null);
     setSelectedSession(session);
     // Center map on selected session
-    cameraRef.current?.setCamera({
-      centerCoordinate: [session.session_lng, session.session_lat],
-      zoomLevel: 15,
-      animationDuration: 500,
-    });
+    if (session.session_lng && session.session_lat) {
+      cameraRef.current?.setCamera({
+        centerCoordinate: [session.session_lng, session.session_lat],
+        zoomLevel: 15,
+        animationDuration: 500,
+      });
+    }
+  };
+
+  // Handle marker press for scheduled place (offline with upcoming events)
+  const handleScheduledPlacePress = (place: ScheduledPlace) => {
+    setSelectedSession(null);
+    setSelectedScheduledPlace(place);
+    // Center map on next event location
+    if (place.next_event) {
+      cameraRef.current?.setCamera({
+        centerCoordinate: [place.next_event.longitude, place.next_event.latitude],
+        zoomLevel: 15,
+        animationDuration: 500,
+      });
+    }
+  };
+
+  // Navigate to schedule screen
+  const viewSchedule = (tavvyPlaceId: string, placeName: string) => {
+    navigation.navigate('PlaceSchedule', { tavvyPlaceId, placeName });
   };
 
   // Get directions to session
@@ -260,7 +313,9 @@ export default function OnTheGoScreen() {
               <Text style={styles.headerTitle}>On The Go</Text>
               <View style={styles.liveIndicator}>
                 <View style={styles.liveDot} />
-                <Text style={styles.liveCount}>{sessions.length} Live</Text>
+                <Text style={styles.liveCount}>
+                  {sessions.length} Live{scheduledPlaces.length > 0 ? ` · ${scheduledPlaces.length} Scheduled` : ''}
+                </Text>
               </View>
             </View>
             
@@ -369,9 +424,9 @@ export default function OnTheGoScreen() {
               {/* Live session markers */}
               {sessions.map((session) => (
                 <MapLibreGL.PointAnnotation
-                  key={session.session_id}
-                  id={session.session_id}
-                  coordinate={[session.session_lng, session.session_lat]}
+                  key={session.session_id || session.tavvy_place_id}
+                  id={session.session_id || session.tavvy_place_id}
+                  coordinate={[session.session_lng!, session.session_lat!]}
                   onSelected={() => handleMarkerPress(session)}
                 >
                   <View style={styles.markerContainer}>
@@ -389,6 +444,29 @@ export default function OnTheGoScreen() {
                       styles.markerPulse,
                       { backgroundColor: getMarkerColor(session.category) },
                     ]} />
+                  </View>
+                </MapLibreGL.PointAnnotation>
+              ))}
+
+              {/* Scheduled place markers (offline with upcoming events) */}
+              {scheduledPlaces.map((place) => place.next_event && (
+                <MapLibreGL.PointAnnotation
+                  key={`scheduled-${place.tavvy_place_id}`}
+                  id={`scheduled-${place.tavvy_place_id}`}
+                  coordinate={[place.next_event.longitude, place.next_event.latitude]}
+                  onSelected={() => handleScheduledPlacePress(place)}
+                >
+                  <View style={styles.markerContainer}>
+                    <View style={[
+                      styles.scheduledMarker,
+                      { borderColor: getMarkerColor(place.category) },
+                    ]}>
+                      <Ionicons
+                        name="calendar"
+                        size={18}
+                        color={getMarkerColor(place.category)}
+                      />
+                    </View>
                   </View>
                 </MapLibreGL.PointAnnotation>
               ))}
@@ -517,6 +595,103 @@ export default function OnTheGoScreen() {
               <TouchableOpacity
                 style={[styles.sessionCardButton, styles.sessionCardButtonSecondary]}
                 onPress={() => callBusiness(selectedSession.phone!)}
+              >
+                <Ionicons name="call" size={20} color="#10B981" />
+                <Text style={[styles.sessionCardButtonText, styles.sessionCardButtonTextSecondary]}>
+                  Call
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Check Schedule button if has upcoming events */}
+          {selectedSession.has_schedule && (
+            <TouchableOpacity
+              style={styles.checkScheduleButton}
+              onPress={() => viewSchedule(selectedSession.tavvy_place_id, selectedSession.place_name)}
+            >
+              <Ionicons name="calendar-outline" size={16} color="#6B7280" />
+              <Text style={styles.checkScheduleText}>Check Schedule</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* Selected Scheduled Place Card (offline with upcoming events) */}
+      {selectedScheduledPlace && (
+        <View style={[styles.sessionCard, dynamicStyles.card]}>
+          <TouchableOpacity
+            style={styles.sessionCardClose}
+            onPress={() => setSelectedScheduledPlace(null)}
+          >
+            <Ionicons name="close" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          <View style={styles.sessionCardHeader}>
+            {selectedScheduledPlace.cover_image_url ? (
+              <Image
+                source={{ uri: selectedScheduledPlace.cover_image_url }}
+                style={styles.sessionCardImage}
+              />
+            ) : (
+              <LinearGradient
+                colors={[getMarkerColor(selectedScheduledPlace.category), '#6B7280']}
+                style={styles.sessionCardImage}
+              >
+                <Ionicons
+                  name={getMarkerIcon(selectedScheduledPlace.category) as any}
+                  size={32}
+                  color="#FFFFFF"
+                />
+              </LinearGradient>
+            )}
+            
+            <View style={styles.sessionCardInfo}>
+              <View style={styles.scheduledBadge}>
+                <Ionicons name="calendar" size={12} color="#6B7280" />
+                <Text style={styles.scheduledBadgeText}>
+                  {selectedScheduledPlace.next_event_label || 'SCHEDULED'}
+                </Text>
+              </View>
+              <Text style={[styles.sessionCardName, dynamicStyles.text]} numberOfLines={1}>
+                {selectedScheduledPlace.place_name}
+              </Text>
+              {selectedScheduledPlace.next_event && (
+                <Text style={[styles.sessionCardLocation, dynamicStyles.textSecondary]} numberOfLines={1}>
+                  📍 {selectedScheduledPlace.next_event.location_name}
+                </Text>
+              )}
+              <Text style={styles.offlineText}>Currently Offline</Text>
+            </View>
+          </View>
+
+          {selectedScheduledPlace.next_event && (
+            <View style={styles.nextEventInfo}>
+              <Text style={[styles.nextEventLabel, dynamicStyles.textSecondary]}>Next Location:</Text>
+              <Text style={[styles.nextEventLocation, dynamicStyles.text]}>
+                {selectedScheduledPlace.next_event.location_name}
+              </Text>
+              {selectedScheduledPlace.next_event.location_address && (
+                <Text style={[styles.nextEventAddress, dynamicStyles.textSecondary]}>
+                  {selectedScheduledPlace.next_event.location_address}
+                </Text>
+              )}
+            </View>
+          )}
+
+          <View style={styles.sessionCardActions}>
+            <TouchableOpacity
+              style={styles.sessionCardButton}
+              onPress={() => viewSchedule(selectedScheduledPlace.tavvy_place_id, selectedScheduledPlace.place_name)}
+            >
+              <Ionicons name="calendar" size={20} color="#FFFFFF" />
+              <Text style={styles.sessionCardButtonText}>Check Schedule</Text>
+            </TouchableOpacity>
+            
+            {selectedScheduledPlace.phone && (
+              <TouchableOpacity
+                style={[styles.sessionCardButton, styles.sessionCardButtonSecondary]}
+                onPress={() => callBusiness(selectedScheduledPlace.phone!)}
               >
                 <Ionicons name="call" size={20} color="#10B981" />
                 <Text style={[styles.sessionCardButtonText, styles.sessionCardButtonTextSecondary]}>
@@ -855,5 +1030,79 @@ const styles = StyleSheet.create({
   },
   sessionCardButtonTextSecondary: {
     color: '#10B981',
+  },
+
+  // Scheduled Marker styles
+  scheduledMarker: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+
+  // Scheduled Badge
+  scheduledBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 4,
+  },
+  scheduledBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+  },
+  offlineText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
+
+  // Next Event Info
+  nextEventInfo: {
+    backgroundColor: '#F3F4F6',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  nextEventLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  nextEventLocation: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  nextEventAddress: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+
+  // Check Schedule Button
+  checkScheduleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+    marginTop: 12,
+    gap: 6,
+  },
+  checkScheduleText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6B7280',
   },
 });
