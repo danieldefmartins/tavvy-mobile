@@ -75,8 +75,8 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
       // User is logged in, navigate to profile
       navigation.navigate('ProfileMain');
     } else {
-      // User not logged in, go directly to login screen
-      navigation.navigate('Login');
+      // User not logged in, navigate to Login in Apps stack
+      navigation.navigate('Apps', { screen: 'Login' });
     }
   };
 

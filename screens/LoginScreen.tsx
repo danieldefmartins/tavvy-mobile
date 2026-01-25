@@ -235,17 +235,14 @@ export default function LoginScreen({ navigation }: any) {
             </TouchableOpacity>
           </View>
 
-          {/* Pro Login Link */}
-          <View style={styles.proLinkContainer}>
-            <View style={styles.proLinkDivider} />
-            <TouchableOpacity 
-              style={styles.proLinkButton}
-              onPress={() => navigation.navigate('ProsLogin')}
-            >
-              <Text style={styles.proLinkText}>Are you a service professional? </Text>
-              <Text style={styles.proLinkAction}>Sign in as Pro →</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Pro Login Link - visible without scrolling */}
+          <TouchableOpacity 
+            style={styles.proLinkButton}
+            onPress={() => navigation.navigate('ProsLogin')}
+          >
+            <Text style={styles.proLinkText}>Are you a Pro? </Text>
+            <Text style={styles.proLinkAction}>Sign in here</Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -458,25 +455,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#3B82F6',
   },
-  proLinkContainer: {
-    marginTop: 24,
-    paddingTop: 20,
-  },
-  proLinkDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginBottom: 20,
-  },
   proLinkButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 16,
+    paddingVertical: 8,
   },
   proLinkText: {
     fontSize: 14,
     color: '#94A3B8',
-    marginBottom: 4,
   },
   proLinkAction: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: '#10B981',
   },
