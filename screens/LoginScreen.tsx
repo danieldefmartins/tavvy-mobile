@@ -287,8 +287,8 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 50 : 30,
-    marginBottom: 4,
+    paddingTop: Platform.OS === 'ios' ? 56 : 36,
+    marginBottom: 8,
   },
   backButton: {
     alignSelf: 'flex-start',
@@ -305,11 +305,11 @@ const styles = StyleSheet.create({
   },
   logoSection: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   logoContainer: {
     position: 'relative',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   logoImage: {
     width: 160,
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '600',
     color: '#F1F5F9',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   subtitleText: {
     fontSize: 15,
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 20,
     padding: 20,
-    marginBottom: 16,
+    marginBottom: 18,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
