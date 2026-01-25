@@ -42,8 +42,8 @@ export default function ProsLoginScreen({ navigation }: any) {
     try {
       setLoading(true);
       await signIn(email.trim(), password);
-      // After login, navigate to Pros dashboard
-      navigation.navigate('Pros');
+      // Navigate back after successful login
+      navigation.goBack();
     } catch (error: any) {
       console.error('Pro Login error:', error);
       Alert.alert('Login Failed', error.message || 'Invalid email or password');

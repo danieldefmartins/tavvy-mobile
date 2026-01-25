@@ -37,7 +37,8 @@ export default function LoginScreen({ navigation }: any) {
     try {
       setLoading(true);
       await signIn(email.trim(), password);
-      // Navigation will be handled by AuthContext/App.tsx
+      // Navigate back after successful login
+      navigation.goBack();
     } catch (error: any) {
       console.error('Login error:', error);
       Alert.alert('Login Failed', error.message || 'Invalid email or password');
