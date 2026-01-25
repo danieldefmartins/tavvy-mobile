@@ -364,6 +364,7 @@ const styles = StyleSheet.create({
   subtitleText: {
     fontSize: 15,
     color: 'rgba(255, 255, 255, 0.7)',
+    marginBottom: 24,
   },
   tagline: {
     fontSize: 18,
@@ -376,7 +377,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 28,
   },
   formCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
