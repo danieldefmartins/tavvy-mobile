@@ -12,7 +12,7 @@
  * - Messages tile with unread badge notification
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import {
   Dimensions,
   Modal,
   Pressable,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -32,6 +33,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useUnreadMessagesContext } from '../contexts/UnreadMessagesContext';
+import { supabase } from '../lib/supabaseClient';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const IS_TABLET = SCREEN_WIDTH >= 768;
@@ -202,12 +204,84 @@ export default function AppsScreen() {
   const { theme, isDark, setThemeMode } = useThemeContext();
   const { unreadCount } = useUnreadMessagesContext();
   const [menuVisible, setMenuVisible] = useState(false);
+  const [existingCard, setExistingCard] = useState<any>(null);
+  const [checkingCard, setCheckingCard] = useState(false);
+
+  // Check if user has an existing eCard
+  useEffect(() => {
+    const checkExistingCard = async () => {
+      if (!user) {
+        setExistingCard(null);
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from('digital_cards')
+          .select('id, full_name, slug, is_published, profile_photo_url')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        if (!error && data && data.length > 0) {
+          setExistingCard(data[0]);
+        } else {
+          setExistingCard(null);
+        }
+      } catch (err) {
+        console.error('Error checking existing card:', err);
+        setExistingCard(null);
+      }
+    };
+    
+    checkExistingCard();
+  }, [user]);
+
+  // Handle eCard tile press with existing card check
+  const handleECardPress = () => {
+    if (!user) {
+      navigation.navigate('Login');
+      return;
+    }
+    
+    if (existingCard) {
+      // User has an existing card - show options
+      Alert.alert(
+        'eCard',
+        `You have an existing card${existingCard.full_name ? ` for "${existingCard.full_name}"` : ''}. What would you like to do?`,
+        [
+          {
+            text: 'Edit My Card',
+            onPress: () => navigation.navigate('ECardDashboard', { cardId: existingCard.id }),
+          },
+          {
+            text: 'Create New Card',
+            onPress: () => navigation.navigate('ECardTemplateGallery'),
+            style: 'destructive',
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
+    } else {
+      // No existing card - go to create flow
+      navigation.navigate('ECardTemplateGallery');
+    }
+  };
 
   const handleTilePress = (tile: AppTile) => {
     if (tile.route) {
       // Special handling for routes that require login
       if ((tile.id === 'saved' || tile.id === 'account' || tile.id === 'messages') && !user) {
         navigation.navigate('Login');
+        return;
+      }
+      
+      // Special handling for eCard - check for existing card
+      if (tile.id === 'digital-card') {
+        handleECardPress();
         return;
       }
       
