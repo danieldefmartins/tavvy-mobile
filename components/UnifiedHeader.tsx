@@ -146,6 +146,8 @@ export const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
 const styles = StyleSheet.create({
   container: {
     paddingBottom: 12,
+    zIndex: 10,
+    elevation: 10,
   },
   navRow: {
     flexDirection: 'row',
