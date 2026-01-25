@@ -125,7 +125,7 @@ export default function ProsRequestStep3Screen() {
           <View style={styles.inputWrapper}>
             <TextInput
               style={styles.descriptionInput}
-              placeholder="E.g., I have a 15,000 gallon in-ground pool with a saltwater system. The pump is making a loud grinding noise and water isn't circulating properly..."
+              placeholder="E.g., I need help with [describe the issue]. The problem started [when it started] and I've noticed [specific symptoms]. The system/item is about [age] years old..."
               placeholderTextColor="#9CA3AF"
               multiline
               numberOfLines={8}
