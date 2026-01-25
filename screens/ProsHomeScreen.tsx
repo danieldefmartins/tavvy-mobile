@@ -342,7 +342,7 @@ export default function ProsHomeScreen() {
             onPress={() => navigation.navigate('ProsRequestStep0')}
           >
             <LinearGradient
-              colors={['#F97316', '#EA580C']}
+              colors={['#0EA5E9', '#0284C7']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.startProjectGradient}
