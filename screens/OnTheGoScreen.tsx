@@ -70,7 +70,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 interface LiveSession {
   session_id: string;
-  place_id: string;
+  tavvy_place_id: string;
   session_lat: number;
   session_lng: number;
   place_name: string;
@@ -78,7 +78,9 @@ interface LiveSession {
   subcategory?: string;
   cover_image_url?: string;
   phone?: string;
+  service_area?: string;
   location_label?: string;
+  session_address?: string;
   today_note?: string;
   started_at: string;
   scheduled_end_at: string;
@@ -483,9 +485,9 @@ export default function OnTheGoScreen() {
               <Text style={[styles.sessionCardName, dynamicStyles.text]} numberOfLines={1}>
                 {selectedSession.place_name}
               </Text>
-              {selectedSession.location_label && (
+              {(selectedSession.session_address || selectedSession.location_label) && (
                 <Text style={[styles.sessionCardLocation, dynamicStyles.textSecondary]} numberOfLines={1}>
-                  📍 {selectedSession.location_label}
+                  📍 {selectedSession.session_address || selectedSession.location_label}
                 </Text>
               )}
               <Text style={styles.sessionCardTime}>
