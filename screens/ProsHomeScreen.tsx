@@ -466,7 +466,7 @@ export default function ProsHomeScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
