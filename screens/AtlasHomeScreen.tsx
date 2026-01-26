@@ -37,6 +37,7 @@ import {
   type AtlasArticle,
   type AtlasCategory,
 } from '../lib/atlas';
+import { supabase } from '../lib/supabaseClient';
 import { getCoverImageUrl, getThumbnailUrl } from '../lib/imageUtils';
 import { UnifiedHeader } from '../components/UnifiedHeader';
 
@@ -82,6 +83,7 @@ export default function AtlasHomeScreen() {
   const [allArticles, setAllArticles] = useState<AtlasArticle[]>([]);
   const [displayedArticles, setDisplayedArticles] = useState<AtlasArticle[]>([]);
   const [trendingArticles, setTrendingArticles] = useState<AtlasArticle[]>([]);
+  const [followingArticles, setFollowingArticles] = useState<AtlasArticle[]>([]);
   const [categories, setCategories] = useState<AtlasCategory[]>([]);
   
   // Pagination
@@ -112,10 +114,53 @@ export default function AtlasHomeScreen() {
       setCategories(cats);
       setOffset(PAGE_SIZE);
       setHasMore(articles.length >= PAGE_SIZE);
+
+      // Load articles from followed authors
+      await loadFollowingArticles();
     } catch (error) {
       console.error('Error loading Atlas data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadFollowingArticles = async () => {
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setFollowingArticles([]);
+        return;
+      }
+
+      // Get followed authors
+      const { data: follows } = await supabase
+        .from('atlas_author_follows')
+        .select('author_name')
+        .eq('user_id', user.id);
+
+      if (!follows || follows.length === 0) {
+        setFollowingArticles([]);
+        return;
+      }
+
+      const authorNames = follows.map(f => f.author_name);
+
+      // Get articles from followed authors
+      const { data: articles } = await supabase
+        .from('atlas_articles')
+        .select(`
+          *,
+          category:atlas_categories(*)
+        `)
+        .in('author_name', authorNames)
+        .eq('status', 'published')
+        .order('published_at', { ascending: false })
+        .limit(10);
+
+      setFollowingArticles(articles || []);
+    } catch (error) {
+      console.error('Error loading following articles:', error);
     }
   };
 
@@ -384,6 +429,57 @@ export default function AtlasHomeScreen() {
     );
   };
 
+  // Render following section (articles from followed authors)
+  const renderFollowingSection = () => {
+    if (followingArticles.length === 0) return null;
+
+    return (
+      <View style={styles.followingSection}>
+        <View style={styles.followingSectionHeader}>
+          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111827' }]}>
+            From Authors You Follow
+          </Text>
+          <View style={styles.followingBadge}>
+            <Ionicons name="person-circle" size={14} color="#fff" />
+          </View>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.followingScroll}
+        >
+          {followingArticles.map((article) => (
+            <TouchableOpacity
+              key={article.id}
+              style={styles.followingCard}
+              activeOpacity={0.9}
+              onPress={() => navigateToArticle(article)}
+            >
+              <Image
+                source={{ uri: getThumbnailUrl(article.cover_image_url) || PLACEHOLDER_ARTICLE }}
+                style={styles.followingImage}
+              />
+              <View style={styles.followingContent}>
+                <Text style={styles.followingTitle} numberOfLines={2}>
+                  {article.title}
+                </Text>
+                <View style={styles.followingMeta}>
+                  <Image
+                    source={{ uri: article.author_avatar_url || PLACEHOLDER_AVATAR }}
+                    style={styles.followingAuthorAvatar}
+                  />
+                  <Text style={styles.followingAuthorName} numberOfLines={1}>
+                    {article.author_name || 'Tavvy Team'}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
   // Render load more indicator
   const renderLoadMoreIndicator = () => {
     if (!loadingMore) return null;
@@ -465,6 +561,9 @@ export default function AtlasHomeScreen() {
 
         {/* Featured Article */}
         {selectedFilter === 'all' && renderFeaturedArticle()}
+
+        {/* Following Section - Articles from followed authors */}
+        {selectedFilter === 'all' && renderFollowingSection()}
 
         {/* Article Grid */}
         <View style={styles.gridContainer}>
@@ -833,5 +932,77 @@ const styles = StyleSheet.create({
   loadMoreText: {
     fontSize: 14,
     color: '#6B7280',
+  },
+
+  // Following section
+  followingSection: {
+    marginTop: 16,
+    marginBottom: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  followingSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    gap: 8,
+  },
+  followingBadge: {
+    backgroundColor: ATLAS_PRIMARY,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  followingScroll: {
+    paddingHorizontal: 16,
+  },
+  followingCard: {
+    width: 200,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginRight: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 2,
+    borderColor: ATLAS_LIGHT,
+  },
+  followingImage: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#E5E7EB',
+  },
+  followingContent: {
+    padding: 12,
+  },
+  followingTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  followingMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  followingAuthorAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#E5E7EB',
+  },
+  followingAuthorName: {
+    fontSize: 12,
+    color: '#6B7280',
+    flex: 1,
   },
 });

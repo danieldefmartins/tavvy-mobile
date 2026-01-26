@@ -23,7 +23,8 @@ export type NotificationType =
   | 'story_expiring'
   | 'place_trending'
   | 'new_follower'
-  | 'story_view_milestone';
+  | 'story_view_milestone'
+  | 'new_article';
 
 export interface NotificationPayload {
   type: NotificationType;
@@ -156,6 +157,7 @@ export interface NotificationPreferences {
   place_trending: boolean;
   new_followers: boolean;
   story_milestones: boolean;
+  new_articles: boolean;
 }
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
@@ -164,6 +166,7 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   place_trending: true,
   new_followers: true,
   story_milestones: true,
+  new_articles: true,
 };
 
 /**
@@ -188,6 +191,7 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
       place_trending: data.place_trending ?? true,
       new_followers: data.new_followers ?? true,
       story_milestones: data.story_milestones ?? true,
+      new_articles: data.new_articles ?? true,
     };
   } catch (error) {
     console.error('Error getting notification preferences:', error);
@@ -379,6 +383,25 @@ export async function notifyStoryMilestone(
     data: {
       storyId,
       screen: 'StoryAnalytics',
+    },
+  });
+}
+
+/**
+ * Send notification when a followed author publishes a new article
+ */
+export async function notifyNewArticle(
+  articleId: string,
+  articleTitle: string,
+  authorName: string
+): Promise<void> {
+  await scheduleLocalNotification({
+    type: 'new_article',
+    title: `New article from ${authorName}`,
+    body: articleTitle,
+    data: {
+      articleId,
+      screen: 'ArticleDetail',
     },
   });
 }

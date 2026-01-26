@@ -137,6 +137,7 @@ export default function ArticleDetailScreen() {
   const [relatedArticles, setRelatedArticles] = useState<AtlasArticle[]>([]);
   const [userReaction, setUserReaction] = useState<ArticleReaction | null>(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   
@@ -282,6 +283,16 @@ export default function ArticleDetailScreen() {
 
         const saved = await isArticleSaved(article.id, user.id);
         setIsSaved(saved);
+
+        // Check if user is following the author
+        const authorName = article.author_name || 'Tavvy Team';
+        const { data: followData } = await supabase
+          .from('atlas_author_follows')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('author_name', authorName)
+          .single();
+        setIsFollowing(!!followData);
       }
     } catch (error) {
       console.error('Error loading article data:', error);
@@ -390,6 +401,36 @@ export default function ArticleDetailScreen() {
       });
     } catch (error) {
       console.error('Error sharing:', error);
+    }
+  };
+
+  const handleFollow = async () => {
+    if (!userId) {
+      Alert.alert('Sign in required', 'Please sign in to follow authors');
+      return;
+    }
+
+    const authorName = article.author_name || 'Tavvy Team';
+
+    try {
+      if (isFollowing) {
+        // Unfollow
+        await supabase
+          .from('atlas_author_follows')
+          .delete()
+          .eq('user_id', userId)
+          .eq('author_name', authorName);
+        setIsFollowing(false);
+      } else {
+        // Follow
+        await supabase
+          .from('atlas_author_follows')
+          .insert({ user_id: userId, author_name: authorName });
+        setIsFollowing(true);
+      }
+    } catch (error) {
+      console.error('Error following/unfollowing author:', error);
+      Alert.alert('Error', 'Failed to update follow status. Please try again.');
     }
   };
 
@@ -702,8 +743,13 @@ export default function ArticleDetailScreen() {
                 {article.author_bio || 'Local Guide Writer'}
               </Text>
             </View>
-            <TouchableOpacity style={styles.followButton}>
-              <Text style={styles.followButtonText}>Follow</Text>
+            <TouchableOpacity 
+              style={[styles.followButton, isFollowing && styles.followButtonFollowing]}
+              onPress={handleFollow}
+            >
+              <Text style={[styles.followButtonText, isFollowing && styles.followButtonTextFollowing]}>
+                {isFollowing ? 'Following' : 'Follow'}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -927,10 +973,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
   },
+  followButtonFollowing: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: TEAL_PRIMARY,
+  },
   followButtonText: {
     color: '#fff',
     fontSize: 13,
     fontWeight: '600',
+  },
+  followButtonTextFollowing: {
+    color: TEAL_PRIMARY,
   },
 
   // Meta Section
