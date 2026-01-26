@@ -386,21 +386,35 @@ export default function UniversalAddScreenV3() {
           
           {/* Show selected address details */}
           {selectedAddressDetails && (
-            <View style={styles.selectedAddressCard}>
-              <Ionicons name="checkmark-circle" size={24} color="#34C759" />
-              <View style={styles.selectedAddressDetails}>
-                <Text style={styles.selectedAddressText}>{selectedAddressDetails.address_line1}</Text>
-                <Text style={styles.selectedAddressSubtext}>
-                  {[selectedAddressDetails.city, selectedAddressDetails.region, selectedAddressDetails.postal_code]
-                    .filter(Boolean).join(', ')}
-                </Text>
-                {selectedAddressDetails.latitude && selectedAddressDetails.longitude && (
-                  <Text style={styles.selectedAddressCoords}>
-                    GPS: {selectedAddressDetails.latitude.toFixed(6)}, {selectedAddressDetails.longitude.toFixed(6)}
+            <>
+              <View style={styles.selectedAddressCard}>
+                <Ionicons name="checkmark-circle" size={24} color="#34C759" />
+                <View style={styles.selectedAddressDetails}>
+                  <Text style={styles.selectedAddressText}>{selectedAddressDetails.address_line1}</Text>
+                  <Text style={styles.selectedAddressSubtext}>
+                    {[selectedAddressDetails.city, selectedAddressDetails.region, selectedAddressDetails.postal_code]
+                      .filter(Boolean).join(', ')}
                   </Text>
-                )}
+                  {selectedAddressDetails.latitude && selectedAddressDetails.longitude && (
+                    <Text style={styles.selectedAddressCoords}>
+                      GPS: {selectedAddressDetails.latitude.toFixed(6)}, {selectedAddressDetails.longitude.toFixed(6)}
+                    </Text>
+                  )}
+                </View>
               </View>
-            </View>
+              
+              {/* Address Line 2 - Apt, Suite, Unit */}
+              <View style={styles.address2Container}>
+                <Text style={styles.address2Label}>Apt, Suite, Unit (optional)</Text>
+                <TextInput
+                  style={styles.address2Input}
+                  placeholder="e.g., Apt 4B, Suite 100, Unit 12"
+                  placeholderTextColor="#999"
+                  value={selectedAddressDetails.address_line2}
+                  onChangeText={(text) => setSelectedAddressDetails(prev => prev ? { ...prev, address_line2: text } : null)}
+                />
+              </View>
+            </>
           )}
           
           {/* Keep original GPS if available */}
@@ -716,6 +730,9 @@ const styles = StyleSheet.create({
   selectedAddressText: { fontSize: 16, fontWeight: '600', color: '#333' },
   selectedAddressSubtext: { fontSize: 14, color: '#666', marginTop: 4 },
   selectedAddressCoords: { fontSize: 12, color: '#0A84FF', marginTop: 4 },
+  address2Container: { marginTop: 16 },
+  address2Label: { fontSize: 14, fontWeight: '500', color: '#666', marginBottom: 8 },
+  address2Input: { backgroundColor: '#f8f9fa', borderRadius: 12, padding: 16, fontSize: 16, color: '#333', borderWidth: 1, borderColor: '#ddd' },
   coordsNote: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f9ff', borderRadius: 8, padding: 12, marginTop: 16, gap: 8 },
   coordsNoteText: { fontSize: 12, color: '#0A84FF' },
   manualAddressButtons: { flexDirection: 'row', gap: 12, marginTop: 24 },

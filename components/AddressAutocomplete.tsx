@@ -119,6 +119,7 @@ export function AddressAutocomplete({
   const fetchSuggestions = useCallback(async (query: string) => {
     if (query.length < 3) {
       setSuggestions([]);
+      setShowSuggestions(false);
       return;
     }
 
@@ -129,33 +130,45 @@ export function AddressAutocomplete({
       // For area mode, we search for cities/towns/regions
       // For address mode, we search for full addresses
       const baseUrl = 'https://nominatim.openstreetmap.org/search';
-      const params = new URLSearchParams({
+      
+      // Build params object
+      const paramsObj: Record<string, string> = {
         q: query,
         format: 'json',
         addressdetails: '1',
         limit: '5',
-        // Restrict to certain types for area mode
-        ...(mode === 'area' && { featuretype: 'city' }),
-      });
+      };
+      
+      // Add featuretype for area mode
+      if (mode === 'area') {
+        paramsObj.featuretype = 'city';
+      }
+      
+      const params = new URLSearchParams(paramsObj);
+      const url = `${baseUrl}?${params.toString()}`;
 
-      const response = await fetch(`${baseUrl}?${params}`, {
+      const response = await fetch(url, {
+        method: 'GET',
         headers: {
           'Accept': 'application/json',
-          // Nominatim requires a User-Agent header
-          'User-Agent': 'Tavvy-App/1.0',
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch suggestions');
+        console.warn('Nominatim API returned status:', response.status);
+        setSuggestions([]);
+        setShowSuggestions(false);
+        return;
       }
 
       const data: NominatimResult[] = await response.json();
-      setSuggestions(data);
-      setShowSuggestions(data.length > 0);
+      setSuggestions(data || []);
+      setShowSuggestions((data || []).length > 0);
     } catch (err) {
-      console.error('Address autocomplete error:', err);
+      // Silently handle errors - just show no suggestions
+      console.warn('Address autocomplete fetch failed:', err);
       setSuggestions([]);
+      setShowSuggestions(false);
     } finally {
       setIsLoading(false);
     }
