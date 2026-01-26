@@ -101,6 +101,26 @@ serve(async (req) => {
           })
           .eq('id', userId);
 
+        // Publish the user's eCard (make it live)
+        const { data: userCard } = await supabaseAdmin
+          .from('digital_cards')
+          .select('id, is_published')
+          .eq('user_id', userId)
+          .single();
+
+        if (userCard && !userCard.is_published) {
+          await supabaseAdmin
+            .from('digital_cards')
+            .update({ 
+              is_published: true,
+              is_premium: true,
+              published_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', userCard.id);
+          console.log(`eCard published for user ${userId}`);
+        }
+
         console.log(`eCard Premium subscription created for user ${userId}`);
         break;
       }
