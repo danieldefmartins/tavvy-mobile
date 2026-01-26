@@ -258,19 +258,24 @@ export default function UniversalAddScreenV3() {
   };
 
   // Photo picker functions
-  const pickImageFromLibrary = async () => {
+  // Single function to add photos - iOS will show native action sheet
+  const addPhotos = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please allow access to your photo library to add photos.');
+      // Request permissions first
+      const { status: mediaStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (mediaStatus !== 'granted' && cameraStatus !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow access to your photos and camera in Settings.');
         return;
       }
 
+      // Launch image picker - iOS will show native action sheet with Camera/Library/Files options
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
         quality: 0.8,
-        selectionLimit: 10,
+        selectionLimit: 10 - photos.length, // Limit to remaining slots
       });
 
       if (!result.canceled && result.assets) {
@@ -280,33 +285,8 @@ export default function UniversalAddScreenV3() {
         updateDraft({ photos: updatedPhotos });
       }
     } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to open photo library. Please try again.');
-    }
-  };
-
-  const takePhoto = async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please allow access to your camera to take photos.');
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        quality: 0.8,
-        allowsEditing: true,
-      });
-
-      if (!result.canceled && result.assets) {
-        const newPhoto = result.assets[0].uri;
-        const updatedPhotos = [...photos, newPhoto].slice(0, 10);
-        setPhotos(updatedPhotos);
-        updateDraft({ photos: updatedPhotos });
-      }
-    } catch (error) {
-      console.error('Error taking photo:', error);
-      Alert.alert('Error', 'Failed to open camera. Please try again.');
+      console.error('Error adding photos:', error);
+      Alert.alert('Error', 'Failed to add photos. Please try again.');
     }
   };
 
@@ -314,18 +294,6 @@ export default function UniversalAddScreenV3() {
     const updatedPhotos = photos.filter((_, i) => i !== index);
     setPhotos(updatedPhotos);
     updateDraft({ photos: updatedPhotos });
-  };
-
-  const showPhotoOptions = () => {
-    Alert.alert(
-      'Add Photo',
-      'Choose an option',
-      [
-        { text: 'Take Photo', onPress: takePhoto },
-        { text: 'Choose from Library', onPress: pickImageFromLibrary },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
   };
 
   const handleSubmit = async () => {
@@ -596,18 +564,12 @@ export default function UniversalAddScreenV3() {
         </View>
       )}
       
-      {/* Add Photo Buttons */}
+      {/* Add Photos Button */}
       {photos.length < 10 && (
-        <View style={styles.photoButtonsRow}>
-          <TouchableOpacity style={styles.addPhotoButton} onPress={pickImageFromLibrary}>
-            <Ionicons name="images-outline" size={28} color="#0A84FF" />
-            <Text style={styles.addPhotoText}>Library</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.addPhotoButton} onPress={takePhoto}>
-            <Ionicons name="camera-outline" size={28} color="#0A84FF" />
-            <Text style={styles.addPhotoText}>Camera</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.addPhotoButtonSingle} onPress={addPhotos}>
+          <Ionicons name="add-circle-outline" size={32} color="#0A84FF" />
+          <Text style={styles.addPhotoText}>Add Photos</Text>
+        </TouchableOpacity>
       )}
       
       <Text style={styles.photoHint}>
@@ -722,7 +684,8 @@ const styles = StyleSheet.create({
   nextButtonText: { fontSize: 18, fontWeight: '600', color: '#fff' },
   photoButtonsRow: { flexDirection: 'row', gap: 16, marginTop: 16 },
   addPhotoButton: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f9fa', borderRadius: 12, padding: 24, borderWidth: 2, borderColor: '#ddd', borderStyle: 'dashed' },
-  addPhotoText: { fontSize: 14, color: '#0A84FF', marginTop: 8, fontWeight: '500' },
+  addPhotoButtonSingle: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f9fa', borderRadius: 12, padding: 32, marginTop: 16, borderWidth: 2, borderColor: '#0A84FF', borderStyle: 'dashed' },
+  addPhotoText: { fontSize: 16, color: '#0A84FF', marginTop: 8, fontWeight: '600' },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16 },
   photoItem: { position: 'relative', width: (SCREEN_WIDTH - 80) / 3, height: (SCREEN_WIDTH - 80) / 3 },
   photoThumbnail: { width: '100%', height: '100%', borderRadius: 8 },
