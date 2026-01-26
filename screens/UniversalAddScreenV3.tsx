@@ -26,6 +26,7 @@ import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { useDrafts, ContentType, ContentSubtype, ContentDraft } from '../hooks/useDrafts';
 import { useLocation, LocationData } from '../hooks/useLocation';
+import { AddressAutocomplete } from '../components/AddressAutocomplete';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -94,6 +95,18 @@ export default function UniversalAddScreenV3() {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [photos, setPhotos] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showManualAddress, setShowManualAddress] = useState(false);
+  const [manualAddressInput, setManualAddressInput] = useState('');
+  const [selectedAddressDetails, setSelectedAddressDetails] = useState<{
+    address_line1: string;
+    address_line2: string;
+    city: string;
+    region: string;
+    postal_code: string;
+    country: string;
+    latitude: number | null;
+    longitude: number | null;
+  } | null>(null);
 
   useEffect(() => {
     if (pendingDraft && !currentDraft) {
@@ -148,13 +161,68 @@ export default function UniversalAddScreenV3() {
       await updateDraft({ status: 'draft_type_selected', current_step: 2 }, true);
       setCurrentStep('business_type');
     } else {
-      Alert.alert('Enter Address Manually', 'You can enter the address manually on the next screen.',
-        [{ text: 'OK', onPress: () => {
-          updateDraft({ status: 'draft_type_selected', current_step: 2 }, true);
-          setCurrentStep('business_type');
-        }}]
-      );
+      // Show manual address entry form
+      setShowManualAddress(true);
     }
+  };
+
+  const handleAddressSelect = (address: string, details: any) => {
+    setManualAddressInput(address);
+    
+    // Build address_line1 from street number and street
+    const streetAddress = details.streetNumber && details.street
+      ? `${details.streetNumber} ${details.street}`
+      : details.street || address.split(',')[0];
+    
+    setSelectedAddressDetails({
+      address_line1: streetAddress,
+      address_line2: '',
+      city: details.city || '',
+      region: details.state || '',
+      postal_code: details.postalCode || '',
+      country: details.country || '',
+      latitude: details.latitude || null,
+      longitude: details.longitude || null,
+    });
+  };
+
+  const handleSaveManualAddress = async () => {
+    if (!selectedAddressDetails) {
+      Alert.alert('Required', 'Please select an address from the suggestions.');
+      return;
+    }
+    
+    const { address_line1, city } = selectedAddressDetails;
+    
+    if (!address_line1.trim()) {
+      Alert.alert('Required', 'Please select a valid address.');
+      return;
+    }
+    
+    await updateDraft({
+      address_line1: selectedAddressDetails.address_line1,
+      address_line2: selectedAddressDetails.address_line2 || null,
+      city: selectedAddressDetails.city,
+      region: selectedAddressDetails.region || null,
+      postal_code: selectedAddressDetails.postal_code || null,
+      country: selectedAddressDetails.country || null,
+      formatted_address: manualAddressInput,
+      latitude: selectedAddressDetails.latitude || currentDraft?.latitude || null,
+      longitude: selectedAddressDetails.longitude || currentDraft?.longitude || null,
+      status: 'draft_type_selected',
+      current_step: 2,
+    }, true);
+    
+    setShowManualAddress(false);
+    setManualAddressInput('');
+    setSelectedAddressDetails(null);
+    setCurrentStep('business_type');
+  };
+
+  const handleCancelManualAddress = () => {
+    setShowManualAddress(false);
+    setManualAddressInput('');
+    setSelectedAddressDetails(null);
   };
 
   const handleSelectBusinessType = async (type: ContentSubtype) => {
@@ -334,7 +402,63 @@ export default function UniversalAddScreenV3() {
 
   const renderLocationStep = () => (
     <View style={styles.stepContent}>
-      {isLoadingLocation ? (
+      {showManualAddress ? (
+        // Manual Address Entry with Autocomplete
+        <View style={styles.autocompleteContainer}>
+          <Text style={styles.stepDescription}>Search for the address</Text>
+          
+          <AddressAutocomplete
+            value={manualAddressInput}
+            onSelect={handleAddressSelect}
+            onChange={setManualAddressInput}
+            placeholder="Start typing an address..."
+            label="Address"
+            required
+          />
+          
+          {/* Show selected address details */}
+          {selectedAddressDetails && (
+            <View style={styles.selectedAddressCard}>
+              <Ionicons name="checkmark-circle" size={24} color="#34C759" />
+              <View style={styles.selectedAddressDetails}>
+                <Text style={styles.selectedAddressText}>{selectedAddressDetails.address_line1}</Text>
+                <Text style={styles.selectedAddressSubtext}>
+                  {[selectedAddressDetails.city, selectedAddressDetails.region, selectedAddressDetails.postal_code]
+                    .filter(Boolean).join(', ')}
+                </Text>
+                {selectedAddressDetails.latitude && selectedAddressDetails.longitude && (
+                  <Text style={styles.selectedAddressCoords}>
+                    GPS: {selectedAddressDetails.latitude.toFixed(6)}, {selectedAddressDetails.longitude.toFixed(6)}
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+          
+          {/* Keep original GPS if available */}
+          {!selectedAddressDetails?.latitude && currentDraft?.latitude && currentDraft?.longitude && (
+            <View style={styles.coordsNote}>
+              <Ionicons name="navigate" size={16} color="#0A84FF" />
+              <Text style={styles.coordsNoteText}>
+                Original GPS: {currentDraft.latitude.toFixed(6)}, {currentDraft.longitude.toFixed(6)}
+              </Text>
+            </View>
+          )}
+          
+          <View style={styles.manualAddressButtons}>
+            <TouchableOpacity style={styles.cancelButton} onPress={handleCancelManualAddress}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.saveAddressButton, !selectedAddressDetails && styles.saveAddressButtonDisabled]} 
+              onPress={handleSaveManualAddress}
+              disabled={!selectedAddressDetails}
+            >
+              <Text style={styles.saveAddressButtonText}>Use This Address</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : isLoadingLocation ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0A84FF" />
           <Text style={styles.loadingText}>Getting your location...</Text>
@@ -364,6 +488,9 @@ export default function UniversalAddScreenV3() {
           <Text style={styles.noLocationText}>Unable to get location</Text>
           <TouchableOpacity style={styles.retryButton} onPress={handleRequestLocation}>
             <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.manualEntryLink} onPress={() => setShowManualAddress(true)}>
+            <Text style={styles.manualEntryLinkText}>Enter address manually</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -619,4 +746,21 @@ const styles = StyleSheet.create({
   modalButtonSecondaryText: { fontSize: 16, fontWeight: '600', color: '#333' },
   modalButtonTertiary: { paddingVertical: 12 },
   modalButtonTertiaryText: { fontSize: 14, color: '#999' },
+  // Autocomplete styles
+  autocompleteContainer: { flex: 1 },
+  selectedAddressCard: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#f0fff4', borderRadius: 12, padding: 16, marginTop: 16, gap: 12 },
+  selectedAddressDetails: { flex: 1 },
+  selectedAddressText: { fontSize: 16, fontWeight: '600', color: '#333' },
+  selectedAddressSubtext: { fontSize: 14, color: '#666', marginTop: 4 },
+  selectedAddressCoords: { fontSize: 12, color: '#0A84FF', marginTop: 4 },
+  coordsNote: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f9ff', borderRadius: 8, padding: 12, marginTop: 16, gap: 8 },
+  coordsNoteText: { fontSize: 12, color: '#0A84FF' },
+  manualAddressButtons: { flexDirection: 'row', gap: 12, marginTop: 24 },
+  cancelButton: { flex: 1, backgroundColor: '#f8f9fa', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  cancelButtonText: { fontSize: 16, fontWeight: '600', color: '#666' },
+  saveAddressButton: { flex: 2, backgroundColor: '#0A84FF', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  saveAddressButtonDisabled: { opacity: 0.5 },
+  saveAddressButtonText: { fontSize: 16, fontWeight: '600', color: '#fff' },
+  manualEntryLink: { marginTop: 16, alignItems: 'center' },
+  manualEntryLinkText: { fontSize: 14, color: '#0A84FF', textDecorationLine: 'underline' },
 });
