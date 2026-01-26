@@ -19,10 +19,11 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView,
   Alert, KeyboardAvoidingView, Platform, ActivityIndicator, Modal,
-  TextInput, Dimensions,
+  TextInput, Dimensions, Image, FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { useDrafts, ContentType, ContentSubtype, ContentDraft } from '../hooks/useDrafts';
 import { useLocation, LocationData } from '../hooks/useLocation';
 
@@ -186,6 +187,77 @@ export default function UniversalAddScreenV3() {
   const handleGoToReview = async () => {
     await updateDraft({ photos, status: 'draft_review', current_step: 6 }, true);
     setCurrentStep('review');
+  };
+
+  // Photo picker functions
+  const pickImageFromLibrary = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow access to your photo library to add photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        selectionLimit: 10,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newPhotos = result.assets.map(asset => asset.uri);
+        const updatedPhotos = [...photos, ...newPhotos].slice(0, 10); // Max 10 photos
+        setPhotos(updatedPhotos);
+        updateDraft({ photos: updatedPhotos });
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to open photo library. Please try again.');
+    }
+  };
+
+  const takePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow access to your camera to take photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        quality: 0.8,
+        allowsEditing: true,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newPhoto = result.assets[0].uri;
+        const updatedPhotos = [...photos, newPhoto].slice(0, 10);
+        setPhotos(updatedPhotos);
+        updateDraft({ photos: updatedPhotos });
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to open camera. Please try again.');
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    const updatedPhotos = photos.filter((_, i) => i !== index);
+    setPhotos(updatedPhotos);
+    updateDraft({ photos: updatedPhotos });
+  };
+
+  const showPhotoOptions = () => {
+    Alert.alert(
+      'Add Photo',
+      'Choose an option',
+      [
+        { text: 'Take Photo', onPress: takePhoto },
+        { text: 'Choose from Library', onPress: pickImageFromLibrary },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
   };
 
   const handleSubmit = async () => {
@@ -379,13 +451,46 @@ export default function UniversalAddScreenV3() {
   const renderPhotosStep = () => (
     <View style={styles.stepContent}>
       <Text style={styles.stepDescription}>Add photos to help others find this place</Text>
-      <TouchableOpacity style={styles.addPhotoButton}>
-        <Ionicons name="camera-outline" size={32} color="#0A84FF" />
-        <Text style={styles.addPhotoText}>Add Photos</Text>
-      </TouchableOpacity>
-      <Text style={styles.photoHint}>Photos are optional but help others discover this place</Text>
+      
+      {/* Photo Grid */}
+      {photos.length > 0 && (
+        <View style={styles.photoGrid}>
+          {photos.map((photo, index) => (
+            <View key={index} style={styles.photoItem}>
+              <Image source={{ uri: photo }} style={styles.photoThumbnail} />
+              <TouchableOpacity
+                style={styles.removePhotoButton}
+                onPress={() => removePhoto(index)}
+              >
+                <Ionicons name="close-circle" size={24} color="#FF3B30" />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
+      
+      {/* Add Photo Buttons */}
+      {photos.length < 10 && (
+        <View style={styles.photoButtonsRow}>
+          <TouchableOpacity style={styles.addPhotoButton} onPress={pickImageFromLibrary}>
+            <Ionicons name="images-outline" size={28} color="#0A84FF" />
+            <Text style={styles.addPhotoText}>Library</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addPhotoButton} onPress={takePhoto}>
+            <Ionicons name="camera-outline" size={28} color="#0A84FF" />
+            <Text style={styles.addPhotoText}>Camera</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      
+      <Text style={styles.photoHint}>
+        {photos.length === 0 
+          ? 'Photos are optional but help others discover this place' 
+          : `${photos.length}/10 photos added`}
+      </Text>
+      
       <TouchableOpacity style={styles.nextButton} onPress={handleGoToReview}>
-        <Text style={styles.nextButtonText}>Continue</Text>
+        <Text style={styles.nextButtonText}>{photos.length > 0 ? 'Continue' : 'Skip Photos'}</Text>
         <Ionicons name="arrow-forward" size={20} color="#fff" />
       </TouchableOpacity>
     </View>
@@ -488,8 +593,13 @@ const styles = StyleSheet.create({
   inputMultiline: { height: 100, textAlignVertical: 'top' },
   nextButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0A84FF', borderRadius: 12, paddingVertical: 16, marginTop: 24, gap: 8 },
   nextButtonText: { fontSize: 18, fontWeight: '600', color: '#fff' },
-  addPhotoButton: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f9fa', borderRadius: 12, padding: 32, borderWidth: 2, borderColor: '#ddd', borderStyle: 'dashed' },
-  addPhotoText: { fontSize: 16, color: '#0A84FF', marginTop: 8 },
+  photoButtonsRow: { flexDirection: 'row', gap: 16, marginTop: 16 },
+  addPhotoButton: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f9fa', borderRadius: 12, padding: 24, borderWidth: 2, borderColor: '#ddd', borderStyle: 'dashed' },
+  addPhotoText: { fontSize: 14, color: '#0A84FF', marginTop: 8, fontWeight: '500' },
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16 },
+  photoItem: { position: 'relative', width: (SCREEN_WIDTH - 80) / 3, height: (SCREEN_WIDTH - 80) / 3 },
+  photoThumbnail: { width: '100%', height: '100%', borderRadius: 8 },
+  removePhotoButton: { position: 'absolute', top: -8, right: -8, backgroundColor: '#fff', borderRadius: 12 },
   photoHint: { fontSize: 14, color: '#999', textAlign: 'center', marginTop: 16 },
   reviewCard: { backgroundColor: '#f8f9fa', borderRadius: 12, padding: 16, marginBottom: 12 },
   reviewLabel: { fontSize: 12, color: '#999', marginBottom: 4 },
