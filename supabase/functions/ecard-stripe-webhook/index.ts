@@ -34,6 +34,8 @@ serve(async (req) => {
     return new Response(err.message, { status: 400 });
   }
 
+  console.log(`[eCard Webhook] Received event: ${event.type}`);
+
   try {
     switch (event.type) {
       case "checkout.session.completed": {
@@ -42,9 +44,11 @@ serve(async (req) => {
         const subscriptionId = session.subscription as string;
         const subscriptionType = session.metadata?.subscription_type;
 
+        console.log(`[eCard Webhook] Checkout completed - userId: ${userId}, subscriptionType: ${subscriptionType}`);
+
         // Only handle eCard Premium subscriptions
         if (subscriptionType !== 'ecard_premium') {
-          console.log('Not an eCard subscription, skipping');
+          console.log('[eCard Webhook] Not an eCard subscription, skipping');
           break;
         }
 
@@ -63,8 +67,8 @@ serve(async (req) => {
           .from('user_subscriptions')
           .select('id')
           .eq('user_id', userId)
-          .eq('plan_type', planType === 'annual' ? 'ecard_premium_annual' : 'ecard_premium_monthly')
-          .single();
+          .like('plan_type', 'ecard_premium%')
+          .maybeSingle();
 
         if (existingSub) {
           // Update existing subscription
@@ -93,20 +97,43 @@ serve(async (req) => {
         }
 
         // Update user's profile to mark as Pro
-        await supabaseAdmin
+        // IMPORTANT: profiles table uses 'user_id' as the primary key, NOT 'id'
+        console.log(`[eCard Webhook] Updating profile for user ${userId} to is_pro=true`);
+        const { error: profileError } = await supabaseAdmin
           .from('profiles')
           .update({ 
             is_pro: true,
             pro_since: new Date().toISOString(),
+            subscription_status: 'active',
+            subscription_plan: planType === 'annual' ? 'ecard_premium_annual' : 'ecard_premium_monthly',
           })
-          .eq('id', userId);
+          .eq('user_id', userId);  // FIXED: Use 'user_id' not 'id'
+
+        if (profileError) {
+          console.error(`[eCard Webhook] Error updating profile:`, profileError);
+          throw profileError;
+        }
+
+        // Also grant the 'pro' role via RBAC
+        console.log(`[eCard Webhook] Granting pro role to user ${userId}`);
+        await supabaseAdmin.from("user_roles").upsert(
+          {
+            user_id: userId,
+            role: "pro",
+            notes: `eCard Premium subscription: ${subscriptionId}`,
+            granted_at: new Date().toISOString(),
+          },
+          {
+            onConflict: "user_id,role",
+          }
+        );
 
         // Publish the user's eCard (make it live)
         const { data: userCard } = await supabaseAdmin
           .from('digital_cards')
           .select('id, is_published')
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
 
         if (userCard && !userCard.is_published) {
           await supabaseAdmin
@@ -121,7 +148,7 @@ serve(async (req) => {
           console.log(`eCard published for user ${userId}`);
         }
 
-        console.log(`eCard Premium subscription created for user ${userId}`);
+        console.log(`[eCard Webhook] SUCCESS: eCard Premium subscription created for user ${userId}`);
         break;
       }
 
@@ -135,10 +162,10 @@ serve(async (req) => {
           .from('user_subscriptions')
           .select('id, user_id, plan_type')
           .eq('stripe_subscription_id', subscriptionId)
-          .single();
+          .maybeSingle();
 
         if (!subRecord || !subRecord.plan_type?.includes('ecard_premium')) {
-          console.log('Not an eCard subscription, skipping');
+          console.log('[eCard Webhook] Not an eCard subscription, skipping');
           break;
         }
 
@@ -157,8 +184,11 @@ serve(async (req) => {
         const isPro = ['active', 'trialing'].includes(status);
         await supabaseAdmin
           .from('profiles')
-          .update({ is_pro: isPro })
-          .eq('id', subRecord.user_id);
+          .update({ 
+            is_pro: isPro,
+            subscription_status: status,
+          })
+          .eq('user_id', subRecord.user_id);  // FIXED: Use 'user_id' not 'id'
 
         console.log(`eCard subscription ${subscriptionId} updated to status: ${status}`);
         break;
@@ -173,10 +203,10 @@ serve(async (req) => {
           .from('user_subscriptions')
           .select('id, user_id, plan_type')
           .eq('stripe_subscription_id', subscriptionId)
-          .single();
+          .maybeSingle();
 
         if (!subRecord || !subRecord.plan_type?.includes('ecard_premium')) {
-          console.log('Not an eCard subscription, skipping');
+          console.log('[eCard Webhook] Not an eCard subscription, skipping');
           break;
         }
 
@@ -201,8 +231,18 @@ serve(async (req) => {
         if (!otherSubs || otherSubs.length === 0) {
           await supabaseAdmin
             .from('profiles')
-            .update({ is_pro: false })
-            .eq('id', subRecord.user_id);
+            .update({ 
+              is_pro: false,
+              subscription_status: 'canceled',
+            })
+            .eq('user_id', subRecord.user_id);  // FIXED: Use 'user_id' not 'id'
+
+          // Revoke pro role
+          await supabaseAdmin
+            .from('user_roles')
+            .delete()
+            .eq('user_id', subRecord.user_id)
+            .eq('role', 'pro');
         }
 
         console.log(`eCard subscription ${subscriptionId} canceled`);

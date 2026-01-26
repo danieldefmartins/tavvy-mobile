@@ -63,7 +63,21 @@ interface CardData {
   bio?: string;
   city?: string;
   state?: string;
+  profile_photo_size?: string;
+  theme?: string;
 }
+
+// Photo size configurations
+const PHOTO_SIZES: Record<string, number> = {
+  small: 80,
+  medium: 110,
+  large: 150,
+  xl: 200,
+  cover: -1, // Special case for cover
+};
+
+// Light background themes that need dark text
+const LIGHT_THEMES = ['minimal'];
 
 interface LinkData {
   id: string;
@@ -399,131 +413,248 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={gradientColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.cardContainer}
-        >
-          {/* Crown Badge - Shows validation tap count */}
-          <View style={styles.crownBadgeContainer}>
-            <CrownBadge 
-              tapCount={reviewData.count || 0}
-              size="large"
-              onPress={() => {
-                // Navigate to reviews or show reviews modal
-                console.log('Show validation taps');
-              }}
-            />
-          </View>
-
-          {/* Profile Section */}
-          <View style={styles.profileSection}>
-            {cardData?.profile_photo_url ? (
-              <Image source={{ uri: cardData.profile_photo_url }} style={styles.profileImage} />
-            ) : (
-              <View style={styles.profileImagePlaceholder}>
-                <Ionicons name="person" size={40} color="#fff" />
+        {/* Determine photo size and theme */}
+        {(() => {
+          const photoSizeId = passedCardData?.profile_photo_size || cardData?.profile_photo_size || 'medium';
+          const isCoverPhoto = photoSizeId === 'cover';
+          const photoSize = PHOTO_SIZES[photoSizeId] || 110;
+          const themeId = passedCardData?.theme || cardData?.theme || 'classic';
+          const isLightTheme = LIGHT_THEMES.includes(themeId);
+          const textColor = isLightTheme ? '#1A1A1A' : '#fff';
+          const subtitleColor = isLightTheme ? '#666' : 'rgba(255,255,255,0.8)';
+          
+          // Cover photo layout
+          if (isCoverPhoto) {
+            return (
+              <View style={styles.coverContainer}>
+                {/* Full-bleed cover photo */}
+                <View style={styles.coverPhotoContainer}>
+                  {cardData?.profile_photo_url ? (
+                    <Image 
+                      source={{ uri: cardData.profile_photo_url }} 
+                      style={styles.coverPhoto}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <LinearGradient
+                      colors={gradientColors}
+                      style={styles.coverPhotoPlaceholder}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <Ionicons name="image" size={50} color="rgba(255,255,255,0.5)" />
+                      <Text style={styles.coverPlaceholderText}>Add Cover Photo</Text>
+                    </LinearGradient>
+                  )}
+                  {/* Gradient overlay for text readability */}
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.7)']}
+                    style={styles.coverOverlay}
+                  />
+                  {/* Name & Title on cover */}
+                  <View style={styles.coverTextContainer}>
+                    <Text style={styles.coverName}>{cardData?.full_name || 'Your Name'}</Text>
+                    {cardData?.title && (
+                      <Text style={styles.coverTitle}>{cardData.title}</Text>
+                    )}
+                  </View>
+                </View>
+                
+                {/* Links section below cover */}
+                <LinearGradient
+                  colors={gradientColors}
+                  style={styles.coverLinksSection}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  {/* Crown Badge */}
+                  <View style={styles.crownBadgeContainer}>
+                    <CrownBadge 
+                      tapCount={reviewData.count || 0}
+                      size="large"
+                      onPress={() => console.log('Show validation taps')}
+                    />
+                  </View>
+                  
+                  {/* Social Icons */}
+                  {(featuredSocials.length > 0 || links.length > 0) && (
+                    <View style={styles.socialIconsRow}>
+                      {featuredSocials.length > 0 ? (
+                        featuredSocials.map((social) => {
+                          const platformConfig = PLATFORM_ICONS[social.platformId] || PLATFORM_ICONS.other;
+                          const link = links.find(l => l.platform === social.platformId);
+                          return (
+                            <TouchableOpacity
+                              key={social.platformId}
+                              style={styles.socialIconButton}
+                              onPress={() => link && handleLinkPress(link)}
+                            >
+                              <Ionicons name={platformConfig.icon as any} size={22} color="#fff" />
+                            </TouchableOpacity>
+                          );
+                        })
+                      ) : (
+                        links.slice(0, 6).map((link) => {
+                          const platformConfig = PLATFORM_ICONS[link.platform || link.icon] || PLATFORM_ICONS.other;
+                          return (
+                            <TouchableOpacity
+                              key={link.id}
+                              style={styles.socialIconButton}
+                              onPress={() => handleLinkPress(link)}
+                            >
+                              <Ionicons name={platformConfig.icon as any} size={22} color="#fff" />
+                            </TouchableOpacity>
+                          );
+                        })
+                      )}
+                    </View>
+                  )}
+                  
+                  {/* Powered by Tavvy */}
+                  <View style={styles.poweredBy}>
+                    <Text style={styles.poweredByText}>Powered by </Text>
+                    <Text style={styles.poweredByBrand}>Tavvy</Text>
+                  </View>
+                </LinearGradient>
               </View>
-            )}
-            <Text style={styles.profileName}>{cardData?.full_name || 'Your Name'}</Text>
-            {cardData?.title ? (
-              <Text style={styles.profileTitle}>{cardData.title}</Text>
-            ) : null}
-            {cardData?.bio ? (
-              <Text style={styles.profileBio}>{cardData.bio}</Text>
-            ) : null}
-          </View>
+            );
+          }
+          
+          // Regular layout with dynamic photo size
+          return (
+            <LinearGradient
+              colors={gradientColors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.cardContainer, isLightTheme && styles.cardContainerLight]}
+            >
+              {/* Crown Badge - Shows validation tap count */}
+              <View style={styles.crownBadgeContainer}>
+                <CrownBadge 
+                  tapCount={reviewData.count || 0}
+                  size="large"
+                  onPress={() => console.log('Show validation taps')}
+                />
+              </View>
 
-          {/* Social Icons Row - Show featured socials or first 6 links */}
-          {(featuredSocials.length > 0 || links.length > 0) && (
-            <View style={styles.socialIconsRow}>
-              {featuredSocials.length > 0 ? (
-                featuredSocials.map((social) => {
-                  const platformConfig = PLATFORM_ICONS[social.platformId] || PLATFORM_ICONS.other;
-                  const link = links.find(l => l.platform === social.platformId);
-                  return (
-                    <TouchableOpacity
-                      key={social.platformId}
-                      style={styles.socialIconButton}
-                      onPress={() => link && handleLinkPress(link)}
-                    >
-                      <Ionicons 
-                        name={platformConfig.icon as any} 
-                        size={22} 
-                        color="#fff" 
-                      />
-                    </TouchableOpacity>
-                  );
-                })
-              ) : (
-                links.slice(0, 6).map((link) => {
-                  const platformConfig = PLATFORM_ICONS[link.platform || link.icon] || PLATFORM_ICONS.other;
-                  return (
-                    <TouchableOpacity
-                      key={link.id}
-                      style={styles.socialIconButton}
-                      onPress={() => handleLinkPress(link)}
-                    >
-                      <Ionicons 
-                        name={platformConfig.icon as any} 
-                        size={22} 
-                        color="#fff" 
-                      />
-                    </TouchableOpacity>
-                  );
-                })
+              {/* Profile Section */}
+              <View style={styles.profileSection}>
+                {cardData?.profile_photo_url ? (
+                  <Image 
+                    source={{ uri: cardData.profile_photo_url }} 
+                    style={[
+                      styles.profileImage,
+                      { width: photoSize, height: photoSize, borderRadius: photoSize / 2 }
+                    ]} 
+                  />
+                ) : (
+                  <View style={[
+                    styles.profileImagePlaceholder,
+                    { width: photoSize, height: photoSize, borderRadius: photoSize / 2 }
+                  ]}>
+                    <Ionicons name="person" size={photoSize * 0.4} color={isLightTheme ? '#666' : '#fff'} />
+                  </View>
+                )}
+                <Text style={[styles.profileName, { color: textColor }]}>{cardData?.full_name || 'Your Name'}</Text>
+                {cardData?.title ? (
+                  <Text style={[styles.profileTitle, { color: subtitleColor }]}>{cardData.title}</Text>
+                ) : null}
+                {cardData?.bio ? (
+                  <Text style={[styles.profileBio, { color: subtitleColor }]}>{cardData.bio}</Text>
+                ) : null}
+              </View>
+
+              {/* Social Icons Row - Show featured socials or first 6 links */}
+              {(featuredSocials.length > 0 || links.length > 0) && (
+                <View style={styles.socialIconsRow}>
+                  {featuredSocials.length > 0 ? (
+                    featuredSocials.map((social) => {
+                      const platformConfig = PLATFORM_ICONS[social.platformId] || PLATFORM_ICONS.other;
+                      const link = links.find(l => l.platform === social.platformId);
+                      return (
+                        <TouchableOpacity
+                          key={social.platformId}
+                          style={[styles.socialIconButton, isLightTheme && styles.socialIconButtonLight]}
+                          onPress={() => link && handleLinkPress(link)}
+                        >
+                          <Ionicons 
+                            name={platformConfig.icon as any} 
+                            size={22} 
+                            color={isLightTheme ? '#333' : '#fff'} 
+                          />
+                        </TouchableOpacity>
+                      );
+                    })
+                  ) : (
+                    links.slice(0, 6).map((link) => {
+                      const platformConfig = PLATFORM_ICONS[link.platform || link.icon] || PLATFORM_ICONS.other;
+                      return (
+                        <TouchableOpacity
+                          key={link.id}
+                          style={[styles.socialIconButton, isLightTheme && styles.socialIconButtonLight]}
+                          onPress={() => handleLinkPress(link)}
+                        >
+                          <Ionicons 
+                            name={platformConfig.icon as any} 
+                            size={22} 
+                            color={isLightTheme ? '#333' : '#fff'} 
+                          />
+                        </TouchableOpacity>
+                      );
+                    })
+                  )}
+                </View>
               )}
-            </View>
-          )}
 
-          {/* Links List - Exclude featured socials */}
-          {(() => {
-            const nonFeaturedLinks = featuredSocials.length > 0 
-              ? links.filter(link => !featuredSocials.some(f => f.platformId === link.platform))
-              : links;
-            return nonFeaturedLinks.length > 0 ? (
-              <View style={styles.linksSection}>
-                {nonFeaturedLinks.map((link) => {
-                  const platformConfig = PLATFORM_ICONS[link.platform || link.icon] || PLATFORM_ICONS.other;
-                  return (
-                    <TouchableOpacity
-                      key={link.id}
-                      style={styles.linkButton}
-                      onPress={() => handleLinkPress(link)}
-                      activeOpacity={0.8}
-                    >
-                      <View style={styles.linkIconContainer}>
-                        <Ionicons 
-                          name={platformConfig.icon as any} 
-                          size={18} 
-                          color="#fff" 
-                        />
-                      </View>
-                      <Text style={styles.linkButtonText}>
-                        {link.title || (link.platform ? link.platform.charAt(0).toUpperCase() + link.platform.slice(1) : 'Link')}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+              {/* Links List - Exclude featured socials */}
+              {(() => {
+                const nonFeaturedLinks = featuredSocials.length > 0 
+                  ? links.filter(link => !featuredSocials.some(f => f.platformId === link.platform))
+                  : links;
+                return nonFeaturedLinks.length > 0 ? (
+                  <View style={styles.linksSection}>
+                    {nonFeaturedLinks.map((link) => {
+                      const platformConfig = PLATFORM_ICONS[link.platform || link.icon] || PLATFORM_ICONS.other;
+                      return (
+                        <TouchableOpacity
+                          key={link.id}
+                          style={[styles.linkButton, isLightTheme && styles.linkButtonLight]}
+                          onPress={() => handleLinkPress(link)}
+                          activeOpacity={0.8}
+                        >
+                          <View style={[styles.linkIconContainer, isLightTheme && styles.linkIconContainerLight]}>
+                            <Ionicons 
+                              name={platformConfig.icon as any} 
+                              size={18} 
+                              color={isLightTheme ? '#333' : '#fff'} 
+                            />
+                          </View>
+                          <Text style={[styles.linkButtonText, { color: textColor }]}>
+                            {link.title || (link.platform ? link.platform.charAt(0).toUpperCase() + link.platform.slice(1) : 'Link')}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                ) : null;
+              })()}
+
+              {/* Empty State */}
+              {links.length === 0 && (
+                <View style={styles.emptyState}>
+                  <Ionicons name="link-outline" size={32} color={isLightTheme ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.5)'} />
+                  <Text style={[styles.emptyStateText, { color: subtitleColor }]}>No links added yet</Text>
+                </View>
+              )}
+
+              {/* Powered by Tavvy */}
+              <View style={styles.poweredBy}>
+                <Text style={[styles.poweredByText, { color: subtitleColor }]}>Powered by </Text>
+                <Text style={[styles.poweredByBrand, { color: textColor }]}>Tavvy</Text>
               </View>
-            ) : null;
-          })()}
-
-          {/* Empty State */}
-          {links.length === 0 && (
-            <View style={styles.emptyState}>
-              <Ionicons name="link-outline" size={32} color="rgba(255,255,255,0.5)" />
-              <Text style={styles.emptyStateText}>No links added yet</Text>
-            </View>
-          )}
-
-          {/* Powered by Tavvy */}
-          <View style={styles.poweredBy}>
-            <Text style={styles.poweredByText}>Powered by </Text>
-            <Text style={styles.poweredByBrand}>Tavvy</Text>
-          </View>
-        </LinearGradient>
+            </LinearGradient>
+          );
+        })()}
       </ScrollView>
 
       {/* Bottom Actions */}
@@ -800,5 +931,84 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
+  },
+  // Cover photo layout styles
+  coverContainer: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  coverPhotoContainer: {
+    width: '100%',
+    height: width * 0.6, // 60% of screen width for banner aspect ratio
+    position: 'relative',
+  },
+  coverPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  coverPhotoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coverPlaceholderText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.5)',
+  },
+  coverOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
+  },
+  coverTextContainer: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+  },
+  coverName: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  coverTitle: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 4,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  coverLinksSection: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  // Light theme variant styles
+  cardContainerLight: {
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  socialIconButtonLight: {
+    backgroundColor: 'rgba(0,0,0,0.08)',
+  },
+  linkButtonLight: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  linkIconContainerLight: {
+    backgroundColor: 'rgba(0,0,0,0.08)',
   },
 });

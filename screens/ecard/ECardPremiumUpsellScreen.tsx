@@ -292,12 +292,6 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
             </TouchableOpacity>
           </View>
 
-          {/* Free Trial Info */}
-          <View style={styles.trialInfo}>
-            <Ionicons name="gift" size={20} color="#00C853" />
-            <Text style={styles.trialText}>Start with a 7-day free trial</Text>
-          </View>
-
           {/* Platform Notice */}
           {Platform.OS === 'ios' && (
             <View style={styles.platformNotice}>
@@ -326,7 +320,7 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
               {isLoading ? (
                 <ActivityIndicator color="#1A1A1A" size="small" />
               ) : (
-                <Text style={styles.subscribeText}>Start Free Trial</Text>
+                <Text style={styles.subscribeText}>Subscribe Now</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>
@@ -520,21 +514,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     marginTop: 8,
     marginLeft: 36,
-  },
-  trialInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(0,200,83,0.1)',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-  },
-  trialText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#00C853',
   },
   platformNotice: {
     flexDirection: 'row',

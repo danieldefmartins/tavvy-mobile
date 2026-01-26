@@ -580,20 +580,45 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     loadCardData();
   }, [user, isNewCard, cardId]);
 
+  // Columns that may not exist in database yet - save locally but don't send to DB
+  // These will be added via SQL migration: industry_icons, background_video_url, gallery_images, pro_credentials
+  const PENDING_COLUMNS = ['industry_icons', 'background_video_url', 'gallery_images', 'pro_credentials'];
+
   // Save appearance settings
   const saveAppearanceSettings = async (settings: Partial<CardData>) => {
     if (!cardData?.id) return;
     
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('digital_cards')
-        .update(settings)
-        .eq('id', cardData.id);
+      // Filter out columns that may not exist in the database yet
+      const dbSettings: Record<string, any> = {};
+      const localSettings: Record<string, any> = {};
       
-      if (error) throw error;
+      for (const [key, value] of Object.entries(settings)) {
+        if (PENDING_COLUMNS.includes(key)) {
+          localSettings[key] = value;
+        } else {
+          dbSettings[key] = value;
+        }
+      }
       
+      // Only update DB if there are valid columns
+      if (Object.keys(dbSettings).length > 0) {
+        const { error } = await supabase
+          .from('digital_cards')
+          .update(dbSettings)
+          .eq('id', cardData.id);
+        
+        if (error) throw error;
+      }
+      
+      // Update local state with all settings (including pending columns)
       setCardData(prev => prev ? { ...prev, ...settings } : null);
+      
+      // Log pending columns for debugging
+      if (Object.keys(localSettings).length > 0) {
+        console.log('Saved locally (pending DB migration):', Object.keys(localSettings));
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
     } finally {
@@ -869,6 +894,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     setIsSaving(true);
     try {
       // Save badge display toggles to digital_cards table
+      // Note: pro_credentials column may not exist yet - only save badge toggles for now
       const { error } = await supabase
         .from('digital_cards')
         .update({
@@ -876,13 +902,19 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           show_insured_badge: proCredentials.isInsured,
           show_bonded_badge: proCredentials.isBonded,
           show_tavvy_verified_badge: proCredentials.isTavvyVerified,
-          pro_credentials: {
-            yearsInBusiness: proCredentials.yearsInBusiness,
-            serviceArea: proCredentials.serviceArea,
-            licenseNumber: proCredentials.licenseNumber,
-          },
+          // pro_credentials column pending DB migration - save locally only
         })
         .eq('id', cardData.id);
+      
+      // Store pro_credentials locally for now
+      setCardData(prev => prev ? {
+        ...prev,
+        pro_credentials: {
+          yearsInBusiness: proCredentials.yearsInBusiness,
+          serviceArea: proCredentials.serviceArea,
+          licenseNumber: proCredentials.licenseNumber,
+        }
+      } : null);
       
       if (error) throw error;
       

@@ -50,8 +50,7 @@ serve(async (req) => {
     // Select price based on plan type
     const priceId = plan_type === 'annual' ? ECARD_PRICE_ANNUAL : ECARD_PRICE_MONTHLY;
 
-    // Create checkout session with 7-day free trial
-    // Using the same simple pattern as the working pros-stripe-create-checkout
+    // Create checkout session for eCard Premium subscription
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -67,7 +66,6 @@ serve(async (req) => {
       client_reference_id: user.id,
       customer_email: user.email, // Pre-fill email for better UX
       subscription_data: {
-        trial_period_days: 7,
         metadata: {
           user_id: user.id,
           subscription_type: 'ecard_premium',
