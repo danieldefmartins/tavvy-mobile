@@ -472,22 +472,21 @@ function AddButton({ onPress }: { onPress: () => void }) {
 
 const addButtonStyles = StyleSheet.create({
   container: {
-    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    top: -15, // Elevate above the tab bar
+    // Removed top offset - button now aligns with other tab icons
   },
   button: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
   },
 });
 
