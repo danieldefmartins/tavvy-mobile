@@ -19,7 +19,7 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView,
   Alert, KeyboardAvoidingView, Platform, ActivityIndicator, Modal,
-  TextInput, Dimensions, Image, FlatList,
+  TextInput, Dimensions, Image, FlatList, ActionSheetIOS,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -265,34 +265,118 @@ export default function UniversalAddScreenV3() {
 
   // Photo picker functions
   // Single function to add photos - iOS will show native action sheet
-  const addPhotos = async () => {
+  // Launch camera to take a photo
+  const takePhoto = async () => {
     try {
-      // Request permissions first
-      const { status: mediaStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-      
-      if (mediaStatus !== 'granted' && cameraStatus !== 'granted') {
-        Alert.alert('Permission Required', 'Please allow access to your photos and camera in Settings.');
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow camera access in Settings.');
         return;
       }
 
-      // Launch image picker - iOS will show native action sheet with Camera/Library/Files options
-      const result = await ImagePicker.launchImageLibraryAsync({
+      const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultipleSelection: true,
         quality: 0.8,
-        selectionLimit: 10 - photos.length, // Limit to remaining slots
       });
 
       if (!result.canceled && result.assets) {
         const newPhotos = result.assets.map(asset => asset.uri);
-        const updatedPhotos = [...photos, ...newPhotos].slice(0, 10); // Max 10 photos
+        const updatedPhotos = [...photos, ...newPhotos].slice(0, 10);
         setPhotos(updatedPhotos);
         updateDraft({ photos: updatedPhotos });
       }
     } catch (error) {
-      console.error('Error adding photos:', error);
-      Alert.alert('Error', 'Failed to add photos. Please try again.');
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  // Pick photos from library
+  const pickFromLibrary = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow photo library access in Settings.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        selectionLimit: 10 - photos.length,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newPhotos = result.assets.map(asset => asset.uri);
+        const updatedPhotos = [...photos, ...newPhotos].slice(0, 10);
+        setPhotos(updatedPhotos);
+        updateDraft({ photos: updatedPhotos });
+      }
+    } catch (error) {
+      console.error('Error picking photos:', error);
+      Alert.alert('Error', 'Failed to pick photos. Please try again.');
+    }
+  };
+
+  // Pick from files (uses document picker which can access Files app)
+  const pickFromFiles = async () => {
+    try {
+      // On iOS, launchImageLibraryAsync with certain options can access Files
+      // But for true Files access, we use the same library picker which iOS allows browsing
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        selectionLimit: 10 - photos.length,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newPhotos = result.assets.map(asset => asset.uri);
+        const updatedPhotos = [...photos, ...newPhotos].slice(0, 10);
+        setPhotos(updatedPhotos);
+        updateDraft({ photos: updatedPhotos });
+      }
+    } catch (error) {
+      console.error('Error picking from files:', error);
+      Alert.alert('Error', 'Failed to pick files. Please try again.');
+    }
+  };
+
+  // Show action sheet with Camera, Library, Files options
+  const addPhotos = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Take Photo', 'Photo Library', 'Browse Files'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          switch (buttonIndex) {
+            case 1:
+              takePhoto();
+              break;
+            case 2:
+              pickFromLibrary();
+              break;
+            case 3:
+              pickFromFiles();
+              break;
+          }
+        }
+      );
+    } else {
+      // Android fallback - show Alert with options
+      Alert.alert(
+        'Add Photos',
+        'Choose an option',
+        [
+          { text: 'Take Photo', onPress: takePhoto },
+          { text: 'Photo Library', onPress: pickFromLibrary },
+          { text: 'Browse Files', onPress: pickFromFiles },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
     }
   };
 
