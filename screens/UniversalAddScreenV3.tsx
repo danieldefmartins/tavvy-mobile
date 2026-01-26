@@ -30,7 +30,7 @@ import ECardAddressAutocomplete, { AddressData } from '../components/ecard/Addre
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type Step = 'location' | 'business_type' | 'content_type' | 'details' | 'photos' | 'review';
+type Step = 'location' | 'business_type' | 'service_location' | 'content_type' | 'details' | 'photos' | 'review';
 
 interface BusinessType {
   id: ContentSubtype;
@@ -76,7 +76,9 @@ const CONTENT_TYPES: ContentTypeOption[] = [
   },
 ];
 
-const STEPS: Step[] = ['location', 'business_type', 'content_type', 'details', 'photos', 'review'];
+// Note: service_location step is conditional - only shown for service businesses
+const STEPS: Step[] = ['location', 'business_type', 'service_location', 'content_type', 'details', 'photos', 'review'];
+const STEPS_WITHOUT_SERVICE_LOCATION: Step[] = ['location', 'business_type', 'content_type', 'details', 'photos', 'review'];
 
 export default function UniversalAddScreenV3() {
   const navigation = useNavigation();
@@ -96,6 +98,7 @@ export default function UniversalAddScreenV3() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showManualAddress, setShowManualAddress] = useState(false);
+  const [serviceHasPhysicalLocation, setServiceHasPhysicalLocation] = useState<boolean | null>(null);
   const [manualAddressData, setManualAddressData] = useState<AddressData>({
     address1: '',
     address2: '',
@@ -106,28 +109,42 @@ export default function UniversalAddScreenV3() {
     formattedAddress: '',
   });
 
+  // Track if we've already initialized to prevent race conditions
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const [isResuming, setIsResuming] = useState(false);
+  
+  // Show resume modal when there's a pending draft
   useEffect(() => {
-    if (pendingDraft && !currentDraft) {
+    if (isLoading) return; // Wait for loading to complete
+    
+    if (pendingDraft && !currentDraft && !isResuming) {
       setShowResumeModal(true);
     }
-  }, [pendingDraft, currentDraft]);
+  }, [pendingDraft, currentDraft, isLoading, isResuming]);
 
-  // Only request location if there's no draft after loading completes
-  const [hasInitialized, setHasInitialized] = useState(false);
-  
+  // Only request location if there's no draft and we haven't resumed
   useEffect(() => {
     // Wait for loading to complete before deciding what to do
     if (isLoading) return;
     if (hasInitialized) return;
+    if (isResuming) return; // Don't request location while resuming
     
-    // If there's a pending draft, show the resume modal (handled by other useEffect)
-    // If there's a current draft, restore it (handled by other useEffect)
-    // Only request new location if there's truly no draft
-    if (!currentDraft && !pendingDraft) {
-      handleRequestLocation();
+    // If there's a pending draft, the resume modal will handle it
+    if (pendingDraft) {
+      setHasInitialized(true);
+      return;
     }
+    
+    // If there's already a current draft, don't request new location
+    if (currentDraft) {
+      setHasInitialized(true);
+      return;
+    }
+    
+    // Only request new location if there's truly no draft
+    handleRequestLocation();
     setHasInitialized(true);
-  }, [isLoading, currentDraft, pendingDraft, hasInitialized]);
+  }, [isLoading, currentDraft, pendingDraft, hasInitialized, isResuming]);
 
   useEffect(() => {
     if (currentDraft) {
@@ -273,7 +290,45 @@ export default function UniversalAddScreenV3() {
 
   const handleSelectBusinessType = async (type: ContentSubtype) => {
     setSelectedBusinessType(type);
+    
+    // For service businesses, navigate to service_location step to ask about physical location
+    if (type === 'service') {
+      await updateDraft({ content_subtype: type, status: 'draft_type_selected', current_step: 2 }, true);
+      setCurrentStep('service_location');
+      return;
+    }
+    
     await updateDraft({ content_subtype: type, status: 'draft_subtype_selected', current_step: 3 }, true);
+    setCurrentStep('content_type');
+  };
+
+  const handleServiceLocationAnswer = async (hasPhysicalLocation: boolean) => {
+    setServiceHasPhysicalLocation(hasPhysicalLocation);
+    
+    if (hasPhysicalLocation) {
+      // They have a physical location - continue with the address already collected
+      await updateDraft({ 
+        content_subtype: 'service', 
+        status: 'draft_subtype_selected', 
+        current_step: 4,
+        data: { ...formData, has_physical_location: true }
+      }, true);
+    } else {
+      // No physical location - clear address and ask for service area
+      await updateDraft({ 
+        content_subtype: 'service', 
+        status: 'draft_subtype_selected', 
+        current_step: 4,
+        latitude: null,
+        longitude: null,
+        address_line1: null,
+        city: null,
+        region: null,
+        postal_code: null,
+        formatted_address: null,
+        data: { ...formData, has_physical_location: false }
+      }, true);
+    }
     setCurrentStep('content_type');
   };
 
@@ -443,14 +498,28 @@ export default function UniversalAddScreenV3() {
     }
   };
 
-  const handleResumeDraft = () => { if (pendingDraft) resumeDraft(pendingDraft); setShowResumeModal(false); };
+  const handleResumeDraft = () => { 
+    setIsResuming(true); // Prevent location request while resuming
+    if (pendingDraft) resumeDraft(pendingDraft); 
+    setShowResumeModal(false); 
+    setHasInitialized(true); // Mark as initialized since we're resuming
+  };
   const handleDiscardDraft = async () => { if (pendingDraft) await deleteDraft(pendingDraft.id); setShowResumeModal(false); handleRequestLocation(); };
   const handleSnoozeDraft = async () => { if (pendingDraft) await snoozeDraft(24); setShowResumeModal(false); navigation.goBack(); };
 
+  // Determine which steps array to use based on business type
+  const getActiveSteps = useCallback(() => {
+    if (selectedBusinessType === 'service') {
+      return STEPS; // Includes service_location step
+    }
+    return STEPS_WITHOUT_SERVICE_LOCATION;
+  }, [selectedBusinessType]);
+
   const handleBack = () => {
-    const stepIndex = STEPS.indexOf(currentStep);
+    const steps = getActiveSteps();
+    const stepIndex = steps.indexOf(currentStep);
     if (stepIndex > 0) {
-      setCurrentStep(STEPS[stepIndex - 1]);
+      setCurrentStep(steps[stepIndex - 1]);
     } else {
       Alert.alert('Save Draft?', 'Your progress will be saved and you can continue later.',
         [
@@ -462,11 +531,20 @@ export default function UniversalAddScreenV3() {
     }
   };
 
-  const progress = useMemo(() => ((STEPS.indexOf(currentStep) + 1) / STEPS.length) * 100, [currentStep]);
+  // Use appropriate steps array based on whether service_location step is needed
+  const activeSteps = useMemo(() => {
+    if (selectedBusinessType === 'service') {
+      return STEPS; // Includes service_location step
+    }
+    return STEPS_WITHOUT_SERVICE_LOCATION;
+  }, [selectedBusinessType]);
+
+  const progress = useMemo(() => ((activeSteps.indexOf(currentStep) + 1) / activeSteps.length) * 100, [currentStep, activeSteps]);
   const stepTitle = useMemo(() => {
     switch (currentStep) {
       case 'location': return 'Confirm Location';
       case 'business_type': return 'Business Type';
+      case 'service_location': return 'Physical Location';
       case 'content_type': return 'What are you adding?';
       case 'details': return 'Details';
       case 'photos': return 'Add Photos';
@@ -593,6 +671,34 @@ export default function UniversalAddScreenV3() {
     </View>
   );
 
+  // Service Location Step - asks service businesses if they have a physical location
+  const renderServiceLocationStep = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepDescription}>Do you have a physical location where customers can visit?</Text>
+      <Text style={styles.locationQuestionHint}>For example: an office, storefront, or workshop</Text>
+      
+      <TouchableOpacity style={styles.yesNoButton} onPress={() => handleServiceLocationAnswer(true)}>
+        <Ionicons name="checkmark-circle" size={28} color="#34C759" />
+        <View style={styles.yesNoContent}>
+          <Text style={styles.yesNoTitle}>Yes, I have a physical location</Text>
+          <Text style={styles.yesNoDescription}>Customers can visit my business address</Text>
+        </View>
+      </TouchableOpacity>
+      
+      <TouchableOpacity style={styles.yesNoButton} onPress={() => handleServiceLocationAnswer(false)}>
+        <Ionicons name="close-circle" size={28} color="#FF3B30" />
+        <View style={styles.yesNoContent}>
+          <Text style={styles.yesNoTitle}>No, I go to my customers</Text>
+          <Text style={styles.yesNoDescription}>I provide services at customer locations</Text>
+        </View>
+      </TouchableOpacity>
+      
+      <TouchableOpacity style={styles.cancelLink} onPress={() => { setSelectedBusinessType(null); setCurrentStep('business_type'); }}>
+        <Text style={styles.cancelLinkText}>Back to business type</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   const renderContentTypeStep = () => (
     <View style={styles.stepContent}>
       <Text style={styles.stepDescription}>What would you like to add?</Text>
@@ -714,6 +820,7 @@ export default function UniversalAddScreenV3() {
     switch (currentStep) {
       case 'location': return renderLocationStep();
       case 'business_type': return renderBusinessTypeStep();
+      case 'service_location': return renderServiceLocationStep();
       case 'content_type': return renderContentTypeStep();
       case 'details': return renderDetailsStep();
       case 'photos': return renderPhotosStep();
@@ -735,7 +842,7 @@ export default function UniversalAddScreenV3() {
       </View>
       <View style={styles.progressContainer}>
         <View style={styles.progressBar}><View style={[styles.progressFill, { width: `${progress}%` }]} /></View>
-        <Text style={styles.progressText}>Step {STEPS.indexOf(currentStep) + 1} of {STEPS.length}</Text>
+        <Text style={styles.progressText}>Step {activeSteps.indexOf(currentStep) + 1} of {activeSteps.length}</Text>
       </View>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.content}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -840,4 +947,12 @@ const styles = StyleSheet.create({
   saveAddressButtonText: { fontSize: 16, fontWeight: '600', color: '#fff' },
   manualEntryLink: { marginTop: 16, alignItems: 'center' },
   manualEntryLinkText: { fontSize: 14, color: '#0A84FF', textDecorationLine: 'underline' },
+  // Service location step styles
+  locationQuestionHint: { fontSize: 14, color: '#666', marginBottom: 24, textAlign: 'center' },
+  yesNoButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8f9fa', borderRadius: 12, padding: 16, marginBottom: 12, gap: 12 },
+  yesNoContent: { flex: 1 },
+  yesNoTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
+  yesNoDescription: { fontSize: 14, color: '#666', marginTop: 2 },
+  cancelLink: { alignItems: 'center', marginTop: 16, paddingVertical: 12 },
+  cancelLinkText: { fontSize: 14, color: '#0A84FF' },
 });
