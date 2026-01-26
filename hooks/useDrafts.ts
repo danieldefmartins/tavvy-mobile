@@ -389,7 +389,7 @@ async function submitToTavvyPlaces(draft: ContentDraft, userId: string): Promise
     description: draft.data?.description,
     tavvy_category: draft.data?.tavvy_category || draft.content_subtype || 'other',
     latitude: draft.latitude, longitude: draft.longitude,
-    street: draft.address_line1, // Use 'street' column, not 'address'
+    address: draft.address_line1, // Main address field
     city: draft.city, region: draft.region,
     postcode: draft.postal_code, country: draft.country,
     phone: draft.data?.phone, website: draft.data?.website,
