@@ -385,17 +385,56 @@ export function useDrafts() {
 
 async function submitToTavvyPlaces(draft: ContentDraft, userId: string): Promise<SubmitResult> {
   const { data, error } = await supabase.from('tavvy_places').insert({
+    // Basic info
     name: draft.data?.name || draft.content_subtype || 'Place',
     description: draft.data?.description,
     tavvy_category: draft.data?.tavvy_category || draft.content_subtype || 'other',
-    latitude: draft.latitude, longitude: draft.longitude,
-    address: draft.address_line1, // Main address field
-    city: draft.city, region: draft.region,
-    postcode: draft.postal_code, country: draft.country,
-    phone: draft.data?.phone, website: draft.data?.website,
-    photos: draft.photos, cover_image_url: draft.cover_photo,
-    source: 'user', created_by: userId,
+    tavvy_subcategory: draft.data?.tavvy_subcategory,
+    
+    // Location - GPS coordinates
+    latitude: draft.latitude,
+    longitude: draft.longitude,
+    
+    // Address fields
+    address: draft.address_line1,
+    address_line1: draft.address_line1,
+    address_line2: draft.address_line2,
+    formatted_address: draft.formatted_address,
+    city: draft.city,
+    region: draft.region,
+    postcode: draft.postal_code,
+    country: draft.country,
+    
+    // Contact info
+    phone: draft.data?.phone,
+    email: draft.data?.email,
+    website: draft.data?.website,
+    instagram: draft.data?.instagram,
+    facebook: draft.data?.facebook,
+    twitter: draft.data?.twitter,
+    tiktok: draft.data?.tiktok,
+    
+    // Photos
+    photos: draft.photos,
+    cover_image_url: draft.cover_photo,
+    
+    // Place type (fixed, service, mobile)
+    place_type: draft.content_subtype === 'service' ? 'service' : 
+                draft.content_subtype === 'on_the_go' ? 'mobile' : 'fixed',
+    place_subtype: draft.content_subtype,
+    service_area: draft.data?.service_area,
+    
+    // Quick add fields
+    is_quick_add: draft.content_type === 'quick_add',
+    quick_add_type: draft.content_type === 'quick_add' ? draft.content_subtype : null,
+    
+    // Metadata
+    source: 'user',
+    created_by: userId,
+    draft_id: draft.id,
+    notes: draft.data?.notes,
   }).select('id').single();
+  
   if (error) return { success: false, error: error.message };
   return { success: true, final_id: data.id, final_table: 'tavvy_places', taps_earned: 50 };
 }
