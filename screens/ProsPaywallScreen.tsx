@@ -16,7 +16,7 @@ export default function ProsPaywallScreen() {
   const [loading, setLoading] = useState(false);
 
   const plans = [
-    { id: 'founding' as PlanType, name: 'Founding Member', price: '$99', period: '/year', description: 'Limited to first 1,000 pros', savings: 'Save $400', badge: 'BEST DEAL' },
+    { id: 'founding' as PlanType, name: 'Founding Member', price: '$199', period: '/year', description: 'Limited to first 1,000 pros', savings: 'Save $400', badge: 'BEST DEAL' },
   ];
 
   const features = [

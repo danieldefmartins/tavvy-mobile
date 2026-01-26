@@ -250,7 +250,7 @@ export default function ProsLoginScreen({ navigation }: any) {
             <View style={styles.promoContainer}>
               <Text style={styles.promoEmoji}>🎉</Text>
               <Text style={styles.promoText}>
-                First 1,000 providers: Only <Text style={styles.promoPrice}>$99/year</Text> (reg. $499)
+                First 1,000 providers: Only <Text style={styles.promoPrice}>$199/year</Text> (reg. $599)
               </Text>
             </View>
           </View>
