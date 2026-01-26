@@ -148,26 +148,27 @@ export default function UniversalAddScreenV3() {
 
   useEffect(() => {
     if (currentDraft) {
-      // Restore step based on draft status
-      switch (currentDraft.status) {
-        case 'draft_location': setCurrentStep('location'); break;
-        case 'draft_type_selected': setCurrentStep('business_type'); break;
-        case 'draft_subtype_selected': setCurrentStep('content_type'); break;
-        case 'draft_details': setCurrentStep('details'); break;
-        case 'draft_photos': setCurrentStep('photos'); break;
-        case 'draft_review': setCurrentStep('review'); break;
-        default:
-          // If status is unknown, use current_step number as fallback
-          if (currentDraft.current_step && currentDraft.current_step >= 1 && currentDraft.current_step <= 6) {
-            setCurrentStep(STEPS[currentDraft.current_step - 1]);
-          }
-          break;
+      console.log('[UniversalAdd] Restoring draft:', currentDraft.id, 'status:', currentDraft.status, 'address:', currentDraft.formatted_address);
+      
+      // Restore address data for display FIRST (before setting step)
+      if (currentDraft.address_line1 || currentDraft.city || currentDraft.formatted_address) {
+        setManualAddressData({
+          address1: currentDraft.address_line1 || '',
+          address2: currentDraft.address_line2 || '',
+          city: currentDraft.city || '',
+          state: currentDraft.region || '',
+          zipCode: currentDraft.postal_code || '',
+          country: currentDraft.country || 'USA',
+          formattedAddress: currentDraft.formatted_address || '',
+          latitude: currentDraft.latitude || undefined,
+          longitude: currentDraft.longitude || undefined,
+        });
       }
       
       // Restore business type / subtype
       if (currentDraft.content_subtype) {
         if (['physical', 'service', 'on_the_go'].includes(currentDraft.content_subtype)) {
-          setSelectedBusinessType(currentDraft.content_subtype);
+          setSelectedBusinessType(currentDraft.content_subtype as any);
         } else {
           setSelectedSubtype(currentDraft.content_subtype);
         }
@@ -180,19 +181,36 @@ export default function UniversalAddScreenV3() {
       // Restore photos
       if (currentDraft.photos && currentDraft.photos.length > 0) setPhotos(currentDraft.photos);
       
-      // Restore address data for display
-      if (currentDraft.address_line1 || currentDraft.city) {
-        setManualAddressData({
-          address1: currentDraft.address_line1 || '',
-          address2: currentDraft.address_line2 || '',
-          city: currentDraft.city || '',
-          state: currentDraft.region || '',
-          zipCode: currentDraft.postal_code || '',
-          country: currentDraft.country || 'USA',
-          formattedAddress: currentDraft.formatted_address || '',
-          latitude: currentDraft.latitude || undefined,
-          longitude: currentDraft.longitude || undefined,
-        });
+      // Restore step based on draft status
+      // If we have an address, skip the location step and go to the saved step
+      switch (currentDraft.status) {
+        case 'draft_location': 
+          // If we have an address saved, show confirmation instead of requesting new location
+          setCurrentStep('location'); 
+          break;
+        case 'draft_type_selected': 
+          setCurrentStep('business_type'); 
+          break;
+        case 'draft_subtype_selected': 
+          setCurrentStep('content_type'); 
+          break;
+        case 'draft_details': 
+          setCurrentStep('details'); 
+          break;
+        case 'draft_photos': 
+          setCurrentStep('photos'); 
+          break;
+        case 'draft_review': 
+          setCurrentStep('review'); 
+          break;
+        default:
+          // If status is unknown, use current_step number as fallback
+          if (currentDraft.current_step && currentDraft.current_step >= 1 && currentDraft.current_step <= 7) {
+            const steps = currentDraft.content_subtype === 'service' ? STEPS : STEPS_WITHOUT_SERVICE_LOCATION;
+            const stepIndex = Math.min(currentDraft.current_step - 1, steps.length - 1);
+            setCurrentStep(steps[stepIndex]);
+          }
+          break;
       }
     }
   }, [currentDraft?.id]);

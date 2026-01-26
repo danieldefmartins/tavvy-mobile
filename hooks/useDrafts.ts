@@ -114,9 +114,13 @@ export function useDrafts() {
   }, []);
 
   const checkForPendingDraft = async () => {
+    setIsLoading(true); // Start loading while checking for drafts
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
 
       const { data: draft } = await supabase
         .from('content_drafts')
@@ -133,6 +137,8 @@ export function useDrafts() {
       }
     } catch (error) {
       console.error('[useDrafts] Error checking for pending draft:', error);
+    } finally {
+      setIsLoading(false); // Done checking for drafts
     }
   };
 
