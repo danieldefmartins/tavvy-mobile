@@ -389,15 +389,12 @@ async function submitToTavvyPlaces(draft: ContentDraft, userId: string): Promise
     description: draft.data?.description,
     tavvy_category: draft.data?.tavvy_category || draft.content_subtype || 'other',
     latitude: draft.latitude, longitude: draft.longitude,
-    address: draft.address_line1, city: draft.city, region: draft.region,
+    street: draft.address_line1, // Use 'street' column, not 'address'
+    city: draft.city, region: draft.region,
     postcode: draft.postal_code, country: draft.country,
-    phone: draft.data?.phone, email: draft.data?.email, website: draft.data?.website,
+    phone: draft.data?.phone, website: draft.data?.website,
     photos: draft.photos, cover_image_url: draft.cover_photo,
     source: 'user', created_by: userId,
-    place_type: draft.content_subtype === 'service' ? 'service' : 
-                draft.content_subtype === 'on_the_go' ? 'mobile' : 'fixed',
-    is_quick_add: draft.content_type === 'quick_add',
-    quick_add_type: draft.content_type === 'quick_add' ? draft.content_subtype : null,
   }).select('id').single();
   if (error) return { success: false, error: error.message };
   return { success: true, final_id: data.id, final_table: 'tavvy_places', taps_earned: 50 };

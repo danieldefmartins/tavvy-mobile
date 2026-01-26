@@ -281,7 +281,7 @@ export default function UniversalAddScreenV3() {
 
       if (!result.canceled && result.assets) {
         const newPhotos = result.assets.map(asset => asset.uri);
-        const updatedPhotos = [...photos, ...newPhotos].slice(0, 10);
+        const updatedPhotos = [...photos, ...newPhotos].slice(0, 30);
         setPhotos(updatedPhotos);
         updateDraft({ photos: updatedPhotos });
       }
@@ -304,12 +304,12 @@ export default function UniversalAddScreenV3() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
         quality: 0.8,
-        selectionLimit: 10 - photos.length,
+        selectionLimit: 30 - photos.length,
       });
 
       if (!result.canceled && result.assets) {
         const newPhotos = result.assets.map(asset => asset.uri);
-        const updatedPhotos = [...photos, ...newPhotos].slice(0, 10);
+        const updatedPhotos = [...photos, ...newPhotos].slice(0, 30);
         setPhotos(updatedPhotos);
         updateDraft({ photos: updatedPhotos });
       }
@@ -328,12 +328,12 @@ export default function UniversalAddScreenV3() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
         quality: 0.8,
-        selectionLimit: 10 - photos.length,
+        selectionLimit: 30 - photos.length,
       });
 
       if (!result.canceled && result.assets) {
         const newPhotos = result.assets.map(asset => asset.uri);
-        const updatedPhotos = [...photos, ...newPhotos].slice(0, 10);
+        const updatedPhotos = [...photos, ...newPhotos].slice(0, 30);
         setPhotos(updatedPhotos);
         updateDraft({ photos: updatedPhotos });
       }
@@ -636,7 +636,7 @@ export default function UniversalAddScreenV3() {
       )}
       
       {/* Add Photos Button */}
-      {photos.length < 10 && (
+      {photos.length < 30 && (
         <TouchableOpacity style={styles.addPhotoButtonSingle} onPress={addPhotos}>
           <Ionicons name="add-circle-outline" size={32} color="#0A84FF" />
           <Text style={styles.addPhotoText}>Add Photos</Text>
@@ -646,7 +646,7 @@ export default function UniversalAddScreenV3() {
       <Text style={styles.photoHint}>
         {photos.length === 0 
           ? 'Photos are optional but help others discover this place' 
-          : `${photos.length}/10 photos added`}
+          : `${photos.length}/30 photos added`}
       </Text>
       
       <TouchableOpacity style={styles.nextButton} onPress={handleGoToReview}>
