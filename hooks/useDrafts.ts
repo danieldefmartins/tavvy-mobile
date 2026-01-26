@@ -411,8 +411,7 @@ async function submitToTavvyPlaces(draft: ContentDraft, userId: string): Promise
     latitude: draft.latitude,
     longitude: draft.longitude,
     
-    // Address fields
-    address: draft.address_line1,
+    // Address fields (note: table uses address_line1, not 'address')
     address_line1: draft.address_line1,
     address_line2: draft.address_line2,
     formatted_address: draft.formatted_address,

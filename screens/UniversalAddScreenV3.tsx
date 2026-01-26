@@ -678,19 +678,25 @@ export default function UniversalAddScreenV3() {
       <Text style={styles.locationQuestionHint}>For example: an office, storefront, or workshop</Text>
       
       <TouchableOpacity style={styles.yesNoButton} onPress={() => handleServiceLocationAnswer(true)}>
-        <Ionicons name="checkmark-circle" size={28} color="#34C759" />
+        <View style={styles.yesNoIconContainer}>
+          <Ionicons name="storefront-outline" size={32} color="#34C759" />
+        </View>
         <View style={styles.yesNoContent}>
           <Text style={styles.yesNoTitle}>Yes, I have a physical location</Text>
           <Text style={styles.yesNoDescription}>Customers can visit my business address</Text>
         </View>
+        <Ionicons name="chevron-forward" size={24} color="#ccc" />
       </TouchableOpacity>
       
       <TouchableOpacity style={styles.yesNoButton} onPress={() => handleServiceLocationAnswer(false)}>
-        <Ionicons name="close-circle" size={28} color="#FF3B30" />
+        <View style={styles.yesNoIconContainer}>
+          <Ionicons name="car-outline" size={32} color="#0A84FF" />
+        </View>
         <View style={styles.yesNoContent}>
           <Text style={styles.yesNoTitle}>No, I go to my customers</Text>
           <Text style={styles.yesNoDescription}>I provide services at customer locations</Text>
         </View>
+        <Ionicons name="chevron-forward" size={24} color="#ccc" />
       </TouchableOpacity>
       
       <TouchableOpacity style={styles.cancelLink} onPress={() => { setSelectedBusinessType(null); setCurrentStep('business_type'); }}>
@@ -949,10 +955,11 @@ const styles = StyleSheet.create({
   manualEntryLinkText: { fontSize: 14, color: '#0A84FF', textDecorationLine: 'underline' },
   // Service location step styles
   locationQuestionHint: { fontSize: 14, color: '#666', marginBottom: 24, textAlign: 'center' },
-  yesNoButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8f9fa', borderRadius: 12, padding: 16, marginBottom: 12, gap: 12 },
+  yesNoButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8f9fa', borderRadius: 16, padding: 20, marginBottom: 16, gap: 16 },
+  yesNoIconContainer: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
   yesNoContent: { flex: 1 },
-  yesNoTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
-  yesNoDescription: { fontSize: 14, color: '#666', marginTop: 2 },
-  cancelLink: { alignItems: 'center', marginTop: 16, paddingVertical: 12 },
+  yesNoTitle: { fontSize: 17, fontWeight: '600', color: '#333' },
+  yesNoDescription: { fontSize: 14, color: '#666', marginTop: 4 },
+  cancelLink: { alignItems: 'center', marginTop: 24, paddingVertical: 12 },
   cancelLinkText: { fontSize: 14, color: '#0A84FF' },
 });
