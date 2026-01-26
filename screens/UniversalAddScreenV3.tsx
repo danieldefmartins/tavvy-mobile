@@ -112,14 +112,26 @@ export default function UniversalAddScreenV3() {
     }
   }, [pendingDraft, currentDraft]);
 
+  // Only request location if there's no draft after loading completes
+  const [hasInitialized, setHasInitialized] = useState(false);
+  
   useEffect(() => {
+    // Wait for loading to complete before deciding what to do
+    if (isLoading) return;
+    if (hasInitialized) return;
+    
+    // If there's a pending draft, show the resume modal (handled by other useEffect)
+    // If there's a current draft, restore it (handled by other useEffect)
+    // Only request new location if there's truly no draft
     if (!currentDraft && !pendingDraft) {
       handleRequestLocation();
     }
-  }, []);
+    setHasInitialized(true);
+  }, [isLoading, currentDraft, pendingDraft, hasInitialized]);
 
   useEffect(() => {
     if (currentDraft) {
+      // Restore step based on draft status
       switch (currentDraft.status) {
         case 'draft_location': setCurrentStep('location'); break;
         case 'draft_type_selected': setCurrentStep('business_type'); break;
@@ -127,6 +139,8 @@ export default function UniversalAddScreenV3() {
         case 'draft_details': setCurrentStep('details'); break;
         case 'draft_review': setCurrentStep('review'); break;
       }
+      
+      // Restore business type / subtype
       if (currentDraft.content_subtype) {
         if (['physical', 'service', 'on_the_go'].includes(currentDraft.content_subtype)) {
           setSelectedBusinessType(currentDraft.content_subtype);
@@ -135,8 +149,27 @@ export default function UniversalAddScreenV3() {
         }
       }
       if (currentDraft.content_type) setSelectedContentType(currentDraft.content_type);
+      
+      // Restore form data
       if (currentDraft.data) setFormData(currentDraft.data);
-      if (currentDraft.photos) setPhotos(currentDraft.photos);
+      
+      // Restore photos
+      if (currentDraft.photos && currentDraft.photos.length > 0) setPhotos(currentDraft.photos);
+      
+      // Restore address data for display
+      if (currentDraft.address_line1 || currentDraft.city) {
+        setManualAddressData({
+          address1: currentDraft.address_line1 || '',
+          address2: currentDraft.address_line2 || '',
+          city: currentDraft.city || '',
+          state: currentDraft.region || '',
+          zipCode: currentDraft.postal_code || '',
+          country: currentDraft.country || 'USA',
+          formattedAddress: currentDraft.formatted_address || '',
+          latitude: currentDraft.latitude || undefined,
+          longitude: currentDraft.longitude || undefined,
+        });
+      }
     }
   }, [currentDraft?.id]);
 
