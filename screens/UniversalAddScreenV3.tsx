@@ -26,7 +26,7 @@ import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { useDrafts, ContentType, ContentSubtype, ContentDraft } from '../hooks/useDrafts';
 import { useLocation, LocationData } from '../hooks/useLocation';
-import { AddressAutocomplete } from '../components/AddressAutocomplete';
+import ECardAddressAutocomplete, { AddressData } from '../components/ecard/AddressAutocomplete';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -96,17 +96,15 @@ export default function UniversalAddScreenV3() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showManualAddress, setShowManualAddress] = useState(false);
-  const [manualAddressInput, setManualAddressInput] = useState('');
-  const [selectedAddressDetails, setSelectedAddressDetails] = useState<{
-    address_line1: string;
-    address_line2: string;
-    city: string;
-    region: string;
-    postal_code: string;
-    country: string;
-    latitude: number | null;
-    longitude: number | null;
-  } | null>(null);
+  const [manualAddressData, setManualAddressData] = useState<AddressData>({
+    address1: '',
+    address2: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    country: 'USA',
+    formattedAddress: '',
+  });
 
   useEffect(() => {
     if (pendingDraft && !currentDraft) {
@@ -166,63 +164,69 @@ export default function UniversalAddScreenV3() {
     }
   };
 
-  const handleAddressSelect = (address: string, details: any) => {
-    setManualAddressInput(address);
-    
-    // Build address_line1 from street number and street
-    const streetAddress = details.streetNumber && details.street
-      ? `${details.streetNumber} ${details.street}`
-      : details.street || address.split(',')[0];
-    
-    setSelectedAddressDetails({
-      address_line1: streetAddress,
-      address_line2: '',
-      city: details.city || '',
-      region: details.state || '',
-      postal_code: details.postalCode || '',
-      country: details.country || '',
-      latitude: details.latitude || null,
-      longitude: details.longitude || null,
-    });
+  // Handle address change from eCard AddressAutocomplete component
+  const handleManualAddressChange = (newAddress: AddressData) => {
+    setManualAddressData(newAddress);
   };
 
+  // Save manual address and continue to next step
   const handleSaveManualAddress = async () => {
-    if (!selectedAddressDetails) {
-      Alert.alert('Required', 'Please select an address from the suggestions.');
+    const { address1, city, state } = manualAddressData;
+    
+    if (!address1.trim() || !city.trim() || !state.trim()) {
+      Alert.alert('Required', 'Please enter at least Address, City, and State.');
       return;
     }
     
-    const { address_line1, city } = selectedAddressDetails;
-    
-    if (!address_line1.trim()) {
-      Alert.alert('Required', 'Please select a valid address.');
-      return;
-    }
+    // Build formatted address
+    const formattedParts = [
+      manualAddressData.address1,
+      manualAddressData.address2,
+      manualAddressData.city,
+      manualAddressData.state,
+      manualAddressData.zipCode,
+      manualAddressData.country,
+    ].filter(Boolean);
+    const formatted = formattedParts.join(', ');
     
     await updateDraft({
-      address_line1: selectedAddressDetails.address_line1,
-      address_line2: selectedAddressDetails.address_line2 || null,
-      city: selectedAddressDetails.city,
-      region: selectedAddressDetails.region || null,
-      postal_code: selectedAddressDetails.postal_code || null,
-      country: selectedAddressDetails.country || null,
-      formatted_address: manualAddressInput,
-      latitude: selectedAddressDetails.latitude || currentDraft?.latitude || null,
-      longitude: selectedAddressDetails.longitude || currentDraft?.longitude || null,
+      address_line1: manualAddressData.address1,
+      address_line2: manualAddressData.address2 || null,
+      city: manualAddressData.city,
+      region: manualAddressData.state || null,
+      postal_code: manualAddressData.zipCode || null,
+      country: manualAddressData.country || 'USA',
+      formatted_address: formatted,
+      latitude: currentDraft?.latitude || null,
+      longitude: currentDraft?.longitude || null,
       status: 'draft_type_selected',
       current_step: 2,
     }, true);
     
     setShowManualAddress(false);
-    setManualAddressInput('');
-    setSelectedAddressDetails(null);
+    setManualAddressData({
+      address1: '',
+      address2: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      country: 'USA',
+      formattedAddress: '',
+    });
     setCurrentStep('business_type');
   };
 
   const handleCancelManualAddress = () => {
     setShowManualAddress(false);
-    setManualAddressInput('');
-    setSelectedAddressDetails(null);
+    setManualAddressData({
+      address1: '',
+      address2: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      country: 'USA',
+      formattedAddress: '',
+    });
   };
 
   const handleSelectBusinessType = async (type: ContentSubtype) => {
@@ -371,58 +375,22 @@ export default function UniversalAddScreenV3() {
   const renderLocationStep = () => (
     <View style={styles.stepContent}>
       {showManualAddress ? (
-        // Manual Address Entry with Autocomplete
+        // Manual Address Entry with eCard AddressAutocomplete
         <View style={styles.autocompleteContainer}>
-          <Text style={styles.stepDescription}>Search for the address</Text>
+          <Text style={styles.stepDescription}>Enter the place address</Text>
           
-          <AddressAutocomplete
-            value={manualAddressInput}
-            onSelect={handleAddressSelect}
-            onChange={setManualAddressInput}
-            placeholder="Start typing an address..."
-            label="Address"
-            required
+          {/* eCard-style Address Autocomplete with all fields */}
+          <ECardAddressAutocomplete
+            value={manualAddressData}
+            onChange={handleManualAddressChange}
           />
           
-          {/* Show selected address details */}
-          {selectedAddressDetails && (
-            <>
-              <View style={styles.selectedAddressCard}>
-                <Ionicons name="checkmark-circle" size={24} color="#34C759" />
-                <View style={styles.selectedAddressDetails}>
-                  <Text style={styles.selectedAddressText}>{selectedAddressDetails.address_line1}</Text>
-                  <Text style={styles.selectedAddressSubtext}>
-                    {[selectedAddressDetails.city, selectedAddressDetails.region, selectedAddressDetails.postal_code]
-                      .filter(Boolean).join(', ')}
-                  </Text>
-                  {selectedAddressDetails.latitude && selectedAddressDetails.longitude && (
-                    <Text style={styles.selectedAddressCoords}>
-                      GPS: {selectedAddressDetails.latitude.toFixed(6)}, {selectedAddressDetails.longitude.toFixed(6)}
-                    </Text>
-                  )}
-                </View>
-              </View>
-              
-              {/* Address Line 2 - Apt, Suite, Unit */}
-              <View style={styles.address2Container}>
-                <Text style={styles.address2Label}>Apt, Suite, Unit (optional)</Text>
-                <TextInput
-                  style={styles.address2Input}
-                  placeholder="e.g., Apt 4B, Suite 100, Unit 12"
-                  placeholderTextColor="#999"
-                  value={selectedAddressDetails.address_line2}
-                  onChangeText={(text) => setSelectedAddressDetails(prev => prev ? { ...prev, address_line2: text } : null)}
-                />
-              </View>
-            </>
-          )}
-          
-          {/* Keep original GPS if available */}
-          {!selectedAddressDetails?.latitude && currentDraft?.latitude && currentDraft?.longitude && (
+          {/* Show GPS coordinates if available from original location */}
+          {currentDraft?.latitude && currentDraft?.longitude && (
             <View style={styles.coordsNote}>
               <Ionicons name="navigate" size={16} color="#0A84FF" />
               <Text style={styles.coordsNoteText}>
-                Original GPS: {currentDraft.latitude.toFixed(6)}, {currentDraft.longitude.toFixed(6)}
+                GPS: {currentDraft.latitude.toFixed(6)}, {currentDraft.longitude.toFixed(6)}
               </Text>
             </View>
           )}
@@ -432,11 +400,14 @@ export default function UniversalAddScreenV3() {
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.saveAddressButton, !selectedAddressDetails && styles.saveAddressButtonDisabled]} 
+              style={[
+                styles.saveAddressButton, 
+                (!manualAddressData.address1 || !manualAddressData.city || !manualAddressData.state) && styles.saveAddressButtonDisabled
+              ]} 
               onPress={handleSaveManualAddress}
-              disabled={!selectedAddressDetails}
+              disabled={!manualAddressData.address1 || !manualAddressData.city || !manualAddressData.state}
             >
-              <Text style={styles.saveAddressButtonText}>Use This Address</Text>
+              <Text style={styles.saveAddressButtonText}>Continue</Text>
             </TouchableOpacity>
           </View>
         </View>
