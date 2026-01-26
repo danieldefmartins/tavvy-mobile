@@ -431,7 +431,7 @@ export default function UniversalAddScreenV3() {
     try {
       const result = await submitDraft();
       if (result.success) {
-        Alert.alert('🎉 Success!', `Your place has been added!\n\n+${result.taps_earned || 50} Taps earned!`,
+        Alert.alert('🎉 Success!', 'Your place has been added! It will be reviewed by our team.',
           [{ text: 'Awesome!', onPress: () => navigation.goBack() }]);
       } else {
         Alert.alert('Error', result.error || 'Failed to submit. Please try again.');
@@ -703,7 +703,7 @@ export default function UniversalAddScreenV3() {
       <View style={styles.reviewCard}><Text style={styles.reviewLabel}>Name</Text><Text style={styles.reviewValue}>{formData.name || 'Not set'}</Text></View>
       <View style={styles.reviewCard}><Text style={styles.reviewLabel}>Type</Text><Text style={styles.reviewValue}>{selectedContentType} {selectedSubtype ? `(${selectedSubtype})` : ''}</Text></View>
       {formData.description && <View style={styles.reviewCard}><Text style={styles.reviewLabel}>Description</Text><Text style={styles.reviewValue}>{formData.description}</Text></View>}
-      <View style={styles.tapsPreview}><Ionicons name="flash" size={24} color="#FFD700" /><Text style={styles.tapsText}>You'll earn +50 Taps!</Text></View>
+
       <TouchableOpacity style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]} onPress={handleSubmit} disabled={isSubmitting}>
         {isSubmitting ? <ActivityIndicator color="#fff" /> : <><Text style={styles.submitButtonText}>Submit</Text><Ionicons name="checkmark-circle" size={20} color="#fff" /></>}
       </TouchableOpacity>

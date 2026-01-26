@@ -418,9 +418,8 @@ async function submitToTavvyPlaces(draft: ContentDraft, userId: string): Promise
     photos: draft.photos,
     cover_image_url: draft.cover_photo,
     
-    // Place type (fixed, service, mobile)
-    place_type: draft.content_subtype === 'service' ? 'service' : 
-                draft.content_subtype === 'on_the_go' ? 'mobile' : 'fixed',
+    // Place type - database only allows 'fixed' or 'on_the_go'
+    place_type: draft.content_subtype === 'on_the_go' ? 'on_the_go' : 'fixed',
     place_subtype: draft.content_subtype,
     service_area: draft.data?.service_area,
     
