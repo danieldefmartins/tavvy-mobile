@@ -6253,8 +6253,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   quickActionText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
+    textAlign: 'center',
   },
 
   // Mood Cards
