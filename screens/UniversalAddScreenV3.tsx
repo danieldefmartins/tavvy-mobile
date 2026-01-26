@@ -189,6 +189,8 @@ export default function UniversalAddScreenV3() {
     ].filter(Boolean);
     const formatted = formattedParts.join(', ');
     
+    // Use geocoded coordinates from the selected address, NOT user's current location
+    // manualAddressData.latitude/longitude come from Nominatim when user selects from autocomplete
     await updateDraft({
       address_line1: manualAddressData.address1,
       address_line2: manualAddressData.address2 || null,
@@ -197,8 +199,8 @@ export default function UniversalAddScreenV3() {
       postal_code: manualAddressData.zipCode || null,
       country: manualAddressData.country || 'USA',
       formatted_address: formatted,
-      latitude: currentDraft?.latitude || null,
-      longitude: currentDraft?.longitude || null,
+      latitude: manualAddressData.latitude || null,
+      longitude: manualAddressData.longitude || null,
       status: 'draft_type_selected',
       current_step: 2,
     }, true);
@@ -385,12 +387,12 @@ export default function UniversalAddScreenV3() {
             onChange={handleManualAddressChange}
           />
           
-          {/* Show GPS coordinates if available from original location */}
-          {currentDraft?.latitude && currentDraft?.longitude && (
+          {/* Show GPS coordinates from geocoded address (not user location) */}
+          {manualAddressData.latitude && manualAddressData.longitude && (
             <View style={styles.coordsNote}>
-              <Ionicons name="navigate" size={16} color="#0A84FF" />
+              <Ionicons name="navigate" size={16} color="#34C759" />
               <Text style={styles.coordsNoteText}>
-                GPS: {currentDraft.latitude.toFixed(6)}, {currentDraft.longitude.toFixed(6)}
+                GPS: {manualAddressData.latitude.toFixed(6)}, {manualAddressData.longitude.toFixed(6)}
               </Text>
             </View>
           )}

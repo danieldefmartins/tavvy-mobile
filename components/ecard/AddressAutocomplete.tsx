@@ -21,6 +21,8 @@ export interface AddressData {
   zipCode: string;
   country: string;
   formattedAddress: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface Props {
@@ -129,10 +131,13 @@ export default function AddressAutocomplete({ value, onChange }: Props) {
       }
       
       // Transform Nominatim results to match our prediction format
+      // Include lat/lon from Nominatim for geocoding
       const predictions = data.map((item: any) => ({
         place_id: item.place_id.toString(),
         description: item.display_name,
         address: item.address,
+        lat: item.lat,
+        lon: item.lon,
       }));
       
       setPredictions(predictions);
@@ -182,6 +187,10 @@ export default function AddressAutocomplete({ value, onChange }: Props) {
     // Get country
     const country = addr.country_code?.toUpperCase() === 'US' ? 'USA' : (addr.country || 'USA');
     
+    // Get latitude and longitude from Nominatim result
+    const latitude = prediction.lat ? parseFloat(prediction.lat) : undefined;
+    const longitude = prediction.lon ? parseFloat(prediction.lon) : undefined;
+    
     onChange({
       address1,
       address2: '', // Keep empty so user can fill in Apt/Suite number
@@ -190,6 +199,8 @@ export default function AddressAutocomplete({ value, onChange }: Props) {
       zipCode,
       country,
       formattedAddress: prediction.description || '',
+      latitude,
+      longitude,
     });
     
     // Clear search but keep modal open so user can add Address 2 (Apt/Suite)
