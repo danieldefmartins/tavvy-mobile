@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert, AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import NetInfo from '@react-native-community/netinfo';
+// Note: Using simple fetch-based online check instead of NetInfo
 import { supabase } from '../lib/supabaseClient';
 
 export type ContentType = 'business' | 'universe' | 'city' | 'rv_campground' | 'event' | 'quick_add';
@@ -89,12 +89,25 @@ export function useDrafts() {
   const autoSaveTimer = useRef<NodeJS.Timeout | null>(null);
   const pendingUpdates = useRef<UpdateDraftInput>({});
 
-  useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener(state => {
-      setIsOnline(state.isConnected ?? true);
-    });
-    return () => unsubscribe();
+  // Simple online check using fetch
+  const checkOnlineStatus = useCallback(async () => {
+    try {
+      const response = await fetch('https://www.google.com/favicon.ico', {
+        method: 'HEAD',
+        cache: 'no-store',
+      });
+      setIsOnline(response.ok);
+    } catch {
+      setIsOnline(false);
+    }
   }, []);
+
+  useEffect(() => {
+    checkOnlineStatus();
+    // Check online status periodically
+    const interval = setInterval(checkOnlineStatus, 30000);
+    return () => clearInterval(interval);
+  }, [checkOnlineStatus]);
 
   useEffect(() => {
     checkForPendingDraft();
