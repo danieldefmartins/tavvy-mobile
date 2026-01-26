@@ -456,15 +456,15 @@ const badgeStyles = StyleSheet.create({
 // Custom Add Button Component (Elevated Center Button)
 // --------------------
 function AddButton({ onPress }: { onPress: () => void }) {
-  const { theme } = useThemeContext();
+  const { theme, isDark } = useThemeContext();
   
   return (
     <View style={addButtonStyles.container}>
       <View style={[
         addButtonStyles.button,
-        { backgroundColor: '#111827' } // Dark charcoal - matches active tab
+        { backgroundColor: isDark ? '#FFFFFF' : '#111827' }
       ]}>
-        <Ionicons name="add" size={32} color="#FFFFFF" />
+        <Ionicons name="add" size={32} color={isDark ? '#111827' : '#FFFFFF'} />
       </View>
     </View>
   );
@@ -577,7 +577,7 @@ const TavvyDarkTheme = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
-    primary: darkTheme.primary,
+    primary: '#FFFFFF',
     background: darkTheme.background,
     card: darkTheme.surface,
     text: darkTheme.text,
@@ -590,7 +590,7 @@ const TavvyLightTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: Colors.primary,
+    primary: '#111827',
     background: '#FFFFFF',
     card: '#F8FAFC',
     text: '#0F172A',
