@@ -230,7 +230,7 @@ export const Colors = {
   black: palette.black,
   
   // Tab bar
-  tabBarActive: brand.blue,
+  tabBarActive: palette.black,
   tabBarInactive: brand.textSecondary,
 
   // Review Semantic Themes (Tavvy Signal Colors)
