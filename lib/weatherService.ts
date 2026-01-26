@@ -151,7 +151,8 @@ export const fetchWeatherData = async (
       },
     };
   } catch (error) {
-    console.error('Error fetching weather data:', error);
+    // Network errors are expected when offline - return null silently
+    // The caller will use getDefaultWeatherData() as fallback
     return null;
   }
 };
