@@ -501,8 +501,8 @@ function TabNavigator() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: theme.tabBarActive,
-        tabBarInactiveTintColor: theme.tabBarInactive,
+        tabBarActiveTintColor: isDark ? '#FFFFFF' : '#111827',
+        tabBarInactiveTintColor: isDark ? '#6B7280' : '#9CA3AF',
         tabBarStyle: {
           backgroundColor: theme.background,
           borderTopColor: theme.border,
