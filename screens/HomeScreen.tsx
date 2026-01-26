@@ -342,7 +342,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const { theme, isDark } = useThemeContext();
   
   // Auth context for current user
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   
   // View mode: 'standard' (default) or 'map' (search/swipe triggered)
   const [viewMode, setViewMode] = useState<'standard' | 'map'>('standard');
@@ -2629,40 +2629,325 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const trendingCardWidth = width * 0.7;
   const trendingCardHeight = 180;
 
+  // Get user's first name for greeting
+  const firstName = profile?.display_name?.split(' ')[0] || 'there';
+  
   const renderStandardMode = () => (
-    <SafeAreaView style={[styles.safe, { backgroundColor: isDark ? theme.background : BG }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: isDark ? '#0F0F0F' : '#FAFAFA' }]}>
       <ScrollView 
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Segmented Control: Standard / Map - Moved higher */}
-        <View style={styles.segmentWrap}>
-          <View style={[styles.segment, { 
-            borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,18,51,0.12)', 
-            backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.65)' 
-          }]}>
-            <TouchableOpacity
-              style={[styles.segmentItem, viewMode === 'standard' && [styles.segmentItemActive, { backgroundColor: ACCENT }]]}
-              onPress={() => setViewMode('standard')} accessibilityLabel="List view" accessibilityRole="button"
-              activeOpacity={0.9}
+        {/* ===== GREETING SECTION ===== */}
+        <View style={styles.greetingSection}>
+          <View style={styles.greetingRow}>
+            <View>
+              <Text style={[styles.greetingText, { color: isDark ? '#888' : '#6B7280' }]}>
+                {greeting}
+              </Text>
+              <Text style={[styles.userName, { color: isDark ? '#fff' : '#111827' }]}>
+                {firstName} 👋
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#667EEA', marginRight: 6 }} />
+                <Text style={{ fontSize: 12, fontWeight: '500', color: '#667EEA' }}>
+                  Real-time signals. Not star ratings.
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity 
+              style={[styles.avatarButton, { backgroundColor: isDark ? '#FF6B6B' : '#667EEA' }]}
+              onPress={() => navigation.navigate('Profile')}
             >
-              <Text style={[styles.segmentText, { color: viewMode === 'standard' ? '#fff' : (isDark ? theme.textSecondary : '#6B6B6B') }]}>Standard</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.segmentItem, viewMode === 'map' && [styles.segmentItemActive, { backgroundColor: ACCENT }]]}
-              onPress={switchToMapMode} accessibilityLabel="Map view" accessibilityRole="button"
-              activeOpacity={0.9}
-            >
-              <Text style={[styles.segmentText, { color: viewMode === 'map' ? '#fff' : (isDark ? theme.textSecondary : '#6B6B6B') }]}>Map</Text>
+              <Text style={styles.avatarText}>
+                {firstName.charAt(0).toUpperCase()}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Title - Smaller font for smaller screens */}
-        <Text style={[styles.title, { color: isDark ? theme.text : ACCENT }]}>
-          Find a place that fits{'\n'}your moment
+        {/* ===== SEARCH CARD ===== */}
+        <View style={[
+          styles.searchCard, 
+          { 
+            backgroundColor: isDark ? '#1E1E1E' : '#fff',
+            borderWidth: isDark ? 1 : 0,
+            borderColor: 'rgba(255,255,255,0.06)',
+            shadowColor: isDark ? 'transparent' : '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: isDark ? 0 : 0.06,
+            shadowRadius: 12,
+            elevation: isDark ? 0 : 4,
+          }
+        ]}>
+          <TouchableOpacity 
+            style={[
+              styles.searchInputNew, 
+              { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6' }
+            ]}
+            onPress={() => {
+              setIsSearchFocused(true);
+              searchInputRef.current?.focus();
+            }}
+          >
+            <Ionicons name="search" size={20} color="#667EEA" />
+            <Text style={[styles.searchInputText, { color: isDark ? '#888' : '#9CA3AF' }]}>
+              What are you in the mood for?
+            </Text>
+          </TouchableOpacity>
+          
+          <View style={styles.quickActionsRow}>
+            <TouchableOpacity 
+              style={[
+                styles.quickAction, 
+                { 
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F9FAFB',
+                  borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB',
+                }
+              ]}
+              onPress={switchToMapMode}
+            >
+              <Text style={styles.quickActionIcon}>📍</Text>
+              <Text style={[styles.quickActionText, { color: isDark ? '#888' : '#6B7280' }]}>Near Me</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[
+                styles.quickAction, 
+                { 
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F9FAFB',
+                  borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB',
+                }
+              ]}
+              onPress={switchToMapMode}
+            >
+              <Text style={styles.quickActionIcon}>🗺️</Text>
+              <Text style={[styles.quickActionText, { color: isDark ? '#888' : '#6B7280' }]}>Map</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[
+                styles.quickAction, 
+                { 
+                  backgroundColor: isDark 
+                    ? 'rgba(102, 126, 234, 0.2)' 
+                    : 'rgba(102, 126, 234, 0.1)',
+                  borderColor: 'rgba(102, 126, 234, 0.3)',
+                }
+              ]}
+              onPress={() => {
+                // Surprise me - navigate to a random trending place
+                if (trendingItems.length > 0) {
+                  const randomItem = trendingItems[Math.floor(Math.random() * trendingItems.length)];
+                  if (randomItem.type === 'place' || randomItem.place) {
+                    navigation.navigate('PlaceDetails', { placeId: randomItem.id || randomItem.place?.id });
+                  }
+                }
+              }}
+            >
+              <Text style={styles.quickActionIcon}>🎲</Text>
+              <Text style={[styles.quickActionText, { color: '#667EEA' }]}>Surprise</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[
+                styles.quickAction, 
+                { 
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F9FAFB',
+                  borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB',
+                }
+              ]}
+              onPress={() => navigation.navigate('Profile')}
+            >
+              <Text style={styles.quickActionIcon}>⭐</Text>
+              <Text style={[styles.quickActionText, { color: isDark ? '#888' : '#6B7280' }]}>Saved</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ===== MOOD CARDS ===== */}
+        <View style={styles.moodSection}>
+          <Text style={[styles.moodSectionLabel, { color: isDark ? '#555' : '#9CA3AF' }]}>
+            What's your mood?
+          </Text>
+          <View style={styles.moodGrid}>
+            {/* Hungry Card */}
+            <TouchableOpacity 
+              style={[styles.moodCard, styles.moodCardSmall]}
+              onPress={() => {
+                handleCategorySelect('Restaurants');
+                switchToMapMode();
+              }}
+              activeOpacity={0.9}
+            >
+              <LinearGradient
+                colors={['#FF6B6B', '#FF8E53']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+              />
+              <View style={styles.moodPopular}>
+                <Text style={styles.moodPopularText}>🔥 Popular right now</Text>
+              </View>
+              <Text style={styles.moodEmoji}>🍕</Text>
+              <Text style={styles.moodTitle}>Hungry</Text>
+              <Text style={styles.moodSubtitle}>Restaurants & Food</Text>
+            </TouchableOpacity>
+            
+            {/* Thirsty Card */}
+            <TouchableOpacity 
+              style={[styles.moodCard, styles.moodCardSmall]}
+              onPress={() => {
+                handleCategorySelect('Bars');
+                switchToMapMode();
+              }}
+              activeOpacity={0.9}
+            >
+              <LinearGradient
+                colors={['#667EEA', '#764BA2']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+              />
+              <View style={styles.moodPopular}>
+                <Text style={styles.moodPopularText}>📈 Trending near you</Text>
+              </View>
+              <Text style={styles.moodEmoji}>🍸</Text>
+              <Text style={styles.moodTitle}>Thirsty</Text>
+              <Text style={styles.moodSubtitle}>Bars & Cafes</Text>
+            </TouchableOpacity>
+            
+            {/* Explore Card */}
+            <TouchableOpacity 
+              style={[styles.moodCard, styles.moodCardLarge]}
+              onPress={() => navigation.navigate('Apps')}
+              activeOpacity={0.9}
+            >
+              <LinearGradient
+                colors={isDark ? ['#0F2027', '#203A43', '#2C5364'] : ['#E0E7FF', '#C7D2FE']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+              />
+              <View style={[styles.moodPopular, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(67, 56, 202, 0.15)' }]}>
+                <Text style={[styles.moodPopularText, { color: isDark ? 'rgba(255,255,255,0.9)' : '#4338CA' }]}>
+                  ✨ {exploreItems.length || 89} experiences nearby
+                </Text>
+              </View>
+              <Text style={styles.moodEmoji}>🌟</Text>
+              <Text style={[styles.moodTitle, { color: isDark ? '#fff' : '#4338CA' }]}>Explore Something New</Text>
+              <Text style={[styles.moodSubtitle, { color: isDark ? 'rgba(255,255,255,0.7)' : '#6366F1' }]}>
+                Events, activities & hidden gems
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ===== LIVE NOW / HAPPENING NOW ===== */}
+        <View style={styles.liveSection}>
+          <View style={styles.liveHeader}>
+            <View style={styles.liveTitleRow}>
+              <View style={styles.liveDot} />
+              <Text style={[styles.liveLabel, { color: isDark ? '#fff' : '#111827' }]}>Live Now</Text>
+            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('Apps')}>
+              <Text style={styles.liveSeeAll}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {/* Use existing HappeningNow component */}
+          <HappeningNow
+            onPlacePress={(placeId) => navigation.navigate("PlaceDetails" as never, { placeId } as never)}
+          />
+        </View>
+
+        {/* ===== STORIES ROW ===== */}
+        <View style={{ marginBottom: 20 }}>
+          <View style={[styles.sectionHeader, { paddingHorizontal: 20 }]}>
+            <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#111', fontSize: 16, fontWeight: '700' }]}>
+              Check how your favorite places look now
+            </Text>
+          </View>
+          <StoriesRow
+            currentUserId={user?.id}
+            userLocation={userLocation}
+            maxDistance={20}
+          />
+        </View>
+
+        {/* ===== TOP PICKS NEARBY ===== */}
+        <View style={styles.nearbySection}>
+          <Text style={[styles.moodSectionLabel, { color: isDark ? '#555' : '#9CA3AF' }]}>
+            Top Picks Nearby
+          </Text>
+          <View style={styles.nearbyList}>
+            {isLoadingTrending ? (
+              <ActivityIndicator size="small" color="#667EEA" />
+            ) : trendingItems.slice(0, 3).map((item, index) => (
+              <TouchableOpacity
+                key={`nearby-${item.id}-${index}`}
+                style={[
+                  styles.nearbyItem,
+                  { 
+                    backgroundColor: isDark ? '#1A1A1A' : '#fff',
+                    borderWidth: isDark ? 1 : 0,
+                    borderColor: 'rgba(255,255,255,0.04)',
+                    shadowColor: isDark ? 'transparent' : '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isDark ? 0 : 0.06,
+                    shadowRadius: 8,
+                    elevation: isDark ? 0 : 2,
+                  }
+                ]}
+                onPress={() => {
+                  if (item.type === 'place' || item.place) {
+                    navigation.navigate('PlaceDetails', { placeId: item.id || item.place?.id });
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.nearbyRank, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6' }]}>
+                  <Text style={[styles.nearbyRankText, { color: isDark ? '#888' : '#6B7280' }]}>{index + 1}</Text>
+                </View>
+                <View style={[
+                  styles.nearbyImage, 
+                  { 
+                    backgroundColor: index === 0 ? '#FF6B6B' : index === 1 ? '#667EEA' : '#10B981',
+                  }
+                ]}>
+                  {item.image && (
+                    <Image source={{ uri: item.image }} style={[styles.nearbyImage, { position: 'absolute' }]} />
+                  )}
+                </View>
+                <View style={styles.nearbyInfo}>
+                  <Text style={[styles.nearbyName, { color: isDark ? '#fff' : '#111827' }]} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={[styles.nearbyCategory, { color: isDark ? '#666' : '#6B7280' }]}>
+                    {item.category} • {item.subtitle || '0.4 mi'}
+                  </Text>
+                </View>
+                <View style={[styles.nearbySignal, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                  <Text style={styles.nearbySignalIcon}>📶</Text>
+                  <Text style={[styles.nearbySignalText, { color: '#10B981' }]}>Strong</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* ===== EXPLORE TAVVY (Universes) ===== */}
+        <View style={styles.exploreSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>Explore Tavvy</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Apps')}>
+              <Text style={styles.seeAll}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={[styles.exploreSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
+            Curated worlds of experiences
+          </Text>
         </Text>
 
         {/* Search Bar */}
@@ -2702,213 +2987,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         {/* Only show rest of content when not focused on search */}
         {!isSearchFocused && (
           <>
-            {/* Category Icon Row - Icon-based shortcuts (replaces text pills) */}
-            {/* Tap-first Tavvy design: cleaner, faster to scan */}
-            {/* Tapping a category opens map view with that filter applied */}
-            <CategoryIconRow
-              selectedCategory={selectedCategory}
-              onCategorySelect={(category) => {
-                handleCategorySelect(category);
-                // Switch to map view with the selected category filter
-                switchToMapMode();
-              }}
-              isDark={isDark}
-              theme={theme}
-            />
-
-            {/* Hint Text */}
-            <Text style={[styles.hint, { color: isDark ? theme.textSecondary : '#666' }]}>
-              Signals are Tavvy reviews — compare places in seconds
-            </Text>
-            {/* ====== INTEGRATED DISCOVERY COMPONENTS ====== */}
-            
-            {/* Place Stories Row */}
-            <StoriesRow
-              currentUserId={user?.id}
-              userLocation={userLocation}
-              maxDistance={20}
-            />
-            
-            {/* Whats Happening Now Carousel */}
-            <HappeningNow
-              onPlacePress={(placeId) => navigation.navigate("PlaceDetails" as never, { placeId } as never)}
-            />
-            
-            {/* Quick Finds Buttons - Moved to Apps Screen */}
-            {/* <QuickFinds /> */}
-            
-            {/* ====== END INTEGRATED DISCOVERY ====== */}
-
-
-            {/* Trending Near You Header */}
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#111' }]}>Trending Near You</Text>
-              <TouchableOpacity onPress={switchToMapMode} accessibilityLabel="Map view" accessibilityRole="button" activeOpacity={0.8}>
-                <Text style={styles.seeAll}>See All</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Trending Carousel - Cities, Universes, and Places */}
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false} 
-              contentContainerStyle={{ paddingHorizontal: 18, gap: 12 }}
-              snapToInterval={trendingCardWidth + 12}
-              decelerationRate="fast"
-            >
-              {isLoadingTrending ? (
-                <View style={{ width: trendingCardWidth, height: trendingCardHeight, justifyContent: 'center', alignItems: 'center' }}>
-                  <ActivityIndicator size="small" color={ACCENT} />
-                </View>
-              ) : trendingItems.length === 0 && filteredPlaces.length === 0 ? (
-                <View style={{ width: trendingCardWidth, height: trendingCardHeight, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? theme.surface : '#f5f5f5', borderRadius: 16, marginRight: 12 }}>
-                  <Ionicons name="location-outline" size={32} color={isDark ? theme.textSecondary : '#999'} />
-                  <Text style={{ color: isDark ? theme.textSecondary : '#666', marginTop: 8, fontSize: 14 }}>Discovering places...</Text>
-                  <Text style={{ color: isDark ? theme.textSecondary : '#999', marginTop: 4, fontSize: 12 }}>Pull down to refresh</Text>
-                </View>
-              ) : (
-                // Only show trendingItems (already filtered for Restaurants, Coffee Shops, Pros)
-                // No longer combining with filteredPlaces to ensure strict filtering
-                trendingItems
-                .slice(0, 10)
-                .map((item, trendingIndex) => (
-                <TouchableOpacity
-                  key={`trending-${item.type}-${item.id}-${trendingIndex}`}
-                  onPress={() => {
-                    if (item.type === 'place') {
-                      // Navigate to place details
-                      navigation.navigate('PlaceDetails', { placeId: item.id });
-                    } else if (item.type === 'pro') {
-                      // Navigate to pro details
-                      navigation.navigate('Pros', { screen: 'ProsProfile', params: { proId: item.id } });
-                    } else if (item.place) {
-                      handlePlacePress(item.place);
-                    }
-                  }}
-                  activeOpacity={0.92}
-                  style={[styles.trendingCard, { width: trendingCardWidth, height: trendingCardHeight, backgroundColor: isDark ? theme.surface : '#1F2937' }]}
-                >
-                  {/* Full-bleed Image with gradient overlay - matches HappeningNow style */}
-                  <ImageBackground 
-                    source={{ uri: item.image || getCategoryFallbackImage(item.category) }} 
-                    style={styles.trendingCardImage} 
-                    imageStyle={{ borderRadius: 16 }}
-                  >
-                    <LinearGradient
-                      colors={['transparent', 'rgba(0,0,0,0.85)']}
-                      style={StyleSheet.absoluteFillObject}
-                    />
-                    
-                    {/* Type Badge - top left */}
-                    <View style={styles.trendingTypeBadge}>
-                      <View style={{ 
-                        backgroundColor: item.type === 'pro' ? '#10B981' : 
-                          item.category === 'Restaurants' ? '#EF4444' : 
-                          item.category === 'Coffee Shops' ? '#8B5CF6' : '#3B82F6',
-                        paddingHorizontal: 10,
-                        paddingVertical: 4,
-                        borderRadius: 12,
-                      }}>
-                        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>
-                          {item.type === 'pro' ? '⭐ Pro' : 
-                            item.category === 'Restaurants' ? '🍽️' : 
-                            item.category === 'Coffee Shops' ? '☕' : '📍'}
-                        </Text>
-                      </View>
-                    </View>
-                    
-                    {/* Content - bottom left */}
-                    <View style={styles.trendingCardContent}>
-                      <Text style={styles.trendingCardName} numberOfLines={1}>
-                        {item.name}
-                      </Text>
-                      <View style={styles.trendingCardMeta}>
-                        <Text style={styles.trendingCardCategory}>{item.category}</Text>
-                        {item.subtitle && (
-                          <>
-                            <Text style={styles.trendingCardDot}>•</Text>
-                            <Text style={styles.trendingCardSubtitle}>{item.subtitle}</Text>
-                          </>
-                        )}
-                      </View>
-                    </View>
-                  </ImageBackground>
-                </TouchableOpacity>
-              ))
-              )}
-            </ScrollView>
-
-            {/* Explore Tavvy - Universes Preview (v1 spec) */}
-            <View style={styles.exploreSection}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>Explore Tavvy</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Apps')}>
-                  <Text style={styles.seeAll}>See All</Text>
-                </TouchableOpacity>
-              </View>
-              <Text style={[styles.exploreSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
-                Curated worlds of experiences
-              </Text>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false} 
-                contentContainerStyle={{ paddingHorizontal: 18 }}
-                snapToInterval={width * 0.7 + 12}
-                decelerationRate="fast"
-              >
-                {isLoadingExplore ? (
-                  <View style={{ width: width * 0.7, height: 180, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color={ACCENT} />
-                  </View>
-                ) : (
-                  // Universe cards - always show (with placeholders if no data per v1 spec)
-                  exploreItems.map((item, index) => (
-                    <TouchableOpacity
-                      key={`explore-universe-${item.id}-${index}`}
-                      style={[styles.exploreCard, { backgroundColor: isDark ? theme.surface : '#111827' }]}
-                      onPress={() => {
-                        if (item.route) {
-                          if (item.route === 'UniverseLanding' && item.data?.id) {
-                            navigation.navigate('UniverseLanding', { universeId: item.data.id });
-                          } else {
-                            navigation.navigate(item.route as never);
-                          }
-                        }
-                      }}
-                      activeOpacity={0.9}
-                    >
-                      {item.image ? (
-                        <Image source={{ uri: item.image }} style={styles.exploreCardImage} />
-                      ) : (
-                        <View style={[styles.exploreCardImage, { backgroundColor: item.color, justifyContent: 'center', alignItems: 'center' }]}>
-                          <Ionicons name={item.icon} size={48} color="#fff" />
-                        </View>
-                      )}
-                      {/* Placeholder indicator */}
-                      {item.isPlaceholder && (
-                        <View style={styles.placeholderBadge}>
-                          <Text style={styles.placeholderBadgeText}>Coming Soon</Text>
-                        </View>
-                      )}
-                      <View style={styles.exploreCardContent}>
-                        <Text style={[styles.exploreCardTitle, { color: '#E5E7EB' }]} numberOfLines={1}>
-                          {item.title}
-                        </Text>
-                        <View style={styles.exploreCardMeta}>
-                          <View style={[styles.exploreCardBadge, { backgroundColor: item.color }]}>
-                            <Ionicons name={item.icon} size={12} color="#fff" />
-                          </View>
-                          <Text style={[styles.exploreCardSubtitle, { color: '#9CA3AF' }]} numberOfLines={1}>
-                            {item.subtitle}
-                          </Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  ))
-                )}
-              </ScrollView>
-            </View>
-
             {/* Did You Know */}
             <View style={styles.didYouKnowSection}>
               <View style={[styles.didYouKnowCard, { backgroundColor: isDark ? theme.surface : '#FFF9E6' }]}>
@@ -6113,6 +6191,235 @@ const styles = StyleSheet.create({
   },
   mapLayerOptionText: {
     fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // ===== NEW HOME SCREEN DESIGN STYLES =====
+  
+  // Greeting Section
+  greetingSection: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    marginBottom: 20,
+  },
+  greetingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  greetingText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  userName: {
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -1,
+    marginTop: 2,
+  },
+  avatarButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  // Search Card
+  searchCard: {
+    marginHorizontal: 20,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+  },
+  searchInputNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 16,
+  },
+  searchInputText: {
+    fontSize: 15,
+    marginLeft: 12,
+    flex: 1,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  quickAction: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  quickActionIcon: {
+    fontSize: 20,
+    marginBottom: 6,
+  },
+  quickActionText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+
+  // Mood Cards
+  moodSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  moodSectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 14,
+  },
+  moodGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  moodCard: {
+    borderRadius: 20,
+    padding: 20,
+    minHeight: 120,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  moodCardSmall: {
+    width: (width - 52) / 2,
+  },
+  moodCardLarge: {
+    width: '100%',
+    minHeight: 130,
+  },
+  moodPopular: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  moodPopularText: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.9)',
+  },
+  moodEmoji: {
+    fontSize: 36,
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    opacity: 0.9,
+  },
+  moodTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  moodSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+  },
+
+  // Live Now Section
+  liveSection: {
+    marginBottom: 20,
+  },
+  liveHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 14,
+  },
+  liveTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+  },
+  liveLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  liveSeeAll: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#667EEA',
+  },
+
+  // Nearby Section
+  nearbySection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  nearbyList: {
+    gap: 12,
+  },
+  nearbyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    padding: 14,
+    gap: 14,
+  },
+  nearbyRank: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nearbyRankText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  nearbyImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+  },
+  nearbyInfo: {
+    flex: 1,
+  },
+  nearbyName: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  nearbyCategory: {
+    fontSize: 12,
+  },
+  nearbySignal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  nearbySignalIcon: {
+    fontSize: 12,
+  },
+  nearbySignalText: {
+    fontSize: 11,
     fontWeight: '600',
   },
 });
