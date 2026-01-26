@@ -462,7 +462,7 @@ function AddButton({ onPress }: { onPress: () => void }) {
     <View style={addButtonStyles.container}>
       <View style={[
         addButtonStyles.button,
-        { backgroundColor: '#0F8A8A' } // Tavvy teal accent color
+        { backgroundColor: '#111827' } // Dark charcoal - matches active tab
       ]}>
         <Ionicons name="add" size={32} color="#FFFFFF" />
       </View>

@@ -2686,12 +2686,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               styles.searchInputNew, 
               { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6' }
             ]}
+            activeOpacity={0.7}
             onPress={() => {
               setIsSearchFocused(true);
               searchInputRef.current?.focus();
             }}
           >
-            <Ionicons name="search" size={20} color="#667EEA" />
+            <Ionicons name="search" size={20} color="#111827" />
             <Text style={[styles.searchInputText, { color: isDark ? '#888' : '#9CA3AF' }]}>
               What are you in the mood for?
             </Text>
@@ -2731,9 +2732,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 styles.quickAction, 
                 { 
                   backgroundColor: isDark 
-                    ? 'rgba(102, 126, 234, 0.2)' 
-                    : 'rgba(102, 126, 234, 0.1)',
-                  borderColor: 'rgba(102, 126, 234, 0.3)',
+                    ? 'rgba(17, 24, 39, 0.3)' 
+                    : 'rgba(17, 24, 39, 0.1)',
+                  borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(17, 24, 39, 0.2)',
                 }
               ]}
               onPress={() => {
@@ -2747,7 +2748,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               }}
             >
               <Text style={styles.quickActionIcon}>🎲</Text>
-              <Text style={[styles.quickActionText, { color: '#667EEA' }]}>Surprise</Text>
+              <Text style={[styles.quickActionText, { color: isDark ? '#fff' : '#111827' }]}>Surprise</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -2788,7 +2789,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 style={StyleSheet.absoluteFillObject}
               />
               <View style={styles.moodPopular}>
-                <Text style={styles.moodPopularText}>🔥 Popular right now</Text>
+                <Text style={styles.moodPopularText}>🔥 Popular</Text>
               </View>
               <Text style={styles.moodEmoji}>🍕</Text>
               <Text style={styles.moodTitle}>Hungry</Text>
@@ -2811,7 +2812,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 style={StyleSheet.absoluteFillObject}
               />
               <View style={styles.moodPopular}>
-                <Text style={styles.moodPopularText}>📈 Trending near you</Text>
+                <Text style={styles.moodPopularText}>📈 Trending</Text>
               </View>
               <Text style={styles.moodEmoji}>🍸</Text>
               <Text style={styles.moodTitle}>Thirsty</Text>
