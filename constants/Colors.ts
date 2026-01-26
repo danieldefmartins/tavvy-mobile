@@ -155,7 +155,7 @@ export const lightTheme = {
   
   // Tab Bar
   tabBarBackground: 'rgba(255, 255, 255, 0.95)',
-  tabBarActive: palette.black,
+  tabBarActive: '#111827',
   tabBarInactive: palette.gray500,
   
   // Cards
@@ -230,7 +230,7 @@ export const Colors = {
   black: palette.black,
   
   // Tab bar
-  tabBarActive: palette.black,
+  tabBarActive: '#111827',
   tabBarInactive: brand.textSecondary,
 
   // Review Semantic Themes (Tavvy Signal Colors)

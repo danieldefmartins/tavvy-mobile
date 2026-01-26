@@ -2658,7 +2658,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             </View>
             <TouchableOpacity 
               style={[styles.avatarButton, { backgroundColor: isDark ? '#FF6B6B' : '#667EEA' }]}
-              onPress={() => navigation.navigate('Profile')}
+              onPress={() => navigation.navigate('Apps', { screen: 'ProfileScreen' })}
             >
               <Text style={styles.avatarText}>
                 {firstName.charAt(0).toUpperCase()}
@@ -2758,7 +2758,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB',
                 }
               ]}
-              onPress={() => navigation.navigate('Profile')}
+              onPress={() => navigation.navigate('Apps', { screen: 'SavedScreen' })}
             >
               <Text style={styles.quickActionIcon}>⭐</Text>
               <Text style={[styles.quickActionText, { color: isDark ? '#888' : '#6B7280' }]}>Saved</Text>
@@ -4936,7 +4936,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   mapCategoryChipActive: {
-    backgroundColor: '#0A84FF',
+    backgroundColor: '#111827',
   },
   mapFilterChip: {
     paddingHorizontal: 10,
@@ -5006,8 +5006,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   bottomSheetCategoryChipActive: {
-    backgroundColor: '#0A84FF',
-    borderColor: '#0A84FF',
+    backgroundColor: '#111827',
+    borderColor: '#111827',
   },
   bottomSheetCategoryChipText: {
     fontSize: 14,
