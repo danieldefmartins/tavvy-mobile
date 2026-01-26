@@ -83,6 +83,7 @@ export default function AddressAutocomplete({ value, onChange }: Props) {
   const [predictions, setPredictions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+  const address2InputRef = useRef<TextInput>(null);
 
   // Search for address predictions using Nominatim (OpenStreetMap) - FREE, no API key needed
   const searchAddress = async (query: string) => {
@@ -157,6 +158,7 @@ export default function AddressAutocomplete({ value, onChange }: Props) {
   };
 
   // Parse Nominatim address and update form
+  // NOTE: After selecting an address, the modal stays open so users can add Address 2 (Apt/Suite)
   const selectPrediction = (prediction: any) => {
     const addr = prediction.address || {};
     
@@ -182,7 +184,7 @@ export default function AddressAutocomplete({ value, onChange }: Props) {
     
     onChange({
       address1,
-      address2: '',
+      address2: '', // Keep empty so user can fill in Apt/Suite number
       city,
       state,
       zipCode,
@@ -190,9 +192,15 @@ export default function AddressAutocomplete({ value, onChange }: Props) {
       formattedAddress: prediction.description || '',
     });
     
-    setModalVisible(false);
+    // Clear search but keep modal open so user can add Address 2 (Apt/Suite)
     setSearchQuery('');
     setPredictions([]);
+    // Modal stays open - user will tap "Save Address" when done
+    
+    // Focus the Address 2 input after a short delay to let the UI update
+    setTimeout(() => {
+      address2InputRef.current?.focus();
+    }, 100);
   };
 
   // Check if address is filled
@@ -305,6 +313,7 @@ export default function AddressAutocomplete({ value, onChange }: Props) {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Address 2 (optional)</Text>
               <TextInput
+                ref={address2InputRef}
                 style={styles.input}
                 placeholder="Apt, Suite, Unit, etc."
                 placeholderTextColor="#BDBDBD"

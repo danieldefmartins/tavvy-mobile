@@ -2780,7 +2780,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                       navigation.navigate('PlaceDetails', { placeId: item.id });
                     } else if (item.type === 'pro') {
                       // Navigate to pro details
-                      navigation.navigate('Pros', { screen: 'ProDetails', params: { proId: item.id } });
+                      navigation.navigate('Pros', { screen: 'ProsProfile', params: { proId: item.id } });
                     } else if (item.place) {
                       handlePlacePress(item.place);
                     }
@@ -2928,9 +2928,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <View style={styles.sectionContainer}>
               <View style={styles.featureSectionHeader}>
                 <Text style={[styles.featureSectionTitle, { color: isDark ? theme.text : '#000' }]}>🏆 Top Contributors</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Profile', { screen: 'Leaderboard' })}>
-                  <Text style={styles.seeAll}>See All</Text>
-                </TouchableOpacity>
+                {/* See All button removed - LeaderboardScreen not yet implemented */}
               </View>
               <Text style={[styles.sectionSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
                 Community members making a difference

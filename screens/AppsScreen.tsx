@@ -110,7 +110,15 @@ const APP_TILES: AppTile[] = [
     gradientColors: ['#2DD4BF', '#14B8A6'],
     route: 'UniverseDiscovery',
   },
-  // Row 3: Rides, Experiences, Happening Now
+  // Row 3: On The Go, Rides, Experiences
+  {
+    id: 'on-the-go',
+    name: 'On The Go',
+    icon: 'location',
+    iconType: 'ionicons',
+    gradientColors: ['#10B981', '#059669'],
+    route: 'OnTheGo',
+  },
   {
     id: 'rides',
     name: 'Rides',
@@ -127,6 +135,7 @@ const APP_TILES: AppTile[] = [
     gradientColors: ['#A78BFA', '#8B5CF6'],
     route: 'Home', // TODO: Create ExperiencesBrowse screen
   },
+  // Row 4: Happening Now, Messages, Wallet
   {
     id: 'happening',
     name: 'Happening Now',
@@ -135,7 +144,7 @@ const APP_TILES: AppTile[] = [
     gradientColors: ['#F472B6', '#EC4899'],
     route: 'HappeningNow',
   },
-  // Row 4: Messages, Wallet, Quick Finds
+  // Row 5: Messages, Wallet, Quick Finds
   {
     id: 'messages',
     name: 'Messages',
@@ -203,11 +212,27 @@ export default function AppsScreen() {
   const { unreadCount } = useUnreadMessagesContext();
   const [menuVisible, setMenuVisible] = useState(false);
 
+  // Handle eCard tile press - navigate to Hub screen
+  const handleECardPress = () => {
+    if (!user) {
+      navigation.navigate('Login');
+      return;
+    }
+    // Navigate to the new Hub screen which shows all cards and create option
+    navigation.navigate('ECardHub');
+  };
+
   const handleTilePress = (tile: AppTile) => {
     if (tile.route) {
       // Special handling for routes that require login
       if ((tile.id === 'saved' || tile.id === 'account' || tile.id === 'messages') && !user) {
         navigation.navigate('Login');
+        return;
+      }
+      
+      // Special handling for eCard - check for existing card
+      if (tile.id === 'digital-card') {
+        handleECardPress();
         return;
       }
       
@@ -235,11 +260,6 @@ export default function AppsScreen() {
 
   const handlePersonalLogin = () => {
     navigation.navigate('Login');
-  };
-
-  const handleProLogin = () => {
-    // Navigate to Pro Login screen
-    navigation.navigate('ProsLogin');
   };
 
   const handleMenuItemPress = (action: string) => {
@@ -307,12 +327,6 @@ export default function AppsScreen() {
     },
     loginButtonText: {
       color: isDark ? theme.primary : '#14B8A6',
-    },
-    proLoginButton: {
-      borderColor: isDark ? theme.border : '#D1D5DB',
-    },
-    proLoginText: {
-      color: isDark ? theme.textSecondary : '#6B7280',
     },
     tileName: {
       color: isDark ? theme.text : '#374151',
@@ -388,18 +402,8 @@ export default function AppsScreen() {
               style={[styles.loginButton, dynamicStyles.loginButton]}
               onPress={handlePersonalLogin}
             >
-              <Ionicons name="person-outline" size={18} color={isDark ? theme.primary : '#14B8A6'} />
-              <Text style={[styles.loginButtonText, dynamicStyles.loginButtonText]}>Personal Login</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.loginButton, dynamicStyles.loginButton, dynamicStyles.proLoginButton]}
-              onPress={handleProLogin}
-            >
-              <Ionicons name="briefcase-outline" size={18} color={isDark ? theme.textSecondary : '#6B7280'} />
-              <Text style={[styles.loginButtonText, dynamicStyles.proLoginText]}>
-                Pro Login
-              </Text>
+              <Ionicons name="log-in-outline" size={18} color={isDark ? theme.primary : '#14B8A6'} />
+              <Text style={[styles.loginButtonText, dynamicStyles.loginButtonText]}>Sign In</Text>
             </TouchableOpacity>
           </View>
         )}

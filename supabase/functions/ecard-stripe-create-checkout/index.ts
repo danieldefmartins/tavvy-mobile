@@ -38,45 +38,21 @@ serve(async (req) => {
     }
 
     // Get request body for plan type
-    const { plan_type = 'monthly' } = await req.json();
+    let plan_type = 'monthly';
+    try {
+      const body = await req.json();
+      plan_type = body.plan_type || 'monthly';
+    } catch (e) {
+      // If body parsing fails, use default
+      console.log('Using default plan type');
+    }
     
     // Select price based on plan type
     const priceId = plan_type === 'annual' ? ECARD_PRICE_ANNUAL : ECARD_PRICE_MONTHLY;
-    
-    // Check if user already has a Stripe customer ID
-    const { data: existingCustomer } = await supabase
-      .from('stripe_customer_mapping')
-      .select('stripe_customer_id')
-      .eq('user_id', user.id)
-      .single();
-
-    let customerId = existingCustomer?.stripe_customer_id;
-
-    // Create Stripe customer if doesn't exist
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: {
-          user_id: user.id,
-        },
-      });
-      customerId = customer.id;
-
-      // Save customer mapping
-      const supabaseAdmin = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-      );
-      
-      await supabaseAdmin.from('stripe_customer_mapping').insert({
-        user_id: user.id,
-        stripe_customer_id: customerId,
-      });
-    }
 
     // Create checkout session with 7-day free trial
+    // Using the same simple pattern as the working pros-stripe-create-checkout
     const session = await stripe.checkout.sessions.create({
-      customer: customerId,
       payment_method_types: ['card'],
       line_items: [
         {
@@ -85,9 +61,11 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-      success_url: `tavvy://ecard/premium/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `tavvy://ecard/premium/cancel`,
+      // Use HTTPS URLs that redirect to the app via universal links
+      success_url: `https://tavvy.com/ecard/premium/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `https://tavvy.com/ecard/premium/cancel`,
       client_reference_id: user.id,
+      customer_email: user.email, // Pre-fill email for better UX
       subscription_data: {
         trial_period_days: 7,
         metadata: {

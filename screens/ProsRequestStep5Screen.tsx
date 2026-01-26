@@ -2,11 +2,16 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useProsPendingRequests } from '../hooks/useProsPendingRequests';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function ProsRequestStep5Screen({ navigation, route }: any) {
   const { requestData } = route.params || { requestData: {} };
   const { createRequest, loading } = useProsPendingRequests();
+  const { user } = useAuth();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  // Check if user is logged in
+  const isLoggedIn = !!user;
 
   const handleSubmit = async () => {
     try {
@@ -15,7 +20,7 @@ export default function ProsRequestStep5Screen({ navigation, route }: any) {
         setShowSuccessModal(true);
       }
     } catch (error: any) {
-      console.error('Submission error:', error);
+      console.warn('Submission error:', error);
       Alert.alert('Submission Failed', error.message || 'Please try again.');
     }
   };
@@ -26,6 +31,17 @@ export default function ProsRequestStep5Screen({ navigation, route }: any) {
   };
 
   const handleSkip = () => {
+    setShowSuccessModal(false);
+    navigation.navigate('Home');
+  };
+
+  const handleViewRequests = () => {
+    setShowSuccessModal(false);
+    // Navigate to project status or leads screen
+    navigation.navigate('ProsProjectStatus', { requestData });
+  };
+
+  const handleGoHome = () => {
     setShowSuccessModal(false);
     navigation.navigate('Home');
   };
@@ -51,8 +67,8 @@ export default function ProsRequestStep5Screen({ navigation, route }: any) {
           <View style={styles.divider} />
 
           <Text style={styles.sectionLabel}>CUSTOMER INFO</Text>
-          <Text style={styles.sectionValue}>{requestData.customerName || 'Guest'}</Text>
-          <Text style={styles.subValue}>{requestData.email}</Text>
+          <Text style={styles.sectionValue}>{requestData.customerName || user?.user_metadata?.display_name || 'Guest'}</Text>
+          <Text style={styles.subValue}>{requestData.email || user?.email}</Text>
           <Text style={styles.subValue}>{requestData.phone}</Text>
 
           <View style={styles.divider} />
@@ -87,7 +103,7 @@ export default function ProsRequestStep5Screen({ navigation, route }: any) {
         </Text>
       </ScrollView>
 
-      {/* Success & Signup Modal */}
+      {/* Success Modal - Different content based on auth status */}
       <Modal visible={showSuccessModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -95,21 +111,42 @@ export default function ProsRequestStep5Screen({ navigation, route }: any) {
               <Ionicons name="checkmark-circle" size={80} color="#00875A" />
             </View>
             <Text style={styles.modalTitle}>Request Submitted!</Text>
-            <Text style={styles.modalText}>
-              Sign up now to get real-time notifications and chat directly with pros who respond to your request.
-            </Text>
             
-            <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
-              <Text style={styles.signupButtonText}>Sign Up Now</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-              <Text style={styles.skipButtonText}>Skip for Now</Text>
-            </TouchableOpacity>
-            
-            <Text style={styles.privacyNote}>
-              Your contact info stays private until you approve a pro.
-            </Text>
+            {isLoggedIn ? (
+              // LOGGED IN USER - Show success message without signup prompt
+              <>
+                <Text style={styles.modalText}>
+                  Your request has been sent to local pros. You'll receive notifications when pros respond.
+                </Text>
+                
+                <TouchableOpacity style={styles.signupButton} onPress={handleViewRequests}>
+                  <Text style={styles.signupButtonText}>View My Requests</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.skipButton} onPress={handleGoHome}>
+                  <Text style={styles.skipButtonText}>Go to Home</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              // GUEST USER - Show signup prompt
+              <>
+                <Text style={styles.modalText}>
+                  Sign up now to get real-time notifications and chat directly with pros who respond to your request.
+                </Text>
+                
+                <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
+                  <Text style={styles.signupButtonText}>Sign Up Now</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
+                  <Text style={styles.skipButtonText}>Skip for Now</Text>
+                </TouchableOpacity>
+                
+                <Text style={styles.privacyNote}>
+                  Your contact info stays private until you approve a pro.
+                </Text>
+              </>
+            )}
           </View>
         </View>
       </Modal>

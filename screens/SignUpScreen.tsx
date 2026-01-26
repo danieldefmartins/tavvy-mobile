@@ -48,18 +48,10 @@ export default function SignUpScreen({ navigation }: any) {
       setLoading(true);
       await signUp(email.trim(), password, displayName.trim());
       
-      Alert.alert(
-        'Success!',
-        'Your account has been created. Please check your email to verify your account.',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('Login'),
-          },
-        ]
-      );
+      // Navigate to welcome onboarding flow
+      navigation.replace('WelcomeOnboarding');
     } catch (error: any) {
-      console.error('Sign up error:', error);
+      console.warn('Sign up error:', error);
       Alert.alert('Sign Up Failed', error.message || 'Could not create account');
     } finally {
       setLoading(false);
@@ -99,11 +91,10 @@ export default function SignUpScreen({ navigation }: any) {
         {/* Logo/Title */}
         <View style={styles.titleContainer}>
           <Image 
-            source={require('../assets/brand/logo-icon.png')} 
-            style={styles.logoImage}
+            source={require('../assets/brand/logo-full.png')} 
+            style={styles.fullLogoImage}
             resizeMode="contain"
           />
-          <Text style={[styles.logo, dynamicStyles.logo]}>tavvy</Text>
           <Text style={[styles.subtitle, dynamicStyles.subtitle]}>Create your account</Text>
         </View>
 
@@ -239,6 +230,11 @@ const styles = StyleSheet.create({
     height: 80,
     marginBottom: 16,
     borderRadius: 16,
+  },
+  fullLogoImage: {
+    width: 200,
+    height: 100,
+    marginBottom: 16,
   },
   logo: {
     fontSize: 36,

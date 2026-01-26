@@ -28,6 +28,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { FONTS, PREMIUM_FONT_COUNT } from '../../config/eCardFonts';
 import { useAuth } from '../../contexts/AuthContext';
 import FeaturedSocialsSelector from '../../components/ecard/FeaturedSocialsSelector';
+import { getTemplateById, getColorSchemeById } from '../../config/eCardTemplates';
 
 const { width, height } = Dimensions.get('window');
 const PREVIEW_HEIGHT = height * 0.32;
@@ -36,8 +37,9 @@ const PREVIEW_HEIGHT = height * 0.32;
 const PHOTO_SIZES = [
   { id: 'small', name: 'Small', size: 80 },
   { id: 'medium', name: 'Medium', size: 110 },
-  { id: 'large', name: 'Large', size: 140 },
-  { id: 'xl', name: 'Extra Large', size: 180 },
+  { id: 'large', name: 'Large', size: 150 },
+  { id: 'xl', name: 'Extra\nLarge', size: 200 },
+  { id: 'cover', name: 'Cover', size: -1 }, // Full width banner photo
 ];
 
 // Platform icons mapping
@@ -145,6 +147,8 @@ interface CardData {
   slug: string;
   theme: string;
   background_type: string;
+  background_image_url?: string;
+  background_video_url?: string;
   button_style: string;
   font_style: string;
   gradient_color_1: string;
@@ -163,6 +167,16 @@ interface CardData {
   review_count?: number;
   review_rating?: number;
   is_published?: boolean;
+  industry_icons?: IndustryIcon[];
+}
+
+// Industry icons for Pro templates
+interface IndustryIcon {
+  id: string;
+  icon: string;
+  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center-left' | 'center-right';
+  size: 'small' | 'medium' | 'large';
+  opacity: number;
 }
 
 interface Props {
@@ -188,6 +202,15 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const [selectedFont, setSelectedFont] = useState('default');
   const [gradientColors, setGradientColors] = useState<[string, string]>(['#667eea', '#764ba2']);
   const [profilePhotoSize, setProfilePhotoSize] = useState('medium');
+  
+  // Background image/video state
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
+  const [backgroundVideoUrl, setBackgroundVideoUrl] = useState<string | null>(null);
+  const [isUploadingBackground, setIsUploadingBackground] = useState(false);
+  
+  // Industry Icons state (Pro feature)
+  const [industryIcons, setIndustryIcons] = useState<IndustryIcon[]>([]);
+  const [showIconsModal, setShowIconsModal] = useState(false);
   
   // Gallery state
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
@@ -241,6 +264,11 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [editingColorIndex, setEditingColorIndex] = useState<0 | 1>(0);
   const [tempColor, setTempColor] = useState('#667eea');
+  
+  // Industry icons modal state
+  const [iconSelectedCategory, setIconSelectedCategory] = useState('Real Estate');
+  const [iconSelectedIcon, setIconSelectedIcon] = useState<string | null>(null);
+  const [iconSelectedPosition, setIconSelectedPosition] = useState<IndustryIcon['position']>('top-right');
 
   // Link limit for free users
   const FREE_LINK_LIMIT = 5;
@@ -342,6 +370,17 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     const tempSlug = `draft_${user.id.substring(0, 8)}_${Date.now().toString(36)}`;
     const suggestedSlug = generateSlug(profile.name || 'user');
     
+    // Get the selected template and color scheme from route params
+    const selectedTemplate = templateId ? getTemplateById(templateId) : null;
+    const selectedColorScheme = templateId && colorSchemeId 
+      ? getColorSchemeById(templateId, colorSchemeId) 
+      : null;
+    
+    // Use template colors if available, otherwise fall back to defaults
+    const gradientColor1 = selectedColorScheme?.primary || '#667eea';
+    const gradientColor2 = selectedColorScheme?.secondary || '#764ba2';
+    const buttonStyle = selectedTemplate?.layout?.buttonStyle || 'fill';
+    
     let insertedCard = null;
     let lastError = null;
     
@@ -357,13 +396,13 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         website: '',
         city: profile.address?.city || '',
         state: profile.address?.state || '',
-        gradient_color_1: '#667eea',
-        gradient_color_2: '#764ba2',
+        gradient_color_1: gradientColor1,
+        gradient_color_2: gradientColor2,
         profile_photo_url: profile.image || null,
-        profile_photo_size: 'medium',
-        theme: 'classic',
+        profile_photo_size: selectedTemplate?.layout?.photoSize || 'medium',
+        theme: templateId || 'classic',
         background_type: 'gradient',
-        button_style: 'fill',
+        button_style: buttonStyle,
         font_style: 'default',
         is_active: true,
         is_published: false, // Draft until published
@@ -415,7 +454,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               platform: platform,
               url: url,
               title: link.title || platform.charAt(0).toUpperCase() + platform.slice(1),
-              display_order: index,
+              sort_order: index,
               is_active: true,
             };
           });
@@ -487,7 +526,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               .from('card_links')
               .select('*')
               .eq('card_id', card.id)
-              .order('display_order', { ascending: true });
+              .order('sort_order', { ascending: true });
 
             if (!linksError && cardLinks) {
               setLinks(cardLinks.map(link => ({
@@ -588,19 +627,96 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   };
 
   // Background selection handler - allow premium selection
-  const handleBackgroundSelect = (bgType: string) => {
-    setSelectedBackground(bgType);
+  const handleBackgroundSelect = async (bgType: string) => {
+    // For image/video, open picker first
+    if (bgType === 'image') {
+      await pickBackgroundImage();
+      return;
+    }
     
+    if (bgType === 'video') {
+      await pickBackgroundVideo();
+      return;
+    }
+    
+    setSelectedBackground(bgType);
+    saveAppearanceSettings({ background_type: bgType });
+  };
+  
+  // Pick background image
+  const pickBackgroundImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [9, 16], // Vertical card aspect ratio
+        quality: 0.8,
+      });
+      
+      if (!result.canceled && result.assets[0]) {
+        setIsUploadingBackground(true);
+        
+        // For now, store the local URI - in production, upload to Supabase Storage
+        const imageUri = result.assets[0].uri;
+        setBackgroundImageUrl(imageUri);
+        setSelectedBackground('image');
+        
+        // Track as premium feature if not Pro
+        if (!isPro && !selectedPremiumFeatures.includes('image_background')) {
+          setSelectedPremiumFeatures(prev => [...prev, 'image_background']);
+        }
+        
+        saveAppearanceSettings({ 
+          background_type: 'image',
+          background_image_url: imageUri,
+        });
+        
+        setIsUploadingBackground(false);
+      }
+    } catch (error) {
+      console.error('Error picking background image:', error);
+      Alert.alert('Error', 'Failed to select background image. Please try again.');
+      setIsUploadingBackground(false);
+    }
+  };
+  
+  // Pick background video
+  const pickBackgroundVideo = async () => {
     // Track video as premium
-    if (bgType === 'video' && !isPro) {
+    if (!isPro) {
       if (!selectedPremiumFeatures.includes('video_background')) {
         setSelectedPremiumFeatures(prev => [...prev, 'video_background']);
       }
-    } else {
-      setSelectedPremiumFeatures(prev => prev.filter(f => f !== 'video_background'));
     }
     
-    saveAppearanceSettings({ background_type: bgType });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: true,
+        quality: 0.8,
+        videoMaxDuration: 15, // 15 second max for background videos
+      });
+      
+      if (!result.canceled && result.assets[0]) {
+        setIsUploadingBackground(true);
+        
+        // For now, store the local URI - in production, upload to Supabase Storage
+        const videoUri = result.assets[0].uri;
+        setBackgroundVideoUrl(videoUri);
+        setSelectedBackground('video');
+        
+        saveAppearanceSettings({ 
+          background_type: 'video',
+          background_video_url: videoUri,
+        });
+        
+        setIsUploadingBackground(false);
+      }
+    } catch (error) {
+      console.error('Error picking background video:', error);
+      Alert.alert('Error', 'Failed to select background video. Please try again.');
+      setIsUploadingBackground(false);
+    }
   };
 
   // Preset gradient selection
@@ -713,6 +829,39 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     saveAppearanceSettings({ gallery_images: updatedGallery });
   };
 
+  // Add industry icon
+  const handleAddIndustryIcon = (iconName: string, position: IndustryIcon['position']) => {
+    const newIcon: IndustryIcon = {
+      id: Date.now().toString(),
+      icon: iconName,
+      position,
+      size: 'medium',
+      opacity: 0.15,
+    };
+    
+    const updatedIcons = [...industryIcons, newIcon];
+    setIndustryIcons(updatedIcons);
+    
+    // Track as premium feature
+    if (!isPro && !selectedPremiumFeatures.includes('industry_icons')) {
+      setSelectedPremiumFeatures(prev => [...prev, 'industry_icons']);
+    }
+    
+    saveAppearanceSettings({ industry_icons: updatedIcons });
+  };
+  
+  // Remove industry icon
+  const handleRemoveIndustryIcon = (iconId: string) => {
+    const updatedIcons = industryIcons.filter(icon => icon.id !== iconId);
+    setIndustryIcons(updatedIcons);
+    
+    if (updatedIcons.length === 0) {
+      setSelectedPremiumFeatures(prev => prev.filter(f => f !== 'industry_icons'));
+    }
+    
+    saveAppearanceSettings({ industry_icons: updatedIcons });
+  };
+
   // Save Pro Credentials
   const handleSaveCredentials = async () => {
     if (!cardData?.id) return;
@@ -769,9 +918,21 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     if (!isPro && hasPremiumFeatures()) {
       Alert.alert(
         'Premium Features Detected',
-        'Your card includes premium features. Upgrade to Tavvy Pro to publish with:\n\n• Premium Themes\n• Premium Fonts\n• Video Backgrounds\n• Unlimited Links\n• Photo Gallery',
+        'Your card includes premium features. To share this card, you need to upgrade to Tavvy Pro.\n\nYou can also save your card and come back later.',
         [
-          { text: 'Remove Premium Features', style: 'destructive', onPress: removePremiumFeatures },
+          { 
+            text: 'Save for Later', 
+            style: 'cancel',
+            onPress: () => {
+              // Card is already saved as draft, just confirm
+              Alert.alert(
+                'Card Saved!',
+                'Your card has been saved as a draft. You can access it anytime from the Apps tab.',
+                [{ text: 'OK' }]
+              );
+            }
+          },
+          { text: 'Use Free Version', style: 'destructive', onPress: removePremiumFeatures },
           { text: 'Upgrade to Pro', onPress: () => navigation.navigate('ECardPremiumUpsell') },
         ]
       );
@@ -1019,8 +1180,89 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     const textColor = getTextColor();
     const hasLightBg = theme.id === 'minimal';
     const photoSize = getCurrentPhotoSize();
-    const previewPhotoSize = Math.min(photoSize.size * 0.5, 70);
+    const isCoverPhoto = photoSize.id === 'cover';
+    const previewPhotoSize = isCoverPhoto ? width - 48 : Math.min(photoSize.size * 0.5, 70);
     
+    // Cover photo mode - completely different layout
+    if (isCoverPhoto) {
+      return (
+        <View style={styles.previewContainerCover}>
+          {/* Full-bleed banner photo */}
+          <View style={styles.coverBannerContainer}>
+            {cardData?.profile_photo_url ? (
+              <Image 
+                source={{ uri: cardData.profile_photo_url }} 
+                style={styles.coverBannerPhoto}
+                resizeMode="cover"
+              />
+            ) : (
+              <LinearGradient
+                colors={gradientColors}
+                style={styles.coverBannerPlaceholder}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name="image" size={40} color="rgba(255,255,255,0.5)" />
+                <Text style={styles.coverBannerPlaceholderText}>Add Cover Photo</Text>
+              </LinearGradient>
+            )}
+            {/* Gradient overlay for text readability */}
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.7)']}
+              style={styles.coverBannerOverlay}
+            />
+            {/* Name & Title overlay on banner */}
+            <View style={styles.coverBannerTextContainer}>
+              <Text style={styles.coverBannerName} numberOfLines={1}>
+                {cardData?.full_name || 'Your Name'}
+              </Text>
+              <Text style={styles.coverBannerTitle} numberOfLines={1}>
+                {cardData?.title || 'Your Title'}
+              </Text>
+            </View>
+          </View>
+          
+          {/* Links below banner */}
+          <LinearGradient
+            colors={gradientColors}
+            style={styles.coverLinksContainer}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.previewLinksRow}>
+              {links.slice(0, 4).map((link, index) => {
+                const platformConfig = PLATFORM_ICONS[link.platform] || PLATFORM_ICONS.other;
+                return (
+                  <View 
+                    key={link.id || index} 
+                    style={[
+                      styles.previewLinkIcon,
+                      selectedButtonStyle === 'outline' && { backgroundColor: 'transparent', borderWidth: 1, borderColor: textColor },
+                      selectedButtonStyle === 'rounded' && { borderRadius: 8 },
+                      selectedButtonStyle === 'pill' && { borderRadius: 20 },
+                      selectedButtonStyle === 'minimal' && { backgroundColor: 'transparent' },
+                    ]}
+                  >
+                    <Ionicons 
+                      name={platformConfig.icon as any} 
+                      size={16} 
+                      color={selectedButtonStyle === 'outline' || selectedButtonStyle === 'minimal' ? textColor : platformConfig.color} 
+                    />
+                  </View>
+                );
+              })}
+              {links.length > 4 && (
+                <View style={styles.previewMoreLinks}>
+                  <Text style={[styles.previewMoreText, { color: textColor }]}>+{links.length - 4}</Text>
+                </View>
+              )}
+            </View>
+          </LinearGradient>
+        </View>
+      );
+    }
+    
+    // Regular layout (non-cover)
     return (
       <View style={styles.previewContainer}>
         <LinearGradient
@@ -1048,7 +1290,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             </View>
           )}
           
-          {/* Profile Photo */}
+          {/* Regular circular photo */}
           <View style={[
             styles.previewPhotoContainer, 
             hasLightBg && styles.previewPhotoBorderDark,
@@ -1147,7 +1389,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           </View>
           <FeaturedSocialsSelector
             featuredSocials={featuredSocials}
-            allLinks={links.map(l => ({ platformId: l.platform, url: l.value }))}
+            allLinks={links.filter(l => l.platform).map(l => ({ platformId: l.platform, url: l.value }))}
             onChange={setFeaturedSocials}
             maxFeatured={6}
           />
@@ -1302,13 +1544,24 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               style={[styles.photoSizeOption, profilePhotoSize === size.id && styles.selectedPhotoSize]}
               onPress={() => handlePhotoSizeSelect(size.id)}
             >
-              <View style={[styles.photoSizePreview, { width: size.size * 0.3, height: size.size * 0.3, borderRadius: size.size * 0.15 }]}>
-                <Ionicons name="person" size={size.size * 0.15} color="#9E9E9E" />
-              </View>
+              {size.id === 'cover' ? (
+                // Cover photo preview - rectangular
+                <View style={[styles.photoSizePreview, { width: 50, height: 30, borderRadius: 6 }]}>
+                  <Ionicons name="image" size={16} color="#9E9E9E" />
+                </View>
+              ) : (
+                // Regular circular preview
+                <View style={[styles.photoSizePreview, { width: size.size * 0.3, height: size.size * 0.3, borderRadius: size.size * 0.15 }]}>
+                  <Ionicons name="person" size={size.size * 0.15} color="#9E9E9E" />
+                </View>
+              )}
               <Text style={styles.photoSizeName}>{size.name}</Text>
             </TouchableOpacity>
           ))}
         </View>
+        {profilePhotoSize === 'cover' && (
+          <Text style={styles.coverPhotoHint}>Cover photo displays full-width at the top of your card - perfect for realtors and influencers!</Text>
+        )}
       </View>
 
       {/* Themes Section */}
@@ -1383,6 +1636,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       <View style={styles.appearanceSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Backgrounds</Text>
+          {isUploadingBackground && <ActivityIndicator size="small" color="#00C853" />}
         </View>
         <View style={styles.backgroundOptions}>
           {['solid', 'gradient', 'image', 'video'].map((bgType) => (
@@ -1390,13 +1644,18 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               key={bgType}
               style={[styles.backgroundOption, selectedBackground === bgType && styles.selectedBackground]}
               onPress={() => handleBackgroundSelect(bgType)}
+              disabled={isUploadingBackground}
             >
               {bgType === 'solid' && <View style={[styles.bgPreview, { backgroundColor: gradientColors[0] }]} />}
               {bgType === 'gradient' && <LinearGradient colors={gradientColors} style={styles.bgPreview} />}
               {bgType === 'image' && (
-                <View style={[styles.bgPreview, styles.bgPreviewIcon]}>
-                  <Ionicons name="image" size={20} color="#9E9E9E" />
-                </View>
+                backgroundImageUrl && selectedBackground === 'image' ? (
+                  <Image source={{ uri: backgroundImageUrl }} style={styles.bgPreview} resizeMode="cover" />
+                ) : (
+                  <View style={[styles.bgPreview, styles.bgPreviewIcon]}>
+                    <Ionicons name="image" size={20} color="#9E9E9E" />
+                  </View>
+                )
               )}
               {bgType === 'video' && (
                 <View style={[styles.bgPreview, styles.bgPreviewDark]}>
@@ -1408,6 +1667,17 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             </TouchableOpacity>
           ))}
         </View>
+        
+        {/* Show change button when image/video is selected */}
+        {(selectedBackground === 'image' || selectedBackground === 'video') && (
+          <TouchableOpacity 
+            style={styles.changeBackgroundButton}
+            onPress={() => selectedBackground === 'image' ? pickBackgroundImage() : pickBackgroundVideo()}
+          >
+            <Ionicons name="refresh" size={16} color="#00C853" />
+            <Text style={styles.changeBackgroundText}>Change {selectedBackground}</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Button Styles Section */}
@@ -1463,6 +1733,48 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             </TouchableOpacity>
           ))}
         </ScrollView>
+      </View>
+
+      {/* Industry Icons Section - Pro Feature */}
+      <View style={styles.appearanceSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Industry Icons</Text>
+          <View style={styles.proBadgeSmall}>
+            <Text style={styles.proBadgeSmallText}>PRO</Text>
+          </View>
+        </View>
+        <Text style={styles.sectionDescription}>
+          Add professional icons to personalize your card for your industry
+        </Text>
+        
+        <TouchableOpacity 
+          style={styles.addIconsButton}
+          onPress={() => setShowIconsModal(true)}
+        >
+          <Ionicons name="add-circle" size={20} color="#00C853" />
+          <Text style={styles.addIconsText}>
+            {industryIcons.length > 0 
+              ? `Edit Icons (${industryIcons.length} selected)` 
+              : 'Add Industry Icons'}
+          </Text>
+        </TouchableOpacity>
+        
+        {/* Preview selected icons */}
+        {industryIcons.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectedIconsScroll}>
+            {industryIcons.map((icon) => (
+              <View key={icon.id} style={styles.selectedIconPreview}>
+                <Ionicons name={icon.icon as any} size={24} color="#1A1A1A" />
+                <TouchableOpacity 
+                  style={styles.removeIconButton}
+                  onPress={() => handleRemoveIndustryIcon(icon.id)}
+                >
+                  <Ionicons name="close-circle" size={16} color="#FF6B6B" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        )}
       </View>
 
       {/* Premium upsell removed - only prompt on publish */}
@@ -2242,6 +2554,195 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     </Modal>
   );
 
+  // Industry Icons Modal
+  const renderIndustryIconsModal = () => {
+    // Industry-specific icon categories
+    const INDUSTRY_ICONS = {
+      'Real Estate': [
+        { icon: 'home', name: 'House' },
+        { icon: 'key', name: 'Keys' },
+        { icon: 'business', name: 'Building' },
+        { icon: 'location', name: 'Location' },
+        { icon: 'ribbon', name: 'Sold' },
+        { icon: 'trending-up', name: 'Growth' },
+      ],
+      'Construction': [
+        { icon: 'construct', name: 'Tools' },
+        { icon: 'hammer', name: 'Hammer' },
+        { icon: 'build', name: 'Build' },
+        { icon: 'cube', name: 'Materials' },
+        { icon: 'layers', name: 'Layers' },
+        { icon: 'shield-checkmark', name: 'Safety' },
+      ],
+      'Beauty & Wellness': [
+        { icon: 'sparkles', name: 'Sparkle' },
+        { icon: 'heart', name: 'Heart' },
+        { icon: 'flower', name: 'Flower' },
+        { icon: 'star', name: 'Star' },
+        { icon: 'leaf', name: 'Natural' },
+        { icon: 'water', name: 'Water' },
+      ],
+      'Food & Beverage': [
+        { icon: 'restaurant', name: 'Dining' },
+        { icon: 'cafe', name: 'Coffee' },
+        { icon: 'wine', name: 'Wine' },
+        { icon: 'pizza', name: 'Pizza' },
+        { icon: 'nutrition', name: 'Nutrition' },
+        { icon: 'ice-cream', name: 'Dessert' },
+      ],
+      'Technology': [
+        { icon: 'code-slash', name: 'Code' },
+        { icon: 'laptop', name: 'Laptop' },
+        { icon: 'phone-portrait', name: 'Mobile' },
+        { icon: 'cloud', name: 'Cloud' },
+        { icon: 'analytics', name: 'Analytics' },
+        { icon: 'settings', name: 'Settings' },
+      ],
+      'Finance': [
+        { icon: 'cash', name: 'Cash' },
+        { icon: 'card', name: 'Card' },
+        { icon: 'wallet', name: 'Wallet' },
+        { icon: 'trending-up', name: 'Growth' },
+        { icon: 'pie-chart', name: 'Chart' },
+        { icon: 'calculator', name: 'Calculator' },
+      ],
+      'Healthcare': [
+        { icon: 'medkit', name: 'Medical' },
+        { icon: 'heart', name: 'Heart' },
+        { icon: 'fitness', name: 'Fitness' },
+        { icon: 'pulse', name: 'Pulse' },
+        { icon: 'bandage', name: 'Care' },
+        { icon: 'shield-checkmark', name: 'Protection' },
+      ],
+      'General': [
+        { icon: 'briefcase', name: 'Business' },
+        { icon: 'people', name: 'Team' },
+        { icon: 'trophy', name: 'Award' },
+        { icon: 'ribbon', name: 'Badge' },
+        { icon: 'checkmark-circle', name: 'Verified' },
+        { icon: 'flash', name: 'Fast' },
+      ],
+    };
+    
+    const ICON_POSITIONS: { id: IndustryIcon['position']; name: string }[] = [
+      { id: 'top-left', name: 'Top Left' },
+      { id: 'top-right', name: 'Top Right' },
+      { id: 'center-left', name: 'Center Left' },
+      { id: 'center-right', name: 'Center Right' },
+      { id: 'bottom-left', name: 'Bottom Left' },
+      { id: 'bottom-right', name: 'Bottom Right' },
+    ];
+    
+    return (
+      <Modal
+        visible={showIconsModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowIconsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: height * 0.85 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Industry Icons</Text>
+              <TouchableOpacity onPress={() => setShowIconsModal(false)}>
+                <Ionicons name="close" size={24} color="#1A1A1A" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.iconModalDescription}>
+              Add watermark icons that represent your industry. These appear subtly on your card background.
+            </Text>
+            
+            {/* Category Tabs */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryTabs}>
+              {Object.keys(INDUSTRY_ICONS).map((category) => (
+                <TouchableOpacity
+                  key={category}
+                  style={[
+                    styles.categoryTab,
+                    iconSelectedCategory === category && styles.categoryTabActive
+                  ]}
+                  onPress={() => setIconSelectedCategory(category)}
+                >
+                  <Text style={[
+                    styles.categoryTabText,
+                    iconSelectedCategory === category && styles.categoryTabTextActive
+                  ]}>{category}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            
+            {/* Icons Grid */}
+            <View style={styles.iconsGrid}>
+              {INDUSTRY_ICONS[iconSelectedCategory as keyof typeof INDUSTRY_ICONS].map((item) => (
+                <TouchableOpacity
+                  key={item.icon}
+                  style={[
+                    styles.iconItem,
+                    iconSelectedIcon === item.icon && styles.iconItemSelected
+                  ]}
+                  onPress={() => setIconSelectedIcon(item.icon)}
+                >
+                  <Ionicons name={item.icon as any} size={28} color={iconSelectedIcon === item.icon ? '#00C853' : '#666'} />
+                  <Text style={styles.iconItemName}>{item.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            {/* Position Selection */}
+            {iconSelectedIcon && (
+              <View style={styles.positionSection}>
+                <Text style={styles.positionTitle}>Select Position</Text>
+                <View style={styles.positionGrid}>
+                  {ICON_POSITIONS.map((pos) => (
+                    <TouchableOpacity
+                      key={pos.id}
+                      style={[
+                        styles.positionItem,
+                        iconSelectedPosition === pos.id && styles.positionItemSelected
+                      ]}
+                      onPress={() => setIconSelectedPosition(pos.id)}
+                    >
+                      <Text style={[
+                        styles.positionItemText,
+                        iconSelectedPosition === pos.id && styles.positionItemTextSelected
+                      ]}>{pos.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+            
+            {/* Add Button */}
+            <TouchableOpacity
+              style={[
+                styles.addIconButton,
+                !iconSelectedIcon && styles.addIconButtonDisabled
+              ]}
+              onPress={() => {
+                if (iconSelectedIcon) {
+                  handleAddIndustryIcon(iconSelectedIcon, iconSelectedPosition);
+                  setIconSelectedIcon(null);
+                  setShowIconsModal(false);
+                }
+              }}
+              disabled={!iconSelectedIcon}
+            >
+              <LinearGradient
+                colors={iconSelectedIcon ? ['#00C853', '#00E676'] : ['#E0E0E0', '#BDBDBD']}
+                style={styles.addIconGradient}
+              >
+                <Ionicons name="add" size={20} color={iconSelectedIcon ? '#fff' : '#9E9E9E'} />
+                <Text style={[styles.addIconButtonText, !iconSelectedIcon && { color: '#9E9E9E' }]}>
+                  Add Icon to Card
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
 
   // Loading state
   if (isLoading) {
@@ -2371,6 +2872,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       {renderGalleryModal()}
       {renderYoutubeModal()}
       {renderCredentialsModal()}
+      {renderIndustryIconsModal()}
       
       {/* Saving Indicator */}
       {isSaving && (
@@ -2455,6 +2957,81 @@ const styles = StyleSheet.create({
   },
   previewPhoto: {
     // Dynamic size set inline
+  },
+  coverPhotoContainer: {
+    width: '100%',
+    height: 120,
+    marginBottom: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  coverPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  coverPhotoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // New Cover Banner Styles (full-bleed)
+  previewContainerCover: {
+    backgroundColor: '#fff',
+  },
+  coverBannerContainer: {
+    width: width,
+    height: height * 0.25,
+    position: 'relative',
+  },
+  coverBannerPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  coverBannerPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  coverBannerPlaceholderText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    marginTop: 8,
+  },
+  coverBannerOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+  },
+  coverBannerTextContainer: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+  },
+  coverBannerName: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  coverBannerTitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 2,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  coverLinksContainer: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
   },
   previewName: {
     fontSize: 18,
@@ -2876,6 +3453,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#666',
   },
+  coverPhotoHint: {
+    fontSize: 12,
+    color: '#00C853',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 16,
+  },
   
   // Appearance Section
   appearanceSection: {
@@ -3062,6 +3647,23 @@ const styles = StyleSheet.create({
   bgName: {
     fontSize: 12,
     color: '#666',
+  },
+  changeBackgroundButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 8,
+    gap: 6,
+  },
+  changeBackgroundText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#00C853',
+    textTransform: 'capitalize',
   },
   
   // Button Styles
@@ -3977,5 +4579,166 @@ const styles = StyleSheet.create({
     color: '#991B1B',
     marginTop: 8,
     textAlign: 'center',
+  },
+  
+  // Industry Icons Section
+  proBadgeSmall: {
+    backgroundColor: '#FACC15',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 8,
+  },
+  proBadgeSmallText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  sectionDescription: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  addIconsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E8F5E9',
+    borderRadius: 12,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  addIconsText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#00C853',
+  },
+  selectedIconsScroll: {
+    marginTop: 12,
+  },
+  selectedIconPreview: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    position: 'relative',
+  },
+  removeIconButton: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+  },
+  
+  // Industry Icons Modal
+  iconModalDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  categoryTabs: {
+    marginBottom: 16,
+    marginHorizontal: -24,
+    paddingHorizontal: 24,
+  },
+  categoryTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    marginRight: 8,
+  },
+  categoryTabActive: {
+    backgroundColor: '#00C853',
+  },
+  categoryTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  categoryTabTextActive: {
+    color: '#fff',
+  },
+  iconsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 20,
+  },
+  iconItem: {
+    width: (width - 96) / 3 - 8,
+    aspectRatio: 1,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  iconItemSelected: {
+    borderColor: '#00C853',
+    backgroundColor: '#E8F5E9',
+  },
+  iconItemName: {
+    fontSize: 11,
+    color: '#666',
+    marginTop: 4,
+  },
+  positionSection: {
+    marginBottom: 20,
+  },
+  positionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 12,
+  },
+  positionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  positionItem: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  positionItemSelected: {
+    borderColor: '#00C853',
+    backgroundColor: '#E8F5E9',
+  },
+  positionItemText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#666',
+  },
+  positionItemTextSelected: {
+    color: '#00C853',
+  },
+  addIconButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  addIconButtonDisabled: {
+    opacity: 0.7,
+  },
+  addIconGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  addIconButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

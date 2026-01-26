@@ -3,6 +3,7 @@
  * Install path: screens/RealtorMatchCompleteScreen.tsx
  * 
  * Completion screen that prompts users to create an account.
+ * If user is already logged in, shows success message without signup prompt.
  */
 import React, { useState } from 'react';
 import {
@@ -20,6 +21,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 
 type RouteParams = {
   params: {
@@ -42,6 +44,7 @@ const RealtorColors = {
 export default function RealtorMatchCompleteScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<RouteParams, 'params'>>();
+  const { user } = useAuth();
   
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -51,6 +54,9 @@ export default function RealtorMatchCompleteScreen() {
 
   const email = route.params?.email;
   const name = route.params?.name;
+
+  // Check if user is already logged in
+  const isLoggedIn = !!user;
 
   const handleCreateAccount = async () => {
     if (password.length < 6) {
@@ -94,7 +100,38 @@ export default function RealtorMatchCompleteScreen() {
     navigation.navigate('RealtorsBrowse');
   };
 
-  // Account created success view
+  // LOGGED IN USER - Show success without signup prompt
+  if (isLoggedIn) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={[RealtorColors.primary, '#2D5A8A']}
+          style={styles.gradient}
+        >
+          <SafeAreaView style={styles.safeArea}>
+            <View style={styles.successContent}>
+              <View style={styles.successIcon}>
+                <Ionicons name="checkmark-circle" size={80} color="#FFFFFF" />
+              </View>
+              <Text style={styles.successTitle}>Request Submitted!</Text>
+              <Text style={styles.successSubtitle}>
+                We're matching you with the best realtors for your needs. You'll receive notifications when realtors respond.
+              </Text>
+              <TouchableOpacity style={styles.whiteButton} onPress={handleGoToMatches}>
+                <Text style={styles.whiteButtonText}>View Matched Realtors</Text>
+                <Ionicons name="arrow-forward" size={20} color={RealtorColors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.skipButton} onPress={() => navigation.navigate('Home')}>
+                <Text style={styles.skipButtonText}>Go to Home</Text>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  // Account created success view (for guest users who just created an account)
   if (accountCreated) {
     return (
       <View style={styles.container}>
@@ -122,6 +159,7 @@ export default function RealtorMatchCompleteScreen() {
     );
   }
 
+  // GUEST USER - Show signup prompt
   return (
     <View style={styles.container}>
       <LinearGradient

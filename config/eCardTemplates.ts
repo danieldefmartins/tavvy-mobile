@@ -21,17 +21,20 @@ export interface Template {
   description: string;
   category: 'professional' | 'creative' | 'minimal' | 'luxury' | 'fun';
   previewImage: string; // Local asset or URL
-  isPremium: boolean;   // If true, requires any paid subscription
+  isPremium: boolean;   // If true, requires any paid subscription ($4.99/mo consumer)
+  isProOnly?: boolean;  // If true, only available to Tavvy Pros with active membership
+  proCategories?: string[]; // Pro categories this template is best for (e.g., 'handyman', 'realtor')
   features: string[];   // List of features this template supports
   colorSchemes: ColorScheme[];
   layout: {
-    photoPosition: 'top' | 'left' | 'right' | 'center';
-    photoSize: 'small' | 'medium' | 'large';
-    photoStyle: 'circle' | 'rounded' | 'square' | 'ornate';
-    buttonStyle: 'rounded' | 'pill' | 'square' | 'outline' | 'frosted';
-    fontFamily: 'modern' | 'classic' | 'elegant' | 'playful';
+    photoPosition: 'top' | 'left' | 'right' | 'center' | 'cover';
+    photoSize: 'small' | 'medium' | 'large' | 'cover';
+    photoStyle: 'circle' | 'rounded' | 'square' | 'ornate' | 'cover';
+    buttonStyle: 'rounded' | 'pill' | 'square' | 'outline' | 'frosted' | 'minimal';
+    fontFamily: 'modern' | 'classic' | 'elegant' | 'playful' | 'executive';
     showBorder: boolean;
-    borderStyle?: 'solid' | 'ornate' | 'gradient';
+    borderStyle?: 'solid' | 'ornate' | 'gradient' | 'accent';
+    backgroundPattern?: 'none' | 'icons' | 'geometric' | 'motion' | 'texture';
   };
 }
 
@@ -1311,6 +1314,368 @@ export const TEMPLATES: Template[] = [
       borderStyle: 'ornate',
     },
   },
+
+  // ============ PRO-ONLY TEMPLATES (Included with Tavvy Pro Subscription) ============
+  
+  // Template 1: Icon Luxe - Elegant background icons/patterns for service providers
+  {
+    id: 'pro-icon-luxe',
+    name: 'Icon Luxe',
+    description: 'Elegant background patterns with strong typography. Perfect for service providers.',
+    category: 'professional',
+    previewImage: 'pro-icon-luxe',
+    isPremium: false,
+    isProOnly: true,
+    proCategories: ['handyman', 'plumber', 'electrician', 'cleaner', 'pet-services', 'contractor'],
+    features: ['icon-pattern-bg', 'accent-border', 'badge-area', 'action-icons', 'category-icons'],
+    colorSchemes: [
+      {
+        id: 'slate-teal',
+        name: 'Slate & Teal',
+        primary: '#1e293b',
+        secondary: '#334155',
+        accent: '#14b8a6',
+        text: '#FFFFFF',
+        textSecondary: 'rgba(255,255,255,0.8)',
+        background: 'linear-gradient(180deg, #1e293b 0%, #334155 100%)',
+        cardBg: 'transparent',
+        border: '#14b8a6',
+      },
+      {
+        id: 'navy-orange',
+        name: 'Navy & Orange',
+        primary: '#1e3a5f',
+        secondary: '#2d4a6f',
+        accent: '#f97316',
+        text: '#FFFFFF',
+        textSecondary: 'rgba(255,255,255,0.8)',
+        background: 'linear-gradient(180deg, #1e3a5f 0%, #2d4a6f 100%)',
+        cardBg: 'transparent',
+        border: '#f97316',
+      },
+      {
+        id: 'charcoal-lime',
+        name: 'Charcoal & Lime',
+        primary: '#27272a',
+        secondary: '#3f3f46',
+        accent: '#84cc16',
+        text: '#FFFFFF',
+        textSecondary: 'rgba(255,255,255,0.8)',
+        background: 'linear-gradient(180deg, #27272a 0%, #3f3f46 100%)',
+        cardBg: 'transparent',
+        border: '#84cc16',
+      },
+      {
+        id: 'deep-blue-gold',
+        name: 'Deep Blue & Gold',
+        primary: '#172554',
+        secondary: '#1e3a8a',
+        accent: '#fbbf24',
+        text: '#FFFFFF',
+        textSecondary: 'rgba(255,255,255,0.8)',
+        background: 'linear-gradient(180deg, #172554 0%, #1e3a8a 100%)',
+        cardBg: 'transparent',
+        border: '#fbbf24',
+      },
+    ],
+    layout: {
+      photoPosition: 'center',
+      photoSize: 'large',
+      photoStyle: 'circle',
+      buttonStyle: 'pill',
+      fontFamily: 'modern',
+      showBorder: true,
+      borderStyle: 'accent',
+      backgroundPattern: 'icons',
+    },
+  },
+
+  // Template 2: Image Focus - Full-bleed background image with overlay
+  {
+    id: 'pro-image-focus',
+    name: 'Image Focus',
+    description: 'Stunning full-bleed background image. Ideal for realtors, food, and premium services.',
+    category: 'professional',
+    previewImage: 'pro-image-focus',
+    isPremium: false,
+    isProOnly: true,
+    proCategories: ['realtor', 'food-truck', 'photographer', 'event-planner', 'restaurant', 'catering'],
+    features: ['full-bleed-image', 'gradient-overlay', 'floating-actions', 'badge-area', 'showcase-area'],
+    colorSchemes: [
+      {
+        id: 'dark-overlay',
+        name: 'Dark Overlay',
+        primary: 'rgba(0,0,0,0.7)',
+        secondary: 'rgba(0,0,0,0.4)',
+        accent: '#FFFFFF',
+        text: '#FFFFFF',
+        textSecondary: 'rgba(255,255,255,0.85)',
+        background: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.8) 100%)',
+        cardBg: 'transparent',
+      },
+      {
+        id: 'warm-overlay',
+        name: 'Warm Overlay',
+        primary: 'rgba(120,53,15,0.7)',
+        secondary: 'rgba(180,83,9,0.4)',
+        accent: '#fef3c7',
+        text: '#FFFFFF',
+        textSecondary: 'rgba(255,255,255,0.9)',
+        background: 'linear-gradient(180deg, rgba(120,53,15,0.3) 0%, rgba(120,53,15,0.85) 100%)',
+        cardBg: 'transparent',
+      },
+      {
+        id: 'cool-overlay',
+        name: 'Cool Overlay',
+        primary: 'rgba(30,58,138,0.7)',
+        secondary: 'rgba(59,130,246,0.4)',
+        accent: '#dbeafe',
+        text: '#FFFFFF',
+        textSecondary: 'rgba(255,255,255,0.9)',
+        background: 'linear-gradient(180deg, rgba(30,58,138,0.3) 0%, rgba(30,58,138,0.85) 100%)',
+        cardBg: 'transparent',
+      },
+      {
+        id: 'green-overlay',
+        name: 'Green Overlay',
+        primary: 'rgba(6,78,59,0.7)',
+        secondary: 'rgba(16,185,129,0.4)',
+        accent: '#d1fae5',
+        text: '#FFFFFF',
+        textSecondary: 'rgba(255,255,255,0.9)',
+        background: 'linear-gradient(180deg, rgba(6,78,59,0.3) 0%, rgba(6,78,59,0.85) 100%)',
+        cardBg: 'transparent',
+      },
+    ],
+    layout: {
+      photoPosition: 'cover',
+      photoSize: 'cover',
+      photoStyle: 'cover',
+      buttonStyle: 'frosted',
+      fontFamily: 'elegant',
+      showBorder: false,
+      backgroundPattern: 'none',
+    },
+  },
+
+  // Template 3: Minimal Executive - Clean, trust-focused design
+  {
+    id: 'pro-minimal-executive',
+    name: 'Minimal Executive',
+    description: 'Clean and authoritative. Perfect for realtors, consultants, and coaches.',
+    category: 'minimal',
+    previewImage: 'pro-minimal-executive',
+    isPremium: false,
+    isProOnly: true,
+    proCategories: ['realtor', 'consultant', 'coach', 'financial-advisor', 'lawyer', 'accountant'],
+    features: ['white-card', 'accent-line', 'badge-prominent', 'minimal-icons', 'executive-typography'],
+    colorSchemes: [
+      {
+        id: 'white-navy',
+        name: 'White & Navy',
+        primary: '#FFFFFF',
+        secondary: '#f8fafc',
+        accent: '#1e3a5f',
+        text: '#1e293b',
+        textSecondary: '#64748b',
+        background: '#f1f5f9',
+        cardBg: '#FFFFFF',
+        border: '#1e3a5f',
+      },
+      {
+        id: 'cream-forest',
+        name: 'Cream & Forest',
+        primary: '#fefce8',
+        secondary: '#fef9c3',
+        accent: '#166534',
+        text: '#1c1917',
+        textSecondary: '#57534e',
+        background: '#f5f5f4',
+        cardBg: '#fefce8',
+        border: '#166534',
+      },
+      {
+        id: 'white-burgundy',
+        name: 'White & Burgundy',
+        primary: '#FFFFFF',
+        secondary: '#fef2f2',
+        accent: '#7f1d1d',
+        text: '#1c1917',
+        textSecondary: '#57534e',
+        background: '#fafafa',
+        cardBg: '#FFFFFF',
+        border: '#7f1d1d',
+      },
+      {
+        id: 'white-charcoal',
+        name: 'White & Charcoal',
+        primary: '#FFFFFF',
+        secondary: '#f4f4f5',
+        accent: '#27272a',
+        text: '#18181b',
+        textSecondary: '#71717a',
+        background: '#e4e4e7',
+        cardBg: '#FFFFFF',
+        border: '#27272a',
+      },
+    ],
+    layout: {
+      photoPosition: 'top',
+      photoSize: 'medium',
+      photoStyle: 'rounded',
+      buttonStyle: 'minimal',
+      fontFamily: 'executive',
+      showBorder: true,
+      borderStyle: 'accent',
+      backgroundPattern: 'none',
+    },
+  },
+
+  // Template 4: On The Go Dynamic - For mobile businesses
+  {
+    id: 'pro-on-the-go',
+    name: 'On The Go',
+    description: 'Dynamic and active. Designed for mobile businesses and on-the-go services.',
+    category: 'creative',
+    previewImage: 'pro-on-the-go',
+    isPremium: false,
+    isProOnly: true,
+    proCategories: ['mobile-detailer', 'food-truck', 'mobile-groomer', 'delivery', 'mobile-mechanic', 'mobile-notary'],
+    features: ['motion-elements', 'location-badge', 'service-area', 'quick-actions', 'dynamic-bg'],
+    colorSchemes: [
+      {
+        id: 'electric-blue',
+        name: 'Electric Blue',
+        primary: '#0ea5e9',
+        secondary: '#0284c7',
+        accent: '#fbbf24',
+        text: '#FFFFFF',
+        textSecondary: 'rgba(255,255,255,0.9)',
+        background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+        cardBg: 'transparent',
+        border: '#fbbf24',
+      },
+      {
+        id: 'vibrant-orange',
+        name: 'Vibrant Orange',
+        primary: '#f97316',
+        secondary: '#ea580c',
+        accent: '#FFFFFF',
+        text: '#FFFFFF',
+        textSecondary: 'rgba(255,255,255,0.9)',
+        background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+        cardBg: 'transparent',
+        border: '#FFFFFF',
+      },
+      {
+        id: 'fresh-green',
+        name: 'Fresh Green',
+        primary: '#22c55e',
+        secondary: '#16a34a',
+        accent: '#fef08a',
+        text: '#FFFFFF',
+        textSecondary: 'rgba(255,255,255,0.9)',
+        background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+        cardBg: 'transparent',
+        border: '#fef08a',
+      },
+      {
+        id: 'purple-energy',
+        name: 'Purple Energy',
+        primary: '#a855f7',
+        secondary: '#9333ea',
+        accent: '#fcd34d',
+        text: '#FFFFFF',
+        textSecondary: 'rgba(255,255,255,0.9)',
+        background: 'linear-gradient(135deg, #a855f7 0%, #9333ea 100%)',
+        cardBg: 'transparent',
+        border: '#fcd34d',
+      },
+    ],
+    layout: {
+      photoPosition: 'center',
+      photoSize: 'medium',
+      photoStyle: 'circle',
+      buttonStyle: 'pill',
+      fontFamily: 'modern',
+      showBorder: true,
+      borderStyle: 'accent',
+      backgroundPattern: 'motion',
+    },
+  },
+
+  // Template 5: Dark Premium - High-end luxury feel
+  {
+    id: 'pro-dark-premium',
+    name: 'Dark Premium',
+    description: 'Luxurious dark theme with metallic accents. For high-end services.',
+    category: 'luxury',
+    previewImage: 'pro-dark-premium',
+    isPremium: false,
+    isProOnly: true,
+    proCategories: ['luxury-realtor', 'high-end-services', 'vip-experiences', 'premium-consultant', 'executive-coach'],
+    features: ['dark-bg', 'metallic-accents', 'subtle-texture', 'premium-typography', 'badge-area'],
+    colorSchemes: [
+      {
+        id: 'black-gold',
+        name: 'Black & Gold',
+        primary: '#0a0a0a',
+        secondary: '#171717',
+        accent: '#d4af37',
+        text: '#FFFFFF',
+        textSecondary: 'rgba(255,255,255,0.75)',
+        background: 'linear-gradient(180deg, #0a0a0a 0%, #171717 100%)',
+        cardBg: 'transparent',
+        border: '#d4af37',
+      },
+      {
+        id: 'charcoal-silver',
+        name: 'Charcoal & Silver',
+        primary: '#18181b',
+        secondary: '#27272a',
+        accent: '#a1a1aa',
+        text: '#FFFFFF',
+        textSecondary: 'rgba(255,255,255,0.75)',
+        background: 'linear-gradient(180deg, #18181b 0%, #27272a 100%)',
+        cardBg: 'transparent',
+        border: '#a1a1aa',
+      },
+      {
+        id: 'black-rose-gold',
+        name: 'Black & Rose Gold',
+        primary: '#0c0a09',
+        secondary: '#1c1917',
+        accent: '#b76e79',
+        text: '#FFFFFF',
+        textSecondary: 'rgba(255,255,255,0.75)',
+        background: 'linear-gradient(180deg, #0c0a09 0%, #1c1917 100%)',
+        cardBg: 'transparent',
+        border: '#b76e79',
+      },
+      {
+        id: 'midnight-platinum',
+        name: 'Midnight & Platinum',
+        primary: '#020617',
+        secondary: '#0f172a',
+        accent: '#e2e8f0',
+        text: '#FFFFFF',
+        textSecondary: 'rgba(255,255,255,0.75)',
+        background: 'linear-gradient(180deg, #020617 0%, #0f172a 100%)',
+        cardBg: 'transparent',
+        border: '#e2e8f0',
+      },
+    ],
+    layout: {
+      photoPosition: 'center',
+      photoSize: 'medium',
+      photoStyle: 'circle',
+      buttonStyle: 'outline',
+      fontFamily: 'elegant',
+      showBorder: true,
+      borderStyle: 'gradient',
+      backgroundPattern: 'texture',
+    },
+  },
 ];
 
 // Multi-page subscription price ID (to be set from Stripe)
@@ -1322,11 +1687,30 @@ export const getTemplateById = (id: string): Template | undefined => {
 };
 
 export const getFreeTemplates = (): Template[] => {
-  return TEMPLATES.filter(t => !t.isPremium);
+  return TEMPLATES.filter(t => !t.isPremium && !t.isProOnly);
 };
 
 export const getPremiumTemplates = (): Template[] => {
-  return TEMPLATES.filter(t => t.isPremium);
+  return TEMPLATES.filter(t => t.isPremium && !t.isProOnly);
+};
+
+export const getProOnlyTemplates = (): Template[] => {
+  return TEMPLATES.filter(t => t.isProOnly === true);
+};
+
+export const getTemplatesForUser = (isPro: boolean, hasPremiumSubscription: boolean): Template[] => {
+  return TEMPLATES.filter(t => {
+    // Pro-only templates require Pro membership
+    if (t.isProOnly) return isPro;
+    // Premium templates require premium subscription
+    if (t.isPremium) return hasPremiumSubscription;
+    // Free templates available to all
+    return true;
+  });
+};
+
+export const getProTemplatesByCategory = (proCategory: string): Template[] => {
+  return TEMPLATES.filter(t => t.isProOnly && t.proCategories?.includes(proCategory));
 };
 
 export const getTemplatesByCategory = (category: Template['category']): Template[] => {

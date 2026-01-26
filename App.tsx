@@ -57,6 +57,7 @@ import ProfileScreen from './screens/ProfileScreen';
 import SavedScreen from './screens/SavedScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignUpScreen from './screens/SignUpScreen';
+import WelcomeOnboardingScreen from './screens/WelcomeOnboardingScreen';
 
 // ========== PROS SCREENS (NEW) ==========
 import ProsHomeScreen from './screens/ProsHomeScreen';
@@ -110,6 +111,10 @@ import SettingsScreen from './screens/SettingsScreen';
 import HelpSupportScreen from './screens/HelpSupportScreen';
 import ProsLeadDetailScreen from './screens/ProsLeadDetailScreen';
 
+// ========== ON THE GO SCREEN ==========
+import OnTheGoScreen from './screens/OnTheGoScreen';
+import PlaceScheduleScreen from './screens/PlaceScheduleScreen';
+
 // ========== STORY & DISCOVERY SCREENS ==========
 import StoryUploadScreen from './screens/StoryUploadScreen';
 import OwnerHighlightsScreen from './screens/OwnerHighlightsScreen';
@@ -135,6 +140,7 @@ import ECardBlockBuilderScreen from './screens/ECardBlockBuilderScreen';
 
 // ========== NEW ECARD LINKTREE-STYLE SCREENS ==========
 import {
+  ECardHubScreen,
   ECardOnboardingPlatformsScreen,
   ECardOnboardingProfileScreen,
   ECardOnboardingLinksScreen,
@@ -307,6 +313,10 @@ function AppsStack() {
       {/* Happening Now - accessible from Apps */}
       <MenuStackNav.Screen name="HappeningNow" component={HappeningNowScreen} />
       
+      {/* On The Go - Live mobile businesses map */}
+      <MenuStackNav.Screen name="OnTheGo" component={OnTheGoScreen} />
+      <MenuStackNav.Screen name="PlaceSchedule" component={PlaceScheduleScreen} />
+      
       {/* Wallet - Pro Cards collection */}
       <MenuStackNav.Screen name="Wallet" component={WalletScreen} />
       <MenuStackNav.Screen name="ProCardDetail" component={ProCardDetailScreen} />
@@ -323,6 +333,7 @@ function AppsStack() {
       <MenuStackNav.Screen name="PublicCardView" component={PublicCardViewScreen} />
       
       {/* NEW: Linktree-style eCard Flow */}
+      <MenuStackNav.Screen name="ECardHub" component={ECardHubScreen} />
       <MenuStackNav.Screen name="ECardOnboardingPlatforms" component={ECardOnboardingPlatformsScreen} />
       <MenuStackNav.Screen name="ECardOnboardingProfile" component={ECardOnboardingProfileScreen} />
       <MenuStackNav.Screen name="ECardOnboardingLinks" component={ECardOnboardingLinksScreen} />
@@ -385,6 +396,10 @@ function ProsStack() {
       <ProsStackNav.Screen name="ProsRequestStep4" component={ProsRequestStep4Screen} />
       <ProsStackNav.Screen name="ProsRequestStep5" component={ProsRequestStep5Screen} />
       <ProsStackNav.Screen name="ProsProjectStatus" component={ProsProjectStatusScreen} />
+      {/* Auth screens accessible from Pros flow */}
+      <ProsStackNav.Screen name="SignUp" component={SignUpScreen} />
+      <ProsStackNav.Screen name="Login" component={LoginScreen} />
+      <ProsStackNav.Screen name="WelcomeOnboarding" component={WelcomeOnboardingScreen} />
     </ProsStackNav.Navigator>
   );
 }

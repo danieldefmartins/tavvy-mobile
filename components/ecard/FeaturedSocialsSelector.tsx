@@ -107,7 +107,7 @@ export default function FeaturedSocialsSelector({
           const platform = getPlatform(social.platformId);
           return (
             <TouchableOpacity
-              key={social.platformId}
+              key={`${social.platformId}-${index}`}
               style={[styles.featuredIcon, { backgroundColor: platform.color }]}
               onPress={() => setModalVisible(true)}
               activeOpacity={0.8}
@@ -178,7 +178,7 @@ export default function FeaturedSocialsSelector({
                 {featuredSocials.map((social, index) => {
                   const platform = getPlatform(social.platformId);
                   return (
-                    <View key={social.platformId} style={styles.featuredItem}>
+                    <View key={`featured-${social.platformId}-${index}`} style={styles.featuredItem}>
                       <View style={styles.reorderButtons}>
                         <TouchableOpacity
                           onPress={() => moveUp(index)}
@@ -214,11 +214,11 @@ export default function FeaturedSocialsSelector({
             {/* Available Links */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Available Links</Text>
-              {allLinks.filter(link => !isFeatured(link.platformId)).map((link) => {
+              {allLinks.filter(link => !isFeatured(link.platformId)).map((link, index) => {
                 const platform = getPlatform(link.platformId);
                 return (
                   <TouchableOpacity
-                    key={link.platformId}
+                    key={`available-${link.platformId}-${index}`}
                     style={styles.availableItem}
                     onPress={() => toggleFeatured(link)}
                     disabled={featuredSocials.length >= maxFeatured}
