@@ -1475,18 +1475,20 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         </View>
       </TouchableOpacity>
 
-      {/* Save to Wallet Button */}
-      <TouchableOpacity 
-        style={styles.walletButton}
-        onPress={handleSaveToWallet}
-        activeOpacity={0.8}
-      >
-        <View style={styles.walletContent}>
-          <Ionicons name="wallet-outline" size={20} color="#F59E0B" />
-          <Text style={styles.walletText}>Get Wallet Save Link</Text>
-          <Ionicons name="chevron-forward" size={18} color="#9E9E9E" />
-        </View>
-      </TouchableOpacity>
+      {/* Save to Wallet Button - Only show for published cards */}
+      {cardData?.is_published && (
+        <TouchableOpacity 
+          style={styles.walletButton}
+          onPress={handleSaveToWallet}
+          activeOpacity={0.8}
+        >
+          <View style={styles.walletContent}>
+            <Ionicons name="wallet-outline" size={20} color="#F59E0B" />
+            <Text style={styles.walletText}>Get Wallet Save Link</Text>
+            <Ionicons name="chevron-forward" size={18} color="#9E9E9E" />
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* Links List */}
       {links.length > 0 ? (
