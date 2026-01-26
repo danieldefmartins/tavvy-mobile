@@ -228,8 +228,32 @@ export default function UniversalAddScreenV3() {
     }
   };
 
+  // Helper to check if address has a street number
+  const hasStreetNumber = (address: string | null | undefined): boolean => {
+    if (!address) return false;
+    // Check if address starts with a number (street number)
+    // Common patterns: "123 Main St", "1234 Oak Ave", etc.
+    const trimmed = address.trim();
+    return /^\d+\s/.test(trimmed);
+  };
+
   const handleConfirmLocation = async (confirmed: boolean) => {
     if (!currentDraft) return;
+    
+    // Check if address is missing street number
+    const addressLine = currentDraft.address_line1 || currentDraft.formatted_address;
+    const isMissingStreetNumber = !hasStreetNumber(addressLine);
+    
+    if (confirmed && isMissingStreetNumber) {
+      // Address is missing street number - force manual entry to complete it
+      Alert.alert(
+        'Address Incomplete',
+        'The address appears to be missing a street number. Please add the complete address.',
+        [{ text: 'OK', onPress: () => setShowManualAddress(true) }]
+      );
+      return;
+    }
+    
     if (confirmed) {
       await updateDraft({ status: 'draft_type_selected', current_step: 2 }, true);
       setCurrentStep('business_type');
@@ -645,6 +669,13 @@ export default function UniversalAddScreenV3() {
             <Text style={styles.locationAddress}>{currentDraft.formatted_address}</Text>
             <Text style={styles.locationCoords}>({currentDraft.latitude?.toFixed(6)}, {currentDraft.longitude?.toFixed(6)})</Text>
           </View>
+          {/* Warning if address is missing street number */}
+          {!hasStreetNumber(currentDraft.address_line1 || currentDraft.formatted_address) && (
+            <View style={styles.addressWarning}>
+              <Ionicons name="warning" size={18} color="#FF9500" />
+              <Text style={styles.addressWarningText}>This address may be missing a street number</Text>
+            </View>
+          )}
           <Text style={styles.confirmQuestion}>Is this the correct address?</Text>
           <View style={styles.confirmButtons}>
             <TouchableOpacity style={[styles.confirmButton, styles.confirmButtonYes]} onPress={() => handleConfirmLocation(true)}>
@@ -898,6 +929,8 @@ const styles = StyleSheet.create({
   locationCard: { backgroundColor: '#f8f9fa', borderRadius: 16, padding: 24, alignItems: 'center', marginBottom: 24 },
   locationAddress: { fontSize: 18, fontWeight: '600', color: '#333', textAlign: 'center', marginTop: 12 },
   locationCoords: { fontSize: 12, color: '#999', marginTop: 4 },
+  addressWarning: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF3E0', borderRadius: 8, padding: 12, marginBottom: 16, gap: 8 },
+  addressWarningText: { fontSize: 14, color: '#E65100', flex: 1 },
   confirmQuestion: { fontSize: 20, fontWeight: '600', color: '#333', textAlign: 'center', marginBottom: 24 },
   confirmButtons: { flexDirection: 'row', justifyContent: 'center', gap: 16 },
   confirmButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 32, borderRadius: 12, gap: 8 },
