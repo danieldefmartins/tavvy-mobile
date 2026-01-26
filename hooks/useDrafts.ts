@@ -383,6 +383,22 @@ export function useDrafts() {
   };
 }
 
+/**
+ * Maps business type to database place_type constraint
+ * Database only allows: 'fixed' or 'on_the_go'
+ */
+function getPlaceType(contentSubtype: string | null | undefined, hasPhysicalLocation?: boolean): 'fixed' | 'on_the_go' {
+  if (contentSubtype === 'on_the_go') {
+    return 'on_the_go';
+  }
+  if (contentSubtype === 'service') {
+    // Service businesses: fixed if they have a physical location, on_the_go if they don't
+    return hasPhysicalLocation === false ? 'on_the_go' : 'fixed';
+  }
+  // physical and all other types default to fixed
+  return 'fixed';
+}
+
 async function submitToTavvyPlaces(draft: ContentDraft, userId: string): Promise<SubmitResult> {
   const { data, error } = await supabase.from('tavvy_places').insert({
     // Basic info
@@ -419,7 +435,8 @@ async function submitToTavvyPlaces(draft: ContentDraft, userId: string): Promise
     cover_image_url: draft.cover_photo,
     
     // Place type - database only allows 'fixed' or 'on_the_go'
-    place_type: draft.content_subtype === 'on_the_go' ? 'on_the_go' : 'fixed',
+    // physical → fixed, on_the_go → on_the_go, service → fixed (if has location) or on_the_go (if no physical location)
+    place_type: getPlaceType(draft.content_subtype, draft.data?.has_physical_location),
     place_subtype: draft.content_subtype,
     service_area: draft.data?.service_area,
     
