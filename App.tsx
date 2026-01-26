@@ -453,6 +453,45 @@ const badgeStyles = StyleSheet.create({
 });
 
 // --------------------
+// Custom Add Button Component (Elevated Center Button)
+// --------------------
+function AddButton({ onPress }: { onPress: () => void }) {
+  const { theme } = useThemeContext();
+  
+  return (
+    <View style={addButtonStyles.container}>
+      <View style={[
+        addButtonStyles.button,
+        { backgroundColor: '#0F8A8A' } // Tavvy teal accent color
+      ]}>
+        <Ionicons name="add" size={32} color="#FFFFFF" />
+      </View>
+    </View>
+  );
+}
+
+const addButtonStyles = StyleSheet.create({
+  container: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    top: -15, // Elevate above the tab bar
+  },
+  button: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+});
+
+// --------------------
 // Tabs
 // --------------------
 function TabNavigator() {
@@ -469,6 +508,9 @@ function TabNavigator() {
           backgroundColor: theme.background,
           borderTopColor: theme.border,
           borderTopWidth: 0.5,
+          height: 85,
+          paddingBottom: 20,
+          paddingTop: 8,
         },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
@@ -480,11 +522,11 @@ function TabNavigator() {
             case 'Explore':
               iconName = focused ? 'planet' : 'planet-outline';
               break;
+            case 'Add':
+              // Return custom elevated button for Add tab
+              return <AddButton onPress={() => {}} />;
             case 'Pros':
               iconName = focused ? 'construct' : 'construct-outline';
-              break;
-            case 'Atlas':
-              iconName = focused ? 'map' : 'map-outline';
               break;
             case 'Apps':
               iconName = focused ? 'apps' : 'apps-outline';
@@ -506,7 +548,16 @@ function TabNavigator() {
       <Tab.Screen name="Home" component={HomeStack} options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen name="Explore" component={UniverseStack} options={{ tabBarLabel: 'Universes' }} />
 
-      {/* CHANGED: Replaced Add tab with Pros tab */}
+      {/* CENTER: Elevated Add/Create Button */}
+      <Tab.Screen
+        name="Add"
+        component={UniversalAddScreenV3}
+        options={{
+          tabBarLabel: '',
+          tabBarIcon: ({ focused }) => <AddButton onPress={() => {}} />,
+        }}
+      />
+
       <Tab.Screen
         name="Pros"
         component={ProsStack}
@@ -515,7 +566,6 @@ function TabNavigator() {
         }}
       />
 
-      <Tab.Screen name="Atlas" component={AtlasStack} options={{ tabBarLabel: 'Atlas' }} />
       <Tab.Screen name="Apps" component={AppsStack} options={{ tabBarLabel: 'Apps' }} />
     </Tab.Navigator>
   );
