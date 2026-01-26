@@ -2937,19 +2937,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </View>
         </View>
 
-        {/* ===== EXPLORE TAVVY (Universes) ===== */}
-        <View style={styles.exploreSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>Explore Tavvy</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Apps')}>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={[styles.exploreSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
-            Curated worlds of experiences
-          </Text>
-        </Text>
-
         {/* Search Bar */}
         <View style={styles.searchWrapper}>
           <View style={[
