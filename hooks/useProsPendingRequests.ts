@@ -50,7 +50,7 @@ export function useProsPendingRequests() {
       if (insertError) throw insertError;
       return data;
     } catch (err: any) {
-      console.error('Submission error:', err);
+      console.warn('Submission error:', err);
       setError(err.message);
       throw err;
     } finally {
@@ -81,7 +81,7 @@ export function useProsPendingRequests() {
       if (error) throw error;
       return data;
     } catch (err) {
-      console.error('Error saving progress:', err);
+      console.warn('Error saving progress:', err);
       return null;
     } finally {
       setLoading(false);
@@ -125,7 +125,7 @@ export function useProsPendingRequests() {
         .eq('user_id', user.id)
         .eq('category_id', categoryId);
     } catch (err) {
-      console.error('Error deleting pending request:', err);
+      console.warn('Error deleting pending request:', err);
     }
   }, []);
 

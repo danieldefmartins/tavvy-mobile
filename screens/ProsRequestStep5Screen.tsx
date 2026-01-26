@@ -20,7 +20,7 @@ export default function ProsRequestStep5Screen({ navigation, route }: any) {
         setShowSuccessModal(true);
       }
     } catch (error: any) {
-      console.error('Submission error:', error);
+      console.warn('Submission error:', error);
       Alert.alert('Submission Failed', error.message || 'Please try again.');
     }
   };

@@ -51,7 +51,7 @@ export default function SignUpScreen({ navigation }: any) {
       // Navigate to welcome onboarding flow
       navigation.replace('WelcomeOnboarding');
     } catch (error: any) {
-      console.error('Sign up error:', error);
+      console.warn('Sign up error:', error);
       Alert.alert('Sign Up Failed', error.message || 'Could not create account');
     } finally {
       setLoading(false);

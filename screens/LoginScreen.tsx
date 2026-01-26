@@ -40,7 +40,7 @@ export default function LoginScreen({ navigation }: any) {
       // Navigate back after successful login
       navigation.goBack();
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.warn('Login error:', error);
       Alert.alert('Login Failed', error.message || 'Invalid email or password');
     } finally {
       setLoading(false);
