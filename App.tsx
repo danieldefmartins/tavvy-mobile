@@ -41,6 +41,7 @@ import UniverseDiscoveryScreen from './screens/UniverseDiscoveryScreen';
 import UniverseLandingScreen from './screens/UniverseLandingScreen';
 
 import UniversalAddScreen from './screens/UniversalAddScreen';
+import UniversalAddScreenV3 from './screens/UniversalAddScreenV3';
 import AddPlaceScreen from './screens/AddPlaceScreen';
 import BusinessCardScannerScreen from './screens/BusinessCardScannerScreen';
 
@@ -269,7 +270,7 @@ function AppsStack() {
       <MenuStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
       
       {/* Create functionality moved to Menu */}
-      <MenuStackNav.Screen name="UniversalAdd" component={UniversalAddScreen} />
+      <MenuStackNav.Screen name="UniversalAdd" component={UniversalAddScreenV3} />
       <MenuStackNav.Screen name="AddPlace" component={AddPlaceScreen} />
       
       {/* Business Card Scanner - accessible from AddPlaceScreen */}
