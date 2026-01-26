@@ -84,7 +84,7 @@ export const darkTheme = {
   
   // Tab Bar
   tabBarBackground: 'rgba(15, 18, 51, 0.95)',
-  tabBarActive: brand.blue,
+  tabBarActive: palette.white,
   tabBarInactive: brand.textSecondary,
   
   // Cards
@@ -155,7 +155,7 @@ export const lightTheme = {
   
   // Tab Bar
   tabBarBackground: 'rgba(255, 255, 255, 0.95)',
-  tabBarActive: brand.blue,
+  tabBarActive: palette.black,
   tabBarInactive: palette.gray500,
   
   // Cards
