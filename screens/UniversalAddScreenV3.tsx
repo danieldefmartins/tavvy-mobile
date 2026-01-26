@@ -137,7 +137,14 @@ export default function UniversalAddScreenV3() {
         case 'draft_type_selected': setCurrentStep('business_type'); break;
         case 'draft_subtype_selected': setCurrentStep('content_type'); break;
         case 'draft_details': setCurrentStep('details'); break;
+        case 'draft_photos': setCurrentStep('photos'); break;
         case 'draft_review': setCurrentStep('review'); break;
+        default:
+          // If status is unknown, use current_step number as fallback
+          if (currentDraft.current_step && currentDraft.current_step >= 1 && currentDraft.current_step <= 6) {
+            setCurrentStep(STEPS[currentDraft.current_step - 1]);
+          }
+          break;
       }
       
       // Restore business type / subtype
@@ -287,7 +294,7 @@ export default function UniversalAddScreenV3() {
   };
 
   const handleGoToPhotos = async () => {
-    await updateDraft({ data: formData }, true);
+    await updateDraft({ data: formData, status: 'draft_photos', current_step: 5 }, true);
     setCurrentStep('photos');
   };
 
