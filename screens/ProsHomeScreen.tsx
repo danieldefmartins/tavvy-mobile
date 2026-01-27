@@ -1,12 +1,12 @@
 /**
- * Pros Home Screen
+ * Pros Home Screen - "The Tavvy Way"
  * Install path: screens/ProsHomeScreen.tsx
  * 
- * PREMIUM DARK MODE REDESIGN - January 2026
- * - Minimalist header with tagline
- * - Sleek segmented control for Find a Pro / I'm a Pro
- * - 2x2 category grid with colorful icons
- * - Pro cards with trust badges
+ * REDESIGN - January 2026
+ * Focus on value proposition:
+ * - Match guarantee
+ * - Privacy protection (no sharing contact until ready)
+ * - Best practices guidance
  */
 
 import React, { useEffect, useState } from 'react';
@@ -15,7 +15,6 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   Dimensions,
   ActivityIndicator,
@@ -59,6 +58,7 @@ const COLORS = {
   textMuted: '#6B7280',
   success: '#10B981',
   verified: '#10B981',
+  teal: '#14B8A6',
 };
 
 // Category configuration with icons and colors
@@ -69,14 +69,34 @@ const CATEGORY_CONFIG = [
   { slug: 'cleaning', label: 'Cleaning', icon: 'sparkles-outline', color: '#8B5CF6' },
 ];
 
+// Best Practices Content
+const BEST_PRACTICES = {
+  dos: [
+    'Get multiple quotes before deciding',
+    'Check licenses and insurance',
+    'Read reviews from verified customers',
+    'Get everything in writing',
+  ],
+  donts: [
+    'Pay full amount upfront',
+    'Hire without checking references',
+    'Skip the written contract',
+    'Rush into a decision',
+  ],
+  expect: [
+    'Clear communication and timelines',
+    'Professional behavior and respect',
+    'Quality workmanship',
+    'Fair and transparent pricing',
+  ],
+};
+
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function ProsHomeScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { theme, isDark } = useThemeContext();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [location, setLocation] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<'user' | 'pro'>('user');
 
@@ -137,7 +157,7 @@ export default function ProsHomeScreen() {
           <View style={styles.header}>
             <Text style={[styles.title, { color: textColor }]}>Pros</Text>
             <Text style={[styles.tagline, { color: COLORS.accent }]}>
-              Find trusted local experts.
+              Grow your business with Tavvy.
             </Text>
           </View>
 
@@ -236,7 +256,7 @@ export default function ProsHomeScreen() {
     );
   }
 
-  // User Mode (Find a Pro)
+  // User Mode (Find a Pro) - THE TAVVY WAY
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -245,8 +265,8 @@ export default function ProsHomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={[styles.title, { color: textColor }]}>Pros</Text>
-          <Text style={[styles.tagline, { color: COLORS.accent }]}>
-            Find trusted local experts.
+          <Text style={[styles.heroTagline, { color: COLORS.teal }]}>
+            We'll find the best pros for your needs.
           </Text>
         </View>
 
@@ -278,7 +298,7 @@ export default function ProsHomeScreen() {
           </View>
         </View>
 
-        {/* Start a Project Card */}
+        {/* Start a Project Card - Primary CTA */}
         <TouchableOpacity
           style={styles.startProjectCard}
           onPress={() => navigation.navigate('ProsRequestStep0')}
@@ -301,57 +321,123 @@ export default function ProsHomeScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* Continue Request Banner */}
+        {/* Continue Request Banner - Subtle/Secondary */}
         {pendingRequest && (
           <TouchableOpacity
             style={styles.continueRequestCard}
             onPress={() => navigation.navigate('ProsRequestStep1', { customerInfo: pendingRequest.customerInfo })}
             activeOpacity={0.9}
           >
-            <LinearGradient
-              colors={['#059669', '#047857']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.continueRequestGradient}
-            >
-              <Ionicons name="time-outline" size={24} color="#FFFFFF" />
+            <View style={[styles.continueRequestInner, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+              <Ionicons name="time-outline" size={20} color={secondaryTextColor} />
               <View style={styles.continueRequestContent}>
-                <Text style={styles.continueRequestTitle}>Continue your request?</Text>
-                <Text style={styles.continueRequestSubtitle}>
+                <Text style={[styles.continueRequestTitle, { color: textColor }]}>Continue your request?</Text>
+                <Text style={[styles.continueRequestSubtitle, { color: secondaryTextColor }]}>
                   You have an unfinished project for {pendingRequest.category || 'a service'}.
                 </Text>
               </View>
-              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-            </LinearGradient>
+              <Ionicons name="arrow-forward" size={18} color={secondaryTextColor} />
+            </View>
           </TouchableOpacity>
         )}
 
-        {/* Search Card */}
-        <View style={styles.searchSection}>
-          <View style={[styles.searchCard, { backgroundColor: glassyColor }]}>
-            <View style={[styles.searchInputRow, { backgroundColor: isDark ? '#252525' : '#FFFFFF' }]}>
-              <Ionicons name="search" size={20} color={secondaryTextColor} />
-              <TextInput
-                style={[styles.searchInput, { color: textColor }]}
-                placeholder="Search for plumbers, electricians..."
-                placeholderTextColor={secondaryTextColor}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
+        {/* The Tavvy Way Section */}
+        <View style={styles.tavvyWaySection}>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>The Tavvy Way</Text>
+          
+          {/* Value Props */}
+          <View style={styles.valuePropsContainer}>
+            {/* Match Guarantee */}
+            <View style={[styles.valuePropCard, { backgroundColor: isDark ? glassyColor : '#FFFFFF', ...cardShadow }]}>
+              <View style={[styles.valuePropIcon, { backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="shield-checkmark" size={24} color="#3B82F6" />
+              </View>
+              <View style={styles.valuePropContent}>
+                <Text style={[styles.valuePropTitle, { color: textColor }]}>Match Guarantee</Text>
+                <Text style={[styles.valuePropText, { color: secondaryTextColor }]}>
+                  Tell us what you need. We'll match you with vetted pros who fit your project perfectly.
+                </Text>
+              </View>
             </View>
-            <View style={[styles.searchInputRow, { backgroundColor: isDark ? '#252525' : '#FFFFFF' }]}>
-              <Ionicons name="location-outline" size={20} color={secondaryTextColor} />
-              <TextInput
-                style={[styles.searchInput, { color: textColor }]}
-                placeholder="Location"
-                placeholderTextColor={secondaryTextColor}
-                value={location}
-                onChangeText={setLocation}
-              />
-              <TouchableOpacity>
-                <Ionicons name="navigate" size={20} color={COLORS.accent} />
-              </TouchableOpacity>
+
+            {/* Privacy Protection */}
+            <View style={[styles.valuePropCard, { backgroundColor: isDark ? glassyColor : '#FFFFFF', ...cardShadow }]}>
+              <View style={[styles.valuePropIcon, { backgroundColor: '#F0FDF4' }]}>
+                <Ionicons name="lock-closed" size={24} color="#10B981" />
+              </View>
+              <View style={styles.valuePropContent}>
+                <Text style={[styles.valuePropTitle, { color: textColor }]}>Your Privacy Protected</Text>
+                <Text style={[styles.valuePropText, { color: secondaryTextColor }]}>
+                  No sharing your phone or email until you're ready to hire. Chat securely through the app.
+                </Text>
+              </View>
             </View>
+
+            {/* Expert Guidance */}
+            <View style={[styles.valuePropCard, { backgroundColor: isDark ? glassyColor : '#FFFFFF', ...cardShadow }]}>
+              <View style={[styles.valuePropIcon, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="bulb" size={24} color="#F59E0B" />
+              </View>
+              <View style={styles.valuePropContent}>
+                <Text style={[styles.valuePropTitle, { color: textColor }]}>Expert Guidance</Text>
+                <Text style={[styles.valuePropText, { color: secondaryTextColor }]}>
+                  We'll help you with best practices, red flags to avoid, and what to expect from pros.
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Best Practices Section */}
+        <View style={styles.bestPracticesSection}>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>Hiring Best Practices</Text>
+          
+          {/* Do's */}
+          <View style={[styles.practiceCard, { backgroundColor: isDark ? glassyColor : '#FFFFFF', ...cardShadow }]}>
+            <View style={styles.practiceHeader}>
+              <View style={[styles.practiceIconBg, { backgroundColor: '#DCFCE7' }]}>
+                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+              </View>
+              <Text style={[styles.practiceTitle, { color: '#10B981' }]}>Do's</Text>
+            </View>
+            {BEST_PRACTICES.dos.map((item, index) => (
+              <View key={index} style={styles.practiceItem}>
+                <Ionicons name="checkmark" size={16} color="#10B981" />
+                <Text style={[styles.practiceText, { color: textColor }]}>{item}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Don'ts */}
+          <View style={[styles.practiceCard, { backgroundColor: isDark ? glassyColor : '#FFFFFF', ...cardShadow }]}>
+            <View style={styles.practiceHeader}>
+              <View style={[styles.practiceIconBg, { backgroundColor: '#FEE2E2' }]}>
+                <Ionicons name="close-circle" size={20} color="#EF4444" />
+              </View>
+              <Text style={[styles.practiceTitle, { color: '#EF4444' }]}>Don'ts</Text>
+            </View>
+            {BEST_PRACTICES.donts.map((item, index) => (
+              <View key={index} style={styles.practiceItem}>
+                <Ionicons name="close" size={16} color="#EF4444" />
+                <Text style={[styles.practiceText, { color: textColor }]}>{item}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* What to Expect */}
+          <View style={[styles.practiceCard, { backgroundColor: isDark ? glassyColor : '#FFFFFF', ...cardShadow }]}>
+            <View style={styles.practiceHeader}>
+              <View style={[styles.practiceIconBg, { backgroundColor: '#E0E7FF' }]}>
+                <Ionicons name="star" size={20} color="#6366F1" />
+              </View>
+              <Text style={[styles.practiceTitle, { color: '#6366F1' }]}>What to Expect</Text>
+            </View>
+            {BEST_PRACTICES.expect.map((item, index) => (
+              <View key={index} style={styles.practiceItem}>
+                <Ionicons name="star-outline" size={16} color="#6366F1" />
+                <Text style={[styles.practiceText, { color: textColor }]}>{item}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
@@ -378,61 +464,6 @@ export default function ProsHomeScreen() {
               </TouchableOpacity>
             ))}
           </View>
-        </View>
-
-        {/* Top-Rated Pros */}
-        <View style={styles.prosSection}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>Top-Rated Pros Near You</Text>
-          
-          {loading ? (
-            <ActivityIndicator size="large" color={COLORS.accent} />
-          ) : (
-            <View style={styles.prosList}>
-              {pros.slice(0, 3).map((pro, index) => (
-                <TouchableOpacity
-                  key={pro.id || index}
-                  style={[
-                    styles.proCard, 
-                    { 
-                      backgroundColor: surfaceColor,
-                      ...cardShadow,
-                    }
-                  ]}
-                  onPress={() => handleProPress(pro.slug || '')}
-                >
-                  <View style={styles.proAvatar}>
-                    {pro.profile_image_url ? (
-                      <Image source={{ uri: pro.profile_image_url }} style={styles.proAvatarImage} />
-                    ) : (
-                      <View style={[styles.proAvatarPlaceholder, { backgroundColor: COLORS.accent }]}>
-                        <Text style={styles.proAvatarText}>
-                          {(pro.business_name || 'P').charAt(0).toUpperCase()}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  <View style={styles.proInfo}>
-                    <Text style={[styles.proName, { color: isDark ? '#E5E7EB' : '#1F2937' }]}>
-                      {pro.business_name || 'Professional'}
-                    </Text>
-                    <Text style={[styles.proSpecialty, { color: secondaryTextColor }]}>
-                      {pro.category || 'Service Professional'}
-                    </Text>
-                    <View style={styles.verifiedBadge}>
-                      <Ionicons name="checkmark-circle" size={14} color={COLORS.verified} />
-                      <Text style={styles.verifiedText}>Verified</Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity 
-                    style={styles.requestButton}
-                    onPress={() => handleCategoryPress(pro.category || '')}
-                  >
-                    <Text style={styles.requestButtonText}>Request Quote</Text>
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
         </View>
 
         <View style={{ height: 100 }} />
@@ -463,6 +494,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginTop: 4,
+  },
+  heroTagline: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 6,
+    lineHeight: 24,
   },
 
   // Segmented Control
@@ -524,54 +561,102 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Continue Request Card
+  // Continue Request Card - Subtle/Secondary
   continueRequestCard: {
     marginHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 24,
     borderRadius: 12,
     overflow: 'hidden',
   },
-  continueRequestGradient: {
+  continueRequestInner: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
     gap: 12,
+    borderRadius: 12,
   },
   continueRequestContent: {
     flex: 1,
   },
   continueRequestTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
   },
   continueRequestSubtitle: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 12,
     marginTop: 2,
   },
 
-  // Search
-  searchSection: {
+  // The Tavvy Way Section
+  tavvyWaySection: {
     paddingHorizontal: 20,
     marginBottom: 24,
   },
-  searchCard: {
-    borderRadius: 16,
-    padding: 12,
-    gap: 8,
+  valuePropsContainer: {
+    gap: 12,
   },
-  searchInputRow: {
+  valuePropCard: {
+    flexDirection: 'row',
+    padding: 16,
+    borderRadius: 16,
+    gap: 14,
+  },
+  valuePropIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  valuePropContent: {
+    flex: 1,
+  },
+  valuePropTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  valuePropText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+
+  // Best Practices Section
+  bestPracticesSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  practiceCard: {
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 12,
+  },
+  practiceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
     gap: 10,
+    marginBottom: 12,
   },
-  searchInput: {
+  practiceIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  practiceTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  practiceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 6,
+  },
+  practiceText: {
+    fontSize: 14,
     flex: 1,
-    fontSize: 15,
   },
 
   // Categories
@@ -599,73 +684,6 @@ const styles = StyleSheet.create({
   },
   categoryLabel: {
     fontSize: 14,
-    fontWeight: '600',
-  },
-
-  // Pros List
-  prosSection: {
-    paddingHorizontal: 20,
-  },
-  prosList: {
-    gap: 12,
-  },
-  proCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-  },
-  proAvatar: {
-    marginRight: 12,
-  },
-  proAvatarImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-  },
-  proAvatarPlaceholder: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  proAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  proInfo: {
-    flex: 1,
-  },
-  proName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  proSpecialty: {
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  verifiedText: {
-    fontSize: 12,
-    color: COLORS.verified,
-    fontWeight: '500',
-  },
-  requestButton: {
-    backgroundColor: COLORS.accent,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  requestButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
     fontWeight: '600',
   },
 
