@@ -81,6 +81,17 @@ const THRILL_LABELS: Record<string, { label: string; color: string }> = {
 // Placeholder image
 const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800';
 
+// Helper function to determine thrill level from subcategory
+const getThrillLevelFromSubcategory = (subcategory: string | undefined): 'mild' | 'moderate' | 'thrilling' | 'extreme' => {
+  if (!subcategory) return 'moderate';
+  const lower = subcategory.toLowerCase();
+  if (lower.includes('thrill') || lower === 'roller_coaster') return 'extreme';
+  if (lower.includes('water') || lower === 'simulator') return 'thrilling';
+  if (lower === 'dark_ride' || lower === 'boat_ride') return 'moderate';
+  if (lower === 'carousel' || lower === 'train' || lower === 'playground' || lower === 'show' || lower === 'meet_greet') return 'mild';
+  return 'moderate';
+};
+
 export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
   const { theme, isDark } = useThemeContext();
   const [rides, setRides] = useState<Ride[]>([]);
@@ -96,43 +107,48 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
   const loadRides = async () => {
     setLoading(true);
     try {
-      // Build query for rides from tavvy_places
+      // First try tavvy_places, then fallback to places table
+      // Use correct column names: tavvy_category, tavvy_subcategory
       let query = supabase
-        .from('tavvy_places')
-        .select('*')
-        .or('category.ilike.%ride%,category.ilike.%coaster%,category.ilike.%attraction%,subcategory.ilike.%ride%,subcategory.ilike.%coaster%')
+        .from('places')
+        .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos')
+        .eq('tavvy_category', 'attraction')
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(50);
 
-      // Apply filter
+      // Apply filter based on subcategory
       if (filterBy === 'roller_coaster') {
         query = supabase
-          .from('tavvy_places')
-          .select('*')
-          .or('category.ilike.%coaster%,subcategory.ilike.%coaster%')
+          .from('places')
+          .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos')
+          .eq('tavvy_category', 'attraction')
+          .eq('tavvy_subcategory', 'roller_coaster')
           .order('created_at', { ascending: false })
-          .limit(20);
+          .limit(50);
       } else if (filterBy === 'water') {
         query = supabase
-          .from('tavvy_places')
-          .select('*')
-          .or('category.ilike.%water%,subcategory.ilike.%water%')
+          .from('places')
+          .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos')
+          .eq('tavvy_category', 'attraction')
+          .or('tavvy_subcategory.eq.water_ride,tavvy_subcategory.eq.boat_ride')
           .order('created_at', { ascending: false })
-          .limit(20);
+          .limit(50);
       } else if (filterBy === 'family') {
         query = supabase
-          .from('tavvy_places')
-          .select('*')
-          .or('category.ilike.%family%,subcategory.ilike.%family%,thrill_level.eq.mild,thrill_level.eq.moderate')
+          .from('places')
+          .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos')
+          .eq('tavvy_category', 'attraction')
+          .or('tavvy_subcategory.eq.carousel,tavvy_subcategory.eq.train,tavvy_subcategory.eq.spinner,tavvy_subcategory.eq.playground')
           .order('created_at', { ascending: false })
-          .limit(20);
+          .limit(50);
       } else if (filterBy === 'dark') {
         query = supabase
-          .from('tavvy_places')
-          .select('*')
-          .or('category.ilike.%dark%,subcategory.ilike.%dark%')
+          .from('places')
+          .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos')
+          .eq('tavvy_category', 'attraction')
+          .eq('tavvy_subcategory', 'dark_ride')
           .order('created_at', { ascending: false })
-          .limit(20);
+          .limit(50);
       }
 
       const { data, error } = await query;
@@ -141,7 +157,20 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
         console.error('Error loading rides:', error);
         setRides([]);
       } else {
-        setRides(data || []);
+        // Map places data to Ride interface
+        const mappedRides: Ride[] = (data || []).map((place: any) => ({
+          id: place.id,
+          name: place.name,
+          category: place.tavvy_category || 'attraction',
+          subcategory: place.tavvy_subcategory,
+          park_name: place.city,
+          cover_image_url: place.cover_image_url,
+          photos: place.photos,
+          thrill_level: getThrillLevelFromSubcategory(place.tavvy_subcategory),
+          is_must_ride: place.tavvy_subcategory === 'roller_coaster' || place.tavvy_subcategory === 'thrill_ride',
+          is_featured: false,
+        }));
+        setRides(mappedRides);
       }
     } catch (error) {
       console.error('Error loading rides:', error);

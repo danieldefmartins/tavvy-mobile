@@ -24,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { fetchPlaceSignals, SignalAggregate } from '../lib/reviews';
+import { supabase } from '../lib/supabaseClient';
 
 const { width } = Dimensions.get('window');
 
@@ -59,6 +60,56 @@ interface RouteParams {
   rideName?: string;
   parkName?: string;
 }
+
+// Helper functions for ride data
+const getThrillLevelLabel = (subcategory: string | undefined): string => {
+  if (!subcategory) return 'Moderate';
+  const lower = subcategory.toLowerCase();
+  if (lower.includes('thrill') || lower === 'roller_coaster') return 'High Thrill';
+  if (lower.includes('water') || lower === 'simulator') return 'Moderate-High';
+  if (lower === 'dark_ride' || lower === 'boat_ride') return 'Moderate';
+  if (lower === 'carousel' || lower === 'train' || lower === 'show') return 'Mild';
+  return 'Moderate';
+};
+
+const formatSubcategory = (subcategory: string | undefined): string => {
+  if (!subcategory) return 'Attraction';
+  return subcategory
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+const getAudienceFromSubcategory = (subcategory: string | undefined): string => {
+  if (!subcategory) return 'All Ages';
+  const lower = subcategory.toLowerCase();
+  if (lower.includes('thrill') || lower === 'roller_coaster') return 'Teens & Adults';
+  if (lower === 'playground' || lower === 'meet_greet') return 'Kids & Families';
+  return 'All Ages';
+};
+
+const getDefaultImage = (subcategory: string | undefined): string => {
+  if (!subcategory) return 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800';
+  const lower = subcategory.toLowerCase();
+  if (lower.includes('coaster') || lower.includes('thrill')) {
+    return 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800';
+  }
+  if (lower.includes('water') || lower.includes('boat')) {
+    return 'https://images.unsplash.com/photo-1582653291997-079a1c04e5a1?w=800';
+  }
+  if (lower === 'dark_ride') {
+    return 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800';
+  }
+  return 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800';
+};
+
+const extractPhotos = (photos: any): string[] => {
+  if (!photos) return [];
+  if (Array.isArray(photos)) {
+    return photos.map((p: any) => typeof p === 'string' ? p : p.url || p.photo_url || '').filter(Boolean).slice(0, 4);
+  }
+  return [];
+};
 
 // Sample ride data
 const SAMPLE_RIDES: Record<string, RideData> = {
@@ -150,20 +201,50 @@ export default function RideDetailsScreen() {
     }
 
     try {
-      // Get ride data from sample data or create default
-      const rideData = SAMPLE_RIDES[params.rideId] || {
-        id: params.rideId,
-        name: params.rideName?.toUpperCase() || 'RIDE',
-        parkName: params.parkName || 'Theme Park',
-        description: 'Experience this amazing attraction!',
-        image: 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800',
-        thumbnails: [],
-        keyInfo: {
-          thrillLevel: 'Moderate',
-          rideType: 'Attraction',
-          audience: 'All Ages',
-        },
-      };
+      // First try to fetch from Supabase places table
+      const { data: placeData, error: placeError } = await supabase
+        .from('places')
+        .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos')
+        .eq('id', params.rideId)
+        .single();
+
+      let rideData: RideData;
+
+      if (placeData && !placeError) {
+        // Build ride data from Supabase place
+        const thrillLevel = getThrillLevelLabel(placeData.tavvy_subcategory);
+        const rideType = formatSubcategory(placeData.tavvy_subcategory);
+        const audience = getAudienceFromSubcategory(placeData.tavvy_subcategory);
+        
+        rideData = {
+          id: placeData.id,
+          name: placeData.name?.toUpperCase() || 'RIDE',
+          parkName: params.parkName || placeData.city || 'Theme Park',
+          description: `Experience ${placeData.name}, a ${rideType.toLowerCase()} at ${placeData.city || 'this theme park'}.`,
+          image: placeData.cover_image_url || getDefaultImage(placeData.tavvy_subcategory),
+          thumbnails: extractPhotos(placeData.photos),
+          keyInfo: {
+            thrillLevel,
+            rideType,
+            audience,
+          },
+        };
+      } else {
+        // Fallback to sample data or default
+        rideData = SAMPLE_RIDES[params.rideId] || {
+          id: params.rideId,
+          name: params.rideName?.toUpperCase() || 'RIDE',
+          parkName: params.parkName || 'Theme Park',
+          description: 'Experience this amazing attraction!',
+          image: 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800',
+          thumbnails: [],
+          keyInfo: {
+            thrillLevel: 'Moderate',
+            rideType: 'Attraction',
+            audience: 'All Ages',
+          },
+        };
+      }
 
       setRide(rideData);
 

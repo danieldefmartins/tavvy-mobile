@@ -344,7 +344,7 @@ export default function CardSettingsScreen() {
           ) : (
             <TouchableOpacity 
               style={styles.upgradeBox}
-              onPress={() => Alert.alert('Coming Soon', 'Subscription management will be available in a future update.')}
+              onPress={() => navigation.navigate('ECardPremiumUpsell')}
             >
               <Ionicons name="lock-closed" size={24} color="#8B5CF6" />
               <View style={styles.upgradeContent}>

@@ -154,6 +154,7 @@ export default function OnTheGoScreen() {
   const [scheduledPlaces, setScheduledPlaces] = useState<ScheduledPlace[]>([]);
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedSession, setSelectedSession] = useState<LiveSession | null>(null);
+  const [selectedScheduledPlace, setSelectedScheduledPlace] = useState<ScheduledPlace | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [showTray, setShowTray] = useState(false);
   
@@ -247,8 +248,9 @@ export default function OnTheGoScreen() {
     return () => clearInterval(interval);
   }, [fetchSessions]);
 
-  // Handle marker press
+  // Handle marker press for live session
   const handleMarkerPress = (session: LiveSession) => {
+    setSelectedScheduledPlace(null);
     setSelectedSession(session);
     if (session.session_lng && session.session_lat) {
       cameraRef.current?.setCamera({
@@ -257,6 +259,24 @@ export default function OnTheGoScreen() {
         animationDuration: 500,
       });
     }
+  };
+
+  // Handle marker press for scheduled place (offline with upcoming events)
+  const handleScheduledPlacePress = (place: ScheduledPlace) => {
+    setSelectedSession(null);
+    setSelectedScheduledPlace(place);
+    if (place.next_event) {
+      cameraRef.current?.setCamera({
+        centerCoordinate: [place.next_event.longitude, place.next_event.latitude],
+        zoomLevel: 15,
+        animationDuration: 500,
+      });
+    }
+  };
+
+  // Navigate to schedule screen
+  const viewSchedule = (tavvyPlaceId: string, placeName: string) => {
+    navigation.navigate('PlaceSchedule', { tavvyPlaceId, placeName });
   };
 
   // Get directions
@@ -375,9 +395,10 @@ export default function OnTheGoScreen() {
                   key={`scheduled-${place.tavvy_place_id}`}
                   id={`scheduled-${place.tavvy_place_id}`}
                   coordinate={[place.next_event.longitude, place.next_event.latitude]}
+                  onSelected={() => handleScheduledPlacePress(place)}
                 >
                   <View style={[styles.scheduledMarker, { borderColor: getMarkerColor(place.category) }]}>
-                    <Ionicons name={getMarkerIcon(place.category) as any} size={16} color={getMarkerColor(place.category)} />
+                    <Ionicons name="calendar" size={16} color={getMarkerColor(place.category)} />
                   </View>
                 </MapLibreGL.PointAnnotation>
               )
@@ -519,9 +540,61 @@ export default function OnTheGoScreen() {
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.directionsButton} onPress={() => getDirections(selectedSession)}>
-                <Ionicons name="navigate" size={20} color="#FFFFFF" />
-                <Text style={styles.directionsButtonText}>Get Directions</Text>
+              <View style={styles.detailActions}>
+                <TouchableOpacity style={styles.directionsButton} onPress={() => getDirections(selectedSession)}>
+                  <Ionicons name="navigate" size={20} color="#FFFFFF" />
+                  <Text style={styles.directionsButtonText}>Get Directions</Text>
+                </TouchableOpacity>
+                {selectedSession.has_schedule && (
+                  <TouchableOpacity 
+                    style={styles.scheduleLink} 
+                    onPress={() => viewSchedule(selectedSession.tavvy_place_id, selectedSession.place_name)}
+                  >
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.accent} />
+                    <Text style={[styles.scheduleLinkText, { color: COLORS.accent }]}>Check Schedule</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Selected Scheduled Place Detail Card */}
+          {selectedScheduledPlace && (
+            <View style={[styles.detailCard, { backgroundColor: glassyBg }]}>
+              <TouchableOpacity style={styles.detailClose} onPress={() => setSelectedScheduledPlace(null)}>
+                <Ionicons name="close" size={22} color={secondaryTextColor} />
+              </TouchableOpacity>
+              
+              <View style={styles.detailHeader}>
+                {selectedScheduledPlace.cover_image_url ? (
+                  <Image source={{ uri: selectedScheduledPlace.cover_image_url }} style={styles.detailImage} />
+                ) : (
+                  <View style={[styles.detailImage, { backgroundColor: getMarkerColor(selectedScheduledPlace.category) }]}>
+                    <Ionicons name={getMarkerIcon(selectedScheduledPlace.category) as any} size={28} color="#FFFFFF" />
+                  </View>
+                )}
+                <View style={styles.detailInfo}>
+                  <View style={styles.offlineBadge}>
+                    <Ionicons name="time-outline" size={12} color="#6B7280" />
+                    <Text style={styles.offlineText}>OFFLINE</Text>
+                  </View>
+                  <Text style={[styles.detailName, { color: textColor }]} numberOfLines={1}>
+                    {selectedScheduledPlace.place_name}
+                  </Text>
+                  {selectedScheduledPlace.next_event && (
+                    <Text style={[styles.detailLocation, { color: secondaryTextColor }]} numberOfLines={1}>
+                      📅 Next: {selectedScheduledPlace.next_event_label || selectedScheduledPlace.next_event.location_name}
+                    </Text>
+                  )}
+                </View>
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.directionsButton, { backgroundColor: COLORS.accent }]} 
+                onPress={() => viewSchedule(selectedScheduledPlace.tavvy_place_id, selectedScheduledPlace.place_name)}
+              >
+                <Ionicons name="calendar" size={20} color="#FFFFFF" />
+                <Text style={styles.directionsButtonText}>Check Schedule</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -811,5 +884,34 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: COLORS.live,
+  },
+
+  // Detail Actions
+  detailActions: {
+    gap: 12,
+  },
+  scheduleLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+  },
+  scheduleLinkText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  // Offline Badge
+  offlineBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  offlineText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6B7280',
   },
 });
