@@ -110,6 +110,7 @@ import RealtorMatchCompleteScreen from './screens/RealtorMatchCompleteScreen';
 // ========== MISSING SCREENS (Referenced but not in navigation) ==========
 import SettingsScreen from './screens/SettingsScreen';
 import HelpSupportScreen from './screens/HelpSupportScreen';
+import CommunityGuidelinesScreen from './screens/CommunityGuidelinesScreen';
 import ProsLeadDetailScreen from './screens/ProsLeadDetailScreen';
 
 // ========== ON THE GO SCREEN ==========
@@ -123,6 +124,7 @@ import StoryModerationScreen from './screens/StoryModerationScreen';
 import StoryAnalyticsScreen from './screens/StoryAnalyticsScreen';
 import QuickFindResultsScreen from './screens/QuickFindResultsScreen';
 import HappeningNowScreen from './screens/HappeningNowScreen';
+import ExperiencePathDetailScreen from './screens/ExperiencePathDetailScreen';
 import WalletScreen from './screens/WalletScreen';
 import ProCardDetailScreen from './screens/ProCardDetailScreen';
 import CreateDigitalCardScreen from './screens/CreateDigitalCardScreen';
@@ -253,6 +255,7 @@ function AppsStack() {
 
       {/* Auth */}
       <MenuStackNav.Screen name="Login" component={LoginScreen} />
+      <MenuStackNav.Screen name="SignUp" component={SignUpScreen} />
       <MenuStackNav.Screen name="ProsLogin" component={ProsLoginScreen} />
 
       {/* Shared screens accessible from menu */}
@@ -310,9 +313,11 @@ function AppsStack() {
       {/* Settings and Help - referenced by other screens */}
       <MenuStackNav.Screen name="Settings" component={SettingsScreen} />
       <MenuStackNav.Screen name="HelpSupport" component={HelpSupportScreen} />
+      <MenuStackNav.Screen name="CommunityGuidelines" component={CommunityGuidelinesScreen} />
       
       {/* Happening Now - accessible from Apps */}
       <MenuStackNav.Screen name="HappeningNow" component={HappeningNowScreen} />
+      <MenuStackNav.Screen name="ExperiencePathDetail" component={ExperiencePathDetailScreen} />
       
       {/* On The Go - Live mobile businesses map */}
       <MenuStackNav.Screen name="OnTheGo" component={OnTheGoScreen} />
