@@ -3,9 +3,11 @@
  * Explore themed universes (theme parks, airports, campuses, etc.)
  * Path: screens/UniverseDiscoveryScreen.tsx
  *
- * UNIFIED HEADER DESIGN - Teal gradient (#0EA5E9 → #14B8A6)
- * 
- * NOW CONNECTED TO SUPABASE - Fetches real data from atlas_universes table
+ * PREMIUM DARK MODE REDESIGN - January 2026
+ * - Minimalist header with tagline
+ * - Full-width featured universe hero
+ * - Icon-driven category filters
+ * - 2x2 popular universes grid with activity signals
  */
 
 import React, { useState, useEffect } from 'react';
@@ -18,18 +20,44 @@ import {
   TouchableOpacity,
   Dimensions,
   ActivityIndicator,
+  TextInput,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabaseClient';
 import { getCategories, type AtlasCategory, type AtlasUniverse } from '../lib/atlas';
-import { UnifiedHeader } from '../components/UnifiedHeader';
 
 const { width } = Dimensions.get('window');
 
+// Design System Colors
+const COLORS = {
+  background: '#0F0F0F',
+  backgroundLight: '#FAFAFA',
+  surface: '#111827',
+  surfaceLight: '#FFFFFF',
+  glassy: '#1A1A1A',
+  accent: '#667EEA',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#9CA3AF',
+  textMuted: '#6B7280',
+  activityHigh: '#EF4444',
+  activityMedium: '#F59E0B',
+};
+
 // Default placeholder image when no image is available
 const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800';
+
+// Category icons for the filter buttons
+const CATEGORY_ICONS: Record<string, { icon: string; label: string }> = {
+  'theme-parks': { icon: 'rocket-outline', label: 'Theme Parks' },
+  'airports': { icon: 'airplane-outline', label: 'Airports' },
+  'national-parks': { icon: 'leaf-outline', label: 'Parks' },
+  'cities': { icon: 'business-outline', label: 'Cities' },
+};
 
 export default function UniverseDiscoveryScreen() {
   const navigation = useNavigation<any>();
@@ -41,7 +69,6 @@ export default function UniverseDiscoveryScreen() {
   // Real data from Supabase
   const [featuredUniverse, setFeaturedUniverse] = useState<AtlasUniverse | null>(null);
   const [popularUniverses, setPopularUniverses] = useState<AtlasUniverse[]>([]);
-  const [nearbyUniverses, setNearbyUniverses] = useState<AtlasUniverse[]>([]);
   const [categories, setCategories] = useState<AtlasCategory[]>([]);
 
   // Fetch data on mount
@@ -57,11 +84,8 @@ export default function UniverseDiscoveryScreen() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Load categories
       const cats = await getCategories();
       setCategories(cats);
-
-      // Load universes
       await loadUniverses();
     } catch (error) {
       console.error('Error loading universe data:', error);
@@ -72,7 +96,6 @@ export default function UniverseDiscoveryScreen() {
 
   const loadUniverses = async () => {
     try {
-      // Build query for featured universe
       let featuredQuery = supabase
         .from('atlas_universes')
         .select('*')
@@ -81,14 +104,12 @@ export default function UniverseDiscoveryScreen() {
         .order('published_at', { ascending: false })
         .limit(1);
 
-      // Build query for all universes
       let universesQuery = supabase
         .from('atlas_universes')
         .select('*')
         .eq('status', 'published')
         .order('total_signals', { ascending: false });
 
-      // Apply category filter if not "All"
       if (activeCategory !== 'All') {
         const selectedCat = categories.find(c => c.name === activeCategory);
         if (selectedCat) {
@@ -97,67 +118,48 @@ export default function UniverseDiscoveryScreen() {
         }
       }
 
-      // Execute queries
       const [featuredResult, universesResult] = await Promise.all([
         featuredQuery.single(),
-        universesQuery.limit(10),
+        universesQuery.limit(4),
       ]);
 
-      // Set featured universe
       if (featuredResult.data) {
         setFeaturedUniverse(featuredResult.data);
       } else {
         setFeaturedUniverse(null);
       }
 
-      // Split universes into popular and nearby (for now, just split the list)
-      const allUniverses = universesResult.data || [];
-      setPopularUniverses(allUniverses.slice(0, 4));
-      setNearbyUniverses(allUniverses.slice(0, 3));
-
+      setPopularUniverses(universesResult.data || []);
     } catch (error) {
       console.error('Error loading universes:', error);
     }
   };
 
-  // Build category chips from real data
-  const categoryChips = [
-    { id: 'All', label: 'All', icon: null },
-    ...categories.map(cat => ({
-      id: cat.name,
-      label: cat.name,
-      icon: getCategoryIcon(cat.slug),
-    })),
-  ];
+  // Get activity level based on signals
+  const getActivityLevel = (signals: number) => {
+    if (signals > 100) return { label: 'High Activity', color: COLORS.activityHigh };
+    if (signals > 50) return { label: 'Moderate', color: COLORS.activityMedium };
+    return { label: 'Active', color: COLORS.accent };
+  };
 
-  // Map category slug to icon
-  function getCategoryIcon(slug: string): string | null {
-    const iconMap: Record<string, string> = {
-      'theme-parks': 'ticket-outline',
-      'airports': 'airplane-outline',
-      'national-parks': 'leaf-outline',
-      'cities': 'business-outline',
-      'food-drink': 'restaurant-outline',
-      'travel-tips': 'compass-outline',
-    };
-    return iconMap[slug] || null;
-  }
+  // Get category type from universe
+  const getCategoryType = (categoryId: string | null) => {
+    if (!categoryId) return 'Universe';
+    const cat = categories.find(c => c.id === categoryId);
+    return cat?.name || 'Universe';
+  };
 
-  // Empty state component
-  const EmptyState = ({ message }: { message: string }) => (
-    <View style={styles.emptyState}>
-      <Ionicons name="planet-outline" size={48} color="#9CA3AF" />
-      <Text style={[styles.emptyStateText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-        {message}
-      </Text>
-    </View>
-  );
+  const backgroundColor = isDark ? COLORS.background : COLORS.backgroundLight;
+  const surfaceColor = isDark ? COLORS.surface : COLORS.surfaceLight;
+  const textColor = isDark ? COLORS.textPrimary : '#1F2937';
+  const secondaryTextColor = isDark ? COLORS.textSecondary : COLORS.textMuted;
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.loadingContainer, { backgroundColor: isDark ? theme.background : '#F9FAFB' }]}>
-        <ActivityIndicator size="large" color="#0EA5E9" />
-        <Text style={[styles.loadingText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor }]}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <ActivityIndicator size="large" color={COLORS.accent} />
+        <Text style={[styles.loadingText, { color: secondaryTextColor }]}>
           Loading universes...
         </Text>
       </View>
@@ -165,446 +167,306 @@ export default function UniverseDiscoveryScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F9FAFB' }]}>
-      {/* Unified Header */}
-      <UnifiedHeader
-        screenKey="universes"
-        title="Universes"
-        searchPlaceholder="Find a universe..."
-        onSearch={setSearchQuery}
-        showBackButton={false}
-      />
-
-      {/* Filter Bar - Realtors-style design */}
-      <View style={styles.filterBarContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterBarContent}>
-          {categoryChips.map((cat) => {
-            const isActive = activeCategory === cat.id;
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                style={[
-                  styles.filterPill,
-                  isActive && styles.filterPillActive,
-                ]}
-                onPress={() => setActiveCategory(cat.id)}
-              >
-                {cat.icon && (
-                  <Ionicons
-                    name={cat.icon as any}
-                    size={16}
-                    color={isActive ? '#FFFFFF' : '#0EA5E9'}
-                  />
-                )}
-                <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>{cat.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-
-        {/* Featured Universe */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#1F2937' }]}>Featured Universe</Text>
-
-          {featuredUniverse ? (
-            <TouchableOpacity
-              style={styles.featuredCard}
-              onPress={() => navigation.navigate('UniverseLanding', { universeId: featuredUniverse.id })}
-            >
-              <Image
-                source={{ uri: featuredUniverse.banner_image_url || PLACEHOLDER_IMAGE }}
-                style={styles.featuredImage}
-              />
-              <View style={styles.featuredOverlay}>
-                <View style={styles.popularTag}>
-                  <Ionicons name="flame" size={12} color="#F59E0B" />
-                  <Text style={styles.popularTagText}>Popular</Text>
-                </View>
-
-                <Text style={styles.featuredName}>{featuredUniverse.name}</Text>
-
-                <View style={styles.featuredMeta}>
-                  <Ionicons name="location" size={14} color="#EF4444" />
-                  <Text style={styles.featuredMetaText}>{featuredUniverse.location || 'Location TBD'}</Text>
-                  <Text style={styles.featuredDot}>•</Text>
-                  <Text style={styles.featuredMetaText}>{featuredUniverse.place_count} Places</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ) : (
-            <EmptyState message="No featured universes yet. Check back soon!" />
-          )}
+    <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: textColor }]}>Universes</Text>
+          <Text style={[styles.tagline, { color: COLORS.accent }]}>
+            Explore curated worlds.
+          </Text>
         </View>
 
-        {/* Nearby Universes */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionHeaderLeft}>
-              <Ionicons name="navigate" size={18} color="#0EA5E9" />
-              <Text style={[styles.sectionTitleInline, { color: isDark ? theme.text : '#1F2937' }]}>
-                Nearby Universes
-              </Text>
-            </View>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>See Map</Text>
-            </TouchableOpacity>
+        {/* Search Bar */}
+        <View style={styles.searchSection}>
+          <View style={[styles.searchBar, { backgroundColor: isDark ? COLORS.glassy : '#F3F4F6' }]}>
+            <Ionicons name="search" size={20} color={secondaryTextColor} />
+            <TextInput
+              style={[styles.searchInput, { color: textColor }]}
+              placeholder="Search parks, airports, cities..."
+              placeholderTextColor={secondaryTextColor}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
           </View>
-
-          {nearbyUniverses.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.nearbyContainer}>
-              {nearbyUniverses.map((item) => (
-                <TouchableOpacity 
-                  key={item.id} 
-                  style={[styles.nearbyCard, { backgroundColor: isDark ? theme.surface : '#111827' }]}
-                  onPress={() => navigation.navigate('UniverseLanding', { universeId: item.id })}
-                >
-                  <Image source={{ uri: item.thumbnail_image_url || PLACEHOLDER_IMAGE }} style={styles.nearbyImage} />
-                  <View style={styles.nearbyContent}>
-                    <Text style={[styles.nearbyName, { color: '#E5E7EB' }]} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    <View style={styles.nearbyMeta}>
-                      <Text style={[styles.nearbyType, { color: '#9CA3AF' }]}>{item.place_count} places</Text>
-                      <Text style={styles.nearbyDist}>{item.total_signals || 0} signals</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          ) : (
-            <EmptyState message="No nearby universes found" />
-          )}
         </View>
 
-        {/* Popular Grid */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#1F2937' }]}>Popular Destinations</Text>
+        {/* Featured Universe Hero */}
+        {featuredUniverse && (
+          <TouchableOpacity
+            style={styles.featuredCard}
+            onPress={() => navigation.navigate('UniverseLanding', { universeId: featuredUniverse.id })}
+            activeOpacity={0.9}
+          >
+            <Image
+              source={{ uri: featuredUniverse.banner_image_url || PLACEHOLDER_IMAGE }}
+              style={styles.featuredImage}
+            />
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.8)']}
+              style={styles.featuredGradient}
+            >
+              <View style={styles.featuredLabel}>
+                <Text style={styles.featuredLabelText}>FEATURED UNIVERSE</Text>
+              </View>
+              <Text style={styles.featuredName}>{featuredUniverse.name}</Text>
+              <Text style={styles.featuredMeta}>
+                {getCategoryType(featuredUniverse.category_id)} • {featuredUniverse.location || 'Explore Now'}
+              </Text>
+              <TouchableOpacity 
+                style={styles.exploreButton}
+                onPress={() => navigation.navigate('UniverseLanding', { universeId: featuredUniverse.id })}
+              >
+                <Text style={styles.exploreButtonText}>Explore Universe</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
 
-          {popularUniverses.length > 0 ? (
-            <View style={styles.gridContainer}>
-              {popularUniverses.map((item) => (
-                <TouchableOpacity 
-                  key={item.id} 
-                  style={[styles.gridCard, { backgroundColor: isDark ? theme.surface : '#111827' }]}
-                  onPress={() => navigation.navigate('UniverseLanding', { universeId: item.id })}
+        {/* Filter by Category */}
+        <View style={styles.filterSection}>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>Filter by Category</Text>
+          <View style={styles.filterGrid}>
+            {Object.entries(CATEGORY_ICONS).map(([slug, { icon, label }]) => {
+              const isActive = activeCategory === label;
+              return (
+                <TouchableOpacity
+                  key={slug}
+                  style={[
+                    styles.filterButton,
+                    { backgroundColor: isDark ? COLORS.glassy : '#F3F4F6' },
+                    isActive && styles.filterButtonActive,
+                  ]}
+                  onPress={() => setActiveCategory(isActive ? 'All' : label)}
                 >
-                  <Image source={{ uri: item.thumbnail_image_url || PLACEHOLDER_IMAGE }} style={styles.gridImage} />
+                  <Ionicons
+                    name={icon as any}
+                    size={24}
+                    color={isActive ? COLORS.accent : secondaryTextColor}
+                  />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Popular Universes Grid */}
+        <View style={styles.popularSection}>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>Popular Universes</Text>
+          <View style={styles.gridContainer}>
+            {popularUniverses.map((universe) => {
+              const activity = getActivityLevel(universe.total_signals || 0);
+              return (
+                <TouchableOpacity
+                  key={universe.id}
+                  style={[styles.gridCard, { backgroundColor: surfaceColor }]}
+                  onPress={() => navigation.navigate('UniverseLanding', { universeId: universe.id })}
+                  activeOpacity={0.8}
+                >
+                  <Image
+                    source={{ uri: universe.thumbnail_image_url || PLACEHOLDER_IMAGE }}
+                    style={styles.gridImage}
+                  />
                   <View style={styles.gridContent}>
-                    <Text style={[styles.gridName, { color: '#E5E7EB' }]} numberOfLines={1}>
-                      {item.name}
+                    <Text style={[styles.gridName, { color: isDark ? '#E5E7EB' : '#1F2937' }]} numberOfLines={1}>
+                      {universe.name}
                     </Text>
-                    <Text style={[styles.gridLocation, { color: '#9CA3AF' }]} numberOfLines={1}>
-                      {item.location || 'Location TBD'}
-                    </Text>
-                    <View style={styles.gridFooter}>
-                      <Text style={styles.gridType}>{item.article_count || 0} articles</Text>
-                      <View style={[styles.gridBadge, { backgroundColor: '#0B1220' }]}>
-                        <Text style={[styles.gridBadgeText, { color: '#E5E7EB' }]}>{item.place_count}</Text>
-                      </View>
+                    <View style={styles.activityBadge}>
+                      <Text style={styles.activityIcon}>🔥</Text>
+                      <Text style={[styles.activityText, { color: activity.color }]}>
+                        {activity.label}
+                      </Text>
                     </View>
                   </View>
                 </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            <EmptyState message="No popular destinations yet" />
-          )}
+              );
+            })}
+          </View>
         </View>
 
+        {/* Bottom Spacing */}
         <View style={{ height: 100 }} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-
+  container: {
+    flex: 1,
+  },
   loadingContainer: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   loadingText: {
     marginTop: 12,
     fontSize: 14,
   },
+  scrollContent: {
+    paddingBottom: 20,
+  },
 
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
+  // Header
+  header: {
     paddingHorizontal: 20,
-  },
-
-  emptyStateText: {
-    marginTop: 12,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-
-  // Content
-  scrollContent: { paddingTop: 16 },
-
-  // Filter Bar - Realtors-style design with elegant white shade separator
-  filterBarContainer: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  filterBarContent: {
-    paddingHorizontal: 16,
-    gap: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  filterPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(14, 165, 233, 0.1)',
-    gap: 6,
-  },
-  filterPillActive: {
-    backgroundColor: '#0EA5E9',
-  },
-  filterPillText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0EA5E9',
-  },
-  filterPillTextActive: {
-    color: '#FFFFFF',
-  },
-
-  // Legacy category styles (kept for compatibility)
-  categoriesContainer: {
-    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 16,
-    gap: 8,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '700',
+  },
+  tagline: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 4,
   },
 
-  categoryChip: {
+  // Search
+  searchSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 14,
+    borderRadius: 16,
+    gap: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+  },
+
+  // Featured Card
+  featuredCard: {
+    marginHorizontal: 20,
     borderRadius: 20,
-    marginRight: 8,
-  },
-
-  categoryChipActive: {
-    backgroundColor: '#0EA5E9',
-  },
-
-  categoryText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
-  // Sections
-  section: {
-    paddingHorizontal: 16,
+    overflow: 'hidden',
+    height: 220,
     marginBottom: 24,
   },
+  featuredImage: {
+    width: '100%',
+    height: '100%',
+  },
+  featuredGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+    paddingTop: 60,
+  },
+  featuredLabel: {
+    backgroundColor: COLORS.accent,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  featuredLabelText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  featuredName: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  featuredMeta: {
+    color: '#E5E7EB',
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  exploreButton: {
+    backgroundColor: COLORS.accent,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  exploreButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 
+  // Filter Section
+  filterSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 12,
   },
-
-  sectionHeader: {
+  filterGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    gap: 12,
   },
-
-  sectionHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-
-  sectionTitleInline: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-
-  seeAllText: {
-    fontSize: 14,
-    color: '#0EA5E9',
-    fontWeight: '600',
-  },
-
-  // Featured Card
-  featuredCard: {
+  filterButton: {
+    width: 56,
+    height: 56,
     borderRadius: 16,
-    overflow: 'hidden',
-    height: 200,
-  },
-
-  featuredImage: {
-    width: '100%',
-    height: '100%',
-  },
-
-  featuredOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-
-  popularTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-  },
-
-  popularTagText: {
-    color: '#F59E0B',
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-
-  featuredName: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-
-  featuredMeta: {
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-
-  featuredMetaText: {
-    color: '#E5E7EB',
-    fontSize: 13,
-    marginLeft: 4,
+  filterButtonActive: {
+    borderWidth: 2,
+    borderColor: COLORS.accent,
   },
 
-  featuredDot: {
-    color: '#9CA3AF',
-    marginHorizontal: 8,
+  // Popular Section
+  popularSection: {
+    paddingHorizontal: 20,
   },
-
-  // Nearby Cards
-  nearbyContainer: {
-    paddingRight: 16,
-  },
-
-  nearbyCard: {
-    width: 160,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginRight: 12,
-  },
-
-  nearbyImage: {
-    width: '100%',
-    height: 100,
-  },
-
-  nearbyContent: {
-    padding: 12,
-  },
-
-  nearbyName: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-
-  nearbyMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-
-  nearbyType: {
-    fontSize: 12,
-  },
-
-  nearbyDist: {
-    fontSize: 12,
-    color: '#0EA5E9',
-  },
-
-  // Grid Cards
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-
   gridCard: {
-    width: (width - 48) / 2,
-    borderRadius: 12,
+    width: (width - 52) / 2,
+    borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 12,
   },
-
   gridImage: {
     width: '100%',
     height: 100,
   },
-
   gridContent: {
     padding: 12,
   },
-
   gridName: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 2,
+    marginBottom: 6,
   },
-
-  gridLocation: {
-    fontSize: 12,
-    marginBottom: 8,
-  },
-
-  gridFooter: {
+  activityBadge: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 4,
   },
-
-  gridType: {
-    fontSize: 11,
-    color: '#9CA3AF',
+  activityIcon: {
+    fontSize: 12,
   },
-
-  gridBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-
-  gridBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+  activityText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

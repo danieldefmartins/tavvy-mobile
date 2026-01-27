@@ -3,15 +3,12 @@
  * Dedicated map view for On The Go mobile businesses
  * Path: screens/OnTheGoScreen.tsx
  *
- * FEATURES:
- * - Full-screen map showing all live On The Go businesses
- * - Purple gradient header with search bar (standardized design)
- * - Filter bar with white shade separator effect
- * - Category filtering (Food Trucks, Mobile Services, etc.)
- * - Real-time updates (refreshes every 30 seconds)
- * - Pulsing markers for live businesses
- * - Session details bottom sheet
- * - Navigation to business location
+ * PREMIUM DARK MODE REDESIGN - January 2026
+ * - Full-screen map as the hero
+ * - Floating translucent UI elements
+ * - Glassy filter pills
+ * - Pulsing live markers
+ * - Collapsible "Live Now" tray
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -37,28 +34,30 @@ import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabaseClient';
-import { UnifiedHeader } from '../components/UnifiedHeader';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Supabase Edge Function URL
 const SUPABASE_URL = 'https://scasgwrikoqdwlwlwcff.supabase.co';
 
-// Map style
-const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
+// Map style - dark mode
+const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark';
+const MAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/liberty';
 
-// On The Go Purple Colors
-const OnTheGoColors = {
-  primary: '#7C3AED',      // Purple
-  primaryDark: '#6D28D9',  // Darker purple
-  primaryLight: '#A78BFA', // Lighter purple
-  background: '#F8F9FA',
-  cardBg: '#FFFFFF',
-  text: '#1F2937',
-  textLight: '#6B7280',
-  textMuted: '#9CA3AF',
+// Design System Colors
+const COLORS = {
+  background: '#0F0F0F',
+  backgroundLight: '#FAFAFA',
+  surface: '#111827',
+  surfaceLight: '#FFFFFF',
+  glassy: 'rgba(26, 26, 26, 0.85)',
+  glassyLight: 'rgba(255, 255, 255, 0.9)',
+  accent: '#667EEA',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#9CA3AF',
+  textMuted: '#6B7280',
+  live: '#EF4444',
   success: '#10B981',
-  border: '#E5E7EB',
 };
 
 // Category icons mapping
@@ -85,14 +84,12 @@ const CATEGORY_COLORS: Record<string, string> = {
   'default': '#10B981',
 };
 
-// Filter categories for the filter bar
+// Filter categories
 const FILTER_CATEGORIES = [
   { id: 'all', name: 'All', icon: 'grid-outline' },
   { id: 'live', name: 'Live Now', icon: 'radio-outline' },
-  { id: 'food-trucks', name: 'Food Trucks', icon: 'fast-food-outline' },
+  { id: 'food-trucks', name: 'Food', icon: 'fast-food-outline' },
   { id: 'coffee', name: 'Coffee', icon: 'cafe-outline' },
-  { id: 'services', name: 'Services', icon: 'construct-outline' },
-  { id: 'pop-ups', name: 'Pop-ups', icon: 'storefront-outline' },
 ];
 
 interface LiveSession {
@@ -155,22 +152,21 @@ export default function OnTheGoScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [sessions, setSessions] = useState<LiveSession[]>([]);
   const [scheduledPlaces, setScheduledPlaces] = useState<ScheduledPlace[]>([]);
-  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedSession, setSelectedSession] = useState<LiveSession | null>(null);
-  const [selectedScheduledPlace, setSelectedScheduledPlace] = useState<ScheduledPlace | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [showTray, setShowTray] = useState(false);
   
   // Animation for pulsing markers
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const trayAnim = useRef(new Animated.Value(0)).current;
 
   // Start pulse animation
   useEffect(() => {
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.2,
+          toValue: 1.3,
           duration: 1000,
           useNativeDriver: true,
         }),
@@ -185,6 +181,15 @@ export default function OnTheGoScreen() {
     return () => pulse.stop();
   }, []);
 
+  // Toggle tray animation
+  useEffect(() => {
+    Animated.spring(trayAnim, {
+      toValue: showTray ? 1 : 0,
+      useNativeDriver: true,
+      friction: 8,
+    }).start();
+  }, [showTray]);
+
   // Get user location
   useEffect(() => {
     (async () => {
@@ -193,18 +198,16 @@ export default function OnTheGoScreen() {
         const location = await Location.getCurrentPositionAsync({});
         setUserLocation([location.coords.longitude, location.coords.latitude]);
       } else {
-        // Default to Austin, TX
-        setUserLocation([-97.7431, 30.2672]);
+        setUserLocation([-97.7431, 30.2672]); // Default to Austin, TX
       }
     })();
   }, []);
 
-  // Fetch live sessions and scheduled places
+  // Fetch live sessions
   const fetchSessions = useCallback(async () => {
     try {
       let url = `${SUPABASE_URL}/functions/v1/live-onthego-map-data?include_scheduled=true`;
       
-      // Map filter to category for API
       const categoryMap: Record<string, string> = {
         'food-trucks': 'Food Trucks',
         'coffee': 'Coffee',
@@ -220,10 +223,8 @@ export default function OnTheGoScreen() {
       const data: MapDataResponse = await response.json();
       
       if (data.success) {
-        // Add is_live: true to all sessions for consistency
         const sessionsWithLive = data.sessions.map(s => ({ ...s, is_live: true }));
         
-        // If "live" filter is selected, only show live sessions
         if (selectedFilter === 'live') {
           setSessions(sessionsWithLive);
           setScheduledPlaces([]);
@@ -231,7 +232,6 @@ export default function OnTheGoScreen() {
           setSessions(sessionsWithLive);
           setScheduledPlaces(data.scheduled_places || []);
         }
-        setAvailableCategories(data.available_categories);
       }
     } catch (error) {
       console.error('Failed to fetch sessions:', error);
@@ -243,15 +243,13 @@ export default function OnTheGoScreen() {
   // Initial fetch and periodic refresh
   useEffect(() => {
     fetchSessions();
-    const interval = setInterval(fetchSessions, 30000); // Refresh every 30 seconds
+    const interval = setInterval(fetchSessions, 30000);
     return () => clearInterval(interval);
   }, [fetchSessions]);
 
-  // Handle marker press for live session
+  // Handle marker press
   const handleMarkerPress = (session: LiveSession) => {
-    setSelectedScheduledPlace(null);
     setSelectedSession(session);
-    // Center map on selected session
     if (session.session_lng && session.session_lat) {
       cameraRef.current?.setCamera({
         centerCoordinate: [session.session_lng, session.session_lat],
@@ -261,37 +259,13 @@ export default function OnTheGoScreen() {
     }
   };
 
-  // Handle marker press for scheduled place (offline with upcoming events)
-  const handleScheduledPlacePress = (place: ScheduledPlace) => {
-    setSelectedSession(null);
-    setSelectedScheduledPlace(place);
-    // Center map on next event location
-    if (place.next_event) {
-      cameraRef.current?.setCamera({
-        centerCoordinate: [place.next_event.longitude, place.next_event.latitude],
-        zoomLevel: 15,
-        animationDuration: 500,
-      });
-    }
-  };
-
-  // Navigate to schedule screen
-  const viewSchedule = (tavvyPlaceId: string, placeName: string) => {
-    navigation.navigate('PlaceSchedule', { tavvyPlaceId, placeName });
-  };
-
-  // Get directions to session
+  // Get directions
   const getDirections = (session: LiveSession) => {
     const url = Platform.select({
       ios: `maps://app?daddr=${session.session_lat},${session.session_lng}`,
       android: `google.navigation:q=${session.session_lat},${session.session_lng}`,
     });
     if (url) Linking.openURL(url);
-  };
-
-  // Call business
-  const callBusiness = (phone: string) => {
-    Linking.openURL(`tel:${phone}`);
   };
 
   // Calculate time remaining
@@ -309,19 +283,11 @@ export default function OnTheGoScreen() {
     return `${minutes}m left`;
   };
 
-  // Get marker icon
-  const getMarkerIcon = (category?: string) => {
-    if (!category) return CATEGORY_ICONS.default;
-    return CATEGORY_ICONS[category] || CATEGORY_ICONS.default;
-  };
+  // Get marker icon/color
+  const getMarkerIcon = (category?: string) => CATEGORY_ICONS[category || 'default'] || CATEGORY_ICONS.default;
+  const getMarkerColor = (category?: string) => CATEGORY_COLORS[category || 'default'] || CATEGORY_COLORS.default;
 
-  // Get marker color
-  const getMarkerColor = (category?: string) => {
-    if (!category) return CATEGORY_COLORS.default;
-    return CATEGORY_COLORS[category] || CATEGORY_COLORS.default;
-  };
-
-  // Center on user location
+  // Center on user
   const centerOnUser = () => {
     if (userLocation) {
       cameraRef.current?.setCamera({
@@ -332,397 +298,224 @@ export default function OnTheGoScreen() {
     }
   };
 
-  // Handle search
-  const handleSearch = (text: string) => {
-    setSearchQuery(text);
-    // Could implement search filtering here
-  };
+  const glassyBg = isDark ? COLORS.glassy : COLORS.glassyLight;
+  const textColor = isDark ? COLORS.textPrimary : '#1F2937';
+  const secondaryTextColor = isDark ? COLORS.textSecondary : COLORS.textMuted;
 
-  // Dynamic styles
-  const dynamicStyles = {
-    container: {
-      backgroundColor: isDark ? theme.background : '#F3F4F6',
-    },
-    text: {
-      color: isDark ? theme.text : '#111827',
-    },
-    textSecondary: {
-      color: isDark ? theme.textSecondary : '#6B7280',
-    },
-    card: {
-      backgroundColor: isDark ? theme.cardBackground : '#FFFFFF',
-    },
-  };
+  const trayTranslateY = trayAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [200, 0],
+  });
 
   return (
-    <View style={[styles.container, dynamicStyles.container]}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       
-      {/* Unified Header with Purple Gradient */}
-      <UnifiedHeader
-        screenKey="onTheGo"
-        title="On The Go"
-        searchPlaceholder="Search mobile businesses..."
-        onSearch={handleSearch}
-        showBackButton={true}
-      />
-
-      {/* Filter Bar - Standardized Design with White Shade Separator */}
-      <View style={styles.filterBarContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterBarContent}
-        >
-          {FILTER_CATEGORIES.map((filter) => (
-            <TouchableOpacity
-              key={filter.id}
-              style={[
-                styles.filterPill,
-                selectedFilter === filter.id && styles.filterPillActive,
-              ]}
-              onPress={() => setSelectedFilter(filter.id)}
-            >
-              <Ionicons
-                name={filter.icon as any}
-                size={16}
-                color={selectedFilter === filter.id ? '#FFFFFF' : OnTheGoColors.primary}
-              />
-              <Text style={[
-                styles.filterPillText,
-                selectedFilter === filter.id && styles.filterPillTextActive,
-              ]}>
-                {filter.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        
-        {/* Live Count Badge */}
-        <View style={styles.liveCountBadge}>
-          <View style={styles.liveDot} />
-          <Text style={styles.liveCountText}>
-            {sessions.length} Live{scheduledPlaces.length > 0 ? ` · ${scheduledPlaces.length} Scheduled` : ''}
+      {/* Full-Screen Map */}
+      {isLoading ? (
+        <View style={[styles.loadingContainer, { backgroundColor: isDark ? COLORS.background : COLORS.backgroundLight }]}>
+          <ActivityIndicator size="large" color={COLORS.accent} />
+          <Text style={[styles.loadingText, { color: secondaryTextColor }]}>
+            Finding live businesses...
           </Text>
         </View>
-      </View>
+      ) : (
+        <>
+          {/* @ts-ignore */}
+          <MapLibreGL.MapView
+            style={styles.map}
+            styleURL={isDark ? MAP_STYLE_DARK : MAP_STYLE_LIGHT}
+            logoEnabled={false}
+            attributionEnabled={false}
+            zoomEnabled={true}
+            scrollEnabled={true}
+            rotateEnabled={true}
+            pitchEnabled={true}
+          >
+            <MapLibreGL.Camera
+              ref={cameraRef}
+              defaultSettings={{
+                centerCoordinate: userLocation || [-97.7431, 30.2672],
+                zoomLevel: 12,
+              }}
+              animationMode="flyTo"
+              animationDuration={800}
+            />
 
-      {/* Map */}
-      <View style={styles.mapContainer}>
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={OnTheGoColors.primary} />
-            <Text style={[styles.loadingText, dynamicStyles.textSecondary]}>
-              Finding live businesses...
-            </Text>
-          </View>
-        ) : (
-          <>
-            {/* @ts-ignore - MapLibreGL types are incomplete */}
-            <MapLibreGL.MapView
-              style={styles.map}
-              styleURL={MAP_STYLE_URL}
-              logoEnabled={false}
-              attributionEnabled={false}
-              zoomEnabled={true}
-              scrollEnabled={true}
-              rotateEnabled={true}
-              pitchEnabled={true}
-            >
-              <MapLibreGL.Camera
-                ref={cameraRef}
-                defaultSettings={{
-                  centerCoordinate: userLocation || [-97.7431, 30.2672],
-                  zoomLevel: 12,
-                }}
-                animationMode="flyTo"
-                animationDuration={800}
-              />
+            {/* User location marker */}
+            {userLocation && (
+              <MapLibreGL.PointAnnotation id="user-location" coordinate={userLocation}>
+                <View style={styles.userLocationMarker}>
+                  <View style={styles.userLocationDot} />
+                </View>
+              </MapLibreGL.PointAnnotation>
+            )}
 
-              {/* User location marker */}
-              {userLocation && (
+            {/* Live session markers */}
+            {sessions.map((session) => (
+              <MapLibreGL.PointAnnotation
+                key={session.session_id || session.tavvy_place_id}
+                id={session.session_id || session.tavvy_place_id}
+                coordinate={[session.session_lng!, session.session_lat!]}
+                onSelected={() => handleMarkerPress(session)}
+              >
+                <View style={styles.markerContainer}>
+                  <View style={[styles.marker, { backgroundColor: getMarkerColor(session.category) }]}>
+                    <Ionicons name={getMarkerIcon(session.category) as any} size={18} color="#FFFFFF" />
+                  </View>
+                  <View style={[styles.markerPulse, { backgroundColor: getMarkerColor(session.category) }]} />
+                </View>
+              </MapLibreGL.PointAnnotation>
+            ))}
+
+            {/* Scheduled place markers (dimmed) */}
+            {scheduledPlaces.map((place) => (
+              place.next_event && (
                 <MapLibreGL.PointAnnotation
-                  id="user-location"
-                  coordinate={userLocation}
+                  key={`scheduled-${place.tavvy_place_id}`}
+                  id={`scheduled-${place.tavvy_place_id}`}
+                  coordinate={[place.next_event.longitude, place.next_event.latitude]}
                 >
-                  <View style={styles.userLocationMarker}>
-                    <View style={styles.userLocationDot} />
+                  <View style={[styles.scheduledMarker, { borderColor: getMarkerColor(place.category) }]}>
+                    <Ionicons name={getMarkerIcon(place.category) as any} size={16} color={getMarkerColor(place.category)} />
                   </View>
                 </MapLibreGL.PointAnnotation>
-              )}
+              )
+            ))}
+          </MapLibreGL.MapView>
 
-              {/* Live session markers */}
+          {/* Floating Header */}
+          <SafeAreaView style={styles.floatingHeader} edges={['top']}>
+            <View style={[styles.headerContent, { backgroundColor: glassyBg }]}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color={textColor} />
+              </TouchableOpacity>
+              <View style={styles.headerTextContainer}>
+                <Text style={[styles.headerTitle, { color: textColor }]}>On The Go</Text>
+                <Text style={[styles.headerSubtitle, { color: secondaryTextColor }]}>
+                  {sessions.length} live near you
+                </Text>
+              </View>
+              <TouchableOpacity onPress={fetchSessions} style={styles.refreshButton}>
+                <Ionicons name="refresh" size={22} color={COLORS.accent} />
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+
+          {/* Floating Filter Pills */}
+          <View style={styles.filterContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+              {FILTER_CATEGORIES.map((filter) => (
+                <TouchableOpacity
+                  key={filter.id}
+                  style={[
+                    styles.filterPill,
+                    { backgroundColor: glassyBg },
+                    selectedFilter === filter.id && styles.filterPillActive,
+                  ]}
+                  onPress={() => setSelectedFilter(filter.id)}
+                >
+                  <Ionicons
+                    name={filter.icon as any}
+                    size={16}
+                    color={selectedFilter === filter.id ? '#FFFFFF' : COLORS.accent}
+                  />
+                  <Text style={[
+                    styles.filterPillText,
+                    { color: selectedFilter === filter.id ? '#FFFFFF' : textColor },
+                  ]}>
+                    {filter.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* My Location Button */}
+          <TouchableOpacity style={[styles.myLocationButton, { backgroundColor: glassyBg }]} onPress={centerOnUser}>
+            <Ionicons name="locate" size={24} color={COLORS.accent} />
+          </TouchableOpacity>
+
+          {/* Live Now Tray Toggle */}
+          <TouchableOpacity
+            style={[styles.trayToggle, { backgroundColor: glassyBg }]}
+            onPress={() => setShowTray(!showTray)}
+          >
+            <View style={styles.liveDot} />
+            <Text style={[styles.trayToggleText, { color: textColor }]}>
+              {sessions.length} Live Now
+            </Text>
+            <Ionicons name={showTray ? 'chevron-down' : 'chevron-up'} size={20} color={secondaryTextColor} />
+          </TouchableOpacity>
+
+          {/* Collapsible Live Tray */}
+          <Animated.View style={[
+            styles.liveTray,
+            { backgroundColor: glassyBg, transform: [{ translateY: trayTranslateY }] },
+          ]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trayScroll}>
               {sessions.map((session) => (
-                <MapLibreGL.PointAnnotation
+                <TouchableOpacity
                   key={session.session_id || session.tavvy_place_id}
-                  id={session.session_id || session.tavvy_place_id}
-                  coordinate={[session.session_lng!, session.session_lat!]}
-                  onSelected={() => handleMarkerPress(session)}
+                  style={[styles.trayCard, { backgroundColor: isDark ? COLORS.surface : '#FFFFFF' }]}
+                  onPress={() => handleMarkerPress(session)}
                 >
-                  <View style={styles.markerContainer}>
-                    <View style={[
-                      styles.marker,
-                      { backgroundColor: getMarkerColor(session.category) },
-                    ]}>
-                      <Ionicons
-                        name={getMarkerIcon(session.category) as any}
-                        size={20}
-                        color="#FFFFFF"
-                      />
+                  {session.cover_image_url ? (
+                    <Image source={{ uri: session.cover_image_url }} style={styles.trayCardImage} />
+                  ) : (
+                    <View style={[styles.trayCardImage, { backgroundColor: getMarkerColor(session.category) }]}>
+                      <Ionicons name={getMarkerIcon(session.category) as any} size={24} color="#FFFFFF" />
                     </View>
-                    <View style={[
-                      styles.markerPulse,
-                      { backgroundColor: getMarkerColor(session.category) },
-                    ]} />
+                  )}
+                  <View style={styles.trayCardContent}>
+                    <Text style={[styles.trayCardName, { color: textColor }]} numberOfLines={1}>
+                      {session.place_name}
+                    </Text>
+                    <Text style={[styles.trayCardTime, { color: COLORS.live }]}>
+                      {getTimeRemaining(session.scheduled_end_at || '')}
+                    </Text>
                   </View>
-                </MapLibreGL.PointAnnotation>
+                </TouchableOpacity>
               ))}
+            </ScrollView>
+          </Animated.View>
 
-              {/* Scheduled place markers (dimmed) */}
-              {scheduledPlaces.map((place) => (
-                place.next_event && (
-                  <MapLibreGL.PointAnnotation
-                    key={`scheduled-${place.tavvy_place_id}`}
-                    id={`scheduled-${place.tavvy_place_id}`}
-                    coordinate={[place.next_event.longitude, place.next_event.latitude]}
-                    onSelected={() => handleScheduledPlacePress(place)}
-                  >
-                    <View style={[
-                      styles.scheduledMarker,
-                      { borderColor: getMarkerColor(place.category) },
-                    ]}>
-                      <Ionicons
-                        name={getMarkerIcon(place.category) as any}
-                        size={18}
-                        color={getMarkerColor(place.category)}
-                      />
-                    </View>
-                  </MapLibreGL.PointAnnotation>
-                )
-              ))}
-            </MapLibreGL.MapView>
-
-            {/* My Location Button */}
-            <TouchableOpacity
-              style={styles.myLocationButton}
-              onPress={centerOnUser}
-            >
-              <Ionicons name="locate" size={24} color={OnTheGoColors.primary} />
-            </TouchableOpacity>
-
-            {/* Refresh Button */}
-            <TouchableOpacity
-              style={styles.refreshButton}
-              onPress={fetchSessions}
-            >
-              <Ionicons name="refresh" size={18} color="#374151" />
-              <Text style={styles.refreshButtonText}>Refresh</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
-
-      {/* Empty State */}
-      {!isLoading && sessions.length === 0 && scheduledPlaces.length === 0 && (
-        <View style={styles.emptyState}>
-          <View style={styles.emptyStateContent}>
-            <Text style={styles.emptyStateEmoji}>🚚</Text>
-            <Text style={[styles.emptyStateTitle, dynamicStyles.text]}>
-              No one's live right now
-            </Text>
-            <Text style={[styles.emptyStateText, dynamicStyles.textSecondary]}>
-              {selectedFilter !== 'all'
-                ? `No businesses matching this filter are live in this area.`
-                : 'Check back later to see mobile businesses near you.'
-              }
-            </Text>
-            {selectedFilter !== 'all' && (
-              <TouchableOpacity
-                style={styles.clearFilterButton}
-                onPress={() => setSelectedFilter('all')}
-              >
-                <Text style={styles.clearFilterText}>Show all categories</Text>
+          {/* Selected Session Detail Card */}
+          {selectedSession && (
+            <View style={[styles.detailCard, { backgroundColor: glassyBg }]}>
+              <TouchableOpacity style={styles.detailClose} onPress={() => setSelectedSession(null)}>
+                <Ionicons name="close" size={22} color={secondaryTextColor} />
               </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      )}
-
-      {/* Selected Session Card */}
-      {selectedSession && (
-        <View style={[styles.sessionCard, dynamicStyles.card]}>
-          <TouchableOpacity
-            style={styles.sessionCardClose}
-            onPress={() => setSelectedSession(null)}
-          >
-            <Ionicons name="close" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-
-          <View style={styles.sessionCardHeader}>
-            {selectedSession.cover_image_url ? (
-              <Image
-                source={{ uri: selectedSession.cover_image_url }}
-                style={styles.sessionCardImage}
-              />
-            ) : (
-              <LinearGradient
-                colors={[getMarkerColor(selectedSession.category), '#F97316']}
-                style={styles.sessionCardImage}
-              >
-                <Ionicons
-                  name={getMarkerIcon(selectedSession.category) as any}
-                  size={32}
-                  color="#FFFFFF"
-                />
-              </LinearGradient>
-            )}
-            
-            <View style={styles.sessionCardInfo}>
-              <View style={styles.sessionCardLive}>
-                <View style={styles.liveDotSmall} />
-                <Text style={styles.liveText}>LIVE</Text>
+              
+              <View style={styles.detailHeader}>
+                {selectedSession.cover_image_url ? (
+                  <Image source={{ uri: selectedSession.cover_image_url }} style={styles.detailImage} />
+                ) : (
+                  <View style={[styles.detailImage, { backgroundColor: getMarkerColor(selectedSession.category) }]}>
+                    <Ionicons name={getMarkerIcon(selectedSession.category) as any} size={28} color="#FFFFFF" />
+                  </View>
+                )}
+                <View style={styles.detailInfo}>
+                  <View style={styles.liveBadge}>
+                    <View style={styles.liveDotSmall} />
+                    <Text style={styles.liveText}>LIVE</Text>
+                  </View>
+                  <Text style={[styles.detailName, { color: textColor }]} numberOfLines={1}>
+                    {selectedSession.place_name}
+                  </Text>
+                  <Text style={[styles.detailLocation, { color: secondaryTextColor }]} numberOfLines={1}>
+                    📍 {selectedSession.session_address || selectedSession.location_label || 'Location'}
+                  </Text>
+                </View>
               </View>
-              <Text style={[styles.sessionCardName, dynamicStyles.text]} numberOfLines={1}>
-                {selectedSession.place_name}
-              </Text>
-              {(selectedSession.session_address || selectedSession.location_label) && (
-                <Text style={[styles.sessionCardLocation, dynamicStyles.textSecondary]} numberOfLines={1}>
-                  📍 {selectedSession.session_address || selectedSession.location_label}
-                </Text>
-              )}
-              <Text style={styles.sessionCardTime}>
-                {getTimeRemaining(selectedSession.scheduled_end_at || '')}
-              </Text>
-            </View>
-          </View>
 
-          {selectedSession.today_note && (
-            <View style={styles.sessionCardNote}>
-              <Text style={[styles.sessionCardNoteText, dynamicStyles.textSecondary]} numberOfLines={2}>
-                "{selectedSession.today_note}"
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.sessionCardActions}>
-            <TouchableOpacity
-              style={styles.sessionCardButton}
-              onPress={() => getDirections(selectedSession)}
-            >
-              <Ionicons name="navigate" size={20} color="#FFFFFF" />
-              <Text style={styles.sessionCardButtonText}>Directions</Text>
-            </TouchableOpacity>
-            
-            {selectedSession.phone && (
-              <TouchableOpacity
-                style={[styles.sessionCardButton, styles.sessionCardButtonSecondary]}
-                onPress={() => callBusiness(selectedSession.phone!)}
-              >
-                <Ionicons name="call" size={20} color={OnTheGoColors.primary} />
-                <Text style={[styles.sessionCardButtonText, styles.sessionCardButtonTextSecondary]}>
-                  Call
-                </Text>
+              <TouchableOpacity style={styles.directionsButton} onPress={() => getDirections(selectedSession)}>
+                <Ionicons name="navigate" size={20} color="#FFFFFF" />
+                <Text style={styles.directionsButtonText}>Get Directions</Text>
               </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Check Schedule button if has upcoming events */}
-          {selectedSession.has_schedule && (
-            <TouchableOpacity
-              style={styles.checkScheduleButton}
-              onPress={() => viewSchedule(selectedSession.tavvy_place_id, selectedSession.place_name)}
-            >
-              <Ionicons name="calendar-outline" size={16} color="#6B7280" />
-              <Text style={styles.checkScheduleText}>Check Schedule</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
-      {/* Selected Scheduled Place Card (offline with upcoming events) */}
-      {selectedScheduledPlace && (
-        <View style={[styles.sessionCard, dynamicStyles.card]}>
-          <TouchableOpacity
-            style={styles.sessionCardClose}
-            onPress={() => setSelectedScheduledPlace(null)}
-          >
-            <Ionicons name="close" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-
-          <View style={styles.sessionCardHeader}>
-            {selectedScheduledPlace.cover_image_url ? (
-              <Image
-                source={{ uri: selectedScheduledPlace.cover_image_url }}
-                style={styles.sessionCardImage}
-              />
-            ) : (
-              <LinearGradient
-                colors={[getMarkerColor(selectedScheduledPlace.category), '#6B7280']}
-                style={styles.sessionCardImage}
-              >
-                <Ionicons
-                  name={getMarkerIcon(selectedScheduledPlace.category) as any}
-                  size={32}
-                  color="#FFFFFF"
-                />
-              </LinearGradient>
-            )}
-            
-            <View style={styles.sessionCardInfo}>
-              <View style={styles.scheduledBadge}>
-                <Ionicons name="calendar" size={12} color="#6B7280" />
-                <Text style={styles.scheduledBadgeText}>
-                  {selectedScheduledPlace.next_event_label || 'SCHEDULED'}
-                </Text>
-              </View>
-              <Text style={[styles.sessionCardName, dynamicStyles.text]} numberOfLines={1}>
-                {selectedScheduledPlace.place_name}
-              </Text>
-              {selectedScheduledPlace.next_event && (
-                <Text style={[styles.sessionCardLocation, dynamicStyles.textSecondary]} numberOfLines={1}>
-                  📍 {selectedScheduledPlace.next_event.location_name}
-                </Text>
-              )}
-              <Text style={styles.offlineText}>Currently Offline</Text>
-            </View>
-          </View>
-
-          {selectedScheduledPlace.next_event && (
-            <View style={styles.nextEventInfo}>
-              <Text style={[styles.nextEventLabel, dynamicStyles.textSecondary]}>Next Location:</Text>
-              <Text style={[styles.nextEventLocation, dynamicStyles.text]}>
-                {selectedScheduledPlace.next_event.location_name}
-              </Text>
-              {selectedScheduledPlace.next_event.location_address && (
-                <Text style={[styles.nextEventAddress, dynamicStyles.textSecondary]}>
-                  {selectedScheduledPlace.next_event.location_address}
-                </Text>
-              )}
             </View>
           )}
-
-          <View style={styles.sessionCardActions}>
-            <TouchableOpacity
-              style={styles.sessionCardButton}
-              onPress={() => viewSchedule(selectedScheduledPlace.tavvy_place_id, selectedScheduledPlace.place_name)}
-            >
-              <Ionicons name="calendar" size={20} color="#FFFFFF" />
-              <Text style={styles.sessionCardButtonText}>Check Schedule</Text>
-            </TouchableOpacity>
-            
-            {selectedScheduledPlace.phone && (
-              <TouchableOpacity
-                style={[styles.sessionCardButton, styles.sessionCardButtonSecondary]}
-                onPress={() => callBusiness(selectedScheduledPlace.phone!)}
-              >
-                <Ionicons name="call" size={20} color={OnTheGoColors.primary} />
-                <Text style={[styles.sessionCardButtonText, styles.sessionCardButtonTextSecondary]}>
-                  Call
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
+        </>
       )}
     </View>
   );
@@ -730,76 +523,6 @@ export default function OnTheGoScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-  },
-  
-  // Filter Bar - Standardized Design with White Shade Separator
-  filterBarContainer: {
-    backgroundColor: '#FFFFFF',
-    paddingTop: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 10,
-    zIndex: 10,
-  },
-  filterBarContent: {
-    paddingHorizontal: 16,
-    gap: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  filterPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(124, 58, 237, 0.1)', // Purple 10% opacity
-    gap: 6,
-  },
-  filterPillActive: {
-    backgroundColor: OnTheGoColors.primary,
-  },
-  filterPillText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: OnTheGoColors.primary,
-  },
-  filterPillTextActive: {
-    color: '#FFFFFF',
-  },
-  
-  // Live Count Badge
-  liveCountBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    gap: 6,
-  },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444',
-  },
-  liveCountText: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-
-  // Map
-  mapContainer: {
-    flex: 1,
-  },
-  map: {
     flex: 1,
   },
   loadingContainer: {
@@ -811,38 +534,223 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 14,
   },
+  map: {
+    flex: 1,
+  },
+
+  // Floating Header
+  floatingHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backdropFilter: 'blur(10px)',
+  },
+  backButton: {
+    padding: 4,
+  },
+  headerTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+  },
+  refreshButton: {
+    padding: 8,
+  },
+
+  // Filter Pills
+  filterContainer: {
+    position: 'absolute',
+    top: 110,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  filterScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 6,
+    marginRight: 8,
+  },
+  filterPillActive: {
+    backgroundColor: COLORS.accent,
+  },
+  filterPillText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  // My Location Button
+  myLocationButton: {
+    position: 'absolute',
+    right: 16,
+    bottom: 200,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Live Tray Toggle
+  trayToggle: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 120,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    gap: 8,
+  },
+  trayToggleText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
+  // Live Tray
+  liveTray: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingTop: 12,
+    paddingBottom: 40,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  trayScroll: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  trayCard: {
+    width: 140,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  trayCardImage: {
+    width: '100%',
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  trayCardContent: {
+    padding: 10,
+  },
+  trayCardName: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  trayCardTime: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+
+  // Detail Card
+  detailCard: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 180,
+    borderRadius: 20,
+    padding: 16,
+  },
+  detailClose: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 1,
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  detailImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  detailInfo: {
+    flex: 1,
+    marginLeft: 12,
+    justifyContent: 'center',
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  liveDotSmall: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.live,
+  },
+  liveText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.live,
+  },
+  detailName: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  detailLocation: {
+    fontSize: 13,
+  },
+  directionsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.accent,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  directionsButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
 
   // Markers
-  markerContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  marker: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-  },
-  markerPulse: {
-    position: 'absolute',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    opacity: 0.3,
-  },
   userLocationMarker: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(124, 58, 237, 0.2)', // Purple tint
+    backgroundColor: 'rgba(102, 126, 234, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -850,267 +758,48 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: OnTheGoColors.primary,
+    backgroundColor: COLORS.accent,
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
-
-  // Map Buttons
-  myLocationButton: {
-    position: 'absolute',
-    bottom: 180,
-    right: 16,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  refreshButton: {
-    position: 'absolute',
-    bottom: 180,
-    left: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-    gap: 6,
-  },
-  refreshButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-  },
-
-  // Empty State
-  emptyState: {
-    position: 'absolute',
-    top: 200,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.9)',
-  },
-  emptyStateContent: {
-    alignItems: 'center',
-    padding: 32,
-  },
-  emptyStateEmoji: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  clearFilterButton: {
-    paddingVertical: 8,
-  },
-  clearFilterText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: OnTheGoColors.primary,
-  },
-
-  // Session Card
-  sessionCard: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  sessionCardClose: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    padding: 4,
-    zIndex: 1,
-  },
-  sessionCardHeader: {
-    flexDirection: 'row',
-    marginBottom: 12,
-  },
-  sessionCardImage: {
-    width: 72,
-    height: 72,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sessionCardInfo: {
-    flex: 1,
-    marginLeft: 12,
-    justifyContent: 'center',
-  },
-  sessionCardLive: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  liveDotSmall: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#EF4444',
-    marginRight: 4,
-  },
-  liveText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#EF4444',
-  },
-  sessionCardName: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  sessionCardLocation: {
-    fontSize: 13,
-    marginBottom: 2,
-  },
-  sessionCardTime: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#F97316',
-  },
-  sessionCardNote: {
-    backgroundColor: '#FEF3C7',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  sessionCardNoteText: {
-    fontSize: 13,
-    fontStyle: 'italic',
-  },
-  sessionCardActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  sessionCardButton: {
-    flex: 1,
-    flexDirection: 'row',
+  markerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: OnTheGoColors.primary,
-    gap: 8,
   },
-  sessionCardButtonSecondary: {
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: OnTheGoColors.primary,
-  },
-  sessionCardButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  sessionCardButtonTextSecondary: {
-    color: OnTheGoColors.primary,
-  },
-
-  // Scheduled Marker styles
-  scheduledMarker: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  marker: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     borderWidth: 3,
+    borderColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 4,
   },
-
-  // Scheduled Badge
-  scheduledBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    gap: 4,
+  markerPulse: {
+    position: 'absolute',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    opacity: 0.3,
   },
-  scheduledBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-  },
-  offlineText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#9CA3AF',
-    marginTop: 2,
-  },
-
-  // Next Event Info
-  nextEventInfo: {
-    backgroundColor: '#F3F4F6',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  nextEventLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  nextEventLocation: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  nextEventAddress: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-
-  // Check Schedule Button
-  checkScheduleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  scheduledMarker: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
-    marginTop: 12,
-    gap: 6,
+    alignItems: 'center',
+    borderWidth: 2,
   },
-  checkScheduleText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#6B7280',
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.live,
   },
 });
