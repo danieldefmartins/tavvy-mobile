@@ -276,6 +276,54 @@ export default function ProsHomeScreen() {
           </View>
         </View>
 
+        {/* Start a Project Card */}
+        <TouchableOpacity
+          style={styles.startProjectCard}
+          onPress={() => navigation.navigate('ProsRequestStep0')}
+          activeOpacity={0.9}
+        >
+          <LinearGradient
+            colors={['#0EA5E9', '#0284C7']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.startProjectGradient}
+          >
+            <View style={styles.startProjectIcon}>
+              <Ionicons name="add-circle-outline" size={32} color="#FFFFFF" />
+            </View>
+            <View style={styles.startProjectContent}>
+              <Text style={styles.startProjectTitle}>Start a Project</Text>
+              <Text style={styles.startProjectSubtitle}>Get quotes from multiple pros in minutes</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#FFFFFF" />
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* Continue Request Banner */}
+        {pendingRequest && (
+          <TouchableOpacity
+            style={styles.continueRequestCard}
+            onPress={() => navigation.navigate('ProsRequestStep1', { customerInfo: pendingRequest.customerInfo })}
+            activeOpacity={0.9}
+          >
+            <LinearGradient
+              colors={['#059669', '#047857']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.continueRequestGradient}
+            >
+              <Ionicons name="time-outline" size={24} color="#FFFFFF" />
+              <View style={styles.continueRequestContent}>
+                <Text style={styles.continueRequestTitle}>Continue your request?</Text>
+                <Text style={styles.continueRequestSubtitle}>
+                  You have an unfinished project for {pendingRequest.category || 'a service'}.
+                </Text>
+              </View>
+              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
         {/* Search Card */}
         <View style={styles.searchSection}>
           <View style={[styles.searchCard, { backgroundColor: glassyColor }]}>
@@ -437,6 +485,68 @@ const styles = StyleSheet.create({
   segmentText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+
+  // Start a Project Card
+  startProjectCard: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  startProjectGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  startProjectIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  startProjectContent: {
+    flex: 1,
+  },
+  startProjectTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  startProjectSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 2,
+  },
+
+  // Continue Request Card
+  continueRequestCard: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  continueRequestGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    gap: 12,
+  },
+  continueRequestContent: {
+    flex: 1,
+  },
+  continueRequestTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  continueRequestSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 2,
   },
 
   // Search
