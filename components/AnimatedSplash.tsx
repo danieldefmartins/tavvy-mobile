@@ -12,7 +12,7 @@ import * as SplashScreen from 'expo-splash-screen';
 const { width, height } = Dimensions.get('window');
 
 // Tavvy Navy background color
-const BACKGROUND_COLOR = '#0F1233';
+const BACKGROUND_COLOR = '#000000';
 
 interface AnimatedSplashProps {
   onAnimationComplete: () => void;
