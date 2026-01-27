@@ -350,7 +350,7 @@ export default function AppsScreen() {
                     end={{ x: 1, y: 1 }}
                     style={styles.featuredGradient}
                   >
-                    {renderIcon(app, 80)}
+                    {renderIcon(app, 56)}
                     <Text style={styles.featuredName}>{app.name}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -388,7 +388,7 @@ export default function AppsScreen() {
                       }
                     ]}
                   >
-                    {renderIcon(app, 28)}
+                    {renderIcon(app, 36)}
                   </LinearGradient>
                   {renderBadge(app)}
                 </View>
@@ -565,21 +565,21 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   featuredCard: {
-    width: (SCREEN_WIDTH - 52) / 2.2,
-    height: (SCREEN_WIDTH - 52) / 2.2,
-    borderRadius: 28,
+    width: (SCREEN_WIDTH - 52) / 2.5,
+    height: (SCREEN_WIDTH - 52) / 2.5,
+    borderRadius: 24,
     overflow: 'hidden',
     marginRight: 12,
   },
   featuredGradient: {
     flex: 1,
-    padding: 24,
+    padding: 16,
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
   featuredName: {
     color: '#FFFFFF',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
   },
 
@@ -603,9 +603,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   tileGradient: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
+    width: 72,
+    height: 72,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
