@@ -378,9 +378,9 @@ function AppsStack() {
       <MenuStackNav.Screen name="ProsManageProfile" component={ProsManageProfileScreen} />
       <MenuStackNav.Screen name="ProsPaywall" component={ProsPaywallScreen} />
       <MenuStackNav.Screen name="ProsLeadDetail" component={ProsLeadDetailScreen} />
-      <MenuStackNav.Screen name="CommunityGuidelines" component={CommunityGuidelinesScreen} />
+      {/* CommunityGuidelines already registered above (line 331) */}
       <MenuStackNav.Screen name="ExperiencePaths" component={ExperiencePathsScreen} />
-      <MenuStackNav.Screen name="ExperiencePathDetail" component={ExperiencePathDetailScreen} />
+      {/* ExperiencePathDetail already registered above (line 335) */}
     </MenuStackNav.Navigator>
   );
 }
