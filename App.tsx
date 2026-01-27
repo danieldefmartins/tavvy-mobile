@@ -164,7 +164,6 @@ import {
   ECardFormBlockScreen,
 } from './screens/ecard';
 import VerificationUploadScreen from './screens/VerificationUploadScreen';
-import CommunityGuidelinesScreen from './screens/CommunityGuidelinesScreen';
 import ExperiencePathsScreen from './screens/ExperiencePathsScreen';
 import ExperiencePathDetailScreen from './screens/ExperiencePathDetailScreen';
 
