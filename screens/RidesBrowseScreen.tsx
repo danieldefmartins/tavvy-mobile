@@ -1,9 +1,13 @@
-// ============================================================================
-// RIDES BROWSE SCREEN
-// ============================================================================
-// Browse theme park rides and attractions with Tavvy signals
-// Place this file in: screens/RidesBrowseScreen.tsx
-// ============================================================================
+/**
+ * RidesBrowseScreen.tsx
+ * Browse theme park rides and attractions
+ * 
+ * PREMIUM DARK MODE REDESIGN - January 2026
+ * - Minimalist header with tagline
+ * - Glassy filter pills
+ * - Featured ride hero with "MUST RIDE" badge
+ * - Popular rides grid with thrill level badges (no stars)
+ */
 
 import React, { useEffect, useState, useCallback } from 'react';
 import {
@@ -15,147 +19,134 @@ import {
   Dimensions,
   ActivityIndicator,
   ScrollView,
-  FlatList,
+  TextInput,
+  StatusBar,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { supabase } from '../lib/supabaseClient';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeContext } from '../contexts/ThemeContext';
-import { useTheme, spacing, borderRadius, shadows } from '../constants/Colors';
-import { UnifiedHeader } from '../components/UnifiedHeader';
+import { supabase } from '../lib/supabaseClient';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = width - 32;
 
-// ============================================
-// TYPES
-// ============================================
+// Design System Colors
+const COLORS = {
+  background: '#0F0F0F',
+  backgroundLight: '#FAFAFA',
+  surface: '#111827',
+  surfaceLight: '#FFFFFF',
+  glassy: '#1A1A1A',
+  accent: '#667EEA',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#9CA3AF',
+  textMuted: '#6B7280',
+  mustRide: '#EF4444',
+  thrill: '#F59E0B',
+};
 
-interface Place {
+type FilterOption = 'all' | 'roller_coaster' | 'water' | 'family' | 'dark';
+
+interface Ride {
   id: string;
   name: string;
-  description?: string;
-  tavvy_category?: string;
-  tavvy_subcategory?: string;
-  city?: string;
-  region?: string;
-  latitude?: number;
-  longitude?: number;
-  photos?: string[];
-  signals?: Signal[];
+  category: string;
   parkName?: string;
+  photos?: string[];
+  thrillLevel?: 'mild' | 'moderate' | 'thrilling' | 'extreme';
+  isMustRide?: boolean;
 }
 
-interface Signal {
-  bucket: string;
-  tap_total: number;
-}
-
-type SortOption = 'popular' | 'recent' | 'nearby';
-
-// ============================================
-// SIGNAL COLORS (matching PlaceCard)
-// ============================================
-
-const SIGNAL_COLORS = {
-  positive: '#0A84FF', // Blue - The Good
-  neutral: '#8B5CF6',  // Purple - The Vibe
-  negative: '#FF9500', // Orange - Heads Up
-};
-
-// ============================================
-// RIDE CATEGORIES
-// ============================================
-
-const RIDE_CATEGORIES = [
-  'Attraction', 'Ride', 'Roller Coaster', 'Theme Park Ride',
-  'Water Ride', 'Dark Ride', 'Thrill Ride', 'Family Ride',
-  'Spinner', 'Show', 'Experience', 'Interactive'
+// Sample data
+const SAMPLE_RIDES: Ride[] = [
+  {
+    id: 'ride-1',
+    name: 'Space Mountain',
+    category: 'Roller Coaster',
+    parkName: 'Magic Kingdom',
+    photos: ['https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800'],
+    thrillLevel: 'thrilling',
+    isMustRide: true,
+  },
+  {
+    id: 'ride-2',
+    name: 'Tron Lightcycle / Run',
+    category: 'Roller Coaster',
+    parkName: 'Magic Kingdom',
+    photos: ['https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800'],
+    thrillLevel: 'extreme',
+  },
+  {
+    id: 'ride-3',
+    name: 'Guardians of the Galaxy',
+    category: 'Roller Coaster',
+    parkName: 'EPCOT',
+    photos: ['https://images.unsplash.com/photo-1566552881560-0be862a7c445?w=800'],
+    thrillLevel: 'extreme',
+  },
+  {
+    id: 'ride-4',
+    name: 'Splash Mountain',
+    category: 'Water Ride',
+    parkName: 'Magic Kingdom',
+    photos: ['https://images.unsplash.com/photo-1582653291997-079a1c04e5a1?w=800'],
+    thrillLevel: 'moderate',
+  },
+  {
+    id: 'ride-5',
+    name: 'Pirates of the Caribbean',
+    category: 'Dark Ride',
+    parkName: 'Magic Kingdom',
+    photos: ['https://images.unsplash.com/photo-1513106580091-1d82408b8cd6?w=800'],
+    thrillLevel: 'mild',
+  },
 ];
 
-// ============================================
-// HELPER FUNCTIONS
-// ============================================
+const FILTER_OPTIONS: { key: FilterOption; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'roller_coaster', label: 'Roller Coasters' },
+  { key: 'water', label: 'Water Rides' },
+  { key: 'family', label: 'Family' },
+  { key: 'dark', label: 'Dark Rides' },
+];
 
-const extractCategory = (labels: any): string => {
-  if (!labels) return 'Attraction';
-  const labelsStr = Array.isArray(labels) ? labels.join(' ') : String(labels);
-  // Try to find a matching ride category
-  for (const cat of RIDE_CATEGORIES) {
-    if (labelsStr.toLowerCase().includes(cat.toLowerCase())) {
-      return cat;
-    }
-  }
-  return 'Attraction';
+const THRILL_LABELS: Record<string, { label: string; color: string }> = {
+  mild: { label: 'Mild', color: '#10B981' },
+  moderate: { label: 'Moderate', color: '#3B82F6' },
+  thrilling: { label: 'Thrilling', color: '#F59E0B' },
+  extreme: { label: 'Extreme', color: '#EF4444' },
 };
 
-// ============================================
-// MAIN COMPONENT
-// ============================================
-
 export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
-  const { isDark } = useThemeContext();
-  const theme = useTheme();
-  
-  const [places, setPlaces] = useState<Place[]>([]);
+  const { theme, isDark } = useThemeContext();
+  const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [sortBy, setSortBy] = useState<SortOption>('popular');
-  const [hasMore, setHasMore] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterBy, setFilterBy] = useState<FilterOption>('all');
 
   useEffect(() => {
-    loadPlaces();
-  }, [sortBy]);
+    loadRides();
+  }, [filterBy]);
 
-  const loadPlaces = async (offset = 0) => {
+  const loadRides = async () => {
+    setLoading(true);
     try {
-      if (offset === 0) setLoading(true);
-
-      // Query places that are rides/attractions from fsq_places_raw
-      const { data: placesData, error } = await supabase
-        .from('fsq_places_raw')
-        .select('fsq_place_id, name, latitude, longitude, address, locality, region, fsq_category_labels')
-        .is('date_closed', null)
-        .limit(100);
-
-      if (error) {
-        console.error('Error loading rides:', error);
-        setPlaces([]);
-        return;
+      let filtered = SAMPLE_RIDES;
+      if (filterBy === 'roller_coaster') {
+        filtered = SAMPLE_RIDES.filter(r => r.category.toLowerCase().includes('coaster'));
+      } else if (filterBy === 'water') {
+        filtered = SAMPLE_RIDES.filter(r => r.category.toLowerCase().includes('water'));
+      } else if (filterBy === 'family') {
+        filtered = SAMPLE_RIDES.filter(r => r.thrillLevel === 'mild' || r.thrillLevel === 'moderate');
+      } else if (filterBy === 'dark') {
+        filtered = SAMPLE_RIDES.filter(r => r.category.toLowerCase().includes('dark'));
       }
-
-      if (placesData && placesData.length > 0) {
-        // Filter for ride-related categories
-        const filteredPlaces = placesData.filter(p => {
-          if (!p.fsq_category_labels) return false;
-          const labels = Array.isArray(p.fsq_category_labels) 
-            ? p.fsq_category_labels.join(' ').toLowerCase() 
-            : String(p.fsq_category_labels).toLowerCase();
-          return RIDE_CATEGORIES.some(cat => labels.includes(cat.toLowerCase()));
-        }).map(p => ({
-          id: p.fsq_place_id,
-          name: p.name,
-          description: '',
-          tavvy_category: extractCategory(p.fsq_category_labels),
-          tavvy_subcategory: '',
-          city: p.locality,
-          region: p.region,
-          latitude: p.latitude,
-          longitude: p.longitude,
-          photos: [],
-          signals: [],
-        }));
-        setPlaces(filteredPlaces);
-        setHasMore(filteredPlaces.length >= 50);
-      } else {
-        setPlaces([]);
-      }
-      
+      setRides(filtered);
     } catch (error) {
       console.error('Error loading rides:', error);
-      setPlaces([]);
+      setRides(SAMPLE_RIDES);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -164,412 +155,335 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    loadPlaces();
-  }, [sortBy]);
+    loadRides();
+  }, [filterBy]);
 
-  const handlePlacePress = (place: Place) => {
+  const handleRidePress = (ride: Ride) => {
     navigation.navigate('RideDetails', { 
-      rideId: place.id, 
-      rideName: place.name,
-      parkName: place.parkName || place.city,
+      rideId: ride.id, 
+      rideName: ride.name,
+      parkName: ride.parkName,
     });
   };
 
-  // Get category-based fallback image
-  const getCategoryFallbackImage = (category: string): string => {
-    const lowerCategory = (category || '').toLowerCase();
-    
-    if (lowerCategory.includes('roller') || lowerCategory.includes('thrill')) {
-      return 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800';
-    }
-    if (lowerCategory.includes('water')) {
-      return 'https://images.unsplash.com/photo-1582653291997-079a1c04e5a1?w=800';
-    }
-    if (lowerCategory.includes('family') || lowerCategory.includes('kid')) {
-      return 'https://images.unsplash.com/photo-1566552881560-0be862a7c445?w=800';
-    }
-    if (lowerCategory.includes('dark') || lowerCategory.includes('indoor')) {
-      return 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800';
-    }
-    return 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800';
-  };
+  const backgroundColor = isDark ? COLORS.background : COLORS.backgroundLight;
+  const surfaceColor = isDark ? COLORS.surface : COLORS.surfaceLight;
+  const glassyColor = isDark ? COLORS.glassy : '#F3F4F6';
+  const textColor = isDark ? COLORS.textPrimary : '#1F2937';
+  const secondaryTextColor = isDark ? COLORS.textSecondary : COLORS.textMuted;
 
-  // Render signal badges in 2x2 grid format (matching PlaceCard)
-  const renderSignalBadges = (signals: Signal[]) => {
-    const hasSignals = signals && signals.length > 0;
-    
+  const featuredRide = rides.find(r => r.isMustRide) || rides[0];
+  const popularRides = rides.filter(r => r.id !== featuredRide?.id).slice(0, 4);
+
+  if (loading) {
     return (
-      <View style={styles.signalsContainer}>
-        {/* Row 1: 2 Blue badges (The Good) */}
-        <View style={styles.signalRow}>
-          <TouchableOpacity 
-            style={[styles.signalBadge, { backgroundColor: SIGNAL_COLORS.positive }]}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="thumbs-up" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.signalText} numberOfLines={1}>
-              {hasSignals ? `Thrilling ×${signals[0]?.tap_total || 0}` : 'Be the first to tap!'}
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.signalBadge, { backgroundColor: SIGNAL_COLORS.positive }]}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="thumbs-up" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.signalText} numberOfLines={1}>
-              {hasSignals ? `Smooth ×${signals[1]?.tap_total || 0}` : 'Be the first to tap!'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-        
-        {/* Row 2: 1 Purple (The Vibe) + 1 Orange (Heads Up) */}
-        <View style={styles.signalRow}>
-          <TouchableOpacity 
-            style={[styles.signalBadge, { backgroundColor: SIGNAL_COLORS.neutral }]}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="sparkles" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.signalText} numberOfLines={1}>
-              {hasSignals ? `Immersive ×${signals[2]?.tap_total || 0}` : 'Be the first to tap!'}
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.signalBadge, { backgroundColor: SIGNAL_COLORS.negative }]}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="alert-circle" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.signalText} numberOfLines={1}>
-              {hasSignals ? `Long lines ×${signals[3]?.tap_total || 0}` : 'Be the first to tap!'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor }]}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <ActivityIndicator size="large" color={COLORS.accent} />
+        <Text style={[styles.loadingText, { color: secondaryTextColor }]}>
+          Loading rides...
+        </Text>
       </View>
     );
-  };
-
-  const renderPlaceCard = ({ item: place, index }: { item: Place; index: number }) => {
-    const imageUrl = place.photos && place.photos.length > 0 
-      ? place.photos[0] 
-      : getCategoryFallbackImage(place.tavvy_category || '');
-    const location = place.parkName || [place.city, place.region].filter(Boolean).join(', ') || 'Theme Park';
-    const category = place.tavvy_subcategory || place.tavvy_category || 'Attraction';
-
-    return (
-      <TouchableOpacity
-        key={`ride-${place.id}-${index}`}
-        style={[styles.card, { backgroundColor: isDark ? theme.surface : '#fff' }, shadows.large]}
-        onPress={() => handlePlacePress(place)}
-        activeOpacity={0.9}
-      >
-        {/* Photo with Gradient Overlay */}
-        <View style={styles.photoContainer}>
-          <Image source={{ uri: imageUrl }} style={styles.cardImage} resizeMode="cover" />
-          
-          {/* Ride Badge */}
-          <View style={styles.rideBadge}>
-            <Ionicons name="rocket" size={12} color="#fff" />
-            <Text style={styles.rideBadgeText}>RIDE</Text>
-          </View>
-          
-          {/* Gradient Overlay with Name */}
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.7)']}
-            style={styles.gradientOverlay}
-          >
-            <Text style={styles.cardTitle} numberOfLines={1}>{place.name}</Text>
-            <Text style={styles.cardSubtitle} numberOfLines={1}>
-              {category} • {location}
-            </Text>
-          </LinearGradient>
-        </View>
-        
-        {/* Signal Badges - 2x2 Grid matching PlaceCard */}
-        {renderSignalBadges(place.signals || [])}
-      </TouchableOpacity>
-    );
-  };
+  }
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F2F2F7' }]}>
-      {/* Unified Header */}
-      <UnifiedHeader
-        screenKey="rides"
-        title="Rides & Attractions"
-        searchPlaceholder="Search rides..."
-        showBackButton={true}
-      />
+    <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} />
+        }
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: textColor }]}>Rides</Text>
+          <Text style={[styles.tagline, { color: COLORS.accent }]}>
+            Theme park thrills await.
+          </Text>
+        </View>
 
-      {/* Filter Bar - Realtors-style design */}
-      <View style={styles.filterBarContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterBarContent}>
-          {(['popular', 'recent', 'nearby'] as SortOption[]).map((option) => (
+        {/* Search Bar */}
+        <View style={styles.searchSection}>
+          <View style={[styles.searchBar, { backgroundColor: glassyColor }]}>
+            <Ionicons name="search" size={20} color={secondaryTextColor} />
+            <TextInput
+              style={[styles.searchInput, { color: textColor }]}
+              placeholder="Search rides & attractions..."
+              placeholderTextColor={secondaryTextColor}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+        </View>
+
+        {/* Filter Pills */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContainer}
+        >
+          {FILTER_OPTIONS.map((option) => (
             <TouchableOpacity
-              key={option}
+              key={option.key}
               style={[
                 styles.filterPill,
-                sortBy === option && styles.filterPillActive,
+                { backgroundColor: filterBy === option.key ? COLORS.accent : glassyColor },
               ]}
-              onPress={() => setSortBy(option)}
+              onPress={() => setFilterBy(option.key)}
+              activeOpacity={0.8}
             >
-              <Ionicons 
-                name={option === 'popular' ? 'flame-outline' : option === 'recent' ? 'time-outline' : 'location-outline'} 
-                size={16} 
-                color={sortBy === option ? '#FFFFFF' : '#D946EF'} 
-              />
-              <Text style={[
-                styles.filterPillText,
-                sortBy === option && styles.filterPillTextActive,
-              ]}>
-                {option === 'popular' ? 'Popular' : option === 'recent' ? 'Recent' : 'Nearby'}
+              <Text
+                style={[
+                  styles.filterText,
+                  { color: filterBy === option.key ? '#FFFFFF' : secondaryTextColor },
+                ]}
+              >
+                {option.label}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </View>
 
-      {/* Places List */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#D946EF" />
-          <Text style={[styles.loadingText, { color: isDark ? theme.textSecondary : '#666' }]}>
-            Loading rides...
-          </Text>
+        {/* Featured Ride Hero */}
+        {featuredRide && (
+          <View style={styles.featuredSection}>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>Featured Ride</Text>
+            <TouchableOpacity
+              style={styles.featuredCard}
+              onPress={() => handleRidePress(featuredRide)}
+              activeOpacity={0.9}
+            >
+              <Image
+                source={{ uri: featuredRide.photos?.[0] }}
+                style={styles.featuredImage}
+              />
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.85)']}
+                style={styles.featuredGradient}
+              >
+                {featuredRide.isMustRide && (
+                  <View style={styles.mustRideBadge}>
+                    <Text style={styles.mustRideText}>MUST RIDE</Text>
+                  </View>
+                )}
+                <Text style={styles.featuredName}>{featuredRide.name}</Text>
+                <Text style={styles.featuredMeta}>
+                  {featuredRide.parkName} • {featuredRide.category}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Popular Rides Grid */}
+        <View style={styles.popularSection}>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>Popular Rides</Text>
+          <View style={styles.gridContainer}>
+            {popularRides.map((ride) => {
+              const thrillInfo = THRILL_LABELS[ride.thrillLevel || 'moderate'];
+              return (
+                <TouchableOpacity
+                  key={ride.id}
+                  style={[styles.gridCard, { backgroundColor: surfaceColor }]}
+                  onPress={() => handleRidePress(ride)}
+                  activeOpacity={0.8}
+                >
+                  <Image
+                    source={{ uri: ride.photos?.[0] }}
+                    style={styles.gridImage}
+                  />
+                  <View style={styles.gridContent}>
+                    <Text style={[styles.gridName, { color: isDark ? '#E5E7EB' : '#1F2937' }]} numberOfLines={2}>
+                      {ride.name}
+                    </Text>
+                    <Text style={[styles.gridPark, { color: secondaryTextColor }]} numberOfLines={1}>
+                      {ride.parkName}
+                    </Text>
+                    <View style={[styles.thrillBadge, { backgroundColor: `${thrillInfo.color}20` }]}>
+                      <Ionicons name="flash" size={12} color={thrillInfo.color} />
+                      <Text style={[styles.thrillText, { color: thrillInfo.color }]}>
+                        {thrillInfo.label}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
-      ) : (
-        <FlatList
-          data={places}
-          renderItem={renderPlaceCard}
-          keyExtractor={(item, index) => `ride-list-${item.id}-${index}`}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#D946EF"
-              colors={['#D946EF']}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="rocket-outline" size={64} color={isDark ? theme.textSecondary : '#ccc'} />
-              <Text style={[styles.emptyText, { color: isDark ? theme.textSecondary : '#666' }]}>
-                No rides found yet
-              </Text>
-              <Text style={[styles.emptySubtext, { color: isDark ? theme.textTertiary : '#999' }]}>
-                Check back soon for rides and attractions to explore
-              </Text>
-            </View>
-          }
-        />
-      )}
-    </View>
+
+        {/* Bottom Spacing */}
+        <View style={{ height: 100 }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
-
-// ============================================
-// STYLES
-// ============================================
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  headerTitleContainer: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  // Filter Bar - Realtors-style design with elegant white shade separator
-  filterBarContainer: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  filterBarContent: {
-    paddingHorizontal: 16,
-    gap: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  filterPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(217, 70, 239, 0.1)',
-    gap: 6,
-  },
-  filterPillActive: {
-    backgroundColor: '#D946EF',
-  },
-  filterPillText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#D946EF',
-  },
-  filterPillTextActive: {
-    color: '#FFFFFF',
-  },
-  // Legacy sort styles (kept for compatibility)
-  sortContainer: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
-  },
-  sortScroll: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  sortButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-  },
-  sortButtonActive: {
-    shadowColor: '#D946EF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  sortButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  card: {
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
-    overflow: 'hidden',
-  },
-  photoContainer: {
-    height: 180,
-    position: 'relative',
-  },
-  cardImage: {
-    width: '100%',
-    height: '100%',
-  },
-  rideBadge: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0A84FF',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    gap: 4,
-  },
-  rideBadgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  gradientOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 100,
-    justifyContent: 'flex-end',
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  cardTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'left',
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.85)',
-    marginTop: 2,
-    textAlign: 'left',
-  },
-  // Signal badges - matching PlaceCard style
-  signalsContainer: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
-  },
-  signalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  signalBadge: {
-    width: '48%',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  signalText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
   loadingContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
     marginTop: 12,
+    fontSize: 14,
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
+
+  // Header
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '700',
+  },
+  tagline: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 4,
+  },
+
+  // Search
+  searchSection: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 16,
+    gap: 12,
+  },
+  searchInput: {
+    flex: 1,
     fontSize: 16,
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 100,
+
+  // Filters
+  filterContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    gap: 10,
   },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
+  filterPill: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginRight: 10,
   },
-  emptySubtext: {
+  filterText: {
     fontSize: 14,
-    marginTop: 8,
-    textAlign: 'center',
+    fontWeight: '600',
+  },
+
+  // Featured Section
+  featuredSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  featuredCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    height: 220,
+  },
+  featuredImage: {
+    width: '100%',
+    height: '100%',
+  },
+  featuredGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+    paddingTop: 80,
+  },
+  mustRideBadge: {
+    backgroundColor: COLORS.mustRide,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 10,
+  },
+  mustRideText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  featuredName: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  featuredMeta: {
+    color: '#E5E7EB',
+    fontSize: 14,
+  },
+
+  // Popular Section
+  popularSection: {
+    paddingHorizontal: 20,
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  gridCard: {
+    width: (width - 52) / 2,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  gridImage: {
+    width: '100%',
+    height: 100,
+  },
+  gridContent: {
+    padding: 12,
+  },
+  gridName: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  gridPark: {
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  thrillBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  thrillText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 });

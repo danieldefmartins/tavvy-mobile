@@ -1,6 +1,13 @@
 /**
- * ProsMessagesScreen - Updated for Project Requests
- * Install path: screens/ProsMessagesScreen.tsx
+ * ProsMessagesScreen.tsx
+ * Messages / Conversations screen
+ * 
+ * PREMIUM DARK MODE REDESIGN - January 2026
+ * - Minimalist header with tagline
+ * - Search conversations
+ * - Clean conversation list with avatars
+ * - Unread indicators
+ * - Floating new message button
  */
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -14,17 +21,35 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  SafeAreaView,
+  StatusBar,
   Modal,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ProsColors } from '../constants/ProsConfig';
+import { useThemeContext } from '../contexts/ThemeContext';
 import { useTavvyChat } from '../hooks/useTavvyChat';
 import { supabase } from '../lib/supabaseClient';
 
+// Design System Colors
+const COLORS = {
+  background: '#0F0F0F',
+  backgroundLight: '#FAFAFA',
+  surface: '#111827',
+  surfaceLight: '#FFFFFF',
+  glassy: '#1A1A1A',
+  accent: '#667EEA',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#9CA3AF',
+  textMuted: '#6B7280',
+  unread: '#3B82F6',
+  ownBubble: '#667EEA',
+  otherBubble: '#1F2937',
+};
+
 export default function ProsMessagesScreen() {
+  const { theme, isDark } = useThemeContext();
   const navigation = useNavigation();
   const route = useRoute<any>();
   const { conversationId: initialId, leadId, customerName } = route.params || {};
@@ -35,6 +60,7 @@ export default function ProsMessagesScreen() {
   const [userType, setUserType] = useState<'customer' | 'pro'>('customer');
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [isBlocking, setIsBlocking] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const flatListRef = useRef<FlatList>(null);
 
   const { 
@@ -52,9 +78,6 @@ export default function ProsMessagesScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setCurrentUserId(user.id);
-        // In a real app, you'd check a 'profiles' table for the role
-        // For now, we'll assume if they are on the Pros tab, they might be a pro
-        // This is simplified logic
         setUserType('pro'); 
       }
     };
@@ -68,7 +91,6 @@ export default function ProsMessagesScreen() {
     }
   }, [activeConversationId, fetchMessages]);
 
-  // If we came from a lead and don't have a conversation yet, start one
   useEffect(() => {
     if (leadId && !activeConversationId && currentUserId) {
       handleStartNewChat();
@@ -77,12 +99,6 @@ export default function ProsMessagesScreen() {
 
   const handleStartNewChat = async () => {
     try {
-      // For a pro starting a chat from a lead:
-      // We need the customer's user ID. 
-      // Note: This requires the customer to have signed up.
-      // If they haven't signed up yet, the pro can't message them yet.
-      
-      // Fetch the project request to get the customer's email
       const { data: request } = await supabase
         .from('project_requests')
         .select('customer_email')
@@ -90,9 +106,8 @@ export default function ProsMessagesScreen() {
         .single();
       
       if (request?.customer_email) {
-        // Find the user ID for this email
         const { data: userData } = await supabase
-          .from('profiles') // Assuming a profiles table exists
+          .from('profiles')
           .select('id')
           .eq('email', request.customer_email)
           .maybeSingle();
@@ -133,21 +148,18 @@ export default function ProsMessagesScreen() {
           onPress: async () => {
             setIsBlocking(true);
             try {
-              // Get the other user's ID from the conversation
               const conversation = conversations.find(c => c.id === activeConversationId);
               const otherUserId = conversation?.customer_id === currentUserId 
                 ? conversation?.pro_id 
                 : conversation?.customer_id;
 
               if (otherUserId && currentUserId) {
-                // Insert into blocked_users table
                 await supabase.from('blocked_users').insert({
                   blocker_id: currentUserId,
                   blocked_id: otherUserId,
                   conversation_id: activeConversationId,
                 });
 
-                // Update conversation status
                 await supabase
                   .from('conversations')
                   .update({ status: 'blocked' })
@@ -170,36 +182,92 @@ export default function ProsMessagesScreen() {
     );
   };
 
+  const backgroundColor = isDark ? COLORS.background : COLORS.backgroundLight;
+  const surfaceColor = isDark ? COLORS.surface : COLORS.surfaceLight;
+  const glassyColor = isDark ? COLORS.glassy : '#F3F4F6';
+  const textColor = isDark ? COLORS.textPrimary : '#1F2937';
+  const secondaryTextColor = isDark ? COLORS.textSecondary : COLORS.textMuted;
+
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${Math.floor(diffHours)}h ago`;
+    if (diffDays < 7) {
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      return days[date.getDay()];
+    }
+    return date.toLocaleDateString();
+  };
+
+  // Conversation List View
   const renderConversationItem = ({ item }: { item: any }) => {
     const otherParty = item.project_request?.customer_name || 'Customer';
-    const projectTitle = item.project_request?.description || 'Project';
+    const lastMessage = item.last_message || 'Start a conversation...';
+    const isUnread = item.unread_count > 0;
+    const initial = otherParty.charAt(0).toUpperCase();
     
     return (
       <TouchableOpacity 
-        style={styles.conversationItem}
+        style={[styles.conversationItem, { backgroundColor: surfaceColor }]}
         onPress={() => setActiveConversationId(item.id)}
+        activeOpacity={0.8}
       >
-        <View style={styles.avatarPlaceholder}>
-          <Ionicons name="person" size={24} color="#9CA3AF" />
+        <View style={[styles.avatar, { backgroundColor: COLORS.accent }]}>
+          <Text style={styles.avatarText}>{initial}</Text>
         </View>
         <View style={styles.conversationInfo}>
-          <Text style={styles.conversationName}>{otherParty}</Text>
-          <Text style={styles.projectTitle} numberOfLines={1}>{projectTitle}</Text>
+          <View style={styles.conversationHeader}>
+            <Text style={[styles.conversationName, { color: textColor }]} numberOfLines={1}>
+              {otherParty}
+            </Text>
+            <Text style={[styles.timeText, { color: secondaryTextColor }]}>
+              {item.updated_at ? formatTime(item.updated_at) : ''}
+            </Text>
+          </View>
+          <View style={styles.messagePreviewRow}>
+            <Text 
+              style={[
+                styles.messagePreview, 
+                { color: isUnread ? textColor : secondaryTextColor },
+                isUnread && styles.messagePreviewUnread
+              ]} 
+              numberOfLines={1}
+            >
+              {lastMessage}
+            </Text>
+            {isUnread && <View style={styles.unreadDot} />}
+          </View>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
       </TouchableOpacity>
     );
   };
 
+  // Message Bubble View
   const renderMessageItem = ({ item }: { item: any }) => {
     const isOwn = item.sender_id === currentUserId;
     return (
       <View style={[styles.messageWrapper, isOwn ? styles.ownMessageWrapper : styles.otherMessageWrapper]}>
-        <View style={[styles.messageBubble, isOwn ? styles.ownBubble : styles.otherBubble]}>
-          <Text style={[styles.messageText, isOwn ? styles.ownMessageText : styles.otherMessageText]}>
+        <View style={[
+          styles.messageBubble, 
+          isOwn 
+            ? { backgroundColor: COLORS.ownBubble } 
+            : { backgroundColor: isDark ? COLORS.otherBubble : '#E5E7EB' }
+        ]}>
+          <Text style={[
+            styles.messageText, 
+            { color: isOwn ? '#FFFFFF' : textColor }
+          ]}>
             {item.content}
           </Text>
-          <Text style={styles.messageTime}>
+          <Text style={[
+            styles.messageTime,
+            { color: isOwn ? 'rgba(255,255,255,0.7)' : secondaryTextColor }
+          ]}>
             {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Text>
         </View>
@@ -207,43 +275,94 @@ export default function ProsMessagesScreen() {
     );
   };
 
+  // Conversations List Screen
   if (!activeConversationId) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Messages</Text>
+          <Text style={[styles.title, { color: textColor }]}>Messages</Text>
+          <Text style={[styles.tagline, { color: COLORS.accent }]}>
+            Stay connected.
+          </Text>
         </View>
-        <FlatList
-          data={conversations}
-          renderItem={renderConversationItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="chatbubbles-outline" size={64} color="#D1D5DB" />
-              <Text style={styles.emptyText}>No conversations yet.</Text>
-              <Text style={styles.emptySubText}>Leads you respond to will appear here.</Text>
-            </View>
-          }
-        />
+
+        {/* Search Bar */}
+        <View style={styles.searchSection}>
+          <View style={[styles.searchBar, { backgroundColor: glassyColor }]}>
+            <Ionicons name="search" size={20} color={secondaryTextColor} />
+            <TextInput
+              style={[styles.searchInput, { color: textColor }]}
+              placeholder="Search conversations..."
+              placeholderTextColor={secondaryTextColor}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+        </View>
+
+        {/* Conversations List */}
+        <View style={styles.listSection}>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>Recent</Text>
+          <FlatList
+            data={conversations}
+            renderItem={renderConversationItem}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <View style={[styles.emptyIcon, { backgroundColor: glassyColor }]}>
+                  <Ionicons name="chatbubbles-outline" size={48} color={secondaryTextColor} />
+                </View>
+                <Text style={[styles.emptyText, { color: textColor }]}>No conversations yet</Text>
+                <Text style={[styles.emptySubText, { color: secondaryTextColor }]}>
+                  Leads you respond to will appear here.
+                </Text>
+              </View>
+            }
+          />
+        </View>
+
+        {/* Floating New Message Button */}
+        <TouchableOpacity 
+          style={styles.fab}
+          activeOpacity={0.9}
+        >
+          <Ionicons name="add" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
+  // Chat View
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <View style={styles.chatHeader}>
-          <TouchableOpacity onPress={() => setActiveConversationId(null)}>
-            <Ionicons name="arrow-back" size={24} color="#374151" />
+        {/* Chat Header */}
+        <View style={[styles.chatHeader, { backgroundColor: surfaceColor }]}>
+          <TouchableOpacity 
+            onPress={() => setActiveConversationId(null)}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={textColor} />
           </TouchableOpacity>
-          <Text style={styles.chatTitle}>{customerName || 'Chat'}</Text>
-          <TouchableOpacity onPress={() => setShowOptionsModal(true)}>
-            <Ionicons name="ellipsis-vertical" size={24} color="#374151" />
+          <View style={styles.chatHeaderInfo}>
+            <Text style={[styles.chatTitle, { color: textColor }]}>{customerName || 'Chat'}</Text>
+          </View>
+          <TouchableOpacity 
+            onPress={() => setShowOptionsModal(true)}
+            style={styles.optionsButton}
+          >
+            <Ionicons name="ellipsis-vertical" size={22} color={textColor} />
           </TouchableOpacity>
         </View>
 
@@ -259,7 +378,7 @@ export default function ProsMessagesScreen() {
             activeOpacity={1}
             onPress={() => setShowOptionsModal(false)}
           >
-            <View style={styles.optionsModal}>
+            <View style={[styles.optionsModal, { backgroundColor: surfaceColor }]}>
               <TouchableOpacity 
                 style={styles.optionItem}
                 onPress={handleBlockUser}
@@ -274,13 +393,14 @@ export default function ProsMessagesScreen() {
                 style={styles.optionItem}
                 onPress={() => setShowOptionsModal(false)}
               >
-                <Ionicons name="close-outline" size={22} color="#6B7280" />
-                <Text style={styles.optionText}>Cancel</Text>
+                <Ionicons name="close-outline" size={22} color={secondaryTextColor} />
+                <Text style={[styles.optionText, { color: textColor }]}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
         </Modal>
 
+        {/* Messages List */}
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -288,22 +408,32 @@ export default function ProsMessagesScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.messagesContent}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+          showsVerticalScrollIndicator={false}
         />
 
-        <View style={styles.inputArea}>
+        {/* Input Area */}
+        <View style={[styles.inputArea, { backgroundColor: surfaceColor }]}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: glassyColor, color: textColor }]}
             placeholder="Type a message..."
+            placeholderTextColor={secondaryTextColor}
             value={messageText}
             onChangeText={setMessageText}
             multiline
           />
           <TouchableOpacity 
-            style={[styles.sendButton, !messageText.trim() && styles.sendDisabled]}
+            style={[
+              styles.sendButton, 
+              { backgroundColor: messageText.trim() ? COLORS.accent : glassyColor }
+            ]}
             onPress={handleSend}
             disabled={!messageText.trim()}
           >
-            <Ionicons name="send" size={20} color="#FFF" />
+            <Ionicons 
+              name="send" 
+              size={20} 
+              color={messageText.trim() ? '#FFFFFF' : secondaryTextColor} 
+            />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -312,92 +442,192 @@ export default function ProsMessagesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF' },
-  header: { padding: 20, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
-  listContent: { padding: 16 },
+  container: {
+    flex: 1,
+  },
+
+  // Header
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '700',
+  },
+  tagline: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 4,
+  },
+
+  // Search
+  searchSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 16,
+    gap: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+  },
+
+  // List Section
+  listSection: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  listContent: {
+    paddingBottom: 100,
+  },
+
+  // Conversation Item
   conversationItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    marginBottom: 12,
+    borderRadius: 16,
+    marginBottom: 10,
   },
-  avatarPlaceholder: {
+  avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#E5E7EB',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
   },
-  conversationInfo: { flex: 1, marginLeft: 12 },
-  conversationName: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  projectTitle: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-  emptyState: { alignItems: 'center', marginTop: 100, paddingHorizontal: 40 },
-  emptyText: { marginTop: 12, color: '#9CA3AF', fontSize: 18, fontWeight: '600' },
-  emptySubText: { marginTop: 8, color: '#9CA3AF', fontSize: 14, textAlign: 'center' },
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  conversationInfo: {
+    flex: 1,
+  },
+  conversationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  conversationName: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 8,
+  },
+  timeText: {
+    fontSize: 13,
+  },
+  messagePreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  messagePreview: {
+    fontSize: 14,
+    flex: 1,
+  },
+  messagePreviewUnread: {
+    fontWeight: '600',
+  },
+  unreadDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.unread,
+    marginLeft: 8,
+  },
+
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    paddingTop: 60,
+  },
+  emptyIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  emptySubText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+
+  // FAB
+  fab: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+
+  // Chat Header
   chatHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  chatTitle: { fontSize: 18, fontWeight: '600', color: '#111827' },
-  messagesContent: { padding: 16, paddingBottom: 32 },
-  messageWrapper: { marginBottom: 16, flexDirection: 'row' },
-  ownMessageWrapper: { justifyContent: 'flex-end' },
-  otherMessageWrapper: { justifyContent: 'flex-start' },
-  messageBubble: { maxWidth: '80%', padding: 12, borderRadius: 16 },
-  ownBubble: { backgroundColor: ProsColors.primary, borderBottomRightRadius: 4 },
-  otherBubble: { backgroundColor: '#F3F4F6', borderBottomLeftRadius: 4 },
-  messageText: { fontSize: 15, lineHeight: 20 },
-  ownMessageText: { color: '#FFF' },
-  otherMessageText: { color: '#111827' },
-  messageTime: { fontSize: 10, color: 'rgba(0,0,0,0.3)', marginTop: 4, alignSelf: 'flex-end' },
-  inputArea: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    backgroundColor: '#FFF',
-  },
-  input: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    maxHeight: 100,
-    fontSize: 15,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
   },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: ProsColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
+  backButton: {
+    padding: 4,
   },
-  sendDisabled: { opacity: 0.5 },
-  // Options Modal Styles
+  chatHeaderInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  chatTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  optionsButton: {
+    padding: 4,
+  },
+
+  // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   optionsModal: {
-    backgroundColor: '#FFFFFF',
+    width: 280,
     borderRadius: 16,
     padding: 8,
-    width: '80%',
-    maxWidth: 300,
   },
   optionItem: {
     flexDirection: 'row',
@@ -407,11 +637,62 @@ const styles = StyleSheet.create({
   },
   optionText: {
     fontSize: 16,
-    color: '#374151',
   },
   optionTextDanger: {
     fontSize: 16,
     color: '#EF4444',
-    fontWeight: '500',
+  },
+
+  // Messages
+  messagesContent: {
+    padding: 16,
+    paddingBottom: 20,
+  },
+  messageWrapper: {
+    marginBottom: 12,
+  },
+  ownMessageWrapper: {
+    alignItems: 'flex-end',
+  },
+  otherMessageWrapper: {
+    alignItems: 'flex-start',
+  },
+  messageBubble: {
+    maxWidth: '80%',
+    padding: 14,
+    borderRadius: 18,
+  },
+  messageText: {
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  messageTime: {
+    fontSize: 11,
+    marginTop: 6,
+  },
+
+  // Input Area
+  inputArea: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    padding: 12,
+    paddingBottom: 24,
+    gap: 10,
+  },
+  input: {
+    flex: 1,
+    minHeight: 44,
+    maxHeight: 100,
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  sendButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
