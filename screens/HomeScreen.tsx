@@ -3223,7 +3223,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       </MapLibreGL.MapView>
 
       {/* Search Overlay */}
-      <View style={styles.mapSearchOverlay}>
+      <View style={[styles.mapSearchOverlay, { backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)' }]}>
         {/* Search Row - Back button + Search Bar */}
         <View style={styles.mapSearchRow}>
           {/* Back button */}
@@ -4760,7 +4760,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 16,
+    paddingBottom: 12,
     zIndex: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   mapSearchRow: {
     flexDirection: 'row',
