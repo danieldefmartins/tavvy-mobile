@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 // Stripe Price ID for Multi-Page subscription - UPDATE THIS with your actual Stripe Price ID
 const MULTI_PAGE_PRICE_ID = 'price_XXXXXX'; // Replace with actual Stripe price ID
@@ -27,6 +28,7 @@ interface RouteParams {
 }
 
 const ECardMultiPageUpgradeScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute();
   const params = route.params as RouteParams;

@@ -25,6 +25,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ProsColors, PROS_CATEGORIES } from '../constants/ProsConfig';
 import { useProsLeads } from '../hooks/usePros';
+import { useTranslation } from 'react-i18next';
 
 type RouteParams = {
   ProsRequestQuoteScreen: {
@@ -37,6 +38,7 @@ type RouteParams = {
 type NavigationProp = NativeStackNavigationProp<any>;
 
 export default function ProsRequestQuoteScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp<RouteParams, 'ProsRequestQuoteScreen'>>();
   const { proId, proName, categoryId } = route.params;

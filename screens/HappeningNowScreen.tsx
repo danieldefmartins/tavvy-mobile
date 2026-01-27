@@ -28,6 +28,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { getHappeningNowEvents, TavvyEvent } from '../lib/eventsService';
 import { UnifiedHeader } from '../components/UnifiedHeader';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -126,6 +127,7 @@ function formatDistance(miles?: number): string {
 const DEFAULT_EVENT_IMAGE = 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600';
 
 export default function HappeningNowScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedTimeFilter, setSelectedTimeFilter] = useState<'all' | 'tonight' | 'weekend' | 'week'>('all');

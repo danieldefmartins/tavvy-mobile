@@ -41,6 +41,7 @@ import {
 } from '../lib/atlas';
 import { ContentBlockRenderer, ContentBlock, AudioPlayer } from '../components/atlas';
 import { getCoverImageUrl, getThumbnailUrl } from '../lib/imageUtils';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -126,6 +127,7 @@ const getFontSizes = (bodySize: number) => {
 const AUDIO_FUNCTION_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/hyper-service`;
 
 export default function ArticleDetailScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();

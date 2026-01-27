@@ -30,6 +30,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabaseClient';
 import { getCategories, type AtlasCategory, type AtlasUniverse } from '../lib/atlas';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -52,6 +53,7 @@ const CATEGORY_ICONS: Record<string, { icon: string; label: string }> = {
 };
 
 export default function UniverseDiscoveryScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { theme, isDark } = useThemeContext();
   const [activeCategory, setActiveCategory] = useState('All');

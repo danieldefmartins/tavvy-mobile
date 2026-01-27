@@ -25,6 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabaseClient';
 import { Video, ResizeMode } from 'expo-av';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -64,6 +65,7 @@ interface ModerationStats {
 }
 
 export default function StoryModerationScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
 
   const [stories, setStories] = useState<Story[]>([]);

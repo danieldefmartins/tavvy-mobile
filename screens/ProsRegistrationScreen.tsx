@@ -26,12 +26,14 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProsColors, PROS_CATEGORIES, PROS_SUBSCRIPTION_TIERS } from '../constants/ProsConfig';
 import { ProsPricingCard } from '../components/ProsSubscriptionBanner';
 import { useProDashboard, useProsSubscription } from '../hooks/usePros';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
 type Step = 'business' | 'services' | 'location' | 'pricing' | 'review';
 
 export default function ProsRegistrationScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { register, loading: registerLoading } = useProDashboard();
   const { earlyAdopterCount, fetchEarlyAdopterCount, subscribe, loading: subscribeLoading } = useProsSubscription();

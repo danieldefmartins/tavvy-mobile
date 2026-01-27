@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, Act
 import { Ionicons } from '@expo/vector-icons';
 import { useProsPendingRequests } from '../hooks/useProsPendingRequests';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 export default function ProsRequestStep5Screen({ navigation, route }: any) {
+  const { t } = useTranslation();
   const { requestData } = route.params || { requestData: {} };
   const { createRequest, loading } = useProsPendingRequests();
   const { user } = useAuth();

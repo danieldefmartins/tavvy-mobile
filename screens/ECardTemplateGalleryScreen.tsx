@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { TEMPLATES, Template, getFreeTemplates, getPremiumTemplates, getProOnlyTemplates, getTemplatesForUser } from '../config/eCardTemplates';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -80,6 +81,7 @@ const ECardTemplateGalleryScreen: React.FC = () => {
   }, [selectedCategory, hasProAccess]);
 
   const handleSelectTemplate = (template: Template) => {
+  const { t } = useTranslation();
     // Navigate to color scheme picker, preserving existing data if editing
     navigation.navigate('ECardColorPicker', {
       templateId: template.id,

@@ -41,6 +41,7 @@ import QRCode from 'react-native-qrcode-svg';
 import * as Contacts from 'expo-contacts';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_URL_BASE = 'https://tavvy.com/';
@@ -89,6 +90,7 @@ const LINK_ICONS: { [key: string]: string } = {
 };
 
 export default function MyDigitalCardScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { theme, isDark } = useThemeContext();

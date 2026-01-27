@@ -17,10 +17,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfile } from '../hooks/useProfile';
+import { useTranslation } from 'react-i18next';
 
 const TEAL_PRIMARY = '#0F8A8A';
 
 export default function EditProfileScreen({ navigation }: any) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { profile, loading: profileLoading, update, updateAvatar, checkUsername } = useProfile();
 

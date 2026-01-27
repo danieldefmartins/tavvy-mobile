@@ -17,6 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 interface DocumentUpload {
   type: 'license' | 'insurance' | 'bonding' | 'additional';
@@ -42,6 +43,7 @@ interface VerificationData {
 }
 
 export default function VerificationUploadScreen({ navigation }: { navigation: any }) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);

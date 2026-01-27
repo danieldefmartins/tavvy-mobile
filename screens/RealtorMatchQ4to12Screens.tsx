@@ -9,6 +9,7 @@ import React, { useState } from 'react';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import RealtorMatchQuestionScreen from '../components/RealtorMatchQuestionScreen';
+import { useTranslation } from 'react-i18next';
 
 type RouteParams = {
   params: Record<string, any>;
@@ -16,6 +17,7 @@ type RouteParams = {
 
 // Q4: What's your timeline?
 export function RealtorMatchQ4Screen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<RouteParams, 'params'>>();
   const [selected, setSelected] = useState<string | null>(null);

@@ -29,6 +29,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -82,6 +83,7 @@ const AMENITY_ICONS: Record<string, { icon: string; label: string }> = {
 const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800';
 
 export default function RVCampingBrowseScreen({ navigation }: { navigation: any }) {
+  const { t } = useTranslation();
   const { theme, isDark } = useThemeContext();
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);

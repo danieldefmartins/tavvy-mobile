@@ -4,10 +4,12 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { ProsColors } from '../constants/ProsConfig';
+import { useTranslation } from 'react-i18next';
 
 type VerificationMethod = 'phone' | 'email' | 'document';
 
 export default function ProsClaimBusinessScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const [step, setStep] = useState(1);
   const [businessName, setBusinessName] = useState('');

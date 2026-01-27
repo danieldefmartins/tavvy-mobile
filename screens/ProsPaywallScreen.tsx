@@ -6,10 +6,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useStripe } from '@stripe/stripe-react-native';
 import { supabase } from '../lib/supabaseClient';
 import { ProsColors } from '../constants/ProsConfig';
+import { useTranslation } from 'react-i18next';
 
 type PlanType = 'monthly' | 'annual' | 'founding';
 
 export default function ProsPaywallScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('founding');
   const { initPaymentSheet, presentPaymentSheet } = useStripe();

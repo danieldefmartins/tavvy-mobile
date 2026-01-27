@@ -36,6 +36,7 @@ import * as Contacts from 'expo-contacts';
 import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UnifiedHeader } from '../components/UnifiedHeader';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_HEIGHT = 80;
@@ -58,6 +59,7 @@ interface ProCard {
 }
 
 export default function WalletScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { theme, isDark } = useThemeContext();
   const [savedCards, setSavedCards] = useState<ProCard[]>([]);

@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { useProfile } from '../hooks/useProfile';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const TEAL_PRIMARY = '#0F8A8A';
@@ -30,6 +31,7 @@ const getUserLevel = (points: number) => {
 };
 
 export default function ProfileScreen({ navigation }: any) {
+  const { t } = useTranslation();
   const { user, signOut } = useAuth();
   const { profile, stats: profileStats, loading: profileLoading, refresh } = useProfile();
   const [loading, setLoading] = useState(false);

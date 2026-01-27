@@ -28,6 +28,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { UnifiedHeader } from '../components/UnifiedHeader';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -88,6 +89,7 @@ interface Realtor {
 type NavigationProp = NativeStackNavigationProp<any>;
 
 export default function RealtorsBrowseScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');

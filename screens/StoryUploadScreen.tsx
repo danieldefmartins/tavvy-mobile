@@ -27,6 +27,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Video, ResizeMode } from 'expo-av';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 import { 
   createStory, 
   getQuickFindPresets, 
@@ -59,6 +60,7 @@ interface RouteParams {
 }
 
 export default function StoryUploadScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { placeId, placeName, placeLatitude, placeLongitude } = (route.params as RouteParams) || {};

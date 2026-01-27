@@ -28,6 +28,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -60,6 +61,7 @@ interface City {
 const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800';
 
 export default function CitiesBrowseScreen({ navigation }: { navigation: any }) {
+  const { t } = useTranslation();
   const { theme, isDark } = useThemeContext();
   const [cities, setCities] = useState<City[]>([]);
   const [loading, setLoading] = useState(true);

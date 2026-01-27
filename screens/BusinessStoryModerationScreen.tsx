@@ -26,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabaseClient';
 import { Video, ResizeMode } from 'expo-av';
+import { useTranslation } from 'react-i18next';
 import {
   getReportedStoriesForAdmin,
   moderateStory,
@@ -42,6 +43,7 @@ interface AdminPlace {
 }
 
 export default function BusinessStoryModerationScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
 
   const [adminPlaces, setAdminPlaces] = useState<AdminPlace[]>([]);

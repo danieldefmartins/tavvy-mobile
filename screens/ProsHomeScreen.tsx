@@ -42,6 +42,7 @@ import { useSearchPros } from '../hooks/usePros';
 import { useCategories } from '../hooks/useCategories';
 import { useProsPendingRequests } from '../hooks/useProsPendingRequests';
 import { Pro } from '../lib/ProsTypes';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -71,6 +72,7 @@ const CATEGORY_CONFIG = [
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function ProsHomeScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { theme, isDark } = useThemeContext();
   const [searchQuery, setSearchQuery] = useState('');

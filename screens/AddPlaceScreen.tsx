@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import { ScannedBusinessCard } from './BusinessCardScannerScreen';
 import { supabase } from '../lib/supabaseClient';
 import { PRIMARY_CATEGORIES, PrimaryCategory, SubCategory } from '../lib/categoryConfig';
+import { useTranslation } from 'react-i18next';
 
 // Build category options from categoryConfig.ts
 const buildCategoryOptions = (): { primary: string[]; subcategories: { [key: string]: string[] } } => {
@@ -102,6 +103,7 @@ const getSubcategorySlug = (categoryName: string, subcategoryName: string): stri
 };
 
 export default function AddPlaceScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [initialData, setInitialData] = useState<any>(null);
   const [currentStepId, setCurrentStepId] = useState<string>('category');

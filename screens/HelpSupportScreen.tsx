@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
+import { useTranslation } from 'react-i18next';
 
 interface HelpItem {
   icon: keyof typeof Ionicons.glyphMap;
@@ -20,6 +21,7 @@ interface HelpItem {
 }
 
 export default function HelpSupportScreen({ navigation }: any) {
+  const { t } = useTranslation();
   const SUPPORT_EMAIL = 'support@tavvy.com';
   const PRIVACY_POLICY_URL = 'https://tavvy.com/privacy';
   const TERMS_URL = 'https://tavvy.com/terms';

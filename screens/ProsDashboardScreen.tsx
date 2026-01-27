@@ -24,8 +24,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { ProsColors } from '../constants/ProsConfig';
 import { useProProfile, useProSubscription, useProStats } from '../hooks/usePros';
 import { ProsSubscriptionStatusBanner } from '../components/ProsSubscriptionStatusBanner';
+import { useTranslation } from 'react-i18next';
+
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export default function ProsDashboardScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuth();
   const { profile, loading: profileLoading, refresh: refreshProfile } = useProProfile();

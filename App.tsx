@@ -1,4 +1,8 @@
 import React, { useEffect, useState } from 'react';
+
+// ========== INTERNATIONALIZATION ==========
+import './i18n'; // Initialize i18n on app start
+import { loadSavedLanguage } from './i18n';
 import { View, Text, StyleSheet } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
@@ -633,22 +637,23 @@ const TavvyLightTheme = {
 function AppContent() {
   const { isDark } = useThemeContext();
   
-  // Preload signal caches on app start for faster signal lookups
+  // Preload signal caches and load saved language on app start
   useEffect(() => {
-    const initializeSignalSystem = async () => {
+    const initializeApp = async () => {
       try {
-        // Preload both caches in parallel
+        // Load saved language preference and preload caches in parallel
         await Promise.all([
+          loadSavedLanguage(),
           preloadSignalLabels(),
           preloadSignalCache(),
         ]);
-        console.log('✅ Signal system initialized');
+        console.log('✅ App initialized (language + signal system)');
       } catch (error) {
-        console.error('Error initializing signal system:', error);
+        console.error('Error initializing app:', error);
       }
     };
 
-    initializeSignalSystem();
+    initializeApp();
   }, []);
 
   return (

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Colors } from '../constants/Colors';
+import { useTranslation } from 'react-i18next';
 
 // Mock Signals
 const SIGNALS = {
@@ -29,6 +30,7 @@ const SIGNALS = {
 };
 
 export default function RateCityScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const [selectedSignals, setSelectedSignals] = useState<string[]>([]);

@@ -25,6 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabaseClient';
 import { Video, ResizeMode } from 'expo-av';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -63,6 +64,7 @@ interface RouteParams {
 }
 
 export default function OwnerHighlightsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { placeId, placeName } = (route.params as RouteParams) || {};

@@ -41,6 +41,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { decode } from 'base64-arraybuffer';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MY_CARD_STORAGE_KEY = '@tavvy_my_digital_card';
@@ -164,6 +165,7 @@ const initialCardData: CardData = {
 type Step = 'template' | 'info' | 'social' | 'links' | 'style' | 'preview';
 
 export default function CreateDigitalCardScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { theme, isDark } = useThemeContext();

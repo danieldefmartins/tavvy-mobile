@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import {
   getStoryAnalytics,
   getPlaceAnalytics,
@@ -37,6 +38,7 @@ type ViewMode = 'place' | 'story';
 type TimeRange = '7d' | '30d' | '90d' | 'all';
 
 export default function StoryAnalyticsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { placeId, placeName, storyId } = (route.params as RouteParams) || {};

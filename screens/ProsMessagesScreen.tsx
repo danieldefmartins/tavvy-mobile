@@ -31,6 +31,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useTavvyChat } from '../hooks/useTavvyChat';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 // Design System Colors
 const COLORS = {
@@ -49,6 +50,7 @@ const COLORS = {
 };
 
 export default function ProsMessagesScreen() {
+  const { t } = useTranslation();
   const { theme, isDark } = useThemeContext();
   const navigation = useNavigation();
   const route = useRoute<any>();

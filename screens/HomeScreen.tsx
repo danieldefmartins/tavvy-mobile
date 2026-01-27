@@ -37,6 +37,7 @@ import { StoriesRow } from '../components/StoriesRow';
 import { HappeningNow } from '../components/HappeningNow';
 import { QuickFinds } from '../components/QuickFinds';
 import { CategoryIconRow } from '../components/CategoryIconRow';
+import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get('window');
 
@@ -338,6 +339,7 @@ interface GeocodingResult {
 // ============================================
 
 export default function HomeScreen({ navigation }: { navigation: any }) {
+  const { t } = useTranslation();
   // Theme context for dark mode support
   const { theme, isDark } = useThemeContext();
   

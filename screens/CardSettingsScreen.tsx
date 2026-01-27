@@ -22,6 +22,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 const CARD_URL_BASE = 'https://tavvy.com/';
 
@@ -34,6 +35,7 @@ interface CardSettings {
 }
 
 export default function CardSettingsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { theme, isDark } = useThemeContext();

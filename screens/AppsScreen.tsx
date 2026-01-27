@@ -32,6 +32,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useUnreadMessagesContext } from '../contexts/UnreadMessagesContext';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const IS_TABLET = SCREEN_WIDTH >= 768;
@@ -194,6 +195,7 @@ const APP_TILES: AppTile[] = [
 ];
 
 export default function AppsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { user } = useAuth();
   const { theme, isDark, setThemeMode } = useThemeContext();

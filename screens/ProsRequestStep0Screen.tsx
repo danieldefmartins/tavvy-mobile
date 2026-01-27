@@ -23,6 +23,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { ProsColors } from '../constants/ProsConfig';
+import { useTranslation } from 'react-i18next';
 
 const ProgressBar = ({ progress }: { progress: number }) => (
   <View style={styles.progressContainer}>
@@ -34,6 +35,7 @@ const ProgressBar = ({ progress }: { progress: number }) => (
 );
 
 export default function ProsRequestStep0Screen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   
   const [fullName, setFullName] = useState('');

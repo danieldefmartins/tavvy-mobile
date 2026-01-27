@@ -23,6 +23,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ProsColors, SAMPLE_PROS, DAYS_OF_WEEK, SamplePro } from '../constants/ProsConfig';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -41,6 +42,7 @@ const SAMPLE_REVIEWS: any[] = [];
 const SAMPLE_PHOTOS: string[] = [];
 
 export default function ProsProfileScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp<RouteParams, 'ProsProfile'>>();
   const { slug } = route.params;

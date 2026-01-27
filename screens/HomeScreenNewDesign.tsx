@@ -263,6 +263,7 @@ const newStyles = {
 
 /*
 const renderStandardMode = () => {
+  const { t } = useTranslation();
   // Get user's first name for greeting
   const firstName = profile?.display_name?.split(' ')[0] || 'there';
   

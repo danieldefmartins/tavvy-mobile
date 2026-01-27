@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -170,6 +171,7 @@ const MOCK_PATHS = [
 type NavigationProp = NativeStackNavigationProp<any>;
 
 export default function ExperiencePathsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const [selectedCategory, setSelectedCategory] = useState('all');
 

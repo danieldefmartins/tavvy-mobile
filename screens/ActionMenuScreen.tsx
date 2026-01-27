@@ -3,10 +3,12 @@ import { View, Text, TouchableOpacity, StyleSheet, Modal, TouchableWithoutFeedba
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../constants/Colors';
+import { useTranslation } from 'react-i18next';
 import { BlurView } from 'expo-blur'; // Optional: for glass effect if available, otherwise fallback to view
 
 export default function ActionMenuScreen({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const navigation = useNavigation();
+  const { t } = useTranslation();
 
   const handleAction = (action: string) => {
     onClose(); // Close menu first
@@ -33,34 +35,34 @@ export default function ActionMenuScreen({ visible, onClose }: { visible: boolea
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
           <View style={styles.menuContainer}>
-            <Text style={styles.menuTitle}>Create New</Text>
+            <Text style={styles.menuTitle}>{t('actionMenu.createNew')}</Text>
             
             <MenuItem 
               icon="planet" 
               color="#8B5CF6" 
-              title="Universe" 
-              subtitle="Request a new community"
+              title={t('actionMenu.universe')} 
+              subtitle={t('actionMenu.universeSubtitle')}
               onPress={() => handleAction('universe')} 
             />
             <MenuItem 
               icon="location" 
               color="#EF4444" 
-              title="Place" 
-              subtitle="Add a missing spot"
+              title={t('actionMenu.place')} 
+              subtitle={t('actionMenu.placeSubtitle')}
               onPress={() => handleAction('place')} 
             />
             <MenuItem 
               icon="business" 
               color="#10B981" 
-              title="City" 
-              subtitle="Expand to a new area"
+              title={t('actionMenu.city')} 
+              subtitle={t('actionMenu.citySubtitle')}
               onPress={() => handleAction('city')} 
             />
             <MenuItem 
               icon="star" 
               color="#F59E0B" 
-              title="Review" 
-              subtitle="Rate a place you visited"
+              title={t('actionMenu.review')} 
+              subtitle={t('actionMenu.reviewSubtitle')}
               onPress={() => handleAction('review')} 
             />
           </View>

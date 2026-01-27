@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { getTemplateById, ColorScheme, Template } from '../config/eCardTemplates';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -46,6 +47,7 @@ const ECardColorPickerScreen: React.FC = () => {
   }
 
   const handleContinue = () => {
+  const { t } = useTranslation();
     const colorScheme = template.colorSchemes.find(cs => cs.id === selectedColorScheme);
     
     // If preserving data (editing template), go directly to dashboard with existing data

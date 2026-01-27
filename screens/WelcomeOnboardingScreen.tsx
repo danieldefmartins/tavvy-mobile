@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get('window');
 
@@ -103,6 +104,7 @@ const ONBOARDING_SLIDES: OnboardingSlide[] = [
 const REVIEW_SYSTEM_SCREEN_INDEX = 1;
 
 export default function WelcomeOnboardingScreen({ navigation }: any) {
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;

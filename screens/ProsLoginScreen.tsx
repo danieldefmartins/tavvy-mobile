@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get('window');
 
@@ -26,6 +27,7 @@ const PROS_GREEN_DARK = '#059669';
 const PROS_GREEN_LIGHT = '#34D399';
 
 export default function ProsLoginScreen({ navigation }: any) {
+  const { t } = useTranslation();
   const { signIn } = useAuth();
   const { theme, isDark } = useThemeContext();
   const [email, setEmail] = useState('');

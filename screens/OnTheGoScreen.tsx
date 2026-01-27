@@ -34,6 +34,7 @@ import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -144,6 +145,7 @@ interface MapDataResponse {
 }
 
 export default function OnTheGoScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { theme, isDark } = useThemeContext();
   const cameraRef = useRef<MapLibreGL.Camera>(null);

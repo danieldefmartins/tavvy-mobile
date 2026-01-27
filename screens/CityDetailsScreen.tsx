@@ -7,6 +7,7 @@ import { Colors } from '../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabaseClient';
 import { fetchPlaceSignals, SignalAggregate } from '../lib/reviews';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -39,6 +40,7 @@ interface RouteParams {
 }
 
 export default function CityDetailsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const params = route.params as RouteParams;

@@ -33,6 +33,7 @@ import {
 } from '../lib/atlas';
 import { getCoverImageUrl } from '../lib/imageUtils';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -54,6 +55,7 @@ const PLACEHOLDER_ARTICLE = 'https://images.unsplash.com/photo-1506905925346-21b
 const PLACEHOLDER_AVATAR = 'https://ui-avatars.com/api/?name=T&background=667EEA&color=fff&size=100';
 
 export default function AtlasHomeScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { theme, isDark } = useThemeContext();
   const [loading, setLoading] = useState(true);

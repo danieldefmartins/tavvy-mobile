@@ -25,6 +25,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabaseClient';
 import { type AtlasUniverse } from '../lib/atlas';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -64,6 +65,7 @@ interface Place {
 }
 
 export default function UniverseLandingScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const universeId = route.params?.universeId;

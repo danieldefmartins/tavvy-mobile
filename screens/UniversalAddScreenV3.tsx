@@ -27,6 +27,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useDrafts, ContentType, ContentSubtype, ContentDraft } from '../hooks/useDrafts';
 import { useLocation, LocationData } from '../hooks/useLocation';
 import ECardAddressAutocomplete, { AddressData } from '../components/ecard/AddressAutocomplete';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -81,6 +82,7 @@ const STEPS: Step[] = ['location', 'business_type', 'service_location', 'content
 const STEPS_WITHOUT_SERVICE_LOCATION: Step[] = ['location', 'business_type', 'content_type', 'details', 'photos', 'review'];
 
 export default function UniversalAddScreenV3() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { 
     currentDraft, pendingDraft, isLoading, isSaving, isOnline,

@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -142,6 +143,7 @@ const DEFAULT_REALTOR = MOCK_REALTORS['1'];
 type NavigationProp = NativeStackNavigationProp<any>;
 
 export default function RealtorDetailScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp<RouteParams, 'RealtorDetail'>>();
   const { realtorId } = route.params;

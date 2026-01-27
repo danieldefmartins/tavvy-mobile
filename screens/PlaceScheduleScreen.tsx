@@ -29,6 +29,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 const SUPABASE_URL = 'https://scasgwrikoqdwlwlwcff.supabase.co';
 
@@ -85,6 +86,7 @@ type RouteParams = {
 };
 
 export default function PlaceScheduleScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'PlaceSchedule'>>();
   const { theme, isDark } = useThemeContext();

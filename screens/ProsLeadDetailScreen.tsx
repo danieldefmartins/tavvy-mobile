@@ -22,12 +22,14 @@ import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ProsColors } from '../constants/ProsConfig';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 type RouteParams = {
   ProsLeadDetail: { leadId: string | number };
 };
 
 export default function ProsLeadDetailScreen() {
+  const { t } = useTranslation();
   const route = useRoute<RouteProp<RouteParams, 'ProsLeadDetail'>>();
   const navigation = useNavigation();
   const { leadId } = route.params;

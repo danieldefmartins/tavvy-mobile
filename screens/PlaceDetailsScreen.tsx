@@ -40,6 +40,7 @@ import {
 import { getPlaceStories, PlaceStory, getStoryRingState, StoryRingState } from '../lib/storyService';
 import { StoryViewer } from '../components/StoryViewer';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -276,6 +277,7 @@ const getDriveTime = (distanceMiles: number): string => {
 };
 
 export default function PlaceDetailScreen({ route, navigation }: any) {
+  const { t } = useTranslation();
   // ===== STATE DECLARATIONS =====
   const { placeId } = route?.params || {};
   const [place, setPlace] = useState<Place | null>(null);

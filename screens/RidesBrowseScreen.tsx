@@ -29,6 +29,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -93,6 +94,7 @@ const getThrillLevelFromSubcategory = (subcategory: string | undefined): 'mild' 
 };
 
 export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
+  const { t } = useTranslation();
   const { theme, isDark } = useThemeContext();
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);

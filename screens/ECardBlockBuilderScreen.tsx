@@ -43,6 +43,7 @@ import {
   PREMIUM_PRICE,
 } from '../config/eCardBlocks';
 import { ColorScheme } from '../config/eCardTemplates';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -57,6 +58,7 @@ interface RouteParams {
 }
 
 export default function ECardBlockBuilderScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { theme, isDark } = useThemeContext();

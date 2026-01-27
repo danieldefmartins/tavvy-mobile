@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import RealtorMatchQuestionScreen from '../components/RealtorMatchQuestionScreen';
+import { useTranslation } from 'react-i18next';
 
 type RouteParams = {
   params: {
@@ -44,6 +45,7 @@ const ALL_OPTIONS = [
 ].filter(opt => !opt.id.startsWith('header-'));
 
 export default function RealtorMatchQ2Screen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<RouteParams, 'params'>>();
   const [selected, setSelected] = useState<string | null>(null);

@@ -4,8 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../constants/Colors';
+import { useTranslation } from 'react-i18next';
 
 export default function ClaimBusinessScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
 
   const handleClaim = () => {

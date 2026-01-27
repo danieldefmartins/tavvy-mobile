@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import RealtorMatchQuestionScreen from '../components/RealtorMatchQuestionScreen';
+import { useTranslation } from 'react-i18next';
 
 const OPTIONS = [
   { id: 'buy', label: 'Buy', icon: 'home-outline', sublabel: 'Looking to purchase a property' },
@@ -19,6 +20,7 @@ const OPTIONS = [
 ];
 
 export default function RealtorMatchQ1Screen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const [selected, setSelected] = useState<string | null>(null);
 

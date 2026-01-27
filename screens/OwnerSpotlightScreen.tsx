@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabaseClient';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { type AtlasArticle } from '../lib/atlas';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const POST_WIDTH = (SCREEN_WIDTH - 48) / 3;
@@ -74,6 +75,7 @@ interface PlaceData {
 }
 
 export default function OwnerSpotlightScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();

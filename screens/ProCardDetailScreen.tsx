@@ -29,6 +29,7 @@ import * as Contacts from 'expo-contacts';
 import QRCode from 'react-native-qrcode-svg';
 import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const WALLET_STORAGE_KEY = '@tavvy_wallet_cards';
@@ -58,6 +59,7 @@ interface ProCardData {
 }
 
 export default function ProCardDetailScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { theme, isDark } = useThemeContext();
