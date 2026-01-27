@@ -1554,7 +1554,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       if (isUniverseSearch) {
         // Navigate to universes with search query
         Keyboard.dismiss();
-        navigation.navigate('Universes', { searchQuery: searchQuery.trim() });
+        navigation.navigate('Explore', { searchQuery: searchQuery.trim() });
       } else {
         // Default to map/places search
         filterPlaces(searchQuery.trim());
