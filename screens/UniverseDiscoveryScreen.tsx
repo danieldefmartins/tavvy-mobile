@@ -33,17 +33,9 @@ import { getCategories, type AtlasCategory, type AtlasUniverse } from '../lib/at
 
 const { width } = Dimensions.get('window');
 
-// Design System Colors
+// Design System Colors - Uses theme from context for consistency
 const COLORS = {
-  background: '#0F0F0F',
-  backgroundLight: '#FAFAFA',
-  surface: '#111827',
-  surfaceLight: '#FFFFFF',
-  glassy: '#1A1A1A',
   accent: '#667EEA',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#9CA3AF',
-  textMuted: '#6B7280',
   activityHigh: '#EF4444',
   activityMedium: '#F59E0B',
 };
@@ -149,10 +141,10 @@ export default function UniverseDiscoveryScreen() {
     return cat?.name || 'Universe';
   };
 
-  const backgroundColor = isDark ? COLORS.background : COLORS.backgroundLight;
-  const surfaceColor = isDark ? COLORS.surface : COLORS.surfaceLight;
-  const textColor = isDark ? COLORS.textPrimary : '#1F2937';
-  const secondaryTextColor = isDark ? COLORS.textSecondary : COLORS.textMuted;
+  const backgroundColor = theme.background;
+  const surfaceColor = theme.surface;
+  const textColor = theme.text;
+  const secondaryTextColor = theme.textSecondary;
 
   if (loading) {
     return (
@@ -187,7 +179,7 @@ export default function UniverseDiscoveryScreen() {
           <View style={[
             styles.searchBar, 
             { 
-              backgroundColor: isDark ? COLORS.glassy : '#FFFFFF',
+              backgroundColor: isDark ? theme.surface : '#FFFFFF',
               borderWidth: isDark ? 0 : 1,
               borderColor: '#E5E7EB',
             }
@@ -247,7 +239,7 @@ export default function UniverseDiscoveryScreen() {
                   style={[
                     styles.filterButton,
                     { 
-                      backgroundColor: isDark ? COLORS.glassy : '#FFFFFF',
+                      backgroundColor: isDark ? theme.surface : '#FFFFFF',
                       borderWidth: isDark ? 0 : 1,
                       borderColor: isActive ? COLORS.accent : '#E5E7EB',
                     },
@@ -294,7 +286,7 @@ export default function UniverseDiscoveryScreen() {
                     style={styles.gridImage}
                   />
                   <View style={styles.gridContent}>
-                    <Text style={[styles.gridName, { color: isDark ? '#E5E7EB' : '#1F2937' }]} numberOfLines={1}>
+                    <Text style={[styles.gridName, { color: textColor }]} numberOfLines={1}>
                       {universe.name}
                     </Text>
                     <View style={styles.activityBadge}>

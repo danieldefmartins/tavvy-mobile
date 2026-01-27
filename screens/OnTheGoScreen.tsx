@@ -298,9 +298,9 @@ export default function OnTheGoScreen() {
     }
   };
 
-  const glassyBg = isDark ? COLORS.glassy : COLORS.glassyLight;
-  const textColor = isDark ? COLORS.textPrimary : '#1F2937';
-  const secondaryTextColor = isDark ? COLORS.textSecondary : COLORS.textMuted;
+  const glassyBg = isDark ? theme.surface : 'rgba(255, 255, 255, 0.9)';
+  const textColor = theme.text;
+  const secondaryTextColor = theme.textSecondary;
 
   const trayTranslateY = trayAnim.interpolate({
     inputRange: [0, 1],
@@ -313,7 +313,7 @@ export default function OnTheGoScreen() {
       
       {/* Full-Screen Map */}
       {isLoading ? (
-        <View style={[styles.loadingContainer, { backgroundColor: isDark ? COLORS.background : COLORS.backgroundLight }]}>
+        <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
           <ActivityIndicator size="large" color={COLORS.accent} />
           <Text style={[styles.loadingText, { color: secondaryTextColor }]}>
             Finding live businesses...
@@ -460,7 +460,7 @@ export default function OnTheGoScreen() {
                   style={[
                     styles.trayCard, 
                     { 
-                      backgroundColor: isDark ? COLORS.surface : '#FFFFFF',
+                      backgroundColor: isDark ? theme.surface : '#FFFFFF',
                       shadowColor: isDark ? 'transparent' : '#000',
                       shadowOffset: { width: 0, height: 2 },
                       shadowOpacity: isDark ? 0 : 0.1,

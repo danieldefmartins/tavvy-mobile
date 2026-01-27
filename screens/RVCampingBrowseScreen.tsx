@@ -155,11 +155,11 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
     navigation.navigate('PlaceDetails', { placeId: place.id });
   };
 
-  const backgroundColor = isDark ? COLORS.background : COLORS.backgroundLight;
-  const surfaceColor = isDark ? COLORS.surface : COLORS.surfaceLight;
-  const glassyColor = isDark ? COLORS.glassy : '#F3F4F6';
-  const textColor = isDark ? COLORS.textPrimary : '#1F2937';
-  const secondaryTextColor = isDark ? COLORS.textSecondary : COLORS.textMuted;
+  const backgroundColor = theme.background;
+  const surfaceColor = theme.surface;
+  const glassyColor = isDark ? theme.surface : '#F3F4F6';
+  const textColor = theme.text;
+  const secondaryTextColor = theme.textSecondary;
 
   // Filter by search query
   const filteredPlaces = searchQuery
@@ -321,7 +321,7 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
                           {featuredPlace.amenities.slice(0, 3).map((amenity, idx) => {
                             const amenityInfo = AMENITY_ICONS[amenity.toLowerCase()] || { icon: 'checkmark', label: amenity };
                             return (
-                              <View key={idx} style={[styles.amenityBadge, { backgroundColor: isDark ? COLORS.glassy : '#F3F4F6' }]}>
+                              <View key={idx} style={[styles.amenityBadge, { backgroundColor: isDark ? theme.surface : '#F3F4F6' }]}>
                                 <Ionicons name={amenityInfo.icon as any} size={12} color={COLORS.accent} />
                               </View>
                             );

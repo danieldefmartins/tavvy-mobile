@@ -114,11 +114,11 @@ export default function CitiesBrowseScreen({ navigation }: { navigation: any }) 
     return `${pop} people`;
   };
 
-  const backgroundColor = isDark ? COLORS.background : COLORS.backgroundLight;
-  const surfaceColor = isDark ? COLORS.surface : COLORS.surfaceLight;
-  const glassyColor = isDark ? COLORS.glassy : '#F3F4F6';
-  const textColor = isDark ? COLORS.textPrimary : '#1F2937';
-  const secondaryTextColor = isDark ? COLORS.textSecondary : COLORS.textMuted;
+  const backgroundColor = theme.background;
+  const surfaceColor = theme.surface;
+  const glassyColor = isDark ? theme.surface : '#F3F4F6';
+  const textColor = theme.text;
+  const secondaryTextColor = theme.textSecondary;
 
   // Filter by search query
   const filteredCities = searchQuery

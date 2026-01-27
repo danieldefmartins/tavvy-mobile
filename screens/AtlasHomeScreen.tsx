@@ -99,10 +99,10 @@ export default function AtlasHomeScreen() {
     }
   };
 
-  const backgroundColor = isDark ? COLORS.background : COLORS.backgroundLight;
-  const surfaceColor = isDark ? COLORS.surface : COLORS.surfaceLight;
-  const textColor = isDark ? COLORS.textPrimary : '#1F2937';
-  const secondaryTextColor = isDark ? COLORS.textSecondary : COLORS.textMuted;
+  const backgroundColor = theme.background;
+  const surfaceColor = theme.surface;
+  const textColor = theme.text;
+  const secondaryTextColor = theme.textSecondary;
 
   if (loading) {
     return (
@@ -220,7 +220,7 @@ export default function AtlasHomeScreen() {
             style={[
               styles.browseButton, 
               { 
-                backgroundColor: isDark ? COLORS.glassy : '#FFFFFF',
+                backgroundColor: isDark ? theme.surface : '#FFFFFF',
                 borderWidth: isDark ? 0 : 1,
                 borderColor: '#E5E7EB',
               }

@@ -111,9 +111,9 @@ export default function ProsHomeScreen() {
     navigation.navigate('ProsDashboard');
   };
 
-  const backgroundColor = isDark ? COLORS.background : COLORS.backgroundLight;
-  const surfaceColor = isDark ? COLORS.surface : COLORS.surfaceLight;
-  const glassyColor = isDark ? COLORS.glassy : '#F3F4F6';
+  const backgroundColor = theme.background;
+  const surfaceColor = theme.surface;
+  const glassyColor = isDark ? theme.surface : '#F3F4F6';
   const cardShadow = isDark ? {} : {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -121,8 +121,8 @@ export default function ProsHomeScreen() {
     shadowRadius: 8,
     elevation: 3,
   };
-  const textColor = isDark ? COLORS.textPrimary : '#1F2937';
-  const secondaryTextColor = isDark ? COLORS.textSecondary : COLORS.textMuted;
+  const textColor = theme.text;
+  const secondaryTextColor = theme.textSecondary;
 
   // Pro Mode View
   if (viewMode === 'pro') {
@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   earlyAdopterBanner: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
@@ -619,6 +619,6 @@ const styles = StyleSheet.create({
   },
   bannerSubtitle: {
     fontSize: 14,
-    color: COLORS.textSecondary,
+    color: '#94A3B8',
   },
 });
