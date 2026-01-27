@@ -2658,7 +2658,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             </View>
             <TouchableOpacity 
               style={[styles.avatarButton, { backgroundColor: isDark ? '#2D2D2D' : '#667EEA' }]}
-              onPress={() => navigation.navigate('Apps', { screen: 'ProfileScreen' })}
+              onPress={() => navigation.navigate('Apps', { screen: 'ProfileMain' })}
             >
               <Text style={styles.avatarText}>
                 {firstName.charAt(0).toUpperCase()}
@@ -2760,7 +2760,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB',
                 }
               ]}
-              onPress={() => navigation.navigate('Apps', { screen: 'SavedScreen' })}
+              onPress={() => navigation.navigate('Apps', { screen: 'SavedMain' })}
             >
               <Text style={styles.quickActionIcon}>⭐</Text>
               <Text style={[styles.quickActionText, { color: isDark ? '#888' : '#6B7280' }]}>Saved</Text>

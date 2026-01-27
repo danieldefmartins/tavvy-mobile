@@ -64,7 +64,7 @@ const SPECIALTIES = [
 ];
 
 // Default placeholder image
-const PLACEHOLDER_PHOTO = 'https://via.placeholder.com/150?text=No+Photo';
+const PLACEHOLDER_PHOTO = 'https://ui-avatars.com/api/?name=Realtor&background=0D9488&color=fff&size=150';
 
 // Realtor type from Supabase
 interface Realtor {

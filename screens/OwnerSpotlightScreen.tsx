@@ -36,8 +36,8 @@ const TEAL_LIGHT = '#5EEAD4';
 const TEAL_BG = '#F0FDFA';
 
 // Placeholder images
-const PLACEHOLDER_AVATAR = 'https://via.placeholder.com/200';
-const PLACEHOLDER_POST = 'https://via.placeholder.com/300';
+const PLACEHOLDER_AVATAR = 'https://ui-avatars.com/api/?name=Owner&background=0D9488&color=fff&size=200';
+const PLACEHOLDER_POST = 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=300&h=300&fit=crop';
 
 // Tab options
 type TabType = 'posts' | 'about' | 'business';

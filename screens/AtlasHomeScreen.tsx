@@ -50,7 +50,7 @@ const COLORS = {
 
 // Default placeholder images
 const PLACEHOLDER_ARTICLE = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800';
-const PLACEHOLDER_AVATAR = 'https://via.placeholder.com/100';
+const PLACEHOLDER_AVATAR = 'https://ui-avatars.com/api/?name=T&background=667EEA&color=fff&size=100';
 
 export default function AtlasHomeScreen() {
   const navigation = useNavigation<any>();

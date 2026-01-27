@@ -1,116 +1,115 @@
 /**
- * Pros Dashboard Screen
- * Install path: screens/ProsDashboardScreen.tsx
- * 
- * Dashboard for service providers to manage their profile, leads, and messages.
+ * ProsDashboardScreen.tsx
+ * Dashboard for service providers to manage their business
+ * Path: screens/ProsDashboardScreen.tsx
  */
-
 import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   StyleSheet,
+  ScrollView,
   TouchableOpacity,
-  RefreshControl,
   Image,
   ActivityIndicator,
+  RefreshControl,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
+import { RootStackParamList } from '../types/navigation';
+import { useAuth } from '../contexts/AuthContext';
 import { ProsColors } from '../constants/ProsConfig';
-import { ProsSubscriptionStatusBanner } from '../components/ProsSubscriptionBanner';
-import { ProsLeadCardCompact } from '../components/ProsLeadCard';
-import { useProDashboard, useProsLeads, useProsSubscription, useProsConversations } from '../hooks/usePros';
-
-type NavigationProp = NativeStackNavigationProp<any>;
-
+import { useProProfile, useProSubscription, useProStats } from '../hooks/usePros';
+import { ProsSubscriptionStatusBanner } from '../components/ProsSubscriptionStatusBanner';
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export default function ProsDashboardScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const { user } = useAuth();
+  const { profile, loading: profileLoading, refresh: refreshProfile } = useProProfile();
+  const { subscription, loading: subscriptionLoading, refresh: refreshSubscription } = useProSubscription();
+  const { stats, loading: statsLoading, refresh: refreshStats } = useProStats();
   const [refreshing, setRefreshing] = useState(false);
-
-  const { profile, loading: profileLoading, fetchProfile } = useProDashboard();
-  const { leads, loading: leadsLoading, fetchLeads } = useProsLeads();
-  const { subscription, fetchSubscription } = useProsSubscription();
-  const { conversations, fetchConversations } = useProsConversations();
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    await Promise.all([
-      fetchProfile(),
-      fetchLeads(),
-      fetchSubscription(),
-      fetchConversations(),
-    ]);
-  };
-
-  const handleRefresh = async () => {
+  // Calculate stats
+  const rating = profile?.averageRating || 0;
+  const newLeadsCount = stats?.newLeads || 0;
+  const unreadMessagesCount = stats?.unreadMessages || 0;
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshProfile();
+      refreshSubscription();
+      refreshStats();
+    }, [])
+  );
+  const onRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    await Promise.all([refreshProfile(), refreshSubscription(), refreshStats()]);
     setRefreshing(false);
   };
-
-  const newLeadsCount = leads.filter(l => (l.status as string) === 'new' || (l.status as string) === 'pending').length;
-  const unreadMessagesCount = conversations.reduce((sum, c) => sum + ((c as any).conversation?.providerUnread || 0), 0);
-
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.emptyState}>
+          <Ionicons name="lock-closed-outline" size={64} color={ProsColors.textMuted} />
+          <Text style={styles.emptyTitle}>Sign in Required</Text>
+          <Text style={styles.emptySubtitle}>Please sign in to access your Pro dashboard</Text>
+          <TouchableOpacity
+            style={styles.signInButton}
+            onPress={() => navigation.navigate('ProsLogin')}
+          >
+            <Text style={styles.signInButtonText}>Sign In</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
   if (profileLoading && !profile) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={ProsColors.primary} />
+          <Text style={styles.loadingText}>Loading your dashboard...</Text>
         </View>
       </SafeAreaView>
     );
   }
-
   if (!profile) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.emptyContainer}>
-          <Ionicons name="business-outline" size={64} color={ProsColors.textMuted} />
+        <View style={styles.emptyState}>
+          <Ionicons name="construct-outline" size={64} color={ProsColors.textMuted} />
           <Text style={styles.emptyTitle}>Become a Pro</Text>
-          <Text style={styles.emptyText}>
-            Register your business to start receiving leads and connecting with customers.
+          <Text style={styles.emptySubtitle}>
+            Register as a service provider to access your dashboard
           </Text>
           <TouchableOpacity
-            style={styles.registerButton}
+            style={styles.signInButton}
             onPress={() => navigation.navigate('ProsRegistration')}
           >
-            <Text style={styles.registerButtonText}>Register Now</Text>
+            <Text style={styles.signInButtonText}>Register Now</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
-
-  const rating = parseFloat(profile.averageRating as any) || 0;
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
-        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ProsColors.primary} />
         }
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Dashboard</Text>
-          <TouchableOpacity
-            style={styles.settingsButton}
-            onPress={() => navigation.navigate('Settings')}
-          >
-            <Ionicons name="settings-outline" size={24} color={ProsColors.textPrimary} />
+          <Text style={styles.headerTitle}>Pro Dashboard</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
+            <Ionicons name="settings-outline" size={24} color={ProsColors.text} />
           </TouchableOpacity>
         </View>
-
         {/* Profile Card */}
         <TouchableOpacity
           style={styles.profileCard}
@@ -141,7 +140,6 @@ export default function ProsDashboardScreen() {
             <Ionicons name="chevron-forward" size={20} color={ProsColors.textMuted} />
           </View>
         </TouchableOpacity>
-
         {/* Subscription Status */}
         <ProsSubscriptionStatusBanner
           tier={subscription?.tier || null}
@@ -150,7 +148,6 @@ export default function ProsDashboardScreen() {
           expiresAt={subscription?.endDate}
           onUpgrade={() => Alert.alert('Coming Soon', 'Subscription upgrades will be available in a future update.')}
         />
-
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
           <TouchableOpacity
@@ -163,7 +160,6 @@ export default function ProsDashboardScreen() {
             <Text style={styles.statValue}>{newLeadsCount}</Text>
             <Text style={styles.statLabel}>New Leads</Text>
           </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.statCard}
             onPress={() => navigation.navigate('ProsMessages')}
@@ -174,7 +170,6 @@ export default function ProsDashboardScreen() {
             <Text style={styles.statValue}>{unreadMessagesCount}</Text>
             <Text style={styles.statLabel}>Unread Messages</Text>
           </TouchableOpacity>
-
           <View style={styles.statCard}>
             <View style={[styles.statIcon, { backgroundColor: `${ProsColors.success}15` }]}>
               <Ionicons name="star" size={24} color={ProsColors.success} />
@@ -182,7 +177,6 @@ export default function ProsDashboardScreen() {
             <Text style={styles.statValue}>{profile.totalReviews}</Text>
             <Text style={styles.statLabel}>Reviews</Text>
           </View>
-
           <View style={styles.statCard}>
             <View style={[styles.statIcon, { backgroundColor: `${ProsColors.accent}15` }]}>
               <Ionicons name="eye" size={24} color={ProsColors.accent} />
@@ -191,7 +185,6 @@ export default function ProsDashboardScreen() {
             <Text style={styles.statLabel}>Profile Views</Text>
           </View>
         </View>
-
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
@@ -226,62 +219,36 @@ export default function ProsDashboardScreen() {
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Recent Leads */}
+        {/* Recent Activity */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Leads</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('ProsLeads')}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          {leads.length > 0 ? (
-            leads.slice(0, 3).map((lead) => (
-              <ProsLeadCardCompact
-                key={lead.id}
-                lead={lead as any}
-                onPress={() => navigation.navigate('ProsLeadDetail', { leadId: lead.id })}
-              />
-            ))
-          ) : (
-            <View style={styles.emptyLeads}>
-              <Ionicons name="document-text-outline" size={32} color={ProsColors.textMuted} />
-              <Text style={styles.emptyLeadsText}>No leads yet</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Tips Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pro Tips</Text>
-          <View style={styles.tipCard}>
-            <Ionicons name="bulb-outline" size={24} color={ProsColors.secondary} />
-            <View style={styles.tipContent}>
-              <Text style={styles.tipTitle}>Complete Your Profile</Text>
-              <Text style={styles.tipText}>
-                Profiles with photos and detailed descriptions get 3x more leads.
-              </Text>
-            </View>
+          <Text style={styles.sectionTitle}>Recent Activity</Text>
+          <View style={styles.activityCard}>
+            <Text style={styles.activityEmpty}>No recent activity</Text>
           </View>
         </View>
-
-        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: ProsColors.background,
+  },
+  scrollContent: {
+    padding: 16,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  emptyContainer: {
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: ProsColors.textSecondary,
+  },
+  emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -290,24 +257,23 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: ProsColors.textPrimary,
-    marginTop: 24,
-    marginBottom: 12,
+    color: ProsColors.text,
+    marginTop: 16,
   },
-  emptyText: {
-    fontSize: 15,
+  emptySubtitle: {
+    fontSize: 16,
     color: ProsColors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
+    marginTop: 8,
     marginBottom: 24,
   },
-  registerButton: {
+  signInButton: {
     backgroundColor: ProsColors.primary,
     paddingHorizontal: 32,
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 12,
   },
-  registerButtonText: {
+  signInButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
@@ -316,26 +282,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    marginBottom: 20,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: ProsColors.textPrimary,
-  },
-  settingsButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    color: ProsColors.text,
   },
   profileCard: {
-    marginHorizontal: 16,
-    backgroundColor: ProsColors.sectionBg,
-    borderRadius: 12,
+    backgroundColor: ProsColors.surface,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 8,
+    marginBottom: 16,
   },
   profileHeader: {
     flexDirection: 'row',
@@ -344,14 +302,13 @@ const styles = StyleSheet.create({
   profileLogo: {
     width: 56,
     height: 56,
-    borderRadius: 10,
-    backgroundColor: ProsColors.border,
+    borderRadius: 12,
   },
   profileLogoPlaceholder: {
     width: 56,
     height: 56,
-    borderRadius: 10,
-    backgroundColor: ProsColors.border,
+    borderRadius: 12,
+    backgroundColor: ProsColors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -367,27 +324,30 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 18,
     fontWeight: '600',
-    color: ProsColors.textPrimary,
+    color: ProsColors.text,
   },
   profileRating: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 4,
+    gap: 4,
   },
   ratingText: {
-    fontSize: 13,
+    fontSize: 14,
     color: ProsColors.textSecondary,
-    marginLeft: 4,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    marginTop: 16,
+    gap: 12,
+    marginBottom: 24,
   },
   statCard: {
-    width: '50%',
-    padding: 4,
+    width: '47%',
+    backgroundColor: ProsColors.surface,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
   },
   statIcon: {
     width: 48,
@@ -400,87 +360,49 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: ProsColors.textPrimary,
+    color: ProsColors.text,
   },
   statLabel: {
-    fontSize: 13,
+    fontSize: 14,
     color: ProsColors.textSecondary,
-    marginTop: 2,
+    marginTop: 4,
   },
   section: {
-    paddingHorizontal: 16,
-    paddingTop: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: ProsColors.textPrimary,
+    color: ProsColors.text,
     marginBottom: 12,
-  },
-  viewAllText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: ProsColors.primary,
   },
   quickActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 12,
   },
   quickAction: {
+    width: '47%',
+    backgroundColor: ProsColors.surface,
+    borderRadius: 12,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${ProsColors.primary}08`,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: `${ProsColors.primary}20`,
+    gap: 10,
   },
   quickActionText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
-    color: ProsColors.primary,
-    marginLeft: 6,
+    color: ProsColors.text,
   },
-  emptyLeads: {
+  activityCard: {
+    backgroundColor: ProsColors.surface,
+    borderRadius: 16,
+    padding: 24,
     alignItems: 'center',
-    paddingVertical: 24,
-    backgroundColor: ProsColors.sectionBg,
-    borderRadius: 10,
   },
-  emptyLeadsText: {
+  activityEmpty: {
     fontSize: 14,
     color: ProsColors.textMuted,
-    marginTop: 8,
-  },
-  tipCard: {
-    flexDirection: 'row',
-    backgroundColor: `${ProsColors.secondary}10`,
-    borderRadius: 10,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: `${ProsColors.secondary}20`,
-  },
-  tipContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  tipTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: ProsColors.textPrimary,
-    marginBottom: 4,
-  },
-  tipText: {
-    fontSize: 13,
-    color: ProsColors.textSecondary,
-    lineHeight: 18,
   },
 });
