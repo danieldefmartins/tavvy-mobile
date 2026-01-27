@@ -350,7 +350,9 @@ export default function AppsScreen() {
                     end={{ x: 1, y: 1 }}
                     style={styles.featuredGradient}
                   >
-                    {renderIcon(app, 56)}
+                    <View style={styles.featuredIconContainer}>
+                      {renderIcon(app, 72)}
+                    </View>
                     <Text style={styles.featuredName}>{app.name}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -574,8 +576,17 @@ const styles = StyleSheet.create({
   featuredGradient: {
     flex: 1,
     padding: 16,
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'flex-start',
+  },
+  featuredIconContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   featuredName: {
     color: '#FFFFFF',
