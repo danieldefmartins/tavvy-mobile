@@ -4921,38 +4921,6 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 10,
   },
-  mapCategoryContent: {
-    paddingHorizontal: 16,
-  },
-  mapCategoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
-    marginRight: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  mapCategoryChipActive: {
-    backgroundColor: '#111827',
-  },
-  mapFilterChip: {
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-  },
-  mapCategoryChipText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  mapCategoryChipTextActive: {
-    color: '#fff',
-  },
-
   // Search this Area Button
   searchThisAreaButton: {
     position: 'absolute',
@@ -5752,20 +5720,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: 12,
     marginTop: -8,
-  },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  filterChipActive: {
-    borderColor: 'transparent',
-  },
-  filterChipText: {
-    fontSize: 14,
-    fontWeight: '500',
   },
   filterCountBadge: {
     paddingHorizontal: 16,

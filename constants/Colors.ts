@@ -88,6 +88,7 @@ export const darkTheme = {
   tabBarInactive: brand.textSecondary,
   
   // Cards
+  card: palette.darkSurface,
   cardBackground: palette.darkSurface,
   cardShadow: 'rgba(0, 0, 0, 0.3)',
   
@@ -159,9 +160,10 @@ export const lightTheme = {
   tabBarInactive: palette.gray500,
   
   // Cards
+  card: palette.white,
   cardBackground: palette.white,
   cardShadow: 'rgba(0, 0, 0, 0.1)',
-  
+
   // Signals (Tap Categories)
   signalPros: palette.signalPros,
   signalUniverse: palette.signalUniverse,

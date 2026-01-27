@@ -82,8 +82,9 @@ const resources = {
 // Get the best matching language from device locale
 const getDeviceLanguage = (): string => {
   try {
-    // Safely get device locale with fallback
-    const deviceLocale = Localization.locale || Localization.getLocales?.()?.[0]?.languageCode || 'en';
+    // Use getLocales() which is the modern API
+    const locales = Localization.getLocales?.();
+    const deviceLocale = locales?.[0]?.languageCode || 'en';
     
     // Handle undefined or invalid locale
     if (!deviceLocale || typeof deviceLocale !== 'string') {
@@ -108,7 +109,7 @@ i18n
     resources,
     lng: getDeviceLanguage(),
     fallbackLng: 'en',
-    compatibilityJSON: 'v3',
+    compatibilityJSON: 'v4',
     interpolation: {
       escapeValue: false, // React already escapes values
     },

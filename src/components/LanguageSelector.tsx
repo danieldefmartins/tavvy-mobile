@@ -21,7 +21,13 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { SUPPORTED_LANGUAGES, changeLanguage, getCurrentLanguage } from '../i18n';
-import * as Updates from 'expo-updates';
+// expo-updates may not be available in development builds
+let Updates: { reloadAsync?: () => Promise<void> } = {};
+try {
+  Updates = require('expo-updates');
+} catch (e) {
+  // expo-updates not available
+}
 
 interface LanguageSelectorProps {
   visible: boolean;
@@ -97,7 +103,7 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({
         
         // Reload the app to apply RTL changes
         // Note: In production, you might want to show a confirmation dialog
-        if (Updates.reloadAsync) {
+        if (Updates && Updates.reloadAsync) {
           await Updates.reloadAsync();
         }
       }

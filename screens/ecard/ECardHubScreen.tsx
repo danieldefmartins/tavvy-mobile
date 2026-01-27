@@ -98,7 +98,7 @@ export default function ECardHubScreen() {
   };
 
   const renderCardTile = (card: CardData) => {
-    const gradientColors = [
+    const gradientColors: [string, string] = [
       card.gradient_color_1 || '#667eea',
       card.gradient_color_2 || '#764ba2',
     ];

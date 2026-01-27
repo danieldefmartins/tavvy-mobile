@@ -3964,6 +3964,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: width - 32,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
   qrModalContent: {
     backgroundColor: '#fff',
     borderRadius: 20,
@@ -4616,18 +4634,6 @@ const styles = StyleSheet.create({
   },
   
   // Industry Icons Section
-  proBadgeSmall: {
-    backgroundColor: '#FACC15',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginLeft: 8,
-  },
-  proBadgeSmallText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
   sectionDescription: {
     fontSize: 13,
     color: '#666',
