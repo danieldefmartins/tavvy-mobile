@@ -72,7 +72,7 @@ const AnimatedSplash: React.FC<AnimatedSplashProps> = ({ onAnimationComplete }) 
         ]}
       >
         <Image
-          source={require('../assets/logo-icon.png')}
+          source={require('../assets/logo-full.png')}
           style={styles.logo}
           resizeMode="contain"
         />
