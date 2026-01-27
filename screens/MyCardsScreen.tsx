@@ -323,7 +323,7 @@ export default function MyCardsScreen() {
             {!isPro && cards.length >= maxCards && (
               <TouchableOpacity 
                 style={styles.upgradePrompt}
-                onPress={() => navigation.navigate('Subscription')}
+                onPress={() => navigation.navigate('ECardPremiumUpsell')}
               >
                 <LinearGradient
                   colors={['#8B5CF6', '#4F46E5']}
