@@ -7,6 +7,7 @@
  * - Glassy filter pills
  * - Featured ride hero with "MUST RIDE" badge
  * - Popular rides grid with thrill level badges (no stars)
+ * - Real data from Supabase
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -52,56 +53,15 @@ interface Ride {
   id: string;
   name: string;
   category: string;
-  parkName?: string;
+  subcategory?: string;
+  park_name?: string;
+  universe_name?: string;
+  cover_image_url?: string;
   photos?: string[];
-  thrillLevel?: 'mild' | 'moderate' | 'thrilling' | 'extreme';
-  isMustRide?: boolean;
+  thrill_level?: 'mild' | 'moderate' | 'thrilling' | 'extreme';
+  is_must_ride?: boolean;
+  is_featured?: boolean;
 }
-
-// Sample data
-const SAMPLE_RIDES: Ride[] = [
-  {
-    id: 'ride-1',
-    name: 'Space Mountain',
-    category: 'Roller Coaster',
-    parkName: 'Magic Kingdom',
-    photos: ['https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800'],
-    thrillLevel: 'thrilling',
-    isMustRide: true,
-  },
-  {
-    id: 'ride-2',
-    name: 'Tron Lightcycle / Run',
-    category: 'Roller Coaster',
-    parkName: 'Magic Kingdom',
-    photos: ['https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800'],
-    thrillLevel: 'extreme',
-  },
-  {
-    id: 'ride-3',
-    name: 'Guardians of the Galaxy',
-    category: 'Roller Coaster',
-    parkName: 'EPCOT',
-    photos: ['https://images.unsplash.com/photo-1566552881560-0be862a7c445?w=800'],
-    thrillLevel: 'extreme',
-  },
-  {
-    id: 'ride-4',
-    name: 'Splash Mountain',
-    category: 'Water Ride',
-    parkName: 'Magic Kingdom',
-    photos: ['https://images.unsplash.com/photo-1582653291997-079a1c04e5a1?w=800'],
-    thrillLevel: 'moderate',
-  },
-  {
-    id: 'ride-5',
-    name: 'Pirates of the Caribbean',
-    category: 'Dark Ride',
-    parkName: 'Magic Kingdom',
-    photos: ['https://images.unsplash.com/photo-1513106580091-1d82408b8cd6?w=800'],
-    thrillLevel: 'mild',
-  },
-];
 
 const FILTER_OPTIONS: { key: FilterOption; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -118,6 +78,9 @@ const THRILL_LABELS: Record<string, { label: string; color: string }> = {
   extreme: { label: 'Extreme', color: '#EF4444' },
 };
 
+// Placeholder image
+const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800';
+
 export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
   const { theme, isDark } = useThemeContext();
   const [rides, setRides] = useState<Ride[]>([]);
@@ -133,20 +96,56 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
   const loadRides = async () => {
     setLoading(true);
     try {
-      let filtered = SAMPLE_RIDES;
+      // Build query for rides from tavvy_places
+      let query = supabase
+        .from('tavvy_places')
+        .select('*')
+        .or('category.ilike.%ride%,category.ilike.%coaster%,category.ilike.%attraction%,subcategory.ilike.%ride%,subcategory.ilike.%coaster%')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      // Apply filter
       if (filterBy === 'roller_coaster') {
-        filtered = SAMPLE_RIDES.filter(r => r.category.toLowerCase().includes('coaster'));
+        query = supabase
+          .from('tavvy_places')
+          .select('*')
+          .or('category.ilike.%coaster%,subcategory.ilike.%coaster%')
+          .order('created_at', { ascending: false })
+          .limit(20);
       } else if (filterBy === 'water') {
-        filtered = SAMPLE_RIDES.filter(r => r.category.toLowerCase().includes('water'));
+        query = supabase
+          .from('tavvy_places')
+          .select('*')
+          .or('category.ilike.%water%,subcategory.ilike.%water%')
+          .order('created_at', { ascending: false })
+          .limit(20);
       } else if (filterBy === 'family') {
-        filtered = SAMPLE_RIDES.filter(r => r.thrillLevel === 'mild' || r.thrillLevel === 'moderate');
+        query = supabase
+          .from('tavvy_places')
+          .select('*')
+          .or('category.ilike.%family%,subcategory.ilike.%family%,thrill_level.eq.mild,thrill_level.eq.moderate')
+          .order('created_at', { ascending: false })
+          .limit(20);
       } else if (filterBy === 'dark') {
-        filtered = SAMPLE_RIDES.filter(r => r.category.toLowerCase().includes('dark'));
+        query = supabase
+          .from('tavvy_places')
+          .select('*')
+          .or('category.ilike.%dark%,subcategory.ilike.%dark%')
+          .order('created_at', { ascending: false })
+          .limit(20);
       }
-      setRides(filtered);
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error loading rides:', error);
+        setRides([]);
+      } else {
+        setRides(data || []);
+      }
     } catch (error) {
       console.error('Error loading rides:', error);
-      setRides(SAMPLE_RIDES);
+      setRides([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -162,7 +161,7 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
     navigation.navigate('RideDetails', { 
       rideId: ride.id, 
       rideName: ride.name,
-      parkName: ride.parkName,
+      parkName: ride.park_name || ride.universe_name,
     });
   };
 
@@ -172,8 +171,13 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
   const textColor = isDark ? COLORS.textPrimary : '#1F2937';
   const secondaryTextColor = isDark ? COLORS.textSecondary : COLORS.textMuted;
 
-  const featuredRide = rides.find(r => r.isMustRide) || rides[0];
-  const popularRides = rides.filter(r => r.id !== featuredRide?.id).slice(0, 4);
+  // Filter by search query
+  const filteredRides = searchQuery
+    ? rides.filter(r => r.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : rides;
+
+  const featuredRide = filteredRides.find(r => r.is_must_ride || r.is_featured) || filteredRides[0];
+  const popularRides = filteredRides.filter(r => r.id !== featuredRide?.id).slice(0, 4);
 
   if (loading) {
     return (
@@ -224,6 +228,11 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color={secondaryTextColor} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -259,83 +268,101 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
           ))}
         </ScrollView>
 
-        {/* Featured Ride Hero */}
-        {featuredRide && (
-          <View style={styles.featuredSection}>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>Featured Ride</Text>
-            <TouchableOpacity
-              style={styles.featuredCard}
-              onPress={() => handleRidePress(featuredRide)}
-              activeOpacity={0.9}
-            >
-              <Image
-                source={{ uri: featuredRide.photos?.[0] }}
-                style={styles.featuredImage}
-              />
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.85)']}
-                style={styles.featuredGradient}
-              >
-                {featuredRide.isMustRide && (
-                  <View style={styles.mustRideBadge}>
-                    <Text style={styles.mustRideText}>MUST RIDE</Text>
-                  </View>
-                )}
-                <Text style={styles.featuredName}>{featuredRide.name}</Text>
-                <Text style={styles.featuredMeta}>
-                  {featuredRide.parkName} • {featuredRide.category}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
+        {/* Empty State */}
+        {filteredRides.length === 0 ? (
+          <View style={styles.emptyState}>
+            <View style={[styles.emptyIcon, { backgroundColor: glassyColor }]}>
+              <Ionicons name="train-outline" size={48} color={secondaryTextColor} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: textColor }]}>No rides yet</Text>
+            <Text style={[styles.emptySubtitle, { color: secondaryTextColor }]}>
+              Theme park rides and attractions will appear here once added.
+            </Text>
           </View>
-        )}
-
-        {/* Popular Rides Grid */}
-        <View style={styles.popularSection}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>Popular Rides</Text>
-          <View style={styles.gridContainer}>
-            {popularRides.map((ride) => {
-              const thrillInfo = THRILL_LABELS[ride.thrillLevel || 'moderate'];
-              return (
+        ) : (
+          <>
+            {/* Featured Ride Hero */}
+            {featuredRide && (
+              <View style={styles.featuredSection}>
+                <Text style={[styles.sectionTitle, { color: textColor }]}>Featured Ride</Text>
                 <TouchableOpacity
-                  key={ride.id}
-                  style={[
-                    styles.gridCard, 
-                    { 
-                      backgroundColor: surfaceColor,
-                      shadowColor: isDark ? 'transparent' : '#000',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: isDark ? 0 : 0.08,
-                      shadowRadius: 8,
-                      elevation: isDark ? 0 : 3,
-                    }
-                  ]}
-                  onPress={() => handleRidePress(ride)}
-                  activeOpacity={0.8}
+                  style={styles.featuredCard}
+                  onPress={() => handleRidePress(featuredRide)}
+                  activeOpacity={0.9}
                 >
                   <Image
-                    source={{ uri: ride.photos?.[0] }}
-                    style={styles.gridImage}
+                    source={{ uri: featuredRide.cover_image_url || featuredRide.photos?.[0] || PLACEHOLDER_IMAGE }}
+                    style={styles.featuredImage}
                   />
-                  <View style={styles.gridContent}>
-                    <Text style={[styles.gridName, { color: isDark ? '#E5E7EB' : '#1F2937' }]} numberOfLines={2}>
-                      {ride.name}
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.85)']}
+                    style={styles.featuredGradient}
+                  >
+                    {featuredRide.is_must_ride && (
+                      <View style={styles.mustRideBadge}>
+                        <Text style={styles.mustRideText}>MUST RIDE</Text>
+                      </View>
+                    )}
+                    <Text style={styles.featuredName}>{featuredRide.name}</Text>
+                    <Text style={styles.featuredMeta}>
+                      {featuredRide.park_name || featuredRide.universe_name || 'Theme Park'} • {featuredRide.category || 'Attraction'}
                     </Text>
-                    <Text style={[styles.gridPark, { color: secondaryTextColor }]} numberOfLines={1}>
-                      {ride.parkName}
-                    </Text>
-                    <View style={[styles.thrillBadge, { backgroundColor: `${thrillInfo.color}20` }]}>
-                      <Ionicons name="flash" size={12} color={thrillInfo.color} />
-                      <Text style={[styles.thrillText, { color: thrillInfo.color }]}>
-                        {thrillInfo.label}
-                      </Text>
-                    </View>
-                  </View>
+                  </LinearGradient>
                 </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
+              </View>
+            )}
+
+            {/* Popular Rides Grid */}
+            {popularRides.length > 0 && (
+              <View style={styles.popularSection}>
+                <Text style={[styles.sectionTitle, { color: textColor }]}>Popular Rides</Text>
+                <View style={styles.gridContainer}>
+                  {popularRides.map((ride) => {
+                    const thrillInfo = THRILL_LABELS[ride.thrill_level || 'moderate'];
+                    return (
+                      <TouchableOpacity
+                        key={ride.id}
+                        style={[
+                          styles.gridCard, 
+                          { 
+                            backgroundColor: surfaceColor,
+                            shadowColor: isDark ? 'transparent' : '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: isDark ? 0 : 0.08,
+                            shadowRadius: 8,
+                            elevation: isDark ? 0 : 3,
+                          }
+                        ]}
+                        onPress={() => handleRidePress(ride)}
+                        activeOpacity={0.9}
+                      >
+                        <Image
+                          source={{ uri: ride.cover_image_url || ride.photos?.[0] || PLACEHOLDER_IMAGE }}
+                          style={styles.gridImage}
+                        />
+                        <View style={styles.gridInfo}>
+                          <Text style={[styles.gridName, { color: textColor }]} numberOfLines={1}>
+                            {ride.name}
+                          </Text>
+                          <Text style={[styles.gridPark, { color: secondaryTextColor }]} numberOfLines={1}>
+                            {ride.park_name || ride.universe_name || 'Theme Park'}
+                          </Text>
+                          {ride.thrill_level && (
+                            <View style={[styles.thrillBadge, { backgroundColor: thrillInfo.color + '20' }]}>
+                              <Text style={[styles.thrillText, { color: thrillInfo.color }]}>
+                                {thrillInfo.label}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+          </>
+        )}
 
         {/* Bottom Spacing */}
         <View style={{ height: 100 }} />
@@ -354,7 +381,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 14,
+    fontSize: 16,
   },
   scrollContent: {
     paddingBottom: 20,
@@ -401,30 +428,57 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   filterPill: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    marginRight: 10,
+    marginRight: 8,
   },
   filterText: {
     fontSize: 14,
     fontWeight: '600',
   },
 
-  // Featured Section
-  featuredSection: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
   },
+  emptyIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+
+  // Sections
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 12,
   },
+
+  // Featured Card
+  featuredSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
   featuredCard: {
     borderRadius: 20,
     overflow: 'hidden',
-    height: 220,
+    height: 200,
   },
   featuredImage: {
     width: '100%',
@@ -435,35 +489,35 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 20,
-    paddingTop: 80,
+    padding: 16,
+    paddingTop: 40,
   },
   mustRideBadge: {
     backgroundColor: COLORS.mustRide,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 6,
     alignSelf: 'flex-start',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   mustRideText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
   featuredName: {
     color: '#FFFFFF',
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     marginBottom: 4,
   },
   featuredMeta: {
-    color: '#E5E7EB',
+    color: 'rgba(255,255,255,0.8)',
     fontSize: 14,
   },
 
-  // Popular Section
+  // Popular Grid
   popularSection: {
     paddingHorizontal: 20,
   },
@@ -482,7 +536,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 100,
   },
-  gridContent: {
+  gridInfo: {
     padding: 12,
   },
   gridName: {
@@ -495,16 +549,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   thrillBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
   },
   thrillText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
