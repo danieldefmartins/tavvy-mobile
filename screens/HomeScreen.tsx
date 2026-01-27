@@ -397,6 +397,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [locationName, setLocationName] = useState<string>('');
   
+  // User location pulse animation
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  
   // Map states
   const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('osm');
   const [currentMapBounds, setCurrentMapBounds] = useState<{
@@ -458,6 +461,27 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       }
     };
   }, []);
+
+  // Pulse animation for user location dot
+  useEffect(() => {
+    const startPulseAnimation = () => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.5,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    };
+    startPulseAnimation();
+  }, [pulseAnim]);
 
   // Handle camera movement when targetLocation changes
   useEffect(() => {
@@ -3198,6 +3222,18 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             coordinate={userLocation}
           >
             <View style={styles.userLocationMarker}>
+              <Animated.View 
+                style={[
+                  styles.userLocationPulse,
+                  {
+                    transform: [{ scale: pulseAnim }],
+                    opacity: pulseAnim.interpolate({
+                      inputRange: [1, 1.5],
+                      outputRange: [0.6, 0],
+                    }),
+                  },
+                ]} 
+              />
               <View style={styles.userLocationDot} />
             </View>
           </MapLibreGL.PointAnnotation>
@@ -3237,8 +3273,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         ))}
       </MapLibreGL.MapView>
 
-      {/* Search Overlay */}
-      <View style={[styles.mapSearchOverlay, { backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)' }]}>
+      {/* Search Overlay - Transparent, just search bar and chips */}
+      <View style={styles.mapSearchOverlay}>
         {/* Search Row - Back button + Search Bar */}
         <View style={styles.mapSearchRow}>
           {/* Back button */}
@@ -4777,14 +4813,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
     zIndex: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    // Transparent background - no container background
   },
   mapSearchRow: {
     flexDirection: 'row',
@@ -5191,25 +5220,31 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   userLocationMarker: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 122, 255, 0.25)',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  userLocationPulse: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0, 122, 255, 0.3)',
+  },
   userLocationDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#007AFF',
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: '#fff',
     shadowColor: '#007AFF',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    elevation: 6,
   },
   targetLocationMarker: {
     alignItems: 'center',
@@ -5991,17 +6026,17 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
 
-  // Floating Icons
+  // Floating Icons - Positioned at bottom of map, above tab bar
   floatingIconsLeft: {
     position: 'absolute',
     left: 16,
-    bottom: '42%',
+    bottom: 100,
     gap: 12,
   },
   floatingIconsRight: {
     position: 'absolute',
     right: 16,
-    bottom: '42%',
+    bottom: 100,
     gap: 12,
   },
   floatingIcon: {
