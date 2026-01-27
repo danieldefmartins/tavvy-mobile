@@ -32,6 +32,7 @@ import {
   type AtlasArticle,
 } from '../lib/atlas';
 import { getCoverImageUrl } from '../lib/imageUtils';
+import { supabase } from '../lib/supabaseClient';
 
 const { width } = Dimensions.get('window');
 
@@ -61,6 +62,7 @@ export default function AtlasHomeScreen() {
   // Data states
   const [featuredArticle, setFeaturedArticle] = useState<AtlasArticle | null>(null);
   const [trendingArticles, setTrendingArticles] = useState<AtlasArticle[]>([]);
+  const [followingArticles, setFollowingArticles] = useState<AtlasArticle[]>([]);
 
   useEffect(() => {
     loadData();
@@ -78,10 +80,47 @@ export default function AtlasHomeScreen() {
       // Get 2 articles that are not the featured one
       const trending = articles.filter(a => a.id !== featured?.id).slice(0, 2);
       setTrendingArticles(trending);
+
+      // Load articles from followed authors
+      await loadFollowingArticles();
     } catch (error) {
       console.error('Error loading Atlas data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadFollowingArticles = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setFollowingArticles([]);
+        return;
+      }
+
+      const { data: follows } = await supabase
+        .from('atlas_author_follows')
+        .select('author_name')
+        .eq('user_id', user.id);
+
+      if (!follows || follows.length === 0) {
+        setFollowingArticles([]);
+        return;
+      }
+
+      const authorNames = follows.map(f => f.author_name);
+
+      const { data: articles } = await supabase
+        .from('atlas_articles')
+        .select('*')
+        .in('author_name', authorNames)
+        .eq('status', 'published')
+        .order('published_at', { ascending: false })
+        .limit(6);
+
+      setFollowingArticles(articles || []);
+    } catch (error) {
+      console.error('Error loading following articles:', error);
     }
   };
 
@@ -177,6 +216,57 @@ export default function AtlasHomeScreen() {
               </TouchableOpacity>
             </LinearGradient>
           </TouchableOpacity>
+        )}
+
+        {/* From Authors You Follow */}
+        {followingArticles.length > 0 && (
+          <View style={styles.followingSection}>
+            <View style={styles.followingSectionHeader}>
+              <Ionicons name="person-circle" size={20} color={COLORS.accent} />
+              <Text style={[styles.sectionTitle, { color: textColor, marginBottom: 0 }]}>
+                From Authors You Follow
+              </Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.followingScroll}
+            >
+              {followingArticles.map((article) => (
+                <TouchableOpacity
+                  key={article.id}
+                  style={[
+                    styles.followingCard,
+                    {
+                      backgroundColor: surfaceColor,
+                      borderColor: COLORS.accent,
+                    }
+                  ]}
+                  onPress={() => navigateToArticle(article)}
+                  activeOpacity={0.8}
+                >
+                  <Image
+                    source={{ uri: getCoverImageUrl(article.cover_image_url) || PLACEHOLDER_ARTICLE }}
+                    style={styles.followingImage}
+                  />
+                  <View style={styles.followingContent}>
+                    <Text style={[styles.followingTitle, { color: isDark ? '#E5E7EB' : '#1F2937' }]} numberOfLines={2}>
+                      {article.title}
+                    </Text>
+                    <View style={styles.followingMeta}>
+                      <Image
+                        source={{ uri: article.author_avatar_url || PLACEHOLDER_AVATAR }}
+                        style={styles.followingAuthorAvatar}
+                      />
+                      <Text style={[styles.followingAuthorName, { color: secondaryTextColor }]} numberOfLines={1}>
+                        {article.author_name || 'Tavvy Team'}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
         )}
 
         {/* Trending Guides */}
@@ -340,6 +430,55 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
+  },
+
+  // Following Section
+  followingSection: {
+    marginBottom: 24,
+  },
+  followingSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+    gap: 8,
+  },
+  followingScroll: {
+    paddingHorizontal: 20,
+  },
+  followingCard: {
+    width: 180,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginRight: 12,
+    borderWidth: 2,
+  },
+  followingImage: {
+    width: '100%',
+    height: 100,
+  },
+  followingContent: {
+    padding: 12,
+  },
+  followingTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  followingMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  followingAuthorAvatar: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+  },
+  followingAuthorName: {
+    fontSize: 12,
+    flex: 1,
   },
 
   // Trending Section

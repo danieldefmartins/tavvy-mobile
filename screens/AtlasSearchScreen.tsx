@@ -57,6 +57,14 @@ export default function AtlasSearchScreen() {
     return num.toString();
   };
 
+  const navigateToArticle = (article: AtlasArticle) => {
+    if (article.article_template_type === 'owner_spotlight') {
+      navigation.navigate('OwnerSpotlight' as never, { article } as never);
+    } else {
+      navigation.navigate('ArticleDetail' as never, { article } as never);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Header with Search Bar */}
@@ -110,11 +118,7 @@ export default function AtlasSearchScreen() {
                   <TouchableOpacity
                     key={article.id}
                     style={styles.resultCard}
-                    onPress={() =>
-                      navigation.navigate('ArticleDetail', {
-                        article,
-                      })
-                    }
+                    onPress={() => navigateToArticle(article)}
                   >
                     <Image
                       source={{ uri: article.cover_image_url }}
