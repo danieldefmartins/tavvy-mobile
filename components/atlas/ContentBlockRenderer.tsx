@@ -370,7 +370,7 @@ const PlaceCardBlockComponent: React.FC<{ block: PlaceCardBlock }> = ({ block })
   // Get image from cover_image_url or first photo in photos array
   const placeImage = place.cover_image_url || 
     (Array.isArray(place.photos) ? place.photos[0]?.url || place.photos[0] : null) || 
-    'https://via.placeholder.com/100';
+    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=100&h=100&fit=crop';
 
   return (
     <View style={styles.placeCard}>

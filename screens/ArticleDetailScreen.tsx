@@ -93,7 +93,7 @@ const FONT_SIZE_STEP = 2;
 type ReadingMode = 'light' | 'sepia' | 'dark';
 
 // Placeholder images
-const PLACEHOLDER_AVATAR = 'https://via.placeholder.com/100';
+const PLACEHOLDER_AVATAR = 'https://ui-avatars.com/api/?name=T&background=0D9488&color=fff&size=100';
 const PLACEHOLDER_ARTICLE = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800';
 
 // Extended article type with new fields

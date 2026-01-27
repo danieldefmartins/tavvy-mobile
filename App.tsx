@@ -78,6 +78,8 @@ import ProsRequestStep4Screen from './screens/ProsRequestStep4Screen';
 import ProsRequestStep5Screen from './screens/ProsRequestStep5Screen';
 import ProsProjectStatusScreen from './screens/ProsProjectStatusScreen';
 import ProsLoginScreen from './screens/ProsLoginScreen';
+import ProsManageProfileScreen from './screens/ProsManageProfileScreen';
+import ProsPaywallScreen from './screens/ProsPaywallScreen';
 
 // ========== BROWSE SCREENS ==========
 import RidesBrowseScreen from './screens/RidesBrowseScreen';
@@ -158,6 +160,9 @@ import {
   ECardFormBlockScreen,
 } from './screens/ecard';
 import VerificationUploadScreen from './screens/VerificationUploadScreen';
+import CommunityGuidelinesScreen from './screens/CommunityGuidelinesScreen';
+import ExperiencePathsScreen from './screens/ExperiencePathsScreen';
+import ExperiencePathDetailScreen from './screens/ExperiencePathDetailScreen';
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
@@ -261,6 +266,13 @@ function AppsStack() {
       {/* Shared screens accessible from menu */}
       <MenuStackNav.Screen name="RateCity" component={RateCityScreen} />
       
+      {/* Atlas Screens accessible from Apps */}
+      <MenuStackNav.Screen name="AtlasMain" component={AtlasHomeScreen} />
+      <MenuStackNav.Screen name="ArticleDetail" component={ArticleDetailScreen} />
+      <MenuStackNav.Screen name="OwnerSpotlight" component={OwnerSpotlightScreen} />
+      <MenuStackNav.Screen name="CategoryBrowse" component={CategoryBrowseScreen} />
+      <MenuStackNav.Screen name="AtlasSearch" component={AtlasSearchScreen} />
+      
       {/* Browse Screens accessible from Apps */}
       <MenuStackNav.Screen name="CitiesBrowse" component={CitiesBrowseScreen} />
       <MenuStackNav.Screen name="RidesBrowse" component={RidesBrowseScreen} />
@@ -358,6 +370,14 @@ function AppsStack() {
       <MenuStackNav.Screen name="StoryModeration" component={StoryModerationScreen} />
       <MenuStackNav.Screen name="StoryAnalytics" component={StoryAnalyticsScreen} />
       <MenuStackNav.Screen name="BusinessStoryModeration" component={BusinessStoryModerationScreen} />
+      
+      {/* Missing screens - added for navigation fixes */}
+      <MenuStackNav.Screen name="ProsManageProfile" component={ProsManageProfileScreen} />
+      <MenuStackNav.Screen name="ProsPaywall" component={ProsPaywallScreen} />
+      <MenuStackNav.Screen name="ProsLeadDetail" component={ProsLeadDetailScreen} />
+      <MenuStackNav.Screen name="CommunityGuidelines" component={CommunityGuidelinesScreen} />
+      <MenuStackNav.Screen name="ExperiencePaths" component={ExperiencePathsScreen} />
+      <MenuStackNav.Screen name="ExperiencePathDetail" component={ExperiencePathDetailScreen} />
     </MenuStackNav.Navigator>
   );
 }
@@ -406,6 +426,9 @@ function ProsStack() {
       <ProsStackNav.Screen name="SignUp" component={SignUpScreen} />
       <ProsStackNav.Screen name="Login" component={LoginScreen} />
       <ProsStackNav.Screen name="WelcomeOnboarding" component={WelcomeOnboardingScreen} />
+      {/* Missing screens - added for navigation fixes */}
+      <ProsStackNav.Screen name="ProsManageProfile" component={ProsManageProfileScreen} />
+      <ProsStackNav.Screen name="ProsPaywall" component={ProsPaywallScreen} />
     </ProsStackNav.Navigator>
   );
 }
