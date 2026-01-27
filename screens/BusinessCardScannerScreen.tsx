@@ -10,7 +10,8 @@ const SCAN_AREA_WIDTH = width * 0.85;
 const SCAN_AREA_HEIGHT = SCAN_AREA_WIDTH / CARD_ASPECT_RATIO;
 
 // OCR.space API configuration
-const OCR_API_KEY = 'K84783289688957';
+// OCR.space API key from environment variables
+const OCR_API_KEY = process.env.EXPO_PUBLIC_OCR_API_KEY || '';
 const OCR_API_URL = 'https://api.ocr.space/parse/image';
 
 interface BusinessCardScannerScreenProps {

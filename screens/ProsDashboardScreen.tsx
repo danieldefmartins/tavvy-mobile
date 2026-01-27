@@ -15,6 +15,7 @@ import {
   RefreshControl,
   Image,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -80,7 +81,7 @@ export default function ProsDashboardScreen() {
           </Text>
           <TouchableOpacity
             style={styles.registerButton}
-            onPress={() => navigation.navigate('ProsRegistrationScreen')}
+            onPress={() => navigation.navigate('ProsRegistration')}
           >
             <Text style={styles.registerButtonText}>Register Now</Text>
           </TouchableOpacity>
@@ -113,7 +114,7 @@ export default function ProsDashboardScreen() {
         {/* Profile Card */}
         <TouchableOpacity
           style={styles.profileCard}
-          onPress={() => navigation.navigate('ProsEditProfile')}
+          onPress={() => Alert.alert('Coming Soon', 'Edit Profile will be available in a future update.')}
         >
           <View style={styles.profileHeader}>
             {(profile as any).logoUrl ? (
@@ -147,7 +148,7 @@ export default function ProsDashboardScreen() {
           status={(subscription?.status as any) || null}
           earlyAdopterNumber={(subscription as any)?.earlyAdopterNumber || undefined}
           expiresAt={subscription?.endDate}
-          onUpgrade={() => navigation.navigate('ProsPricingScreen')}
+          onUpgrade={() => Alert.alert('Coming Soon', 'Subscription upgrades will be available in a future update.')}
         />
 
         {/* Stats Grid */}
@@ -197,28 +198,28 @@ export default function ProsDashboardScreen() {
           <View style={styles.quickActions}>
             <TouchableOpacity
               style={styles.quickAction}
-              onPress={() => navigation.navigate('ProsEditProfile')}
+              onPress={() => Alert.alert('Coming Soon', 'Edit Profile will be available in a future update.')}
             >
               <Ionicons name="person-outline" size={22} color={ProsColors.primary} />
               <Text style={styles.quickActionText}>Edit Profile</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickAction}
-              onPress={() => navigation.navigate('ProsPhotosScreen')}
+              onPress={() => Alert.alert('Coming Soon', 'Photo management will be available in a future update.')}
             >
               <Ionicons name="images-outline" size={22} color={ProsColors.primary} />
               <Text style={styles.quickActionText}>Manage Photos</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickAction}
-              onPress={() => navigation.navigate('ProsAvailabilityScreen')}
+              onPress={() => Alert.alert('Coming Soon', 'Availability settings will be available in a future update.')}
             >
               <Ionicons name="calendar-outline" size={22} color={ProsColors.primary} />
               <Text style={styles.quickActionText}>Set Availability</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickAction}
-              onPress={() => navigation.navigate('ProsServices')}
+              onPress={() => Alert.alert('Coming Soon', 'Service management will be available in a future update.')}
             >
               <Ionicons name="construct-outline" size={22} color={ProsColors.primary} />
               <Text style={styles.quickActionText}>Services</Text>

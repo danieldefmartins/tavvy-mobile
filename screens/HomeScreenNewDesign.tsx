@@ -292,7 +292,7 @@ const renderStandardMode = () => {
             </View>
             <TouchableOpacity 
               style={[newStyles.avatar, { backgroundColor: isDark ? '#FF6B6B' : '#667EEA' }]}
-              onPress={() => navigation.navigate('Profile')}
+              onPress={() => navigation.navigate('Apps', { screen: 'ProfileMain' })}
             >
               <Text style={newStyles.avatarText}>
                 {firstName.charAt(0).toUpperCase()}
@@ -393,7 +393,7 @@ const renderStandardMode = () => {
                   borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB',
                 }
               ]}
-              onPress={() => navigation.navigate('Profile')}
+              onPress={() => navigation.navigate('Apps', { screen: 'ProfileMain' })}
             >
               <Text style={newStyles.quickActionIcon}>⭐</Text>
               <Text style={[newStyles.quickActionText, { color: isDark ? '#888' : '#6B7280' }]}>Saved</Text>

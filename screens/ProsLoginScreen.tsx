@@ -54,7 +54,7 @@ export default function ProsLoginScreen({ navigation }: any) {
 
   const handleCreateAccount = () => {
     // Navigate to Pro signup flow
-    navigation.navigate('ProsRequest');
+    navigation.navigate('ProsRequestStep0');
   };
 
   // Generate decorative logo pattern positions (green-themed)

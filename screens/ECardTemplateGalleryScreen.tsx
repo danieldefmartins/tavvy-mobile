@@ -10,6 +10,7 @@ import {
   Image,
   StatusBar,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -350,7 +351,7 @@ const ECardTemplateGalleryScreen: React.FC = () => {
           onPress={() => {
             if (currentTemplate?.isProOnly && !hasProAccess) {
               // Navigate to Pro upgrade screen
-              navigation.navigate('ProMembership');
+              Alert.alert('Coming Soon', 'Pro membership will be available in a future update.');
             } else if (currentTemplate) {
               handleSelectTemplate(currentTemplate);
             }

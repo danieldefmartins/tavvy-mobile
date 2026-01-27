@@ -220,8 +220,9 @@ export default function AppsScreen() {
       }
       
       // Special handling for tab navigation
+      // Atlas has been removed from tabs, navigate to Explore (Universes) instead
       if (tile.route === 'Atlas') {
-        navigation.navigate('Atlas', { screen: 'AtlasMain' });
+        navigation.navigate('Explore', { screen: 'UniverseDiscovery' });
         return;
       }
       if (tile.route === 'Pros') {
