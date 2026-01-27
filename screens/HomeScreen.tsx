@@ -2649,7 +2649,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <Text style={[styles.userName, { color: isDark ? '#fff' : '#111827' }]}>
                 {firstName} 👋
               </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
                 <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#667EEA', marginRight: 6 }} />
                 <Text style={{ fontSize: 12, fontWeight: '500', color: '#667EEA' }}>
                   Real-time signals. Not star ratings.
@@ -2657,7 +2657,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               </View>
             </View>
             <TouchableOpacity 
-              style={[styles.avatarButton, { backgroundColor: isDark ? '#FF6B6B' : '#667EEA' }]}
+              style={[styles.avatarButton, { backgroundColor: isDark ? '#2D2D2D' : '#667EEA' }]}
               onPress={() => navigation.navigate('Apps', { screen: 'ProfileScreen' })}
             >
               <Text style={styles.avatarText}>
@@ -2749,6 +2749,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             >
               <Text style={styles.quickActionIcon}>🎲</Text>
               <Text style={[styles.quickActionText, { color: isDark ? '#fff' : '#111827' }]}>Surprise</Text>
+              <Text style={[styles.quickActionSubtext, { color: isDark ? 'rgba(255,255,255,0.5)' : '#9CA3AF' }]}>Let Tavvy decide</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -2783,7 +2784,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               activeOpacity={0.9}
             >
               <LinearGradient
-                colors={['#FF6B6B', '#FF8E53']}
+                colors={['#E85D5D', '#E07A47']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFillObject}
@@ -2806,7 +2807,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               activeOpacity={0.9}
             >
               <LinearGradient
-                colors={['#667EEA', '#764BA2']}
+                colors={['#5A6FD6', '#6A4292']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFillObject}
@@ -6257,6 +6258,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '500',
     textAlign: 'center',
+  },
+  quickActionSubtext: {
+    fontSize: 8,
+    fontWeight: '400',
+    textAlign: 'center',
+    marginTop: 2,
   },
 
   // Mood Cards

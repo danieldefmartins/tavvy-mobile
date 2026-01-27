@@ -333,15 +333,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '700',
     letterSpacing: -0.3,
-    color: '#1F2937',
+    color: '#667EEA',
+    opacity: 0.9,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6B7280',
-    marginTop: 4,
+    marginTop: 2,
+    opacity: 0.8,
   },
   seeAllButton: {
     paddingVertical: 4,
@@ -350,7 +352,7 @@ const styles = StyleSheet.create({
   seeAllText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0F8A8A', // ACCENT color for consistency
+    color: '#667EEA', // Tavvy Accent Blue
   },
   scrollContent: {
     paddingHorizontal: 18,
