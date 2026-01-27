@@ -23,7 +23,7 @@ import { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { ProsColors } from '../constants/ProsConfig';
 import { useProProfile, useProSubscription, useProStats } from '../hooks/usePros';
-import { ProsSubscriptionStatusBanner } from '../components/ProsSubscriptionStatusBanner';
+import { ProsSubscriptionStatusBanner } from '../components/ProsSubscriptionBanner';
 import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
