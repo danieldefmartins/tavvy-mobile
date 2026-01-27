@@ -53,11 +53,11 @@ const palette = {
   gray800: '#1E293B',
   gray900: '#0F172A',
 
-  // Dark Mode Specific (Tavvy Navy scale)
-  darkBackground: '#0F1233',      // Tavvy Navy
-  darkSurface: '#1E293B',         // Elevated surface
-  darkSurfaceElevated: '#334155', // More elevated
-  darkSeparator: '#334155',       // Borders
+  // Dark Mode Specific (Pure Black)
+  darkBackground: '#000000',      // Pure black background
+  darkSurface: '#1A1A1A',         // Elevated surface (dark gray)
+  darkSurfaceElevated: '#2A2A2A', // More elevated
+  darkSeparator: '#333333',       // Borders
 };
 
 // ===== DARK THEME (Primary for Tavvy) =====
@@ -83,7 +83,7 @@ export const darkTheme = {
   secondary: brand.orange,
   
   // Tab Bar
-  tabBarBackground: 'rgba(15, 18, 51, 0.95)',
+  tabBarBackground: 'rgba(0, 0, 0, 0.95)',
   tabBarActive: palette.white,
   tabBarInactive: brand.textSecondary,
   
@@ -111,7 +111,7 @@ export const darkTheme = {
   info: palette.info,
   
   // Map
-  mapOverlay: 'rgba(15, 18, 51, 0.92)',
+  mapOverlay: 'rgba(0, 0, 0, 0.92)',
   
   // Bottom Sheet
   bottomSheetBackground: palette.darkSurface,
@@ -124,7 +124,7 @@ export const darkTheme = {
   
   // Photo Overlay Gradient
   photoGradientStart: 'transparent',
-  photoGradientEnd: 'rgba(15, 18, 51, 0.9)',
+  photoGradientEnd: 'rgba(0, 0, 0, 0.9)',
   
   // Brand accent colors
   brandBlue: brand.blue,
@@ -424,6 +424,6 @@ export const brandConfig = {
     orange: brand.orange,
   },
   splash: {
-    backgroundColor: brand.navy,
+    backgroundColor: '#000000',
   },
 };
