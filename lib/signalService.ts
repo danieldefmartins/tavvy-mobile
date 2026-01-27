@@ -149,6 +149,9 @@ export const CATEGORY_SIGNAL_PREFIXES: Record<string, string[]> = {
   // Entertainment (theme parks, etc.)
   entertainment: ['tp_', 'ent_', 'generic_'],
   
+  // Attractions (rides, shows, etc.)
+  attraction: ['tp_', 'ent_', 'generic_'],
+  
   // Outdoors & Parks
   outdoors: ['outdoor_', 'restroom_', 'generic_'],
   
@@ -188,6 +191,21 @@ export const SUBCATEGORY_SIGNAL_OVERRIDES: Record<string, string[]> = {
   theme_park_attraction: ['tp_', 'generic_'],
   theme_park_food: ['restaurant_', 'tp_', 'generic_'],
   theme_park_restroom: ['restroom_', 'generic_'],
+  
+  // Attraction subcategories (from places table)
+  show: ['tp_', 'generic_'],
+  dark_ride: ['tp_', 'generic_'],
+  boat_ride: ['tp_', 'generic_'],
+  roller_coaster: ['tp_', 'generic_'],
+  thrill_ride: ['tp_', 'generic_'],
+  water_ride: ['tp_', 'generic_'],
+  spinner: ['tp_', 'generic_'],
+  simulator: ['tp_', 'generic_'],
+  carousel: ['tp_', 'generic_'],
+  train: ['tp_', 'generic_'],
+  tour: ['tp_', 'generic_'],
+  meet_greet: ['tp_', 'generic_'],
+  playground: ['tp_', 'generic_'],
   
   // Automotive subcategories
   gas_station: ['fuel_', 'generic_'],
@@ -332,14 +350,15 @@ export async function fetchSignalsForPlace(placeId: string): Promise<SignalsByCa
     // Fallback: Try places table (for cities and other entities)
     const { data: simplePlace } = await supabase
       .from('places')
-      .select('primary_category, category_slug')
+      .select('tavvy_category, tavvy_subcategory')
       .eq('id', placeId)
       .maybeSingle();
     
     if (simplePlace) {
-      const category = simplePlace.category_slug || simplePlace.primary_category;
+      const category = simplePlace.tavvy_category;
+      const subcategory = simplePlace.tavvy_subcategory;
       if (category) {
-        return await getSignalsForCategory(category);
+        return await getSignalsForCategory(category, subcategory);
       }
     }
     
