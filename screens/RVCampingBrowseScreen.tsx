@@ -51,14 +51,13 @@ type FilterOption = 'all' | 'rv_park' | 'campground' | 'dump_station';
 interface Place {
   id: string;
   name: string;
-  category: string;
-  subcategory?: string;
+  tavvy_category: string;
+  tavvy_subcategory?: string;
   city?: string;
-  state_region?: string;
+  region?: string;
   cover_image_url?: string;
   photos?: string[];
-  amenities?: string[];
-  is_open_now?: boolean;
+  status?: string;
 }
 
 const FILTER_OPTIONS: { key: FilterOption; label: string; icon: string }[] = [
@@ -97,34 +96,41 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
   const loadPlaces = async () => {
     setLoading(true);
     try {
-      // Build query for RV & Camping places
+      // Build query for RV & Camping places from canonical places table
       let query = supabase
-        .from('tavvy_places')
-        .select('*')
-        .or('category.ilike.%rv%,category.ilike.%camping%,category.ilike.%campground%,subcategory.ilike.%rv%,subcategory.ilike.%camping%')
+        .from('places')
+        .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos, status')
+        .eq('tavvy_category', 'rv_camping')
+        .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(20);
 
-      // Apply filter
+      // Apply filter by subcategory
       if (filterBy === 'rv_park') {
         query = supabase
-          .from('tavvy_places')
-          .select('*')
-          .or('category.ilike.%rv%,subcategory.ilike.%rv%')
+          .from('places')
+          .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos, status')
+          .eq('tavvy_category', 'rv_camping')
+          .ilike('tavvy_subcategory', '%rv_park%')
+          .eq('status', 'active')
           .order('created_at', { ascending: false })
           .limit(20);
       } else if (filterBy === 'campground') {
         query = supabase
-          .from('tavvy_places')
-          .select('*')
-          .or('category.ilike.%campground%,subcategory.ilike.%campground%,category.ilike.%camping%')
+          .from('places')
+          .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos, status')
+          .eq('tavvy_category', 'rv_camping')
+          .or('tavvy_subcategory.ilike.%campground%,tavvy_subcategory.ilike.%established_campground%')
+          .eq('status', 'active')
           .order('created_at', { ascending: false })
           .limit(20);
       } else if (filterBy === 'dump_station') {
         query = supabase
-          .from('tavvy_places')
-          .select('*')
-          .or('category.ilike.%dump%,subcategory.ilike.%dump%')
+          .from('places')
+          .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos, status')
+          .eq('tavvy_category', 'rv_camping')
+          .ilike('tavvy_subcategory', '%dump_station%')
+          .eq('status', 'active')
           .order('created_at', { ascending: false })
           .limit(20);
       }
@@ -301,31 +307,21 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
                       style={styles.featuredImage}
                     />
                     <View style={styles.featuredInfo}>
-                      {featuredPlace.is_open_now && (
-                        <View style={styles.openBadge}>
-                          <Text style={styles.openBadgeText}>OPEN NOW</Text>
-                        </View>
-                      )}
                       <Text style={[styles.featuredName, { color: textColor }]} numberOfLines={2}>
                         {featuredPlace.name}
                       </Text>
                       <View style={styles.locationRow}>
                         <Ionicons name="location" size={14} color={secondaryTextColor} />
                         <Text style={[styles.locationText, { color: secondaryTextColor }]}>
-                          {featuredPlace.city}{featuredPlace.state_region ? `, ${featuredPlace.state_region}` : ''}
+                          {featuredPlace.city}{featuredPlace.region ? `, ${featuredPlace.region}` : ''}
                         </Text>
                       </View>
-                      {/* Amenities */}
-                      {featuredPlace.amenities && featuredPlace.amenities.length > 0 && (
-                        <View style={styles.amenitiesRow}>
-                          {featuredPlace.amenities.slice(0, 3).map((amenity, idx) => {
-                            const amenityInfo = AMENITY_ICONS[amenity.toLowerCase()] || { icon: 'checkmark', label: amenity };
-                            return (
-                              <View key={idx} style={[styles.amenityBadge, { backgroundColor: isDark ? theme.surface : '#F3F4F6' }]}>
-                                <Ionicons name={amenityInfo.icon as any} size={12} color={COLORS.accent} />
-                              </View>
-                            );
-                          })}
+                      {/* Subcategory badge */}
+                      {featuredPlace.tavvy_subcategory && (
+                        <View style={[styles.amenityBadge, { backgroundColor: isDark ? theme.surface : '#F3F4F6', marginTop: 8 }]}>
+                          <Text style={{ color: COLORS.accent, fontSize: 12 }}>
+                            {featuredPlace.tavvy_subcategory.replace(/_/g, ' ')}
+                          </Text>
                         </View>
                       )}
                     </View>
@@ -365,7 +361,7 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
                           {place.name}
                         </Text>
                         <Text style={[styles.gridLocation, { color: secondaryTextColor }]} numberOfLines={1}>
-                          {place.city}{place.state_region ? `, ${place.state_region}` : ''}
+                          {place.city}{place.region ? `, ${place.region}` : ''}
                         </Text>
                       </View>
                     </TouchableOpacity>
