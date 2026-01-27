@@ -165,7 +165,7 @@ import {
 } from './screens/ecard';
 import VerificationUploadScreen from './screens/VerificationUploadScreen';
 import ExperiencePathsScreen from './screens/ExperiencePathsScreen';
-import ExperiencePathDetailScreen from './screens/ExperiencePathDetailScreen';
+// ExperiencePathDetailScreen already imported above (line 133)
 
 // ✅ Create QueryClient instance
 const queryClient = new QueryClient({
