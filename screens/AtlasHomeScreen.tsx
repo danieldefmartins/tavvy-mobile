@@ -186,7 +186,17 @@ export default function AtlasHomeScreen() {
             {trendingArticles.map((article) => (
               <TouchableOpacity
                 key={article.id}
-                style={[styles.trendingCard, { backgroundColor: surfaceColor }]}
+                style={[
+                  styles.trendingCard, 
+                  { 
+                    backgroundColor: surfaceColor,
+                    shadowColor: isDark ? 'transparent' : '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isDark ? 0 : 0.08,
+                    shadowRadius: 8,
+                    elevation: isDark ? 0 : 3,
+                  }
+                ]}
                 onPress={() => navigateToArticle(article)}
                 activeOpacity={0.8}
               >
@@ -207,7 +217,14 @@ export default function AtlasHomeScreen() {
         {/* Browse All Button */}
         <View style={styles.browseSection}>
           <TouchableOpacity
-            style={[styles.browseButton, { backgroundColor: isDark ? COLORS.glassy : '#F3F4F6' }]}
+            style={[
+              styles.browseButton, 
+              { 
+                backgroundColor: isDark ? COLORS.glassy : '#FFFFFF',
+                borderWidth: isDark ? 0 : 1,
+                borderColor: '#E5E7EB',
+              }
+            ]}
             onPress={() => navigation.navigate('AtlasSearch')}
           >
             <Ionicons name="compass-outline" size={24} color={COLORS.accent} />

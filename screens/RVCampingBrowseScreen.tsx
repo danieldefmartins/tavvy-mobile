@@ -209,7 +209,14 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
 
         {/* Search Bar */}
         <View style={styles.searchSection}>
-          <View style={[styles.searchBar, { backgroundColor: glassyColor }]}>
+          <View style={[
+            styles.searchBar, 
+            { 
+              backgroundColor: isDark ? glassyColor : '#FFFFFF',
+              borderWidth: isDark ? 0 : 1,
+              borderColor: '#E5E7EB',
+            }
+          ]}>
             <Ionicons name="search" size={20} color={secondaryTextColor} />
             <TextInput
               style={[styles.searchInput, { color: textColor }]}
@@ -232,7 +239,11 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
               key={option.key}
               style={[
                 styles.filterPill,
-                { backgroundColor: filterBy === option.key ? COLORS.accent : glassyColor },
+                { 
+                  backgroundColor: filterBy === option.key ? COLORS.accent : (isDark ? glassyColor : '#FFFFFF'),
+                  borderWidth: isDark ? 0 : 1,
+                  borderColor: filterBy === option.key ? COLORS.accent : '#E5E7EB',
+                },
               ]}
               onPress={() => setFilterBy(option.key)}
               activeOpacity={0.8}
@@ -259,7 +270,17 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
           <View style={styles.featuredSection}>
             <Text style={[styles.sectionTitle, { color: textColor }]}>Near You</Text>
             <TouchableOpacity
-              style={[styles.featuredCard, { backgroundColor: surfaceColor }]}
+              style={[
+                styles.featuredCard, 
+                { 
+                  backgroundColor: surfaceColor,
+                  shadowColor: isDark ? 'transparent' : '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: isDark ? 0 : 0.08,
+                  shadowRadius: 8,
+                  elevation: isDark ? 0 : 3,
+                }
+              ]}
               onPress={() => handlePlacePress(featuredPlace)}
               activeOpacity={0.9}
             >
@@ -307,7 +328,17 @@ export default function RVCampingBrowseScreen({ navigation }: { navigation: any 
             {popularPlaces.map((place) => (
               <TouchableOpacity
                 key={place.id}
-                style={[styles.gridCard, { backgroundColor: surfaceColor }]}
+                style={[
+                  styles.gridCard, 
+                  { 
+                    backgroundColor: surfaceColor,
+                    shadowColor: isDark ? 'transparent' : '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isDark ? 0 : 0.08,
+                    shadowRadius: 8,
+                    elevation: isDark ? 0 : 3,
+                  }
+                ]}
                 onPress={() => handlePlacePress(place)}
                 activeOpacity={0.8}
               >

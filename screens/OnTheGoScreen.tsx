@@ -309,7 +309,7 @@ export default function OnTheGoScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
       {/* Full-Screen Map */}
       {isLoading ? (
@@ -457,7 +457,17 @@ export default function OnTheGoScreen() {
               {sessions.map((session) => (
                 <TouchableOpacity
                   key={session.session_id || session.tavvy_place_id}
-                  style={[styles.trayCard, { backgroundColor: isDark ? COLORS.surface : '#FFFFFF' }]}
+                  style={[
+                    styles.trayCard, 
+                    { 
+                      backgroundColor: isDark ? COLORS.surface : '#FFFFFF',
+                      shadowColor: isDark ? 'transparent' : '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: isDark ? 0 : 0.1,
+                      shadowRadius: 6,
+                      elevation: isDark ? 0 : 3,
+                    }
+                  ]}
                   onPress={() => handleMarkerPress(session)}
                 >
                   {session.cover_image_url ? (

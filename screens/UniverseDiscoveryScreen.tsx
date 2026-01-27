@@ -184,7 +184,14 @@ export default function UniverseDiscoveryScreen() {
 
         {/* Search Bar */}
         <View style={styles.searchSection}>
-          <View style={[styles.searchBar, { backgroundColor: isDark ? COLORS.glassy : '#F3F4F6' }]}>
+          <View style={[
+            styles.searchBar, 
+            { 
+              backgroundColor: isDark ? COLORS.glassy : '#FFFFFF',
+              borderWidth: isDark ? 0 : 1,
+              borderColor: '#E5E7EB',
+            }
+          ]}>
             <Ionicons name="search" size={20} color={secondaryTextColor} />
             <TextInput
               style={[styles.searchInput, { color: textColor }]}
@@ -239,7 +246,11 @@ export default function UniverseDiscoveryScreen() {
                   key={slug}
                   style={[
                     styles.filterButton,
-                    { backgroundColor: isDark ? COLORS.glassy : '#F3F4F6' },
+                    { 
+                      backgroundColor: isDark ? COLORS.glassy : '#FFFFFF',
+                      borderWidth: isDark ? 0 : 1,
+                      borderColor: isActive ? COLORS.accent : '#E5E7EB',
+                    },
                     isActive && styles.filterButtonActive,
                   ]}
                   onPress={() => setActiveCategory(isActive ? 'All' : label)}
@@ -264,7 +275,17 @@ export default function UniverseDiscoveryScreen() {
               return (
                 <TouchableOpacity
                   key={universe.id}
-                  style={[styles.gridCard, { backgroundColor: surfaceColor }]}
+                  style={[
+                    styles.gridCard, 
+                    { 
+                      backgroundColor: surfaceColor,
+                      shadowColor: isDark ? 'transparent' : '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: isDark ? 0 : 0.08,
+                      shadowRadius: 8,
+                      elevation: isDark ? 0 : 3,
+                    }
+                  ]}
                   onPress={() => navigation.navigate('UniverseLanding', { universeId: universe.id })}
                   activeOpacity={0.8}
                 >

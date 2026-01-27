@@ -208,7 +208,14 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
 
         {/* Search Bar */}
         <View style={styles.searchSection}>
-          <View style={[styles.searchBar, { backgroundColor: glassyColor }]}>
+          <View style={[
+            styles.searchBar, 
+            { 
+              backgroundColor: isDark ? glassyColor : '#FFFFFF',
+              borderWidth: isDark ? 0 : 1,
+              borderColor: '#E5E7EB',
+            }
+          ]}>
             <Ionicons name="search" size={20} color={secondaryTextColor} />
             <TextInput
               style={[styles.searchInput, { color: textColor }]}
@@ -231,7 +238,11 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
               key={option.key}
               style={[
                 styles.filterPill,
-                { backgroundColor: filterBy === option.key ? COLORS.accent : glassyColor },
+                { 
+                  backgroundColor: filterBy === option.key ? COLORS.accent : (isDark ? glassyColor : '#FFFFFF'),
+                  borderWidth: isDark ? 0 : 1,
+                  borderColor: filterBy === option.key ? COLORS.accent : '#E5E7EB',
+                },
               ]}
               onPress={() => setFilterBy(option.key)}
               activeOpacity={0.8}
@@ -288,7 +299,17 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
               return (
                 <TouchableOpacity
                   key={ride.id}
-                  style={[styles.gridCard, { backgroundColor: surfaceColor }]}
+                  style={[
+                    styles.gridCard, 
+                    { 
+                      backgroundColor: surfaceColor,
+                      shadowColor: isDark ? 'transparent' : '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: isDark ? 0 : 0.08,
+                      shadowRadius: 8,
+                      elevation: isDark ? 0 : 3,
+                    }
+                  ]}
                   onPress={() => handleRidePress(ride)}
                   activeOpacity={0.8}
                 >

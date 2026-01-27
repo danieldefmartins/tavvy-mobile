@@ -114,6 +114,13 @@ export default function ProsHomeScreen() {
   const backgroundColor = isDark ? COLORS.background : COLORS.backgroundLight;
   const surfaceColor = isDark ? COLORS.surface : COLORS.surfaceLight;
   const glassyColor = isDark ? COLORS.glassy : '#F3F4F6';
+  const cardShadow = isDark ? {} : {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  };
   const textColor = isDark ? COLORS.textPrimary : '#1F2937';
   const secondaryTextColor = isDark ? COLORS.textSecondary : COLORS.textMuted;
 
@@ -166,15 +173,15 @@ export default function ProsHomeScreen() {
             
             {/* Quick Stats */}
             <View style={styles.statsRow}>
-              <View style={[styles.statCard, { backgroundColor: surfaceColor }]}>
+              <View style={[styles.statCard, { backgroundColor: surfaceColor, ...cardShadow }]}>
                 <Text style={[styles.statNumber, { color: textColor }]}>3</Text>
                 <Text style={[styles.statLabel, { color: secondaryTextColor }]}>New Leads</Text>
               </View>
-              <View style={[styles.statCard, { backgroundColor: surfaceColor }]}>
+              <View style={[styles.statCard, { backgroundColor: surfaceColor, ...cardShadow }]}>
                 <Text style={[styles.statNumber, { color: textColor }]}>1</Text>
                 <Text style={[styles.statLabel, { color: secondaryTextColor }]}>Messages</Text>
               </View>
-              <View style={[styles.statCard, { backgroundColor: surfaceColor }]}>
+              <View style={[styles.statCard, { backgroundColor: surfaceColor, ...cardShadow }]}>
                 <Text style={[styles.statNumber, { color: textColor }]}>128</Text>
                 <Text style={[styles.statLabel, { color: secondaryTextColor }]}>Views</Text>
               </View>
@@ -183,28 +190,28 @@ export default function ProsHomeScreen() {
             {/* Action Grid */}
             <View style={styles.actionGrid}>
               <TouchableOpacity 
-                style={[styles.actionCard, { backgroundColor: glassyColor }]}
+                style={[styles.actionCard, { backgroundColor: isDark ? glassyColor : '#FFFFFF', borderWidth: isDark ? 0 : 1, borderColor: '#E5E7EB', ...cardShadow }]}
                 onPress={() => navigation.navigate('ProsLeads')}
               >
                 <Ionicons name="mail-outline" size={28} color={COLORS.success} />
                 <Text style={[styles.actionLabel, { color: textColor }]}>Leads</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.actionCard, { backgroundColor: glassyColor }]}
+                style={[styles.actionCard, { backgroundColor: isDark ? glassyColor : '#FFFFFF', borderWidth: isDark ? 0 : 1, borderColor: '#E5E7EB', ...cardShadow }]}
                 onPress={() => navigation.navigate('ProsMessages')}
               >
                 <Ionicons name="chatbubbles-outline" size={28} color={COLORS.accent} />
                 <Text style={[styles.actionLabel, { color: textColor }]}>Messages</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.actionCard, { backgroundColor: glassyColor }]}
+                style={[styles.actionCard, { backgroundColor: isDark ? glassyColor : '#FFFFFF', borderWidth: isDark ? 0 : 1, borderColor: '#E5E7EB', ...cardShadow }]}
                 onPress={() => navigation.navigate('ProsProfile', { slug: 'my-profile' })}
               >
                 <Ionicons name="person-outline" size={28} color="#F59E0B" />
                 <Text style={[styles.actionLabel, { color: textColor }]}>Profile</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.actionCard, { backgroundColor: glassyColor }]}
+                style={[styles.actionCard, { backgroundColor: isDark ? glassyColor : '#FFFFFF', borderWidth: isDark ? 0 : 1, borderColor: '#E5E7EB', ...cardShadow }]}
                 onPress={handleProDashboard}
               >
                 <Ionicons name="stats-chart-outline" size={28} color="#EC4899" />
@@ -305,7 +312,15 @@ export default function ProsHomeScreen() {
             {CATEGORY_CONFIG.map((cat) => (
               <TouchableOpacity
                 key={cat.slug}
-                style={[styles.categoryCard, { backgroundColor: glassyColor }]}
+                style={[
+                  styles.categoryCard, 
+                  { 
+                    backgroundColor: isDark ? glassyColor : '#FFFFFF',
+                    borderWidth: isDark ? 0 : 1,
+                    borderColor: '#E5E7EB',
+                    ...cardShadow,
+                  }
+                ]}
                 onPress={() => handleCategoryPress(cat.slug)}
               >
                 <Ionicons name={cat.icon as any} size={32} color={cat.color} />
@@ -326,7 +341,13 @@ export default function ProsHomeScreen() {
               {pros.slice(0, 3).map((pro, index) => (
                 <TouchableOpacity
                   key={pro.id || index}
-                  style={[styles.proCard, { backgroundColor: surfaceColor }]}
+                  style={[
+                    styles.proCard, 
+                    { 
+                      backgroundColor: surfaceColor,
+                      ...cardShadow,
+                    }
+                  ]}
                   onPress={() => handleProPress(pro.slug || '')}
                 >
                   <View style={styles.proAvatar}>

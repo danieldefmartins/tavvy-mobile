@@ -185,7 +185,14 @@ export default function CitiesBrowseScreen({ navigation }: { navigation: any }) 
 
         {/* Search Bar */}
         <View style={styles.searchSection}>
-          <View style={[styles.searchBar, { backgroundColor: glassyColor }]}>
+          <View style={[
+            styles.searchBar, 
+            { 
+              backgroundColor: isDark ? glassyColor : '#FFFFFF',
+              borderWidth: isDark ? 0 : 1,
+              borderColor: '#E5E7EB',
+            }
+          ]}>
             <Ionicons name="search" size={20} color={secondaryTextColor} />
             <TextInput
               style={[styles.searchInput, { color: textColor }]}
@@ -233,7 +240,17 @@ export default function CitiesBrowseScreen({ navigation }: { navigation: any }) 
             {popularCities.map((city) => (
               <TouchableOpacity
                 key={city.id}
-                style={[styles.gridCard, { backgroundColor: surfaceColor }]}
+                style={[
+                  styles.gridCard, 
+                  { 
+                    backgroundColor: surfaceColor,
+                    shadowColor: isDark ? 'transparent' : '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isDark ? 0 : 0.08,
+                    shadowRadius: 8,
+                    elevation: isDark ? 0 : 3,
+                  }
+                ]}
                 onPress={() => handleCityPress(city)}
                 activeOpacity={0.8}
               >

@@ -213,7 +213,17 @@ export default function ProsMessagesScreen() {
     
     return (
       <TouchableOpacity 
-        style={[styles.conversationItem, { backgroundColor: surfaceColor }]}
+        style={[
+          styles.conversationItem, 
+          { 
+            backgroundColor: surfaceColor,
+            shadowColor: isDark ? 'transparent' : '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: isDark ? 0 : 0.05,
+            shadowRadius: 4,
+            elevation: isDark ? 0 : 2,
+          }
+        ]}
         onPress={() => setActiveConversationId(item.id)}
         activeOpacity={0.8}
       >
@@ -291,7 +301,14 @@ export default function ProsMessagesScreen() {
 
         {/* Search Bar */}
         <View style={styles.searchSection}>
-          <View style={[styles.searchBar, { backgroundColor: glassyColor }]}>
+          <View style={[
+            styles.searchBar, 
+            { 
+              backgroundColor: isDark ? glassyColor : '#FFFFFF',
+              borderWidth: isDark ? 0 : 1,
+              borderColor: '#E5E7EB',
+            }
+          ]}>
             <Ionicons name="search" size={20} color={secondaryTextColor} />
             <TextInput
               style={[styles.searchInput, { color: textColor }]}
@@ -314,7 +331,12 @@ export default function ProsMessagesScreen() {
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <View style={[styles.emptyIcon, { backgroundColor: glassyColor }]}>
+                <View style={[
+                  styles.emptyIcon, 
+                  { 
+                    backgroundColor: isDark ? glassyColor : '#F3F4F6',
+                  }
+                ]}>
                   <Ionicons name="chatbubbles-outline" size={48} color={secondaryTextColor} />
                 </View>
                 <Text style={[styles.emptyText, { color: textColor }]}>No conversations yet</Text>
