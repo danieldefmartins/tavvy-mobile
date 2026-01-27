@@ -1542,9 +1542,24 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const handleSearchSubmit = () => {
     if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
       saveRecentSearch(searchQuery.trim());
-      filterPlaces(searchQuery.trim());
-      switchToMapMode();
+      
+      // Keywords that indicate universe/atlas searches
+      const universeKeywords = ['universe', 'atlas', 'theme park', 'airport', 'stadium', 'mall', 'campus', 'resort', 'park', 'zoo', 'museum', 'disney', 'universal', 'seaworld'];
+      
+      // Check if query matches universe keywords
+      const isUniverseSearch = universeKeywords.some(keyword => query.includes(keyword));
+      
+      if (isUniverseSearch) {
+        // Navigate to universes with search query
+        Keyboard.dismiss();
+        navigation.navigate('Universes', { searchQuery: searchQuery.trim() });
+      } else {
+        // Default to map/places search
+        filterPlaces(searchQuery.trim());
+        switchToMapMode();
+      }
     }
   };
 
