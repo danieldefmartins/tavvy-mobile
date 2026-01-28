@@ -489,6 +489,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     startPulseAnimation();
   }, [pulseAnim]);
 
+  // Auto-switch map style when theme changes
+  useEffect(() => {
+    setMapStyle(isDark ? 'dark' : 'osm');
+  }, [isDark]);
+
   // Handle camera movement when targetLocation changes
   useEffect(() => {
     if (targetLocation && viewMode === 'map') {
