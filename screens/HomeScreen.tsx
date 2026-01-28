@@ -4879,10 +4879,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   mapCategoryChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
-    backgroundColor: 'rgba(55, 65, 81, 0.9)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#1C1C1E',
   },
   mapCategoryChipActive: {
     // Handled inline with border
