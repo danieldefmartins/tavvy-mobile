@@ -86,14 +86,27 @@ export default function UniverseLandingScreen() {
   const loadUniverseData = async () => {
     setLoading(true);
     try {
+      console.log('[UniverseLanding] Loading universe with ID:', universeId);
+      
       // Fetch the universe details
       const { data: universeData, error: universeError } = await supabase
         .from('atlas_universes')
         .select('*')
         .eq('id', universeId)
-        .single();
+        .maybeSingle();
 
-      if (universeError) throw universeError;
+      if (universeError) {
+        console.error('[UniverseLanding] Error fetching universe:', universeError);
+        throw universeError;
+      }
+      
+      if (!universeData) {
+        console.error('[UniverseLanding] Universe not found for ID:', universeId);
+        setLoading(false);
+        return;
+      }
+      
+      console.log('[UniverseLanding] Universe loaded:', universeData.name);
       setUniverse(universeData);
 
       // Fetch sub-universes (planets) for this universe
