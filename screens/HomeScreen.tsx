@@ -3364,14 +3364,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               key={category}
               style={[
                 styles.mapCategoryChip,
-                { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : '#fff' },
+                { backgroundColor: selectedCategory === category ? '#22D3EE' : (isDark ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.95)') },
                 selectedCategory === category && styles.mapCategoryChipActive,
               ]}
               onPress={() => handleCategorySelect(category)}
             >
               <Text style={[
                 styles.mapCategoryChipText,
-                { color: isDark ? '#fff' : '#333' },
+                { color: selectedCategory === category ? '#000' : (isDark ? '#fff' : '#333') },
                 selectedCategory === category && styles.mapCategoryChipTextActive,
               ]}>
                 {category}
@@ -4882,7 +4882,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   mapCategoryChipActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#22D3EE',
   },
   mapCategoryChipText: {
     fontSize: 14,
