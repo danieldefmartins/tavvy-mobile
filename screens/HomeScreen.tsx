@@ -3767,24 +3767,23 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             >
               {/* Filter Icon Button */}
               <TouchableOpacity 
-                style={[styles.filterPillIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA' }]}
+                style={[styles.filterPillIcon, { backgroundColor: 'rgba(55, 65, 81, 0.85)', borderColor: 'transparent' }]}
                 onPress={() => setShowFilterModal(true)}
               >
-                <Ionicons name="options-outline" size={18} color={isDark ? theme.text : '#333'} />
+                <Ionicons name="options-outline" size={18} color="#fff" />
               </TouchableOpacity>
               
               {/* Sort By Dropdown */}
               <TouchableOpacity 
                 style={[
                   styles.filterPill, 
-                  { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA' },
+                  { borderColor: 'transparent' },
                   activeFilters.sortBy !== 'Distance' && styles.filterPillActive
                 ]}
                 onPress={() => setShowFilterModal(true)}
               >
                 <Text style={[
                   styles.filterPillText, 
-                  { color: isDark ? theme.text : '#333' },
                   activeFilters.sortBy !== 'Distance' && styles.filterPillTextActive
                 ]}>
                   Sort by
@@ -3792,7 +3791,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 <Ionicons 
                   name="chevron-down" 
                   size={14} 
-                  color={activeFilters.sortBy !== 'Distance' ? '#fff' : (isDark ? theme.text : '#333')} 
+                  color={activeFilters.sortBy !== 'Distance' ? '#000' : '#fff'} 
                   style={{ marginLeft: 4 }}
                 />
               </TouchableOpacity>
@@ -3801,14 +3800,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <TouchableOpacity 
                 style={[
                   styles.filterPill, 
-                  { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA' },
+                  { borderColor: 'transparent' },
                   activeFilters.hours === 'Open now' && styles.filterPillActive
                 ]}
                 onPress={() => setActiveFilters(prev => ({ ...prev, hours: prev.hours === 'Open now' ? 'Any' : 'Open now' }))}
               >
                 <Text style={[
                   styles.filterPillText, 
-                  { color: isDark ? theme.text : '#333' },
                   activeFilters.hours === 'Open now' && styles.filterPillTextActive
                 ]}>
                   Open now
@@ -3820,14 +3818,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 <TouchableOpacity 
                   style={[
                     styles.filterPill, 
-                    { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA' },
+                    { borderColor: 'transparent' },
                     activeFilters.type !== 'Any' && styles.filterPillActive
                   ]}
                   onPress={() => setShowFilterModal(true)}
                 >
                   <Text style={[
                     styles.filterPillText, 
-                    { color: isDark ? theme.text : '#333' },
                     activeFilters.type !== 'Any' && styles.filterPillTextActive
                   ]}>
                     {selectedCategory === 'Restaurants' ? 'Cuisine' : 'Type'}
@@ -3835,7 +3832,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   <Ionicons 
                     name="chevron-down" 
                     size={14} 
-                    color={activeFilters.type !== 'Any' ? '#fff' : (isDark ? theme.text : '#333')} 
+                    color={activeFilters.type !== 'Any' ? '#000' : '#fff'} 
                     style={{ marginLeft: 4 }}
                   />
                 </TouchableOpacity>
@@ -3845,14 +3842,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <TouchableOpacity 
                 style={[
                   styles.filterPill, 
-                  { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA' },
+                  { borderColor: 'transparent' },
                   activeFilters.price !== 'Any' && styles.filterPillActive
                 ]}
                 onPress={() => setShowFilterModal(true)}
               >
                 <Text style={[
                   styles.filterPillText, 
-                  { color: isDark ? theme.text : '#333' },
                   activeFilters.price !== 'Any' && styles.filterPillTextActive
                 ]}>
                   Price
@@ -3860,7 +3856,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 <Ionicons 
                   name="chevron-down" 
                   size={14} 
-                  color={activeFilters.price !== 'Any' ? '#fff' : (isDark ? theme.text : '#333')} 
+                  color={activeFilters.price !== 'Any' ? '#000' : '#fff'} 
                   style={{ marginLeft: 4 }}
                 />
               </TouchableOpacity>
@@ -3869,14 +3865,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <TouchableOpacity 
                 style={[
                   styles.filterPill, 
-                  { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA' },
+                  { borderColor: 'transparent' },
                   activeFilters.distance !== 'Any' && styles.filterPillActive
                 ]}
                 onPress={() => setShowFilterModal(true)}
               >
                 <Text style={[
                   styles.filterPillText, 
-                  { color: isDark ? theme.text : '#333' },
                   activeFilters.distance !== 'Any' && styles.filterPillTextActive
                 ]}>
                   Distance
@@ -3884,7 +3879,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 <Ionicons 
                   name="chevron-down" 
                   size={14} 
-                  color={activeFilters.distance !== 'Any' ? '#fff' : (isDark ? theme.text : '#333')} 
+                  color={activeFilters.distance !== 'Any' ? '#000' : '#fff'} 
                   style={{ marginLeft: 4 }}
                 />
               </TouchableOpacity>
@@ -5518,17 +5513,19 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
+    backgroundColor: 'rgba(55, 65, 81, 0.85)', // Dark translucent background
   },
   filterPillActive: {
-    backgroundColor: ACCENT,
-    borderColor: ACCENT,
+    backgroundColor: '#22D3EE',
+    borderColor: '#22D3EE',
   },
   filterPillText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#fff', // White text by default
   },
   filterPillTextActive: {
-    color: '#fff',
+    color: '#000', // Black text when active (cyan background)
   },
   // Legacy filter chip styles (keep for backwards compatibility)
   filterChip: {
