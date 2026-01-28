@@ -3375,17 +3375,16 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               key={category}
               style={[
                 styles.mapCategoryChip,
-                { 
-                  backgroundColor: selectedCategory === category ? 'rgba(34, 211, 238, 0.15)' : 'rgba(55, 65, 81, 0.85)',
-                  borderWidth: selectedCategory === category ? 1.5 : 0,
-                  borderColor: selectedCategory === category ? '#22D3EE' : 'transparent',
+                selectedCategory === category && {
+                  backgroundColor: '#22D3EE',
+                  borderWidth: 0,
                 },
               ]}
               onPress={() => handleCategorySelect(category)}
             >
               <Text style={[
                 styles.mapCategoryChipText,
-                { color: selectedCategory === category ? '#22D3EE' : '#fff' },
+                { color: selectedCategory === category ? '#000' : '#fff' },
               ]}>
                 {category}
               </Text>
@@ -4883,7 +4882,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 18,
-    // No shadow for translucent pills
+    backgroundColor: 'rgba(55, 65, 81, 0.9)',
   },
   mapCategoryChipActive: {
     // Handled inline with border
