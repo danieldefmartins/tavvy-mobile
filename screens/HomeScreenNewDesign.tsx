@@ -287,7 +287,7 @@ const renderStandardMode = () => {
               <View style={[newStyles.brandTagline, { flexDirection: 'row', alignItems: 'center' }]}>
                 <View style={[newStyles.brandTaglineDot, { backgroundColor: '#667EEA' }]} />
                 <Text style={{ fontSize: 12, fontWeight: '500', color: '#667EEA' }}>
-                  Real-time signals. Not star ratings.
+                  Find your perfect spot in seconds. Not hours.
                 </Text>
               </View>
             </View>
