@@ -28,7 +28,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { getCategories, type AtlasCategory, type AtlasUniverse } from '../lib/atlas';
 import { useTranslation } from 'react-i18next';
 
@@ -77,12 +77,23 @@ export default function UniverseDiscoveryScreen() {
 
   const loadData = async () => {
     setLoading(true);
+    
+    // Check if Supabase is configured
+    if (!isSupabaseConfigured()) {
+      console.error('[UniverseDiscovery] Supabase is not configured! Check EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY');
+      setLoading(false);
+      return;
+    }
+    
+    console.log('[UniverseDiscovery] Supabase is configured, loading data...');
+    
     try {
       const cats = await getCategories();
+      console.log('[UniverseDiscovery] Categories loaded:', cats.length);
       setCategories(cats);
       await loadUniverses();
     } catch (error) {
-      console.error('Error loading universe data:', error);
+      console.error('[UniverseDiscovery] Error loading universe data:', error);
     } finally {
       setLoading(false);
     }
@@ -90,17 +101,22 @@ export default function UniverseDiscoveryScreen() {
 
   const loadUniverses = async () => {
     try {
-      // Query ALL universes (removed status filter for debugging)
+      console.log('[UniverseDiscovery] Loading universes...');
+      
+      // Query for featured universe - use maybeSingle to avoid errors
       let featuredQuery = supabase
         .from('atlas_universes')
         .select('*')
+        .eq('status', 'published')
         .eq('is_featured', true)
         .order('created_at', { ascending: false })
         .limit(1);
 
+      // Query for all universes
       let universesQuery = supabase
         .from('atlas_universes')
         .select('*')
+        .eq('status', 'published')
         .order('created_at', { ascending: false });
 
       if (activeCategory !== 'All') {
@@ -112,30 +128,32 @@ export default function UniverseDiscoveryScreen() {
       }
 
       const [featuredResult, universesResult] = await Promise.all([
-        featuredQuery.single(),
-        universesQuery.limit(4),
+        featuredQuery.maybeSingle(),
+        universesQuery.limit(8),
       ]);
 
       // Debug logging
-      console.log('Featured result:', featuredResult);
-      console.log('Universes result:', universesResult);
+      console.log('[UniverseDiscovery] Featured result:', featuredResult);
+      console.log('[UniverseDiscovery] Universes result:', universesResult);
+      console.log('[UniverseDiscovery] Universes count:', universesResult.data?.length || 0);
       
       if (featuredResult.error) {
-        console.error('Featured query error:', featuredResult.error);
+        console.error('[UniverseDiscovery] Featured query error:', featuredResult.error);
       }
       if (universesResult.error) {
-        console.error('Universes query error:', universesResult.error);
+        console.error('[UniverseDiscovery] Universes query error:', universesResult.error);
       }
 
       if (featuredResult.data) {
         setFeaturedUniverse(featuredResult.data);
       } else {
-        setFeaturedUniverse(null);
+        // If no featured, use first from list
+        setFeaturedUniverse(universesResult.data?.[0] || null);
       }
 
       setPopularUniverses(universesResult.data || []);
     } catch (error) {
-      console.error('Error loading universes:', error);
+      console.error('[UniverseDiscovery] Error loading universes:', error);
     }
   };
 
