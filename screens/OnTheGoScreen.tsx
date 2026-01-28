@@ -47,13 +47,15 @@ const MAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/liberty';
 
 // Design System Colors
 const COLORS = {
-  background: '#0F0F0F',
+  background: '#000000',  // Pure black
   backgroundLight: '#FAFAFA',
-  surface: '#111827',
+  surface: '#1A1A1A',
   surfaceLight: '#FFFFFF',
   glassy: 'rgba(26, 26, 26, 0.85)',
   glassyLight: 'rgba(255, 255, 255, 0.9)',
-  accent: '#667EEA',
+  accent: '#22D3EE',  // Tavvy cyan
+  accentGreen: '#10B981',  // Tavvy green
+  accentGold: '#F59E0B',  // Tavvy gold
   textPrimary: '#FFFFFF',
   textSecondary: '#9CA3AF',
   textMuted: '#6B7280',
@@ -674,17 +676,17 @@ const styles = StyleSheet.create({
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 20,
-    gap: 6,
-    marginRight: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    gap: 4,
+    marginRight: 6,
   },
   filterPillActive: {
-    backgroundColor: COLORS.accent,
+    backgroundColor: '#22D3EE', // Tavvy cyan accent
   },
   filterPillText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
 

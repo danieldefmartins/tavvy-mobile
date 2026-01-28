@@ -2691,9 +2691,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 {firstName} 👋
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
-                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#667EEA', marginRight: 6 }} />
-                <Text style={{ fontSize: 12, fontWeight: '500', color: '#667EEA' }}>
-                  Real-time signals. Not star ratings.
+                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#22D3EE', marginRight: 6 }} />
+                <Text style={{ fontSize: 12, fontWeight: '500', color: '#22D3EE' }}>
+                  Find your perfect spot in seconds. Not hours.
                 </Text>
               </View>
             </View>
