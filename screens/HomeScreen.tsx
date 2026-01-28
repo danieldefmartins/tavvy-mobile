@@ -75,6 +75,12 @@ const MAP_STYLES = {
     tileUrl: 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
     icon: 'map',
   },
+  dark: {
+    name: 'Dark',
+    type: 'raster',
+    tileUrl: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',
+    icon: 'moon',
+  },
   satellite: {
     name: 'Satellite',
     type: 'raster',
@@ -400,8 +406,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // User location pulse animation
   const pulseAnim = useRef(new Animated.Value(1)).current;
   
-  // Map states
-  const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('osm');
+  // Map states - default to dark style in dark mode
+  const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>(isDark ? 'dark' : 'osm');
   const [currentMapBounds, setCurrentMapBounds] = useState<{
     minLat: number;
     maxLat: number;
@@ -3364,15 +3370,17 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               key={category}
               style={[
                 styles.mapCategoryChip,
-                { backgroundColor: selectedCategory === category ? '#22D3EE' : (isDark ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.95)') },
-                selectedCategory === category && styles.mapCategoryChipActive,
+                { 
+                  backgroundColor: selectedCategory === category ? 'rgba(34, 211, 238, 0.15)' : 'rgba(55, 65, 81, 0.85)',
+                  borderWidth: selectedCategory === category ? 1.5 : 0,
+                  borderColor: selectedCategory === category ? '#22D3EE' : 'transparent',
+                },
               ]}
               onPress={() => handleCategorySelect(category)}
             >
               <Text style={[
                 styles.mapCategoryChipText,
-                { color: selectedCategory === category ? '#000' : (isDark ? '#fff' : '#333') },
-                selectedCategory === category && styles.mapCategoryChipTextActive,
+                { color: selectedCategory === category ? '#22D3EE' : '#fff' },
               ]}>
                 {category}
               </Text>
@@ -4872,24 +4880,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   mapCategoryChip: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
+    borderRadius: 18,
+    // No shadow for translucent pills
   },
   mapCategoryChipActive: {
-    backgroundColor: '#22D3EE',
+    // Handled inline with border
   },
   mapCategoryChipText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   mapCategoryChipTextActive: {
-    color: '#fff',
+    // Handled inline
   },
   backButton: {
     width: 44,
