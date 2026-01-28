@@ -4890,6 +4890,7 @@ const styles = StyleSheet.create({
   mapCategoryChipText: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
   mapCategoryChipTextActive: {
     // Handled inline
