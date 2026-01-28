@@ -208,23 +208,31 @@ export default function UniverseDiscoveryScreen() {
               source={{ uri: featuredUniverse.banner_image_url || PLACEHOLDER_IMAGE }}
               style={styles.featuredImage}
             />
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.8)']}
-              style={styles.featuredGradient}
-            >
+            {/* Featured Badge at top-left */}
+            <View style={styles.featuredLabelContainer}>
               <View style={styles.featuredLabel}>
                 <Text style={styles.featuredLabelText}>FEATURED UNIVERSE</Text>
               </View>
-              <Text style={styles.featuredName}>{featuredUniverse.name}</Text>
-              <Text style={styles.featuredMeta}>
-                {getCategoryType(featuredUniverse.category_id)} • {featuredUniverse.location || 'Explore Now'}
-              </Text>
-              <TouchableOpacity 
-                style={styles.exploreButton}
-                onPress={() => navigation.navigate('UniverseLanding', { universeId: featuredUniverse.id })}
-              >
-                <Text style={styles.exploreButtonText}>Explore Universe</Text>
-              </TouchableOpacity>
+            </View>
+            {/* Bottom gradient with title and button */}
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.85)']}
+              style={styles.featuredGradient}
+            >
+              <View style={styles.featuredBottomRow}>
+                <View style={styles.featuredTextContent}>
+                  <Text style={styles.featuredName}>{featuredUniverse.name}</Text>
+                  <Text style={styles.featuredMeta}>
+                    {getCategoryType(featuredUniverse.category_id)} • {featuredUniverse.location || 'Explore Now'}
+                  </Text>
+                </View>
+                <TouchableOpacity 
+                  style={styles.exploreButton}
+                  onPress={() => navigation.navigate('UniverseLanding', { universeId: featuredUniverse.id })}
+                >
+                  <Text style={styles.exploreButtonText}>Explore Universe</Text>
+                </TouchableOpacity>
+              </View>
             </LinearGradient>
           </TouchableOpacity>
         )}
@@ -269,17 +277,7 @@ export default function UniverseDiscoveryScreen() {
               return (
                 <TouchableOpacity
                   key={universe.id}
-                  style={[
-                    styles.gridCard, 
-                    { 
-                      backgroundColor: surfaceColor,
-                      shadowColor: isDark ? 'transparent' : '#000',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: isDark ? 0 : 0.08,
-                      shadowRadius: 8,
-                      elevation: isDark ? 0 : 3,
-                    }
-                  ]}
+                  style={styles.gridCard}
                   onPress={() => navigation.navigate('UniverseLanding', { universeId: universe.id })}
                   activeOpacity={0.8}
                 >
@@ -293,7 +291,7 @@ export default function UniverseDiscoveryScreen() {
                     </Text>
                     <View style={styles.activityBadge}>
                       <Text style={styles.activityIcon}>🔥</Text>
-                      <Text style={[styles.activityText, { color: activity.color }]}>
+                      <Text style={[styles.activityText, { color: COLORS.activityHigh }]}>
                         {activity.label}
                       </Text>
                     </View>
@@ -373,49 +371,62 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  featuredLabelContainer: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    zIndex: 10,
+  },
   featuredGradient: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 20,
-    paddingTop: 60,
+    padding: 16,
+    paddingTop: 50,
+  },
+  featuredBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  featuredTextContent: {
+    flex: 1,
+    marginRight: 12,
   },
   featuredLabel: {
-    backgroundColor: COLORS.accent,
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: COLORS.accent,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginBottom: 8,
   },
   featuredLabelText: {
-    color: '#FFFFFF',
+    color: COLORS.accent,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   featuredName: {
     color: '#FFFFFF',
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     marginBottom: 4,
   },
   featuredMeta: {
-    color: '#E5E7EB',
-    fontSize: 14,
-    marginBottom: 12,
+    color: '#D1D5DB',
+    fontSize: 13,
   },
   exploreButton: {
     backgroundColor: COLORS.accent,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
+    borderRadius: 10,
   },
   exploreButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
 
@@ -434,8 +445,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   filterButton: {
-    width: 56,
-    height: 56,
+    width: 70,
+    height: 70,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
@@ -456,21 +467,20 @@ const styles = StyleSheet.create({
   },
   gridCard: {
     width: (width - 52) / 2,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: 20,
   },
   gridImage: {
     width: '100%',
-    height: 100,
+    height: 110,
+    borderRadius: 14,
   },
   gridContent: {
-    padding: 12,
+    paddingTop: 8,
   },
   gridName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   activityBadge: {
     flexDirection: 'row',
@@ -478,10 +488,10 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   activityIcon: {
-    fontSize: 12,
+    fontSize: 13,
   },
   activityText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
   },
 });
