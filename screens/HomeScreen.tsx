@@ -78,7 +78,7 @@ const MAP_STYLES = {
   dark: {
     name: 'Dark',
     type: 'raster',
-    tileUrl: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',
+    tileUrl: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
     icon: 'moon',
   },
   satellite: {
@@ -86,12 +86,6 @@ const MAP_STYLES = {
     type: 'raster',
     tileUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     icon: 'image',
-  },
-  liberty: {
-    name: 'Vector',
-    type: 'vector',
-    url: 'https://tiles.openfreemap.org/styles/liberty',
-    icon: 'layers',
   },
 };
 
