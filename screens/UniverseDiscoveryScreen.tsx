@@ -90,19 +90,18 @@ export default function UniverseDiscoveryScreen() {
 
   const loadUniverses = async () => {
     try {
+      // Query ALL universes (removed status filter for debugging)
       let featuredQuery = supabase
         .from('atlas_universes')
         .select('*')
-        .eq('status', 'published')
         .eq('is_featured', true)
-        .order('published_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(1);
 
       let universesQuery = supabase
         .from('atlas_universes')
         .select('*')
-        .eq('status', 'published')
-        .order('total_signals', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (activeCategory !== 'All') {
         const selectedCat = categories.find(c => c.name === activeCategory);
@@ -116,6 +115,17 @@ export default function UniverseDiscoveryScreen() {
         featuredQuery.single(),
         universesQuery.limit(4),
       ]);
+
+      // Debug logging
+      console.log('Featured result:', featuredResult);
+      console.log('Universes result:', universesResult);
+      
+      if (featuredResult.error) {
+        console.error('Featured query error:', featuredResult.error);
+      }
+      if (universesResult.error) {
+        console.error('Universes query error:', universesResult.error);
+      }
 
       if (featuredResult.data) {
         setFeaturedUniverse(featuredResult.data);
