@@ -2722,23 +2722,57 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             elevation: isDark ? 0 : 4,
           }
         ]}>
-          <TouchableOpacity 
-            style={[
+          <View style={[
               styles.searchInputNew, 
-              { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6' }
-            ]}
-            activeOpacity={0.7}
-            onPress={() => {
-              setIsSearchFocused(true);
-              searchInputRef.current?.focus();
-            }}
-          >
-            <Ionicons name="search" size={20} color="#111827" />
-            <Text style={[styles.searchInputText, { color: isDark ? '#888' : '#9CA3AF' }]}>
-              What are you in the mood for?
-            </Text>
-          </TouchableOpacity>
+              { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6' },
+              isSearchFocused && { borderColor: '#667EEA', borderWidth: 2 }
+            ]}>
+            <Ionicons name="search" size={20} color={isDark ? '#888' : '#6B7280'} />
+            <TextInput
+              ref={searchInputRef}
+              value={searchQuery}
+              onChangeText={handleSearchInputChange}
+              placeholder="What are you in the mood for?"
+              placeholderTextColor={isDark ? '#888' : '#9CA3AF'}
+              style={[styles.searchInputTextInput, { color: isDark ? '#fff' : '#111827' }]}
+              returnKeyType="search"
+              onFocus={handleSearchFocus}
+              onBlur={handleSearchBlur}
+              onSubmitEditing={handleSearchSubmit}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={clearSearch} style={{ padding: 4 }}>
+                <Ionicons name="close-circle" size={20} color={isDark ? '#888' : '#8E8E93'} />
+              </TouchableOpacity>
+            )}
+          </View>
           
+          {/* Search Suggestions Dropdown */}
+          {isSearchFocused && searchSuggestions.length > 0 && (
+            <View style={[styles.searchSuggestionsCard, { backgroundColor: isDark ? '#1E1E1E' : '#fff' }]}>
+              {searchSuggestions.slice(0, 5).map((suggestion, index) => (
+                <TouchableOpacity
+                  key={`${suggestion.type}-${index}`}
+                  style={[styles.suggestionItem, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB' }]}
+                  onPress={() => handleSuggestionSelect(suggestion)}
+                >
+                  <Ionicons 
+                    name={suggestion.type === 'place' ? 'location' : suggestion.type === 'category' ? 'grid' : suggestion.type === 'address' ? 'map' : 'time'} 
+                    size={18} 
+                    color={isDark ? '#888' : '#6B7280'} 
+                  />
+                  <View style={{ marginLeft: 12, flex: 1 }}>
+                    <Text style={[styles.suggestionTitle, { color: isDark ? '#fff' : '#111' }]}>{suggestion.title}</Text>
+                    {suggestion.subtitle && (
+                      <Text style={[styles.suggestionSubtitle, { color: isDark ? '#888' : '#6B7280' }]}>{suggestion.subtitle}</Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          
+          {!isSearchFocused && (
           <View style={styles.quickActionsRow}>
             <TouchableOpacity 
               style={[
@@ -2807,6 +2841,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <Text style={[styles.quickActionText, { color: isDark ? '#888' : '#6B7280' }]}>Saved</Text>
             </TouchableOpacity>
           </View>
+          )}
         </View>
 
         {/* ===== MOOD CARDS ===== */}
@@ -4752,6 +4787,14 @@ const styles = StyleSheet.create({
     maxHeight: 300,
     overflow: 'hidden',
   },
+  searchSuggestionsCard: {
+    marginTop: -8,
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+  },
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -6253,6 +6296,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginLeft: 12,
     flex: 1,
+  },
+  searchInputTextInput: {
+    fontSize: 16,
+    marginLeft: 12,
+    flex: 1,
+    paddingVertical: 0,
   },
   quickActionsRow: {
     flexDirection: 'row',
