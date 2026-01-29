@@ -583,15 +583,8 @@ const styles = StyleSheet.create({
   },
   // Filter Bar - Realtors-style design with elegant white shade separator
   filterBarContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent', // No background - blend with black
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
   },
   filterBarContent: {
     paddingHorizontal: 16,
