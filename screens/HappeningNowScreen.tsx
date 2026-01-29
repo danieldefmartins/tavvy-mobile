@@ -341,13 +341,31 @@ export default function HappeningNowScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Unified Header */}
-      <UnifiedHeader
-        screenKey="happeningNow"
-        title="Happening Now"
-        searchPlaceholder="Search events..."
-        showBackButton={true}
-      />
+      {/* Custom Header - Matching Atlas/Cities/Rides Design */}
+      <View style={styles.customHeader}>
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>Happening Now</Text>
+            <Text style={styles.headerTagline}>Time-sensitive experiences near you.</Text>
+          </View>
+          <View style={{ width: 40 }} />
+        </View>
+        
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search-outline" size={20} color={HappeningColors.textLight} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search events..."
+            placeholderTextColor={HappeningColors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+      </View>
 
       {/* Filter Bar - Realtors-style design */}
       <View style={styles.filterBarContainer}>
@@ -488,6 +506,57 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: HappeningColors.background,
   },
+  // Custom Header Styles - Matching Atlas/Cities/Rides
+  customHeader: {
+    backgroundColor: HappeningColors.background,
+    paddingTop: 60,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  headerTagline: {
+    fontSize: 14,
+    color: '#667EEA', // Blue accent
+    marginTop: 4,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1C1C1E', // Dark charcoal
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 48,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  // Legacy header styles (kept for compatibility)
   headerGradient: {
     paddingBottom: 16,
   },
@@ -498,27 +567,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   headerLogo: {
     width: 28,
     height: 28,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
   searchButton: {
     width: 40,
