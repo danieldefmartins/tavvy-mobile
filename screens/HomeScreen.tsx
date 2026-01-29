@@ -3357,7 +3357,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </View>
         </View>
         
-        {/* Category Chips Row - Google Maps Style (always visible under search bar) */}
+        {/* Category Chips Row - Only show when bottom sheet is collapsed */}
+        {bottomSheetIndex === 0 && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -3385,6 +3386,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             </TouchableOpacity>
           ))}
         </ScrollView>
+        )}
       </View>
       
       {/* Full-Screen Search Suggestions Overlay - Google Maps Style */}
@@ -3682,12 +3684,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <BottomSheet
           ref={bottomSheetRef}
           index={1}
-          snapPoints={searchedAddress ? [40, '40%', '70%'] : (selectedPlace ? [40, '45%', '70%'] : [40, '35%', '70%'])}
+          snapPoints={searchedAddress ? [40, '40%', '85%'] : (selectedPlace ? [40, '45%', '85%'] : [40, '35%', '85%'])}
           topInset={BOTTOM_SHEET_TOP_INSET}
           backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
           handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
           enablePanDownToClose={false}
-          enableContentPanningGesture={false}
+          enableContentPanningGesture={true}
+          animateOnMount={true}
           onChange={(index) => setBottomSheetIndex(index)}
         >
           {/* Category chips are now only shown under the search bar - removed duplicate from bottom sheet */}
@@ -3732,7 +3735,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <BottomSheet
           ref={categoryBottomSheetRef}
           index={1}
-          snapPoints={['15%', '45%', '70%']}
+          snapPoints={['15%', '45%', '85%']}
           topInset={BOTTOM_SHEET_TOP_INSET}
           backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
           handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
@@ -4873,16 +4876,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   mapCategoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
     backgroundColor: '#1C1C1E',
   },
   mapCategoryChipActive: {
     // Handled inline with border
   },
   mapCategoryChipText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: '#FFFFFF',
   },
