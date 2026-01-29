@@ -13,6 +13,7 @@
 
 import { supabase } from './supabaseClient';
 import { PlaceCard, PlaceSource } from './placeService';
+import { searchPlaces as typesenseSearch, healthCheck as typesenseHealthCheck } from './typesenseService';
 
 // ============================================
 // TYPES
@@ -426,6 +427,57 @@ export async function searchSuggestions(
   }
 
   const startTime = Date.now();
+
+  // ============================================
+  // TRY TYPESENSE FIRST (100-500x faster!)
+  // ============================================
+  try {
+    const typesenseResult = await typesenseSearch({
+      query: searchTerm,
+      latitude: userLocation?.latitude,
+      longitude: userLocation?.longitude,
+      radiusKm: 50,
+      limit,
+    });
+
+    if (typesenseResult.places && typesenseResult.places.length > 0) {
+      // Transform Typesense results to SearchResult format
+      const results: SearchResult[] = typesenseResult.places.map(place => ({
+        id: place.id,
+        source: 'fsq_raw' as PlaceSource,
+        source_id: place.fsq_place_id,
+        source_type: 'fsq',
+        name: place.name,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        address: place.address,
+        city: place.locality,
+        region: place.region,
+        country: place.country,
+        postcode: place.postcode,
+        category: place.category,
+        subcategory: place.subcategory,
+        phone: place.tel,
+        website: place.website,
+        distance: place.distance,
+        cover_image_url: undefined,
+        photos: [],
+        status: 'active',
+      }));
+
+      // Cache results
+      setCache(searchCache, cacheKey, results, userLocation);
+      
+      console.log(`[searchService] ⚡ Typesense: ${results.length} results in ${typesenseResult.searchTimeMs}ms`);
+      return results;
+    }
+  } catch (typesenseError) {
+    console.warn('[searchService] Typesense failed, falling back to Supabase:', typesenseError);
+  }
+
+  // ============================================
+  // FALLBACK TO SUPABASE (if Typesense fails)
+  // ============================================
 
   try {
     let results: SearchResult[] = [];

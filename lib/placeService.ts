@@ -11,6 +11,7 @@
  */
 
 import { supabase } from './supabaseClient';
+import { searchPlacesInBounds as typesenseSearchBounds } from './typesenseService';
 
 // ============================================
 // TYPES
@@ -149,9 +150,66 @@ export async function fetchPlacesInBounds(options: FetchPlacesOptions): Promise<
     );
 
     // ============================================
-    // STEP 3: Query fsq_places_raw as fallback
+    // STEP 3: Try Typesense first (100x faster!)
     // ============================================
     try {
+      const typesenseResults = await typesenseSearchBounds(
+        {
+          ne: [maxLng, maxLat],
+          sw: [minLng, minLat]
+        },
+        filters?.category,
+        limit - placesFromCanonical.length
+      );
+
+      if (typesenseResults && typesenseResults.length > 0) {
+        // Transform and filter out duplicates
+        const newTypesensePlaces = typesenseResults
+          .filter(p => !existingSourceIds.has(p.fsq_place_id))
+          .map(p => ({
+            id: p.id,
+            source: 'fsq_raw' as PlaceSource,
+            source_id: p.fsq_place_id,
+            source_type: 'fsq',
+            name: p.name,
+            latitude: p.latitude!,
+            longitude: p.longitude!,
+            address: p.address,
+            city: p.locality,
+            region: p.region,
+            country: p.country,
+            postcode: p.postcode,
+            category: p.category,
+            subcategory: p.subcategory,
+            phone: p.tel,
+            website: p.website,
+            email: p.email,
+            instagram: p.instagram,
+            facebook: p.facebook_id,
+            cover_image_url: undefined,
+            photos: [],
+            status: 'active',
+          }));
+        
+        placesFromFsqRaw = newTypesensePlaces;
+        console.log(`[placeService] ⚡ Typesense: ${placesFromFsqRaw.length} places in bounds`);
+        
+        // Skip Supabase fallback if Typesense succeeded
+        if (placesFromFsqRaw.length > 0) {
+          // Jump to merge step
+        } else {
+          throw new Error('No Typesense results');
+        }
+      }
+    } catch (typesenseError) {
+      console.warn('[placeService] Typesense failed, falling back to Supabase:', typesenseError);
+    }
+
+    // ============================================
+    // STEP 4: Fallback to fsq_places_raw (if Typesense failed)
+    // ============================================
+    if (placesFromFsqRaw.length === 0) {
+      try {
       const { data: fsqData, error: fsqError } = await supabase
         .from('fsq_places_raw')
         .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, postcode, tel, website, email, instagram, facebook_id, twitter, fsq_category_ids, fsq_category_labels, date_created, date_refreshed')
@@ -170,8 +228,9 @@ export async function fetchPlacesInBounds(options: FetchPlacesOptions): Promise<
         placesFromFsqRaw = newFsqPlaces.map(transformFsqRawPlace);
         console.log(`[placeService] Fetched ${fsqData.length} from fsq_raw, ${placesFromFsqRaw.length} after dedup`);
       }
-    } catch (error) {
-      console.error('[placeService] Exception querying fsq_places_raw:', error);
+      } catch (error) {
+        console.error('[placeService] Exception querying fsq_places_raw:', error);
+      }
     }
   }
 
