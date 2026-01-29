@@ -1770,8 +1770,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         .gte('longitude', minLng)
         .lte('longitude', maxLng)
         .is('date_closed', null)
-        .limit(200) // Reduced limit for better performance
-        .abortSignal(AbortSignal.timeout(8000)); // 8 second timeout
+        .limit(200); // Reduced limit for better performance
 
       console.log('Raw query results:', placesData?.length || 0);
 
