@@ -1602,10 +1602,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         // Navigate to map and center on the selected place
         const place = suggestion.data;
         if (place.latitude && place.longitude) {
-          setTargetLocation([place.longitude, place.latitude]);
-          setSelectedPlace(place);
-          setSearchQuery(place.name);
+          // Switch to map mode first, then set location (to avoid it being cleared)
           switchToMapMode();
+          // Use setTimeout to ensure state updates happen after mode switch
+          setTimeout(() => {
+            setTargetLocation([place.longitude, place.latitude]);
+            setSelectedPlace(place);
+            setSearchQuery(place.name);
+          }, 50);
         } else {
           handlePlacePress(place);
         }
