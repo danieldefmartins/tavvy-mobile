@@ -192,6 +192,15 @@ const APP_TILES: AppTile[] = [
     gradientColors: ['#F472B6', '#EC4899'],
     route: 'HappeningNow',
   },
+  {
+    id: 'universe-detail',
+    name: 'Universe Detail',
+    icon: 'planet-outline',
+    iconType: 'ionicons',
+    gradientColors: ['#A78BFA', '#8B5CF6'],
+    route: 'UniverseDetail',
+    params: { universeId: 'a1b2c3d4-6666-4666-8666-666666666631' }, // U.S. Bank Stadium
+  },
 ];
 
 export default function AppsScreen() {
