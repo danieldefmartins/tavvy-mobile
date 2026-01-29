@@ -50,6 +50,11 @@ export interface StoryUploadParams {
   tags?: string[];
 }
 
+// Helper: Check if string is a valid UUID
+function isValidUUID(str: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
 // =============================================
 // STORY CRUD OPERATIONS
 // =============================================
@@ -62,6 +67,13 @@ export async function getPlaceStories(
   currentUserId?: string
 ): Promise<PlaceStory[]> {
   try {
+    // Check if placeId is a valid UUID - Foursquare IDs are 24-char hex strings, not UUIDs
+    // If not a valid UUID, return empty results (no stories for external places yet)
+    if (!isValidUUID(placeId)) {
+      // Silently return empty - this is expected for Foursquare/Google places
+      return [];
+    }
+
     const { data: stories, error } = await supabase
       .from('place_stories')
       .select('*')
@@ -208,6 +220,11 @@ export async function getStoryRingState(
   currentUserId?: string
 ): Promise<StoryRingState> {
   try {
+    // Check if placeId is a valid UUID
+    if (!isValidUUID(placeId)) {
+      return 'none';
+    }
+
     // Get active story count
     const { count: totalCount } = await supabase
       .from('place_stories')
@@ -256,11 +273,23 @@ export async function getStoryRingStates(
   const states = new Map<string, StoryRingState>();
   
   try {
+    // Filter to only valid UUIDs - non-UUID place IDs (Foursquare, Google) get 'none' state
+    const validUUIDs = placeIds.filter(id => isValidUUID(id));
+    const invalidIds = placeIds.filter(id => !isValidUUID(id));
+    
+    // Set non-UUID places to 'none'
+    invalidIds.forEach(id => states.set(id, 'none'));
+    
+    // If no valid UUIDs, return early
+    if (validUUIDs.length === 0) {
+      return states;
+    }
+
     // Get all active stories for these places
     const { data: stories } = await supabase
       .from('place_stories')
       .select('id, place_id')
-      .in('place_id', placeIds)
+      .in('place_id', validUUIDs)
       .eq('status', 'active')
       .gt('expires_at', new Date().toISOString());
 
@@ -325,6 +354,11 @@ export async function getStoryRingStates(
  */
 export async function getPlaceHighlights(placeId: string): Promise<StoryHighlight[]> {
   try {
+    // Check if placeId is a valid UUID
+    if (!isValidUUID(placeId)) {
+      return [];
+    }
+
     const { data: highlights, error } = await supabase
       .from('place_story_highlights')
       .select(`

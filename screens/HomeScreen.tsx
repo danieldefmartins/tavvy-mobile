@@ -3452,7 +3452,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                     </Text>
                   )}
                 </View>
-                <Ionicons name="arrow-up-back" size={20} color="#999" style={{ transform: [{ rotate: '45deg' }] }} />
+                <Ionicons name="arrow-forward" size={20} color="#999" style={{ transform: [{ rotate: '-45deg' }] }} />
               </TouchableOpacity>
             ))}
             
