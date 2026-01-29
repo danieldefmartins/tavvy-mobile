@@ -81,7 +81,6 @@ const ECardTemplateGalleryScreen: React.FC = () => {
   }, [selectedCategory, hasProAccess]);
 
   const handleSelectTemplate = (template: Template) => {
-  const { t } = useTranslation();
     // Navigate to color scheme picker, preserving existing data if editing
     navigation.navigate('ECardColorPicker', {
       templateId: template.id,
