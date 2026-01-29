@@ -102,7 +102,8 @@ export async function getPlaceStories(
 
     return stories || [];
   } catch (error) {
-    console.error('Error fetching place stories:', error);
+    // Log as info instead of error to avoid showing error screen for expected cases (FSQ IDs)
+    console.log('[storyService] Could not fetch stories (expected for FSQ places):', placeId);
     return [];
   }
 }
