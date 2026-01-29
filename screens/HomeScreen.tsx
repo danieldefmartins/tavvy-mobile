@@ -1615,8 +1615,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         }
         break;
       case 'category':
+        // Switch to map mode first so the category results bottom sheet can overlay
+        switchToMapMode();
         handleCategorySelect(suggestion.data.name);
-        // Don't switch to map mode - show category results view instead
         break;
       case 'address':
         const result = suggestion.data as GeocodingResult;
