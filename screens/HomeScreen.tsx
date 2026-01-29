@@ -3357,8 +3357,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </View>
         </View>
         
-        {/* Category Chips Row - Only show when bottom sheet is collapsed */}
-        {bottomSheetIndex === 0 && (
+        {/* Category Chips Row - Always visible */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -3386,7 +3385,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             </TouchableOpacity>
           ))}
         </ScrollView>
-        )}
       </View>
       
       {/* Full-Screen Search Suggestions Overlay - Google Maps Style */}
@@ -3735,7 +3733,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <BottomSheet
           ref={categoryBottomSheetRef}
           index={1}
-          snapPoints={['15%', '45%', '85%']}
+          snapPoints={['15%', '45%', '90%']}
           topInset={BOTTOM_SHEET_TOP_INSET}
           backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
           handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
@@ -5464,7 +5462,7 @@ const styles = StyleSheet.create({
     marginBottom: 8, // Reduced from 16
   },
   categoryResultsTitle: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '700',
   },
   categoryResultsClose: {
@@ -5496,9 +5494,9 @@ const styles = StyleSheet.create({
     paddingBottom: 8, // Reduced from 12
   },
   filterPillIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -5506,9 +5504,9 @@ const styles = StyleSheet.create({
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
     borderWidth: 1,
     backgroundColor: 'rgba(55, 65, 81, 0.85)', // Dark translucent background
   },
@@ -5517,7 +5515,7 @@ const styles = StyleSheet.create({
     borderColor: '#22D3EE',
   },
   filterPillText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff', // White text by default
   },
