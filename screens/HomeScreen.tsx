@@ -78,7 +78,7 @@ const MAP_STYLES = {
   dark: {
     name: 'Dark',
     type: 'raster',
-    tileUrl: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',
+    tileUrl: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
     icon: 'moon',
   },
   satellite: {
