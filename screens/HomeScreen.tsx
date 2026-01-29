@@ -1702,8 +1702,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
     try {
       const [centerLng, centerLat] = locationToUse;
-      const latDelta = 0.5; // Larger radius for category search (about 35 miles)
-      const lngDelta = 0.5;
+      const latDelta = 0.15; // Optimized radius for category search (about 10 miles)
+      const lngDelta = 0.15;
       
       const minLat = centerLat - latDelta;
       const maxLat = centerLat + latDelta;
@@ -1770,12 +1770,19 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         .gte('longitude', minLng)
         .lte('longitude', maxLng)
         .is('date_closed', null)
-        .limit(500); // Get more results to filter locally
+        .limit(200) // Reduced limit for better performance
+        .abortSignal(AbortSignal.timeout(8000)); // 8 second timeout
 
       console.log('Raw query results:', placesData?.length || 0);
 
       if (error) {
         console.warn('Category search error:', error);
+        
+        // Check if it's a timeout error
+        if (error.code === '57014' || error.message?.includes('timeout')) {
+          console.log('Query timed out - database indexes are still being built. Showing empty results.');
+        }
+        
         // Fallback to local filtering
         const filtered = places.filter(place => 
           place.category?.toLowerCase().includes(category.toLowerCase())
