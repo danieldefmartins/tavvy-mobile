@@ -111,7 +111,7 @@ export async function fetchPlacesInBounds(options: FetchPlacesOptions): Promise<
   try {
     let query = supabase
       .from('places')
-      .select('id, source_type, source_id, name, latitude, longitude, address, city, region, country, postcode, tavvy_category, tavvy_subcategory, phone, website, email, instagram, facebook, twitter, cover_image_url, photos, status')
+      .select('id, source_type, source_id, name, latitude, longitude, city, region, country, postcode, tavvy_category, tavvy_subcategory, phone, website, email, instagram, facebook, twitter, cover_image_url, photos, status')
       .gte('latitude', minLat)
       .lte('latitude', maxLat)
       .gte('longitude', minLng)
@@ -304,7 +304,7 @@ function transformCanonicalPlace(place: any): PlaceCard {
     name: place.name || 'Unknown',
     latitude: place.latitude,
     longitude: place.longitude,
-    address: place.address,
+    address: place.address || '',
     city: place.city,
     region: place.region,
     country: place.country,
@@ -362,7 +362,7 @@ function transformFsqRawPlace(place: any): PlaceCard {
     name: place.name || 'Unknown',
     latitude: place.latitude,
     longitude: place.longitude,
-    address: place.address,
+    address: place.address || '',
     city: place.locality,
     region: place.region,
     country: place.country,
