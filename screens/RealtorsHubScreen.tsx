@@ -2,7 +2,9 @@
  * RealtorsHubScreen.tsx
  * Install path: screens/RealtorsHubScreen.tsx
  * 
- * Realtor profile detail screen with About, Listings, and Reviews tabs.
+ * Main Realtors hub screen with Smart Match CTA and featured realtors.
+ * NEW DARK THEME DESIGN - Matches the new Tavvy app design language
+ * 
  * NOW CONNECTED TO SUPABASE - Fetches real data from pro_providers table
  */
 import React, { useState, useEffect } from 'react';
@@ -13,38 +15,50 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  SafeAreaView,
+  TextInput,
   Dimensions,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabaseClient';
 import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
-// Realtor-specific colors
-const RealtorColors = {
-  primary: '#1E3A5F',      // Deep navy blue
-  secondary: '#C9A227',    // Gold accent
-  background: '#F8F9FA',
-  cardBg: '#FFFFFF',
-  text: '#1F2937',
-  textLight: '#6B7280',
+// New Dark Theme Colors (matching new Tavvy design)
+const Colors = {
+  background: '#0A0A0F',       // Deep black
+  surface: '#1A1A24',          // Dark card background
+  surfaceLight: '#252532',     // Lighter surface for inputs
+  primary: '#3B82F6',          // Blue accent
+  secondary: '#C9A227',        // Gold accent for realtors
+  text: '#FFFFFF',
+  textSecondary: '#9CA3AF',
+  textMuted: '#6B7280',
   success: '#10B981',
-  border: '#E5E7EB',
+  border: '#2D2D3A',
+  badge: '#EF4444',            // Red for badges
+  badgeBlue: '#3B82F6',        // Blue for "FEATURED"
 };
+
+// Specialties for filtering
+const SPECIALTIES = [
+  { id: 'all', name: 'All', icon: 'grid-outline' },
+  { id: 'luxury', name: 'Luxury', icon: 'diamond-outline' },
+  { id: 'first-time', name: 'First-Time', icon: 'key-outline' },
+  { id: 'investment', name: 'Investment', icon: 'trending-up-outline' },
+  { id: 'relocation', name: 'Relocation', icon: 'airplane-outline' },
+  { id: 'commercial', name: 'Commercial', icon: 'business-outline' },
+];
 
 // Default placeholder images
-const PLACEHOLDER_PHOTO = 'https://ui-avatars.com/api/?name=Realtor&background=0D9488&color=fff&size=150';
+const PLACEHOLDER_PHOTO = 'https://ui-avatars.com/api/?name=Realtor&background=1E3A5F&color=fff&size=150';
 const PLACEHOLDER_COVER = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800';
-
-type RouteParams = {
-  realtorId?: string;
-  realtorName?: string;
-};
 
 // Realtor type from Supabase
 interface Realtor {
@@ -53,108 +67,71 @@ interface Realtor {
   title: string;
   company: string;
   photo: string;
-  coverPhoto: string;
-  rating: number;
-  reviewCount: number;
+  coverPhoto?: string;
   yearsExperience: number;
   transactionsClosed: number;
   specialties: string[];
   areas: string[];
-  bio: string;
-  phone: string;
-  email: string;
-  license: string;
-  languages: string[];
-}
-
-// Listing type
-interface Listing {
-  id: string;
-  image: string;
-  price: string;
-  address: string;
-  beds: number;
-  baths: number;
-  sqft: string;
-  status: string;
-}
-
-// Review type
-interface Review {
-  id: string;
-  author: string;
+  verified: boolean;
   rating: number;
-  date: string;
-  text: string;
+  reviewCount: number;
+  isFeatured?: boolean;
 }
+
+type NavigationProp = NativeStackNavigationProp<any>;
 
 export default function RealtorsHubScreen() {
   const { t } = useTranslation();
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
-  
-  const [activeTab, setActiveTab] = useState<'about' | 'listings' | 'reviews'>('about');
-  const [realtor, setRealtor] = useState<Realtor | null>(null);
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
+  const navigation = useNavigation<NavigationProp>();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSpecialty, setSelectedSpecialty] = useState('all');
+  const [featuredRealtor, setFeaturedRealtor] = useState<Realtor | null>(null);
+  const [popularRealtors, setPopularRealtors] = useState<Realtor[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Get realtorId from route params
-  const realtorId = route.params?.realtorId;
-
   useEffect(() => {
-    if (realtorId) {
-      loadRealtorData();
-    } else {
-      // No realtorId provided, show browse screen instead
-      navigation.replace('RealtorsBrowse');
-    }
-  }, [realtorId]);
+    loadRealtors();
+  }, []);
 
-  const loadRealtorData = async () => {
+  const loadRealtors = async () => {
     setLoading(true);
     try {
-      // Fetch realtor profile from pro_providers
       const { data, error } = await supabase
         .from('pro_providers')
         .select('*')
-        .eq('id', realtorId)
         .eq('provider_type', 'realtor')
-        .single();
+        .eq('is_active', true)
+        .order('average_rating', { ascending: false })
+        .limit(10);
 
       if (error) {
-        console.error('Error fetching realtor:', error);
-        setRealtor(null);
-      } else if (data) {
-        // Transform data to component format
-        setRealtor({
-          id: data.id,
-          name: data.display_name || data.business_name || 'Unknown',
-          title: data.title || 'Real Estate Agent',
-          company: data.company_name || data.brokerage || '',
-          photo: data.profile_image_url || data.photo_url || PLACEHOLDER_PHOTO,
-          coverPhoto: data.cover_image_url || PLACEHOLDER_COVER,
-          rating: data.average_rating || 0,
-          reviewCount: data.review_count || 0,
-          yearsExperience: data.years_experience || 0,
-          transactionsClosed: data.transactions_closed || data.total_transactions || 0,
-          specialties: data.specialties || [],
-          areas: data.service_areas || data.areas_served || [],
-          bio: data.bio || data.description || '',
-          phone: data.phone || data.contact_phone || '',
-          email: data.email || data.contact_email || '',
-          license: data.license_number || '',
-          languages: data.languages || ['English'],
-        });
+        console.error('Error fetching realtors:', error);
+        setFeaturedRealtor(null);
+        setPopularRealtors([]);
+      } else if (data && data.length > 0) {
+        const mappedRealtors: Realtor[] = data.map((r: any) => ({
+          id: r.id,
+          name: r.display_name || r.business_name || 'Unknown',
+          title: r.title || 'Real Estate Agent',
+          company: r.company_name || r.brokerage || '',
+          photo: r.profile_image_url || r.photo_url || PLACEHOLDER_PHOTO,
+          coverPhoto: r.cover_image_url || PLACEHOLDER_COVER,
+          yearsExperience: r.years_experience || 0,
+          transactionsClosed: r.transactions_closed || r.total_transactions || 0,
+          specialties: r.specialties || [],
+          areas: r.service_areas || r.areas_served || [],
+          verified: r.is_verified || false,
+          rating: r.average_rating || 4.5,
+          reviewCount: r.review_count || 0,
+          isFeatured: r.is_featured || false,
+        }));
 
-        // TODO: Load listings from a separate table when available
-        setListings([]);
-
-        // TODO: Load reviews from a separate table when available
-        setReviews([]);
+        // First realtor as featured, rest as popular
+        setFeaturedRealtor(mappedRealtors[0]);
+        setPopularRealtors(mappedRealtors.slice(1, 5));
       }
     } catch (error) {
-      console.error('Error loading realtor data:', error);
+      console.error('Error loading realtors:', error);
     } finally {
       setLoading(false);
     }
@@ -164,740 +141,579 @@ export default function RealtorsHubScreen() {
     navigation.goBack();
   };
 
-  const handleContact = () => {
-    if (realtor) {
-      navigation.navigate('ProsMessages', {
-        recipientId: realtor.id,
-        recipientName: realtor.name,
-        recipientType: 'realtor',
-      });
-    }
+  const handleSearch = () => {
+    navigation.navigate('RealtorsBrowse', { searchQuery });
   };
 
-  const handleCall = () => {
-    if (realtor?.phone) {
-      // In production, use Linking.openURL(`tel:${realtor.phone}`)
-      console.log('Calling:', realtor.phone);
-    }
+  const handleSmartMatch = () => {
+    navigation.navigate('RealtorMatchStart');
   };
 
-  // Loading state
-  if (loading) {
+  const handleBrowseAll = () => {
+    navigation.navigate('RealtorsBrowse');
+  };
+
+  const handleRealtorPress = (realtor: Realtor) => {
+    navigation.navigate('RealtorDetail', {
+      realtorId: realtor.id,
+      realtorName: realtor.name,
+    });
+  };
+
+  const handleSpecialtyPress = (specialtyId: string) => {
+    setSelectedSpecialty(specialtyId);
+    navigation.navigate('RealtorsBrowse', { specialty: specialtyId });
+  };
+
+  // Render Featured Realtor Card (large hero card)
+  const renderFeaturedCard = () => {
+    if (!featuredRealtor) return null;
+
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={RealtorColors.primary} />
-          <Text style={styles.loadingText}>Loading realtor profile...</Text>
+      <TouchableOpacity 
+        style={styles.featuredCard}
+        onPress={() => handleRealtorPress(featuredRealtor)}
+        activeOpacity={0.9}
+      >
+        <Image 
+          source={{ uri: featuredRealtor.coverPhoto || PLACEHOLDER_COVER }} 
+          style={styles.featuredImage}
+        />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.8)']}
+          style={styles.featuredGradient}
+        />
+        
+        {/* Featured Badge */}
+        <View style={styles.featuredBadge}>
+          <Text style={styles.featuredBadgeText}>TOP RATED</Text>
         </View>
-      </SafeAreaView>
-    );
-  }
-
-  // No realtor found
-  if (!realtor) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.emptyContainer}>
-          <TouchableOpacity style={styles.backButtonEmpty} onPress={handleBack}>
-            <Ionicons name="arrow-back" size={24} color={RealtorColors.text} />
-          </TouchableOpacity>
-          <Ionicons name="person-outline" size={64} color={RealtorColors.textLight} />
-          <Text style={styles.emptyTitle}>Realtor Not Found</Text>
-          <Text style={styles.emptyText}>This realtor profile is no longer available.</Text>
-          <TouchableOpacity style={styles.browseButton} onPress={() => navigation.navigate('RealtorsBrowse')}>
-            <Text style={styles.browseButtonText}>Browse Realtors</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const renderAboutTab = () => (
-    <View style={styles.tabContent}>
-      {/* Bio Section */}
-      {realtor.bio ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About Me</Text>
-          <Text style={styles.bioText}>{realtor.bio}</Text>
-        </View>
-      ) : null}
-
-      {/* Specialties */}
-      {realtor.specialties.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Specialties</Text>
-          <View style={styles.tagContainer}>
-            {realtor.specialties.map((specialty, index) => (
-              <View key={index} style={styles.tag}>
-                <Text style={styles.tagText}>{specialty}</Text>
+        
+        {/* Realtor Info */}
+        <View style={styles.featuredInfo}>
+          <View style={styles.featuredHeader}>
+            <Image source={{ uri: featuredRealtor.photo }} style={styles.featuredAvatar} />
+            <View style={styles.featuredTextContainer}>
+              <View style={styles.nameRow}>
+                <Text style={styles.featuredName}>{featuredRealtor.name}</Text>
+                {featuredRealtor.verified && (
+                  <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
+                )}
               </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Service Areas */}
-      {realtor.areas.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Service Areas</Text>
-          <View style={styles.tagContainer}>
-            {realtor.areas.map((area, index) => (
-              <View key={index} style={[styles.tag, styles.areaTag]}>
-                <Ionicons name="location-outline" size={14} color={RealtorColors.primary} />
-                <Text style={[styles.tagText, styles.areaTagText]}>{area}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Credentials */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Credentials</Text>
-        {realtor.license && (
-          <View style={styles.credentialRow}>
-            <Ionicons name="shield-checkmark" size={20} color={RealtorColors.success} />
-            <Text style={styles.credentialText}>License: {realtor.license}</Text>
-          </View>
-        )}
-        {realtor.languages.length > 0 && (
-          <View style={styles.credentialRow}>
-            <Ionicons name="language" size={20} color={RealtorColors.primary} />
-            <Text style={styles.credentialText}>Languages: {realtor.languages.join(', ')}</Text>
-          </View>
-        )}
-        {realtor.company && (
-          <View style={styles.credentialRow}>
-            <Ionicons name="business" size={20} color={RealtorColors.primary} />
-            <Text style={styles.credentialText}>{realtor.company}</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Empty state if no info */}
-      {!realtor.bio && realtor.specialties.length === 0 && realtor.areas.length === 0 && (
-        <View style={styles.emptyTabState}>
-          <Ionicons name="information-circle-outline" size={48} color={RealtorColors.textLight} />
-          <Text style={styles.emptyTabText}>No additional information available yet.</Text>
-        </View>
-      )}
-    </View>
-  );
-
-  const renderListingsTab = () => (
-    <View style={styles.tabContent}>
-      {listings.length > 0 ? (
-        <>
-          <Text style={styles.listingsHeader}>Active Listings ({listings.length})</Text>
-          {listings.map((listing) => (
-            <TouchableOpacity key={listing.id} style={styles.listingCard}>
-              <Image source={{ uri: listing.image }} style={styles.listingImage} />
-              <View style={styles.listingStatus}>
-                <Text style={[
-                  styles.listingStatusText,
-                  listing.status === 'Pending' && styles.listingStatusPending
-                ]}>
-                  {listing.status}
-                </Text>
-              </View>
-              <View style={styles.listingInfo}>
-                <Text style={styles.listingPrice}>{listing.price}</Text>
-                <Text style={styles.listingAddress}>{listing.address}</Text>
-                <View style={styles.listingDetails}>
-                  <Text style={styles.listingDetail}>{listing.beds} beds</Text>
-                  <Text style={styles.listingDetailDivider}>•</Text>
-                  <Text style={styles.listingDetail}>{listing.baths} baths</Text>
-                  <Text style={styles.listingDetailDivider}>•</Text>
-                  <Text style={styles.listingDetail}>{listing.sqft} sqft</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </>
-      ) : (
-        <View style={styles.emptyTabState}>
-          <Ionicons name="home-outline" size={48} color={RealtorColors.textLight} />
-          <Text style={styles.emptyTabTitle}>No Active Listings</Text>
-          <Text style={styles.emptyTabText}>This realtor doesn't have any active listings at the moment.</Text>
-        </View>
-      )}
-    </View>
-  );
-
-  const renderReviewsTab = () => (
-    <View style={styles.tabContent}>
-      {realtor.reviewCount > 0 || reviews.length > 0 ? (
-        <>
-          <View style={styles.reviewsSummary}>
-            <Text style={styles.reviewsRating}>{realtor.rating.toFixed(1)}</Text>
-            <View style={styles.starsRow}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Ionicons
-                  key={star}
-                  name={star <= Math.floor(realtor.rating) ? 'star' : 'star-outline'}
-                  size={20}
-                  color={RealtorColors.secondary}
-                />
-              ))}
+              <Text style={styles.featuredSubtitle}>
+                {featuredRealtor.areas[0] || 'Your Area'} • {featuredRealtor.yearsExperience} years exp.
+              </Text>
             </View>
-            <Text style={styles.reviewsCount}>{realtor.reviewCount} reviews</Text>
           </View>
+          
+          {/* Rating */}
+          <View style={styles.ratingRow}>
+            <Ionicons name="star" size={14} color="#FBBF24" />
+            <Text style={styles.ratingText}>{featuredRealtor.rating.toFixed(1)}</Text>
+            <Text style={styles.reviewCount}>({featuredRealtor.reviewCount} reviews)</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
-          {reviews.map((review) => (
-            <View key={review.id} style={styles.reviewCard}>
-              <View style={styles.reviewHeader}>
-                <Text style={styles.reviewAuthor}>{review.author}</Text>
-                <Text style={styles.reviewDate}>{review.date}</Text>
-              </View>
-              <View style={styles.reviewStars}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Ionicons
-                    key={star}
-                    name={star <= review.rating ? 'star' : 'star-outline'}
-                    size={14}
-                    color={RealtorColors.secondary}
-                  />
-                ))}
-              </View>
-              <Text style={styles.reviewText}>{review.text}</Text>
-            </View>
-          ))}
-
-          {reviews.length > 0 && (
-            <TouchableOpacity style={styles.seeAllButton}>
-              <Text style={styles.seeAllButtonText}>See All Reviews</Text>
-              <Ionicons name="arrow-forward" size={16} color={RealtorColors.primary} />
-            </TouchableOpacity>
+  // Render Popular Realtor Card (grid item)
+  const renderRealtorCard = (realtor: Realtor, index: number) => (
+    <TouchableOpacity 
+      key={realtor.id}
+      style={styles.realtorCard}
+      onPress={() => handleRealtorPress(realtor)}
+      activeOpacity={0.8}
+    >
+      <Image source={{ uri: realtor.photo }} style={styles.realtorImage} />
+      
+      {/* Trending Badge */}
+      {index < 2 && (
+        <View style={styles.trendingBadge}>
+          <Text style={styles.trendingText}>🔥 Trending</Text>
+        </View>
+      )}
+      
+      <View style={styles.realtorInfo}>
+        <View style={styles.nameRow}>
+          <Text style={styles.realtorName} numberOfLines={1}>{realtor.name}</Text>
+          {realtor.verified && (
+            <Ionicons name="checkmark-circle" size={12} color={Colors.success} />
           )}
-        </>
-      ) : (
-        <View style={styles.emptyTabState}>
-          <Ionicons name="chatbubbles-outline" size={48} color={RealtorColors.textLight} />
-          <Text style={styles.emptyTabTitle}>No Reviews Yet</Text>
-          <Text style={styles.emptyTabText}>Be the first to leave a review for this realtor!</Text>
         </View>
-      )}
-    </View>
+        <Text style={styles.realtorLocation} numberOfLines={1}>
+          {realtor.areas[0] || 'Your Area'}
+        </Text>
+        <View style={styles.realtorRating}>
+          <Ionicons name="star" size={12} color="#FBBF24" />
+          <Text style={styles.realtorRatingText}>{realtor.rating.toFixed(1)}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Cover Photo */}
-        <View style={styles.coverContainer}>
-          <Image source={{ uri: realtor.coverPhoto }} style={styles.coverPhoto} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="chevron-back" size={24} color={Colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.shareButton}>
-            <Ionicons name="share-outline" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>Realtors</Text>
+            <Text style={styles.headerSubtitle}>Find your perfect agent.</Text>
+          </View>
         </View>
 
-        {/* Profile Header */}
-        <View style={styles.profileHeader}>
-          <Image source={{ uri: realtor.photo }} style={styles.profilePhoto} />
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{realtor.name}</Text>
-            <Text style={styles.profileTitle}>{realtor.title}</Text>
-            {realtor.rating > 0 && (
-              <View style={styles.ratingRow}>
-                <Ionicons name="star" size={16} color={RealtorColors.secondary} />
-                <Text style={styles.ratingText}>{realtor.rating.toFixed(1)}</Text>
-                <Text style={styles.reviewCountText}>({realtor.reviewCount} reviews)</Text>
+        <ScrollView 
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Search Bar */}
+          <TouchableOpacity style={styles.searchBar} onPress={handleSearch}>
+            <Ionicons name="search" size={20} color={Colors.textMuted} />
+            <Text style={styles.searchPlaceholder}>Search realtors...</Text>
+          </TouchableOpacity>
+
+          {/* Filter Pills */}
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.filtersContainer}
+            contentContainerStyle={styles.filtersContent}
+          >
+            {SPECIALTIES.map((specialty) => (
+              <TouchableOpacity
+                key={specialty.id}
+                style={[
+                  styles.filterPill,
+                  selectedSpecialty === specialty.id && styles.filterPillActive
+                ]}
+                onPress={() => handleSpecialtyPress(specialty.id)}
+              >
+                <Text style={[
+                  styles.filterPillText,
+                  selectedSpecialty === specialty.id && styles.filterPillTextActive
+                ]}>
+                  {specialty.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* Smart Match CTA Card */}
+          <TouchableOpacity style={styles.smartMatchCard} onPress={handleSmartMatch}>
+            <LinearGradient
+              colors={['#1E3A5F', '#2D4A6F']}
+              style={styles.smartMatchGradient}
+            >
+              <View style={styles.smartMatchContent}>
+                <View style={styles.smartMatchIcon}>
+                  <Ionicons name="sparkles" size={28} color={Colors.secondary} />
+                </View>
+                <View style={styles.smartMatchText}>
+                  <Text style={styles.smartMatchTitle}>Find Your Perfect Match</Text>
+                  <Text style={styles.smartMatchSubtitle}>
+                    Answer a few questions and we'll match you with the best realtors for your needs.
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={24} color={Colors.text} />
               </View>
-            )}
-          </View>
-        </View>
-
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{realtor.yearsExperience}</Text>
-            <Text style={styles.statLabel}>Years Exp.</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{realtor.transactionsClosed}+</Text>
-            <Text style={styles.statLabel}>Transactions</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{realtor.areas.length}</Text>
-            <Text style={styles.statLabel}>Areas Served</Text>
-          </View>
-        </View>
-
-        {/* Contact Buttons */}
-        <View style={styles.contactButtons}>
-          <TouchableOpacity style={styles.primaryButton} onPress={handleContact}>
-            <Ionicons name="chatbubble-outline" size={20} color="#FFFFFF" />
-            <Text style={styles.primaryButtonText}>Message</Text>
+            </LinearGradient>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton} onPress={handleCall}>
-            <Ionicons name="call-outline" size={20} color={RealtorColors.primary} />
-            <Text style={styles.secondaryButtonText}>Call</Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* Tab Navigation */}
-        <View style={styles.tabBar}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'about' && styles.tabActive]}
-            onPress={() => setActiveTab('about')}
-          >
-            <Text style={[styles.tabText, activeTab === 'about' && styles.tabTextActive]}>
-              About
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'listings' && styles.tabActive]}
-            onPress={() => setActiveTab('listings')}
-          >
-            <Text style={[styles.tabText, activeTab === 'listings' && styles.tabTextActive]}>
-              Listings
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'reviews' && styles.tabActive]}
-            onPress={() => setActiveTab('reviews')}
-          >
-            <Text style={[styles.tabText, activeTab === 'reviews' && styles.tabTextActive]}>
-              Reviews
-            </Text>
-          </TouchableOpacity>
-        </View>
+          {/* Featured Realtor Section */}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+              <Text style={styles.loadingText}>Finding top realtors...</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Featured Realtor</Text>
+              </View>
+              {renderFeaturedCard()}
 
-        {/* Tab Content */}
-        {activeTab === 'about' && renderAboutTab()}
-        {activeTab === 'listings' && renderListingsTab()}
-        {activeTab === 'reviews' && renderReviewsTab()}
+              {/* Popular Realtors Section */}
+              {popularRealtors.length > 0 && (
+                <>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Popular Realtors</Text>
+                    <TouchableOpacity onPress={handleBrowseAll}>
+                      <Text style={styles.seeAllText}>See All</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.realtorsGrid}>
+                    {popularRealtors.map((realtor, index) => renderRealtorCard(realtor, index))}
+                  </View>
+                </>
+              )}
+            </>
+          )}
 
-        {/* Footer Spacing */}
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </SafeAreaView>
+          {/* Empty State */}
+          {!loading && !featuredRealtor && (
+            <View style={styles.emptyState}>
+              <Ionicons name="people-outline" size={64} color={Colors.textMuted} />
+              <Text style={styles.emptyTitle}>No Realtors Available</Text>
+              <Text style={styles.emptyText}>
+                Check back soon or use Smart Match to find realtors in your area.
+              </Text>
+              <TouchableOpacity style={styles.smartMatchButton} onPress={handleSmartMatch}>
+                <Ionicons name="sparkles" size={20} color={Colors.text} />
+                <Text style={styles.smartMatchButtonText}>Try Smart Match</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Bottom Spacing */}
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: RealtorColors.background,
+    backgroundColor: Colors.background,
   },
-  loadingContainer: {
+  safeArea: {
     flex: 1,
-    justifyContent: 'center',
+  },
+  
+  // Header
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: RealtorColors.textLight,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  backButtonEmpty: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
+  backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: RealtorColors.cardBg,
-    alignItems: 'center',
+    backgroundColor: Colors.surface,
     justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: RealtorColors.text,
-    marginTop: 16,
+  headerTitleContainer: {
+    flex: 1,
   },
-  emptyText: {
-    fontSize: 15,
-    color: RealtorColors.textLight,
-    textAlign: 'center',
-    marginTop: 8,
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: Colors.text,
   },
-  browseButton: {
-    marginTop: 24,
-    backgroundColor: RealtorColors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+  headerSubtitle: {
+    fontSize: 14,
+    color: Colors.primary,
+    marginTop: 2,
   },
-  browseButtonText: {
-    color: '#FFFFFF',
+  
+  // Scroll View
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+  },
+  
+  // Search Bar
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  searchPlaceholder: {
     fontSize: 16,
+    color: Colors.textMuted,
+    marginLeft: 12,
+  },
+  
+  // Filter Pills
+  filtersContainer: {
+    marginBottom: 20,
+  },
+  filtersContent: {
+    paddingRight: 16,
+    gap: 8,
+  },
+  filterPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: Colors.surface,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  filterPillActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  filterPillText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  filterPillTextActive: {
+    color: Colors.text,
+  },
+  
+  // Smart Match Card
+  smartMatchCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 24,
+  },
+  smartMatchGradient: {
+    padding: 20,
+  },
+  smartMatchContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  smartMatchIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(201, 162, 39, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  smartMatchText: {
+    flex: 1,
+  },
+  smartMatchTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  smartMatchSubtitle: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  
+  // Section Header
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
     fontWeight: '600',
+    color: Colors.text,
   },
-  coverContainer: {
-    position: 'relative',
-    height: 200,
+  seeAllText: {
+    fontSize: 14,
+    color: Colors.primary,
+    fontWeight: '500',
   },
-  coverPhoto: {
+  
+  // Featured Card
+  featuredCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 24,
+    height: 220,
+  },
+  featuredImage: {
     width: '100%',
     height: '100%',
   },
-  backButton: {
+  featuredGradient: {
     position: 'absolute',
-    top: 16,
-    left: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '70%',
   },
-  shareButton: {
+  featuredBadge: {
     position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    top: 12,
+    left: 12,
+    backgroundColor: Colors.badge,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
-  profileHeader: {
-    flexDirection: 'row',
-    padding: 20,
-    marginTop: -50,
-  },
-  profilePhoto: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 4,
-    borderColor: '#FFFFFF',
-  },
-  profileInfo: {
-    flex: 1,
-    marginLeft: 16,
-    marginTop: 55,
-  },
-  profileName: {
-    fontSize: 22,
+  featuredBadgeText: {
+    fontSize: 11,
     fontWeight: 'bold',
-    color: RealtorColors.text,
+    color: Colors.text,
   },
-  profileTitle: {
-    fontSize: 14,
-    color: RealtorColors.textLight,
+  featuredInfo: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+  },
+  featuredHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  featuredAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: Colors.text,
+    marginRight: 12,
+  },
+  featuredTextContainer: {
+    flex: 1,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  featuredName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.text,
+  },
+  featuredSubtitle: {
+    fontSize: 13,
+    color: Colors.textSecondary,
     marginTop: 2,
   },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 6,
   },
   ratingText: {
     fontSize: 14,
     fontWeight: '600',
-    color: RealtorColors.text,
+    color: Colors.text,
     marginLeft: 4,
   },
-  reviewCountText: {
-    fontSize: 14,
-    color: RealtorColors.textLight,
+  reviewCount: {
+    fontSize: 13,
+    color: Colors.textSecondary,
     marginLeft: 4,
   },
-  statsRow: {
-    flexDirection: 'row',
-    backgroundColor: RealtorColors.cardBg,
-    marginHorizontal: 20,
-    borderRadius: 12,
-    paddingVertical: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: RealtorColors.primary,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: RealtorColors.textLight,
-    marginTop: 4,
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: RealtorColors.border,
-  },
-  contactButtons: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 12,
-  },
-  primaryButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: RealtorColors.primary,
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: RealtorColors.cardBg,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: RealtorColors.primary,
-    gap: 8,
-  },
-  secondaryButtonText: {
-    color: RealtorColors.primary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  tabBar: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: RealtorColors.border,
-    marginTop: 8,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  tabActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: RealtorColors.primary,
-  },
-  tabText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: RealtorColors.textLight,
-  },
-  tabTextActive: {
-    color: RealtorColors.primary,
-    fontWeight: '600',
-  },
-  tabContent: {
-    padding: 20,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: RealtorColors.text,
-    marginBottom: 12,
-  },
-  bioText: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: RealtorColors.text,
-  },
-  tagContainer: {
+  
+  // Realtors Grid
+  realtorsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    justifyContent: 'space-between',
   },
-  tag: {
-    backgroundColor: RealtorColors.primary + '15',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+  realtorCard: {
+    width: (width - 48) / 2,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 16,
   },
-  tagText: {
-    fontSize: 14,
-    color: RealtorColors.primary,
+  realtorImage: {
+    width: '100%',
+    height: 120,
+  },
+  trendingBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  trendingText: {
+    fontSize: 11,
+    color: Colors.text,
     fontWeight: '500',
   },
-  areaTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: RealtorColors.cardBg,
-    borderWidth: 1,
-    borderColor: RealtorColors.border,
+  realtorInfo: {
+    padding: 12,
   },
-  areaTagText: {
-    color: RealtorColors.text,
-  },
-  credentialRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  credentialText: {
+  realtorName: {
     fontSize: 15,
-    color: RealtorColors.text,
+    fontWeight: '600',
+    color: Colors.text,
+    flex: 1,
   },
-  emptyTabState: {
+  realtorLocation: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  realtorRating: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 40,
+    marginTop: 6,
   },
-  emptyTabTitle: {
+  realtorRatingText: {
+    fontSize: 13,
+    color: Colors.text,
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  
+  // Loading State
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginTop: 12,
+  },
+  
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 32,
+  },
+  emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: RealtorColors.text,
+    color: Colors.text,
     marginTop: 16,
   },
-  emptyTabText: {
-    fontSize: 15,
-    color: RealtorColors.textLight,
+  emptyText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
     textAlign: 'center',
     marginTop: 8,
+    marginBottom: 24,
+    lineHeight: 20,
   },
-  listingsHeader: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: RealtorColors.text,
-    marginBottom: 16,
-  },
-  listingCard: {
-    backgroundColor: RealtorColors.cardBg,
-    borderRadius: 12,
-    marginBottom: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  listingImage: {
-    width: '100%',
-    height: 180,
-  },
-  listingStatus: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    backgroundColor: RealtorColors.success,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  listingStatusText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  listingStatusPending: {
-    backgroundColor: RealtorColors.secondary,
-  },
-  listingInfo: {
-    padding: 16,
-  },
-  listingPrice: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: RealtorColors.text,
-  },
-  listingAddress: {
-    fontSize: 15,
-    color: RealtorColors.textLight,
-    marginTop: 4,
-  },
-  listingDetails: {
+  smartMatchButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
-  },
-  listingDetail: {
-    fontSize: 14,
-    color: RealtorColors.textLight,
-  },
-  listingDetailDivider: {
-    marginHorizontal: 8,
-    color: RealtorColors.textLight,
-  },
-  reviewsSummary: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    backgroundColor: RealtorColors.cardBg,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  reviewsRating: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: RealtorColors.text,
-  },
-  starsRow: {
-    flexDirection: 'row',
-    gap: 4,
-    marginTop: 8,
-  },
-  reviewsCount: {
-    fontSize: 14,
-    color: RealtorColors.textLight,
-    marginTop: 8,
-  },
-  reviewCard: {
-    backgroundColor: RealtorColors.cardBg,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  reviewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  reviewAuthor: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: RealtorColors.text,
-  },
-  reviewDate: {
-    fontSize: 13,
-    color: RealtorColors.textLight,
-  },
-  reviewStars: {
-    flexDirection: 'row',
-    gap: 2,
-    marginBottom: 8,
-  },
-  reviewText: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: RealtorColors.text,
-  },
-  seeAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
     paddingVertical: 14,
+    borderRadius: 24,
     gap: 8,
   },
-  seeAllButtonText: {
-    fontSize: 15,
+  smartMatchButtonText: {
+    fontSize: 16,
     fontWeight: '600',
-    color: RealtorColors.primary,
+    color: Colors.text,
   },
 });
