@@ -2910,7 +2910,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             {/* Explore Card */}
             <TouchableOpacity 
               style={[styles.moodCard, styles.moodCardLarge]}
-              onPress={() => navigation.navigate('Apps')}
+              onPress={() => navigation.getParent()?.navigate('Apps')}
               activeOpacity={0.9}
             >
               <LinearGradient
@@ -2940,7 +2940,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <View style={styles.liveDot} />
               <Text style={[styles.liveLabel, { color: isDark ? '#fff' : '#111827' }]}>Live Now</Text>
             </View>
-            <TouchableOpacity onPress={() => navigation.navigate('Apps')}>
+            <TouchableOpacity onPress={() => navigation.getParent()?.navigate('Apps')}>
               <Text style={styles.liveSeeAll}>See All</Text>
             </TouchableOpacity>
           </View>

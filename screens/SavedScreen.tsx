@@ -149,7 +149,7 @@ export default function SavedScreen({ navigation }: any) {
           </Text>
           <TouchableOpacity
             style={styles.exploreButton}
-            onPress={() => navigation.navigate('Home')}
+            onPress={() => navigation.getParent()?.navigate('Home')}
           >
             <Text style={styles.exploreButtonText}>Explore Places</Text>
           </TouchableOpacity>

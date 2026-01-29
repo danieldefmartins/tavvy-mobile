@@ -331,7 +331,7 @@ export default function WalletScreen() {
             </Text>
             <TouchableOpacity 
               style={styles.browseButton}
-              onPress={() => navigation.navigate('Pros')}
+              onPress={() => navigation.getParent()?.navigate('Pros')}
             >
               <Text style={styles.browseButtonText}>Browse Pros</Text>
             </TouchableOpacity>

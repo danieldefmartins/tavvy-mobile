@@ -227,7 +227,7 @@ export default function AppsScreen() {
         return;
       }
       if (tile.route === 'Pros') {
-        navigation.navigate('Pros', { screen: 'ProsHome' });
+        navigation.getParent()?.navigate('Pros');
         return;
       }
       

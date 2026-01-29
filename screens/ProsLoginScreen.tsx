@@ -260,7 +260,7 @@ export default function ProsLoginScreen({ navigation }: any) {
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>Looking for services instead? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Pros')}>
+            <TouchableOpacity onPress={() => navigation.getParent()?.navigate('Pros')}>
               <Text style={styles.browseLink}>Browse Pros</Text>
             </TouchableOpacity>
           </View>

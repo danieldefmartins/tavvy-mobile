@@ -381,6 +381,11 @@ function AppsStack() {
       <MenuStackNav.Screen name="ProsManageProfile" component={ProsManageProfileScreen} />
       <MenuStackNav.Screen name="ProsPaywall" component={ProsPaywallScreen} />
       <MenuStackNav.Screen name="ProsLeadDetail" component={ProsLeadDetailScreen} />
+      <MenuStackNav.Screen 
+        name="ProsRequestQuote" 
+        component={ProsRequestQuoteScreen}
+        options={{ presentation: 'modal' }}
+      />
       {/* CommunityGuidelines already registered above (line 331) */}
       <MenuStackNav.Screen name="ExperiencePaths" component={ExperiencePathsScreen} />
       {/* ExperiencePathDetail already registered above (line 335) */}

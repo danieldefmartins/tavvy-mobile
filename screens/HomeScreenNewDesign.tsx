@@ -457,7 +457,7 @@ const renderStandardMode = () => {
             {/* Explore Card */}
             <TouchableOpacity 
               style={[newStyles.moodCard, newStyles.moodCardLarge]}
-              onPress={() => navigation.navigate('Apps')}
+              onPress={() => navigation.getParent()?.navigate('Apps')}
               activeOpacity={0.9}
             >
               <LinearGradient
@@ -487,7 +487,7 @@ const renderStandardMode = () => {
               <View style={newStyles.liveDot} />
               <Text style={[newStyles.liveLabel, { color: isDark ? '#fff' : '#111827' }]}>Live Now</Text>
             </View>
-            <TouchableOpacity onPress={() => navigation.navigate('Apps')}>
+            <TouchableOpacity onPress={() => navigation.getParent()?.navigate('Apps')}>
               <Text style={newStyles.liveSeeAll}>See All</Text>
             </TouchableOpacity>
           </View>
@@ -577,7 +577,7 @@ const renderStandardMode = () => {
         <View style={styles.exploreSection}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: isDark ? theme.text : '#000' }]}>Explore Tavvy</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Apps')}>
+            <TouchableOpacity onPress={() => navigation.getParent()?.navigate('Apps')}>
               <Text style={styles.seeAll}>See All</Text>
             </TouchableOpacity>
           </View>

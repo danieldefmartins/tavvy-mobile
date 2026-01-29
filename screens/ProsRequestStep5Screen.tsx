@@ -34,7 +34,7 @@ export default function ProsRequestStep5Screen({ navigation, route }: any) {
 
   const handleSkip = () => {
     setShowSuccessModal(false);
-    navigation.navigate('Home');
+    navigation.getParent()?.getParent()?.navigate('Home');
   };
 
   const handleViewRequests = () => {
@@ -45,7 +45,7 @@ export default function ProsRequestStep5Screen({ navigation, route }: any) {
 
   const handleGoHome = () => {
     setShowSuccessModal(false);
-    navigation.navigate('Home');
+    navigation.getParent()?.getParent()?.navigate('Home');
   };
 
   return (

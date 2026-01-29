@@ -428,7 +428,7 @@ export default function PublicCardViewScreen() {
           {/* Powered by Tavvy */}
           <TouchableOpacity 
             style={styles.poweredBy}
-            onPress={() => navigation.navigate('Home')}
+            onPress={() => navigation.getParent()?.navigate('Home')}
           >
             <Text style={styles.poweredByText}>Powered by Tavvy</Text>
           </TouchableOpacity>

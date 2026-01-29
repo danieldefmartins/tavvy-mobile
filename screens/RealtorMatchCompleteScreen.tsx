@@ -123,7 +123,7 @@ export default function RealtorMatchCompleteScreen() {
                 <Text style={styles.whiteButtonText}>View Matched Realtors</Text>
                 <Ionicons name="arrow-forward" size={20} color={RealtorColors.primary} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.skipButton} onPress={() => navigation.navigate('Home')}>
+              <TouchableOpacity style={styles.skipButton} onPress={() => navigation.getParent()?.navigate('Home')}>
                 <Text style={styles.skipButtonText}>Go to Home</Text>
               </TouchableOpacity>
             </View>
