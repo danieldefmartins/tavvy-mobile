@@ -32,17 +32,17 @@ import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
-// Happening Now colors
+// Happening Now colors - Updated to match new black design system
 const HappeningColors = {
-  primary: '#FF2D55',
-  secondary: '#FF6B6B',
-  background: '#F8F9FA',
-  cardBg: '#FFFFFF',
-  text: '#1F2937',
-  textLight: '#6B7280',
-  textMuted: '#9CA3AF',
-  gradientStart: '#FF2D55',
-  gradientEnd: '#FF6B6B',
+  primary: '#667EEA', // Blue accent (matching other screens)
+  secondary: '#818CF8',
+  background: '#000000', // Pure black
+  cardBg: '#1C1C1E', // Dark charcoal for cards
+  text: '#FFFFFF', // White text
+  textLight: '#9CA3AF', // Gray text
+  textMuted: '#6B7280', // Muted gray
+  gradientStart: '#667EEA',
+  gradientEnd: '#818CF8',
 };
 
 // Event categories
@@ -369,7 +369,7 @@ export default function HappeningNowScreen() {
               <Ionicons 
                 name={filter.id === 'all' ? 'calendar-outline' : filter.id === 'tonight' ? 'moon-outline' : filter.id === 'weekend' ? 'sunny-outline' : 'time-outline'} 
                 size={16} 
-                color={selectedTimeFilter === filter.id ? '#FFFFFF' : HappeningColors.primary} 
+                color={selectedTimeFilter === filter.id ? '#FFFFFF' : HappeningColors.textLight} 
               />
               <Text style={[
                 styles.filterPillText,
@@ -394,7 +394,7 @@ export default function HappeningNowScreen() {
               <Ionicons 
                 name={category.icon as any} 
                 size={16} 
-                color={selectedCategory === category.id ? '#FFFFFF' : HappeningColors.primary} 
+                color={selectedCategory === category.id ? '#FFFFFF' : HappeningColors.textLight} 
               />
               <Text style={[
                 styles.filterPillText,
@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 45, 85, 0.1)',
+    backgroundColor: '#2C2C2E', // Dark charcoal for inactive pills
     gap: 6,
   },
   filterPillActive: {
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
   filterPillText: {
     fontSize: 14,
     fontWeight: '600',
-    color: HappeningColors.primary,
+    color: HappeningColors.textLight, // Gray for inactive
   },
   filterPillTextActive: {
     color: '#FFFFFF',
@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
   filterSeparator: {
     width: 1,
     height: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    backgroundColor: '#3C3C3E', // Subtle separator for dark mode
     marginHorizontal: 4,
   },
   // Legacy filter styles (kept for compatibility)
@@ -753,9 +753,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 4,
   },
   eventImage: {
     width: 120,
@@ -766,7 +766,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   eventDateBadge: {
-    backgroundColor: HappeningColors.primary + '15',
+    backgroundColor: HappeningColors.primary + '30', // Slightly more visible in dark mode
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
