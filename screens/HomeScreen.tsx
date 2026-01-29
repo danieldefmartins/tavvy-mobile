@@ -77,8 +77,8 @@ const MAP_STYLES = {
   },
   dark: {
     name: 'Dark',
-    type: 'vector',
-    url: 'https://tiles.openfreemap.org/styles/dark',
+    type: 'raster',
+    tileUrl: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
     icon: 'moon',
   },
   satellite: {
