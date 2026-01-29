@@ -1,11 +1,11 @@
 /**
- * ATLAS HOME SCREEN - Premium Redesign
+ * ATLAS HOME SCREEN
  * 
- * PREMIUM DARK MODE REDESIGN - January 2026
- * - Clean, minimal magazine-style layout
- * - Large featured story hero
- * - Just 2 trending guide cards
- * - Lots of breathing room
+ * Features:
+ * - Search bar that searches title, excerpt, content, and author
+ * - Category filter chips
+ * - All articles displayed in grid
+ * - Featured story hero
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -20,17 +20,14 @@ import {
   Dimensions,
   StatusBar,
   RefreshControl,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeContext } from '../contexts/ThemeContext';
-import {
-  getFeaturedArticle,
-  getAllArticles,
-  type AtlasArticle,
-} from '../lib/atlas';
+import { type AtlasArticle } from '../lib/atlas';
 import { getCoverImageUrl } from '../lib/imageUtils';
 import { supabase } from '../lib/supabaseClient';
 import { useTranslation } from 'react-i18next';
@@ -54,6 +51,13 @@ const COLORS = {
 const PLACEHOLDER_ARTICLE = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800';
 const PLACEHOLDER_AVATAR = 'https://ui-avatars.com/api/?name=T&background=667EEA&color=fff&size=100';
 
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  icon?: string;
+}
+
 export default function AtlasHomeScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
@@ -61,10 +65,14 @@ export default function AtlasHomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
   // Data states
-  const [featuredArticle, setFeaturedArticle] = useState<AtlasArticle | null>(null);
-  const [trendingArticles, setTrendingArticles] = useState<AtlasArticle[]>([]);
-  const [followingArticles, setFollowingArticles] = useState<AtlasArticle[]>([]);
+  const [allArticles, setAllArticles] = useState<AtlasArticle[]>([]);
+  const [displayedArticles, setDisplayedArticles] = useState<AtlasArticle[]>([]);
 
   useEffect(() => {
     loadData();
@@ -73,18 +81,27 @@ export default function AtlasHomeScreen() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [featured, articles] = await Promise.all([
-        getFeaturedArticle(),
-        getAllArticles({ limit: 4, offset: 0, shuffle: true }),
-      ]);
+      // Fetch categories
+      const { data: categoriesData } = await supabase
+        .from('atlas_categories')
+        .select('id, name, slug, icon')
+        .order('display_order', { ascending: true });
 
-      setFeaturedArticle(featured);
-      // Get 2 articles that are not the featured one
-      const trending = articles.filter(a => a.id !== featured?.id).slice(0, 2);
-      setTrendingArticles(trending);
+      if (categoriesData) {
+        setCategories(categoriesData);
+      }
 
-      // Load articles from followed authors
-      await loadFollowingArticles();
+      // Fetch all published articles with content for full-text search
+      const { data: articles } = await supabase
+        .from('atlas_articles')
+        .select('id, title, slug, excerpt, content, cover_image_url, author_name, author_avatar_url, read_time_minutes, view_count, love_count, category_id, published_at, article_template_type')
+        .eq('status', 'published')
+        .order('published_at', { ascending: false });
+
+      if (articles && articles.length > 0) {
+        setAllArticles(articles as AtlasArticle[]);
+        setDisplayedArticles(articles as AtlasArticle[]);
+      }
     } catch (error) {
       console.error('Error loading Atlas data:', error);
     } finally {
@@ -92,38 +109,44 @@ export default function AtlasHomeScreen() {
     }
   };
 
-  const loadFollowingArticles = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setFollowingArticles([]);
-        return;
-      }
+  // Filter and search articles
+  const filterArticles = useCallback((categoryId: string | null, query: string) => {
+    let filtered = allArticles;
 
-      const { data: follows } = await supabase
-        .from('atlas_author_follows')
-        .select('author_name')
-        .eq('user_id', user.id);
-
-      if (!follows || follows.length === 0) {
-        setFollowingArticles([]);
-        return;
-      }
-
-      const authorNames = follows.map(f => f.author_name);
-
-      const { data: articles } = await supabase
-        .from('atlas_articles')
-        .select('*')
-        .in('author_name', authorNames)
-        .eq('status', 'published')
-        .order('published_at', { ascending: false })
-        .limit(6);
-
-      setFollowingArticles(articles || []);
-    } catch (error) {
-      console.error('Error loading following articles:', error);
+    // Filter by category
+    if (categoryId) {
+      filtered = filtered.filter(a => a.category_id === categoryId);
     }
+
+    // Search in title, excerpt, content, and author name
+    if (query.trim()) {
+      const lowerQuery = query.toLowerCase();
+      filtered = filtered.filter(article => 
+        article.title.toLowerCase().includes(lowerQuery) ||
+        (article.excerpt && article.excerpt.toLowerCase().includes(lowerQuery)) ||
+        (article.content && article.content.toLowerCase().includes(lowerQuery)) ||
+        (article.author_name && article.author_name.toLowerCase().includes(lowerQuery))
+      );
+    }
+
+    setDisplayedArticles(filtered);
+  }, [allArticles]);
+
+  // Handle category selection
+  const handleCategorySelect = (categoryId: string | null) => {
+    setSelectedCategory(categoryId);
+    filterArticles(categoryId, searchQuery);
+  };
+
+  // Handle search
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    filterArticles(selectedCategory, query);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    filterArticles(selectedCategory, '');
   };
 
   const onRefresh = useCallback(async () => {
@@ -144,6 +167,7 @@ export default function AtlasHomeScreen() {
   const surfaceColor = theme.surface;
   const textColor = theme.text;
   const secondaryTextColor = theme.textSecondary;
+  const inputBgColor = isDark ? '#2C2C2E' : '#E5E5EA';
 
   if (loading) {
     return (
@@ -156,6 +180,10 @@ export default function AtlasHomeScreen() {
       </View>
     );
   }
+
+  // Get featured article (first one) and rest for grid
+  const featuredArticle = displayedArticles.length > 0 ? displayedArticles[0] : null;
+  const gridArticles = displayedArticles.slice(1);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
@@ -180,150 +208,162 @@ export default function AtlasHomeScreen() {
           </Text>
         </View>
 
-        {/* Featured Story Hero */}
-        {featuredArticle && (
-          <TouchableOpacity
-            style={styles.featuredCard}
-            onPress={() => navigateToArticle(featuredArticle)}
-            activeOpacity={0.9}
-          >
-            <Image
-              source={{ uri: getCoverImageUrl(featuredArticle.cover_image_url) || PLACEHOLDER_ARTICLE }}
-              style={styles.featuredImage}
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <View style={[styles.searchInputWrapper, { backgroundColor: inputBgColor }]}>
+            <Ionicons name="search" size={20} color={secondaryTextColor} />
+            <TextInput
+              style={[styles.searchInput, { color: textColor }]}
+              placeholder="Search articles..."
+              placeholderTextColor={secondaryTextColor}
+              value={searchQuery}
+              onChangeText={handleSearch}
+              returnKeyType="search"
             />
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.85)']}
-              style={styles.featuredGradient}
-            >
-              <View style={styles.featuredLabel}>
-                <Text style={styles.featuredLabelText}>FEATURED STORY</Text>
-              </View>
-              <Text style={styles.featuredTitle} numberOfLines={2}>
-                {featuredArticle.title}
-              </Text>
-              <View style={styles.authorRow}>
-                <Image
-                  source={{ uri: featuredArticle.author_avatar_url || PLACEHOLDER_AVATAR }}
-                  style={styles.authorAvatar}
-                />
-                <Text style={styles.authorName}>
-                  By {featuredArticle.author_name || 'Tavvy Team'}
-                </Text>
-              </View>
-              <TouchableOpacity 
-                style={styles.readButton}
-                onPress={() => navigateToArticle(featuredArticle)}
-              >
-                <Text style={styles.readButtonText}>Read Article</Text>
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+                <Ionicons name="close-circle" size={20} color={secondaryTextColor} />
               </TouchableOpacity>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
-
-        {/* From Authors You Follow */}
-        {followingArticles.length > 0 && (
-          <View style={styles.followingSection}>
-            <View style={styles.followingSectionHeader}>
-              <Ionicons name="person-circle" size={20} color={COLORS.accent} />
-              <Text style={[styles.sectionTitle, { color: textColor, marginBottom: 0 }]}>
-                From Authors You Follow
-              </Text>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.followingScroll}
-            >
-              {followingArticles.map((article) => (
-                <TouchableOpacity
-                  key={article.id}
-                  style={[
-                    styles.followingCard,
-                    {
-                      backgroundColor: surfaceColor,
-                      borderColor: COLORS.accent,
-                    }
-                  ]}
-                  onPress={() => navigateToArticle(article)}
-                  activeOpacity={0.8}
-                >
-                  <Image
-                    source={{ uri: getCoverImageUrl(article.cover_image_url) || PLACEHOLDER_ARTICLE }}
-                    style={styles.followingImage}
-                  />
-                  <View style={styles.followingContent}>
-                    <Text style={[styles.followingTitle, { color: isDark ? '#E5E7EB' : '#1F2937' }]} numberOfLines={2}>
-                      {article.title}
-                    </Text>
-                    <View style={styles.followingMeta}>
-                      <Image
-                        source={{ uri: article.author_avatar_url || PLACEHOLDER_AVATAR }}
-                        style={styles.followingAuthorAvatar}
-                      />
-                      <Text style={[styles.followingAuthorName, { color: secondaryTextColor }]} numberOfLines={1}>
-                        {article.author_name || 'Tavvy Team'}
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Trending Guides */}
-        <View style={styles.trendingSection}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>Trending Guides</Text>
-          <View style={styles.trendingGrid}>
-            {trendingArticles.map((article) => (
-              <TouchableOpacity
-                key={article.id}
-                style={[
-                  styles.trendingCard, 
-                  { 
-                    backgroundColor: surfaceColor,
-                    shadowColor: isDark ? 'transparent' : '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: isDark ? 0 : 0.08,
-                    shadowRadius: 8,
-                    elevation: isDark ? 0 : 3,
-                  }
-                ]}
-                onPress={() => navigateToArticle(article)}
-                activeOpacity={0.8}
-              >
-                <Image
-                  source={{ uri: getCoverImageUrl(article.cover_image_url) || PLACEHOLDER_ARTICLE }}
-                  style={styles.trendingImage}
-                />
-                <View style={styles.trendingContent}>
-                  <Text style={[styles.trendingTitle, { color: isDark ? '#E5E7EB' : '#1F2937' }]} numberOfLines={2}>
-                    {article.title}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+            )}
           </View>
         </View>
 
-        {/* Browse All Button */}
-        <View style={styles.browseSection}>
+        {/* Category Filter Chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContainer}
+        >
+          {/* All chip */}
           <TouchableOpacity
             style={[
-              styles.browseButton, 
-              { 
-                backgroundColor: isDark ? theme.surface : '#FFFFFF',
-                borderWidth: isDark ? 0 : 1,
-                borderColor: '#E5E7EB',
-              }
+              styles.filterChip,
+              { backgroundColor: selectedCategory === null ? COLORS.accent : surfaceColor }
             ]}
-            onPress={() => navigation.navigate('AtlasSearch')}
+            onPress={() => handleCategorySelect(null)}
           >
-            <Ionicons name="compass-outline" size={24} color={COLORS.accent} />
-            <Text style={[styles.browseText, { color: textColor }]}>Browse All Articles</Text>
-            <Ionicons name="chevron-forward" size={20} color={secondaryTextColor} />
+            <Text style={styles.chipIcon}>📚</Text>
+            <Text style={[
+              styles.chipText,
+              { color: selectedCategory === null ? '#FFFFFF' : (isDark ? '#E5E7EB' : '#374151') }
+            ]}>
+              All
+            </Text>
           </TouchableOpacity>
-        </View>
+          
+          {/* Category chips */}
+          {categories.map((category) => (
+            <TouchableOpacity
+              key={category.id}
+              style={[
+                styles.filterChip,
+                { backgroundColor: selectedCategory === category.id ? COLORS.accent : surfaceColor }
+              ]}
+              onPress={() => handleCategorySelect(category.id)}
+            >
+              {category.icon && <Text style={styles.chipIcon}>{category.icon}</Text>}
+              <Text style={[
+                styles.chipText,
+                { color: selectedCategory === category.id ? '#FFFFFF' : (isDark ? '#E5E7EB' : '#374151') }
+              ]}>
+                {category.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Results Count */}
+        {searchQuery.length > 0 && (
+          <View style={styles.resultsCount}>
+            <Text style={[styles.resultsText, { color: secondaryTextColor }]}>
+              {displayedArticles.length} result{displayedArticles.length !== 1 ? 's' : ''} for "{searchQuery}"
+            </Text>
+          </View>
+        )}
+
+        {/* No Results */}
+        {displayedArticles.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="document-text-outline" size={48} color={secondaryTextColor} />
+            <Text style={[styles.emptyText, { color: secondaryTextColor }]}>
+              No articles found{searchQuery ? ` matching "${searchQuery}"` : ' in this category'}.
+            </Text>
+          </View>
+        ) : (
+          <>
+            {/* Featured Story Hero */}
+            {featuredArticle && (
+              <TouchableOpacity
+                style={styles.featuredCard}
+                onPress={() => navigateToArticle(featuredArticle)}
+                activeOpacity={0.9}
+              >
+                <Image
+                  source={{ uri: getCoverImageUrl(featuredArticle.cover_image_url) || PLACEHOLDER_ARTICLE }}
+                  style={styles.featuredImage}
+                />
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.85)']}
+                  style={styles.featuredGradient}
+                >
+                  <View style={styles.featuredLabel}>
+                    <Text style={styles.featuredLabelText}>FEATURED STORY</Text>
+                  </View>
+                  <Text style={styles.featuredTitle} numberOfLines={2}>
+                    {featuredArticle.title}
+                  </Text>
+                  <View style={styles.authorRow}>
+                    <Image
+                      source={{ uri: featuredArticle.author_avatar_url || PLACEHOLDER_AVATAR }}
+                      style={styles.authorAvatar}
+                    />
+                    <Text style={styles.authorName}>
+                      By {featuredArticle.author_name || 'Tavvy Team'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.readButton}
+                    onPress={() => navigateToArticle(featuredArticle)}
+                  >
+                    <Text style={styles.readButtonText}>Read Article</Text>
+                  </TouchableOpacity>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+
+            {/* All Articles Grid */}
+            {gridArticles.length > 0 && (
+              <View style={styles.articlesSection}>
+                <Text style={[styles.sectionTitle, { color: textColor }]}>
+                  {searchQuery ? 'Search Results' : 'All Articles'}
+                </Text>
+                <View style={styles.articlesGrid}>
+                  {gridArticles.map((article) => (
+                    <TouchableOpacity
+                      key={article.id}
+                      style={[styles.articleCard, { backgroundColor: surfaceColor }]}
+                      onPress={() => navigateToArticle(article)}
+                      activeOpacity={0.8}
+                    >
+                      <Image
+                        source={{ uri: getCoverImageUrl(article.cover_image_url) || PLACEHOLDER_ARTICLE }}
+                        style={styles.articleImage}
+                      />
+                      <LinearGradient
+                        colors={['transparent', 'rgba(0,0,0,0.8)']}
+                        style={styles.articleOverlay}
+                      >
+                        <Text style={styles.articleTitle} numberOfLines={2}>
+                          {article.title}
+                        </Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+          </>
+        )}
 
         {/* Bottom Spacing */}
         <View style={{ height: 100 }} />
@@ -352,7 +392,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 24,
+    paddingBottom: 16,
   },
   title: {
     fontSize: 36,
@@ -363,6 +403,73 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginTop: 4,
+  },
+
+  // Search Bar
+  searchContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    padding: 0,
+  },
+  clearButton: {
+    padding: 4,
+  },
+
+  // Filter Chips
+  filterContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    gap: 10,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginRight: 10,
+    gap: 8,
+  },
+  chipIcon: {
+    fontSize: 16,
+  },
+  chipText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  // Results Count
+  resultsCount: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  resultsText: {
+    fontSize: 14,
+  },
+
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 16,
   },
 
   // Featured Card
@@ -401,9 +508,9 @@ const styles = StyleSheet.create({
   },
   featuredTitle: {
     color: '#FFFFFF',
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '700',
-    lineHeight: 32,
+    lineHeight: 28,
     marginBottom: 12,
   },
   authorRow: {
@@ -430,106 +537,47 @@ const styles = StyleSheet.create({
   },
   readButtonText: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-
-  // Following Section
-  followingSection: {
-    marginBottom: 24,
-  },
-  followingSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 16,
-    gap: 8,
-  },
-  followingScroll: {
-    paddingHorizontal: 20,
-  },
-  followingCard: {
-    width: 180,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginRight: 12,
-    borderWidth: 2,
-  },
-  followingImage: {
-    width: '100%',
-    height: 100,
-  },
-  followingContent: {
-    padding: 12,
-  },
-  followingTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    lineHeight: 18,
-    marginBottom: 8,
-  },
-  followingMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  followingAuthorAvatar: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-  },
-  followingAuthorName: {
-    fontSize: 12,
-    flex: 1,
+    fontWeight: '700',
   },
 
-  // Trending Section
-  trendingSection: {
+  // Articles Section
+  articlesSection: {
     paddingHorizontal: 20,
-    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 16,
   },
-  trendingGrid: {
+  articlesGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  trendingCard: {
+  articleCard: {
     width: (width - 52) / 2,
+    height: 200,
     borderRadius: 16,
     overflow: 'hidden',
+    marginBottom: 16,
   },
-  trendingImage: {
+  articleImage: {
     width: '100%',
-    height: 140,
+    height: '100%',
   },
-  trendingContent: {
-    padding: 14,
+  articleOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    paddingTop: 40,
   },
-  trendingTitle: {
+  articleTitle: {
+    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
     lineHeight: 20,
-  },
-
-  // Browse Section
-  browseSection: {
-    paddingHorizontal: 20,
-    marginTop: 8,
-  },
-  browseButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 18,
-    borderRadius: 16,
-    gap: 12,
-  },
-  browseText: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
