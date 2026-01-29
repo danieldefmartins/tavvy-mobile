@@ -415,7 +415,11 @@ export default function ProsHomeScreen() {
         </View>
 
         {/* Tavvy Shield - Prominent Card (moved up after How It Works) */}
-        <TouchableOpacity style={styles.tavvyShieldCard} activeOpacity={0.9}>
+        <TouchableOpacity 
+          style={styles.tavvyShieldCard} 
+          activeOpacity={0.9}
+          onPress={() => navigation.navigate('TavvyShield' as any)}
+        >
           <LinearGradient
             colors={['rgba(107, 127, 255, 0.15)', 'rgba(139, 92, 246, 0.15)']}
             start={{ x: 0, y: 0 }}
