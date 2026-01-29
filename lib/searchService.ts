@@ -150,8 +150,8 @@ export function clearSearchCache(): void {
  * Search for places by text query using hybrid strategy.
  * 
  * Strategy:
- * 1. Query `places` table first (canonical places data)
- * 2. If results < threshold, query `fsq_places_raw` as fallback
+ * 1. Query `fsq_places_raw` table first (104M places - ALL available data)
+ * 2. If results < threshold, query `places` as fallback (curated data)
  * 3. Deduplicate by source_id
  * 4. Return unified SearchResult[] format
  */
@@ -172,80 +172,79 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
   }
 
   const searchTerm = query.trim().toLowerCase();
-  let resultsFromPlacesSearch: SearchResult[] = [];
   let resultsFromFsqRaw: SearchResult[] = [];
+  let resultsFromPlacesSearch: SearchResult[] = [];
   let fallbackTriggered = false;
 
   // ============================================
-  // STEP 1: Query places table directly (canonical path)
+  // STEP 1: Query fsq_places_raw first (ALL 104M places)
   // ============================================
   try {
-    // Use ilike for simple matching on name and city
-    let searchQuery = supabase
-      .from('places')
-      .select('id, name, city, region, tavvy_category, tavvy_subcategory, latitude, longitude, cover_image_url, street, phone, website, photos, status')
-      .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
-      .eq('status', 'active')
+    const { data: fsqData, error: fsqError } = await supabase
+      .from('fsq_places_raw')
+      .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, postcode, tel, website, fsq_category_labels')
+      .or(`name.ilike.%${searchTerm}%,locality.ilike.%${searchTerm}%`)
+      .is('date_closed', null)
       .limit(limit);
 
-    if (filters?.category) {
-      searchQuery = searchQuery.eq('tavvy_category', filters.category);
-    }
-
-    const { data: placesData, error: searchError } = await searchQuery;
-
-    if (searchError) {
-      console.warn('[searchService] Error querying places:', searchError);
-    } else if (placesData) {
-      resultsFromPlacesSearch = placesData.map(p => transformToSearchResult(p, 'places', location));
-      console.log(`[searchService] Found ${resultsFromPlacesSearch.length} results from places table`);
+    if (fsqError) {
+      console.warn('[searchService] Error querying fsq_places_raw:', fsqError);
+    } else if (fsqData) {
+      resultsFromFsqRaw = fsqData.map(p => transformFsqToSearchResult(p, location));
+      console.log(`[searchService] Found ${resultsFromFsqRaw.length} results from fsq_places_raw table`);
     }
   } catch (error) {
-    console.error('[searchService] Exception querying places:', error);
+    console.error('[searchService] Exception querying fsq_places_raw:', error);
   }
 
   // ============================================
-  // STEP 2: Check if fallback is needed
+  // STEP 2: Check if fallback to places table is needed
   // ============================================
-  if (resultsFromPlacesSearch.length < fallbackThreshold) {
+  if (resultsFromFsqRaw.length < fallbackThreshold) {
     fallbackTriggered = true;
-    console.log(`[searchService] Fallback triggered: ${resultsFromPlacesSearch.length} < ${fallbackThreshold} threshold`);
+    console.log(`[searchService] Fallback triggered: ${resultsFromFsqRaw.length} < ${fallbackThreshold} threshold`);
 
     // Get source_ids to exclude
     const existingSourceIds = new Set(
-      resultsFromPlacesSearch
+      resultsFromFsqRaw
         .filter(r => r.source_id)
         .map(r => r.source_id)
     );
 
     // ============================================
-    // STEP 3: Query fsq_places_raw as fallback
+    // STEP 3: Query places table as fallback (curated data)
     // ============================================
     try {
-      const { data: fsqData, error: fsqError } = await supabase
-        .from('fsq_places_raw')
-        .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, postcode, tel, website, fsq_category_labels')
-        .ilike('name', `%${query}%`)
-        .is('date_closed', null)
-        .limit(limit - resultsFromPlacesSearch.length);
+      let searchQuery = supabase
+        .from('places')
+        .select('id, name, city, region, tavvy_category, tavvy_subcategory, latitude, longitude, cover_image_url, street, phone, website, photos, status')
+        .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
+        .eq('status', 'active')
+        .limit(limit - resultsFromFsqRaw.length);
 
-      if (fsqError) {
-        console.warn('[searchService] Error querying fsq_places_raw:', fsqError);
-      } else if (fsqData) {
+      if (filters?.category) {
+        searchQuery = searchQuery.eq('tavvy_category', filters.category);
+      }
+
+      const { data: placesData, error: searchError } = await searchQuery;
+
+      if (searchError) {
+        console.warn('[searchService] Error querying places:', searchError);
+      } else if (placesData) {
         // Filter out places already in results
-        const newFsqResults = fsqData.filter(p => !existingSourceIds.has(p.fsq_place_id));
-        resultsFromFsqRaw = newFsqResults.map(p => transformFsqToSearchResult(p, location));
-        console.log(`[searchService] Found ${fsqData.length} from fsq_raw, ${resultsFromFsqRaw.length} after dedup`);
+        const newPlacesResults = placesData.filter(p => !existingSourceIds.has(p.id));
+        resultsFromPlacesSearch = newPlacesResults.map(p => transformToSearchResult(p, 'places', location));
+        console.log(`[searchService] Found ${placesData.length} from places, ${resultsFromPlacesSearch.length} after dedup`);
       }
     } catch (error) {
-      console.error('[searchService] Exception querying fsq_places_raw:', error);
+      console.error('[searchService] Exception querying places:', error);
     }
   }
 
   // ============================================
   // STEP 4: Merge, sort, and return results
   // ============================================
-  let allResults = [...resultsFromPlacesSearch, ...resultsFromFsqRaw];
+  let allResults = [...resultsFromFsqRaw, ...resultsFromPlacesSearch];
 
   // Sort by distance if location provided, otherwise by name
   if (location) {
@@ -266,7 +265,7 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
     },
   };
 
-  console.log(`[searchService] Total: ${allResults.length} results (${result.metrics.fromPlacesSearch} search, ${result.metrics.fromFsqRaw} fsq_raw) in ${result.metrics.totalTime}ms`);
+  console.log(`[searchService] Total: ${allResults.length} results (${result.metrics.fromFsqRaw} fsq_raw, ${result.metrics.fromPlacesSearch} places) in ${result.metrics.totalTime}ms`);
 
   return result;
 }
