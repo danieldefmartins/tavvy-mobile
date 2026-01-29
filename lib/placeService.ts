@@ -165,12 +165,18 @@ export async function fetchPlacesInBounds(options: FetchPlacesOptions): Promise<
       if (typesenseResults && typesenseResults.length > 0) {
         // Transform and filter out duplicates
         const newTypesensePlaces = typesenseResults
-          .filter(p => !existingSourceIds.has(p.fsq_place_id))
-          .map(p => ({
+          .filter(p => {
+            const isTavvy = p.id.startsWith('tavvy:');
+            const sourceId = isTavvy ? p.id.replace('tavvy:', '') : p.fsq_place_id;
+            return !existingSourceIds.has(sourceId);
+          })
+          .map(p => {
+            const isTavvy = p.id.startsWith('tavvy:');
+            return {
             id: p.id,
-            source: 'fsq_raw' as PlaceSource,
-            source_id: p.fsq_place_id,
-            source_type: 'fsq',
+            source: (isTavvy ? 'places' : 'fsq_raw') as PlaceSource,
+            source_id: isTavvy ? p.id.replace('tavvy:', '') : p.fsq_place_id,
+            source_type: isTavvy ? 'tavvy' : 'fsq',
             name: p.name,
             latitude: p.latitude!,
             longitude: p.longitude!,
@@ -189,7 +195,8 @@ export async function fetchPlacesInBounds(options: FetchPlacesOptions): Promise<
             cover_image_url: undefined,
             photos: [],
             status: 'active',
-          }));
+          };
+          });
         
         placesFromFsqRaw = newTypesensePlaces;
         console.log(`[placeService] ⚡ Typesense: ${placesFromFsqRaw.length} places in bounds`);

@@ -442,11 +442,15 @@ export async function searchSuggestions(
 
     if (typesenseResult.places && typesenseResult.places.length > 0) {
       // Transform Typesense results to SearchResult format
-      const results: SearchResult[] = typesenseResult.places.map(place => ({
+      const results: SearchResult[] = typesenseResult.places.map(place => {
+        // Determine source based on ID prefix
+        const isTavvyPlace = place.id.startsWith('tavvy:');
+        
+        return {
         id: place.id,
-        source: 'fsq_raw' as PlaceSource,
-        source_id: place.fsq_place_id,
-        source_type: 'fsq',
+        source: (isTavvyPlace ? 'places' : 'fsq_raw') as PlaceSource,
+        source_id: isTavvyPlace ? place.id.replace('tavvy:', '') : place.fsq_place_id,
+        source_type: isTavvyPlace ? 'tavvy' : 'fsq',
         name: place.name,
         latitude: place.latitude,
         longitude: place.longitude,
@@ -463,7 +467,8 @@ export async function searchSuggestions(
         cover_image_url: undefined,
         photos: [],
         status: 'active',
-      }));
+      };
+      });
 
       // Cache results
       setCache(searchCache, cacheKey, results, userLocation);
