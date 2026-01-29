@@ -35,6 +35,10 @@ type RootStackParamList = {
     placeName?: string;
     primaryCategory?: string;
     subcategory?: string;
+    // Event support
+    eventId?: string;
+    eventName?: string;
+    isEvent?: boolean;
   };
 };
 
@@ -122,6 +126,14 @@ export default function AddReviewScreen() {
   const placeName = route.params?.placeName || 'this place';
   const primaryCategory = route.params?.primaryCategory;
   const subcategory = route.params?.subcategory;
+  
+  // Event support
+  const eventId = route.params?.eventId;
+  const eventName = route.params?.eventName || 'this event';
+  const isEvent = route.params?.isEvent || false;
+  
+  const targetId = isEvent ? eventId : placeId;
+  const targetName = isEvent ? eventName : placeName;
 
   // State
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -262,29 +274,48 @@ export default function AddReviewScreen() {
   // Load signals and existing review
   useEffect(() => {
     loadData();
-  }, [placeId]);
+  }, [placeId, eventId, isEvent]);
 
   const loadData = async () => {
-    if (!placeId) {
+    if (!targetId) {
       setIsLoading(false);
       return;
     }
 
     try {
-      // Load signals for this place (based on its category)
-      const placeSignals = await fetchSignalsForPlace(placeId);
-      setSignals(placeSignals);
+      if (isEvent) {
+        // Load event signals
+        const { fetchSignalsForEvent, fetchUserEventReview } = await import('../lib/eventReviews');
+        const eventSignals = await fetchSignalsForEvent(targetId);
+        setSignals(eventSignals);
 
-      // Load existing review if any
-      const { review, signals: existingSignals } = await fetchUserReview(placeId);
-      
-      if (review) {
-        setExistingReviewId(review.id);
-        const counts: { [key: string]: number } = {};
-        existingSignals.forEach(signal => {
-          counts[signal.signalId] = signal.intensity;
-        });
-        setTapCounts(counts);
+        // Load existing event review if any
+        const { review, signals: existingSignals } = await fetchUserEventReview(targetId);
+        
+        if (review) {
+          setExistingReviewId(review.id);
+          const counts: { [key: string]: number } = {};
+          existingSignals.forEach(signal => {
+            counts[signal.signalId] = signal.intensity;
+          });
+          setTapCounts(counts);
+        }
+      } else {
+        // Load place signals
+        const placeSignals = await fetchSignalsForPlace(targetId);
+        setSignals(placeSignals);
+
+        // Load existing place review if any
+        const { review, signals: existingSignals } = await fetchUserReview(targetId);
+        
+        if (review) {
+          setExistingReviewId(review.id);
+          const counts: { [key: string]: number } = {};
+          existingSignals.forEach(signal => {
+            counts[signal.signalId] = signal.intensity;
+          });
+          setTapCounts(counts);
+        }
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -340,7 +371,7 @@ export default function AddReviewScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!placeId) return;
+    if (!targetId) return;
 
     const selectedCount = Object.keys(tapCounts).length;
     if (selectedCount === 0) {
@@ -356,10 +387,22 @@ export default function AddReviewScreen() {
     }));
 
     let result;
-    if (existingReviewId) {
-      result = await updateReview(existingReviewId, placeId, reviewSignals, '', '');
+    
+    if (isEvent) {
+      // Submit event review
+      const { submitEventReview, updateEventReview } = await import('../lib/eventReviews');
+      if (existingReviewId) {
+        result = await updateEventReview(existingReviewId, targetId, reviewSignals, '', '');
+      } else {
+        result = await submitEventReview(targetId, targetName, reviewSignals, '', '');
+      }
     } else {
-      result = await submitReview(placeId, placeName, reviewSignals, '', '');
+      // Submit place review
+      if (existingReviewId) {
+        result = await updateReview(existingReviewId, targetId, reviewSignals, '', '');
+      } else {
+        result = await submitReview(targetId, targetName, reviewSignals, '', '');
+      }
     }
 
     setIsSubmitting(false);
@@ -367,7 +410,7 @@ export default function AddReviewScreen() {
     if (result.success) {
       Alert.alert(
         'Success! 🎉',
-        `You reviewed ${placeName}!`,
+        `You reviewed ${targetName}!`,
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } else {
@@ -432,7 +475,7 @@ export default function AddReviewScreen() {
           <View style={dynamicStyles.categoryBadge}>
             <Ionicons name="location" size={14} color={theme.textSecondary} />
             <Text style={dynamicStyles.categoryBadgeText} numberOfLines={1}>
-              {placeName}
+              {targetName}
             </Text>
           </View>
 
@@ -458,7 +501,7 @@ export default function AddReviewScreen() {
             <View style={dynamicStyles.warningBox}>
               <Ionicons name="alert-circle" size={24} color={isDark ? '#FCA5A5' : '#991B1B'} />
               <Text style={dynamicStyles.warningText}>
-                Note: Selecting these will lower the place's Vibe Score.
+                Note: Selecting these will lower the {isEvent ? 'event' : 'place'}’s Vibe Score.
               </Text>
             </View>
           )}
