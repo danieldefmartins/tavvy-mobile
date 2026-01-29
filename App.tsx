@@ -282,6 +282,7 @@ function AppsStack() {
       <MenuStackNav.Screen name="RVCampingBrowse" component={RVCampingBrowseScreen} />
       <MenuStackNav.Screen name="UniverseDiscovery" component={UniverseDiscoveryScreen} />
       <MenuStackNav.Screen name="UniverseLanding" component={UniverseLandingScreen} />
+      <MenuStackNav.Screen name="UniverseDetail" component={UniverseDetailScreen} />
       <MenuStackNav.Screen name="RideDetails" component={RideDetailsScreen} />
       <MenuStackNav.Screen name="CityDetails" component={CityDetailsScreen} />
       <MenuStackNav.Screen name="AddReview" component={AddReviewScreen} />
