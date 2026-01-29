@@ -472,14 +472,58 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           return;
         }
 
-        // Fetch real place data from Supabase (using places_unified view for both Tavvy and Foursquare places)
-        // Use limit(1) and maybeSingle() to handle potential duplicates in the view
-        const { data: placeData, error: placeError } = await supabase
+        // Fetch real place data from Supabase
+        // Try places_unified first (handles both Tavvy places and FSQ places)
+        // The placeId could be either:
+        // - A UUID (Tavvy place id)
+        // - An FSQ ID (from fsq_places_raw)
+        let placeData = null;
+        let placeError = null;
+        
+        // First try: Query by id (for Tavvy places)
+        const { data: unifiedData, error: unifiedError } = await supabase
           .from('places_unified')
           .select('*')
           .eq('id', placeId)
           .limit(1)
           .maybeSingle();
+        
+        if (unifiedData) {
+          placeData = unifiedData;
+        } else if (unifiedError && unifiedError.code !== 'PGRST116') {
+          // PGRST116 is "not found" error, which is expected
+          placeError = unifiedError;
+        } else {
+          // Second try: Query fsq_places_raw by fsq_place_id (for FSQ places)
+          const { data: fsqData, error: fsqError } = await supabase
+            .from('fsq_places_raw')
+            .select('*')
+            .eq('fsq_place_id', placeId)
+            .limit(1)
+            .maybeSingle();
+          
+          if (fsqData) {
+            // Map FSQ data to unified format
+            placeData = {
+              id: fsqData.fsq_place_id,
+              name: fsqData.name,
+              latitude: fsqData.latitude,
+              longitude: fsqData.longitude,
+              primary_category: fsqData.category,
+              address_line1: fsqData.address,
+              city: fsqData.locality,
+              state: fsqData.region,
+              country: fsqData.country,
+              zip_code: fsqData.postcode,
+              phone: fsqData.tel,
+              website: fsqData.website,
+              email: fsqData.email,
+              // Add other fields as needed
+            };
+          } else {
+            placeError = fsqError;
+          }
+        }
 
         if (placeError) throw placeError;
         

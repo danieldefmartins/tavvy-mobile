@@ -1927,7 +1927,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const handlePlacePress = (place: Place) => {
     setSelectedPlace(place);
     if (navigation?.navigate) {
-      navigation.navigate('PlaceDetails', { placeId: place.id });
+      // Use the place ID directly - it's already in the correct format (source_id)
+      const placeId = place.id;
+      console.log('[HomeScreen] Navigating to PlaceDetails with ID:', placeId);
+      navigation.navigate('PlaceDetails', { placeId });
     }
   };
 
