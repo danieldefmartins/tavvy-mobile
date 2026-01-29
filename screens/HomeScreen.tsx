@@ -31,6 +31,7 @@ import { useThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchPlacesInBounds, PlaceCard, getPlaceIdForNavigation, formatDistance } from '../lib/placeService';
 import { searchSuggestions as searchPlaceSuggestions, searchAddresses, prefetchNearbyPlaces, searchPrefetchedPlaces, SearchResult } from '../lib/searchService';
+import { searchPlaces as typesenseSearchPlaces } from '../lib/typesenseService';
 import { fetchWeatherData, getDefaultWeatherData, WeatherData } from '../lib/weatherService';
 // Integrated Discovery Components
 import { StoriesRow } from '../components/StoriesRow';
@@ -1702,166 +1703,97 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
     try {
       const [centerLng, centerLat] = locationToUse;
-      const latDelta = 0.15; // Optimized radius for category search (about 10 miles)
-      const lngDelta = 0.15;
-      
-      const minLat = centerLat - latDelta;
-      const maxLat = centerLat + latDelta;
-      const minLng = centerLng - lngDelta;
-      const maxLng = centerLng + lngDelta;
 
-      // Map user-friendly category names to Foursquare category patterns
-      // IMPORTANT: These keys MUST match the categories array exactly
-      const categoryMappings: { [key: string]: string[] } = {
-        'Restaurants': ['restaurant', 'dining', 'food', 'eatery', 'bistro', 'grill', 'kitchen', 'steakhouse', 'bbq'],
-        'Cafes': ['coffee', 'café', 'cafe', 'tea', 'espresso', 'bakery', 'coffee shop', 'tea house', 'tea room'],
-        'Coffee Shops': ['coffee', 'café', 'cafe', 'tea', 'espresso', 'bakery', 'coffee shop', 'tea house', 'tea room'],
-        'Bars': ['bar', 'pub', 'nightclub', 'lounge', 'brewery', 'tavern', 'wine'],
-        'Contractors': ['contractor', 'construction', 'home service', 'repair', 'plumber', 'electrician'],
-        'Hotels': ['hotel', 'motel', 'inn', 'lodging', 'resort', 'hostel'],
-        'Shopping': ['shop', 'store', 'retail', 'mall', 'market', 'boutique'],
-        'Entertainment': ['entertainment', 'theater', 'cinema', 'museum', 'gallery', 'amusement', 'theme park'],
-        'Health': ['health', 'medical', 'doctor', 'hospital', 'clinic', 'pharmacy', 'dentist'],
-        'Beauty': ['beauty', 'salon', 'spa', 'hair', 'nail', 'barber'],
-        'Fitness': ['gym', 'fitness', 'yoga', 'sports', 'athletic'],
-        // Gas & Automotive
-        'Gas': ['gas station', 'fuel', 'petrol', 'gasoline', 'diesel', 'filling station', 'service station', 'convenience store gas'],
-        'Gas Stations': ['gas station', 'fuel', 'petrol', 'gasoline', 'diesel', 'filling station', 'service station'],
-        // RV & Camping
-        'RV & Camping': ['campground', 'rv park', 'camping', 'camper', 'caravan', 'motorhome', 'boondocking'],
-        'Campgrounds': ['campground', 'camping', 'campsite', 'tent', 'camp'],
-        'RV Parks': ['rv park', 'rv', 'motorhome', 'caravan', 'trailer park'],
-        'Dump Stations': ['dump station', 'sanitation', 'rv dump', 'sewage'],
-        'Propane': ['propane', 'lpg', 'gas refill'],
-        // Theme Parks
-        'Theme Parks': ['theme park', 'amusement park', 'water park', 'attraction'],
-        'Rides': ['ride', 'roller coaster', 'attraction'],
-        // Entertainment & Nightlife (from CategoryIconRow)
-        'Live Music': ['live music', 'concert', 'music venue', 'jazz', 'blues', 'rock', 'band', 'performance'],
-        'Events': ['event', 'festival', 'fair', 'convention', 'expo', 'show', 'concert'],
-        'Nightlife': ['nightclub', 'club', 'lounge', 'dance', 'disco', 'bar', 'pub', 'karaoke'],
-        // Food (from CategoryIconRow)
-        'Fast Food': ['fast food', 'burger', 'pizza', 'taco', 'sandwich', 'drive-through', 'quick service'],
-        // Outdoor (from CategoryIconRow)
-        'Outdoor': ['park', 'trail', 'hiking', 'nature', 'garden', 'outdoor', 'recreation', 'beach', 'lake'],
-        // Services (from CategoryIconRow)
-        'Pros': ['contractor', 'service', 'repair', 'professional', 'handyman', 'plumber', 'electrician', 'mechanic'],
-        'Healthcare': ['hospital', 'clinic', 'doctor', 'medical', 'urgent care', 'pharmacy', 'dentist', 'health'],
-        // Amenities
-        'Restrooms': ['restroom', 'bathroom', 'toilet', 'washroom', 'lavatory'],
-        'Showers': ['shower', 'bath house'],
-        'Laundromat': ['laundromat', 'laundry', 'coin laundry'],
-        // Government
-        'Border Crossings': ['border', 'customs', 'immigration', 'port of entry'],
+      // Map user-friendly category names to search queries for Typesense
+      const categoryMappings: { [key: string]: string } = {
+        'Restaurants': 'restaurant',
+        'Cafes': 'coffee cafe',
+        'Coffee Shops': 'coffee cafe',
+        'Bars': 'bar pub',
+        'Contractors': 'contractor',
+        'Hotels': 'hotel',
+        'Shopping': 'shop store',
+        'Entertainment': 'entertainment',
+        'Health': 'health medical',
+        'Beauty': 'beauty salon',
+        'Fitness': 'gym fitness',
+        'Gas': 'gas station fuel',
+        'Gas Stations': 'gas station',
+        'RV & Camping': 'campground rv',
+        'Campgrounds': 'campground',
+        'RV Parks': 'rv park',
+        'Dump Stations': 'dump station',
+        'Propane': 'propane',
+        'Theme Parks': 'theme park',
+        'Rides': 'ride',
+        'Live Music': 'live music',
+        'Events': 'event',
+        'Nightlife': 'nightclub',
+        'Fast Food': 'fast food',
+        'Outdoor': 'park outdoor',
+        'Pros': 'contractor service',
+        'Healthcare': 'hospital clinic',
+        'Restrooms': 'restroom',
+        'Showers': 'shower',
+        'Laundromat': 'laundromat',
+        'Border Crossings': 'border crossing',
       };
 
-      // Get search patterns for this category (lowercase for matching)
-      const searchPatterns = categoryMappings[category] || [category.toLowerCase()];
+      // Get search query for this category
+      const searchQuery = categoryMappings[category] || category.toLowerCase();
 
-      console.log(`Fetching ${category} near [${centerLng}, ${centerLat}] with patterns:`, searchPatterns);
+      console.log(`[Typesense] Fetching ${category} near [${centerLng}, ${centerLat}] with query: "${searchQuery}"`);
 
-      // Query all places in the area first, then filter locally
-      // This is more reliable than complex Supabase text queries
-      const { data: placesData, error } = await supabase
-        .from('fsq_places_raw')
-        .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, postcode, tel, website, email, instagram, facebook_id, twitter, fsq_category_ids, fsq_category_labels, date_created, date_refreshed, date_closed')
-        .gte('latitude', minLat)
-        .lte('latitude', maxLat)
-        .gte('longitude', minLng)
-        .lte('longitude', maxLng)
-        .is('date_closed', null)
-        .limit(200); // Reduced limit for better performance
+      // Use Typesense for lightning-fast category search
+      const startTime = Date.now();
+      const result = await typesenseSearchPlaces({
+        query: searchQuery,
+        latitude: centerLat,
+        longitude: centerLng,
+        radiusKm: 25, // 25km radius (~15 miles)
+        limit: 200, // Get more results from Typesense
+      });
 
-      console.log('Raw query results:', placesData?.length || 0);
+      const searchTime = Date.now() - startTime;
+      console.log(`[Typesense] Found ${result.places.length} places in ${searchTime}ms (Typesense: ${result.searchTimeMs}ms)`);
 
-      if (error) {
-        console.warn('Category search error:', error);
-        
-        // Check if it's a timeout error
-        if (error.code === '57014' || error.message?.includes('timeout')) {
-          console.log('Query timed out - database indexes are still being built. Showing empty results.');
-        }
-        
-        // Fallback to local filtering
-        const filtered = places.filter(place => 
-          place.category?.toLowerCase().includes(category.toLowerCase())
-        );
-        setCategoryResultsPlaces(filtered);
-        setIsLoadingCategoryResults(false);
-        return;
-      }
-
-      if (placesData && placesData.length > 0) {
-        // Filter places locally by category patterns
-        const filteredByCategory = placesData.filter((place) => {
-          // Check if any category label matches our search patterns
-          if (place.fsq_category_labels && Array.isArray(place.fsq_category_labels)) {
-            const categoryString = place.fsq_category_labels.join(' ').toLowerCase();
-            return searchPatterns.some(pattern => categoryString.includes(pattern));
-          }
-          // Also check the place name for category keywords
-          const nameLower = place.name?.toLowerCase() || '';
-          return searchPatterns.some(pattern => nameLower.includes(pattern));
-        });
-
-        console.log(`Filtered to ${filteredByCategory.length} ${category} places`);
-
-        // Deduplicate by fsq_place_id first, then by name to catch duplicates with different IDs
-        const uniqueById = Array.from(
-          new Map(filteredByCategory.map(p => [p.fsq_place_id, p])).values()
-        );
-        // Also deduplicate by name (case-insensitive) to catch same places with different IDs
-        const uniquePlaces = Array.from(
-          new Map(uniqueById.map(p => [p.name?.toLowerCase().trim(), p])).values()
-        );
-
-        const processedPlaces = uniquePlaces
+      if (result.places.length > 0) {
+        // Transform Typesense results to app format
+        const processedPlaces = result.places
           .filter((place) => {
             return typeof place.longitude === 'number' && typeof place.latitude === 'number' && 
                    !isNaN(place.longitude) && !isNaN(place.latitude) && 
                    place.longitude !== 0 && place.latitude !== 0;
           })
-          .map(place => {
-            let placeCategory = 'Other';
-            if (place.fsq_category_labels && Array.isArray(place.fsq_category_labels) && place.fsq_category_labels.length > 0) {
-              const fullCategory = place.fsq_category_labels[0];
-              if (typeof fullCategory === 'string') {
-                const parts = fullCategory.split('>');
-                placeCategory = parts[parts.length - 1].trim();
-              }
-            }
+          .map(place => ({
+            id: place.fsq_place_id,
+            name: place.name,
+            latitude: place.latitude!,
+            longitude: place.longitude!,
+            address_line1: place.address || '',
+            city: place.locality || '',
+            state_region: place.region || '',
+            country: place.country || '',
+            category: place.category || 'Other',
+            phone: place.tel || '',
+            website: place.website || '',
+            instagram_url: place.instagram || '',
+            signals: [],
+            photos: [],
+            distance: place.distance,
+          }))
+          .slice(0, 100); // Limit to 100 results for UI
 
-            return {
-              id: place.fsq_place_id,
-              name: place.name,
-              latitude: place.latitude,
-              longitude: place.longitude,
-              address_line1: place.address || '',
-              city: place.locality || '',
-              state_region: place.region || '',
-              country: place.country || '',
-              category: placeCategory,
-              phone: place.tel || '',
-              website: place.website || '',
-              instagram_url: place.instagram || '',
-              signals: [],
-              photos: [],
-              fsq_category_labels: place.fsq_category_labels, // Keep for debugging
-            };
-          })
-          .slice(0, 100); // Limit to 100 results
-
-        console.log(`Final processed places: ${processedPlaces.length}`);
+        console.log(`[Typesense] Final processed places: ${processedPlaces.length}`);
         setCategoryResultsPlaces(processedPlaces as Place[]);
       } else {
-        // Fallback to local filtering if no results from database
-        const filtered = places.filter(place => 
-          place.category?.toLowerCase().includes(category.toLowerCase())
-        );
-        setCategoryResultsPlaces(filtered);
+        console.log(`[Typesense] No ${category} found nearby`);
+        setCategoryResultsPlaces([]);
       }
     } catch (error) {
-      console.error('Error fetching category places:', error);
+      console.error('[Typesense] Error fetching category places:', error);
+      
+      // Fallback to local filtering from already loaded places
       const filtered = places.filter(place => 
         place.category?.toLowerCase().includes(category.toLowerCase())
       );
