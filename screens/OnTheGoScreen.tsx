@@ -680,11 +680,11 @@ export default function OnTheGoScreen() {
                   <Ionicons 
                     name={value.icon as any} 
                     size={28} 
-                    color={mapStyle === key ? COLORS.accent : COLORS.textSecondary} 
+                    color={mapStyle === key ? COLORS.accent : '#FFFFFF'} 
                   />
                   <Text style={[
                     styles.mapLayerOptionText,
-                    { color: mapStyle === key ? COLORS.accent : COLORS.text }
+                    { color: mapStyle === key ? COLORS.accent : '#FFFFFF' }
                   ]}>
                     {value.name}
                   </Text>
