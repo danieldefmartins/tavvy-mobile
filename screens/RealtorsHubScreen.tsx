@@ -307,17 +307,19 @@ export default function RealtorsHubScreen() {
           {/* Smart Match CTA Card */}
           <TouchableOpacity style={styles.smartMatchCard} onPress={handleSmartMatch}>
             <LinearGradient
-              colors={['#1E3A5F', '#2D4A6F']}
+              colors={['#6B7FFF', '#5563E8']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
               style={styles.smartMatchGradient}
             >
               <View style={styles.smartMatchContent}>
                 <View style={styles.smartMatchIcon}>
-                  <Ionicons name="sparkles" size={28} color={Colors.secondary} />
+                  <Ionicons name="flash" size={28} color="#FFFFFF" />
                 </View>
                 <View style={styles.smartMatchText}>
-                  <Text style={styles.smartMatchTitle}>Find Your Perfect Match</Text>
+                  <Text style={styles.smartMatchTitle}>Smart Match</Text>
                   <Text style={styles.smartMatchSubtitle}>
-                    Answer a few questions and we'll match you with the best realtors for your needs.
+                    Answer a few questions and get matched with the perfect realtor for your needs.
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={24} color={Colors.text} />
@@ -490,7 +492,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(201, 162, 39, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
