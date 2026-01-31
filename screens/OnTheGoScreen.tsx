@@ -186,7 +186,8 @@ export default function OnTheGoScreen() {
   const [showTray, setShowTray] = useState(false);
   
   // Map layer switcher state
-  const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>(isDark ? 'dark' : 'osm');
+  // Always default to Standard map (osm), regardless of theme
+  const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('osm');
   const [showMapLayerPopup, setShowMapLayerPopup] = useState(false);
   
   // Animation for pulsing markers
@@ -446,19 +447,15 @@ export default function OnTheGoScreen() {
           </MapLibreGL.MapView>
 
           {/* Floating Header */}
-          <SafeAreaView style={styles.floatingHeader} edges={['top']}>
-            <View style={[styles.headerContent, { backgroundColor: glassyBg }]}>
-              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color={textColor} />
+          {/* V2 Header - Full width black background */}
+          <SafeAreaView style={styles.v2Header} edges={['top']}>
+            <View style={styles.v2HeaderContent}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.v2BackButton}>
+                <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
               </TouchableOpacity>
-              <View style={styles.headerTextContainer}>
-                <Text style={[styles.headerTitle, { color: textColor }]}>On The Go</Text>
-                <Text style={[styles.headerSubtitle, { color: secondaryTextColor }]}>
-                  {sessions.length} live near you
-                </Text>
-              </View>
-              <TouchableOpacity onPress={fetchSessions} style={styles.refreshButton}>
-                <Ionicons name="refresh" size={22} color={COLORS.accent} />
+              <Text style={styles.v2HeaderTitle}>On The Go</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Login' as never)} style={styles.v2LoginButton}>
+                <Ionicons name="person-circle-outline" size={28} color={COLORS.textPrimary} />
               </TouchableOpacity>
             </View>
           </SafeAreaView>
@@ -718,49 +715,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Floating Header
-  floatingHeader: {
+  // V2 Header - Full width black background
+  v2Header: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     zIndex: 10,
+    backgroundColor: COLORS.background,
   },
-  headerContent: {
+  v2HeaderContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginBottom: 8,
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 16,
-    backdropFilter: 'blur(10px)',
+    paddingVertical: 12,
+    backgroundColor: COLORS.background,
   },
-  backButton: {
+  v2BackButton: {
     padding: 4,
+    width: 40,
   },
-  headerTextContainer: {
+  v2HeaderTitle: {
     flex: 1,
-    marginLeft: 12,
-  },
-  headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginLeft: 8,
   },
-  headerSubtitle: {
-    fontSize: 13,
-  },
-  refreshButton: {
-    padding: 8,
+  v2LoginButton: {
+    padding: 4,
+    width: 40,
+    alignItems: 'flex-end',
   },
 
-  // Filter Pills
+  // Filter Pills - moved lower to avoid header overlap
   filterContainer: {
     position: 'absolute',
-    top: 110,
+    top: 100,
     left: 0,
     right: 0,
-    zIndex: 10,
+    zIndex: 9,
   },
   filterScroll: {
     paddingHorizontal: 16,
