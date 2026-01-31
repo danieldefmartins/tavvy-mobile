@@ -145,8 +145,11 @@ export function useDrafts() {
   const createDraft = async (input: CreateDraftInput): Promise<ContentDraft | null> => {
     setIsLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.warn('[useDrafts] User not authenticated, cannot create draft');
+        return null;
+      }
 
       if (!isOnline) {
         const offlineDraft: ContentDraft = {
