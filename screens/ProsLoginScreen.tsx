@@ -107,9 +107,7 @@ export default function ProsLoginScreen({ navigation }: any) {
         />
       ))}
 
-      {/* Subtle Glow Effects */}
-      <View style={styles.glowTop} />
-      <View style={styles.glowBottom} />
+
 
       <KeyboardAvoidingView
         style={styles.keyboardView}
@@ -135,15 +133,11 @@ export default function ProsLoginScreen({ navigation }: any) {
           {/* Logo Section */}
           <View style={styles.logoSection}>
             {/* Tavvy Logo */}
-            <View style={styles.logoContainer}>
-              <Image
-                source={require('../assets/brand/tavvy-logo-white.png')}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-              {/* Glow behind logo */}
-              <View style={styles.logoGlow} />
-            </View>
+            <Image
+              source={require('../assets/brand/logo-full.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
 
             {/* Pros Badge */}
             <View style={styles.prosBadge}>
