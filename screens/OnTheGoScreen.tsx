@@ -455,7 +455,9 @@ export default function OnTheGoScreen() {
               </TouchableOpacity>
               <Text style={styles.v2HeaderTitle}>On The Go</Text>
               <TouchableOpacity onPress={() => navigation.navigate('Login' as never)} style={styles.v2LoginButton}>
-                <Ionicons name="person-circle-outline" size={28} color={COLORS.textPrimary} />
+                <View style={styles.loginButtonContent}>
+                  <Ionicons name="menu" size={32} color={COLORS.textPrimary} />
+                </View>
               </TouchableOpacity>
             </View>
           </SafeAreaView>
@@ -745,8 +747,13 @@ const styles = StyleSheet.create({
   },
   v2LoginButton: {
     padding: 4,
-    width: 40,
+    minWidth: 50,
     alignItems: 'flex-end',
+  },
+  loginButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
 
   // Filter Pills - positioned below V2 header with proper spacing
