@@ -504,23 +504,24 @@ export default function OnTheGoScreen() {
             <Ionicons name="locate" size={24} color={COLORS.accent} />
           </TouchableOpacity>
 
-          {/* Live Now Tray Toggle */}
-          <TouchableOpacity
-            style={[styles.trayToggle, { backgroundColor: glassyBg }]}
-            onPress={() => setShowTray(!showTray)}
-          >
-            <View style={styles.liveDot} />
-            <Text style={[styles.trayToggleText, { color: textColor }]}>
-              {sessions.length} Live Now
-            </Text>
-            <Ionicons name={showTray ? 'chevron-down' : 'chevron-up'} size={20} color={secondaryTextColor} />
-          </TouchableOpacity>
-
-          {/* Collapsible Live Tray */}
+          {/* Live Now Bottom Sheet - unified component */}
           <Animated.View style={[
             styles.liveTray,
             { backgroundColor: glassyBg, transform: [{ translateY: trayTranslateY }] },
           ]}>
+            {/* Bottom Sheet Header/Handle */}
+            <TouchableOpacity
+              style={styles.trayToggle}
+              onPress={() => setShowTray(!showTray)}
+            >
+              <View style={styles.liveDot} />
+              <Text style={[styles.trayToggleText, { color: textColor }]}>
+                {sessions.length} Live Now
+              </Text>
+              <Ionicons name={showTray ? 'chevron-down' : 'chevron-up'} size={20} color={secondaryTextColor} />
+            </TouchableOpacity>
+            
+            {/* Live Business Results */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trayScroll}>
               {sessions.map((session) => (
                 <TouchableOpacity
@@ -812,19 +813,12 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
-  // Live Tray Toggle - bottom sheet style at screen bottom
+  // Live Tray Toggle - now header inside bottom sheet
   trayToggle: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    paddingBottom: 24,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
     gap: 8,
   },
   trayToggleText: {
@@ -833,14 +827,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Live Tray
+  // Live Tray - unified bottom sheet
   liveTray: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    paddingTop: 12,
-    paddingBottom: 40,
+    paddingBottom: 90,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
