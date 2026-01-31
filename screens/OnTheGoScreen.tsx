@@ -107,12 +107,15 @@ const CATEGORY_COLORS: Record<string, string> = {
   'default': '#10B981',
 };
 
-// Filter categories
+// Filter categories - On The Go mobile businesses
 const FILTER_CATEGORIES = [
   { id: 'all', name: 'All', icon: 'grid-outline' },
   { id: 'live', name: 'Live Now', icon: 'radio-outline' },
-  { id: 'food-trucks', name: 'Food', icon: 'fast-food-outline' },
+  { id: 'food', name: 'Food', icon: 'restaurant-outline' },
+  { id: 'pet-grooming', name: 'Pet Grooming', icon: 'paw-outline' },
+  { id: 'hair-dresser', name: 'Hair Dresser', icon: 'cut-outline' },
   { id: 'coffee', name: 'Coffee', icon: 'cafe-outline' },
+  { id: 'mobile-services', name: 'Services', icon: 'construct-outline' },
 ];
 
 interface LiveSession {
@@ -347,7 +350,7 @@ export default function OnTheGoScreen() {
   };
 
   // V2 Design System - Always use V2 colors
-  const glassyBg = isDark ? COLORS.glassy : COLORS.glassyLight;
+  const glassyBg = isDark ? 'rgba(26, 26, 36, 0.95)' : COLORS.glassyLight;
   const textColor = COLORS.textPrimary;
   const secondaryTextColor = COLORS.textSecondary;
 
@@ -670,7 +673,7 @@ export default function OnTheGoScreen() {
                   style={[
                     styles.mapLayerOption,
                     mapStyle === key && styles.mapLayerOptionActive,
-                    { backgroundColor: COLORS.background }
+                    { backgroundColor: 'rgba(255, 255, 255, 0.08)' }
                   ]}
                   onPress={() => {
                     setMapStyle(key as keyof typeof MAP_STYLES);
@@ -728,8 +731,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 16,
     marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderRadius: 16,
     backdropFilter: 'blur(10px)',
   },
@@ -944,22 +947,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Markers
+  // Markers - Enhanced GPS dot with glow
   userLocationMarker: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(102, 126, 234, 0.3)',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(107, 127, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 8,
   },
   userLocationDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: COLORS.accent,
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#FFFFFF',
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
   },
   markerContainer: {
     alignItems: 'center',
