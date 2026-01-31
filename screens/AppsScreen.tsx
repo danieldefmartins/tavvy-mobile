@@ -304,10 +304,10 @@ export default function AppsScreen() {
               </Text>
             </View>
             <TouchableOpacity 
-              style={[styles.menuButton, { backgroundColor: glassyColor }]}
-              onPress={() => setMenuVisible(true)}
+              style={[styles.loginButton, { backgroundColor: glassyColor }]}
+              onPress={() => navigation.navigate('Login')}
             >
-              <Ionicons name="menu" size={24} color={textColor} />
+              <Ionicons name="person-circle-outline" size={28} color={textColor} />
             </TouchableOpacity>
           </View>
         </View>
@@ -535,6 +535,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginTop: 4,
+  },
+  loginButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   menuButton: {
     width: 44,
