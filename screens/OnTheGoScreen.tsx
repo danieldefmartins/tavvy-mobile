@@ -25,6 +25,7 @@ import {
   ActivityIndicator,
   Linking,
   Animated,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -41,10 +42,27 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // Supabase Edge Function URL
 const SUPABASE_URL = 'https://scasgwrikoqdwlwlwcff.supabase.co';
 
-// Map style - dark mode
-// V2 Map Styles - Dark theme for V2 design
-const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark-matter';
-const MAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron';
+// Map Styles Configuration - matching Home Screen
+const MAP_STYLES = {
+  osm: {
+    name: 'Standard',
+    type: 'raster',
+    tileUrl: 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    icon: 'map',
+  },
+  dark: {
+    name: 'Dark',
+    type: 'raster',
+    tileUrl: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+    icon: 'moon',
+  },
+  satellite: {
+    name: 'Satellite',
+    type: 'raster',
+    tileUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    icon: 'image',
+  },
+};
 
 // V2 Design System Colors
 const COLORS = {
@@ -163,6 +181,10 @@ export default function OnTheGoScreen() {
   const [selectedScheduledPlace, setSelectedScheduledPlace] = useState<ScheduledPlace | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [showTray, setShowTray] = useState(false);
+  
+  // Map layer switcher state
+  const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>(isDark ? 'dark' : 'osm');
+  const [showMapLayerPopup, setShowMapLayerPopup] = useState(false);
   
   // Animation for pulsing markers
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -350,8 +372,8 @@ export default function OnTheGoScreen() {
         <>
           {/* @ts-ignore */}
           <MapLibreGL.MapView
+            key={mapStyle}
             style={styles.map}
-            styleURL={isDark ? MAP_STYLE_DARK : MAP_STYLE_LIGHT}
             logoEnabled={false}
             attributionEnabled={false}
             zoomEnabled={true}
@@ -359,6 +381,14 @@ export default function OnTheGoScreen() {
             rotateEnabled={true}
             pitchEnabled={true}
           >
+            {/* Raster tile layer for map styles */}
+            <MapLibreGL.RasterSource
+              id="raster-source"
+              tileUrlTemplates={[(MAP_STYLES[mapStyle] as any).tileUrl]}
+              tileSize={256}
+            >
+              <MapLibreGL.RasterLayer id="raster-layer" sourceID="raster-source" style={{ rasterOpacity: 1 }} />
+            </MapLibreGL.RasterSource>
             <MapLibreGL.Camera
               ref={cameraRef}
               defaultSettings={{
@@ -458,6 +488,16 @@ export default function OnTheGoScreen() {
               ))}
             </ScrollView>
           </View>
+
+          {/* Map Layer Switcher Button */}
+          <TouchableOpacity 
+            style={[styles.layersButton, { backgroundColor: glassyBg }]} 
+            onPress={() => setShowMapLayerPopup(true)}
+            accessibilityLabel="Change map layer" 
+            accessibilityRole="button"
+          >
+            <Ionicons name="layers-outline" size={24} color={textColor} />
+          </TouchableOpacity>
 
           {/* My Location Button */}
           <TouchableOpacity style={[styles.myLocationButton, { backgroundColor: glassyBg }]} onPress={centerOnUser}>
@@ -607,6 +647,53 @@ export default function OnTheGoScreen() {
           )}
         </>
       )}
+
+      {/* Map Layer Popup Modal */}
+      <Modal
+        visible={showMapLayerPopup}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMapLayerPopup(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowMapLayerPopup(false)}
+        >
+          <View style={[styles.mapLayerPopup, { backgroundColor: COLORS.surface }]}>
+            <Text style={[styles.popupTitle, { color: COLORS.text }]}>Map Type</Text>
+            
+            <View style={styles.mapLayerOptions}>
+              {Object.entries(MAP_STYLES).map(([key, value]) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.mapLayerOption,
+                    mapStyle === key && styles.mapLayerOptionActive,
+                    { backgroundColor: COLORS.background }
+                  ]}
+                  onPress={() => {
+                    setMapStyle(key as keyof typeof MAP_STYLES);
+                    setShowMapLayerPopup(false);
+                  }}
+                >
+                  <Ionicons 
+                    name={value.icon as any} 
+                    size={28} 
+                    color={mapStyle === key ? COLORS.accent : COLORS.textSecondary} 
+                  />
+                  <Text style={[
+                    styles.mapLayerOptionText,
+                    { color: mapStyle === key ? COLORS.accent : COLORS.text }
+                  ]}>
+                    {value.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -693,6 +780,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  // Map Layers Button
+  layersButton: {
+    position: 'absolute',
+    right: 16,
+    bottom: 260,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+
   // My Location Button
   myLocationButton: {
     position: 'absolute',
@@ -703,6 +807,11 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
 
   // Live Tray Toggle
@@ -920,5 +1029,48 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#6B7280',
+  },
+
+  // Map Layer Popup Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mapLayerPopup: {
+    width: '80%',
+    maxWidth: 300,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  popupTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  mapLayerOptions: {
+    gap: 12,
+  },
+  mapLayerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+  },
+  mapLayerOptionActive: {
+    borderWidth: 2,
+    borderColor: COLORS.accent,
+  },
+  mapLayerOptionText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
