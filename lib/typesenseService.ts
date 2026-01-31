@@ -235,9 +235,15 @@ export async function searchPlacesInBounds(options: {
   const { minLat, maxLat, minLng, maxLng, category, limit = 150 } = options;
 
   try {
-    // Calculate center point
+    // Calculate center point and radius for geopoint search
     const centerLat = (minLat + maxLat) / 2;
     const centerLng = (minLng + maxLng) / 2;
+    
+    // Calculate radius in meters (approximate using Haversine)
+    const latDiff = maxLat - minLat;
+    const lngDiff = maxLng - minLng;
+    const radiusKm = Math.max(latDiff, lngDiff) * 111; // 1 degree ≈ 111km
+    const radiusMeters = Math.ceil(radiusKm * 1000);
 
     const searchParams: any = {
       q: category || '*',
@@ -248,7 +254,8 @@ export async function searchPlacesInBounds(options: {
       // ENHANCED: Sort by popularity (will use tap_quality_score after sync)
       sort_by: 'popularity:desc',
       
-      filter_by: `latitude:[${minLat}..${maxLat}] && longitude:[${minLng}..${maxLng}]`,
+      // Use geopoint location field instead of separate lat/lng
+      filter_by: `location:(${centerLat}, ${centerLng}, ${radiusMeters} m)`,
       per_page: limit,
     };
 
