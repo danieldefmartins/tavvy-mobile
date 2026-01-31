@@ -42,8 +42,9 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SUPABASE_URL = 'https://scasgwrikoqdwlwlwcff.supabase.co';
 
 // Map style - dark mode
-const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark';
-const MAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/liberty';
+// Standard OSM-based map styles
+const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/positron';
+const MAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron';
 
 // Design System Colors
 const COLORS = {
