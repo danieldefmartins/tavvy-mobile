@@ -153,14 +153,16 @@ export async function fetchPlacesInBounds(options: FetchPlacesOptions): Promise<
     // STEP 3: Try Typesense first (100x faster!)
     // ============================================
     try {
-      const typesenseResults = await typesenseSearchBounds(
-        {
-          ne: [maxLng, maxLat],
-          sw: [minLng, minLat]
-        },
-        filters?.category,
-        limit - placesFromCanonical.length
-      );
+      const typesenseResult = await typesenseSearchBounds({
+        minLat,
+        maxLat,
+        minLng,
+        maxLng,
+        category: filters?.category,
+        limit: limit - placesFromCanonical.length
+      });
+      
+      const typesenseResults = typesenseResult.places;
 
       if (typesenseResults && typesenseResults.length > 0) {
         // Transform and filter out duplicates

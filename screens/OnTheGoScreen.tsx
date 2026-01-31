@@ -504,12 +504,9 @@ export default function OnTheGoScreen() {
             <Ionicons name="locate" size={24} color={COLORS.accent} />
           </TouchableOpacity>
 
-          {/* Live Now Bottom Sheet - unified component */}
-          <Animated.View style={[
-            styles.liveTray,
-            { backgroundColor: glassyBg, transform: [{ translateY: trayTranslateY }] },
-          ]}>
-            {/* Bottom Sheet Header/Handle */}
+          {/* Live Now Bottom Sheet - always visible header */}
+          <View style={[styles.liveTray, { backgroundColor: glassyBg }]}>
+            {/* Bottom Sheet Header/Handle - always visible */}
             <TouchableOpacity
               style={styles.trayToggle}
               onPress={() => setShowTray(!showTray)}
@@ -521,8 +518,9 @@ export default function OnTheGoScreen() {
               <Ionicons name={showTray ? 'chevron-down' : 'chevron-up'} size={20} color={secondaryTextColor} />
             </TouchableOpacity>
             
-            {/* Live Business Results */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trayScroll}>
+            {/* Live Business Results - animated content */}
+            <Animated.View style={{ transform: [{ translateY: trayTranslateY }] }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trayScroll}>
               {sessions.map((session) => (
                 <TouchableOpacity
                   key={session.session_id || session.tavvy_place_id}
@@ -556,8 +554,9 @@ export default function OnTheGoScreen() {
                   </View>
                 </TouchableOpacity>
               ))}
-            </ScrollView>
-          </Animated.View>
+              </ScrollView>
+            </Animated.View>
+          </View>
 
           {/* Selected Session Detail Card */}
           {selectedSession && (
