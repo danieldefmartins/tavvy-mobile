@@ -749,10 +749,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
 
-  // Filter Pills - positioned below V2 header
+  // Filter Pills - positioned below V2 header with proper spacing
   filterContainer: {
     position: 'absolute',
-    top: 120,
+    top: 135,
     left: 0,
     right: 0,
     zIndex: 9,
@@ -812,17 +812,19 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
-  // Live Tray Toggle - positioned at bottom above nav icons
+  // Live Tray Toggle - bottom sheet style at screen bottom
   trayToggle: {
     position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 90,
+    left: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingBottom: 24,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     gap: 8,
   },
   trayToggleText: {
