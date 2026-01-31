@@ -46,19 +46,20 @@ const SUPABASE_URL = 'https://scasgwrikoqdwlwlwcff.supabase.co';
 const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/positron';
 const MAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron';
 
-// Design System Colors
+// V2 Design System Colors
 const COLORS = {
-  background: '#000000',  // Pure black
+  background: '#0A0A0F',  // V2 Pure black
   backgroundLight: '#FAFAFA',
-  surface: '#1A1A1A',
+  surface: '#1A1A24',  // V2 Card background
   surfaceLight: '#FFFFFF',
-  glassy: 'rgba(26, 26, 26, 0.85)',
+  glassy: 'rgba(26, 26, 36, 0.85)',  // V2 Glassy dark
   glassyLight: 'rgba(255, 255, 255, 0.9)',
-  accent: '#22D3EE',  // Tavvy cyan
+  accent: '#6B7FFF',  // V2 Blue gradient start
+  accentEnd: '#5563E8',  // V2 Blue gradient end
   accentGreen: '#10B981',  // Tavvy green
   accentGold: '#F59E0B',  // Tavvy gold
   textPrimary: '#FFFFFF',
-  textSecondary: '#9CA3AF',
+  textSecondary: 'rgba(255, 255, 255, 0.6)',  // V2 Secondary text
   textMuted: '#6B7280',
   live: '#EF4444',
   success: '#10B981',
@@ -323,9 +324,10 @@ export default function OnTheGoScreen() {
     }
   };
 
-  const glassyBg = isDark ? theme.surface : 'rgba(255, 255, 255, 0.9)';
-  const textColor = theme.text;
-  const secondaryTextColor = theme.textSecondary;
+  // V2 Design System - Always use V2 colors
+  const glassyBg = isDark ? COLORS.glassy : COLORS.glassyLight;
+  const textColor = COLORS.textPrimary;
+  const secondaryTextColor = COLORS.textSecondary;
 
   const trayTranslateY = trayAnim.interpolate({
     inputRange: [0, 1],
@@ -338,7 +340,7 @@ export default function OnTheGoScreen() {
       
       {/* Full-Screen Map */}
       {isLoading ? (
-        <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <View style={[styles.loadingContainer, { backgroundColor: COLORS.background }]}>
           <ActivityIndicator size="large" color={COLORS.accent} />
           <Text style={[styles.loadingText, { color: secondaryTextColor }]}>
             Finding live businesses...
@@ -486,7 +488,7 @@ export default function OnTheGoScreen() {
                   style={[
                     styles.trayCard, 
                     { 
-                      backgroundColor: isDark ? theme.surface : '#FFFFFF',
+                      backgroundColor: isDark ? COLORS.surface : '#FFFFFF',
                       shadowColor: isDark ? 'transparent' : '#000',
                       shadowOffset: { width: 0, height: 2 },
                       shadowOpacity: isDark ? 0 : 0.1,
@@ -684,7 +686,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   filterPillActive: {
-    backgroundColor: '#22D3EE', // Tavvy cyan accent
+    backgroundColor: '#6B7FFF', // V2 Blue accent
   },
   filterPillText: {
     fontSize: 12,

@@ -46,6 +46,15 @@ import { useTranslation } from 'react-i18next';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_URL_BASE = 'https://tavvy.com/';
 
+// V2 Design System Colors
+const V2_COLORS = {
+  background: '#0A0A0F',
+  cardBackground: '#1A1A24',
+  text: '#FFFFFF',
+  textSecondary: 'rgba(255, 255, 255, 0.6)',
+  border: 'rgba(255, 255, 255, 0.1)',
+};
+
 interface CardLink {
   id?: string;
   title: string;
@@ -338,11 +347,11 @@ export default function MyDigitalCardScreen() {
   // Loading state
   if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, { backgroundColor: V2_COLORS.background }]}>
         <StatusBar barStyle="light-content" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#8B5CF6" />
-          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading your card...</Text>
+          <Text style={[styles.loadingText, { color: V2_COLORS.textSecondary }]}>Loading your card...</Text>
         </View>
       </View>
     );
@@ -351,7 +360,7 @@ export default function MyDigitalCardScreen() {
   // No card state - prompt to create one
   if (!hasCard && !route.params?.cardData) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, { backgroundColor: V2_COLORS.background }]}>
         <StatusBar barStyle="light-content" />
         <View style={styles.noCardContainer}>
           <TouchableOpacity 
@@ -368,8 +377,8 @@ export default function MyDigitalCardScreen() {
             <Ionicons name="id-card" size={48} color="#fff" />
           </LinearGradient>
           
-          <Text style={[styles.noCardTitle, { color: theme.text }]}>No Digital Card Yet</Text>
-          <Text style={[styles.noCardSubtitle, { color: theme.textSecondary }]}>
+          <Text style={[styles.noCardTitle, { color: V2_COLORS.text }]}>No Digital Card Yet</Text>
+          <Text style={[styles.noCardSubtitle, { color: V2_COLORS.textSecondary }]}>
             Create your digital business card to share your contact info instantly with anyone.
           </Text>
           
@@ -539,7 +548,7 @@ export default function MyDigitalCardScreen() {
 
         {/* Toggle Tabs - Card / Links */}
         {cardData.links && cardData.links.length > 0 && (
-          <View style={[styles.toggleContainer, { backgroundColor: theme.card }]}>
+          <View style={[styles.toggleContainer, { backgroundColor: V2_COLORS.cardBackground }]}>
             <TouchableOpacity
               style={[styles.toggleTab, activeTab === 'card' && styles.toggleTabActive]}
               onPress={() => setActiveTab('card')}
@@ -559,8 +568,8 @@ export default function MyDigitalCardScreen() {
 
         {/* Links Section */}
         {activeTab === 'links' && cardData.links && cardData.links.length > 0 && (
-          <View style={[styles.linksSection, { backgroundColor: theme.card }]}>
-            <Text style={[styles.linksSectionTitle, { color: theme.text }]}>My Links</Text>
+          <View style={[styles.linksSection, { backgroundColor: V2_COLORS.cardBackground }]}>
+            <Text style={[styles.linksSectionTitle, { color: V2_COLORS.text }]}>My Links</Text>
             {cardData.links.map((link, index) => (
               <TouchableOpacity
                 key={link.id || index}
@@ -580,102 +589,102 @@ export default function MyDigitalCardScreen() {
         )}
 
         {/* Share Section */}
-        <View style={[styles.shareSection, { backgroundColor: theme.card }]}>
-          <Text style={[styles.shareSectionTitle, { color: theme.text }]}>Share Your Card</Text>
+        <View style={[styles.shareSection, { backgroundColor: V2_COLORS.cardBackground }]}>
+          <Text style={[styles.shareSectionTitle, { color: V2_COLORS.text }]}>Share Your Card</Text>
           
           {/* QR Code Button */}
           <TouchableOpacity 
-            style={[styles.shareOption, { backgroundColor: theme.background }]}
+            style={[styles.shareOption, { backgroundColor: V2_COLORS.background }]}
             onPress={() => setShowQRModal(true)}
           >
             <View style={[styles.shareIconContainer, { backgroundColor: '#8B5CF6' }]}>
               <Ionicons name="qr-code" size={24} color="#fff" />
             </View>
             <View style={styles.shareOptionText}>
-              <Text style={[styles.shareOptionTitle, { color: theme.text }]}>QR Code</Text>
-              <Text style={[styles.shareOptionSubtitle, { color: theme.textSecondary }]}>Let others scan to view your card</Text>
+              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>QR Code</Text>
+              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>Let others scan to view your card</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+            <Ionicons name="chevron-forward" size={20} color={V2_COLORS.textSecondary} />
           </TouchableOpacity>
 
           {/* Share via... */}
           <TouchableOpacity 
-            style={[styles.shareOption, { backgroundColor: theme.background }]}
+            style={[styles.shareOption, { backgroundColor: V2_COLORS.background }]}
             onPress={handleNativeShare}
           >
             <View style={[styles.shareIconContainer, { backgroundColor: '#3B82F6' }]}>
               <Ionicons name="share" size={24} color="#fff" />
             </View>
             <View style={styles.shareOptionText}>
-              <Text style={[styles.shareOptionTitle, { color: theme.text }]}>Share via...</Text>
-              <Text style={[styles.shareOptionSubtitle, { color: theme.textSecondary }]}>AirDrop, Messages, and more</Text>
+              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>Share via...</Text>
+              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>AirDrop, Messages, and more</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+            <Ionicons name="chevron-forward" size={20} color={V2_COLORS.textSecondary} />
           </TouchableOpacity>
 
           {/* SMS */}
           <TouchableOpacity 
-            style={[styles.shareOption, { backgroundColor: theme.background }]}
+            style={[styles.shareOption, { backgroundColor: V2_COLORS.background }]}
             onPress={handleShareSMS}
           >
             <View style={[styles.shareIconContainer, { backgroundColor: '#22C55E' }]}>
               <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
             </View>
             <View style={styles.shareOptionText}>
-              <Text style={[styles.shareOptionTitle, { color: theme.text }]}>SMS / Text</Text>
-              <Text style={[styles.shareOptionSubtitle, { color: theme.textSecondary }]}>Send via text message</Text>
+              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>SMS / Text</Text>
+              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>Send via text message</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+            <Ionicons name="chevron-forward" size={20} color={V2_COLORS.textSecondary} />
           </TouchableOpacity>
 
           {/* WhatsApp */}
           <TouchableOpacity 
-            style={[styles.shareOption, { backgroundColor: theme.background }]}
+            style={[styles.shareOption, { backgroundColor: V2_COLORS.background }]}
             onPress={handleShareWhatsApp}
           >
             <View style={[styles.shareIconContainer, { backgroundColor: '#25D366' }]}>
               <Ionicons name="logo-whatsapp" size={24} color="#fff" />
             </View>
             <View style={styles.shareOptionText}>
-              <Text style={[styles.shareOptionTitle, { color: theme.text }]}>WhatsApp</Text>
-              <Text style={[styles.shareOptionSubtitle, { color: theme.textSecondary }]}>Share on WhatsApp</Text>
+              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>WhatsApp</Text>
+              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>Share on WhatsApp</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+            <Ionicons name="chevron-forward" size={20} color={V2_COLORS.textSecondary} />
           </TouchableOpacity>
 
           {/* Email */}
           <TouchableOpacity 
-            style={[styles.shareOption, { backgroundColor: theme.background }]}
+            style={[styles.shareOption, { backgroundColor: V2_COLORS.background }]}
             onPress={handleShareEmail}
           >
             <View style={[styles.shareIconContainer, { backgroundColor: '#EF4444' }]}>
               <Ionicons name="mail" size={24} color="#fff" />
             </View>
             <View style={styles.shareOptionText}>
-              <Text style={[styles.shareOptionTitle, { color: theme.text }]}>Email</Text>
-              <Text style={[styles.shareOptionSubtitle, { color: theme.textSecondary }]}>Send via email</Text>
+              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>Email</Text>
+              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>Send via email</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+            <Ionicons name="chevron-forward" size={20} color={V2_COLORS.textSecondary} />
           </TouchableOpacity>
 
           {/* Copy Link */}
           <TouchableOpacity 
-            style={[styles.shareOption, { backgroundColor: theme.background }]}
+            style={[styles.shareOption, { backgroundColor: V2_COLORS.background }]}
             onPress={handleCopyLink}
           >
             <View style={[styles.shareIconContainer, { backgroundColor: '#6366F1' }]}>
               <Ionicons name="link" size={24} color="#fff" />
             </View>
             <View style={styles.shareOptionText}>
-              <Text style={[styles.shareOptionTitle, { color: theme.text }]}>Copy Link</Text>
-              <Text style={[styles.shareOptionSubtitle, { color: theme.textSecondary }]}>Copy card URL to clipboard</Text>
+              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>Copy Link</Text>
+              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>Copy card URL to clipboard</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+            <Ionicons name="chevron-forward" size={20} color={V2_COLORS.textSecondary} />
           </TouchableOpacity>
 
           {/* Share Contact File */}
           <TouchableOpacity 
-            style={[styles.shareOption, { backgroundColor: theme.background }]}
+            style={[styles.shareOption, { backgroundColor: V2_COLORS.background }]}
             onPress={handleShareVCard}
             disabled={isSharing}
           >
@@ -687,10 +696,10 @@ export default function MyDigitalCardScreen() {
               )}
             </View>
             <View style={styles.shareOptionText}>
-              <Text style={[styles.shareOptionTitle, { color: theme.text }]}>Share Contact File</Text>
-              <Text style={[styles.shareOptionSubtitle, { color: theme.textSecondary }]}>Send as .vcf contact card</Text>
+              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>Share Contact File</Text>
+              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>Send as .vcf contact card</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+            <Ionicons name="chevron-forward" size={20} color={V2_COLORS.textSecondary} />
           </TouchableOpacity>
         </View>
 
