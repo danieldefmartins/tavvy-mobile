@@ -42,8 +42,8 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SUPABASE_URL = 'https://scasgwrikoqdwlwlwcff.supabase.co';
 
 // Map style - dark mode
-// Standard OSM-based map styles
-const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/positron';
+// V2 Map Styles - Dark theme for V2 design
+const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark-matter';
 const MAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron';
 
 // V2 Design System Colors
@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 16,
-    marginTop: 8,
+    marginBottom: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 16,
