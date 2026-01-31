@@ -25,6 +25,15 @@ import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// V2 Design System Colors
+const V2_COLORS = {
+  background: '#0A0A0F',
+  cardBackground: '#1A1A24',
+  text: '#FFFFFF',
+  textSecondary: 'rgba(255, 255, 255, 0.6)',
+  border: 'rgba(255, 255, 255, 0.1)',
+};
+
 interface DigitalCard {
   id: string;
   slug: string;
@@ -212,16 +221,16 @@ export default function MyCardsScreen() {
           style={styles.actionButton}
           onPress={() => handleEditCard(card)}
         >
-          <Ionicons name="pencil-outline" size={20} color={theme.textSecondary} />
-          <Text style={[styles.actionText, { color: theme.textSecondary }]}>Edit</Text>
+          <Ionicons name="pencil-outline" size={20} color={V2_COLORS.textSecondary} />
+          <Text style={[styles.actionText, { color: V2_COLORS.textSecondary }]}>Edit</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={styles.actionButton}
           onPress={() => handleCardSettings(card)}
         >
-          <Ionicons name="settings-outline" size={20} color={theme.textSecondary} />
-          <Text style={[styles.actionText, { color: theme.textSecondary }]}>Settings</Text>
+          <Ionicons name="settings-outline" size={20} color={V2_COLORS.textSecondary} />
+          <Text style={[styles.actionText, { color: V2_COLORS.textSecondary }]}>Settings</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -238,15 +247,15 @@ export default function MyCardsScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <View style={styles.emptyIcon}>
-        <Ionicons name="card-outline" size={64} color={theme.textSecondary} />
+        <Ionicons name="card-outline" size={64} color={V2_COLORS.textSecondary} />
       </View>
-      <Text style={[styles.emptyTitle, { color: theme.text }]}>No Cards Yet</Text>
-      <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+      <Text style={[styles.emptyTitle, { color: V2_COLORS.text }]}>No Cards Yet</Text>
+      <Text style={[styles.emptySubtitle, { color: V2_COLORS.textSecondary }]}>
         Create your first digital business card to start sharing your contact info.
       </Text>
       <TouchableOpacity style={styles.createFirstButton} onPress={handleCreateCard}>
         <LinearGradient
-          colors={['#00C853', '#00E676']}
+          colors={['#6B7FFF', '#5563E8']}
           style={styles.createFirstGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
@@ -260,44 +269,44 @@ export default function MyCardsScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={theme.text} />
+            <Ionicons name="arrow-back" size={24} color={V2_COLORS.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>My Cards</Text>
+          <Text style={styles.headerTitle}>My eCards</Text>
           <View style={styles.placeholder} />
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
+          <ActivityIndicator size="large" color="#6B7FFF" />
         </View>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
+          <Ionicons name="arrow-back" size={24} color={V2_COLORS.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>My Cards</Text>
+        <Text style={styles.headerTitle}>My eCards</Text>
         <View style={styles.placeholder} />
       </View>
 
       {/* Subscription Status */}
-      <View style={[styles.subscriptionBar, { backgroundColor: isDark ? '#1F1F1F' : '#F5F5F5' }]}>
+      <View style={styles.subscriptionBar}>
         <View style={styles.subscriptionInfo}>
           <Ionicons 
             name={isPro ? 'star' : 'star-outline'} 
             size={20} 
-            color={isPro ? '#FFD700' : theme.textSecondary} 
+            color={isPro ? '#FFD700' : V2_COLORS.textSecondary} 
           />
-          <Text style={[styles.subscriptionText, { color: theme.text }]}>
+          <Text style={styles.subscriptionText}>
             {isPro ? 'Pro Plan' : 'Free Plan'}
           </Text>
         </View>
-        <Text style={[styles.cardCount, { color: theme.textSecondary }]}>
+        <Text style={styles.cardCount}>
           {cards.length} / {maxCards} cards
         </Text>
       </View>
@@ -312,9 +321,9 @@ export default function MyCardsScreen() {
             {/* Add New Card Button */}
             {cards.length < maxCards && (
               <TouchableOpacity style={styles.addCardButton} onPress={handleCreateCard}>
-                <View style={[styles.addCardInner, { borderColor: theme.border }]}>
-                  <Ionicons name="add-circle-outline" size={32} color={theme.primary} />
-                  <Text style={[styles.addCardText, { color: theme.primary }]}>
+                <View style={styles.addCardInner}>
+                  <Ionicons name="add-circle-outline" size={32} color="#6B7FFF" />
+                  <Text style={styles.addCardText}>
                     Create New Card
                   </Text>
                 </View>
@@ -328,7 +337,7 @@ export default function MyCardsScreen() {
                 onPress={() => navigation.navigate('ECardPremiumUpsell')}
               >
                 <LinearGradient
-                  colors={['#8B5CF6', '#4F46E5']}
+                  colors={['#6B7FFF', '#5563E8']}
                   style={styles.upgradeGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -352,6 +361,7 @@ export default function MyCardsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: V2_COLORS.background,
   },
   header: {
     flexDirection: 'row',
@@ -365,13 +375,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
+    color: V2_COLORS.text,
   },
   placeholder: {
     width: 40,
@@ -385,6 +396,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     borderRadius: 12,
     marginBottom: 16,
+    backgroundColor: V2_COLORS.cardBackground,
   },
   subscriptionInfo: {
     flexDirection: 'row',
@@ -394,9 +406,11 @@ const styles = StyleSheet.create({
   subscriptionText: {
     fontSize: 14,
     fontWeight: '600',
+    color: V2_COLORS.text,
   },
   cardCount: {
     fontSize: 14,
+    color: V2_COLORS.textSecondary,
   },
   scrollView: {
     flex: 1,
@@ -414,12 +428,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#fff',
+    backgroundColor: V2_COLORS.cardBackground,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 12,
-    elevation: 4,
+    elevation: 8,
   },
   cardGradient: {
     padding: 20,
@@ -491,7 +505,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
+    borderTopColor: V2_COLORS.border,
+    backgroundColor: V2_COLORS.cardBackground,
   },
   actionButton: {
     flexDirection: 'row',
@@ -513,7 +528,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
@@ -557,10 +572,12 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderStyle: 'dashed',
     borderRadius: 16,
+    borderColor: V2_COLORS.border,
   },
   addCardText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#6B7FFF',
   },
   upgradePrompt: {
     marginTop: 24,
