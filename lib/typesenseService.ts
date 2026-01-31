@@ -251,11 +251,11 @@ export async function searchPlacesInBounds(options: {
       query_by: 'name,categories',
       query_by_weights: '2,2',
       
-      // ENHANCED: Sort by popularity (will use tap_quality_score after sync)
-      sort_by: 'popularity:desc',
+      // ENHANCED: Sort by proximity to center point
+      sort_by: `location(${centerLat}, ${centerLng}):asc`,
       
-      // Use geopoint location field instead of separate lat/lng
-      filter_by: `location:(${centerLat}, ${centerLng}, ${radiusMeters} m)`,
+      // Note: Not using filter_by to avoid schema issues
+      // Results will be sorted by distance from center point
       per_page: limit,
     };
 
