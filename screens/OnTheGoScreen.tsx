@@ -749,10 +749,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
 
-  // Filter Pills - moved lower to avoid header overlap
+  // Filter Pills - positioned below V2 header
   filterContainer: {
     position: 'absolute',
-    top: 100,
+    top: 120,
     left: 0,
     right: 0,
     zIndex: 9,
@@ -812,12 +812,12 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
-  // Live Tray Toggle
+  // Live Tray Toggle - positioned at bottom above nav icons
   trayToggle: {
     position: 'absolute',
     left: 16,
     right: 16,
-    bottom: 120,
+    bottom: 90,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
