@@ -32,6 +32,19 @@ export default function SettingsScreen() {
   const { theme, isDark, toggleTheme } = useThemeContext();
   const [autoTranslate, setAutoTranslate] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Notification preferences
+  const [pushNotifications, setPushNotifications] = useState(true);
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [liveBusinessAlerts, setLiveBusinessAlerts] = useState(true);
+  
+  // Privacy preferences
+  const [locationSharing, setLocationSharing] = useState(true);
+  const [dataSharing, setDataSharing] = useState(false);
+  
+  // App preferences
+  const [distanceUnit, setDistanceUnit] = useState('miles'); // 'miles' or 'km'
+  const [defaultMapLayer, setDefaultMapLayer] = useState('standard'); // 'standard', 'dark', 'satellite'
 
   // Dynamic styles based on theme
   const dynamicStyles = {
@@ -213,14 +226,167 @@ export default function SettingsScreen() {
             {t('settings.notifications').toUpperCase()}
           </Text>
           <View style={[styles.sectionContent, { backgroundColor: theme.surface }]}>
-            <TouchableOpacity style={styles.settingRow}>
+            <View style={[styles.settingRow, styles.settingRowBorder]}>
               <View style={styles.settingLeft}>
                 <Ionicons name="notifications" size={22} color={theme.primary} />
                 <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
-                  {t('settings.notifications')}
+                  Push Notifications
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+              <Switch
+                value={pushNotifications}
+                onValueChange={setPushNotifications}
+                trackColor={{ false: '#E5E5EA', true: theme.primary }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+            
+            <View style={[styles.settingRow, styles.settingRowBorder]}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="mail" size={22} color={theme.primary} />
+                <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
+                  Email Notifications
+                </Text>
+              </View>
+              <Switch
+                value={emailNotifications}
+                onValueChange={setEmailNotifications}
+                trackColor={{ false: '#E5E5EA', true: theme.primary }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+            
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="radio" size={22} color={theme.primary} />
+                <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
+                  Live Business Alerts
+                </Text>
+              </View>
+              <Switch
+                value={liveBusinessAlerts}
+                onValueChange={setLiveBusinessAlerts}
+                trackColor={{ false: '#E5E5EA', true: theme.primary }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* ========== PRIVACY & SECURITY SECTION ========== */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
+            PRIVACY & SECURITY
+          </Text>
+          <View style={[styles.sectionContent, { backgroundColor: theme.surface }]}>
+            <View style={[styles.settingRow, styles.settingRowBorder]}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="location" size={22} color={theme.primary} />
+                <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
+                  Location Sharing
+                </Text>
+              </View>
+              <Switch
+                value={locationSharing}
+                onValueChange={setLocationSharing}
+                trackColor={{ false: '#E5E5EA', true: theme.primary }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+            
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Ionicons name="analytics" size={22} color={theme.primary} />
+                <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
+                  Share Usage Data
+                </Text>
+              </View>
+              <Switch
+                value={dataSharing}
+                onValueChange={setDataSharing}
+                trackColor={{ false: '#E5E5EA', true: theme.primary }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* ========== PREFERENCES SECTION ========== */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
+            PREFERENCES
+          </Text>
+          <View style={[styles.sectionContent, { backgroundColor: theme.surface }]}>
+            <TouchableOpacity 
+              style={[styles.settingRow, styles.settingRowBorder]}
+              onPress={() => {
+                Alert.alert(
+                  'Distance Unit',
+                  'Choose your preferred distance unit',
+                  [
+                    {
+                      text: 'Miles',
+                      onPress: () => setDistanceUnit('miles'),
+                    },
+                    {
+                      text: 'Kilometers',
+                      onPress: () => setDistanceUnit('km'),
+                    },
+                    { text: 'Cancel', style: 'cancel' },
+                  ]
+                );
+              }}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name="speedometer" size={22} color={theme.primary} />
+                <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
+                  Distance Unit
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={[styles.settingValue, dynamicStyles.settingValue]}>
+                  {distanceUnit === 'miles' ? 'Miles' : 'Kilometers'}
+                </Text>
+                <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+              </View>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => {
+                Alert.alert(
+                  'Default Map Layer',
+                  'Choose your default map style',
+                  [
+                    {
+                      text: 'Standard',
+                      onPress: () => setDefaultMapLayer('standard'),
+                    },
+                    {
+                      text: 'Dark',
+                      onPress: () => setDefaultMapLayer('dark'),
+                    },
+                    {
+                      text: 'Satellite',
+                      onPress: () => setDefaultMapLayer('satellite'),
+                    },
+                    { text: 'Cancel', style: 'cancel' },
+                  ]
+                );
+              }}
+            >
+              <View style={styles.settingLeft}>
+                <Ionicons name="map" size={22} color={theme.primary} />
+                <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
+                  Default Map Layer
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={[styles.settingValue, dynamicStyles.settingValue]}>
+                  {defaultMapLayer.charAt(0).toUpperCase() + defaultMapLayer.slice(1)}
+                </Text>
+                <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
+              </View>
             </TouchableOpacity>
           </View>
         </View>
