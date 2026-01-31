@@ -29,7 +29,7 @@ export const SCREEN_COLORS = {
   pros: { start: '#059669', end: '#10B981' },
   atlas: { start: '#7C3AED', end: '#8B5CF6' },
   cities: { start: '#EA580C', end: '#F97316' },
-  wallet: { start: '#475569', end: '#64748B' },
+  wallet: { start: '#1A1A24', end: '#0A0A0F' },
   rvCamping: { start: '#166534', end: '#15803D' },
   rides: { start: '#D946EF', end: '#F472B6' },
   onTheGo: { start: '#7C3AED', end: '#6D28D9' },
