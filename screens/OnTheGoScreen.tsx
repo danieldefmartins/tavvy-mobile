@@ -826,13 +826,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Live Tray - unified bottom sheet
+  // Live Tray - unified bottom sheet positioned above nav icons
   liveTray: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    paddingBottom: 90,
+    paddingBottom: 0,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
