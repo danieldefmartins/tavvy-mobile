@@ -66,13 +66,8 @@ export default function LoginScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Background Gradient - Tavvy Navy to Deep Blue */}
-      <LinearGradient
-        colors={['#0F1233', '#1a237e', '#0F1233']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      {/* Background - V2 Pure Black */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0A0A0F' }]} />
 
       {/* Decorative Logo Pattern Background */}
       {logoPatterns.map((pattern, index) => (
@@ -255,7 +250,7 @@ export default function LoginScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1233',
+    backgroundColor: '#0A0A0F', // V2 Pure black
   },
   patternLogo: {
     position: 'absolute',

@@ -75,9 +75,11 @@ export default function ProsLoginScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Background Gradient - Deep Green Theme */}
+      {/* Background - V2 Pure Black */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0A0A0F' }]} />
+      {/* Subtle green accent overlay for Pros branding */}
       <LinearGradient
-        colors={['#064E3B', '#065F46', '#064E3B']}
+        colors={['transparent', 'rgba(16, 185, 129, 0.05)', 'transparent']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -273,7 +275,7 @@ export default function ProsLoginScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#064E3B',
+    backgroundColor: '#0A0A0F', // V2 Pure black
   },
   patternLogo: {
     position: 'absolute',
