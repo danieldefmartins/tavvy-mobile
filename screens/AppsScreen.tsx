@@ -192,6 +192,14 @@ const APP_TILES: AppTile[] = [
     gradientColors: ['#F472B6', '#EC4899'],
     route: 'HappeningNow',
   },
+  {
+    id: 'settings',
+    name: 'Settings',
+    icon: 'settings',
+    iconType: 'ionicons',
+    gradientColors: ['#6B7280', '#4B5563'],
+    route: 'Settings',
+  },
 ];
 
 export default function AppsScreen() {
