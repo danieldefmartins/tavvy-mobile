@@ -455,9 +455,7 @@ export default function OnTheGoScreen() {
               </TouchableOpacity>
               <Text style={styles.v2HeaderTitle}>On The Go</Text>
               <TouchableOpacity onPress={() => navigation.navigate('Login' as never)} style={styles.v2LoginButton}>
-                <View style={styles.loginButtonContent}>
-                  <Ionicons name="menu" size={32} color={COLORS.textPrimary} />
-                </View>
+                <Ionicons name="person-circle-outline" size={32} color={COLORS.textPrimary} />
               </TouchableOpacity>
             </View>
           </SafeAreaView>
