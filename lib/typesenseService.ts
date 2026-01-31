@@ -262,10 +262,23 @@ export async function searchPlacesInBounds(options: {
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[typesenseService] Typesense API error:', errorText);
       throw new Error(`Typesense bounds search failed: ${response.statusText}`);
     }
 
     const data = await response.json();
+
+    // Check if response has valid structure
+    if (!data || !data.hits || !Array.isArray(data.hits)) {
+      console.warn('[typesenseService] Invalid response structure:', data);
+      return {
+        places: [],
+        totalFound: 0,
+        searchTimeMs: 0,
+        page: 1,
+      };
+    }
 
     const places = data.hits.map((hit: any) => 
       transformTypesensePlace(hit.document)
@@ -273,13 +286,19 @@ export async function searchPlacesInBounds(options: {
 
     return {
       places,
-      totalFound: data.found,
-      searchTimeMs: data.search_time_ms,
+      totalFound: data.found || 0,
+      searchTimeMs: data.search_time_ms || 0,
       page: 1,
     };
   } catch (error) {
     console.error('[typesenseService] Bounds search failed:', error);
-    throw error;
+    // Return empty result instead of crashing the app
+    return {
+      places: [],
+      totalFound: 0,
+      searchTimeMs: 0,
+      page: 1,
+    };
   }
 }
 
