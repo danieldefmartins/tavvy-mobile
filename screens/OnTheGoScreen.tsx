@@ -661,7 +661,7 @@ export default function OnTheGoScreen() {
           onPress={() => setShowMapLayerPopup(false)}
         >
           <View style={[styles.mapLayerPopup, { backgroundColor: COLORS.surface }]}>
-            <Text style={[styles.popupTitle, { color: COLORS.text }]}>Map Type</Text>
+            <Text style={[styles.popupTitle, { color: '#FFFFFF' }]}>Map Type</Text>
             
             <View style={styles.mapLayerOptions}>
               {Object.entries(MAP_STYLES).map(([key, value]) => (
