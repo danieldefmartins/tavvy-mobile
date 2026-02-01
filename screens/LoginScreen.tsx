@@ -23,7 +23,7 @@ const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen({ navigation }: any) {
   const { t } = useTranslation();
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle, signInWithApple } = useAuth();
   const { theme, isDark } = useThemeContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,6 +44,30 @@ export default function LoginScreen({ navigation }: any) {
     } catch (error: any) {
       console.warn('Login error:', error);
       Alert.alert('Login Failed', error.message || 'Invalid email or password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      await signInWithGoogle();
+    } catch (error: any) {
+      console.warn('Google sign-in error:', error);
+      Alert.alert('Sign-in Failed', error.message || 'Could not sign in with Google');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      setLoading(true);
+      await signInWithApple();
+    } catch (error: any) {
+      console.warn('Apple sign-in error:', error);
+      Alert.alert('Sign-in Failed', error.message || 'Could not sign in with Apple');
     } finally {
       setLoading(false);
     }
@@ -211,10 +235,18 @@ export default function LoginScreen({ navigation }: any) {
 
           {/* Social Login Options */}
           <View style={styles.socialContainer}>
-            <TouchableOpacity style={styles.socialButton}>
+            <TouchableOpacity 
+              style={styles.socialButton}
+              onPress={handleAppleSignIn}
+              disabled={loading}
+            >
               <Ionicons name="logo-apple" size={24} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.socialButton}>
+            <TouchableOpacity 
+              style={styles.socialButton}
+              onPress={handleGoogleSignIn}
+              disabled={loading}
+            >
               <Ionicons name="logo-google" size={24} color="#fff" />
             </TouchableOpacity>
           </View>

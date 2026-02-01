@@ -28,7 +28,7 @@ const PROS_GREEN_LIGHT = '#34D399';
 
 export default function ProsLoginScreen({ navigation }: any) {
   const { t } = useTranslation();
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle, signInWithApple } = useAuth();
   const { theme, isDark } = useThemeContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -57,6 +57,30 @@ export default function ProsLoginScreen({ navigation }: any) {
   const handleCreateAccount = () => {
     // Navigate to Pro signup flow
     navigation.navigate('ProsRequestStep0');
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      await signInWithGoogle();
+    } catch (error: any) {
+      console.warn('Google sign-in error:', error);
+      Alert.alert('Sign-in Failed', error.message || 'Could not sign in with Google');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      setLoading(true);
+      await signInWithApple();
+    } catch (error: any) {
+      console.warn('Apple sign-in error:', error);
+      Alert.alert('Sign-in Failed', error.message || 'Could not sign in with Apple');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Generate decorative logo pattern positions (green-themed)
@@ -225,6 +249,31 @@ export default function ProsLoginScreen({ navigation }: any) {
             {/* Forgot Password */}
             <TouchableOpacity style={styles.forgotPassword}>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Social Login Divider */}
+          <View style={styles.socialDividerContainer}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or continue with</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Social Login Options */}
+          <View style={styles.socialContainer}>
+            <TouchableOpacity 
+              style={styles.socialButton}
+              onPress={handleAppleSignIn}
+              disabled={loading}
+            >
+              <Ionicons name="logo-apple" size={24} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.socialButton}
+              onPress={handleGoogleSignIn}
+              disabled={loading}
+            >
+              <Ionicons name="logo-google" size={24} color="#fff" />
             </TouchableOpacity>
           </View>
 
@@ -503,6 +552,27 @@ const styles = StyleSheet.create({
   promoPrice: {
     fontWeight: '700',
     color: PROS_GREEN_LIGHT,
+  },
+  socialDividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  socialContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 24,
+  },
+  socialButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   footer: {
     flexDirection: 'row',
