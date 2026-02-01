@@ -1524,7 +1524,12 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       });
     });
 
-    setSearchSuggestions(suggestions);
+    // Remove duplicates based on ID
+    const uniqueSuggestions = suggestions.filter((suggestion, index, self) =>
+      index === self.findIndex((s) => s.id === suggestion.id)
+    );
+    
+    setSearchSuggestions(uniqueSuggestions);
 
     // Always search for addresses when query is long enough (using optimized location-biased search)
     if (text.length >= 3) {
