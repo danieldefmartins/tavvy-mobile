@@ -1705,8 +1705,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           switchToMapMode();
           setLoading(false); // Hide loading state for non-smart searches
         }
-      } else {
-        setLoading(false); // Hide loading state if no query
       }
     }
   };
