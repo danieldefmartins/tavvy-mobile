@@ -32,6 +32,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { fetchPlacesInBounds, PlaceCard, getPlaceIdForNavigation, formatDistance } from '../lib/placeService';
 import { searchSuggestions as searchPlaceSuggestions, searchAddresses, prefetchNearbyPlaces, searchPrefetchedPlaces, SearchResult } from '../lib/searchService';
 import { searchPlaces as typesenseSearchPlaces } from '../lib/typesenseService';
+import { parseSearchQuery } from '../lib/smartQueryParser';
 import { fetchWeatherData, getDefaultWeatherData, WeatherData } from '../lib/weatherService';
 // Integrated Discovery Components
 import { StoriesRow } from '../components/StoriesRow';
@@ -1570,7 +1571,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     }, 200);
   };
 
-  const handleSearchSubmit = () => {
+  const handleSearchSubmit = async () => {
     if (searchQuery.trim()) {
       const query = searchQuery.trim().toLowerCase();
       saveRecentSearch(searchQuery.trim());
@@ -1586,9 +1587,68 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         Keyboard.dismiss();
         navigation.navigate('Explore', { searchQuery: searchQuery.trim() });
       } else {
-        // Default to map/places search
-        filterPlaces(searchQuery.trim());
-        switchToMapMode();
+        // SMART PARSING: Parse natural language query
+        const parsed = parseSearchQuery(searchQuery.trim());
+        console.log('[SmartSearch] Parsed query:', parsed);
+        
+        if (parsed.isParsed && (parsed.city || parsed.region)) {
+          // Use Typesense for location-specific searches
+          try {
+            const result = await typesenseSearchPlaces({
+              query: parsed.placeName,
+              locality: parsed.city,
+              region: parsed.region,
+              country: parsed.country,
+              limit: 50,
+            });
+            
+            if (result.places.length > 0) {
+              const processedPlaces = result.places
+                .filter((place) => {
+                  return typeof place.longitude === 'number' && typeof place.latitude === 'number' && 
+                         !isNaN(place.longitude) && !isNaN(place.latitude) && 
+                         place.longitude !== 0 && place.latitude !== 0;
+                })
+                .map(place => ({
+                  id: place.fsq_place_id,
+                  name: place.name,
+                  latitude: place.latitude!,
+                  longitude: place.longitude!,
+                  address_line1: place.address || '',
+                  city: place.locality || '',
+                  state_region: place.region || '',
+                  country: place.country || '',
+                  category: place.category || 'Other',
+                  phone: place.tel || '',
+                  website: place.website || '',
+                  instagram_url: place.instagram || '',
+                  signals: [],
+                  photos: [],
+                  distance: place.distance,
+                }));
+              
+              setFilteredPlaces(processedPlaces as Place[]);
+              switchToMapMode();
+              
+              // Center map on first result
+              if (processedPlaces[0]) {
+                setTargetLocation([processedPlaces[0].longitude, processedPlaces[0].latitude]);
+              }
+            } else {
+              // No results, fall back to regular search
+              filterPlaces(searchQuery.trim());
+              switchToMapMode();
+            }
+          } catch (error) {
+            console.error('[SmartSearch] Error:', error);
+            filterPlaces(searchQuery.trim());
+            switchToMapMode();
+          }
+        } else {
+          // Default to map/places search
+          filterPlaces(searchQuery.trim());
+          switchToMapMode();
+        }
       }
     }
   };
