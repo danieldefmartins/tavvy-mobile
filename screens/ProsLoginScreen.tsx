@@ -322,6 +322,7 @@ const styles = StyleSheet.create({
   },
   logoSection: {
     alignItems: 'center',
+    marginTop: -20,
     marginBottom: 12,
   },
   logoContainer: {
@@ -329,8 +330,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   logoImage: {
-    width: 240,
-    height: 80,
+    width: 280,
+    height: 90,
+    marginBottom: 32,
     zIndex: 1,
   },
   logoGlow: {
@@ -375,7 +377,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
-    marginBottom: 28,
+    marginBottom: 20,
   },
   formCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
