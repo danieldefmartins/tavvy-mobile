@@ -117,7 +117,7 @@ export default function LoginScreen({ navigation }: any) {
           {/* Logo Section */}
           <View style={styles.logoSection}>
             <Image 
-              source={require('../assets/brand/logo-full.png')} 
+              source={require('../assets/brand/logo-horizontal.png')} 
               style={styles.logoImage}
               resizeMode="contain"
             />
@@ -304,8 +304,8 @@ const styles = StyleSheet.create({
     marginBottom: 48,
   },
   logoImage: {
-    width: 160,
-    height: 50,
+    width: 240,
+    height: 80,
     zIndex: 1,
   },
   logoGlow: {
