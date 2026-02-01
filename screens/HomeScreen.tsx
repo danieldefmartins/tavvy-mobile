@@ -1446,33 +1446,74 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       const suggestions: SearchSuggestion[] = [];
       const query = text.toLowerCase();
 
+      // SMART PARSING: Parse natural language query for location
+      const parsed = parseSearchQuery(text.trim());
+      console.log('[Autocomplete] Parsed query:', parsed);
+
       // Search database for matching places using centralized searchService
       try {
-      const searchResults = await searchPlaceSuggestions(text, 8, userLocation || undefined);
-
-      if (searchResults && searchResults.length > 0) {
-        searchResults.forEach(place => {
-          suggestions.push({
-            id: `place-${place.source_id}`,
-            type: 'place',
-            title: place.name,
-            subtitle: place.address 
-              ? `${place.address}, ${place.city || 'Nearby'}`
-              : `${place.category || 'Other'} • ${place.city || 'Nearby'}`,
-            icon: 'location',
-            data: {
-              id: place.source_id,
-              name: place.name,
-              latitude: place.latitude,
-              longitude: place.longitude,
-              address_line1: place.address || '',
-              city: place.city || '',
-              category: place.category || 'Other',
-              signals: [],
-              photos: [],
-            },
-          });
+      // If location detected in query, use Typesense with location filters
+      if (parsed.isParsed && (parsed.city || parsed.region)) {
+        const typesenseResult = await typesenseSearchPlaces({
+          query: parsed.placeName,
+          locality: parsed.city,
+          region: parsed.region,
+          country: parsed.country,
+          limit: 8,
         });
+        
+        if (typesenseResult.places && typesenseResult.places.length > 0) {
+          typesenseResult.places.forEach(place => {
+            suggestions.push({
+              id: `place-${place.id}`,
+              type: 'place',
+              title: place.name,
+              subtitle: place.address 
+                ? `${place.address}, ${place.locality || 'Nearby'}`
+                : `${place.category || 'Other'} • ${place.locality || 'Nearby'}`,
+              icon: 'location',
+              data: {
+                id: place.id,
+                name: place.name,
+                latitude: place.latitude,
+                longitude: place.longitude,
+                address_line1: place.address || '',
+                city: place.locality || '',
+                category: place.category || 'Other',
+                signals: [],
+                photos: [],
+              },
+            });
+          });
+        }
+      } else {
+        // No location in query, use regular search
+        const searchResults = await searchPlaceSuggestions(text, 8, userLocation || undefined);
+        
+        if (searchResults && searchResults.length > 0) {
+          searchResults.forEach(place => {
+            suggestions.push({
+              id: `place-${place.source_id}`,
+              type: 'place',
+              title: place.name,
+              subtitle: place.address 
+                ? `${place.address}, ${place.city || 'Nearby'}`
+                : `${place.category || 'Other'} • ${place.city || 'Nearby'}`,
+              icon: 'location',
+              data: {
+                id: place.source_id,
+                name: place.name,
+                latitude: place.latitude,
+                longitude: place.longitude,
+                address_line1: place.address || '',
+                city: place.city || '',
+                category: place.category || 'Other',
+                signals: [],
+                photos: [],
+              },
+            });
+          });
+        }
       }
     } catch (e) {
       console.log('Search error:', e);
