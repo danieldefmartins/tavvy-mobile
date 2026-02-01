@@ -1599,7 +1599,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           });
         });
         
-        setSearchSuggestions([...suggestions]);
+        // Remove duplicates after adding addresses
+        const finalUniqueSuggestions = suggestions.filter((suggestion, index, self) =>
+          index === self.findIndex((s) => s.id === suggestion.id)
+        );
+        setSearchSuggestions(finalUniqueSuggestions);
       } catch (error) {
         console.log('Address search error:', error);
       } finally {
@@ -1623,6 +1627,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     if (searchQuery.trim()) {
       const query = searchQuery.trim().toLowerCase();
       saveRecentSearch(searchQuery.trim());
+      setLoading(true); // Show loading state
       
       // Keywords that indicate universe/atlas searches
       const universeKeywords = ['universe', 'atlas', 'theme park', 'airport', 'stadium', 'mall', 'campus', 'resort', 'park', 'zoo', 'museum', 'disney', 'universal', 'seaworld'];
@@ -1691,12 +1696,17 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             console.error('[SmartSearch] Error:', error);
             // On error, just clear results and stay on current screen
             setFilteredPlaces([]);
+          } finally {
+            setLoading(false); // Hide loading state
           }
         } else {
           // Default to map/places search
           filterPlaces(searchQuery.trim());
           switchToMapMode();
+          setLoading(false); // Hide loading state for non-smart searches
         }
+      } else {
+        setLoading(false); // Hide loading state if no query
       }
     }
   };
