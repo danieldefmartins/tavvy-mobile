@@ -370,8 +370,8 @@ export async function searchPlacesInBounds(options: {
       query_by: 'name,categories',
       query_by_weights: '3,2',
       
-      // Sort by proximity to center point
-      sort_by: `location(${centerLat}, ${centerLng}):asc`,
+      // Sort by popularity (geo-sorting requires geopoint field in schema)
+      sort_by: 'popularity:desc',
       
       // Note: Not using filter_by to avoid schema issues
       // Results will be sorted by distance from center point
