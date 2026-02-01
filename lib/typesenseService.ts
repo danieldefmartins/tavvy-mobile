@@ -241,20 +241,22 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
       text_match_type: 'max_score',
     };
 
-    // Add location filter
-    if (latitude && longitude) {
-      searchParams.filter_by = `location:(${latitude}, ${longitude}, ${radiusKm * 1000} m)`;
-    }
-
-    // Add country/region/locality filters
+    // Build all filters (geo + location + category)
     const filters = [];
+    
+    // Add geo-location filter if coordinates provided
+    if (latitude && longitude) {
+      filters.push(`location:(${latitude}, ${longitude}, ${radiusKm * 1000} m)`);
+    }
+    
+    // Add country/region/locality filters
     if (country) filters.push(`location_country:=${country}`);
     if (region) filters.push(`location_region:=${region}`);
-    // Use fuzzy match for locality (contains, case-insensitive)
+    // Use exact match for locality to avoid matching other cities with similar names
     if (locality) {
       // Capitalize first letter for better matching
       const capitalizedLocality = locality.charAt(0).toUpperCase() + locality.slice(1).toLowerCase();
-      filters.push(`location_locality:${capitalizedLocality}`);
+      filters.push(`location_locality:=${capitalizedLocality}`);
     }
     
     console.log('[Typesense] Search params:', { query, country, region, locality, filters });
@@ -265,6 +267,7 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
       searchParams.q = `${query} ${categoryQuery}`;
     }
     
+    // Combine all filters with AND logic
     if (filters.length > 0) {
       searchParams.filter_by = filters.join(' && ');
     }
