@@ -250,7 +250,12 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
     const filters = [];
     if (country) filters.push(`location_country:=${country}`);
     if (region) filters.push(`location_region:=${region}`);
-    if (locality) filters.push(`location_locality:=${locality}`);
+    // Use fuzzy match for locality (contains, case-insensitive)
+    if (locality) {
+      // Capitalize first letter for better matching
+      const capitalizedLocality = locality.charAt(0).toUpperCase() + locality.slice(1).toLowerCase();
+      filters.push(`location_locality:${capitalizedLocality}`);
+    }
     
     console.log('[Typesense] Search params:', { query, country, region, locality, filters });
     
