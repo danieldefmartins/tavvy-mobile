@@ -1666,20 +1666,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     
     switch (suggestion.type) {
       case 'place':
-        // Navigate to map and center on the selected place
+        // Navigate directly to place details screen
         const place = suggestion.data;
-        if (place.latitude && place.longitude) {
-          // Switch to map mode first, then set location (to avoid it being cleared)
-          switchToMapMode();
-          // Use setTimeout to ensure state updates happen after mode switch
-          setTimeout(() => {
-            setTargetLocation([place.longitude, place.latitude]);
-            setSelectedPlace(place);
-            setSearchQuery(place.name);
-          }, 50);
-        } else {
-          handlePlacePress(place);
-        }
+        handlePlacePress(place);
         break;
       case 'category':
         // Switch to map mode first so the category results bottom sheet can overlay
