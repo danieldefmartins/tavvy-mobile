@@ -273,11 +273,16 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
       },
     });
 
+    console.log('[Typesense] Full URL:', `${url}?${queryString}`);
+    
     if (!response.ok) {
-      throw new Error(`Typesense search failed: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('[Typesense] HTTP Error:', response.status, errorText);
+      throw new Error(`Typesense search failed: ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('[Typesense] Full response:', JSON.stringify(data, null, 2));
     
     console.log('[Typesense] Response:', { found: data.found, hits: data.hits?.length, searchTimeMs: data.search_time_ms });
 
