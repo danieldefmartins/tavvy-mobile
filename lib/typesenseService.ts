@@ -234,7 +234,7 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
       drop_tokens_threshold: 2,        // Drop tokens if no results after 2 attempts
       
       // Add faceted search for category counts
-      facet_by: 'categories,tap_categories,location_region',
+      facet_by: 'categories,location_region',
       max_facet_values: 20,
       
       // Use max_score for best matching field
