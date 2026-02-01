@@ -37,10 +37,11 @@ import {
   useTap,
   useHasUserTapped
 } from '../hooks/useTapSystem';
-import { getPlaceStories, PlaceStory, getStoryRingState, StoryRingState } from '../lib/storyService';
+import { getPlaceStories, PlaceStory, getStoryRingState, StoryRingState, calculateDistanceMeters } from '../lib/storyService';
 import { StoryViewer } from '../components/StoryViewer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
+import * as Location from 'expo-location';
 
 const { width } = Dimensions.get('window');
 
@@ -290,6 +291,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   const [photos, setPhotos] = useState<PlacePhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [expandedSection, setExpandedSection] = useState<'best_for' | 'vibe' | 'heads_up' | null>(null);
   const [activeTab, setActiveTab] = useState<'signals' | 'info' | 'photos' | 'entrances'>('signals');
   const [showHoursModal, setShowHoursModal] = useState(false);
@@ -383,6 +385,27 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   const { gamification } = useUserGamification();
   const { hasTapped, userSignals } = useHasUserTapped(place?.id || '');
   const { quickTap } = useTap();
+
+  // Fetch user location on mount
+  useEffect(() => {
+    const getUserLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.log('[PlaceDetails] Location permission denied');
+          return;
+        }
+        const location = await Location.getCurrentPositionAsync({});
+        setUserLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      } catch (error) {
+        console.error('[PlaceDetails] Error getting location:', error);
+      }
+    };
+    getUserLocation();
+  }, []);
 
   // Fetch place data
   useEffect(() => {
@@ -555,7 +578,14 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           website: placeData.website,
           instagramUrl: placeData.instagram_url,
           facebookUrl: placeData.facebook_url,
-          distance: placeData.distance || 0,
+          distance: userLocation && placeData.latitude && placeData.longitude
+            ? calculateDistanceMeters(
+                userLocation.latitude,
+                userLocation.longitude,
+                placeData.latitude,
+                placeData.longitude
+              ) / 1609.34 // Convert meters to miles
+            : 0,
           avgMealCost: placeData.avg_meal_cost,
           totalSites: placeData.total_sites,
           starRating: placeData.star_rating,
@@ -616,7 +646,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
     };
 
     fetchPlaceData();
-  }, [placeId]);
+  }, [placeId, userLocation]);
 
   // Fetch stories for this place
   useEffect(() => {
