@@ -1456,7 +1456,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             id: `place-${place.source_id}`,
             type: 'place',
             title: place.name,
-            subtitle: `${place.category || 'Other'} • ${place.city || 'Nearby'}`,
+            subtitle: place.address 
+              ? `${place.address}, ${place.city || 'Nearby'}`
+              : `${place.category || 'Other'} • ${place.city || 'Nearby'}`,
             icon: 'location',
             data: {
               id: place.source_id,
