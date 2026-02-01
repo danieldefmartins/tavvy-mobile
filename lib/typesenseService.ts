@@ -1,3 +1,5 @@
+import { logSearchAnalytics } from './searchAnalytics';
+
 /**
  * Typesense Search Service for Tavvy Mobile App - WITH TAP-BASED RANKING
  * 
@@ -11,10 +13,66 @@
  * @module typesenseService
  */
 
-const TYPESENSE_HOST = 'tavvy-typesense-production.up.railway.app';
-const TYPESENSE_PORT = '443';
-const TYPESENSE_PROTOCOL = 'https';
-const TYPESENSE_API_KEY = '231eb42383d0a3a2832f47ec44b817e33692211d9cf2d158f49e5c3e608e6277';
+// Load from environment variables (with fallback for development)
+const TYPESENSE_HOST = process.env.EXPO_PUBLIC_TYPESENSE_HOST || 'tavvy-typesense-production.up.railway.app';
+const TYPESENSE_PORT = process.env.EXPO_PUBLIC_TYPESENSE_PORT || '443';
+const TYPESENSE_PROTOCOL = process.env.EXPO_PUBLIC_TYPESENSE_PROTOCOL || 'https';
+const TYPESENSE_API_KEY = process.env.EXPO_PUBLIC_TYPESENSE_API_KEY || '231eb42383d0a3a2832f47ec44b817e33692211d9cf2d158f49e5c3e608e6277';
+
+// ============================================
+// QUERY CACHE
+// ============================================
+
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const queryCache = new Map<string, CacheEntry<SearchResult>>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_SIZE = 100;
+
+/**
+ * Get cached query result if available and not expired
+ */
+function getCachedQuery(key: string): SearchResult | null {
+  const entry = queryCache.get(key);
+  if (entry && Date.now() - entry.timestamp < CACHE_TTL_MS) {
+    console.log('[typesense] Cache hit!');
+    return entry.data;
+  }
+  if (entry) {
+    queryCache.delete(key); // Remove expired entry
+  }
+  return null;
+}
+
+/**
+ * Set cache entry with LRU eviction
+ */
+function setCachedQuery(key: string, data: SearchResult): void {
+  // LRU eviction if cache is full
+  if (queryCache.size >= MAX_CACHE_SIZE) {
+    const oldestKey = queryCache.keys().next().value;
+    if (oldestKey) queryCache.delete(oldestKey);
+  }
+  queryCache.set(key, { data, timestamp: Date.now() });
+}
+
+/**
+ * Generate cache key from search options
+ */
+function getCacheKey(options: SearchOptions): string {
+  return JSON.stringify(options);
+}
+
+/**
+ * Clear query cache
+ */
+export function clearQueryCache(): void {
+  queryCache.clear();
+  console.log('[typesense] Query cache cleared');
+}
 
 export interface TypesensePlace {
   fsq_place_id: string;
@@ -137,6 +195,7 @@ function transformTypesensePlace(doc: any, distance?: number): PlaceSearchResult
  * then ranks by tap quality score.
  */
 export async function searchPlaces(options: SearchOptions): Promise<SearchResult> {
+  const startTime = Date.now();
   const {
     query,
     latitude,
@@ -150,18 +209,36 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
     offset = 0,
   } = options;
 
+  // Check cache first
+  const cacheKey = getCacheKey(options);
+  const cached = getCachedQuery(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   try {
     const searchParams: any = {
       q: query || '*',
-      // ENHANCED: Search tap_signals field (if it exists) with higher weight!
-      // Note: tap_signals field will be added when first tap data is synced
-      query_by: 'name,locality,region,categories',
-      query_by_weights: '3,1,1,2',
+      // ENHANCED: Search tap_signals field with HIGHEST weight for user-validated results
+      query_by: 'name,tap_signals,categories,locality,region',
+      query_by_weights: '4,5,3,1,1',  // tap_signals gets highest weight!
       
-      // ENHANCED: Sort by popularity for now (will use tap_quality_score after first sync)
-      sort_by: 'popularity:desc',      
+      // ENHANCED: Sort by tap quality score first, then popularity
+      sort_by: 'tap_quality_score:desc,popularity:desc',      
       per_page: limit,
       page: Math.floor(offset / limit) + 1,
+      
+      // Add typo tolerance for better search experience
+      num_typos: 2,                    // Allow up to 2 typos
+      typo_tokens_threshold: 1,        // Start typo tolerance after 1 token
+      drop_tokens_threshold: 2,        // Drop tokens if no results after 2 attempts
+      
+      // Add faceted search for category counts
+      facet_by: 'categories,tap_categories,region',
+      max_facet_values: 20,
+      
+      // Use max_score for best matching field
+      text_match_type: 'max_score',
     };
 
     // Add location filter
@@ -209,14 +286,42 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
       return transformTypesensePlace(doc, distance);
     });
 
-    return {
+    const result = {
       places,
       totalFound: data.found,
       searchTimeMs: data.search_time_ms,
       page: data.page,
     };
-  } catch (error) {
+    
+    // Cache the result
+    setCachedQuery(cacheKey, result);
+    
+    // Log analytics
+    logSearchAnalytics({
+      query: query || '*',
+      resultsCount: places.length,
+      searchTimeMs: Date.now() - startTime,
+      hasLocation: !!(latitude && longitude),
+      latitude,
+      longitude,
+      filters: categories,
+      source: 'typesense',
+    });
+    
+    return result;
+  } catch (error: any) {
     console.error('[typesenseService] Search failed:', error);
+    
+    // Log failed search
+    logSearchAnalytics({
+      query: query || '*',
+      resultsCount: 0,
+      searchTimeMs: Date.now() - startTime,
+      hasLocation: !!(latitude && longitude),
+      error: error.message,
+      source: 'typesense',
+    });
+    
     throw error;
   }
 }
@@ -247,12 +352,12 @@ export async function searchPlacesInBounds(options: {
 
     const searchParams: any = {
       q: category || '*',
-      // ENHANCED: Search (tap_signals will be added after first sync)
-      query_by: 'name,categories',
-      query_by_weights: '2,2',
+      // ENHANCED: Search with tap_signals for better relevance
+      query_by: 'name,tap_signals,categories',
+      query_by_weights: '3,5,2',
       
-      // ENHANCED: Sort by proximity to center point
-      sort_by: `location(${centerLat}, ${centerLng}):asc`,
+      // ENHANCED: Sort by tap score first, then proximity
+      sort_by: `tap_quality_score:desc,location(${centerLat}, ${centerLng}):asc`,
       
       // Note: Not using filter_by to avoid schema issues
       // Results will be sorted by distance from center point
@@ -321,11 +426,15 @@ export async function getAutocompleteSuggestions(
   try {
     const searchParams = {
       q: query,
-      // Search by name (tap_signals will be added after first sync)
-      query_by: 'name',
+      // Search by name and tap_signals for better suggestions
+      query_by: 'name,tap_signals',
       
-      // Sort by popularity (will use tap_total after sync)
-      sort_by: 'popularity:desc',
+      // Enable prefix search for better autocomplete
+      prefix: 'true,true',  // Enable prefix search on both fields
+      infix: 'fallback',    // Fallback to infix if prefix finds nothing
+      
+      // Sort by tap count first, then popularity
+      sort_by: 'tap_total:desc,popularity:desc',
       
       per_page: limit.toString(),
     };
