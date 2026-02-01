@@ -36,6 +36,7 @@ const SUPER_ADMIN_EMAILS = [
 ];
 
 const ECardTemplateGalleryScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute();
   const params = route.params as RouteParams || {};

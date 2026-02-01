@@ -27,10 +27,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../contexts/ThemeContext';
 import { ProsColors } from '../constants/Colors';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
 export default function TavvyShieldScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);

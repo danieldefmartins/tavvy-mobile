@@ -23,6 +23,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TavvyEvent } from '../lib/eventsService';
 import { fetchEventSignals, SignalAggregate, getEventReviewCount } from '../lib/eventReviews';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 const DEFAULT_EVENT_IMAGE = 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30';
@@ -34,6 +35,7 @@ type RouteParams = {
 };
 
 export default function EventDetailScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'EventDetail'>>();
   const { event } = route.params;
