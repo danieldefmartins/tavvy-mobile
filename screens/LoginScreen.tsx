@@ -117,7 +117,7 @@ export default function LoginScreen({ navigation }: any) {
           {/* Logo Section */}
           <View style={styles.logoSection}>
             <Image 
-              source={require('../assets/brand/logo-horizontal.png')} 
+              source={require('../assets/brand/logo-horizontal-mobile.png')} 
               style={styles.logoImage}
               resizeMode="contain"
             />

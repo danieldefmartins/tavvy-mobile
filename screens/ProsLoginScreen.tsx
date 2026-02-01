@@ -134,7 +134,7 @@ export default function ProsLoginScreen({ navigation }: any) {
           <View style={styles.logoSection}>
             {/* Tavvy Logo */}
             <Image
-              source={require('../assets/brand/logo-horizontal.png')}
+              source={require('../assets/brand/logo-horizontal-mobile.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />
