@@ -361,12 +361,12 @@ export async function searchPlacesInBounds(options: {
 
     const searchParams: any = {
       q: category || '*',
-      // ENHANCED: Search with tap_signals for better relevance
-      query_by: 'name,tap_signals,categories',
-      query_by_weights: '3,5,2',
+      // Search by name and categories
+      query_by: 'name,categories',
+      query_by_weights: '3,2',
       
-      // ENHANCED: Sort by tap score first, then proximity
-      sort_by: `tap_quality_score:desc,location(${centerLat}, ${centerLng}):asc`,
+      // Sort by proximity to center point
+      sort_by: `location(${centerLat}, ${centerLng}):asc`,
       
       // Note: Not using filter_by to avoid schema issues
       // Results will be sorted by distance from center point
@@ -435,15 +435,15 @@ export async function getAutocompleteSuggestions(
   try {
     const searchParams = {
       q: query,
-      // Search by name and tap_signals for better suggestions
-      query_by: 'name,tap_signals',
+      // Search by name only
+      query_by: 'name',
       
       // Enable prefix search for better autocomplete
-      prefix: 'true,true',  // Enable prefix search on both fields
+      prefix: 'true',
       infix: 'fallback',    // Fallback to infix if prefix finds nothing
       
-      // Sort by tap count first, then popularity
-      sort_by: 'tap_total:desc,popularity:desc',
+      // Sort by popularity
+      sort_by: 'popularity:desc',
       
       per_page: limit.toString(),
     };
