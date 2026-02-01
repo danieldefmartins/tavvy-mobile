@@ -219,12 +219,12 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
   try {
     const searchParams: any = {
       q: query || '*',
-      // ENHANCED: Search tap_signals field with HIGHEST weight for user-validated results
-      query_by: 'name,tap_signals,categories,location_locality,location_region',
-      query_by_weights: '4,5,3,1,1',  // tap_signals gets highest weight!
+      // Search by name, categories, and location
+      query_by: 'name,categories,location_locality,location_region',
+      query_by_weights: '4,3,1,1',
       
-      // ENHANCED: Sort by tap quality score first, then popularity
-      sort_by: 'tap_quality_score:desc,popularity:desc',      
+      // Sort by popularity (tap-based sorting will be added when tap data is available)
+      sort_by: 'popularity:desc',      
       per_page: limit,
       page: Math.floor(offset / limit) + 1,
       
