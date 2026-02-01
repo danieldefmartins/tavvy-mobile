@@ -285,7 +285,7 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[Typesense] HTTP Error:', response.status, errorText);
+      console.warn('[Typesense] HTTP Error:', response.status, errorText);
       throw new Error(`Typesense search failed: ${response.statusText} - ${errorText}`);
     }
 
@@ -327,7 +327,7 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
     
     return result;
   } catch (error: any) {
-    console.error('[typesenseService] Search failed:', error);
+    console.warn('[typesenseService] Search failed:', error);
     
     // Log failed search
     logSearchAnalytics({
@@ -392,7 +392,7 @@ export async function searchPlacesInBounds(options: {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[typesenseService] Typesense API error:', errorText);
+      console.warn('[typesenseService] Typesense API error:', errorText);
       throw new Error(`Typesense bounds search failed: ${response.statusText}`);
     }
 
@@ -420,7 +420,7 @@ export async function searchPlacesInBounds(options: {
       page: 1,
     };
   } catch (error) {
-    console.error('[typesenseService] Bounds search failed:', error);
+    console.warn('[typesenseService] Bounds search failed:', error);
     // Return empty result instead of crashing the app
     return {
       places: [],
@@ -478,7 +478,7 @@ export async function getAutocompleteSuggestions(
 
     return suggestions;
   } catch (error) {
-    console.error('[typesenseService] Autocomplete failed:', error);
+    console.warn('[typesenseService] Autocomplete failed:', error);
     return [];
   }
 }
@@ -522,7 +522,7 @@ export async function getPlaceById(placeId: string): Promise<PlaceSearchResult |
     const doc = await response.json();
     return transformTypesensePlace(doc);
   } catch (error) {
-    console.error('[typesenseService] Get place by ID failed:', error);
+    console.warn('[typesenseService] Get place by ID failed:', error);
     return null;
   }
 }

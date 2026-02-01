@@ -431,16 +431,29 @@ export async function searchSuggestions(
   // ============================================
   // TRY TYPESENSE FIRST (100-500x faster!)
   // ============================================
-  try {
-    const typesenseResult = await typesenseSearch({
-      query: searchTerm,
-      latitude: userLocation?.latitude,
-      longitude: userLocation?.longitude,
-      radiusKm: 50,
-      limit,
-    });
+  
+  // Retry logic with exponential backoff
+  const MAX_RETRIES = 2;
+  let lastError: any = null;
+  
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        // Exponential backoff: 100ms, 200ms, 400ms
+        const delay = 100 * Math.pow(2, attempt - 1);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        console.log(`[searchService] Retrying Typesense (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
+      }
+      
+      const typesenseResult = await typesenseSearch({
+        query: searchTerm,
+        latitude: userLocation?.latitude,
+        longitude: userLocation?.longitude,
+        radiusKm: 50,
+        limit,
+      });
 
-    if (typesenseResult.places && typesenseResult.places.length > 0) {
+      if (typesenseResult.places && typesenseResult.places.length > 0) {
       // Transform Typesense results to SearchResult format
       const results: SearchResult[] = typesenseResult.places.map(place => {
         // Determine source based on ID prefix
@@ -476,8 +489,13 @@ export async function searchSuggestions(
       console.log(`[searchService] ⚡ Typesense: ${results.length} results in ${typesenseResult.searchTimeMs}ms`);
       return results;
     }
-  } catch (typesenseError) {
-    console.warn('[searchService] Typesense failed, falling back to Supabase:', typesenseError);
+    } catch (typesenseError) {
+      lastError = typesenseError;
+      if (attempt === MAX_RETRIES) {
+        console.warn(`[searchService] Typesense failed after ${MAX_RETRIES + 1} attempts, falling back to Supabase:`, typesenseError);
+      }
+      // Continue to next retry attempt
+    }
   }
 
   // ============================================
@@ -514,6 +532,13 @@ export async function searchSuggestions(
             seenIds.add(r.id);
           }
         }
+      }
+      
+      // If STILL no results, do global search (no geo bounds)
+      if (results.length === 0) {
+        console.log(`[searchService] No bounded results, expanding search globally`);
+        const globalResults = await searchWithoutLocation(searchTerm, limit);
+        results = globalResults;
       }
       
       // Sort by distance
