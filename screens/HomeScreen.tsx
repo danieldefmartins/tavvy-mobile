@@ -1635,14 +1635,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 setTargetLocation([processedPlaces[0].longitude, processedPlaces[0].latitude]);
               }
             } else {
-              // No results, fall back to regular search
-              filterPlaces(searchQuery.trim());
-              switchToMapMode();
+              // No results found - just log and stay on current screen
+              console.log('[SmartSearch] No results found for smart search');
+              setFilteredPlaces([]);
             }
           } catch (error) {
             console.error('[SmartSearch] Error:', error);
-            filterPlaces(searchQuery.trim());
-            switchToMapMode();
+            // On error, just clear results and stay on current screen
+            setFilteredPlaces([]);
           }
         } else {
           // Default to map/places search
