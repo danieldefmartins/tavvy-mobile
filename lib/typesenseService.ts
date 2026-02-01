@@ -252,6 +252,8 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
     if (region) filters.push(`region:=${region}`);
     if (locality) filters.push(`locality:=${locality}`);
     
+    console.log('[Typesense] Search params:', { query, country, region, locality, filters });
+    
     // Add category filter (if provided)
     if (categories && categories.length > 0) {
       const categoryQuery = categories.join(',');
@@ -276,6 +278,8 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
     }
 
     const data = await response.json();
+    
+    console.log('[Typesense] Response:', { found: data.found, hits: data.hits?.length, searchTimeMs: data.search_time_ms });
 
     const places = data.hits.map((hit: any) => {
       const doc = hit.document;
