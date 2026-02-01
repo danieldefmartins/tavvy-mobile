@@ -220,7 +220,7 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
     const searchParams: any = {
       q: query || '*',
       // ENHANCED: Search tap_signals field with HIGHEST weight for user-validated results
-      query_by: 'name,tap_signals,categories,locality,region',
+      query_by: 'name,tap_signals,categories,location_locality,location_region',
       query_by_weights: '4,5,3,1,1',  // tap_signals gets highest weight!
       
       // ENHANCED: Sort by tap quality score first, then popularity
@@ -234,7 +234,7 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
       drop_tokens_threshold: 2,        // Drop tokens if no results after 2 attempts
       
       // Add faceted search for category counts
-      facet_by: 'categories,tap_categories,region',
+      facet_by: 'categories,tap_categories,location_region',
       max_facet_values: 20,
       
       // Use max_score for best matching field
@@ -248,9 +248,9 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
 
     // Add country/region/locality filters
     const filters = [];
-    if (country) filters.push(`country:=${country}`);
-    if (region) filters.push(`region:=${region}`);
-    if (locality) filters.push(`locality:=${locality}`);
+    if (country) filters.push(`location_country:=${country}`);
+    if (region) filters.push(`location_region:=${region}`);
+    if (locality) filters.push(`location_locality:=${locality}`);
     
     console.log('[Typesense] Search params:', { query, country, region, locality, filters });
     
