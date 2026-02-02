@@ -182,6 +182,8 @@ export const PRIMARY_CATEGORIES: PrimaryCategory[] = [
       { slug: 'driving_school_auto', name: 'Driving School', iconKey: 'car', sortOrder: 24 },
       { slug: 'smog_check', name: 'Smog Check', iconKey: 'cloud', sortOrder: 25 },
       { slug: 'auto_insurance', name: 'Auto Insurance', iconKey: 'shield', sortOrder: 26 },
+      { slug: 'roadside_assistance', name: 'Roadside Assistance', iconKey: 'car', sortOrder: 27 },
+      { slug: 'windshield_repair', name: 'Windshield Repair', iconKey: 'construct', sortOrder: 28 },
     ],
   },
 
@@ -653,6 +655,12 @@ export const PRIMARY_CATEGORIES: PrimaryCategory[] = [
       { slug: 'solar', name: 'Solar Installation', iconKey: 'sunny', sortOrder: 38 },
       { slug: 'septic', name: 'Septic Service', iconKey: 'water', sortOrder: 39 },
       { slug: 'well_service', name: 'Well Service', iconKey: 'water', sortOrder: 40 },
+      { slug: 'air_duct_cleaning', name: 'Air Duct Cleaning', iconKey: 'cloud', sortOrder: 41 },
+      { slug: 'foundation_repair', name: 'Foundation Repair', iconKey: 'construct', sortOrder: 42 },
+      { slug: 'water_damage', name: 'Water Damage Restoration', iconKey: 'water', sortOrder: 43 },
+      { slug: 'snow_removal', name: 'Snow Removal', iconKey: 'snow', sortOrder: 44 },
+      { slug: 'siding', name: 'Siding', iconKey: 'home', sortOrder: 45 },
+      { slug: 'countertop_installation', name: 'Countertop Installation', iconKey: 'construct', sortOrder: 46 },
     ],
   },
 
@@ -832,6 +840,7 @@ export const PRIMARY_CATEGORIES: PrimaryCategory[] = [
       { slug: 'life_coach', name: 'Life Coach', iconKey: 'happy', sortOrder: 38 },
       { slug: 'career_counselor', name: 'Career Counselor', iconKey: 'briefcase', sortOrder: 39 },
       { slug: 'tutor_pro', name: 'Tutor', iconKey: 'book', sortOrder: 40 },
+      { slug: 'bankruptcy_lawyer', name: 'Bankruptcy Lawyer', iconKey: 'document', sortOrder: 41 },
     ],
   },
 

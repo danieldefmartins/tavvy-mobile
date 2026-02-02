@@ -85,25 +85,65 @@ const COLORS = {
 
 // Category icons mapping
 const CATEGORY_ICONS: Record<string, string> = {
+  // Food
   'Food Trucks': 'fast-food',
-  'Mobile Services': 'construct',
-  'Pop-ups': 'storefront',
   'Coffee': 'cafe',
   'Ice Cream': 'ice-cream',
   'BBQ': 'flame',
   'Tacos': 'restaurant',
+  'Pizza': 'pizza',
+  'Pop-ups': 'storefront',
+  // Auto
+  'Mobile Car Wash': 'car',
+  'Mobile Detailing': 'sparkles',
+  'Mobile Mechanic': 'build',
+  'Mobile Tire Service': 'ellipse',
+  // Pet
+  'Mobile Pet Grooming': 'paw',
+  'Mobile Dog Training': 'paw',
+  'Mobile Vet': 'medkit',
+  // Personal Care
+  'Mobile Hair Stylist': 'cut',
+  'Mobile Nail Tech': 'color-palette',
+  'Mobile Massage': 'hand-left',
+  // Professional
+  'Mobile Notary': 'document',
+  'Mobile DJ': 'musical-notes',
+  'Mobile Photo Booth': 'camera',
+  // General
+  'Mobile Services': 'construct',
   'default': 'location',
 };
 
 // Category colors for markers
 const CATEGORY_COLORS: Record<string, string> = {
+  // Food - Warm colors
   'Food Trucks': '#EF4444',
-  'Mobile Services': '#3B82F6',
-  'Pop-ups': '#8B5CF6',
   'Coffee': '#78350F',
   'Ice Cream': '#EC4899',
   'BBQ': '#F97316',
   'Tacos': '#EAB308',
+  'Pizza': '#DC2626',
+  'Pop-ups': '#8B5CF6',
+  // Auto - Blue/Gray
+  'Mobile Car Wash': '#3B82F6',
+  'Mobile Detailing': '#6366F1',
+  'Mobile Mechanic': '#64748B',
+  'Mobile Tire Service': '#475569',
+  // Pet - Green
+  'Mobile Pet Grooming': '#10B981',
+  'Mobile Dog Training': '#059669',
+  'Mobile Vet': '#14B8A6',
+  // Personal Care - Pink/Purple
+  'Mobile Hair Stylist': '#D946EF',
+  'Mobile Nail Tech': '#A855F7',
+  'Mobile Massage': '#8B5CF6',
+  // Professional - Teal/Blue
+  'Mobile Notary': '#0891B2',
+  'Mobile DJ': '#7C3AED',
+  'Mobile Photo Booth': '#2563EB',
+  // General
+  'Mobile Services': '#3B82F6',
   'default': '#10B981',
 };
 
@@ -111,11 +151,19 @@ const CATEGORY_COLORS: Record<string, string> = {
 const FILTER_CATEGORIES = [
   { id: 'all', name: 'All', icon: 'grid-outline' },
   { id: 'live', name: 'Live Now', icon: 'radio-outline' },
-  { id: 'food', name: 'Food', icon: 'restaurant-outline' },
-  { id: 'pet-grooming', name: 'Pet Grooming', icon: 'paw-outline' },
-  { id: 'hair-dresser', name: 'Hair Dresser', icon: 'cut-outline' },
+  { id: 'food', name: 'Food Trucks', icon: 'fast-food-outline' },
   { id: 'coffee', name: 'Coffee', icon: 'cafe-outline' },
-  { id: 'mobile-services', name: 'Services', icon: 'construct-outline' },
+  { id: 'ice-cream', name: 'Ice Cream', icon: 'ice-cream-outline' },
+  { id: 'pet-grooming', name: 'Pet Grooming', icon: 'paw-outline' },
+  { id: 'car-wash', name: 'Car Wash', icon: 'car-outline' },
+  { id: 'auto-detailing', name: 'Detailing', icon: 'sparkles-outline' },
+  { id: 'mechanic', name: 'Mechanic', icon: 'build-outline' },
+  { id: 'hair-beauty', name: 'Hair & Beauty', icon: 'cut-outline' },
+  { id: 'massage', name: 'Massage', icon: 'hand-left-outline' },
+  { id: 'notary', name: 'Notary', icon: 'document-outline' },
+  { id: 'photography', name: 'Photo Booth', icon: 'camera-outline' },
+  { id: 'dj', name: 'DJ', icon: 'musical-notes-outline' },
+  { id: 'other', name: 'Other', icon: 'ellipsis-horizontal-outline' },
 ];
 
 interface LiveSession {
