@@ -2774,11 +2774,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             </View>
             <TouchableOpacity 
               style={[styles.avatarButton, { backgroundColor: isDark ? '#2D2D2D' : '#667EEA' }]}
-              onPress={() => navigation.navigate('Apps', { screen: 'ProfileMain' })}
+              onPress={() => navigation.navigate('Login')}
             >
-              <Text style={styles.avatarText}>
-                {firstName.charAt(0).toUpperCase()}
-              </Text>
+              <Ionicons name="person-circle-outline" size={32} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
