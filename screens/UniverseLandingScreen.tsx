@@ -33,7 +33,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabaseClient';
 import { type AtlasUniverse } from '../lib/atlas';
 import { useTranslation } from 'react-i18next';
-import MapView, { Marker } from 'react-native-maps';
 
 const { width } = Dimensions.get('window');
 
@@ -460,51 +459,36 @@ export default function UniverseLandingScreen() {
   // Map Tab
   const renderMapTab = () => {
     const hasCoordinates = universe?.latitude && universe?.longitude;
-    const placesWithCoords = places.filter(p => p.latitude && p.longitude);
 
     return (
       <View style={styles.mapTabContainer}>
-        {hasCoordinates ? (
-          <MapView
-            style={styles.fullMap}
-            initialRegion={{
-              latitude: universe.latitude!,
-              longitude: universe.longitude!,
-              latitudeDelta: 0.05,
-              longitudeDelta: 0.05,
-            }}
-          >
-            {/* Universe center marker */}
-            <Marker
-              coordinate={{
-                latitude: universe.latitude!,
-                longitude: universe.longitude!,
+        <View style={styles.mapPlaceholder}>
+          <Ionicons name="map-outline" size={64} color="#9CA3AF" />
+          <Text style={styles.mapPlaceholderText}>Map coming soon</Text>
+          <Text style={styles.mapPlaceholderSubtext}>
+            {hasCoordinates 
+              ? `${universe?.location || 'Location available'}` 
+              : 'Location data not available yet'}
+          </Text>
+          {hasCoordinates && (
+            <TouchableOpacity 
+              style={styles.openMapsButton}
+              onPress={() => {
+                // Open in external maps app
+                const url = Platform.select({
+                  ios: `maps:?q=${universe?.name}&ll=${universe?.latitude},${universe?.longitude}`,
+                  android: `geo:${universe?.latitude},${universe?.longitude}?q=${universe?.name}`,
+                });
+                if (url) {
+                  import('react-native').then(({ Linking }) => Linking.openURL(url));
+                }
               }}
-              title={universe.name}
-              description={universe.location || ''}
-            />
-            
-            {/* Place markers */}
-            {placesWithCoords.map((place) => (
-              <Marker
-                key={place.id}
-                coordinate={{
-                  latitude: place.latitude!,
-                  longitude: place.longitude!,
-                }}
-                title={place.name}
-                description={place.tavvy_category || ''}
-                onCalloutPress={() => handlePlacePress(place)}
-              />
-            ))}
-          </MapView>
-        ) : (
-          <View style={styles.mapPlaceholder}>
-            <Ionicons name="map-outline" size={64} color="#9CA3AF" />
-            <Text style={styles.mapPlaceholderText}>Map coming soon</Text>
-            <Text style={styles.mapPlaceholderSubtext}>Location data not available yet</Text>
-          </View>
-        )}
+            >
+              <Ionicons name="navigate-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.openMapsButtonText}>Open in Maps</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     );
   };
@@ -1239,6 +1223,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     marginTop: 4,
+    textAlign: 'center',
+  },
+  openMapsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#06B6D4',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    marginTop: 16,
+    gap: 8,
+  },
+  openMapsButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   // Reviews Tab Styles
   reviewsTabContainer: {
