@@ -3,7 +3,11 @@
  * Display a single universe with its sub-universes (planets) and places
  * Path: screens/UniverseLandingScreen.tsx
  *
- * NOW CONNECTED TO SUPABASE - Fetches real data from atlas_universes and places tables
+ * Features:
+ * - Working tabs: Places, Map, Reviews, Info
+ * - Add Place button for verified users
+ * - Reviews section matching Place Details style
+ * - Suggest Changes functionality
  */
 
 import React, { useState, useEffect } from 'react';
@@ -19,13 +23,17 @@ import {
   StatusBar,
   Platform,
   ActivityIndicator,
+  Alert,
+  TextInput,
+  Modal,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabaseClient';
 import { type AtlasUniverse } from '../lib/atlas';
 import { useTranslation } from 'react-i18next';
+import MapView, { Marker } from 'react-native-maps';
 
 const { width } = Dimensions.get('window');
 
@@ -41,9 +49,8 @@ const getCategoryFallbackImage = (category: string): string => {
     'ride': 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800',
     'attraction': 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800',
     'theme park': 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800',
-    'family': 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800',
-    'themed': 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800',
-    'unique': 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800',
+    'restroom': 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800',
+    'dining': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
     'default': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
   };
   
@@ -62,6 +69,16 @@ interface Place {
   total_signals?: number;
   thumbnail_url?: string;
   is_open?: boolean;
+  latitude?: number;
+  longitude?: number;
+}
+
+interface Review {
+  id: string;
+  type: 'good' | 'vibe' | 'heads_up';
+  text: string;
+  user_name: string;
+  created_at: string;
 }
 
 export default function UniverseLandingScreen() {
@@ -74,8 +91,19 @@ export default function UniverseLandingScreen() {
   const [universe, setUniverse] = useState<AtlasUniverse | null>(null);
   const [subUniverses, setSubUniverses] = useState<AtlasUniverse[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [activeTab, setActiveTab] = useState('Places');
   const [activeZone, setActiveZone] = useState('All Zones');
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Modal states
+  const [showAddPlaceModal, setShowAddPlaceModal] = useState(false);
+  const [showSuggestModal, setShowSuggestModal] = useState(false);
+  const [suggestionText, setSuggestionText] = useState('');
+  const [addPlaceType, setAddPlaceType] = useState<string | null>(null);
+
+  // Check if user is verified (simplified - you'd check from auth context)
+  const [isVerified, setIsVerified] = useState(true); // TODO: Get from auth context
 
   useEffect(() => {
     if (universeId) {
@@ -131,7 +159,9 @@ export default function UniverseLandingScreen() {
             tavvy_category,
             tavvy_subcategory,
             total_signals,
-            thumbnail_url
+            thumbnail_url,
+            latitude,
+            longitude
           )
         `)
         .eq('universe_id', universeId)
@@ -144,6 +174,18 @@ export default function UniverseLandingScreen() {
         setPlaces(extractedPlaces);
       }
 
+      // Fetch reviews for this universe
+      const { data: reviewsData, error: reviewsError } = await supabase
+        .from('universe_reviews')
+        .select('*')
+        .eq('universe_id', universeId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (!reviewsError && reviewsData) {
+        setReviews(reviewsData);
+      }
+
     } catch (error) {
       console.error('Error loading universe data:', error);
     } finally {
@@ -153,10 +195,10 @@ export default function UniverseLandingScreen() {
 
   // Build stats from real data
   const stats = [
-    { val: String(universe?.place_count || places.length || 0), label: "Places" },
-    { val: formatNumber(universe?.total_signals || 0), label: "Signals" },
-    { val: String(universe?.sub_universe_count || subUniverses.length || 0), label: "Parks" },
-    { val: "—", label: "Entrances" }
+    { val: String(universe?.place_count || places.length || 0), label: "Places", icon: "location" },
+    { val: "—", label: "Map", icon: "map" },
+    { val: formatNumber(universe?.total_signals || reviews.length || 0), label: "Reviews", icon: "chatbubbles" },
+    { val: "Info", label: "Info", icon: "information-circle" }
   ];
 
   // Build zones from sub-universes
@@ -165,8 +207,14 @@ export default function UniverseLandingScreen() {
     ...subUniverses.map(su => su.name)
   ];
 
-  // Filter places by zone if needed
-  const filteredPlaces = places; // For now, show all places
+  // Filter places by search and zone
+  const filteredPlaces = places.filter(place => {
+    const matchesSearch = !searchQuery || 
+      place.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (place.tavvy_category || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesZone = activeZone === 'All Zones' || true; // TODO: Filter by zone
+    return matchesSearch && matchesZone;
+  });
 
   // Format large numbers
   function formatNumber(num: number): string {
@@ -177,15 +225,66 @@ export default function UniverseLandingScreen() {
 
   // Handle place press - navigate to PlaceDetails
   const handlePlacePress = (place: Place) => {
-    // Navigate to PlaceDetails within the Universe stack
     navigation.navigate('PlaceDetails', { placeId: place.id });
   };
 
   // Handle sub-universe (planet) press
   const handleSubUniversePress = (subUniverse: AtlasUniverse) => {
-    // Navigate to the same screen but with the sub-universe ID
     navigation.push('UniverseLanding', { universeId: subUniverse.id });
   };
+
+  // Handle stat press - switch to appropriate tab
+  const handleStatPress = (label: string) => {
+    if (label === 'Places') setActiveTab('Places');
+    else if (label === 'Map') setActiveTab('Map');
+    else if (label === 'Reviews') setActiveTab('Reviews');
+    else if (label === 'Info') setActiveTab('Info');
+  };
+
+  // Handle add place
+  const handleAddPlace = (type: string) => {
+    setAddPlaceType(type);
+    // Navigate to add place screen with pre-selected type
+    navigation.navigate('AddPlace', { 
+      universeId: universeId, 
+      universeName: universe?.name,
+      placeType: type 
+    });
+    setShowAddPlaceModal(false);
+  };
+
+  // Handle submit suggestion
+  const handleSubmitSuggestion = async () => {
+    if (!suggestionText.trim()) {
+      Alert.alert('Error', 'Please enter your suggestion');
+      return;
+    }
+
+    try {
+      // Insert suggestion into database
+      const { error } = await supabase
+        .from('universe_suggestions')
+        .insert({
+          universe_id: universeId,
+          suggestion_text: suggestionText,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      Alert.alert('Thank you!', 'Your suggestion has been submitted for review.');
+      setSuggestionText('');
+      setShowSuggestModal(false);
+    } catch (error) {
+      console.error('Error submitting suggestion:', error);
+      Alert.alert('Error', 'Failed to submit suggestion. Please try again.');
+    }
+  };
+
+  // Group reviews by type
+  const goodReviews = reviews.filter(r => r.type === 'good');
+  const vibeReviews = reviews.filter(r => r.type === 'vibe');
+  const headsUpReviews = reviews.filter(r => r.type === 'heads_up');
 
   if (loading) {
     return (
@@ -201,12 +300,383 @@ export default function UniverseLandingScreen() {
       <View style={[styles.container, styles.loadingContainer]}>
         <Ionicons name="planet-outline" size={48} color="#9CA3AF" />
         <Text style={styles.loadingText}>Universe not found</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonStyle}>
           <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
   }
+
+  // Render tab content based on active tab
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'Places':
+        return renderPlacesTab();
+      case 'Map':
+        return renderMapTab();
+      case 'Reviews':
+        return renderReviewsTab();
+      case 'Info':
+        return renderInfoTab();
+      default:
+        return renderPlacesTab();
+    }
+  };
+
+  // Places Tab
+  const renderPlacesTab = () => (
+    <>
+      {/* Search & Filter */}
+      <View style={styles.filterSection}>
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={16} color="#9CA3AF" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search places..."
+            placeholderTextColor="#9CA3AF"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+        </View>
+        
+        {zones.length > 1 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.zonesContainer}>
+            {zones.map((zone) => (
+              <TouchableOpacity 
+                key={zone}
+                style={[styles.zoneChip, activeZone === zone && styles.zoneChipActive]}
+                onPress={() => setActiveZone(zone)}
+              >
+                <Text style={[styles.zoneText, activeZone === zone && styles.zoneTextActive]}>{zone}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+      </View>
+
+      {/* Sub-Universes (Planets) Section */}
+      {subUniverses.length > 0 && (
+        <View style={styles.subUniversesSection}>
+          <Text style={styles.sectionTitle}>Parks & Areas</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subUniversesContainer}>
+            {subUniverses.map((subUniverse) => (
+              <TouchableOpacity 
+                key={subUniverse.id} 
+                style={styles.subUniverseCard}
+                onPress={() => handleSubUniversePress(subUniverse)}
+              >
+                <Image 
+                  source={{ uri: subUniverse.thumbnail_image_url || PLACEHOLDER_IMAGE }} 
+                  style={styles.subUniverseImage} 
+                />
+                <View style={styles.subUniverseContent}>
+                  <Text style={styles.subUniverseName} numberOfLines={1}>{subUniverse.name}</Text>
+                  <Text style={styles.subUniverseCount}>{subUniverse.place_count || 0} places</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Quick Actions */}
+      <View style={styles.quickActions}>
+        {[
+          { icon: 'exit-outline', label: "Entrances", type: "entrance" },
+          { icon: 'restaurant-outline', label: "Dining", type: "dining" },
+          { icon: 'water-outline', label: "Restrooms", type: "restroom" },
+          { icon: 'car-outline', label: "Parking", type: "parking" }
+        ].map((action, i) => (
+          <TouchableOpacity 
+            key={i} 
+            style={styles.actionButton}
+            onPress={() => {
+              // Filter places by type
+              setSearchQuery(action.type);
+            }}
+          >
+            <Ionicons name={action.icon as any} size={24} color="#374151" />
+            <Text style={styles.actionLabel}>{action.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Places List */}
+      <View style={styles.placesSection}>
+        <View style={styles.placesHeader}>
+          <Text style={styles.placesTitle}>Places in this Universe</Text>
+          <Text style={styles.placesCount}>{filteredPlaces.length} places</Text>
+        </View>
+
+        {filteredPlaces.length > 0 ? (
+          filteredPlaces.map((place) => (
+            <TouchableOpacity 
+              key={place.id} 
+              style={styles.placeCard}
+              onPress={() => handlePlacePress(place)}
+            >
+              <Image 
+                source={{ uri: place.thumbnail_url || getCategoryFallbackImage(place.tavvy_category || '') }} 
+                style={styles.placeImage} 
+              />
+              <View style={styles.placeContent}>
+                <View style={styles.placeHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.placeName} numberOfLines={1}>{place.name}</Text>
+                    <Text style={styles.placeZone}>{place.tavvy_category || 'Attraction'}</Text>
+                  </View>
+                </View>
+                <View style={styles.placeTags}>
+                  <View style={styles.placeTag}>
+                    <Text style={styles.placeTagText}>✨ {place.total_signals || 0} signals</Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="location-outline" size={48} color="#9CA3AF" />
+            <Text style={styles.emptyStateText}>No places found</Text>
+            {isVerified && (
+              <TouchableOpacity 
+                style={styles.addFirstPlaceButton}
+                onPress={() => setShowAddPlaceModal(true)}
+              >
+                <Text style={styles.addFirstPlaceText}>Add the first place</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </View>
+    </>
+  );
+
+  // Map Tab
+  const renderMapTab = () => {
+    const hasCoordinates = universe?.latitude && universe?.longitude;
+    const placesWithCoords = places.filter(p => p.latitude && p.longitude);
+
+    return (
+      <View style={styles.mapTabContainer}>
+        {hasCoordinates ? (
+          <MapView
+            style={styles.fullMap}
+            initialRegion={{
+              latitude: universe.latitude!,
+              longitude: universe.longitude!,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
+            }}
+          >
+            {/* Universe center marker */}
+            <Marker
+              coordinate={{
+                latitude: universe.latitude!,
+                longitude: universe.longitude!,
+              }}
+              title={universe.name}
+              description={universe.location || ''}
+            />
+            
+            {/* Place markers */}
+            {placesWithCoords.map((place) => (
+              <Marker
+                key={place.id}
+                coordinate={{
+                  latitude: place.latitude!,
+                  longitude: place.longitude!,
+                }}
+                title={place.name}
+                description={place.tavvy_category || ''}
+                onCalloutPress={() => handlePlacePress(place)}
+              />
+            ))}
+          </MapView>
+        ) : (
+          <View style={styles.mapPlaceholder}>
+            <Ionicons name="map-outline" size={64} color="#9CA3AF" />
+            <Text style={styles.mapPlaceholderText}>Map coming soon</Text>
+            <Text style={styles.mapPlaceholderSubtext}>Location data not available yet</Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  // Reviews Tab (matching Place Details style)
+  const renderReviewsTab = () => (
+    <View style={styles.reviewsTabContainer}>
+      {/* Community Signals Card */}
+      <View style={styles.signalsCard}>
+        <Text style={styles.signalsTitle}>Community Reviews</Text>
+        
+        {/* The Good - Blue */}
+        <TouchableOpacity 
+          style={[styles.signalBar, { backgroundColor: '#0A84FF' }]}
+          onPress={() => navigation.navigate('AddUniverseReview', { 
+            universeId: universeId, 
+            universeName: universe?.name,
+            reviewType: 'good'
+          })}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="thumbs-up" size={18} color="#FFFFFF" style={{ marginRight: 10 }} />
+          <Text style={styles.signalBarText}>
+            {goodReviews.length > 0 
+              ? `The Good · ${goodReviews.length} reviews` 
+              : 'The Good · Be the first to tap!'}
+          </Text>
+        </TouchableOpacity>
+        
+        {/* The Vibe - Purple */}
+        <TouchableOpacity 
+          style={[styles.signalBar, { backgroundColor: '#8B5CF6' }]}
+          onPress={() => navigation.navigate('AddUniverseReview', { 
+            universeId: universeId, 
+            universeName: universe?.name,
+            reviewType: 'vibe'
+          })}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="sparkles" size={18} color="#FFFFFF" style={{ marginRight: 10 }} />
+          <Text style={styles.signalBarText}>
+            {vibeReviews.length > 0 
+              ? `The Vibe · ${vibeReviews.length} reviews` 
+              : 'The Vibe · Be the first to tap!'}
+          </Text>
+        </TouchableOpacity>
+        
+        {/* Heads Up - Orange */}
+        <TouchableOpacity 
+          style={[styles.signalBar, { backgroundColor: '#FF9500', marginBottom: 0 }]}
+          onPress={() => navigation.navigate('AddUniverseReview', { 
+            universeId: universeId, 
+            universeName: universe?.name,
+            reviewType: 'heads_up'
+          })}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="alert-circle" size={18} color="#FFFFFF" style={{ marginRight: 10 }} />
+          <Text style={styles.signalBarText}>
+            {headsUpReviews.length > 0 
+              ? `Heads Up · ${headsUpReviews.length} reviews` 
+              : 'Heads Up · Be the first to tap!'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Recent Reviews */}
+      {reviews.length > 0 && (
+        <View style={styles.recentReviewsSection}>
+          <Text style={styles.sectionTitle}>Recent Reviews</Text>
+          {reviews.slice(0, 5).map((review) => (
+            <View key={review.id} style={styles.reviewCard}>
+              <View style={[
+                styles.reviewTypeBadge,
+                review.type === 'good' && { backgroundColor: '#0A84FF' },
+                review.type === 'vibe' && { backgroundColor: '#8B5CF6' },
+                review.type === 'heads_up' && { backgroundColor: '#FF9500' },
+              ]}>
+                <Ionicons 
+                  name={review.type === 'good' ? 'thumbs-up' : review.type === 'vibe' ? 'sparkles' : 'alert-circle'} 
+                  size={12} 
+                  color="#FFFFFF" 
+                />
+              </View>
+              <View style={styles.reviewContent}>
+                <Text style={styles.reviewText}>{review.text}</Text>
+                <Text style={styles.reviewMeta}>{review.user_name} · {new Date(review.created_at).toLocaleDateString()}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Been Here Section */}
+      <View style={styles.beenHereCard}>
+        <Text style={styles.beenHereTitle}>Been here?</Text>
+        <Text style={styles.beenHereSubtext}>Share your experience with the community</Text>
+        <TouchableOpacity 
+          style={styles.writeReviewButton}
+          onPress={() => navigation.navigate('AddUniverseReview', { 
+            universeId: universeId, 
+            universeName: universe?.name 
+          })}
+        >
+          <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.writeReviewButtonText}>Write a Review</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // Info Tab
+  const renderInfoTab = () => (
+    <View style={styles.infoTabContainer}>
+      {/* Universe Description */}
+      <View style={styles.infoCard}>
+        <Text style={styles.infoCardTitle}>About {universe?.name}</Text>
+        <Text style={styles.infoCardText}>
+          {universe?.description || 'No description available yet. Be the first to suggest one!'}
+        </Text>
+      </View>
+
+      {/* Location Info */}
+      <View style={styles.infoCard}>
+        <Text style={styles.infoCardTitle}>Location</Text>
+        <View style={styles.infoRow}>
+          <Ionicons name="location" size={20} color="#06B6D4" />
+          <Text style={styles.infoRowText}>{universe?.location || 'Location not specified'}</Text>
+        </View>
+        {universe?.latitude && universe?.longitude && (
+          <View style={styles.infoRow}>
+            <Ionicons name="navigate" size={20} color="#06B6D4" />
+            <Text style={styles.infoRowText}>
+              {universe.latitude.toFixed(4)}, {universe.longitude.toFixed(4)}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Stats */}
+      <View style={styles.infoCard}>
+        <Text style={styles.infoCardTitle}>Statistics</Text>
+        <View style={styles.statsGrid}>
+          <View style={styles.statBox}>
+            <Text style={styles.statBoxValue}>{universe?.place_count || places.length}</Text>
+            <Text style={styles.statBoxLabel}>Places</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statBoxValue}>{subUniverses.length}</Text>
+            <Text style={styles.statBoxLabel}>Parks/Areas</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statBoxValue}>{reviews.length}</Text>
+            <Text style={styles.statBoxLabel}>Reviews</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statBoxValue}>{universe?.total_signals || 0}</Text>
+            <Text style={styles.statBoxLabel}>Signals</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Suggest Changes */}
+      <TouchableOpacity 
+        style={styles.suggestButton}
+        onPress={() => setShowSuggestModal(true)}
+      >
+        <Ionicons name="create-outline" size={20} color="#06B6D4" />
+        <Text style={styles.suggestButtonText}>Suggest a Change</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -219,7 +689,10 @@ export default function UniverseLandingScreen() {
             source={{ uri: universe.banner_image_url || PLACEHOLDER_IMAGE }} 
             style={styles.heroImage} 
           />
-          <View style={styles.heroOverlay} />
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.7)']}
+            style={styles.heroGradient}
+          />
           
           {/* Hero Nav */}
           <SafeAreaView style={styles.heroNav}>
@@ -250,19 +723,24 @@ export default function UniverseLandingScreen() {
           </View>
         </View>
 
-        {/* Stats Bar */}
+        {/* Stats Bar - Now Clickable */}
         <View style={styles.statsContainer}>
           {stats.map((stat, i) => (
-            <View key={i} style={styles.statItem}>
-              <Text style={styles.statValue}>{stat.val}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-            </View>
+            <TouchableOpacity 
+              key={i} 
+              style={styles.statItem}
+              onPress={() => handleStatPress(stat.label)}
+            >
+              <Ionicons name={stat.icon as any} size={20} color={activeTab === stat.label ? '#06B6D4' : '#9CA3AF'} />
+              <Text style={[styles.statValue, activeTab === stat.label && styles.statValueActive]}>{stat.val}</Text>
+              <Text style={[styles.statLabel, activeTab === stat.label && styles.statLabelActive]}>{stat.label}</Text>
+            </TouchableOpacity>
           ))}
         </View>
 
         {/* Tab Navigation */}
         <View style={styles.tabsContainer}>
-          {["Places", "Map", "Signals", "Info"].map((tab) => (
+          {["Places", "Map", "Reviews", "Info"].map((tab) => (
             <TouchableOpacity 
               key={tab} 
               style={[styles.tabItem, activeTab === tab && styles.tabItemActive]}
@@ -273,117 +751,105 @@ export default function UniverseLandingScreen() {
           ))}
         </View>
 
-        {/* Search & Filter */}
-        <View style={styles.filterSection}>
-          <View style={styles.searchBar}>
-            <Ionicons name="search" size={16} color="#9CA3AF" />
-            <Text style={styles.searchPlaceholder}>Search in this universe...</Text>
-          </View>
-          
-          {zones.length > 1 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.zonesContainer}>
-              {zones.map((zone) => (
-                <TouchableOpacity 
-                  key={zone}
-                  style={[styles.zoneChip, activeZone === zone && styles.zoneChipActive]}
-                  onPress={() => setActiveZone(zone)}
-                >
-                  <Text style={[styles.zoneText, activeZone === zone && styles.zoneTextActive]}>{zone}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
-        </View>
-
-        {/* Sub-Universes (Planets) Section */}
-        {subUniverses.length > 0 && (
-          <View style={styles.subUniversesSection}>
-            <Text style={styles.sectionTitle}>Parks & Areas</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subUniversesContainer}>
-              {subUniverses.map((subUniverse) => (
-                <TouchableOpacity 
-                  key={subUniverse.id} 
-                  style={styles.subUniverseCard}
-                  onPress={() => handleSubUniversePress(subUniverse)}
-                >
-                  <Image 
-                    source={{ uri: subUniverse.thumbnail_image_url || PLACEHOLDER_IMAGE }} 
-                    style={styles.subUniverseImage} 
-                  />
-                  <View style={styles.subUniverseContent}>
-                    <Text style={styles.subUniverseName} numberOfLines={1}>{subUniverse.name}</Text>
-                    <Text style={styles.subUniverseCount}>{subUniverse.place_count || 0} places</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Map Preview */}
-        <TouchableOpacity style={styles.mapPreview}>
-          <Text style={styles.mapIcon}>🗺️</Text>
-          <Text style={styles.mapText}>View Universe Map →</Text>
-        </TouchableOpacity>
-
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          {[
-            { icon: 'exit-outline', label: "Entrances" },
-            { icon: 'restaurant-outline', label: "Dining" },
-            { icon: 'water-outline', label: "Restrooms" },
-            { icon: 'car-outline', label: "Parking" }
-          ].map((action, i) => (
-            <TouchableOpacity key={i} style={styles.actionButton}>
-              <Ionicons name={action.icon as any} size={24} color="#374151" />
-              <Text style={styles.actionLabel}>{action.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Places List */}
-        <View style={styles.placesSection}>
-          <View style={styles.placesHeader}>
-            <Text style={styles.placesTitle}>Places in this Universe</Text>
-            <Text style={styles.placesCount}>{filteredPlaces.length} places</Text>
-          </View>
-
-          {filteredPlaces.length > 0 ? (
-            filteredPlaces.map((place) => (
-              <TouchableOpacity 
-                key={place.id} 
-                style={styles.placeCard}
-                onPress={() => handlePlacePress(place)}
-              >
-                <Image 
-                  source={{ uri: place.thumbnail_url || getCategoryFallbackImage(place.tavvy_category || '') }} 
-                  style={styles.placeImage} 
-                />
-                <View style={styles.placeContent}>
-                  <View style={styles.placeHeader}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.placeName} numberOfLines={1}>{place.name}</Text>
-                      <Text style={styles.placeZone}>{place.tavvy_category || 'Attraction'}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.placeTags}>
-                    <View style={styles.placeTag}>
-                      <Text style={styles.placeTagText}>✨ {place.total_signals || 0} signals</Text>
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="location-outline" size={48} color="#9CA3AF" />
-              <Text style={styles.emptyStateText}>No places added yet</Text>
-            </View>
-          )}
-        </View>
+        {/* Tab Content */}
+        {renderTabContent()}
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Floating Add Place Button - Only for verified users */}
+      {isVerified && (
+        <TouchableOpacity 
+          style={styles.floatingAddButton}
+          onPress={() => setShowAddPlaceModal(true)}
+        >
+          <Ionicons name="add" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
+
+      {/* Add Place Modal */}
+      <Modal
+        visible={showAddPlaceModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAddPlaceModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add a Place</Text>
+              <TouchableOpacity onPress={() => setShowAddPlaceModal(false)}>
+                <Ionicons name="close" size={24} color="#1F2937" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalSubtitle}>What type of place would you like to add?</Text>
+            
+            <View style={styles.placeTypeGrid}>
+              {[
+                { icon: 'rocket-outline', label: 'Ride', type: 'ride' },
+                { icon: 'restaurant-outline', label: 'Dining', type: 'dining' },
+                { icon: 'water-outline', label: 'Restroom', type: 'restroom' },
+                { icon: 'storefront-outline', label: 'Shop', type: 'shop' },
+                { icon: 'ticket-outline', label: 'Attraction', type: 'attraction' },
+                { icon: 'car-outline', label: 'Parking', type: 'parking' },
+                { icon: 'exit-outline', label: 'Entrance', type: 'entrance' },
+                { icon: 'ellipsis-horizontal', label: 'Other', type: 'other' },
+              ].map((item) => (
+                <TouchableOpacity 
+                  key={item.type}
+                  style={styles.placeTypeButton}
+                  onPress={() => handleAddPlace(item.type)}
+                >
+                  <Ionicons name={item.icon as any} size={32} color="#06B6D4" />
+                  <Text style={styles.placeTypeLabel}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Suggest Changes Modal */}
+      <Modal
+        visible={showSuggestModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowSuggestModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Suggest a Change</Text>
+              <TouchableOpacity onPress={() => setShowSuggestModal(false)}>
+                <Ionicons name="close" size={24} color="#1F2937" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalSubtitle}>
+              Help us improve {universe?.name}. Your suggestion will be reviewed by our team.
+            </Text>
+            
+            <TextInput
+              style={styles.suggestionInput}
+              placeholder="Describe your suggestion..."
+              placeholderTextColor="#9CA3AF"
+              multiline
+              numberOfLines={5}
+              value={suggestionText}
+              onChangeText={setSuggestionText}
+              textAlignVertical="top"
+            />
+            
+            <TouchableOpacity 
+              style={styles.submitButton}
+              onPress={handleSubmitSuggestion}
+            >
+              <Text style={styles.submitButtonText}>Submit Suggestion</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -402,7 +868,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
   },
-  backButton: {
+  backButtonStyle: {
     marginTop: 16,
     paddingHorizontal: 20,
     paddingVertical: 10,
@@ -424,9 +890,8 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  heroOverlay: {
+  heroGradient: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   heroNav: {
     position: 'absolute',
@@ -493,10 +958,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  heroDot: {
-    color: '#fff',
-    marginHorizontal: 8,
-  },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -507,16 +968,25 @@ const styles = StyleSheet.create({
   },
   statItem: {
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
+    color: '#374151',
+    marginTop: 4,
+  },
+  statValueActive: {
     color: '#06B6D4',
   },
   statLabel: {
     fontSize: 11,
     color: '#9CA3AF',
     marginTop: 2,
+  },
+  statLabelActive: {
+    color: '#06B6D4',
   },
   tabsContainer: {
     flexDirection: 'row',
@@ -555,10 +1025,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
   },
-  searchPlaceholder: {
+  searchInput: {
+    flex: 1,
     marginLeft: 8,
-    color: '#9CA3AF',
-    fontSize: 13,
+    fontSize: 14,
+    color: '#1F2937',
   },
   zonesContainer: {
     paddingRight: 16,
@@ -625,26 +1096,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#6B7280',
   },
-  mapPreview: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    height: 140,
-    backgroundColor: '#E0F2FE',
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-  },
-  mapIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  mapText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#0284C7',
-  },
   quickActions: {
     flexDirection: 'row',
     paddingHorizontal: 16,
@@ -700,9 +1151,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  placeCardClosed: {
-    opacity: 0.7,
-  },
   placeImage: {
     width: 100,
     height: 100,
@@ -727,31 +1175,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#06B6D4',
     fontWeight: '500',
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  statusOpen: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#D1FAE5',
-  },
-  statusClosed: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FEE2E2',
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  statusTextOpen: {
-    color: '#059669',
-  },
-  statusTextClosed: {
-    color: '#DC2626',
   },
   placeTags: {
     flexDirection: 'row',
@@ -779,5 +1202,314 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 14,
     color: '#6B7280',
+  },
+  addFirstPlaceButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#06B6D4',
+    borderRadius: 8,
+  },
+  addFirstPlaceText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  // Map Tab Styles
+  mapTabContainer: {
+    flex: 1,
+    minHeight: 400,
+  },
+  fullMap: {
+    width: '100%',
+    height: 400,
+  },
+  mapPlaceholder: {
+    height: 400,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapPlaceholderText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#0284C7',
+    marginTop: 16,
+  },
+  mapPlaceholderSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  // Reviews Tab Styles
+  reviewsTabContainer: {
+    padding: 16,
+  },
+  signalsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  signalsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 16,
+  },
+  signalBar: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  signalBarText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+    fontStyle: 'italic',
+    opacity: 0.9,
+  },
+  recentReviewsSection: {
+    marginBottom: 16,
+  },
+  reviewCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  reviewTypeBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  reviewContent: {
+    flex: 1,
+  },
+  reviewText: {
+    fontSize: 14,
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  reviewMeta: {
+    fontSize: 12,
+    color: '#9CA3AF',
+  },
+  beenHereCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  beenHereTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  beenHereSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  writeReviewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#06B6D4',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    gap: 8,
+  },
+  writeReviewButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Info Tab Styles
+  infoTabContainer: {
+    padding: 16,
+  },
+  infoCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  infoCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 12,
+  },
+  infoCardText: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 22,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 12,
+  },
+  infoRowText: {
+    fontSize: 14,
+    color: '#4B5563',
+    flex: 1,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  statBox: {
+    width: '47%',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  statBoxValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#06B6D4',
+  },
+  statBoxLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  suggestButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#06B6D4',
+    borderRadius: 12,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  suggestButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#06B6D4',
+  },
+  // Floating Button
+  floatingAddButton: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#06B6D4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 20,
+  },
+  placeTypeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  placeTypeButton: {
+    width: '22%',
+    aspectRatio: 1,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  placeTypeLabel: {
+    fontSize: 11,
+    color: '#4B5563',
+    marginTop: 6,
+    fontWeight: '500',
+  },
+  suggestionInput: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 14,
+    color: '#1F2937',
+    minHeight: 120,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 16,
+  },
+  submitButton: {
+    backgroundColor: '#06B6D4',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  submitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
