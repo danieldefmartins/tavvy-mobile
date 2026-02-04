@@ -1403,6 +1403,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // ============================================
 
   const handleSearchInputChange = (text: string) => {
+    // Use functional update to prevent unnecessary re-renders
     setSearchQuery(text);
     
     // Clear previous debounce timer
@@ -2461,9 +2462,16 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     };
 
     const getDistance = (): string => {
-      if (!userLocation) return '';
+      if (!userLocation || !searchedAddress?.coordinates) return '';
       const [lon1, lat1] = userLocation;
       const [lon2, lat2] = searchedAddress.coordinates;
+      
+      // Validate coordinates
+      if (typeof lat1 !== 'number' || typeof lon1 !== 'number' || 
+          typeof lat2 !== 'number' || typeof lon2 !== 'number' ||
+          isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) {
+        return '';
+      }
       
       const R = 3959;
       const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -2473,6 +2481,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 Math.sin(dLon/2) * Math.sin(dLon/2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
       const distance = R * c;
+      
+      // Validate distance calculation
+      if (!isFinite(distance) || isNaN(distance)) return '';
       
       if (distance < 0.1) return 'Nearby';
       if (distance < 1) return `${(distance * 5280).toFixed(0)} ft away`;
