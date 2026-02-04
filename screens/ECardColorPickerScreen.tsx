@@ -32,6 +32,7 @@ const ECardColorPickerScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const params = route.params as RouteParams;
+  const { t } = useTranslation();
   
   const template = getTemplateById(params.templateId);
   const [selectedColorScheme, setSelectedColorScheme] = useState<string>(
@@ -47,7 +48,6 @@ const ECardColorPickerScreen: React.FC = () => {
   }
 
   const handleContinue = () => {
-  const { t } = useTranslation();
     const colorScheme = template.colorSchemes.find(cs => cs.id === selectedColorScheme);
     
     // If preserving data (editing template), go directly to dashboard with existing data
