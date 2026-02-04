@@ -425,7 +425,13 @@ export default function UniverseDiscoveryScreen() {
                       onPress={() => setActiveCategory(isActive ? 'All' : config.label)}
                       activeOpacity={0.7}
                     >
-                      {renderCategoryIcon(config, 28, isActive ? COLORS.accent : (isDark ? '#9CA3AF' : '#6B7280'))}
+                      {renderCategoryIcon(config, 32, isActive ? COLORS.accent : (isDark ? '#9CA3AF' : '#6B7280'))}
+                      <Text style={[
+                        styles.filterLabel,
+                        { color: isActive ? COLORS.accent : (isDark ? '#9CA3AF' : '#6B7280') }
+                      ]}>
+                        {config.label.split(' ')[0]}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -639,16 +645,23 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   filterButton: {
-    width: 72,
-    height: 72,
+    width: 80,
+    height: 90,
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 12,
   },
   filterButtonActive: {
     borderWidth: 2,
     borderColor: COLORS.accent,
     backgroundColor: 'rgba(102, 126, 234, 0.15)',
+  },
+  filterLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 6,
+    textAlign: 'center',
   },
 
   // Popular Section - Grid
