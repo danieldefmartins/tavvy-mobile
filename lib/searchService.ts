@@ -445,11 +445,16 @@ export async function searchSuggestions(
         console.log(`[searchService] Retrying Typesense (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
       }
       
+      // STRICT LOCATION FILTERING:
+      // When user has location, ONLY show nearby places (within 50km/30mi)
+      // This prevents showing places from other countries/states
+      // To search other locations, user must explicitly include location in query
+      // (e.g., "restaurants in New York" - handled by HomeScreen's parseSearchQuery)
       const typesenseResult = await typesenseSearch({
         query: searchTerm,
         latitude: userLocation?.latitude,
         longitude: userLocation?.longitude,
-        radiusKm: 50,
+        radiusKm: userLocation ? 50 : undefined, // Only apply radius if we have location
         limit,
       });
 

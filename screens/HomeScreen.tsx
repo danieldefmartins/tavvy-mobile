@@ -1446,6 +1446,23 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       const suggestions: SearchSuggestion[] = [];
       const query = text.toLowerCase();
 
+      // CATEGORY SUGGESTIONS FIRST - Show matching categories at the top
+      // This allows users to quickly select a category to see map results
+      const matchingCategories = SEARCHABLE_CATEGORIES
+        .filter(c => c.name.toLowerCase().includes(query))
+        .slice(0, 3); // Show up to 3 matching categories
+      
+      matchingCategories.forEach(cat => {
+        suggestions.push({
+          id: `category-${cat.name}`,
+          type: 'category',
+          title: cat.name,
+          subtitle: 'Tap to see nearby on map',
+          icon: cat.icon,
+          data: cat,
+        });
+      });
+
       // SMART PARSING: Parse natural language query for location
       const parsed = parseSearchQuery(text.trim());
       console.log('[Autocomplete] Parsed query:', parsed);
@@ -1534,21 +1551,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       });
     }
 
-    // Add matching categories
-    const matchingCategories = SEARCHABLE_CATEGORIES
-      .filter(c => c.name.toLowerCase().includes(query))
-      .slice(0, 2);
-    
-    matchingCategories.forEach(cat => {
-      suggestions.push({
-        id: `category-${cat.name}`,
-        type: 'category',
-        title: cat.name,
-        subtitle: 'Category',
-        icon: cat.icon,
-        data: cat,
-      });
-    });
+    // NOTE: Categories are now added at the TOP of suggestions (see above)
+    // This ensures users see category options first when searching
 
     // Add recent searches
     const matchingRecent = recentSearches

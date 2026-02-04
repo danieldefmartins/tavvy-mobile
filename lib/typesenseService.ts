@@ -156,13 +156,17 @@ function transformTypesensePlace(doc: any, distance?: number): PlaceSearchResult
     ? doc.categories[0].split('>').pop()?.trim()
     : undefined;
 
-  // Determine ID prefix based on source
-  const idPrefix = doc.id?.startsWith('tavvy:') ? 'tavvy:' : 'fsq:';
-  const placeId = doc.id?.replace(/^(tavvy:|fsq:)/, '') || doc.fsq_place_id;
+  // Extract the raw place ID without any prefix
+  // PlaceDetailsScreen expects either a UUID (Tavvy) or 24-char FSQ ID (no prefix)
+  const rawPlaceId = doc.id?.replace(/^(tavvy:|fsq:)/, '') || doc.fsq_place_id || doc.fsq_id;
+  
+  // Determine if this is a Tavvy place (UUID format) or FSQ place
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawPlaceId);
 
   return {
-    id: `${idPrefix}${placeId}`,
-    fsq_place_id: doc.fsq_id || doc.fsq_place_id || placeId,
+    // Use raw ID without prefix - PlaceDetailsScreen will look it up correctly
+    id: rawPlaceId,
+    fsq_place_id: doc.fsq_id || doc.fsq_place_id || rawPlaceId,
     name: doc.name,
     category,
     subcategory,
@@ -200,7 +204,7 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
     query,
     latitude,
     longitude,
-    radiusKm = 50,
+    radiusKm, // No default - must be explicitly set
     country,
     region,
     locality,
@@ -208,6 +212,20 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
     limit = 50,
     offset = 0,
   } = options;
+  
+  // LOCATION FILTERING LOGIC:
+  // - If latitude/longitude provided with radiusKm: Filter by geo radius (nearby search)
+  // - If locality/region/country provided: Filter by location name (explicit location search)
+  // - If neither: This is a global search (should be rare, only for specific use cases)
+  const hasGeoLocation = latitude !== undefined && longitude !== undefined && radiusKm !== undefined;
+  const hasExplicitLocation = locality || region || country;
+  
+  console.log('[Typesense] Search mode:', {
+    hasGeoLocation,
+    hasExplicitLocation,
+    radiusKm,
+    query
+  });
 
   // Check cache first
   const cacheKey = getCacheKey(options);
@@ -223,10 +241,11 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
       query_by: 'name,categories,location_locality,location_region',
       query_by_weights: '4,3,1,1',
       
-      // Sort by distance first when location is provided, then by popularity
+      // Sort by distance first when geo location filtering is active, then by popularity
       // This ensures nearby results always appear first (user requirement)
-      sort_by: (latitude && longitude) 
-        ? `location(${latitude}, ${longitude}):asc,popularity:desc`
+      // Only apply geo sorting when we have coordinates AND radius (nearby search)
+      sort_by: hasGeoLocation
+        ? `geocodes(${latitude}, ${longitude}):asc,popularity:desc`
         : 'popularity:desc',      
       per_page: limit,
       page: Math.floor(offset / limit) + 1,
@@ -247,9 +266,15 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
     // Build all filters (geo + location + category)
     const filters = [];
     
-    // Add geo-location filter if coordinates provided
-    if (latitude && longitude) {
-      filters.push(`location:(${latitude}, ${longitude}, ${radiusKm * 1000} m)`);
+    // Add geo-location filter ONLY if coordinates AND radiusKm are provided
+    // This is CRITICAL for ensuring nearby results - filter by radius FIRST
+    // Without radiusKm, we skip geo filtering (for explicit location searches like "restaurants in NYC")
+    if (hasGeoLocation) {
+      // Use geocodes field for geo filtering (matches Typesense schema)
+      // Convert km to meters for the radius
+      const radiusMeters = radiusKm! * 1000;
+      filters.push(`geocodes:(${latitude}, ${longitude}, ${radiusMeters} m)`);
+      console.log(`[Typesense] Geo filter: within ${radiusKm}km of (${latitude}, ${longitude})`);
     }
     
     // Add country/region/locality filters
