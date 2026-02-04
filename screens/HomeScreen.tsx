@@ -402,8 +402,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   // User location pulse animation
   const pulseAnim = useRef(new Animated.Value(1)).current;
   
-  // Map states - default to dark style in dark mode
-  const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>(isDark ? 'dark' : 'osm');
+  // Map states - ALWAYS use standard (OSM) style regardless of device theme
+  // Per user requirement: map should be standard (non-dark) regardless of device theme
+  const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('osm');
   const [currentMapBounds, setCurrentMapBounds] = useState<{
     minLat: number;
     maxLat: number;
@@ -485,10 +486,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     startPulseAnimation();
   }, [pulseAnim]);
 
-  // Auto-switch map style when theme changes
-  useEffect(() => {
-    setMapStyle(isDark ? 'dark' : 'osm');
-  }, [isDark]);
+  // NOTE: Map style is now fixed to 'osm' (standard) regardless of device theme
+  // Users can still manually switch map styles via the map layer popup
+  // Removed auto-switch behavior per user requirement
 
   // Handle camera movement when targetLocation changes
   useEffect(() => {

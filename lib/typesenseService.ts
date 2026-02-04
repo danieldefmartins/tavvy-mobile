@@ -223,8 +223,11 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
       query_by: 'name,categories,location_locality,location_region',
       query_by_weights: '4,3,1,1',
       
-      // Sort by popularity (tap-based sorting will be added when tap data is available)
-      sort_by: 'popularity:desc',      
+      // Sort by distance first when location is provided, then by popularity
+      // This ensures nearby results always appear first (user requirement)
+      sort_by: (latitude && longitude) 
+        ? `location(${latitude}, ${longitude}):asc,popularity:desc`
+        : 'popularity:desc',      
       per_page: limit,
       page: Math.floor(offset / limit) + 1,
       
@@ -275,57 +278,82 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
     const url = `${TYPESENSE_PROTOCOL}://${TYPESENSE_HOST}:${TYPESENSE_PORT}/collections/places/documents/search`;
     const queryString = new URLSearchParams(searchParams).toString();
 
-    const response = await fetch(`${url}?${queryString}`, {
-      headers: {
-        'X-TYPESENSE-API-KEY': TYPESENSE_API_KEY,
-      },
-    });
+    // Add timeout to prevent hanging requests (especially for 502 errors)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
 
-    console.log('[Typesense] Full URL:', `${url}?${queryString}`);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.warn('[Typesense] HTTP Error:', response.status, errorText);
-      throw new Error(`Typesense search failed: ${response.statusText} - ${errorText}`);
-    }
+    try {
+      const response = await fetch(`${url}?${queryString}`, {
+        headers: {
+          'X-TYPESENSE-API-KEY': TYPESENSE_API_KEY,
+        },
+        signal: controller.signal,
+      });
 
-    const data = await response.json();
-    console.log('[Typesense] Full response:', JSON.stringify(data, null, 2));
-    
-    console.log('[Typesense] Response:', { found: data.found, hits: data.hits?.length, searchTimeMs: data.search_time_ms });
-
-    const places = data.hits.map((hit: any) => {
-      const doc = hit.document;
-      const distance = hit.geo_distance_meters 
-        ? (hit.geo_distance_meters / 1609.34) // Convert meters to miles
-        : undefined;
+      clearTimeout(timeoutId);
+      console.log('[Typesense] Full URL:', `${url}?${queryString}`);
       
-      return transformTypesensePlace(doc, distance);
-    });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.warn('[Typesense] HTTP Error:', response.status, errorText);
+        
+        // Special handling for 502 Bad Gateway errors
+        if (response.status === 502) {
+          console.warn('[Typesense] 502 Bad Gateway - server may be restarting');
+          throw new Error('TYPESENSE_502: Search service temporarily unavailable');
+        }
+        
+        throw new Error(`Typesense search failed: ${response.statusText} - ${errorText}`);
+      }
 
-    const result = {
-      places,
-      totalFound: data.found,
-      searchTimeMs: data.search_time_ms,
-      page: data.page,
-    };
-    
-    // Cache the result
-    setCachedQuery(cacheKey, result);
-    
-    // Log analytics
-    logSearchAnalytics({
-      query: query || '*',
-      resultsCount: places.length,
-      searchTimeMs: Date.now() - startTime,
-      hasLocation: !!(latitude && longitude),
-      latitude,
-      longitude,
-      filters: categories,
-      source: 'typesense',
-    });
-    
-    return result;
+      const data = await response.json();
+      console.log('[Typesense] Full response:', JSON.stringify(data, null, 2));
+      
+      console.log('[Typesense] Response:', { found: data.found, hits: data.hits?.length, searchTimeMs: data.search_time_ms });
+
+      const places = data.hits.map((hit: any) => {
+        const doc = hit.document;
+        const distance = hit.geo_distance_meters 
+          ? (hit.geo_distance_meters / 1609.34) // Convert meters to miles
+          : undefined;
+        
+        return transformTypesensePlace(doc, distance);
+      });
+
+      const result = {
+        places,
+        totalFound: data.found,
+        searchTimeMs: data.search_time_ms,
+        page: data.page,
+      };
+      
+      // Cache the result
+      setCachedQuery(cacheKey, result);
+      
+      // Log analytics
+      logSearchAnalytics({
+        query: query || '*',
+        resultsCount: places.length,
+        searchTimeMs: Date.now() - startTime,
+        hasLocation: !!(latitude && longitude),
+        latitude,
+        longitude,
+        filters: categories,
+        source: 'typesense',
+      });
+      
+      return result;
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      
+      // Handle abort/timeout specifically
+      if (fetchError.name === 'AbortError') {
+        console.warn('[Typesense] Request timed out after 8 seconds');
+        throw new Error('TYPESENSE_TIMEOUT: Search request timed out');
+      }
+      
+      throw fetchError;
+    }
   } catch (error: any) {
     console.warn('[typesenseService] Search failed:', error);
     
