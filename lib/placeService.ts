@@ -549,9 +549,17 @@ function deduplicateByNameAndProximity(places: PlaceCard[]): PlaceCard[] {
     }
     
     if (!isDuplicate) {
-      const key = `${normalizedName}-${place.latitude.toFixed(4)}-${place.longitude.toFixed(4)}`;
-      seen.set(key, place);
-      result.push(place);
+      // Validate coordinates before using toFixed
+      const lat = place.latitude;
+      const lng = place.longitude;
+      if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
+        const key = `${normalizedName}-${lat.toFixed(4)}-${lng.toFixed(4)}`;
+        seen.set(key, place);
+        result.push(place);
+      } else {
+        // Skip places with invalid coordinates
+        console.warn(`[placeService] Skipping place with invalid coordinates:`, place.name, lat, lng);
+      }
     }
   }
   
@@ -574,12 +582,17 @@ function deduplicateByNameAndProximity(places: PlaceCard[]): PlaceCard[] {
  * @returns Formatted string like "0.3 mi" or "2.5 mi"
  */
 export function formatDistance(meters: number | undefined): string {
-  if (meters === undefined || meters === null) {
+  if (meters === undefined || meters === null || typeof meters !== 'number') {
     return '';
   }
   
   // Convert meters to miles (1 mile = 1609.34 meters)
   const miles = meters / 1609.34;
+  
+  // Validate miles calculation
+  if (!isFinite(miles) || isNaN(miles)) {
+    return '';
+  }
   
   if (miles < 0.1) {
     // Less than 0.1 miles, show in feet

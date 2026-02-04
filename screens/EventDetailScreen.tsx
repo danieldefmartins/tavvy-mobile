@@ -258,7 +258,7 @@ export default function EventDetailScreen() {
           )}
 
           {/* Distance */}
-          {event.distance !== undefined && (
+          {event.distance !== undefined && typeof event.distance === 'number' && isFinite(event.distance) && (
             <View style={styles.infoRow}>
               <Ionicons name="navigate-outline" size={20} color="#667EEA" />
               <View style={styles.infoTextContainer}>
