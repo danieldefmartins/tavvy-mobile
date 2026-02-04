@@ -8,9 +8,10 @@
  * - Full-width featured universe hero with image background
  * - Icon-driven category filters with custom icons
  * - 2x2 popular universes grid with rounded image cards
+ * - Working search functionality
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -59,10 +60,12 @@ export default function UniverseDiscoveryScreen() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   // Real data from Supabase
   const [featuredUniverse, setFeaturedUniverse] = useState<AtlasUniverse | null>(null);
   const [popularUniverses, setPopularUniverses] = useState<AtlasUniverse[]>([]);
+  const [searchResults, setSearchResults] = useState<AtlasUniverse[]>([]);
   const [categories, setCategories] = useState<AtlasCategory[]>([]);
 
   // Fetch data on mount
@@ -72,8 +75,28 @@ export default function UniverseDiscoveryScreen() {
 
   // Refetch when category changes
   useEffect(() => {
-    loadUniverses();
+    if (!searchQuery.trim()) {
+      loadUniverses();
+    }
   }, [activeCategory]);
+
+  // Debounced search effect
+  useEffect(() => {
+    const trimmedQuery = searchQuery.trim();
+    
+    if (!trimmedQuery) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    // Debounce search by 300ms
+    const timeoutId = setTimeout(() => {
+      performSearch(trimmedQuery);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
 
   const loadData = async () => {
     setLoading(true);
@@ -157,6 +180,42 @@ export default function UniverseDiscoveryScreen() {
     }
   };
 
+  // Search function
+  const performSearch = async (query: string) => {
+    setIsSearching(true);
+    console.log('[UniverseDiscovery] Searching for:', query);
+
+    try {
+      // Search by name, location, or description using ilike for case-insensitive search
+      const { data, error } = await supabase
+        .from('atlas_universes')
+        .select('*')
+        .eq('status', 'published')
+        .or(`name.ilike.%${query}%,location.ilike.%${query}%,description.ilike.%${query}%`)
+        .order('name', { ascending: true })
+        .limit(20);
+
+      if (error) {
+        console.error('[UniverseDiscovery] Search error:', error);
+        setSearchResults([]);
+      } else {
+        console.log('[UniverseDiscovery] Search results:', data?.length || 0);
+        setSearchResults(data || []);
+      }
+    } catch (error) {
+      console.error('[UniverseDiscovery] Search error:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Clear search
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
   // Get activity level based on signals
   const getActivityLevel = (signals: number) => {
     if (signals > 100) return { label: 'High Activity', color: COLORS.activityHigh };
@@ -184,6 +243,10 @@ export default function UniverseDiscoveryScreen() {
     return <Ionicons name={config.icon as any} size={size} color={color} />;
   };
 
+  // Determine which universes to display
+  const isShowingSearchResults = searchQuery.trim().length > 0;
+  const displayUniverses = isShowingSearchResults ? searchResults : popularUniverses;
+
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer, { backgroundColor }]}>
@@ -203,6 +266,7 @@ export default function UniverseDiscoveryScreen() {
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
         <View style={styles.header}>
@@ -227,119 +291,185 @@ export default function UniverseDiscoveryScreen() {
               placeholderTextColor={secondaryTextColor}
               value={searchQuery}
               onChangeText={setSearchQuery}
+              returnKeyType="search"
+              autoCorrect={false}
+              autoCapitalize="none"
             />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={clearSearch} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close-circle" size={20} color={secondaryTextColor} />
+              </TouchableOpacity>
+            )}
+            {isSearching && (
+              <ActivityIndicator size="small" color={COLORS.accent} style={{ marginLeft: 8 }} />
+            )}
           </View>
         </View>
 
-        {/* Featured Universe Hero - Full Width Image Card */}
-        {featuredUniverse && (
-          <TouchableOpacity
-            style={styles.featuredCard}
-            onPress={() => navigation.navigate('UniverseLanding', { universeId: featuredUniverse.id })}
-            activeOpacity={0.9}
-          >
-            <Image
-              source={{ uri: featuredUniverse.banner_image_url || featuredUniverse.thumbnail_image_url || PLACEHOLDER_IMAGE }}
-              style={styles.featuredImage}
-              resizeMode="cover"
-            />
-            {/* Featured Badge at top-left */}
-            <View style={styles.featuredBadgeContainer}>
-              <View style={styles.featuredBadge}>
-                <Text style={styles.featuredBadgeText}>FEATURED UNIVERSE</Text>
+        {/* Show search results or regular content */}
+        {isShowingSearchResults ? (
+          /* Search Results */
+          <View style={styles.searchResultsSection}>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>
+              {isSearching ? 'Searching...' : `Search Results (${searchResults.length})`}
+            </Text>
+            
+            {searchResults.length === 0 && !isSearching ? (
+              <View style={styles.noResultsContainer}>
+                <Ionicons name="search-outline" size={48} color={secondaryTextColor} />
+                <Text style={[styles.noResultsText, { color: secondaryTextColor }]}>
+                  No universes found for "{searchQuery}"
+                </Text>
+                <Text style={[styles.noResultsSubtext, { color: secondaryTextColor }]}>
+                  Try a different search term
+                </Text>
               </View>
-            </View>
-            {/* Bottom gradient overlay with content */}
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.9)']}
-              style={styles.featuredGradient}
-            >
-              <View style={styles.featuredContent}>
-                <View style={styles.featuredTextArea}>
-                  <Text style={styles.featuredName} numberOfLines={2}>
-                    {featuredUniverse.name}
-                  </Text>
-                  <Text style={styles.featuredMeta}>
-                    {getCategoryType(featuredUniverse.category_id)} • {featuredUniverse.location || 'Explore Now'}
-                  </Text>
-                </View>
-                <TouchableOpacity 
-                  style={styles.exploreButton}
-                  onPress={() => navigation.navigate('UniverseLanding', { universeId: featuredUniverse.id })}
-                >
-                  <Text style={styles.exploreButtonText}>Explore Universe</Text>
-                </TouchableOpacity>
+            ) : (
+              <View style={styles.gridContainer}>
+                {searchResults.map((universe) => {
+                  const activity = getActivityLevel(universe.total_signals || 0);
+                  return (
+                    <TouchableOpacity
+                      key={universe.id}
+                      style={styles.gridCard}
+                      onPress={() => navigation.navigate('UniverseLanding', { universeId: universe.id })}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.gridImageContainer}>
+                        <Image
+                          source={{ uri: universe.thumbnail_image_url || universe.banner_image_url || PLACEHOLDER_IMAGE }}
+                          style={styles.gridImage}
+                          resizeMode="cover"
+                        />
+                      </View>
+                      <View style={styles.gridContent}>
+                        <Text style={[styles.gridName, { color: textColor }]} numberOfLines={1}>
+                          {universe.name}
+                        </Text>
+                        <Text style={[styles.gridLocation, { color: secondaryTextColor }]} numberOfLines={1}>
+                          {universe.location || getCategoryType(universe.category_id)}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
-
-        {/* Filter by Category */}
-        <View style={styles.filterSection}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>Filter by Category</Text>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterScroll}
-          >
-            {Object.entries(CATEGORY_CONFIG).map(([slug, config]) => {
-              const isActive = activeCategory === config.label;
-              return (
-                <TouchableOpacity
-                  key={slug}
-                  style={[
-                    styles.filterButton,
-                    { 
-                      backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6',
-                    },
-                    isActive && styles.filterButtonActive,
-                  ]}
-                  onPress={() => setActiveCategory(isActive ? 'All' : config.label)}
-                  activeOpacity={0.7}
-                >
-                  {renderCategoryIcon(config, 28, isActive ? COLORS.accent : (isDark ? '#9CA3AF' : '#6B7280'))}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* Popular Universes Grid */}
-        <View style={styles.popularSection}>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>Popular Universes</Text>
-          <View style={styles.gridContainer}>
-            {popularUniverses.map((universe) => {
-              const activity = getActivityLevel(universe.total_signals || 0);
-              return (
-                <TouchableOpacity
-                  key={universe.id}
-                  style={styles.gridCard}
-                  onPress={() => navigation.navigate('UniverseLanding', { universeId: universe.id })}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.gridImageContainer}>
-                    <Image
-                      source={{ uri: universe.thumbnail_image_url || universe.banner_image_url || PLACEHOLDER_IMAGE }}
-                      style={styles.gridImage}
-                      resizeMode="cover"
-                    />
+            )}
+          </View>
+        ) : (
+          /* Regular Content */
+          <>
+            {/* Featured Universe Hero - Full Width Image Card */}
+            {featuredUniverse && (
+              <TouchableOpacity
+                style={styles.featuredCard}
+                onPress={() => navigation.navigate('UniverseLanding', { universeId: featuredUniverse.id })}
+                activeOpacity={0.9}
+              >
+                <Image
+                  source={{ uri: featuredUniverse.banner_image_url || featuredUniverse.thumbnail_image_url || PLACEHOLDER_IMAGE }}
+                  style={styles.featuredImage}
+                  resizeMode="cover"
+                />
+                {/* Featured Badge at top-left */}
+                <View style={styles.featuredBadgeContainer}>
+                  <View style={styles.featuredBadge}>
+                    <Text style={styles.featuredBadgeText}>FEATURED UNIVERSE</Text>
                   </View>
-                  <View style={styles.gridContent}>
-                    <Text style={[styles.gridName, { color: textColor }]} numberOfLines={1}>
-                      {universe.name}
-                    </Text>
-                    <View style={styles.activityBadge}>
-                      <Text style={styles.activityIcon}>🔥</Text>
-                      <Text style={[styles.activityText, { color: activity.color }]}>
-                        {activity.label}
+                </View>
+                {/* Bottom gradient overlay with content */}
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.9)']}
+                  style={styles.featuredGradient}
+                >
+                  <View style={styles.featuredContent}>
+                    <View style={styles.featuredTextArea}>
+                      <Text style={styles.featuredName} numberOfLines={2}>
+                        {featuredUniverse.name}
+                      </Text>
+                      <Text style={styles.featuredMeta}>
+                        {getCategoryType(featuredUniverse.category_id)} • {featuredUniverse.location || 'Explore Now'}
                       </Text>
                     </View>
+                    <TouchableOpacity 
+                      style={styles.exploreButton}
+                      onPress={() => navigation.navigate('UniverseLanding', { universeId: featuredUniverse.id })}
+                    >
+                      <Text style={styles.exploreButtonText}>Explore Universe</Text>
+                    </TouchableOpacity>
                   </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+
+            {/* Filter by Category */}
+            <View style={styles.filterSection}>
+              <Text style={[styles.sectionTitle, { color: textColor }]}>Filter by Category</Text>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filterScroll}
+              >
+                {Object.entries(CATEGORY_CONFIG).map(([slug, config]) => {
+                  const isActive = activeCategory === config.label;
+                  return (
+                    <TouchableOpacity
+                      key={slug}
+                      style={[
+                        styles.filterButton,
+                        { 
+                          backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6',
+                        },
+                        isActive && styles.filterButtonActive,
+                      ]}
+                      onPress={() => setActiveCategory(isActive ? 'All' : config.label)}
+                      activeOpacity={0.7}
+                    >
+                      {renderCategoryIcon(config, 28, isActive ? COLORS.accent : (isDark ? '#9CA3AF' : '#6B7280'))}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {/* Popular Universes Grid */}
+            <View style={styles.popularSection}>
+              <Text style={[styles.sectionTitle, { color: textColor }]}>Popular Universes</Text>
+              <View style={styles.gridContainer}>
+                {popularUniverses.map((universe) => {
+                  const activity = getActivityLevel(universe.total_signals || 0);
+                  return (
+                    <TouchableOpacity
+                      key={universe.id}
+                      style={styles.gridCard}
+                      onPress={() => navigation.navigate('UniverseLanding', { universeId: universe.id })}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.gridImageContainer}>
+                        <Image
+                          source={{ uri: universe.thumbnail_image_url || universe.banner_image_url || PLACEHOLDER_IMAGE }}
+                          style={styles.gridImage}
+                          resizeMode="cover"
+                        />
+                      </View>
+                      <View style={styles.gridContent}>
+                        <Text style={[styles.gridName, { color: textColor }]} numberOfLines={1}>
+                          {universe.name}
+                        </Text>
+                        <View style={styles.activityBadge}>
+                          <Text style={styles.activityIcon}>🔥</Text>
+                          <Text style={[styles.activityText, { color: activity.color }]}>
+                            {activity.label}
+                          </Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </>
+        )}
 
         {/* Bottom spacing */}
         <View style={{ height: 100 }} />
@@ -397,6 +527,26 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
+  },
+
+  // Search Results
+  searchResultsSection: {
+    paddingHorizontal: 20,
+  },
+  noResultsContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  noResultsText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  noResultsSubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
   },
 
   // Featured Card - Full Width Image
@@ -529,6 +679,10 @@ const styles = StyleSheet.create({
   gridName: {
     fontSize: 15,
     fontWeight: '600',
+    marginBottom: 4,
+  },
+  gridLocation: {
+    fontSize: 13,
     marginBottom: 4,
   },
   activityBadge: {
