@@ -245,7 +245,7 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
       // This ensures nearby results always appear first (user requirement)
       // Only apply geo sorting when we have coordinates AND radius (nearby search)
       sort_by: hasGeoLocation
-        ? `geocodes(${latitude}, ${longitude}):asc,popularity:desc`
+        ? `location(${latitude}, ${longitude}):asc,popularity:desc`
         : 'popularity:desc',      
       per_page: limit,
       page: Math.floor(offset / limit) + 1,
@@ -270,10 +270,8 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
     // This is CRITICAL for ensuring nearby results - filter by radius FIRST
     // Without radiusKm, we skip geo filtering (for explicit location searches like "restaurants in NYC")
     if (hasGeoLocation) {
-      // Use geocodes field for geo filtering (matches Typesense schema)
-      // Convert km to meters for the radius
-      const radiusMeters = radiusKm! * 1000;
-      filters.push(`geocodes:(${latitude}, ${longitude}, ${radiusMeters} m)`);
+      // Use 'location' field with km units (matches Typesense schema for places collection)
+      filters.push(`location:(${latitude}, ${longitude}, ${radiusKm} km)`);
       console.log(`[Typesense] Geo filter: within ${radiusKm}km of (${latitude}, ${longitude})`);
     }
     

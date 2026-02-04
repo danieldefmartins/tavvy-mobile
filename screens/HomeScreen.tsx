@@ -1724,8 +1724,12 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         handlePlacePress(place);
         break;
       case 'category':
-        // Switch to map mode first so the category results bottom sheet can overlay
+        // Clear search state first
+        setSearchQuery('');
+        setSearchSuggestions([]);
+        // Switch to map mode so the category results bottom sheet can overlay
         switchToMapMode();
+        // Then select the category to load results
         handleCategorySelect(suggestion.data.name);
         break;
       case 'address':
