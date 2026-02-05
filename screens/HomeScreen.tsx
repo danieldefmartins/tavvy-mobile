@@ -3269,7 +3269,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           animationMode="flyTo"
           animationDuration={800}
           minZoomLevel={3}
-          maxZoomLevel={20}
+          maxZoomLevel={19}
         />
         
         {/* Target location marker (for address searches) */}
