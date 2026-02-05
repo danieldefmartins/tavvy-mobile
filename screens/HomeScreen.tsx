@@ -1878,7 +1878,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
       if (result.places.length > 0) {
         // Transform Typesense results to app format
-        const processedPlaces = result.places
+        const transformedPlaces = result.places
           .filter((place) => {
             return typeof place.longitude === 'number' && typeof place.latitude === 'number' && 
                    !isNaN(place.longitude) && !isNaN(place.latitude) && 
@@ -1900,8 +1900,18 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             signals: [],
             photos: [],
             distance: place.distance,
-          }))
-          .slice(0, 100); // Limit to 100 results for UI
+          }));
+        
+        // Deduplicate by fsq_place_id (keep first occurrence)
+        const seenIds = new Set<string>();
+        const processedPlaces = transformedPlaces.filter(place => {
+          if (seenIds.has(place.id)) {
+            console.log(`[Dedup] Removing duplicate place: ${place.name} (${place.id})`);
+            return false;
+          }
+          seenIds.add(place.id);
+          return true;
+        }).slice(0, 100); // Limit to 100 results for UI
 
         console.log(`[Typesense] Final processed places: ${processedPlaces.length}`);
         setCategoryResultsPlaces(processedPlaces as Place[]);
@@ -3371,12 +3381,17 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <View
                 style={[
                   styles.marker,
-                  { backgroundColor: getMarkerColor(place.category) },
+                  { 
+                    backgroundColor: selectedPlace?.id === place.id || mapIndex === 0 
+                      ? '#EF4444' // Red for selected or first place
+                      : getMarkerColor(place.category) 
+                  },
+                  selectedPlace?.id === place.id || mapIndex === 0 ? styles.selectedMarker : null
                 ]}
               >
                 <Ionicons
                   name={getMarkerIcon(place.category) as any}
-                  size={18}
+                  size={selectedPlace?.id === place.id || mapIndex === 0 ? 20 : 18}
                   color="#fff"
                 />
               </View>
@@ -5332,6 +5347,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 4,
+  },
+  selectedMarker: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 3,
+    borderColor: '#fff',
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 6,
   },
   userLocationMarker: {
     width: 60,
