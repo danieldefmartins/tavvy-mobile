@@ -80,6 +80,19 @@ interface Review {
   created_at: string;
 }
 
+interface MenuItem {
+  id: string;
+  place_id: string;
+  item_name: string;
+  description?: string;
+  price?: number;
+  category?: string;
+  dietary_tags?: string[];
+  image_url?: string;
+  place_name?: string;
+  place_thumbnail?: string;
+}
+
 export default function UniverseLandingScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
@@ -100,6 +113,12 @@ export default function UniverseLandingScreen() {
   const [showSuggestModal, setShowSuggestModal] = useState(false);
   const [suggestionText, setSuggestionText] = useState('');
   const [addPlaceType, setAddPlaceType] = useState<string | null>(null);
+  
+  // Food search states
+  const [showFoodSearchModal, setShowFoodSearchModal] = useState(false);
+  const [foodSearchQuery, setFoodSearchQuery] = useState('');
+  const [foodSearchResults, setFoodSearchResults] = useState<MenuItem[]>([]);
+  const [foodSearchLoading, setFoodSearchLoading] = useState(false);
 
   // Check if user is verified (simplified - you'd check from auth context)
   const [isVerified, setIsVerified] = useState(true); // TODO: Get from auth context
@@ -246,6 +265,78 @@ export default function UniverseLandingScreen() {
     setShowAddPlaceModal(false);
   };
 
+  // Handle food search
+  const handleFoodSearch = async (query: string) => {
+    setFoodSearchQuery(query);
+    if (!query.trim() || !universeId) {
+      setFoodSearchResults([]);
+      return;
+    }
+
+    setFoodSearchLoading(true);
+    try {
+      // Get all dining places in this universe
+      const { data: placeLinks } = await supabase
+        .from('atlas_universe_places')
+        .select('place_id')
+        .eq('universe_id', universeId);
+
+      if (!placeLinks || placeLinks.length === 0) {
+        setFoodSearchResults([]);
+        setFoodSearchLoading(false);
+        return;
+      }
+
+      const placeIds = placeLinks.map((link: any) => link.place_id);
+
+      // Search menu items in those places
+      const { data: menuItems, error } = await supabase
+        .from('restaurant_menu_items')
+        .select(`
+          id,
+          place_id,
+          item_name,
+          description,
+          price,
+          category,
+          dietary_tags,
+          image_url
+        `)
+        .in('place_id', placeIds)
+        .ilike('item_name', `%${query}%`)
+        .eq('is_available', true)
+        .limit(20);
+
+      if (error) throw error;
+
+      // Get place names for the results
+      if (menuItems && menuItems.length > 0) {
+        const uniquePlaceIds = [...new Set(menuItems.map((item: any) => item.place_id))];
+        const { data: placesData } = await supabase
+          .from('places')
+          .select('id, name, thumbnail_url')
+          .in('id', uniquePlaceIds);
+
+        const placeMap = new Map(placesData?.map((p: any) => [p.id, p]) || []);
+        
+        const resultsWithPlaces = menuItems.map((item: any) => ({
+          ...item,
+          place_name: placeMap.get(item.place_id)?.name || 'Unknown Restaurant',
+          place_thumbnail: placeMap.get(item.place_id)?.thumbnail_url
+        }));
+
+        setFoodSearchResults(resultsWithPlaces);
+      } else {
+        setFoodSearchResults([]);
+      }
+    } catch (error) {
+      console.error('Error searching food:', error);
+      setFoodSearchResults([]);
+    } finally {
+      setFoodSearchLoading(false);
+    }
+  };
+
   // Handle submit suggestion
   const handleSubmitSuggestion = async () => {
     if (!suggestionText.trim()) {
@@ -380,21 +471,18 @@ export default function UniverseLandingScreen() {
       {/* Quick Actions */}
       <View style={styles.quickActions}>
         {[
-          { icon: 'exit-outline', label: "Entrances", type: "entrance" },
-          { icon: 'restaurant-outline', label: "Dining", type: "dining" },
-          { icon: 'water-outline', label: "Restrooms", type: "restroom" },
-          { icon: 'car-outline', label: "Parking", type: "parking" }
-        ].map((action, i) => (
+          { icon: 'exit-outline', label: "Entrances", type: "entrance", action: () => setSearchQuery('entrance') },
+          { icon: 'restaurant-outline', label: "Dining", type: "dining", action: () => setShowFoodSearchModal(true) },
+          { icon: 'water-outline', label: "Restrooms", type: "restroom", action: () => setSearchQuery('restroom') },
+          { icon: 'car-outline', label: "Parking", type: "parking", action: () => setSearchQuery('parking') }
+        ].map((actionItem, i) => (
           <TouchableOpacity 
             key={i} 
             style={styles.actionButton}
-            onPress={() => {
-              // Filter places by type
-              setSearchQuery(action.type);
-            }}
+            onPress={actionItem.action}
           >
-            <Ionicons name={action.icon as any} size={24} color="#374151" />
-            <Text style={styles.actionLabel}>{action.label}</Text>
+            <Ionicons name={actionItem.icon as any} size={24} color="#374151" />
+            <Text style={styles.actionLabel}>{actionItem.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -825,6 +913,134 @@ export default function UniverseLandingScreen() {
             >
               <Text style={styles.submitButtonText}>Submit Suggestion</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Food Search Modal */}
+      <Modal
+        visible={showFoodSearchModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => { setShowFoodSearchModal(false); setFoodSearchQuery(''); setFoodSearchResults([]); }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>🍽️ What do you want to eat?</Text>
+              <TouchableOpacity onPress={() => { setShowFoodSearchModal(false); setFoodSearchQuery(''); setFoodSearchResults([]); }}>
+                <Ionicons name="close" size={24} color="#1F2937" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalSubtitle}>
+              Search for a food item and we'll show you which restaurants have it!
+            </Text>
+            
+            {/* Search Input */}
+            <View style={styles.foodSearchInput}>
+              <Ionicons name="search" size={20} color="#9CA3AF" />
+              <TextInput
+                style={styles.foodSearchTextInput}
+                placeholder="e.g., pizza, burger, vegan..."
+                placeholderTextColor="#9CA3AF"
+                value={foodSearchQuery}
+                onChangeText={handleFoodSearch}
+                autoFocus
+              />
+              {foodSearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => { setFoodSearchQuery(''); setFoodSearchResults([]); }}>
+                  <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Quick Suggestions */}
+            {!foodSearchQuery && (
+              <View style={styles.foodSuggestions}>
+                <Text style={styles.foodSuggestionsLabel}>POPULAR SEARCHES</Text>
+                <View style={styles.foodSuggestionsRow}>
+                  {['Pizza', 'Burger', 'Ice Cream', 'Chicken', 'Salad', 'Vegan', 'Fries', 'Hot Dog'].map((suggestion) => (
+                    <TouchableOpacity
+                      key={suggestion}
+                      style={styles.foodSuggestionChip}
+                      onPress={() => handleFoodSearch(suggestion)}
+                    >
+                      <Text style={styles.foodSuggestionText}>{suggestion}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Results */}
+            <ScrollView style={styles.foodResultsContainer}>
+              {foodSearchLoading ? (
+                <View style={styles.foodEmptyState}>
+                  <Text style={{ fontSize: 24, marginBottom: 8 }}>🔍</Text>
+                  <Text style={styles.foodEmptyText}>Searching menus...</Text>
+                </View>
+              ) : foodSearchQuery && foodSearchResults.length === 0 ? (
+                <View style={styles.foodEmptyState}>
+                  <Text style={{ fontSize: 48, marginBottom: 12 }}>🤷</Text>
+                  <Text style={styles.foodEmptyText}>No menu items found for "{foodSearchQuery}"</Text>
+                  <Text style={styles.foodEmptySubtext}>Try a different search term or check back later as menus are being added.</Text>
+                </View>
+              ) : foodSearchResults.length > 0 ? (
+                <View>
+                  <Text style={styles.foodResultsCount}>
+                    {foodSearchResults.length} RESULT{foodSearchResults.length !== 1 ? 'S' : ''} FOUND
+                  </Text>
+                  {foodSearchResults.map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.foodResultCard}
+                      onPress={() => {
+                        setShowFoodSearchModal(false);
+                        navigation.navigate('PlaceDetails', { placeId: item.place_id });
+                      }}
+                    >
+                      {item.image_url || item.place_thumbnail ? (
+                        <Image
+                          source={{ uri: item.image_url || item.place_thumbnail || '' }}
+                          style={styles.foodResultImage}
+                        />
+                      ) : (
+                        <View style={styles.foodResultImagePlaceholder}>
+                          <Text style={{ fontSize: 32 }}>🍽️</Text>
+                        </View>
+                      )}
+                      <View style={styles.foodResultContent}>
+                        <Text style={styles.foodResultName} numberOfLines={1}>{item.item_name}</Text>
+                        <Text style={styles.foodResultRestaurant} numberOfLines={1}>📍 {item.place_name}</Text>
+                        <View style={styles.foodResultMeta}>
+                          {item.price && (
+                            <Text style={styles.foodResultPrice}>${item.price.toFixed(2)}</Text>
+                          )}
+                          {item.category && (
+                            <View style={styles.foodResultCategory}>
+                              <Text style={styles.foodResultCategoryText}>{item.category}</Text>
+                            </View>
+                          )}
+                          {item.dietary_tags && item.dietary_tags.length > 0 && (
+                            <Text style={styles.foodResultDietary}>
+                              {item.dietary_tags.includes('vegan') ? '🌱' : ''}
+                              {item.dietary_tags.includes('vegetarian') ? '🥬' : ''}
+                              {item.dietary_tags.includes('gluten-free') ? '🌾' : ''}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.foodEmptyState}>
+                  <Text style={{ fontSize: 48, marginBottom: 12 }}>🍔</Text>
+                  <Text style={styles.foodEmptyText}>Search for your favorite food above!</Text>
+                </View>
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1505,5 +1721,136 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Food Search Modal Styles
+  foodSearchInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+    gap: 12,
+  },
+  foodSearchTextInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1F2937',
+  },
+  foodSuggestions: {
+    marginBottom: 16,
+  },
+  foodSuggestionsLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    marginBottom: 10,
+    letterSpacing: 0.5,
+  },
+  foodSuggestionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  foodSuggestionChip: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  foodSuggestionText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  foodResultsContainer: {
+    flex: 1,
+  },
+  foodResultsCount: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    marginBottom: 12,
+    letterSpacing: 0.5,
+  },
+  foodResultCard: {
+    flexDirection: 'row',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    gap: 12,
+  },
+  foodResultImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 10,
+  },
+  foodResultImagePlaceholder: {
+    width: 70,
+    height: 70,
+    borderRadius: 10,
+    backgroundColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  foodResultContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  foodResultName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  foodResultRestaurant: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 6,
+  },
+  foodResultMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  foodResultPrice: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  foodResultCategory: {
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  foodResultCategoryText: {
+    fontSize: 11,
+    color: '#0284C7',
+    fontWeight: '500',
+    textTransform: 'capitalize',
+  },
+  foodResultDietary: {
+    fontSize: 14,
+  },
+  foodEmptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  foodEmptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'center',
+  },
+  foodEmptySubtext: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 20,
   },
 });
