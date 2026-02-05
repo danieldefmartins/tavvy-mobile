@@ -3363,7 +3363,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             coordinate={[place.longitude || place.lng || 0, place.latitude || place.lat || 0]}
             onSelected={() => handleMarkerPress(place)}
           >
-            <View style={styles.markerContainer}>
+            <TouchableOpacity 
+              style={styles.markerContainer}
+              onPress={() => handleMarkerPress(place)}
+              activeOpacity={0.7}
+            >
               <View
                 style={[
                   styles.marker,
@@ -3376,7 +3380,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   color="#fff"
                 />
               </View>
-            </View>
+            </TouchableOpacity>
           </MapLibreGL.PointAnnotation>
         ))}
       </MapLibreGL.MapView>
