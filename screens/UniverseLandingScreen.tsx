@@ -148,29 +148,23 @@ export default function UniverseLandingScreen() {
         setSubUniverses(subUniversesData);
       }
 
-      // Fetch places linked to this universe via atlas_universe_places
-      const { data: placesData, error: placesError } = await supabase
+      // Fetch places linked to this universe - two-step approach for reliability
+      const { data: placeLinks, error: linksError } = await supabase
         .from('atlas_universe_places')
-        .select(`
-          place:places(
-            id,
-            name,
-            tavvy_category,
-            tavvy_subcategory,
-            total_signals,
-            thumbnail_url,
-            latitude,
-            longitude
-          )
-        `)
+        .select('place_id')
         .eq('universe_id', universeId)
-        .order('display_order', { ascending: true });
+        .limit(100);
 
-      if (!placesError && placesData) {
-        const extractedPlaces = placesData
-          .map((item: any) => item.place)
-          .filter(Boolean);
-        setPlaces(extractedPlaces);
+      if (!linksError && placeLinks && placeLinks.length > 0) {
+        const placeIds = placeLinks.map((link: any) => link.place_id);
+        const { data: placesData, error: placesError } = await supabase
+          .from('places')
+          .select('id, name, tavvy_category, tavvy_subcategory, total_signals, thumbnail_url, latitude, longitude')
+          .in('id', placeIds);
+        
+        if (!placesError && placesData) {
+          setPlaces(placesData);
+        }
       }
 
       // Fetch reviews for this universe
