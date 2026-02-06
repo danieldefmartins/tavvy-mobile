@@ -79,17 +79,13 @@ const ECardColorPickerScreen: React.FC = () => {
   const renderColorSchemeCard = (colorScheme: ColorScheme, index: number) => {
     const isSelected = selectedColorScheme === colorScheme.id;
     const gradientColors = [colorScheme.primary, colorScheme.secondary];
-    const isLocked = !colorScheme.isFree; // Premium colors require subscription
+    const isPremium = !colorScheme.isFree;
 
     return (
       <TouchableOpacity
         key={colorScheme.id}
-        style={[styles.colorCard, isSelected && styles.colorCardSelected, isLocked && styles.colorCardLocked]}
+        style={[styles.colorCard, isSelected && styles.colorCardSelected]}
         onPress={() => {
-          if (isLocked) {
-            Alert.alert('Premium Color', 'This color is available with eCard Premium. Upgrade to unlock all colors and features.');
-            return;
-          }
           setSelectedColorScheme(colorScheme.id);
         }}
         activeOpacity={0.8}
@@ -142,11 +138,11 @@ const ECardColorPickerScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Lock Icon for Premium */}
-        {isLocked && (
+        {/* PRO Badge (informational only - user can still select) */}
+        {isPremium && (
           <View style={styles.lockOverlay}>
             <View style={styles.lockBadge}>
-              <Ionicons name="lock-closed" size={14} color="#FFD700" />
+              <Ionicons name="star" size={14} color="#FFD700" />
               <Text style={styles.lockText}>PRO</Text>
             </View>
           </View>

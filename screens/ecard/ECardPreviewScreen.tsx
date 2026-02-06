@@ -661,7 +661,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
       <View style={styles.bottomActions}>
         <TouchableOpacity
           style={styles.editButton}
-          onPress={() => navigation.navigate('ECardTemplateGallery', { 
+          onPress={() => navigation.navigate('ECardCreate', { 
             mode: 'edit', 
             cardId: cardData?.id, 
             existingData: cardData,

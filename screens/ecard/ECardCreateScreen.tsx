@@ -44,6 +44,28 @@ import { TEMPLATES, Template, ColorScheme } from '../../config/eCardTemplates';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ACCENT_GREEN = '#00C853';
 
+// Compute relative luminance of a hex color to determine contrast
+function hexToLuminance(hex: string): number {
+  const c = hex.replace('#', '');
+  const r = parseInt(c.substring(0, 2), 16) / 255;
+  const g = parseInt(c.substring(2, 4), 16) / 255;
+  const b = parseInt(c.substring(4, 6), 16) / 255;
+  const toLinear = (v: number) => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+}
+
+function getContrastTextColor(bgColor1: string, bgColor2: string): { text: string; secondary: string } {
+  // Average luminance of the two gradient colors
+  const l1 = hexToLuminance(bgColor1.startsWith('#') ? bgColor1 : '#667eea');
+  const l2 = hexToLuminance(bgColor2.startsWith('#') ? bgColor2 : '#764ba2');
+  const avgLum = (l1 + l2) / 2;
+  // If background is light (luminance > 0.45), use dark text; otherwise white
+  if (avgLum > 0.45) {
+    return { text: '#1A1A1A', secondary: 'rgba(0,0,0,0.55)' };
+  }
+  return { text: '#FFFFFF', secondary: 'rgba(255,255,255,0.7)' };
+}
+
 // Photo size options
 const PHOTO_SIZE_OPTIONS = [
   { id: 'small', label: 'Small', size: 80 },
@@ -139,10 +161,12 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
   const usesPremiumTemplate = template?.isPremium || false;
 
   const gradientColors: [string, string] = [color?.primary || '#667eea', color?.secondary || '#764ba2'];
-  const textColor = color?.text || '#FFFFFF';
-  const textSecondary = color?.textSecondary || 'rgba(255,255,255,0.7)';
+  // Auto-compute contrast text color based on background luminance
+  const computedContrast = getContrastTextColor(gradientColors[0], gradientColors[1]);
+  const textColor = computedContrast.text;
+  const textSecondary = computedContrast.secondary;
   const accentColor = color?.accent || 'rgba(255,255,255,0.2)';
-  const isLightCard = textColor === '#1A1A1A' || textColor === '#1f2937' || textColor === '#333333';
+  const isLightCard = textColor === '#1A1A1A';
 
   // ── Card data ──
   const [profileImage, setProfileImage] = useState<string | null>(null);

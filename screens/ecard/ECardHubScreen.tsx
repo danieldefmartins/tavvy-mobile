@@ -90,7 +90,7 @@ export default function ECardHubScreen() {
   };
 
   const handleCreateNew = () => {
-    navigation.navigate('ECardTemplateGallery');
+    navigation.navigate('ECardCreate');
   };
 
   const handleViewCard = (card: CardData) => {
