@@ -36,6 +36,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
@@ -313,18 +314,65 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
   };
 
   const pickVideo = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['videos'] as ImagePicker.MediaType[],
-        allowsEditing: true,
-        videoMaxDuration: 15,
-        quality: 0.8,
-      });
-      if (!result.canceled && result.assets[0]) {
-        setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Cancel', 'Record Video', 'Choose from Library', 'Choose from Files'], cancelButtonIndex: 0 },
+        async (buttonIndex) => {
+          try {
+            if (buttonIndex === 1) {
+              // Record video with camera
+              const { status } = await ImagePicker.requestCameraPermissionsAsync();
+              if (status !== 'granted') { Alert.alert('Permission needed', 'Camera permission is required to record video.'); return; }
+              const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ['videos'] as ImagePicker.MediaType[],
+                allowsEditing: true,
+                videoMaxDuration: 15,
+                quality: 0.8,
+              });
+              if (!result.canceled && result.assets[0]) {
+                setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
+              }
+            } else if (buttonIndex === 2) {
+              // Choose from photo library
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['videos'] as ImagePicker.MediaType[],
+                allowsEditing: true,
+                videoMaxDuration: 15,
+                quality: 0.8,
+              });
+              if (!result.canceled && result.assets[0]) {
+                setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
+              }
+            } else if (buttonIndex === 3) {
+              // Choose from Files app
+              const result = await DocumentPicker.getDocumentAsync({
+                type: 'video/*',
+                copyToCacheDirectory: true,
+              });
+              if (!result.canceled && result.assets && result.assets[0]) {
+                setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
+              }
+            }
+          } catch (err) {
+            console.warn('Video picker error:', err);
+          }
+        }
+      );
+    } else {
+      // Android: use library picker
+      try {
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['videos'] as ImagePicker.MediaType[],
+          allowsEditing: true,
+          videoMaxDuration: 15,
+          quality: 0.8,
+        });
+        if (!result.canceled && result.assets[0]) {
+          setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
+        }
+      } catch (err) {
+        console.warn('Video picker error:', err);
       }
-    } catch (err) {
-      console.warn('Video picker error:', err);
     }
   };
 
