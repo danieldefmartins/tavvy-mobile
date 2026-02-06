@@ -5,14 +5,13 @@
  * UX:
  *  - Swipe left/right to change template
  *  - Tap any field to edit in-place
- *  - Tap profile photo to upload, tap "change size" to cycle sizes
- *  - Featured social icons around photo (max 4)
+ *  - Tap profile photo to upload
+ *  - "Tap to change size" always visible (works for all sizes including cover)
+ *  - 4 independent featured social icon slots (centered row, tap + to pick)
+ *  - Links section separate from featured icons
  *  - Photo gallery with lightbox
- *  - Bottom bar: ◀ [color dots] ▶  (template arrows + color picker)
+ *  - Bottom bar: ◀ [color dots] ▶
  *  - "Continue" button saves card
- *
- * Navigation params (optional, from color picker flow):
- *   templateId, colorSchemeId
  */
 
 import React, { useState, useRef, useCallback, useMemo } from 'react';
@@ -54,7 +53,24 @@ const PHOTO_SIZE_OPTIONS = [
   { id: 'cover', label: 'Cover', size: -1 },
 ];
 
-// Social media platforms
+// Platforms available for the 4 independent featured icon slots
+const FEATURED_ICON_PLATFORMS = [
+  { id: 'instagram', name: 'Instagram', icon: 'logo-instagram', color: '#E4405F' },
+  { id: 'tiktok', name: 'TikTok', icon: 'logo-tiktok', color: '#000000' },
+  { id: 'youtube', name: 'YouTube', icon: 'logo-youtube', color: '#FF0000' },
+  { id: 'twitter', name: 'Twitter/X', icon: 'logo-twitter', color: '#1DA1F2' },
+  { id: 'linkedin', name: 'LinkedIn', icon: 'logo-linkedin', color: '#0A66C2' },
+  { id: 'facebook', name: 'Facebook', icon: 'logo-facebook', color: '#1877F2' },
+  { id: 'whatsapp', name: 'WhatsApp', icon: 'logo-whatsapp', color: '#25D366' },
+  { id: 'snapchat', name: 'Snapchat', icon: 'logo-snapchat', color: '#FFFC00' },
+  { id: 'spotify', name: 'Spotify', icon: 'musical-notes', color: '#1DB954' },
+  { id: 'github', name: 'GitHub', icon: 'logo-github', color: '#181717' },
+  { id: 'pinterest', name: 'Pinterest', icon: 'heart', color: '#E60023' },
+  { id: 'twitch', name: 'Twitch', icon: 'logo-twitch', color: '#9146FF' },
+  { id: 'discord', name: 'Discord', icon: 'logo-discord', color: '#5865F2' },
+];
+
+// Social media platforms for links
 const SOCIAL_PLATFORMS = [
   { id: 'instagram', name: 'Instagram', icon: 'logo-instagram', color: '#E4405F', placeholder: '@username' },
   { id: 'tiktok', name: 'TikTok', icon: 'logo-tiktok', color: '#000000', placeholder: '@username' },
@@ -66,19 +82,13 @@ const SOCIAL_PLATFORMS = [
   { id: 'website', name: 'Website', icon: 'globe', color: '#4A90D9', placeholder: 'https://...' },
   { id: 'email', name: 'Email', icon: 'mail', color: '#EA4335', placeholder: 'email@example.com' },
   { id: 'phone', name: 'Phone', icon: 'call', color: '#34C759', placeholder: '+1 (555) 123-4567' },
-  { id: 'snapchat', name: 'Snapchat', icon: 'logo-snapchat', color: '#FFFC00', placeholder: 'Username' },
-  { id: 'spotify', name: 'Spotify', icon: 'musical-notes', color: '#1DB954', placeholder: 'Profile link' },
-  { id: 'github', name: 'GitHub', icon: 'logo-github', color: '#181717', placeholder: 'Username' },
   { id: 'other', name: 'Custom Link', icon: 'link', color: '#8E8E93', placeholder: 'https://...' },
 ];
-
-const FEATURED_SOCIAL_IDS = ['instagram', 'tiktok', 'youtube', 'twitter', 'linkedin', 'facebook'];
 
 interface LinkData {
   id: string;
   platform: string;
   value: string;
-  isFeatured: boolean;
 }
 
 interface GalleryImage {
@@ -134,6 +144,12 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
   const [website, setWebsite] = useState('');
   const [address, setAddress] = useState('');
   const [photoSizeIndex, setPhotoSizeIndex] = useState(1);
+
+  // Featured social icons (independent, up to 4)
+  const [featuredIcons, setFeaturedIcons] = useState<string[]>([]);
+  const [showFeaturedIconPicker, setShowFeaturedIconPicker] = useState(false);
+
+  // Links (separate from featured icons)
   const [links, setLinks] = useState<LinkData[]>([]);
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -145,14 +161,13 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
 
   const currentPhotoSize = PHOTO_SIZE_OPTIONS[photoSizeIndex];
   const isCover = currentPhotoSize.id === 'cover';
-  const featuredSocials = links.filter(l => l.isFeatured && FEATURED_SOCIAL_IDS.includes(l.platform)).slice(0, 4);
 
   // ── Swipe gesture for template switching ──
   const swipeX = useRef(0);
   const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => false,
     onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 20 && Math.abs(gs.dy) < 40,
-    onPanResponderGrant: (_, gs) => { swipeX.current = 0; },
+    onPanResponderGrant: () => { swipeX.current = 0; },
     onPanResponderMove: (_, gs) => { swipeX.current = gs.dx; },
     onPanResponderRelease: (_, gs) => {
       if (gs.dx < -60 && templateIndex < TEMPLATES.length - 1) {
@@ -200,24 +215,26 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
     setGalleryImages(prev => [...prev, { id: Date.now().toString() + Math.random().toString(36).substr(2, 9), uri }]);
   };
 
-  // ── Links ──
+  // ── Featured icons (independent) ──
+  const addFeaturedIcon = (platformId: string) => {
+    if (featuredIcons.length < 4 && !featuredIcons.includes(platformId)) {
+      setFeaturedIcons(prev => [...prev, platformId]);
+    }
+    setShowFeaturedIconPicker(false);
+  };
+
+  const removeFeaturedIcon = (platformId: string) => {
+    setFeaturedIcons(prev => prev.filter(id => id !== platformId));
+  };
+
+  // ── Links (separate from featured icons) ──
   const addLink = (platformId: string) => {
-    const isFeatured = FEATURED_SOCIAL_IDS.includes(platformId) && featuredSocials.length < 4;
-    setLinks(prev => [...prev, { id: Date.now().toString(), platform: platformId, value: '', isFeatured }]);
+    setLinks(prev => [...prev, { id: Date.now().toString(), platform: platformId, value: '' }]);
     setShowAddLinkModal(false);
   };
 
   const updateLink = (id: string, value: string) => { setLinks(prev => prev.map(l => l.id === id ? { ...l, value } : l)); };
   const removeLink = (id: string) => { setLinks(prev => prev.filter(l => l.id !== id)); };
-  const toggleFeatured = (id: string) => {
-    setLinks(prev => prev.map(l => {
-      if (l.id === id) {
-        if (!l.isFeatured && prev.filter(x => x.isFeatured).length >= 4) return l;
-        return { ...l, isFeatured: !l.isFeatured };
-      }
-      return l;
-    }));
-  };
 
   // ── Upload helper ──
   const uploadImage = async (uri: string, path: string): Promise<string | null> => {
@@ -269,6 +286,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
           font_style: template.layout.fontFamily,
           is_published: false,
           gallery_images: uploadedGallery,
+          featured_socials: featuredIcons,
         })
         .select()
         .single();
@@ -294,22 +312,6 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
       console.error('Error creating card:', error);
       Alert.alert('Error', error.message || 'Failed to create card. Please try again.');
     } finally { setIsCreating(false); }
-  };
-
-  // ── Featured social icon around photo ──
-  const renderFeaturedSocialIcon = (social: LinkData, index: number, photoSz: number) => {
-    const platform = SOCIAL_PLATFORMS.find(p => p.id === social.platform);
-    if (!platform) return null;
-    const totalIcons = featuredSocials.length;
-    const angle = -90 + (index * (360 / Math.max(totalIcons, 1)));
-    const radius = (photoSz / 2) + 10;
-    const x = Math.cos((angle * Math.PI) / 180) * radius;
-    const y = Math.sin((angle * Math.PI) / 180) * radius;
-    return (
-      <View key={social.id} style={[styles.featuredSocialIcon, { backgroundColor: platform.color, left: (photoSz / 2) + x - 14, top: (photoSz / 2) + y - 14 }]}>
-        <Ionicons name={platform.icon as any} size={14} color="#fff" />
-      </View>
-    );
   };
 
   // ═══════════════════════════════════════════════
@@ -381,7 +383,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
               ) : (
                 <View style={styles.profilePhotoSection}>
                   <TouchableOpacity onPress={() => pickImage(false)} activeOpacity={0.8}>
-                    <View style={{ width: currentPhotoSize.size, height: currentPhotoSize.size, position: 'relative' }}>
+                    <View style={{ width: currentPhotoSize.size, height: currentPhotoSize.size }}>
                       {profileImage ? (
                         <Image source={{ uri: profileImage }} style={{ width: currentPhotoSize.size, height: currentPhotoSize.size, borderRadius: currentPhotoSize.size / 2, borderWidth: 3, borderColor: isLightCard ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.3)' }} />
                       ) : (
@@ -389,31 +391,43 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
                           <Ionicons name="camera" size={currentPhotoSize.size > 100 ? 32 : 24} color={isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.5)'} />
                         </View>
                       )}
-                      {featuredSocials.map((s, i) => renderFeaturedSocialIcon(s, i, currentPhotoSize.size))}
                     </View>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.photoSizeHint} onPress={() => setShowPhotoSizeModal(true)}>
-                    <Ionicons name="expand" size={12} color="rgba(255,255,255,0.7)" />
-                    <Text style={styles.photoSizeHintText}>{currentPhotoSize.label} · Tap to change size</Text>
                   </TouchableOpacity>
                 </View>
               )}
 
-              {/* Change Photo (if already has one) */}
-              {profileImage && (
-                <TouchableOpacity style={styles.changePhotoBtn} onPress={() => pickImage(false)}>
-                  <Ionicons name="camera" size={14} color="#fff" />
-                  <Text style={styles.changePhotoBtnText}>Change Photo</Text>
-                </TouchableOpacity>
-              )}
+              {/* Size hint - ALWAYS visible for all photo sizes */}
+              <TouchableOpacity style={styles.photoSizeHint} onPress={() => setShowPhotoSizeModal(true)}>
+                <Ionicons name="expand" size={12} color="rgba(255,255,255,0.7)" />
+                <Text style={styles.photoSizeHintText}>{currentPhotoSize.label} · Tap to change size</Text>
+              </TouchableOpacity>
 
-              {/* Cover size hint */}
-              {isCover && (
-                <TouchableOpacity style={[styles.photoSizeHint, { alignSelf: 'center', marginTop: 8 }]} onPress={() => setShowPhotoSizeModal(true)}>
-                  <Ionicons name="expand" size={12} color="rgba(255,255,255,0.7)" />
-                  <Text style={styles.photoSizeHintText}>Cover · Tap to change size</Text>
-                </TouchableOpacity>
-              )}
+              {/* ===== FEATURED SOCIAL ICONS (independent, up to 4) ===== */}
+              <View style={styles.featuredIconsRow}>
+                {featuredIcons.map(platformId => {
+                  const platform = FEATURED_ICON_PLATFORMS.find(p => p.id === platformId);
+                  if (!platform) return null;
+                  return (
+                    <View key={platformId} style={[styles.featuredIconSlot, { backgroundColor: platform.color }]}>
+                      <Ionicons name={platform.icon as any} size={18} color="#fff" />
+                      <TouchableOpacity
+                        style={styles.featuredIconRemove}
+                        onPress={() => removeFeaturedIcon(platformId)}
+                      >
+                        <Ionicons name="close" size={10} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+                {featuredIcons.length < 4 && (
+                  <TouchableOpacity
+                    style={[styles.featuredIconAdd, { borderColor: isLightCard ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)' }]}
+                    onPress={() => setShowFeaturedIconPicker(true)}
+                  >
+                    <Ionicons name="add" size={18} color={isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)'} />
+                  </TouchableOpacity>
+                )}
+              </View>
 
               {/* ── Editable Fields ── */}
               <View style={styles.cardFields}>
@@ -472,7 +486,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
               {/* ── Social Links ── */}
               <View style={styles.cardSection}>
                 <View style={styles.sectionHeader}>
-                  <Text style={[styles.sectionTitle, { color: textColor }]}>Social Links</Text>
+                  <Text style={[styles.sectionTitle, { color: textColor }]}>Links</Text>
                   <TouchableOpacity onPress={() => setShowAddLinkModal(true)}>
                     <Ionicons name="add-circle" size={24} color={ACCENT_GREEN} />
                   </TouchableOpacity>
@@ -493,16 +507,9 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
                         placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
                         autoCapitalize="none"
                       />
-                      <View style={styles.linkActions}>
-                        {FEATURED_SOCIAL_IDS.includes(link.platform) && (
-                          <TouchableOpacity onPress={() => toggleFeatured(link.id)}>
-                            <Text style={{ fontSize: 18, color: link.isFeatured ? '#FFD700' : 'rgba(255,255,255,0.3)' }}>★</Text>
-                          </TouchableOpacity>
-                        )}
-                        <TouchableOpacity onPress={() => removeLink(link.id)}>
-                          <Ionicons name="trash" size={16} color="#EF4444" />
-                        </TouchableOpacity>
-                      </View>
+                      <TouchableOpacity onPress={() => removeLink(link.id)}>
+                        <Ionicons name="trash" size={16} color="#EF4444" />
+                      </TouchableOpacity>
                     </View>
                   );
                 })}
@@ -510,7 +517,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
                 {links.length === 0 && (
                   <TouchableOpacity style={[styles.addLinkEmptyBtn, { borderColor: isLightCard ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)' }]} onPress={() => setShowAddLinkModal(true)}>
                     <Ionicons name="add" size={20} color={isLightCard ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)'} />
-                    <Text style={{ color: isLightCard ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)', fontSize: 14 }}>Add social media links</Text>
+                    <Text style={{ color: isLightCard ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)', fontSize: 14 }}>Add links</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -615,6 +622,33 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
         </View>
       </Modal>
 
+      {/* ── Featured Icon Picker Modal ── */}
+      <Modal visible={showFeaturedIconPicker} animationType="slide" transparent onRequestClose={() => setShowFeaturedIconPicker(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Featured Icon</Text>
+              <TouchableOpacity onPress={() => setShowFeaturedIconPicker(false)}>
+                <Ionicons name="close" size={24} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalSubtitle}>{featuredIcons.length}/4 icons used</Text>
+            <ScrollView style={styles.modalScroll}>
+              <View style={styles.modalPlatforms}>
+                {FEATURED_ICON_PLATFORMS.filter(p => !featuredIcons.includes(p.id)).map((platform) => (
+                  <TouchableOpacity key={platform.id} style={styles.modalPlatformBtn} onPress={() => addFeaturedIcon(platform.id)} activeOpacity={0.7}>
+                    <View style={[styles.modalPlatformIcon, { backgroundColor: platform.color }]}>
+                      <Ionicons name={platform.icon as any} size={18} color="#fff" />
+                    </View>
+                    <Text style={styles.modalPlatformName}>{platform.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Add Link Modal ── */}
       <Modal visible={showAddLinkModal} animationType="slide" transparent onRequestClose={() => setShowAddLinkModal(false)}>
         <View style={styles.modalOverlay}>
@@ -674,7 +708,7 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   scrollContent: { paddingHorizontal: 16 },
   cardContainer: { borderRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10, position: 'relative' },
-  liveCard: { paddingBottom: 24 },
+  liveCard: { paddingBottom: 24, alignItems: 'center' },
 
   // Locked
   lockedOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: 20, gap: 12 },
@@ -690,16 +724,19 @@ const styles = StyleSheet.create({
 
   // Profile photo
   profilePhotoSection: { alignItems: 'center', paddingTop: 28, paddingBottom: 4 },
-  photoSizeHint: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  photoSizeHintText: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
-  changePhotoBtn: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, marginTop: 4 },
-  changePhotoBtnText: { fontSize: 12, color: '#fff', fontWeight: '500' },
 
-  // Featured social icons
-  featuredSocialIcon: { position: 'absolute', width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.9)', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 5 },
+  // Size hint - always visible
+  photoSizeHint: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, alignSelf: 'center' },
+  photoSizeHintText: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
+
+  // Featured social icons row (independent)
+  featuredIconsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 8 },
+  featuredIconSlot: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  featuredIconRemove: { position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(239,68,68,0.9)', borderWidth: 2, borderColor: '#1a1a2e', alignItems: 'center', justifyContent: 'center' },
+  featuredIconAdd: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
 
   // Card fields
-  cardFields: { paddingHorizontal: 20 },
+  cardFields: { paddingHorizontal: 20, width: '100%' },
   nameField: { fontSize: 22, fontWeight: '700', textAlign: 'center', paddingVertical: 4 },
   titleField: { fontSize: 14, fontWeight: '500', textAlign: 'center', paddingVertical: 2 },
   bioField: { fontSize: 13, textAlign: 'center', paddingVertical: 4, minHeight: 40 },
@@ -708,13 +745,12 @@ const styles = StyleSheet.create({
   contactInput: { flex: 1, fontSize: 13, paddingVertical: 4 },
 
   // Links
-  cardSection: { paddingHorizontal: 20, marginTop: 16 },
+  cardSection: { paddingHorizontal: 20, marginTop: 16, width: '100%' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   sectionTitle: { fontSize: 14, fontWeight: '600' },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6, paddingVertical: 6, paddingHorizontal: 8, borderRadius: 10, backgroundColor: 'rgba(128,128,128,0.1)' },
   linkIconWrapper: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   linkInput: { flex: 1, fontSize: 13 },
-  linkActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   addLinkEmptyBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderWidth: 1, borderStyle: 'dashed', borderRadius: 10 },
 
   // Gallery
@@ -747,6 +783,7 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: '#1E293B', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%', paddingBottom: 40 },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  modalSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.5)', paddingHorizontal: 20, marginTop: -8, marginBottom: 8 },
   modalScroll: { padding: 16 },
   modalPlatforms: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   modalPlatformBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#0F172A', paddingVertical: 12, paddingHorizontal: 14, borderRadius: 12, width: '48%' },
