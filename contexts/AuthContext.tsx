@@ -25,6 +25,7 @@ interface AuthContextType {
   signInWithApple: () => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -153,6 +154,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
   };
 
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://trytavvy.com/reset-password',
+    });
+    if (error) throw error;
+  };
+
   const deleteAccount = async () => {
     if (!user) throw new Error('No user logged in');
     
@@ -235,6 +243,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signInWithApple,
       signOut, 
       deleteAccount,
+      resetPassword,
       refreshProfile,
     }}>
       {children}

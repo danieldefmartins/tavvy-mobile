@@ -23,7 +23,7 @@ const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen({ navigation }: any) {
   const { t } = useTranslation();
-  const { signIn, signInWithGoogle, signInWithApple } = useAuth();
+  const { signIn, signInWithGoogle, signInWithApple, resetPassword } = useAuth();
   const { theme, isDark } = useThemeContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -68,6 +68,31 @@ export default function LoginScreen({ navigation }: any) {
     } catch (error: any) {
       console.warn('Apple sign-in error:', error);
       Alert.alert('Sign-in Failed', error.message || 'Could not sign in with Apple');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert(
+        'Enter Your Email',
+        'Please enter your email address first, then tap Forgot Password.',
+      );
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await resetPassword(email.trim());
+      Alert.alert(
+        'Check Your Email',
+        `We've sent a password reset link to ${email.trim()}. Please check your inbox and spam folder.`,
+        [{ text: 'OK' }],
+      );
+    } catch (error: any) {
+      console.warn('Reset password error:', error);
+      Alert.alert('Error', error.message || 'Could not send reset email. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -221,7 +246,7 @@ export default function LoginScreen({ navigation }: any) {
             </TouchableOpacity>
 
             {/* Forgot Password */}
-            <TouchableOpacity style={styles.forgotPassword}>
+            <TouchableOpacity style={styles.forgotPassword} onPress={handleForgotPassword}>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
           </View>
