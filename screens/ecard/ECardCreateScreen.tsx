@@ -85,6 +85,16 @@ const SOCIAL_PLATFORMS = [
   { id: 'other', name: 'Custom Link', icon: 'link', color: '#8E8E93', placeholder: 'https://...' },
 ];
 
+interface FeaturedIcon {
+  platform: string;
+  url: string;
+}
+
+interface VideoItem {
+  type: 'youtube' | 'tavvy_short' | 'external';
+  url: string;
+}
+
 interface LinkData {
   id: string;
   platform: string;
@@ -145,9 +155,13 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
   const [address, setAddress] = useState('');
   const [photoSizeIndex, setPhotoSizeIndex] = useState(1);
 
-  // Featured social icons (independent, up to 4)
-  const [featuredIcons, setFeaturedIcons] = useState<string[]>([]);
+  // Featured social icons (independent, up to 4, each with URL)
+  const [featuredIcons, setFeaturedIcons] = useState<FeaturedIcon[]>([]);
   const [showFeaturedIconPicker, setShowFeaturedIconPicker] = useState(false);
+
+  // Videos
+  const [videos, setVideos] = useState<VideoItem[]>([]);
+  const [showVideoTypePicker, setShowVideoTypePicker] = useState(false);
 
   // Links (separate from featured icons)
   const [links, setLinks] = useState<LinkData[]>([]);
@@ -181,6 +195,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
           if (typeof draft.photoSizeIndex === 'number') setPhotoSizeIndex(draft.photoSizeIndex);
           if (Array.isArray(draft.featuredIcons)) setFeaturedIcons(draft.featuredIcons);
           if (Array.isArray(draft.links)) setLinks(draft.links);
+          if (Array.isArray(draft.videos)) setVideos(draft.videos);
           if (draft.profileImage) setProfileImage(draft.profileImage);
           // Clear draft after restoring
           await AsyncStorage.removeItem('ecard_draft');
@@ -234,16 +249,54 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
     setGalleryImages(prev => [...prev, { id: Date.now().toString() + Math.random().toString(36).substr(2, 9), uri }]);
   };
 
-  // ── Featured icons (independent) ──
+  // ── Featured icons (independent, with URLs) ──
   const addFeaturedIcon = (platformId: string) => {
-    if (featuredIcons.length < 4 && !featuredIcons.includes(platformId)) {
-      setFeaturedIcons(prev => [...prev, platformId]);
+    if (featuredIcons.length < 4 && !featuredIcons.some(fi => fi.platform === platformId)) {
+      setFeaturedIcons(prev => [...prev, { platform: platformId, url: '' }]);
     }
     setShowFeaturedIconPicker(false);
   };
 
   const removeFeaturedIcon = (platformId: string) => {
-    setFeaturedIcons(prev => prev.filter(id => id !== platformId));
+    setFeaturedIcons(prev => prev.filter(fi => fi.platform !== platformId));
+  };
+
+  const updateFeaturedIconUrl = (platformId: string, url: string) => {
+    setFeaturedIcons(prev => prev.map(fi => fi.platform === platformId ? { ...fi, url } : fi));
+  };
+
+  // ── Videos ──
+  const addVideo = (type: 'youtube' | 'tavvy_short' | 'external') => {
+    if (type === 'tavvy_short') {
+      pickVideo();
+    } else {
+      setVideos(prev => [...prev, { type, url: '' }]);
+    }
+    setShowVideoTypePicker(false);
+  };
+
+  const updateVideoUrl = (index: number, url: string) => {
+    setVideos(prev => prev.map((v, i) => i === index ? { ...v, url } : v));
+  };
+
+  const removeVideo = (index: number) => {
+    setVideos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const pickVideo = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['videos'] as ImagePicker.MediaType[],
+        allowsEditing: true,
+        videoMaxDuration: 15,
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
+      }
+    } catch (err) {
+      console.warn('Video picker error:', err);
+    }
   };
 
   // ── Links (separate from featured icons) ──
@@ -279,7 +332,8 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
         const draft = {
           name, titleRole, bio, email, phone, website, address,
           templateIndex, colorIndex, photoSizeIndex,
-          featuredIcons, links, profileImage,
+          featuredIcons, links, videos: videos.map(v => ({ type: v.type, url: v.url })),
+          profileImage,
         };
         await AsyncStorage.setItem('ecard_draft', JSON.stringify(draft));
       } catch (e) { console.warn('Could not save draft:', e); }
@@ -335,7 +389,8 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
         is_published: false,
         is_active: true,
         gallery_images: uploadedGallery.length > 0 ? uploadedGallery : null,
-        featured_socials: featuredIcons.length > 0 ? featuredIcons : null,
+        featured_socials: featuredIcons.length > 0 ? featuredIcons.map(fi => ({ platform: fi.platform, url: fi.url })) : null,
+        videos: videos.length > 0 ? videos.map(v => ({ type: v.type, url: v.url })) : null,
       };
 
       const { data: newCard, error } = await supabase
@@ -490,31 +545,56 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
                 <Text style={styles.photoSizeHintText}>{currentPhotoSize.label} · Tap to change size</Text>
               </TouchableOpacity>
 
-              {/* ===== FEATURED SOCIAL ICONS (independent, up to 4) ===== */}
-              <View style={styles.featuredIconsRow}>
-                {featuredIcons.map(platformId => {
-                  const platform = FEATURED_ICON_PLATFORMS.find(p => p.id === platformId);
+              {/* ===== FEATURED SOCIAL ICONS (independent, up to 4, with URLs) ===== */}
+              <View style={styles.featuredIconsSection}>
+                <View style={styles.featuredIconsRow}>
+                  {featuredIcons.map(fi => {
+                    const platform = FEATURED_ICON_PLATFORMS.find(p => p.id === fi.platform);
+                    if (!platform) return null;
+                    return (
+                      <View key={fi.platform} style={[styles.featuredIconSlot, { backgroundColor: platform.color }]}>
+                        <Ionicons name={platform.icon as any} size={18} color="#fff" />
+                        <TouchableOpacity
+                          style={styles.featuredIconRemove}
+                          onPress={() => removeFeaturedIcon(fi.platform)}
+                        >
+                          <Ionicons name="close" size={10} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                  {featuredIcons.length < 4 && (
+                    <TouchableOpacity
+                      style={[styles.featuredIconAdd, { borderColor: isLightCard ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)' }]}
+                      onPress={() => setShowFeaturedIconPicker(true)}
+                    >
+                      <Ionicons name="add" size={18} color={isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)'} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {/* URL input for each featured icon */}
+                {featuredIcons.map(fi => {
+                  const platform = FEATURED_ICON_PLATFORMS.find(p => p.id === fi.platform);
                   if (!platform) return null;
+                  const placeholder = fi.platform === 'whatsapp' ? 'Phone number' : fi.platform === 'email' ? 'email@example.com' : `${platform.name} URL or @username`;
                   return (
-                    <View key={platformId} style={[styles.featuredIconSlot, { backgroundColor: platform.color }]}>
-                      <Ionicons name={platform.icon as any} size={18} color="#fff" />
-                      <TouchableOpacity
-                        style={styles.featuredIconRemove}
-                        onPress={() => removeFeaturedIcon(platformId)}
-                      >
-                        <Ionicons name="close" size={10} color="#fff" />
-                      </TouchableOpacity>
+                    <View key={`url_${fi.platform}`} style={styles.featuredIconUrlRow}>
+                      <View style={[styles.featuredIconUrlDot, { backgroundColor: platform.color }]}>
+                        <Ionicons name={platform.icon as any} size={10} color="#fff" />
+                      </View>
+                      <TextInput
+                        style={[styles.featuredIconUrlInput, { color: textColor }]}
+                        value={fi.url}
+                        onChangeText={(val) => updateFeaturedIconUrl(fi.platform, val)}
+                        placeholder={placeholder}
+                        placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        keyboardType="url"
+                      />
                     </View>
                   );
                 })}
-                {featuredIcons.length < 4 && (
-                  <TouchableOpacity
-                    style={[styles.featuredIconAdd, { borderColor: isLightCard ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)' }]}
-                    onPress={() => setShowFeaturedIconPicker(true)}
-                  >
-                    <Ionicons name="add" size={18} color={isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)'} />
-                  </TouchableOpacity>
-                )}
               </View>
 
               {/* ── Editable Fields ── */}
@@ -641,6 +721,50 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
                 )}
                 <Text style={[styles.galleryHint, { color: isLightCard ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.3)' }]}>Tap to view full size</Text>
               </View>
+
+              {/* ── Videos ── */}
+              <View style={styles.cardSection}>
+                <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionTitle, { color: textColor }]}>Videos</Text>
+                  <TouchableOpacity onPress={() => setShowVideoTypePicker(true)}>
+                    <Ionicons name="add-circle" size={24} color={ACCENT_GREEN} />
+                  </TouchableOpacity>
+                </View>
+
+                {videos.map((video, idx) => (
+                  <View key={idx} style={[styles.videoItem, { borderBottomColor: isLightCard ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)' }]}>
+                    <View style={[styles.videoTypeIcon, { backgroundColor: video.type === 'youtube' ? '#FF0000' : video.type === 'tavvy_short' ? ACCENT_GREEN : '#6366F1' }]}>
+                      <Ionicons name={video.type === 'youtube' ? 'logo-youtube' : video.type === 'tavvy_short' ? 'film' : 'play'} size={14} color="#fff" />
+                    </View>
+                    {video.type === 'tavvy_short' && video.url ? (
+                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={{ fontSize: 12, color: textColor }}>15s video ready</Text>
+                      </View>
+                    ) : (
+                      <TextInput
+                        style={[styles.videoUrlInput, { color: textColor }]}
+                        value={video.url}
+                        onChangeText={(val) => updateVideoUrl(idx, val)}
+                        placeholder={video.type === 'youtube' ? 'YouTube URL' : 'Video URL'}
+                        placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        keyboardType="url"
+                      />
+                    )}
+                    <TouchableOpacity onPress={() => removeVideo(idx)}>
+                      <Ionicons name="trash" size={16} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                {videos.length === 0 && (
+                  <TouchableOpacity style={[styles.addLinkEmptyBtn, { borderColor: isLightCard ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)' }]} onPress={() => setShowVideoTypePicker(true)}>
+                    <Ionicons name="videocam" size={20} color={isLightCard ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)'} />
+                    <Text style={{ color: isLightCard ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)', fontSize: 14 }}>Add videos</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </LinearGradient>
           </View>
 
@@ -720,7 +844,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
             <Text style={styles.modalSubtitle}>{featuredIcons.length}/4 icons used</Text>
             <ScrollView style={styles.modalScroll}>
               <View style={styles.modalPlatforms}>
-                {FEATURED_ICON_PLATFORMS.filter(p => !featuredIcons.includes(p.id)).map((platform) => (
+                {FEATURED_ICON_PLATFORMS.filter(p => !featuredIcons.some(fi => fi.platform === p.id)).map((platform) => (
                   <TouchableOpacity key={platform.id} style={styles.modalPlatformBtn} onPress={() => addFeaturedIcon(platform.id)} activeOpacity={0.7}>
                     <View style={[styles.modalPlatformIcon, { backgroundColor: platform.color }]}>
                       <Ionicons name={platform.icon as any} size={18} color="#fff" />
@@ -756,6 +880,43 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
                 ))}
               </View>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Video Type Picker Modal ── */}
+      <Modal visible={showVideoTypePicker} animationType="slide" transparent onRequestClose={() => setShowVideoTypePicker(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Video</Text>
+              <TouchableOpacity onPress={() => setShowVideoTypePicker(false)}>
+                <Ionicons name="close" size={24} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalSubtitle}>Choose a video type</Text>
+            <View style={{ padding: 16 }}>
+              <View style={styles.modalPlatforms}>
+                <TouchableOpacity style={styles.modalPlatformBtn} onPress={() => addVideo('youtube')} activeOpacity={0.7}>
+                  <View style={[styles.modalPlatformIcon, { backgroundColor: '#FF0000' }]}>
+                    <Ionicons name="logo-youtube" size={18} color="#fff" />
+                  </View>
+                  <Text style={styles.modalPlatformName}>YouTube</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalPlatformBtn} onPress={() => addVideo('tavvy_short')} activeOpacity={0.7}>
+                  <View style={[styles.modalPlatformIcon, { backgroundColor: ACCENT_GREEN }]}>
+                    <Ionicons name="film" size={18} color="#fff" />
+                  </View>
+                  <Text style={styles.modalPlatformName}>Tavvy Short (15s)</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalPlatformBtn} onPress={() => addVideo('external')} activeOpacity={0.7}>
+                  <View style={[styles.modalPlatformIcon, { backgroundColor: '#6366F1' }]}>
+                    <Ionicons name="play" size={18} color="#fff" />
+                  </View>
+                  <Text style={styles.modalPlatformName}>Video URL</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
       </Modal>
@@ -813,11 +974,20 @@ const styles = StyleSheet.create({
   photoSizeHint: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, alignSelf: 'center' },
   photoSizeHintText: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
 
-  // Featured social icons row (independent)
+  // Featured social icons section (independent, with URLs)
+  featuredIconsSection: { width: '100%', paddingHorizontal: 16 },
   featuredIconsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 8 },
   featuredIconSlot: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   featuredIconRemove: { position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(239,68,68,0.9)', borderWidth: 2, borderColor: '#1a1a2e', alignItems: 'center', justifyContent: 'center' },
   featuredIconAdd: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
+  featuredIconUrlRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4, paddingHorizontal: 4 },
+  featuredIconUrlDot: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  featuredIconUrlInput: { flex: 1, fontSize: 12, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: 'rgba(128,128,128,0.2)' },
+
+  // Video items
+  videoItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderBottomWidth: 1 },
+  videoTypeIcon: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  videoUrlInput: { flex: 1, fontSize: 13, paddingVertical: 4 },
 
   // Card fields
   cardFields: { paddingHorizontal: 20, width: '100%' },
