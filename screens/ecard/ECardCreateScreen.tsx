@@ -311,14 +311,38 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
   // ── Upload helper ──
   const uploadImage = async (uri: string, path: string): Promise<string | null> => {
     try {
-      const response = await fetch(uri);
-      const arrayBuffer = await response.arrayBuffer();
-      const uint8 = new Uint8Array(arrayBuffer);
-      const { data, error } = await supabase.storage.from('ecard-assets').upload(path, uint8, { contentType: 'image/jpeg', upsert: true });
+      // React Native: use FormData for reliable file uploads to Supabase Storage
+      const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
+      const mimeType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+
+      const formData = new FormData();
+      formData.append('file', {
+        uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+        name: path.split('/').pop() || `upload.${ext}`,
+        type: mimeType,
+      } as any);
+
+      const { data, error } = await supabase.storage
+        .from('ecard-assets')
+        .upload(path, formData.get('file') as any, {
+          contentType: mimeType,
+          upsert: true,
+        });
+
       if (error) {
-        console.warn('Upload failed, continuing without image:', error.message);
-        return null;
+        // Fallback: try with fetch + arraybuffer
+        console.warn('FormData upload failed, trying arraybuffer:', error.message);
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const { data: data2, error: error2 } = await supabase.storage
+          .from('ecard-assets')
+          .upload(path, blob, { contentType: mimeType, upsert: true });
+        if (error2) {
+          console.warn('Upload fully failed:', error2.message);
+          return null;
+        }
       }
+
       const { data: urlData } = supabase.storage.from('ecard-assets').getPublicUrl(path);
       return urlData.publicUrl;
     } catch (err) { console.warn('Upload error, continuing:', err); return null; }
