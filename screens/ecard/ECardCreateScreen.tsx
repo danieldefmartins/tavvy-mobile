@@ -229,12 +229,16 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
   const uploadImage = async (uri: string, path: string): Promise<string | null> => {
     try {
       const response = await fetch(uri);
-      const blob = await response.blob();
-      const { data, error } = await supabase.storage.from('ecard-assets').upload(path, blob, { contentType: 'image/jpeg', upsert: true });
-      if (error) throw error;
+      const arrayBuffer = await response.arrayBuffer();
+      const uint8 = new Uint8Array(arrayBuffer);
+      const { data, error } = await supabase.storage.from('ecard-assets').upload(path, uint8, { contentType: 'image/jpeg', upsert: true });
+      if (error) {
+        console.warn('Upload failed, continuing without image:', error.message);
+        return null;
+      }
       const { data: urlData } = supabase.storage.from('ecard-assets').getPublicUrl(path);
       return urlData.publicUrl;
-    } catch (err) { console.error('Upload error:', err); return null; }
+    } catch (err) { console.warn('Upload error, continuing:', err); return null; }
   };
 
   // ── Save card ──
@@ -283,17 +287,22 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
       if (error) throw error;
 
       if (links.length > 0 && newCard) {
-        const cardLinks = links.map((link, index) => ({
-          card_id: newCard.id,
-          platform: link.platform,
-          title: SOCIAL_PLATFORMS.find(p => p.id === link.platform)?.name || link.platform,
-          url: link.value,
-          value: link.value,
-          icon: link.platform,
-          sort_order: index,
-          is_active: true,
-        }));
-        await supabase.from('digital_card_links').insert(cardLinks);
+        try {
+          const cardLinks = links.filter(l => l.value.trim()).map((link, index) => ({
+            card_id: newCard.id,
+            platform: link.platform,
+            title: SOCIAL_PLATFORMS.find(p => p.id === link.platform)?.name || link.platform,
+            url: link.value,
+            value: link.value,
+            icon: link.platform,
+            sort_order: index,
+            is_active: true,
+          }));
+          if (cardLinks.length > 0) {
+            const { error: linkError } = await supabase.from('digital_card_links').insert(cardLinks);
+            if (linkError) console.warn('Links insert warning:', linkError.message);
+          }
+        } catch (linkErr) { console.warn('Links insert failed, card still saved:', linkErr); }
       }
 
       // Pass premium flags so upsell screen knows whether to prompt payment
