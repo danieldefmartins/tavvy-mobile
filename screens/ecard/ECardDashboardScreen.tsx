@@ -515,6 +515,18 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             setSelectedFont(card.font_style || 'default');
             setProfilePhotoSize(card.profile_photo_size || 'medium');
             setGalleryImages(card.gallery_images || []);
+            // Normalize featured_socials: handle both flat strings and objects
+            const rawSocials = card.featured_socials || [];
+            setFeaturedSocials(rawSocials.map((item: any) => {
+              if (typeof item === 'string') {
+                return { platformId: item, url: '' };
+              }
+              // Handle {platform: string, url: string} format from web
+              if (item.platform && !item.platformId) {
+                return { platformId: item.platform, url: item.url || '' };
+              }
+              return item;
+            }));
             setProCredentials(card.pro_credentials || {
               isLicensed: false,
               isInsured: false,
