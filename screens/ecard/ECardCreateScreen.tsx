@@ -194,7 +194,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
               forGallery ? addGalleryImage(result.assets[0].uri) : setProfileImage(result.assets[0].uri);
             }
           } else if (buttonIndex === 2) {
-            const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: !forGallery, aspect: forGallery ? undefined : [1, 1], quality: 0.8, allowsMultipleSelection: forGallery });
+            const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'] as ImagePicker.MediaType[], allowsEditing: !forGallery, aspect: forGallery ? undefined : [1, 1], quality: 0.8, allowsMultipleSelection: forGallery });
             if (!result.canceled && result.assets) {
               if (forGallery) { result.assets.forEach(a => addGalleryImage(a.uri)); }
               else { setProfileImage(result.assets[0].uri); }
@@ -203,7 +203,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
         }
       );
     } else {
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: !forGallery, aspect: forGallery ? undefined : [1, 1], quality: 0.8, allowsMultipleSelection: forGallery });
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'] as ImagePicker.MediaType[], allowsEditing: !forGallery, aspect: forGallery ? undefined : [1, 1], quality: 0.8, allowsMultipleSelection: forGallery });
       if (!result.canceled && result.assets) {
         if (forGallery) { result.assets.forEach(a => addGalleryImage(a.uri)); }
         else { setProfileImage(result.assets[0].uri); }
