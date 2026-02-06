@@ -121,12 +121,12 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
   }, [initialColorId, initialTplIdx]);
 
   const [colorIndex, setColorIndex] = useState(initialClrIdx);
-  const [isPremiumUser] = useState(false);
 
   const template = TEMPLATES[templateIndex];
   const colorSchemes = template?.colorSchemes || [];
   const color = colorSchemes[colorIndex] || colorSchemes[0];
-  const isLocked = template?.isPremium && !isPremiumUser;
+  // Premium check deferred to upsell screen — let users design freely
+  const usesPremiumTemplate = template?.isPremium || false;
 
   const gradientColors: [string, string] = [color?.primary || '#667eea', color?.secondary || '#764ba2'];
   const textColor = color?.text || '#FFFFFF';
@@ -307,7 +307,13 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
         await supabase.from('digital_card_links').insert(cardLinks);
       }
 
-      navigation.navigate('ECardPremiumUpsell', { cardId: newCard.id });
+      // Pass premium flags so upsell screen knows whether to prompt payment
+      const usesPremiumColor = !(color?.isFree);
+      navigation.navigate('ECardPremiumUpsell', {
+        cardId: newCard.id,
+        isPremiumTemplate: usesPremiumTemplate,
+        isPremiumColor: usesPremiumColor,
+      });
     } catch (error: any) {
       console.error('Error creating card:', error);
       Alert.alert('Error', error.message || 'Failed to create card. Please try again.');
@@ -356,16 +362,6 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
           {...panResponder.panHandlers}
         >
           <View style={styles.cardContainer}>
-            {/* Locked overlay */}
-            {isLocked && (
-              <View style={styles.lockedOverlay}>
-                <Ionicons name="lock-closed" size={36} color="#fff" />
-                <Text style={styles.lockedText}>Premium Template</Text>
-                <TouchableOpacity style={styles.unlockBtn} onPress={() => navigation.navigate('ECardPremiumUpsell', {})}>
-                  <Text style={styles.unlockBtnText}>Unlock Premium</Text>
-                </TouchableOpacity>
-              </View>
-            )}
 
             <LinearGradient colors={gradientColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.liveCard}>
               {/* Profile Photo */}
@@ -571,17 +567,14 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.colorDotsContainer}>
             {colorSchemes.map((cs, i) => {
-              const isFree = cs.isFree;
-              const locked = !isFree && !isPremiumUser;
               const isActive = i === colorIndex;
               return (
                 <TouchableOpacity
                   key={cs.id}
-                  style={[styles.colorDot, isActive && styles.colorDotActive, locked && { opacity: 0.5 }]}
-                  onPress={() => { locked ? navigation.navigate('ECardPremiumUpsell', {}) : setColorIndex(i); }}
+                  style={[styles.colorDot, isActive && styles.colorDotActive]}
+                  onPress={() => setColorIndex(i)}
                 >
                   <LinearGradient colors={[cs.primary, cs.secondary]} style={styles.colorDotGradient} />
-                  {locked && <Ionicons name="lock-closed" size={8} color="#fff" style={styles.colorDotLock} />}
                 </TouchableOpacity>
               );
             })}
@@ -710,11 +703,6 @@ const styles = StyleSheet.create({
   cardContainer: { borderRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10, position: 'relative' },
   liveCard: { paddingBottom: 24, alignItems: 'center' },
 
-  // Locked
-  lockedOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: 20, gap: 12 },
-  lockedText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  unlockBtn: { backgroundColor: ACCENT_GREEN, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20, marginTop: 4 },
-  unlockBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
 
   // Cover photo
   coverPhotoContainer: { width: '100%', height: 220, position: 'relative' },
@@ -769,7 +757,6 @@ const styles = StyleSheet.create({
   colorDot: { width: 28, height: 28, borderRadius: 14, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent', position: 'relative' },
   colorDotActive: { borderColor: ACCENT_GREEN, transform: [{ scale: 1.15 }] },
   colorDotGradient: { flex: 1, borderRadius: 14 },
-  colorDotLock: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, textAlign: 'center', textAlignVertical: 'center' },
 
   // ── Photo Size Modal ──
   sizeOption: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 10 },
