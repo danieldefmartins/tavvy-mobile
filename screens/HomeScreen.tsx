@@ -449,6 +449,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const bottomSheetRef = useRef<BottomSheet>(null);
   const categoryBottomSheetRef = useRef<BottomSheet>(null);
   const searchInputRef = useRef<TextInput>(null);
+  const placesFlatListRef = useRef<any>(null);
+  const categoryFlatListRef = useRef<any>(null);
 
   // ============================================
   // INITIALIZATION
@@ -1997,10 +1999,33 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const handleMarkerPress = (place: Place) => {
     setSelectedPlace(place);
-    // Snap the appropriate bottom sheet based on current view
+    
+    // Find the index of the place in the appropriate list
     if (showCategoryResults) {
+      const index = categoryResultsPlaces.findIndex(p => p.id === place.id);
+      if (index !== -1) {
+        // Scroll to the place card
+        setTimeout(() => {
+          categoryFlatListRef.current?.scrollToIndex({
+            index,
+            animated: true,
+            viewPosition: 0.5, // Center the item
+          });
+        }, 300); // Wait for bottom sheet to open
+      }
       categoryBottomSheetRef.current?.snapToIndex(1);
     } else {
+      const index = filteredPlaces.findIndex(p => p.id === place.id);
+      if (index !== -1) {
+        // Scroll to the place card
+        setTimeout(() => {
+          placesFlatListRef.current?.scrollToIndex({
+            index,
+            animated: true,
+            viewPosition: 0.5, // Center the item
+          });
+        }, 300); // Wait for bottom sheet to open
+      }
       bottomSheetRef.current?.snapToIndex(1);
     }
   };
@@ -2632,11 +2657,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         </ScrollView>
         
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.7)']}
+          colors={['transparent', 'rgba(0,0,0,0.85)']}
           style={styles.photoGradientOverlay}
         >
-          <Text style={styles.overlayPlaceName} numberOfLines={1}>{placeName}</Text>
-          <Text style={styles.overlayPlaceAddress} numberOfLines={1}>{placeAddress}</Text>
+          <Text style={styles.overlayPlaceName} numberOfLines={2}>{placeName}</Text>
         </LinearGradient>
         
         {displayPhotos.length > 1 && (
@@ -3769,7 +3793,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <BottomSheet
           ref={bottomSheetRef}
           index={1}
-          snapPoints={searchedAddress ? [40, '40%', '85%'] : (selectedPlace ? [40, '45%', '85%'] : [40, '35%', '85%'])}
+          snapPoints={searchedAddress ? [40, '50%', '85%'] : (selectedPlace ? [40, '55%', '85%'] : [40, '50%', '85%'])}
           topInset={BOTTOM_SHEET_TOP_INSET}
           backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
           handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
@@ -3800,11 +3824,21 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             </BottomSheetScrollView>
           ) : (
             <BottomSheetFlatList
+              ref={placesFlatListRef}
               data={filteredPlaces}
               keyExtractor={(item, index) => `${item.id}-${index}`}
               renderItem={renderPlaceCard}
               contentContainerStyle={styles.bottomSheetContent}
               showsVerticalScrollIndicator={false}
+              onScrollToIndexFailed={(info) => {
+                // Fallback if scrollToIndex fails
+                setTimeout(() => {
+                  placesFlatListRef.current?.scrollToOffset({
+                    offset: info.averageItemLength * info.index,
+                    animated: true,
+                  });
+                }, 100);
+              }}
               ListHeaderComponent={
                 <Text style={[styles.bottomSheetResultsCount, { color: isDark ? theme.textSecondary : '#666' }]}>
                   {filteredPlaces.length} places nearby
@@ -3820,7 +3854,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <BottomSheet
           ref={categoryBottomSheetRef}
           index={1}
-          snapPoints={['15%', '45%', '90%']}
+          snapPoints={['15%', '55%', '90%']}
           topInset={BOTTOM_SHEET_TOP_INSET}
           backgroundStyle={[styles.bottomSheetBackground, { backgroundColor: isDark ? theme.background : '#fff' }]}
           handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: isDark ? theme.textSecondary : '#DEDEDE' }]}
@@ -3997,7 +4031,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                         resizeMode="cover"
                       />
                       <LinearGradient
-                        colors={['transparent', 'rgba(0,0,0,0.7)']}
+                        colors={['transparent', 'rgba(0,0,0,0.85)']}
                         style={styles.categoryResultPhotoGradient}
                       />
                       <View style={styles.categoryResultPhotoOverlay}>
