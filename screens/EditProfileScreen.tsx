@@ -15,6 +15,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import { Modal } from 'react-native';
+import DraggableImageCropper from '../components/DraggableImageCropper';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { useTranslation } from 'react-i18next';
@@ -34,6 +36,9 @@ export default function EditProfileScreen({ navigation }: any) {
 
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [tempImageUri, setTempImageUri] = useState<string | null>(null);
+  const [imagePosition, setImagePosition] = useState({ x: 50, y: 50 });
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
 
@@ -83,13 +88,15 @@ export default function EditProfileScreen({ navigation }: any) {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
+      allowsEditing: false, // We'll use our custom cropper
       quality: 0.8,
     });
 
     if (!result.canceled && result.assets[0]) {
-      setNewAvatarUri(result.assets[0].uri);
+      // Show our custom cropper
+      setTempImageUri(result.assets[0].uri);
+      setImagePosition({ x: 50, y: 50 });
+      setShowCropper(true);
     }
   };
 
@@ -102,14 +109,30 @@ export default function EditProfileScreen({ navigation }: any) {
     }
 
     const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
+      allowsEditing: false, // We'll use our custom cropper
       quality: 0.8,
     });
 
     if (!result.canceled && result.assets[0]) {
-      setNewAvatarUri(result.assets[0].uri);
+      // Show our custom cropper
+      setTempImageUri(result.assets[0].uri);
+      setImagePosition({ x: 50, y: 50 });
+      setShowCropper(true);
     }
+  };
+
+  const handleCropConfirm = (position: { x: number; y: number }) => {
+    if (tempImageUri) {
+      setNewAvatarUri(tempImageUri);
+      setImagePosition(position);
+    }
+    setShowCropper(false);
+    setTempImageUri(null);
+  };
+
+  const handleCropCancel = () => {
+    setShowCropper(false);
+    setTempImageUri(null);
   };
 
   const showImageOptions = () => {

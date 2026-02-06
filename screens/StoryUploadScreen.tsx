@@ -53,17 +53,38 @@ const SUGGESTED_TAGS = [
 ];
 
 interface RouteParams {
-  placeId: string;
-  placeName: string;
+  placeId?: string;
+  placeName?: string;
   placeLatitude?: number;
   placeLongitude?: number;
+  universeId?: string;
+  universeName?: string;
+}
+
+interface Place {
+  id: string;
+  name: string;
+  cover_image_url: string | null;
+  category: string | null;
+  latitude?: number;
+  longitude?: number;
 }
 
 export default function StoryUploadScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
-  const { placeId, placeName, placeLatitude, placeLongitude } = (route.params as RouteParams) || {};
+  const { placeId: initialPlaceId, placeName: initialPlaceName, placeLatitude, placeLongitude, universeId, universeName } = (route.params as RouteParams) || {};
+
+  // Place selection state (for universe-level story uploads)
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [showPlaceSelector, setShowPlaceSelector] = useState(false);
+  const [loadingPlaces, setLoadingPlaces] = useState(false);
+
+  // Derived place values
+  const placeId = selectedPlace?.id || initialPlaceId;
+  const placeName = selectedPlace?.name || initialPlaceName;
 
   // Location gating state
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -105,6 +126,46 @@ export default function StoryUploadScreen() {
     loadPresets();
     checkLocationAndPermissions();
   }, []);
+
+  // Load places when universeId is provided (for universe-level story uploads)
+  useEffect(() => {
+    const loadPlacesForUniverse = async () => {
+      if (!universeId || initialPlaceId) return; // Skip if placeId already provided
+      
+      setLoadingPlaces(true);
+      try {
+        // Get place IDs for this universe
+        const { data: placeLinks } = await supabase
+          .from('atlas_universe_places')
+          .select('place_id')
+          .eq('universe_id', universeId);
+        
+        if (!placeLinks || placeLinks.length === 0) {
+          setPlaces([]);
+          return;
+        }
+
+        const placeIds = placeLinks.map(link => link.place_id);
+
+        // Fetch place details
+        const { data: placesData } = await supabase
+          .from('places')
+          .select('id, name, cover_image_url, category, latitude, longitude')
+          .in('id', placeIds)
+          .order('name');
+
+        if (placesData) {
+          setPlaces(placesData);
+        }
+      } catch (err) {
+        console.error('Error loading places:', err);
+      } finally {
+        setLoadingPlaces(false);
+      }
+    };
+
+    loadPlacesForUniverse();
+  }, [universeId, initialPlaceId]);
 
   // Check location gating and user permissions
   const checkLocationAndPermissions = async () => {
@@ -511,6 +572,74 @@ export default function StoryUploadScreen() {
           >
             <Text style={styles.permissionButtonText}>Grant Permissions</Text>
           </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // Show place selector when universeId is provided but no place selected
+    if (universeId && !placeId && !loadingPlaces) {
+      return (
+        <SafeAreaView style={styles.permissionContainer}>
+          <View style={{ width: '100%', paddingHorizontal: 16 }}>
+            <TouchableOpacity
+              style={{ position: 'absolute', top: 0, left: 16 }}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="close" size={28} color="#fff" />
+            </TouchableOpacity>
+            
+            <Text style={[styles.permissionTitle, { marginTop: 40 }]}>Select a Place</Text>
+            {universeName && (
+              <Text style={styles.permissionText}>
+                Choose a place in {universeName} to add your story
+              </Text>
+            )}
+            
+            <ScrollView style={{ maxHeight: 400, marginTop: 16 }}>
+              {places.map(place => (
+                <TouchableOpacity
+                  key={place.id}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 12,
+                    backgroundColor: '#1A1A2E',
+                    borderRadius: 12,
+                    marginBottom: 8,
+                  }}
+                  onPress={() => setSelectedPlace(place)}
+                >
+                  {place.cover_image_url && (
+                    <Image
+                      source={{ uri: place.cover_image_url }}
+                      style={{ width: 50, height: 50, borderRadius: 8, marginRight: 12 }}
+                    />
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+                      {place.name}
+                    </Text>
+                    {place.category && (
+                      <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 2 }}>
+                        {place.category}
+                      </Text>
+                    )}
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </SafeAreaView>
+      );
+    }
+
+    // Show loading while loading places
+    if (loadingPlaces) {
+      return (
+        <View style={styles.permissionContainer}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={styles.permissionTitle}>Loading places...</Text>
         </View>
       );
     }
