@@ -65,9 +65,7 @@ interface Place {
   name: string;
   tavvy_category?: string;
   tavvy_subcategory?: string;
-  total_signals?: number;
-  thumbnail_url?: string;
-  is_open?: boolean;
+  cover_image_url?: string;
   latitude?: number;
   longitude?: number;
 }
@@ -178,7 +176,7 @@ export default function UniverseLandingScreen() {
         const placeIds = placeLinks.map((link: any) => link.place_id);
         const { data: placesData, error: placesError } = await supabase
           .from('places')
-          .select('id, name, tavvy_category, tavvy_subcategory, total_signals, thumbnail_url, latitude, longitude')
+          .select('id, name, tavvy_category, tavvy_subcategory, cover_image_url, latitude, longitude')
           .in('id', placeIds);
         
         if (!placesError && placesData) {
@@ -209,7 +207,7 @@ export default function UniverseLandingScreen() {
   const stats = [
     { val: String(universe?.place_count || places.length || 0), label: "Places", icon: "location" },
     { val: "—", label: "Map", icon: "map" },
-    { val: formatNumber(universe?.total_signals || reviews.length || 0), label: "Reviews", icon: "chatbubbles" },
+    { val: formatNumber(reviews.length || 0), label: "Reviews", icon: "chatbubbles" },
     { val: "Info", label: "Info", icon: "information-circle" }
   ];
 
@@ -314,7 +312,7 @@ export default function UniverseLandingScreen() {
         const uniquePlaceIds = [...new Set(menuItems.map((item: any) => item.place_id))];
         const { data: placesData } = await supabase
           .from('places')
-          .select('id, name, thumbnail_url')
+          .select('id, name, cover_image_url')
           .in('id', uniquePlaceIds);
 
         const placeMap = new Map(placesData?.map((p: any) => [p.id, p]) || []);
@@ -322,7 +320,7 @@ export default function UniverseLandingScreen() {
         const resultsWithPlaces = menuItems.map((item: any) => ({
           ...item,
           place_name: placeMap.get(item.place_id)?.name || 'Unknown Restaurant',
-          place_thumbnail: placeMap.get(item.place_id)?.thumbnail_url
+          place_thumbnail: placeMap.get(item.place_id)?.cover_image_url
         }));
 
         setFoodSearchResults(resultsWithPlaces);
@@ -502,7 +500,7 @@ export default function UniverseLandingScreen() {
               onPress={() => handlePlacePress(place)}
             >
               <Image 
-                source={{ uri: place.thumbnail_url || getCategoryFallbackImage(place.tavvy_category || '') }} 
+                source={{ uri: place.cover_image_url || getCategoryFallbackImage(place.tavvy_category || '') }} 
                 style={styles.placeImage} 
               />
               <View style={styles.placeContent}>
@@ -514,7 +512,7 @@ export default function UniverseLandingScreen() {
                 </View>
                 <View style={styles.placeTags}>
                   <View style={styles.placeTag}>
-                    <Text style={styles.placeTagText}>✨ {place.total_signals || 0} signals</Text>
+                    <Text style={styles.placeTagText}>{place.tavvy_subcategory || 'Place'}</Text>
                   </View>
                 </View>
               </View>
@@ -727,8 +725,8 @@ export default function UniverseLandingScreen() {
             <Text style={styles.statBoxLabel}>Reviews</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statBoxValue}>{universe?.total_signals || 0}</Text>
-            <Text style={styles.statBoxLabel}>Signals</Text>
+            <Text style={styles.statBoxValue}>{places.length}</Text>
+            <Text style={styles.statBoxLabel}>Places</Text>
           </View>
         </View>
       </View>

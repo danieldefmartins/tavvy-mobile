@@ -75,8 +75,7 @@ interface Place {
   name: string;
   tavvy_category?: string;
   tavvy_subcategory?: string;
-  total_signals?: number;
-  thumbnail_url?: string;
+  cover_image_url?: string;
 }
 
 export default function UniverseDetailScreen() {
@@ -162,8 +161,7 @@ export default function UniverseDetailScreen() {
             name,
             tavvy_category,
             tavvy_subcategory,
-            total_signals,
-            thumbnail_url
+            cover_image_url
           )
         `)
         .eq('universe_id', planetId)
@@ -427,7 +425,7 @@ export default function UniverseDetailScreen() {
                 {selectedPlanet.name}
               </Text>
               <Text style={[styles.selectedPlanetStats, dynamicStyles.textSecondary]}>
-                {selectedPlanet.place_count || places.length} Places • {formatNumber(selectedPlanet.total_signals || 0)} Signals
+                {selectedPlanet.place_count || places.length} Places
               </Text>
             </View>
           )}
@@ -450,7 +448,7 @@ export default function UniverseDetailScreen() {
                   onPress={() => handlePlacePress(place)}
                 >
                   <Image
-                    source={{ uri: place.thumbnail_url || getCategoryFallbackImage(place.tavvy_category || '') }}
+                    source={{ uri: place.cover_image_url || getCategoryFallbackImage(place.tavvy_category || '') }}
                     style={styles.placeImage}
                   />
                   <View style={styles.placeContent}>
@@ -461,9 +459,9 @@ export default function UniverseDetailScreen() {
                       {place.tavvy_category || 'Attraction'}
                     </Text>
                     <View style={styles.placeSignals}>
-                      <Ionicons name="sparkles" size={12} color={theme.primary} />
+                      <Ionicons name="location" size={12} color={theme.primary} />
                       <Text style={[styles.placeSignalText, { color: theme.primary }]}>
-                        {place.total_signals || 0} signals
+                        {place.tavvy_subcategory || 'Place'}
                       </Text>
                     </View>
                   </View>
