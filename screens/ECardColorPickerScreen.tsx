@@ -69,27 +69,29 @@ const ECardColorPickerScreen: React.FC = () => {
       return;
     }
     
-    // Navigate to the NEW Linktree-style onboarding flow for new cards
-    navigation.navigate('ECardOnboardingPlatforms', {
+    // Navigate to the unified real-time card builder
+    navigation.navigate('ECardCreate', {
       templateId: params.templateId,
       colorSchemeId: selectedColorScheme,
-      templateConfig: {
-        template,
-        colorScheme,
-      },
-      mode: params.mode,
     });
   };
 
   const renderColorSchemeCard = (colorScheme: ColorScheme, index: number) => {
     const isSelected = selectedColorScheme === colorScheme.id;
     const gradientColors = [colorScheme.primary, colorScheme.secondary];
+    const isLocked = !colorScheme.isFree; // Premium colors require subscription
 
     return (
       <TouchableOpacity
         key={colorScheme.id}
-        style={[styles.colorCard, isSelected && styles.colorCardSelected]}
-        onPress={() => setSelectedColorScheme(colorScheme.id)}
+        style={[styles.colorCard, isSelected && styles.colorCardSelected, isLocked && styles.colorCardLocked]}
+        onPress={() => {
+          if (isLocked) {
+            Alert.alert('Premium Color', 'This color is available with eCard Premium. Upgrade to unlock all colors and features.');
+            return;
+          }
+          setSelectedColorScheme(colorScheme.id);
+        }}
         activeOpacity={0.8}
       >
         {/* Mini Preview */}
@@ -137,6 +139,16 @@ const ECardColorPickerScreen: React.FC = () => {
         {isSelected && (
           <View style={styles.selectedIndicator}>
             <Ionicons name="checkmark-circle" size={24} color="#22c55e" />
+          </View>
+        )}
+
+        {/* Lock Icon for Premium */}
+        {isLocked && (
+          <View style={styles.lockOverlay}>
+            <View style={styles.lockBadge}>
+              <Ionicons name="lock-closed" size={14} color="#FFD700" />
+              <Text style={styles.lockText}>PRO</Text>
+            </View>
           </View>
         )}
       </TouchableOpacity>
@@ -429,6 +441,28 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  colorCardLocked: {
+    opacity: 0.6,
+  },
+  lockOverlay: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+  },
+  lockBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  lockText: {
+    color: '#FFD700',
+    fontSize: 10,
+    fontWeight: '700',
   },
 });
 

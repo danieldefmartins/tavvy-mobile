@@ -12,3 +12,4 @@ export { default as ECardPremiumUpsellScreen } from './ECardPremiumUpsellScreen'
 export { default as ECardPreviewScreen } from './ECardPreviewScreen';
 export { default as ECardNFCWriteScreen } from './ECardNFCWriteScreen';
 export { default as ECardFormBlockScreen } from './ECardFormBlockScreen';
+export { default as ECardCreateScreen } from './ECardCreateScreen';

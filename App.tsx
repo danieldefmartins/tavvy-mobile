@@ -163,6 +163,7 @@ import {
   ECardPreviewScreen,
   ECardNFCWriteScreen,
   ECardFormBlockScreen,
+  ECardCreateScreen,
 } from './screens/ecard';
 import VerificationUploadScreen from './screens/VerificationUploadScreen';
 import ExperiencePathsScreen from './screens/ExperiencePathsScreen';
@@ -370,6 +371,7 @@ function AppsStack() {
       <MenuStackNav.Screen name="ECardPreview" component={ECardPreviewScreen} />
       <MenuStackNav.Screen name="ECardNFCWrite" component={ECardNFCWriteScreen} />
       <MenuStackNav.Screen name="ECardFormBlock" component={ECardFormBlockScreen} />
+      <MenuStackNav.Screen name="ECardCreate" component={ECardCreateScreen} />
       <MenuStackNav.Screen name="VerificationUpload" component={VerificationUploadScreen} />
       
       {/* Admin Screens */}
