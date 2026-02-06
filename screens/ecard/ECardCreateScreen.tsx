@@ -14,7 +14,7 @@
  *  - "Continue" button saves card
  */
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -36,6 +36,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { TEMPLATES, Template, ColorScheme } from '../../config/eCardTemplates';
@@ -161,6 +162,35 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
   const currentPhotoSize = PHOTO_SIZE_OPTIONS[photoSizeIndex];
   const isCover = currentPhotoSize.id === 'cover';
 
+  // ── Restore saved draft after login redirect ──
+  useEffect(() => {
+    (async () => {
+      try {
+        const saved = await AsyncStorage.getItem('ecard_draft');
+        if (saved) {
+          const draft = JSON.parse(saved);
+          if (draft.name) setName(draft.name);
+          if (draft.titleRole) setTitleRole(draft.titleRole);
+          if (draft.bio) setBio(draft.bio);
+          if (draft.email) setEmail(draft.email);
+          if (draft.phone) setPhone(draft.phone);
+          if (draft.website) setWebsite(draft.website);
+          if (draft.address) setAddress(draft.address);
+          if (typeof draft.templateIndex === 'number') setTemplateIndex(draft.templateIndex);
+          if (typeof draft.colorIndex === 'number') setColorIndex(draft.colorIndex);
+          if (typeof draft.photoSizeIndex === 'number') setPhotoSizeIndex(draft.photoSizeIndex);
+          if (Array.isArray(draft.featuredIcons)) setFeaturedIcons(draft.featuredIcons);
+          if (Array.isArray(draft.links)) setLinks(draft.links);
+          if (draft.profileImage) setProfileImage(draft.profileImage);
+          // Clear draft after restoring
+          await AsyncStorage.removeItem('ecard_draft');
+        }
+      } catch (e) {
+        console.warn('Could not restore eCard draft:', e);
+      }
+    })();
+  }, []);
+
   // ── Template navigation helpers ──
   const goToPrevTemplate = () => {
     if (templateIndex > 0) { setTemplateIndex(templateIndex - 1); setColorIndex(0); }
@@ -243,7 +273,26 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
 
   // ── Save card ──
   const handleCreate = async () => {
-    if (!user) { Alert.alert('Login Required', 'Please log in to create a card.'); return; }
+    if (!user) {
+      // Save draft to AsyncStorage so it can be restored after login
+      try {
+        const draft = {
+          name, titleRole, bio, email, phone, website, address,
+          templateIndex, colorIndex, photoSizeIndex,
+          featuredIcons, links, profileImage,
+        };
+        await AsyncStorage.setItem('ecard_draft', JSON.stringify(draft));
+      } catch (e) { console.warn('Could not save draft:', e); }
+      Alert.alert(
+        'Login Required',
+        'Please log in to save your card. Your design will be restored after login.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Log In', onPress: () => navigation.navigate('Login' as any) },
+        ]
+      );
+      return;
+    }
     if (!name.trim()) { Alert.alert('Name Required', 'Please enter your name.'); return; }
     setIsCreating(true);
     try {
