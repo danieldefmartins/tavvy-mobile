@@ -247,46 +247,68 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
     if (!name.trim()) { Alert.alert('Name Required', 'Please enter your name.'); return; }
     setIsCreating(true);
     try {
+      // Upload profile photo (non-blocking — card saves even if upload fails)
       let photoUrl: string | null = null;
-      if (profileImage) { photoUrl = await uploadImage(profileImage, `${user.id}/profile_${Date.now()}.jpg`); }
+      if (profileImage) {
+        photoUrl = await uploadImage(profileImage, `${user.id}/profile_${Date.now()}.jpg`);
+      }
 
+      // Upload gallery images (non-blocking)
       const uploadedGallery: { id: string; url: string; caption: string }[] = [];
       for (const img of galleryImages) {
         const url = await uploadImage(img.uri, `${user.id}/gallery_${img.id}.jpg`);
         if (url) uploadedGallery.push({ id: img.id, url, caption: '' });
       }
 
-      const tempSlug = `draft_${user.id.substring(0, 8)}_${Date.now().toString(36)}`;
+      // Generate a unique slug
+      const uniqueId = `${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
+      const tempSlug = `draft_${user.id.substring(0, 8)}_${uniqueId}`;
+
+      const insertPayload = {
+        user_id: user.id,
+        slug: tempSlug,
+        full_name: name.trim(),
+        title: titleRole || null,
+        bio: bio || null,
+        email: email || null,
+        phone: phone || null,
+        website: website || null,
+        city: address || null,
+        profile_photo_url: photoUrl,
+        profile_photo_size: currentPhotoSize.id,
+        gradient_color_1: gradientColors[0],
+        gradient_color_2: gradientColors[1],
+        template_id: template.id,
+        color_scheme_id: color?.id || null,
+        theme: template.id,
+        button_style: template.layout.buttonStyle,
+        font_style: template.layout.fontFamily,
+        is_published: false,
+        is_active: true,
+        gallery_images: uploadedGallery.length > 0 ? uploadedGallery : null,
+        featured_socials: featuredIcons.length > 0 ? featuredIcons : null,
+      };
 
       const { data: newCard, error } = await supabase
         .from('digital_cards')
-        .insert({
-          user_id: user.id,
-          slug: tempSlug,
-          full_name: name,
-          title: titleRole,
-          bio,
-          email: email || null,
-          phone: phone || null,
-          website: website || null,
-          city: address || null,
-          profile_photo_url: photoUrl,
-          profile_photo_size: currentPhotoSize.id,
-          gradient_color_1: gradientColors[0],
-          gradient_color_2: gradientColors[1],
-          theme: template.id,
-          button_style: template.layout.buttonStyle,
-          font_style: template.layout.fontFamily,
-          is_published: false,
-          gallery_images: uploadedGallery,
-          featured_socials: featuredIcons,
-        })
+        .insert(insertPayload)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        Alert.alert('Save Error', `Could not save card: ${error.message}`);
+        setIsCreating(false);
+        return;
+      }
 
-      if (links.length > 0 && newCard) {
+      if (!newCard) {
+        Alert.alert('Save Error', 'Card was not returned after save. Please try again.');
+        setIsCreating(false);
+        return;
+      }
+
+      // Insert links (non-blocking — card already saved)
+      if (links.length > 0) {
         try {
           const cardLinks = links.filter(l => l.value.trim()).map((link, index) => ({
             card_id: newCard.id,
@@ -305,7 +327,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
         } catch (linkErr) { console.warn('Links insert failed, card still saved:', linkErr); }
       }
 
-      // Pass premium flags so upsell screen knows whether to prompt payment
+      // Navigate to upsell screen
       const usesPremiumColor = !(color?.isFree);
       navigation.navigate('ECardPremiumUpsell', {
         cardId: newCard.id,
@@ -314,7 +336,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
       });
     } catch (error: any) {
       console.error('Error creating card:', error);
-      Alert.alert('Error', error.message || 'Failed to create card. Please try again.');
+      Alert.alert('Error', `${error?.message || 'Unknown error'}\n\nPlease try again.`);
     } finally { setIsCreating(false); }
   };
 
@@ -384,7 +406,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
               </TouchableOpacity>
             )}
 
-            <LinearGradient colors={gradientColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.liveCard}>
+            <LinearGradient key={`${templateIndex}_${colorIndex}`} colors={gradientColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.liveCard}>
               {/* Profile Photo */}
               {isCover ? (
                 <TouchableOpacity style={styles.coverPhotoContainer} onPress={() => pickImage(false)} activeOpacity={0.8}>
