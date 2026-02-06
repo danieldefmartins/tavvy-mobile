@@ -14,7 +14,7 @@
  *  - "Continue" button saves card
  */
 
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -32,7 +32,6 @@ import {
   Dimensions,
   ActivityIndicator,
   Modal,
-  PanResponder,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -162,23 +161,13 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
   const currentPhotoSize = PHOTO_SIZE_OPTIONS[photoSizeIndex];
   const isCover = currentPhotoSize.id === 'cover';
 
-  // ── Swipe gesture for template switching ──
-  const swipeX = useRef(0);
-  const panResponder = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => false,
-    onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 20 && Math.abs(gs.dy) < 40,
-    onPanResponderGrant: () => { swipeX.current = 0; },
-    onPanResponderMove: (_, gs) => { swipeX.current = gs.dx; },
-    onPanResponderRelease: (_, gs) => {
-      if (gs.dx < -60 && templateIndex < TEMPLATES.length - 1) {
-        setTemplateIndex(prev => prev + 1);
-        setColorIndex(0);
-      } else if (gs.dx > 60 && templateIndex > 0) {
-        setTemplateIndex(prev => prev - 1);
-        setColorIndex(0);
-      }
-    },
-  }), [templateIndex]);
+  // ── Template navigation helpers ──
+  const goToPrevTemplate = () => {
+    if (templateIndex > 0) { setTemplateIndex(templateIndex - 1); setColorIndex(0); }
+  };
+  const goToNextTemplate = () => {
+    if (templateIndex < TEMPLATES.length - 1) { setTemplateIndex(templateIndex + 1); setColorIndex(0); }
+  };
 
   // ── Image picker ──
   const pickImage = async (forGallery: boolean = false) => {
@@ -346,22 +335,37 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
           </TouchableOpacity>
         </View>
 
-        {/* Swipe hint */}
-        <View style={styles.swipeHint}>
-          <Ionicons name="chevron-back" size={12} color="rgba(255,255,255,0.3)" />
-          <Text style={styles.swipeHintText}>Swipe to change style</Text>
-          <Ionicons name="chevron-forward" size={12} color="rgba(255,255,255,0.3)" />
-        </View>
-
         {/* ── THE CARD ── */}
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          {...panResponder.panHandlers}
         >
           <View style={styles.cardContainer}>
+            {/* ── Big overlay arrows for template switching ── */}
+            {templateIndex > 0 && (
+              <TouchableOpacity
+                style={styles.overlayArrowLeft}
+                onPress={goToPrevTemplate}
+                activeOpacity={0.7}
+              >
+                <View style={styles.overlayArrowCircle}>
+                  <Ionicons name="chevron-back" size={28} color="#fff" />
+                </View>
+              </TouchableOpacity>
+            )}
+            {templateIndex < TEMPLATES.length - 1 && (
+              <TouchableOpacity
+                style={styles.overlayArrowRight}
+                onPress={goToNextTemplate}
+                activeOpacity={0.7}
+              >
+                <View style={styles.overlayArrowCircle}>
+                  <Ionicons name="chevron-forward" size={28} color="#fff" />
+                </View>
+              </TouchableOpacity>
+            )}
 
             <LinearGradient colors={gradientColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.liveCard}>
               {/* Profile Photo */}
@@ -559,7 +563,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
         <View style={styles.bottomBar}>
           <TouchableOpacity
             style={[styles.navArrow, templateIndex === 0 && { opacity: 0.3 }]}
-            onPress={() => { if (templateIndex > 0) { setTemplateIndex(templateIndex - 1); setColorIndex(0); } }}
+            onPress={goToPrevTemplate}
             disabled={templateIndex === 0}
           >
             <Ionicons name="chevron-back" size={20} color="#fff" />
@@ -582,7 +586,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
 
           <TouchableOpacity
             style={[styles.navArrow, templateIndex === TEMPLATES.length - 1 && { opacity: 0.3 }]}
-            onPress={() => { if (templateIndex < TEMPLATES.length - 1) { setTemplateIndex(templateIndex + 1); setColorIndex(0); } }}
+            onPress={goToNextTemplate}
             disabled={templateIndex === TEMPLATES.length - 1}
           >
             <Ionicons name="chevron-forward" size={20} color="#fff" />
@@ -693,15 +697,16 @@ const styles = StyleSheet.create({
   continueBtn: { backgroundColor: ACCENT_GREEN, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20 },
   continueBtnText: { fontSize: 14, fontWeight: '600', color: '#fff' },
 
-  // Swipe hint
-  swipeHint: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingBottom: 6 },
-  swipeHintText: { fontSize: 11, color: 'rgba(255,255,255,0.3)' },
-
   // Card
   scrollView: { flex: 1 },
   scrollContent: { paddingHorizontal: 16 },
   cardContainer: { borderRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10, position: 'relative' },
   liveCard: { paddingBottom: 24, alignItems: 'center' },
+
+  // Big overlay arrows on card
+  overlayArrowLeft: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 52, zIndex: 20, justifyContent: 'center', alignItems: 'flex-start', paddingLeft: 4 },
+  overlayArrowRight: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 52, zIndex: 20, justifyContent: 'center', alignItems: 'flex-end', paddingRight: 4 },
+  overlayArrowCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 4, elevation: 5 },
 
 
   // Cover photo
