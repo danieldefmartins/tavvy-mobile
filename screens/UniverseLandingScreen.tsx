@@ -33,6 +33,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabaseClient';
 import { type AtlasUniverse } from '../lib/atlas';
 import { useTranslation } from 'react-i18next';
+import { StoriesRow } from '../components/StoriesRow';
 
 const { width } = Dimensions.get('window');
 
@@ -801,6 +802,12 @@ export default function UniverseLandingScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Stories Row */}
+        <StoriesRow
+          universeId={universe?.id}
+          onAddStoryPress={() => navigation.navigate('StoryUpload' as never, { universeId: universe?.id, universeName: universe?.name } as never)}
+        />
 
         {/* Tab Navigation */}
         <View style={styles.tabsContainer}>
