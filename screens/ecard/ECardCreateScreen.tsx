@@ -323,7 +323,15 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
             <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>{template?.name || 'Card'}</Text>
+            <View style={styles.headerTitleRow}>
+              <Text style={styles.headerTitle}>{template?.name || 'Card'}</Text>
+              {usesPremiumTemplate && (
+                <View style={styles.proBadge}>
+                  <Ionicons name="lock-closed" size={9} color="#fff" />
+                  <Text style={styles.proBadgeText}>PRO</Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.headerSubtitle}>{templateIndex + 1} / {TEMPLATES.length}</Text>
           </View>
           <TouchableOpacity
@@ -692,7 +700,10 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10 },
   backButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
   headerCenter: { alignItems: 'center' },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   headerTitle: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  proBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#F59E0B', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  proBadgeText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
   headerSubtitle: { fontSize: 11, color: 'rgba(255,255,255,0.4)' },
   continueBtn: { backgroundColor: ACCENT_GREEN, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20 },
   continueBtnText: { fontSize: 14, fontWeight: '600', color: '#fff' },
