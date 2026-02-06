@@ -11,6 +11,10 @@ import { supabase } from './supabaseClient';
 const TICKETMASTER_API_KEY = process.env.EXPO_PUBLIC_TICKETMASTER_API_KEY || '';
 const PREDICTHQ_API_KEY = process.env.EXPO_PUBLIC_PREDICTHQ_API_KEY || '';
 
+// Circuit breaker for PredictHQ - disable after payment/auth errors
+let predictHQDisabled = false;
+let predictHQDisabledUntil = 0;
+
 // Canonical Event Type
 export interface TavvyEvent {
   id: string;
@@ -116,7 +120,7 @@ export async function fetchTicketmasterEvents(
     );
 
     if (!response.ok) {
-      console.error('[Events] Ticketmaster API error:', response.status);
+      console.warn(`[Events] Ticketmaster API error: ${response.status}`);
       return [];
     }
 
@@ -201,6 +205,21 @@ export async function fetchPredictHQEvents(
   startDate?: string,
   endDate?: string
 ): Promise<TavvyEvent[]> {
+  // Circuit breaker: skip if disabled due to previous errors
+  if (predictHQDisabled) {
+    if (Date.now() < predictHQDisabledUntil) {
+      return []; // Silently skip - no error shown to user
+    }
+    // Re-enable after cooldown period
+    predictHQDisabled = false;
+    console.log('[Events] PredictHQ re-enabled after cooldown');
+  }
+
+  // Skip if no API key configured
+  if (!PREDICTHQ_API_KEY) {
+    return [];
+  }
+
   try {
     const radiusKm = Math.round(radiusMiles * 1.60934);
     
@@ -229,7 +248,26 @@ export async function fetchPredictHQEvents(
     );
 
     if (!response.ok) {
-      console.error('[Events] PredictHQ API error:', response.status);
+      // Handle specific error codes gracefully
+      if (response.status === 402) {
+        console.warn('[Events] PredictHQ API: Payment required (402) - disabling for 1 hour. Check your PredictHQ subscription.');
+        predictHQDisabled = true;
+        predictHQDisabledUntil = Date.now() + 60 * 60 * 1000; // Disable for 1 hour
+        return [];
+      }
+      if (response.status === 401 || response.status === 403) {
+        console.warn(`[Events] PredictHQ API: Auth error (${response.status}) - disabling for 1 hour. Check your API key.`);
+        predictHQDisabled = true;
+        predictHQDisabledUntil = Date.now() + 60 * 60 * 1000;
+        return [];
+      }
+      if (response.status === 429) {
+        console.warn('[Events] PredictHQ API: Rate limited (429) - disabling for 5 minutes.');
+        predictHQDisabled = true;
+        predictHQDisabledUntil = Date.now() + 5 * 60 * 1000;
+        return [];
+      }
+      console.warn(`[Events] PredictHQ API error: ${response.status}`);
       return [];
     }
 
