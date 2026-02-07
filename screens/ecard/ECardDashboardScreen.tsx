@@ -1109,30 +1109,66 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   };
 
   const handleDeleteCard = () => {
-    Alert.alert('Delete Card', 'Are you sure? This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive',
-        onPress: async () => {
-          try {
-            setIsSaving(true);
-            if (cardData?.id) {
-              await supabase.from('card_links').delete().eq('card_id', cardData.id);
-              const { error } = await supabase.from('digital_cards').delete().eq('id', cardData.id);
-              if (error) throw error;
-              Alert.alert('Success', 'Your card has been deleted.', [
-                { text: 'OK', onPress: () => navigation.navigate('MyCards') }
-              ]);
+    Alert.alert(
+      'Delete Card',
+      'Are you sure you want to delete this card? All links, photos, and uploaded files will be permanently removed. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete', style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsSaving(true);
+              if (cardData?.id) {
+                // 1. Collect every ecard-assets URL referenced by this card
+                const urlsToDelete: string[] = [];
+                if (profilePhotoUrl) urlsToDelete.push(profilePhotoUrl);
+                if (bannerImageUrl) urlsToDelete.push(bannerImageUrl);
+                if (cardData.background_image_url) urlsToDelete.push(cardData.background_image_url);
+                if (Array.isArray(galleryImages)) {
+                  for (const img of galleryImages) {
+                    if (img?.url) urlsToDelete.push(img.url);
+                  }
+                }
+                if (Array.isArray(videos)) {
+                  for (const vid of videos) {
+                    if (vid?.url) urlsToDelete.push(vid.url);
+                  }
+                }
+
+                // 2. Convert public URLs to storage paths and batch-delete
+                const storagePaths: string[] = [];
+                for (const url of urlsToDelete) {
+                  if (!url) continue;
+                  const match = url.match(/ecard-assets\/(.+)$/);
+                  if (match) storagePaths.push(match[1]);
+                }
+                if (storagePaths.length > 0) {
+                  const { error: storageErr } = await supabase.storage
+                    .from('ecard-assets')
+                    .remove(storagePaths);
+                  if (storageErr) {
+                    console.warn('Failed to remove some storage files:', storageErr);
+                  }
+                }
+
+                // 3. Delete the card row (cascades to all child tables via FK constraints)
+                const { error } = await supabase.from('digital_cards').delete().eq('id', cardData.id);
+                if (error) throw error;
+                Alert.alert('Success', 'Your card has been deleted.', [
+                  { text: 'OK', onPress: () => navigation.navigate('MyCards') }
+                ]);
+              }
+            } catch (error) {
+              console.error('Error deleting card:', error);
+              Alert.alert('Error', 'Failed to delete card.');
+            } finally {
+              setIsSaving(false);
             }
-          } catch (error) {
-            console.error('Error deleting card:', error);
-            Alert.alert('Error', 'Failed to delete card.');
-          } finally {
-            setIsSaving(false);
-          }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const handleShare = async () => {

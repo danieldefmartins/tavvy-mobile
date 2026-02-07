@@ -16,6 +16,8 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
+  Alert,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -35,6 +37,10 @@ interface CardData {
   slug: string;
   is_published: boolean;
   profile_photo_url: string | null;
+  banner_image_url?: string | null;
+  background_image_url?: string | null;
+  gallery_images?: { id: string; url: string; caption?: string }[] | null;
+  videos?: { type: string; url: string }[] | null;
   gradient_color_1: string;
   gradient_color_2: string;
   view_count: number;
@@ -49,6 +55,8 @@ export default function ECardHubScreen() {
   const [cards, setCards] = useState<CardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [deleteModalCard, setDeleteModalCard] = useState<CardData | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchCards = async () => {
     if (!user) {
@@ -60,7 +68,7 @@ export default function ECardHubScreen() {
     try {
       const { data, error } = await supabase
         .from('digital_cards')
-        .select('id, full_name, title, slug, is_published, profile_photo_url, gradient_color_1, gradient_color_2, view_count, tap_count, created_at')
+        .select('id, full_name, title, slug, is_published, profile_photo_url, banner_image_url, background_image_url, gallery_images, videos, gradient_color_1, gradient_color_2, view_count, tap_count, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -97,6 +105,68 @@ export default function ECardHubScreen() {
 
   const handleViewCard = (card: CardData) => {
     navigation.navigate('ECardPreview', { cardId: card.id });
+  };
+
+  /**
+   * Full cascade delete — removes storage files then DB row.
+   * Child table rows (digital_card_links, card_links, card_blocks,
+   * form_submissions, card_recommendations) are cleaned up automatically
+   * by ON DELETE CASCADE foreign-key constraints.
+   */
+  const handleDeleteCard = async () => {
+    if (!deleteModalCard) return;
+    setDeleting(true);
+    try {
+      const card = deleteModalCard;
+
+      // 1. Collect every ecard-assets URL referenced by this card
+      const urlsToDelete: string[] = [];
+      if (card.profile_photo_url) urlsToDelete.push(card.profile_photo_url);
+      if (card.banner_image_url) urlsToDelete.push(card.banner_image_url);
+      if (card.background_image_url) urlsToDelete.push(card.background_image_url);
+      if (Array.isArray(card.gallery_images)) {
+        for (const img of card.gallery_images) {
+          if (img?.url) urlsToDelete.push(img.url);
+        }
+      }
+      if (Array.isArray(card.videos)) {
+        for (const vid of card.videos) {
+          if (vid?.url) urlsToDelete.push(vid.url);
+        }
+      }
+
+      // 2. Convert public URLs to storage paths and batch-delete
+      const storagePaths: string[] = [];
+      for (const url of urlsToDelete) {
+        if (!url) continue;
+        const match = url.match(/ecard-assets\/(.+)$/);
+        if (match) storagePaths.push(match[1]);
+      }
+      if (storagePaths.length > 0) {
+        const { error: storageErr } = await supabase.storage
+          .from('ecard-assets')
+          .remove(storagePaths);
+        if (storageErr) {
+          console.warn('Failed to remove some storage files:', storageErr);
+        }
+      }
+
+      // 3. Delete the card row (cascades to all child tables)
+      const { error } = await supabase
+        .from('digital_cards')
+        .delete()
+        .eq('id', card.id);
+
+      if (error) throw error;
+
+      setCards(prev => prev.filter(c => c.id !== card.id));
+      setDeleteModalCard(null);
+    } catch (err) {
+      console.error('Error deleting card:', err);
+      Alert.alert('Error', 'Failed to delete card. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const renderCardTile = (card: CardData) => {
@@ -162,10 +232,22 @@ export default function ECardHubScreen() {
           </View>
         </LinearGradient>
 
-        {/* Edit Button */}
+        {/* Action Row: Edit + Delete */}
         <View style={[styles.cardActions, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
           <Text style={[styles.editText, { color: isDark ? '#94A3B8' : '#666' }]}>Edit Card</Text>
-          <Ionicons name="chevron-forward" size={16} color={isDark ? '#94A3B8' : '#666'} />
+          <View style={styles.cardActionsRight}>
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              onPress={(e) => {
+                // Prevent the parent onPress from firing
+                setDeleteModalCard(card);
+              }}
+            >
+              <Ionicons name="trash-outline" size={16} color="#EF4444" />
+            </TouchableOpacity>
+            <Ionicons name="chevron-forward" size={16} color={isDark ? '#94A3B8' : '#666'} />
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -309,6 +391,61 @@ export default function ECardHubScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={!!deleteModalCard}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !deleting && setDeleteModalCard(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: isDark ? '#1E293B' : '#fff' }]}>
+            {/* Close button */}
+            <TouchableOpacity
+              style={styles.modalClose}
+              onPress={() => !deleting && setDeleteModalCard(null)}
+            >
+              <Ionicons name="close" size={20} color={isDark ? '#94A3B8' : '#666'} />
+            </TouchableOpacity>
+
+            {/* Icon */}
+            <View style={styles.modalIcon}>
+              <Ionicons name="trash" size={32} color="#EF4444" />
+            </View>
+
+            {/* Title */}
+            <Text style={[styles.modalTitle, { color: isDark ? '#fff' : '#111' }]}>Delete Card?</Text>
+
+            {/* Description */}
+            <Text style={[styles.modalDesc, { color: isDark ? '#94A3B8' : '#666' }]}>
+              Are you sure you want to delete "{deleteModalCard?.full_name || 'Untitled Card'}"? This will permanently remove the card, all its links, and uploaded photos. This cannot be undone.
+            </Text>
+
+            {/* Action Buttons */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnCancel, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}
+                onPress={() => setDeleteModalCard(null)}
+                disabled={deleting}
+              >
+                <Text style={[styles.modalBtnText, { color: isDark ? '#fff' : '#333' }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnDelete, deleting && { opacity: 0.6 }]}
+                onPress={handleDeleteCard}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={[styles.modalBtnText, { color: '#fff' }]}>Delete</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -463,6 +600,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
+  cardActionsRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  deleteBtn: {
+    padding: 4,
+  },
   editText: {
     fontSize: 13,
     fontWeight: '600',
@@ -587,5 +732,73 @@ const styles = StyleSheet.create({
   proTipText: {
     fontSize: 13,
     lineHeight: 18,
+  },
+  // Delete Confirmation Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: 20,
+    padding: 28,
+    paddingTop: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.3,
+    shadowRadius: 30,
+    elevation: 10,
+  },
+  modalClose: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    padding: 6,
+  },
+  modalIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalDesc: {
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBtnCancel: {},
+  modalBtnDelete: {
+    backgroundColor: '#EF4444',
+  },
+  modalBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
