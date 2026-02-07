@@ -18,11 +18,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  ActionSheetIOS,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+
 import { supabase } from '../../lib/supabaseClient';
 import { FONTS, PREMIUM_FONT_COUNT } from '../../config/eCardFonts';
 import { useAuth } from '../../contexts/AuthContext';
@@ -1864,16 +1868,87 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           {videoType === 'tavvy_short' ? (
             <TouchableOpacity
               style={[s.addBtn, { borderColor: colors.inputBorder, marginTop: 12 }]}
-              onPress={async () => {
-                const result = await ImagePicker.launchImageLibraryAsync({
-                  mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-                  allowsEditing: true,
-                  quality: 0.8,
-                  videoMaxDuration: 15,
-                });
-                if (!result.canceled && result.assets[0]) {
-                  setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
-                  setShowVideoModal(false);
+              onPress={() => {
+                const pickFromLibrary = async () => {
+                  const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+                    allowsEditing: true,
+                    quality: 0.8,
+                    videoMaxDuration: 15,
+                  });
+                  if (!result.canceled && result.assets[0]) {
+                    // Upload to Supabase Storage
+                    if (user?.id) {
+                      const uploadedUrl = await uploadImage(result.assets[0].uri, `${user.id}/video_${Date.now()}.mp4`);
+                      if (uploadedUrl) {
+                        setVideos(prev => [...prev, { type: 'tavvy_short', url: uploadedUrl }]);
+                      } else {
+                        setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
+                      }
+                    } else {
+                      setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
+                    }
+                    setShowVideoModal(false);
+                  }
+                };
+                const recordVideo = async () => {
+                  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                  if (status !== 'granted') { Alert.alert('Permission needed', 'Camera access is required to record video.'); return; }
+                  const result = await ImagePicker.launchCameraAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+                    allowsEditing: true,
+                    quality: 0.8,
+                    videoMaxDuration: 15,
+                  });
+                  if (!result.canceled && result.assets[0]) {
+                    if (user?.id) {
+                      const uploadedUrl = await uploadImage(result.assets[0].uri, `${user.id}/video_${Date.now()}.mp4`);
+                      if (uploadedUrl) {
+                        setVideos(prev => [...prev, { type: 'tavvy_short', url: uploadedUrl }]);
+                      } else {
+                        setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
+                      }
+                    } else {
+                      setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
+                    }
+                    setShowVideoModal(false);
+                  }
+                };
+                const pickFromFiles = async () => {
+                  try {
+                    const result = await DocumentPicker.getDocumentAsync({ type: 'video/*' });
+                    if (!result.canceled && result.assets?.[0]) {
+                      if (user?.id) {
+                        const uploadedUrl = await uploadImage(result.assets[0].uri, `${user.id}/video_${Date.now()}.mp4`);
+                        if (uploadedUrl) {
+                          setVideos(prev => [...prev, { type: 'tavvy_short', url: uploadedUrl }]);
+                        } else {
+                          setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
+                        }
+                      } else {
+                        setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
+                      }
+                      setShowVideoModal(false);
+                    }
+                  } catch (e) { console.warn('File picker error:', e); }
+                };
+
+                if (Platform.OS === 'ios') {
+                  ActionSheetIOS.showActionSheetWithOptions(
+                    { options: ['Cancel', 'Record Video', 'Choose from Library', 'Choose from Files'], cancelButtonIndex: 0 },
+                    (buttonIndex) => {
+                      if (buttonIndex === 1) recordVideo();
+                      else if (buttonIndex === 2) pickFromLibrary();
+                      else if (buttonIndex === 3) pickFromFiles();
+                    }
+                  );
+                } else {
+                  Alert.alert('Select Video', 'Choose a source', [
+                    { text: 'Record Video', onPress: recordVideo },
+                    { text: 'Choose from Library', onPress: pickFromLibrary },
+                    { text: 'Choose from Files', onPress: pickFromFiles },
+                    { text: 'Cancel', style: 'cancel' },
+                  ]);
                 }
               }}
             >
