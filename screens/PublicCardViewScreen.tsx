@@ -38,6 +38,7 @@ import { supabase } from '../lib/supabaseClient';
 import * as Contacts from 'expo-contacts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import { getTemplateByIdWithMigration, resolveTemplateId, TemplateLayout } from '../config/eCardTemplates';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const WALLET_STORAGE_KEY = '@tavvy_wallet_cards';
@@ -72,6 +73,8 @@ interface CardData {
   showContactInfo: boolean;
   showSocialIcons: boolean;
   fontColor: string | null;
+  templateId: string;
+  bannerImageUrl: string | null;
 }
 
 export default function PublicCardViewScreen() {
@@ -176,6 +179,8 @@ export default function PublicCardViewScreen() {
         showContactInfo: data.show_contact_info !== false,
         showSocialIcons: data.show_social_icons !== false,
         fontColor: data.font_color || null,
+        templateId: resolveTemplateId(data.template_id || 'classic'),
+        bannerImageUrl: data.banner_image_url || null,
       };
 
       setCardData(card);
@@ -369,8 +374,16 @@ export default function PublicCardViewScreen() {
       ? 'rgba(255,255,255,0.8)'
       : 'rgba(31,41,55,0.7)';
 
+  // Resolve template
+  const template = getTemplateByIdWithMigration(cardData.templateId);
+  const templateLayout: TemplateLayout = (template?.layout || 'classic') as TemplateLayout;
+  const isBannerLayout = templateLayout === 'banner' || templateLayout === 'modern' || templateLayout === 'executive';
+  const isBoldLayout = templateLayout === 'bold';
+  const isMinimalLayout = templateLayout === 'minimal';
+  const isNeonLayout = templateLayout === 'neon';
+
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: isMinimalLayout ? '#0f172a' : theme.background }]}>
       <StatusBar barStyle="light-content" />
       
       <ScrollView 
@@ -380,59 +393,131 @@ export default function PublicCardViewScreen() {
       >
         {/* Card Display */}
         <LinearGradient
-          colors={cardData.gradientColors}
-          style={styles.card}
+          colors={isMinimalLayout ? ['#ffffff', '#f8fafc'] as [string, string] : cardData.gradientColors}
+          style={[
+            styles.card,
+            isMinimalLayout && { margin: 20, borderRadius: 24, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 },
+            isBoldLayout && { padding: 0, overflow: 'hidden' },
+          ]}
         >
+          {/* Bold layout: full-width background photo with gradient overlay */}
+          {isBoldLayout && (cardData.bannerImageUrl || cardData.profilePhotoUrl) && (
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+              <Image
+                source={{ uri: cardData.bannerImageUrl || cardData.profilePhotoUrl || '' }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
+              />
+              <LinearGradient
+                colors={['transparent', `${cardData.gradientColors[0]}CC`, cardData.gradientColors[0]]}
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+              />
+            </View>
+          )}
+
+          {/* Banner layout: banner image at top */}
+          {isBannerLayout && cardData.bannerImageUrl && (
+            <View style={{ width: '100%', height: 180, marginBottom: -40, borderRadius: 0 }}>
+              <Image
+                source={{ uri: cardData.bannerImageUrl }}
+                style={{ width: '100%', height: '100%', borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
+                resizeMode="cover"
+              />
+              <LinearGradient
+                colors={['transparent', `${cardData.gradientColors[0]}80`]}
+                style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 60 }}
+              />
+            </View>
+          )}
+
           {/* Back Button */}
           <TouchableOpacity 
             onPress={() => navigation.goBack()} 
-            style={styles.backButton}
+            style={[styles.backButton, isBoldLayout && { top: Platform.OS === 'ios' ? 52 : 44 }]}
           >
-            <Ionicons name="arrow-back" size={24} color={textColor} />
+            <Ionicons name="arrow-back" size={24} color={isBoldLayout ? '#fff' : (isMinimalLayout ? '#1f2937' : textColor)} />
           </TouchableOpacity>
 
           {/* Share Button */}
           <TouchableOpacity 
             onPress={handleShare} 
-            style={styles.shareButton}
+            style={[styles.shareButton, isBoldLayout && { top: Platform.OS === 'ios' ? 52 : 44 }]}
           >
-            <Ionicons name="share-outline" size={24} color={textColor} />
+            <Ionicons name="share-outline" size={24} color={isBoldLayout ? '#fff' : (isMinimalLayout ? '#1f2937' : textColor)} />
           </TouchableOpacity>
 
-          {/* Profile Photo */}
-          <View style={styles.photoContainer}>
-            {cardData.profilePhotoUrl ? (
-              <Image source={{ uri: cardData.profilePhotoUrl }} style={styles.profilePhoto} />
-            ) : (
-              <View style={styles.photoPlaceholder}>
-                <Ionicons name="person" size={50} color={textColor} />
-              </View>
-            )}
-          </View>
+          {/* Profile Photo - hidden for bold layout */}
+          {!isBoldLayout && (
+            <View style={[
+              styles.photoContainer,
+              isBannerLayout && cardData.bannerImageUrl && { zIndex: 10 },
+            ]}>
+              {cardData.profilePhotoUrl ? (
+                <Image
+                  source={{ uri: cardData.profilePhotoUrl }}
+                  style={[
+                    styles.profilePhoto,
+                    isNeonLayout && {
+                      shadowColor: cardData.gradientColors[0],
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: 0.8,
+                      shadowRadius: 15,
+                    },
+                    isMinimalLayout && { borderColor: '#E5E7EB' },
+                  ]}
+                />
+              ) : (
+                <View style={[styles.photoPlaceholder, isMinimalLayout && { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB' }]}>
+                  <Ionicons name="person" size={50} color={isMinimalLayout ? '#9CA3AF' : textColor} />
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Bold layout: content at bottom with padding */}
+          {isBoldLayout && <View style={{ height: 200 }} />}
 
           {/* Name & Info */}
-          <Text style={[styles.name, { color: textColor }]}>{cardData.fullName}</Text>
-          {cardData.title && <Text style={[styles.title, { color: textColorFaded }]}>{cardData.title}</Text>}
-          {cardData.company && <Text style={[styles.company, { color: textColorFaded }]}>{cardData.company}</Text>}
+          <View style={isBoldLayout ? { paddingHorizontal: 28, paddingBottom: 28, width: '100%' } : undefined}>
+            <Text style={[
+              styles.name,
+              { color: isMinimalLayout ? '#1f2937' : textColor },
+              isBoldLayout && { textAlign: 'left', fontSize: 36, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 },
+            ]}>{cardData.fullName}</Text>
+            {cardData.title && <Text style={[
+              styles.title,
+              { color: isMinimalLayout ? '#6B7280' : textColorFaded },
+              isBoldLayout && { textAlign: 'left' },
+            ]}>{cardData.title}</Text>}
+            {cardData.company && <Text style={[
+              styles.company,
+              { color: isMinimalLayout ? '#9CA3AF' : textColorFaded },
+              isBoldLayout && { textAlign: 'left' },
+            ]}>{cardData.company}</Text>}
+          </View>
           
           {(cardData.city || cardData.state) && (
-            <View style={styles.locationRow}>
-              <Ionicons name="location" size={16} color={textColorFaded} />
-              <Text style={[styles.location, { color: textColorFaded }]}>
+            <View style={[
+              styles.locationRow,
+              isMinimalLayout && { backgroundColor: '#F3F4F6' },
+            ]}>
+              <Ionicons name="location" size={16} color={isMinimalLayout ? '#6B7280' : textColorFaded} />
+              <Text style={[styles.location, { color: isMinimalLayout ? '#6B7280' : textColorFaded }]}>
                 {[cardData.city, cardData.state].filter(Boolean).join(', ')}
               </Text>
             </View>
           )}
 
           {/* Action Buttons */}
-          {cardData.showContactInfo && <View style={styles.actionButtons}>
+          {cardData.showContactInfo && <View style={[styles.actionButtons, isBoldLayout && { paddingHorizontal: 28 }]}>
             {cardData.phone && (
               <TouchableOpacity 
                 style={styles.actionButton}
                 onPress={() => Linking.openURL(`tel:${cardData.phone}`)}
               >
-                <Ionicons name="call" size={20} color={textColor} />
-                <Text style={[styles.actionButtonText, { color: textColor }]}>Call</Text>
+                <Ionicons name="call" size={20} color={isMinimalLayout ? '#1f2937' : textColor} />
+                <Text style={[styles.actionButtonText, { color: isMinimalLayout ? '#1f2937' : textColor }]}>Call</Text>
               </TouchableOpacity>
             )}
             {cardData.phone && (
@@ -440,8 +525,8 @@ export default function PublicCardViewScreen() {
                 style={styles.actionButton}
                 onPress={() => Linking.openURL(`sms:${cardData.phone}`)}
               >
-                <Ionicons name="chatbubble" size={20} color={textColor} />
-                <Text style={[styles.actionButtonText, { color: textColor }]}>Text</Text>
+                <Ionicons name="chatbubble" size={20} color={isMinimalLayout ? '#1f2937' : textColor} />
+                <Text style={[styles.actionButtonText, { color: isMinimalLayout ? '#1f2937' : textColor }]}>Text</Text>
               </TouchableOpacity>
             )}
             {cardData.email && (
@@ -449,8 +534,8 @@ export default function PublicCardViewScreen() {
                 style={styles.actionButton}
                 onPress={() => Linking.openURL(`mailto:${cardData.email}`)}
               >
-                <Ionicons name="mail" size={20} color={textColor} />
-                <Text style={[styles.actionButtonText, { color: textColor }]}>Email</Text>
+                <Ionicons name="mail" size={20} color={isMinimalLayout ? '#1f2937' : textColor} />
+                <Text style={[styles.actionButtonText, { color: isMinimalLayout ? '#1f2937' : textColor }]}>Email</Text>
               </TouchableOpacity>
             )}
             {cardData.website && (
@@ -458,8 +543,8 @@ export default function PublicCardViewScreen() {
                 style={styles.actionButton}
                 onPress={() => Linking.openURL(cardData.website.startsWith('http') ? cardData.website : `https://${cardData.website}`)}
               >
-                <Ionicons name="globe" size={20} color={textColor} />
-                <Text style={[styles.actionButtonText, { color: textColor }]}>Web</Text>
+                <Ionicons name="globe" size={20} color={isMinimalLayout ? '#1f2937' : textColor} />
+                <Text style={[styles.actionButtonText, { color: isMinimalLayout ? '#1f2937' : textColor }]}>Web</Text>
               </TouchableOpacity>
             )}
           </View>}
@@ -601,7 +686,7 @@ export default function PublicCardViewScreen() {
 
         {/* Save Actions */}
         <View style={styles.saveActions}>
-          {/* Save to Wallet */}
+          {/* Save to Tavvy Wallet */}
           <TouchableOpacity 
             style={[styles.saveButton, isSavedToWallet && styles.saveButtonDisabled]}
             onPress={handleSaveToWallet}
@@ -626,6 +711,64 @@ export default function PublicCardViewScreen() {
                 </>
               )}
             </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Add to Apple Wallet */}
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+              backgroundColor: '#000', paddingVertical: 16, borderRadius: 16, gap: 10,
+            }}
+            onPress={async () => {
+              try {
+                const response = await fetch(`https://tavvy.com/api/ecard/wallet/apple-pass`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ slug: cardData.slug }),
+                });
+                if (response.status === 503 || !response.ok) {
+                  // Fallback: open vCard in browser
+                  Linking.openURL(`https://tavvy.com/api/ecard/wallet/vcard?slug=${cardData.slug}`);
+                  return;
+                }
+                // On iOS, opening the pkpass URL directly triggers Wallet
+                Linking.openURL(`https://tavvy.com/api/ecard/wallet/apple-pass?slug=${cardData.slug}`);
+              } catch {
+                Linking.openURL(`https://tavvy.com/api/ecard/wallet/vcard?slug=${cardData.slug}`);
+              }
+            }}
+          >
+            <Ionicons name="logo-apple" size={20} color="#fff" />
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Add to Apple Wallet</Text>
+          </TouchableOpacity>
+
+          {/* Add to Google Wallet */}
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+              backgroundColor: '#fff', paddingVertical: 16, borderRadius: 16, gap: 10,
+              borderWidth: 1, borderColor: '#E5E7EB',
+            }}
+            onPress={async () => {
+              try {
+                const response = await fetch(`https://tavvy.com/api/ecard/wallet/google-pass`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ slug: cardData.slug }),
+                });
+                if (response.status === 503 || !response.ok) {
+                  Linking.openURL(`https://tavvy.com/api/ecard/wallet/vcard?slug=${cardData.slug}`);
+                  return;
+                }
+                const data = await response.json();
+                if (data?.saveUrl) Linking.openURL(data.saveUrl);
+              } catch {
+                Linking.openURL(`https://tavvy.com/api/ecard/wallet/vcard?slug=${cardData.slug}`);
+              }
+            }}
+          >
+            <Ionicons name="logo-google" size={20} color="#4285F4" />
+            <Text style={{ color: '#1f2937', fontSize: 16, fontWeight: '700' }}>Add to Google Wallet</Text>
           </TouchableOpacity>
 
           {/* Save to Contacts */}
@@ -835,6 +978,9 @@ const styles = StyleSheet.create({
     gap: 10,
     minWidth: 100,
     justifyContent: 'center',
+  },
+  actionButtonMinimal: {
+    backgroundColor: '#F3F4F6',
   },
   actionButtonText: {
     color: '#fff',

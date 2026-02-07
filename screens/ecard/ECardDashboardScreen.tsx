@@ -33,7 +33,7 @@ import { FONTS, PREMIUM_FONT_COUNT } from '../../config/eCardFonts';
 import { useAuth } from '../../contexts/AuthContext';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import FeaturedSocialsSelector from '../../components/ecard/FeaturedSocialsSelector';
-import { getTemplateById, getColorSchemeById } from '../../config/eCardTemplates';
+import { TEMPLATES, getTemplateById, getColorSchemeById, resolveTemplateId } from '../../config/eCardTemplates';
 
 const { width, height } = Dimensions.get('window');
 const PREVIEW_HEIGHT = height * 0.32;
@@ -247,6 +247,13 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const [profilePhotoSize, setProfilePhotoSize] = useState('medium');
   const [fontColor, setFontColor] = useState<string | null>(null);
   
+  // Template state
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('classic');
+  
+  // Banner image state
+  const [bannerImageUrl, setBannerImageUrl] = useState<string | null>(null);
+  const [bannerImageFile, setBannerImageFile] = useState<string | null>(null); // local URI for upload
+  
   // Background image/video state
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
   const [backgroundVideoUrl, setBackgroundVideoUrl] = useState<string | null>(null);
@@ -296,6 +303,9 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   // QR Code state
   const [showQRModal, setShowQRModal] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [qrDotColor, setQrDotColor] = useState('#000000');
+  const [qrBgColor, setQrBgColor] = useState('#FFFFFF');
+  const [qrStylePreset, setQrStylePreset] = useState('classic');
   
   // Card URL
   const [cardUrl, setCardUrl] = useState('tavvy.com/yourname');
@@ -523,6 +533,9 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             setFontColor(card.font_color || null);
             setGalleryImages(card.gallery_images || []);
             setVideos(card.videos || []);
+            // Template and banner
+            setSelectedTemplateId(resolveTemplateId(card.template_id || 'classic'));
+            setBannerImageUrl(card.banner_image_url || null);
             // Visibility toggles
             setShowContactInfo(card.show_contact_info !== false);
             setShowSocialIcons(card.show_social_icons !== false);
@@ -653,6 +666,17 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         }
       }
 
+      // Upload banner image if it's a local file
+      let bannerUrl = bannerImageUrl;
+      if (bannerImageFile && (bannerImageFile.startsWith('file://') || bannerImageFile.startsWith('/'))) {
+        const uploaded = await uploadImage(bannerImageFile, `${user.id}/banner_${Date.now()}.jpg`);
+        if (uploaded) {
+          bannerUrl = uploaded;
+          setBannerImageUrl(uploaded);
+          setBannerImageFile(null);
+        }
+      }
+
       const updates: Record<string, any> = {
         full_name: fullName,
         title: titleRole,
@@ -669,6 +693,8 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         show_contact_info: showContactInfo,
         show_social_icons: showSocialIcons,
         font_color: fontColor || null,
+        template_id: selectedTemplateId,
+        banner_image_url: bannerUrl || null,
       };
       
       const { error } = await supabase.from('digital_cards').update(updates).eq('id', cardData.id);
@@ -1127,8 +1153,21 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     ]);
   };
 
-  const generateQRCode = () => {
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://${cardUrl}`;
+  const QR_PRESETS = [
+    { id: 'classic', name: 'Classic', dotColor: '#000000', bgColor: '#FFFFFF' },
+    { id: 'green', name: 'Tavvy Green', dotColor: '#00C853', bgColor: '#FFFFFF' },
+    { id: 'purple', name: 'Purple', dotColor: '#8B5CF6', bgColor: '#FFFFFF' },
+    { id: 'dark', name: 'Dark', dotColor: '#FFFFFF', bgColor: '#1f2937' },
+    { id: 'gold', name: 'Gold', dotColor: '#d4af37', bgColor: '#1f2937' },
+    { id: 'blue', name: 'Blue', dotColor: '#3B82F6', bgColor: '#FFFFFF' },
+    { id: 'red', name: 'Red', dotColor: '#EF4444', bgColor: '#FFFFFF' },
+    { id: 'ocean', name: 'Ocean', dotColor: '#0077B6', bgColor: '#E0F7FA' },
+  ];
+
+  const generateQRCode = (dotColor?: string, bgColor?: string) => {
+    const dc = (dotColor || qrDotColor).replace('#', '');
+    const bc = (bgColor || qrBgColor).replace('#', '');
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://${cardUrl}&color=${dc}&bgcolor=${bc}`;
     setQrCodeUrl(qrUrl);
     setShowQRModal(true);
   };
@@ -1558,11 +1597,232 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   );
 
   // ── RENDER: Style Tab ──
+  const handleBannerPick = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [3, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setBannerImageFile(result.assets[0].uri);
+      setBannerImageUrl(result.assets[0].uri);
+    }
+  };
+
   const renderStyleTab = () => (
     <View style={{ paddingBottom: 40 }}>
-      {/* Background Color */}
+      {/* Card Layout (Template Selector) */}
       <View style={[s.section, { backgroundColor: colors.surface }]}>
-        <Text style={[s.sectionTitle, { color: colors.text }]}>Background Color</Text>
+        <Text style={[s.sectionTitle, { color: colors.text }]}>Card Layout</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: 12 }}>
+          Choose how your card looks. Each template has a unique layout.
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {TEMPLATES.map((template) => {
+            const isSelected = selectedTemplateId === template.id;
+            const isLocked = (template.isPremium && !isPro) || (template.isProOnly === true && !isPro);
+            return (
+              <TouchableOpacity
+                key={template.id}
+                style={{
+                  width: (width - 64) / 3 - 6,
+                  borderRadius: 12,
+                  borderWidth: 2,
+                  borderColor: isSelected ? ACCENT_GREEN : (isDark ? '#334155' : '#E5E7EB'),
+                  padding: 4,
+                  alignItems: 'center',
+                  opacity: isLocked ? 0.5 : 1,
+                  backgroundColor: isDark ? '#1E293B' : '#fff',
+                }}
+                onPress={() => {
+                  if (isLocked) {
+                    navigation.navigate('ECardPremium' as never);
+                    return;
+                  }
+                  setSelectedTemplateId(template.id);
+                  const defaultScheme = template.colorSchemes[0];
+                  if (defaultScheme) {
+                    setGradientColors([defaultScheme.primary, defaultScheme.secondary]);
+                    saveAppearanceSettings({
+                      template_id: template.id,
+                      gradient_color_1: defaultScheme.primary,
+                      gradient_color_2: defaultScheme.secondary,
+                    });
+                  }
+                }}
+              >
+                <LinearGradient
+                  colors={template.layout === 'minimal' || template.layout === 'split'
+                    ? ['#0f172a', '#1e293b']
+                    : [template.colorSchemes[0]?.primary || '#667eea', template.colorSchemes[0]?.secondary || '#764ba2']}
+                  style={{ width: '100%', height: 60, borderRadius: 8, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                >
+                  {template.layout === 'classic' && (
+                    <View style={{ alignItems: 'center' }}>
+                      <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.3)', marginBottom: 3 }} />
+                      <View style={{ width: 30, height: 3, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 2, marginBottom: 2 }} />
+                      <View style={{ width: 20, height: 2, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2 }} />
+                    </View>
+                  )}
+                  {template.layout === 'banner' && (
+                    <View style={{ flex: 1, width: '100%' }}>
+                      <View style={{ height: '40%', backgroundColor: 'rgba(255,255,255,0.15)' }} />
+                      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.4)', alignSelf: 'center', marginTop: -8, borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)' }} />
+                    </View>
+                  )}
+                  {template.layout === 'bold' && (
+                    <View style={{ flex: 1, width: '100%', justifyContent: 'flex-end', padding: 6 }}>
+                      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.3)' }} />
+                      <View style={{ width: '50%', height: 3, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 2, marginBottom: 2 }} />
+                      <View style={{ width: '35%', height: 2, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }} />
+                    </View>
+                  )}
+                  {template.layout === 'minimal' && (
+                    <View style={{ backgroundColor: '#fff', borderRadius: 4, margin: 6, padding: 6, flex: 1, width: '80%', alignItems: 'center', justifyContent: 'center' }}>
+                      <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: '#E5E7EB', marginBottom: 3 }} />
+                      <View style={{ width: '60%', height: 2, backgroundColor: '#D1D5DB', borderRadius: 2, marginBottom: 2 }} />
+                      <View style={{ width: '40%', height: 2, backgroundColor: '#E5E7EB', borderRadius: 2 }} />
+                    </View>
+                  )}
+                  {template.layout === 'elegant' && (
+                    <View style={{ borderWidth: 1, borderColor: 'rgba(212,175,55,0.5)', borderRadius: 3, margin: 5, padding: 5, flex: 1, width: '80%', alignItems: 'center', justifyContent: 'center' }}>
+                      <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: '#d4af37', marginBottom: 3 }} />
+                      <View style={{ width: '50%', height: 2, backgroundColor: '#d4af37', borderRadius: 2 }} />
+                    </View>
+                  )}
+                  {template.layout === 'modern' && (
+                    <View style={{ flex: 1, width: '100%' }}>
+                      <View style={{ width: '100%', height: '35%', backgroundColor: 'rgba(255,255,255,0.15)' }} />
+                      <View style={{ backgroundColor: isDark ? '#27272a' : '#fff', borderRadius: 3, margin: 3, padding: 3, flex: 1 }}>
+                        <View style={{ width: '60%', height: 2, backgroundColor: isDark ? '#52525b' : '#D1D5DB', borderRadius: 2, marginBottom: 2 }} />
+                        <View style={{ width: '40%', height: 2, backgroundColor: isDark ? '#3f3f46' : '#E5E7EB', borderRadius: 2 }} />
+                      </View>
+                    </View>
+                  )}
+                  {template.layout === 'neon' && (
+                    <View style={{ alignItems: 'center' }}>
+                      <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.2)', marginBottom: 3, shadowColor: '#ec4899', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 4 }} />
+                      <View style={{ width: 30, height: 3, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 2 }} />
+                    </View>
+                  )}
+                  {(template.layout === 'split' || template.layout === 'showcase' || template.layout === 'executive') && (
+                    <View style={{ alignItems: 'center' }}>
+                      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.3)', marginBottom: 3 }} />
+                      <View style={{ width: 28, height: 2, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 2 }} />
+                    </View>
+                  )}
+                </LinearGradient>
+                <Text style={{ fontSize: 10, fontWeight: '600', color: colors.text, marginTop: 4, textAlign: 'center' }}>{template.name}</Text>
+                {isLocked && (
+                  <View style={{ position: 'absolute', top: 6, right: 6, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                    <Ionicons name="lock-closed" size={8} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 8 }}>{template.isProOnly ? 'Pro' : 'Premium'}</Text>
+                  </View>
+                )}
+                {isSelected && (
+                  <View style={{ position: 'absolute', top: 6, left: 6, backgroundColor: ACCENT_GREEN, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="checkmark" size={12} color="#fff" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Banner Image Upload */}
+      <View style={[s.section, { backgroundColor: colors.surface }]}>
+        <Text style={[s.sectionTitle, { color: colors.text }]}>Banner Image</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: 12 }}>
+          Add a cover photo. Works with Banner, Bold, Modern, and other templates.
+        </Text>
+        {bannerImageUrl ? (
+          <View style={{ borderRadius: 12, overflow: 'hidden' }}>
+            <Image source={{ uri: bannerImageUrl }} style={{ width: '100%', height: 140, borderRadius: 12 }} resizeMode="cover" />
+            <View style={{ position: 'absolute', bottom: 8, right: 8, flexDirection: 'row', gap: 6 }}>
+              <TouchableOpacity
+                onPress={handleBannerPick}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.6)' }}
+              >
+                <Ionicons name="camera" size={14} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 12 }}>Change</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { setBannerImageUrl(null); setBannerImageFile(null); }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: 'rgba(239,68,68,0.8)' }}
+              >
+                <Ionicons name="close" size={14} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 12 }}>Remove</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity
+            onPress={handleBannerPick}
+            style={{
+              width: '100%', height: 100, borderWidth: 2, borderStyle: 'dashed',
+              borderColor: isDark ? '#334155' : '#D1D5DB', borderRadius: 12,
+              alignItems: 'center', justifyContent: 'center', gap: 4,
+            }}
+          >
+            <Ionicons name="image" size={24} color={isDark ? '#64748B' : '#9CA3AF'} />
+            <Text style={{ color: isDark ? '#64748B' : '#9CA3AF', fontSize: 14 }}>Upload Banner Image</Text>
+            <Text style={{ color: isDark ? '#475569' : '#D1D5DB', fontSize: 11 }}>Recommended: 1200 x 400px</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Color Scheme */}
+      <View style={[s.section, { backgroundColor: colors.surface }]}>
+        <Text style={[s.sectionTitle, { color: colors.text }]}>Color</Text>
+        {(() => {
+          const currentTemplate = getTemplateById(selectedTemplateId);
+          if (!currentTemplate) return null;
+          return (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                {currentTemplate.colorSchemes.map((scheme) => (
+                  <TouchableOpacity
+                    key={scheme.id}
+                    style={{
+                      alignItems: 'center', gap: 4, padding: 4,
+                      borderWidth: 2, borderRadius: 10,
+                      borderColor: gradientColors[0] === scheme.primary && gradientColors[1] === scheme.secondary ? ACCENT_GREEN : 'transparent',
+                    }}
+                    onPress={() => {
+                      setGradientColors([scheme.primary, scheme.secondary]);
+                      saveAppearanceSettings({ gradient_color_1: scheme.primary, gradient_color_2: scheme.secondary });
+                    }}
+                  >
+                    <LinearGradient
+                      colors={[scheme.primary, scheme.secondary]}
+                      style={{ width: 44, height: 44, borderRadius: 22 }}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    />
+                    <Text style={{ color: colors.textSecondary, fontSize: 10 }}>{scheme.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          );
+        })()}
+        <View style={[s.customColorRow, { marginTop: 10 }]}>
+          <TouchableOpacity style={[s.customColorBtn, { borderColor: colors.inputBorder }]} onPress={() => openColorPicker(0)}>
+            <View style={[s.customColorSwatch, { backgroundColor: gradientColors[0] }]} />
+            <Text style={[s.customColorLabel, { color: colors.textSecondary }]}>Custom 1</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.customColorBtn, { borderColor: colors.inputBorder }]} onPress={() => openColorPicker(1)}>
+            <View style={[s.customColorSwatch, { backgroundColor: gradientColors[1] }]} />
+            <Text style={[s.customColorLabel, { color: colors.textSecondary }]}>Custom 2</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Background Color - kept for backward compat but simplified */}
+      <View style={[s.section, { backgroundColor: colors.surface }]}>
+        <Text style={[s.sectionTitle, { color: colors.text }]}>More Colors</Text>
         <View style={s.gradientPresets}>
           {PRESET_GRADIENTS.map((gradient) => (
             <TouchableOpacity
@@ -1781,9 +2041,58 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const renderQRModal = () => (
     <Modal visible={showQRModal} transparent animationType="fade" onRequestClose={() => setShowQRModal(false)}>
       <View style={s.modalOverlay}>
-        <View style={[s.modalContent, { backgroundColor: colors.modalBg }]}>
+        <View style={[s.modalContent, { backgroundColor: colors.modalBg, maxHeight: '85%' }]}>
           <Text style={[s.modalTitle, { color: colors.text }]}>QR Code</Text>
-          {qrCodeUrl ? <Image source={{ uri: qrCodeUrl }} style={s.qrImage} /> : null}
+          <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: 12, textAlign: 'center' }}>
+            Customize your QR code style
+          </Text>
+          
+          {/* QR Code Preview */}
+          {qrCodeUrl ? (
+            <View style={{ alignItems: 'center', marginBottom: 16, padding: 16, borderRadius: 16, backgroundColor: qrBgColor }}>
+              <Image source={{ uri: qrCodeUrl }} style={s.qrImage} />
+            </View>
+          ) : null}
+
+          {/* Style Presets */}
+          <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>Style</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {QR_PRESETS.map((preset) => (
+                <TouchableOpacity
+                  key={preset.id}
+                  onPress={() => {
+                    setQrStylePreset(preset.id);
+                    setQrDotColor(preset.dotColor);
+                    setQrBgColor(preset.bgColor);
+                    // Regenerate QR with new colors
+                    const dc = preset.dotColor.replace('#', '');
+                    const bc = preset.bgColor.replace('#', '');
+                    setQrCodeUrl(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://${cardUrl}&color=${dc}&bgcolor=${bc}`);
+                  }}
+                  style={{
+                    alignItems: 'center', gap: 4, padding: 8,
+                    borderWidth: 2, borderRadius: 12, minWidth: 64,
+                    borderColor: qrStylePreset === preset.id ? ACCENT_GREEN : (isDark ? '#334155' : '#E5E7EB'),
+                    backgroundColor: isDark ? '#0F172A' : '#F9FAFB',
+                  }}
+                >
+                  <View style={{
+                    width: 28, height: 28, borderRadius: 6,
+                    backgroundColor: preset.bgColor,
+                    borderWidth: 2, borderColor: preset.dotColor,
+                  }} />
+                  <Text style={{ color: colors.text, fontSize: 10, fontWeight: '600' }}>{preset.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
+          {/* Card URL */}
+          <Text style={{ color: colors.textSecondary, fontSize: 12, textAlign: 'center', marginBottom: 12 }}>
+            https://{cardUrl}
+          </Text>
+
           <TouchableOpacity style={s.modalCloseBtn} onPress={() => setShowQRModal(false)}>
             <Text style={s.modalCloseBtnText}>Close</Text>
           </TouchableOpacity>
