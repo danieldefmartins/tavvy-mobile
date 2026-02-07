@@ -15,11 +15,18 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { TEMPLATES, Template, getFreeTemplates, getPremiumTemplates, getProOnlyTemplates, getTemplatesForUser } from '../config/eCardTemplates';
+import { TEMPLATES, Template, getFreeTemplates, getPaidTemplates, getTemplatesForUser } from '../config/eCardTemplates';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import Svg, { Path } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const CARD_WIDTH = SCREEN_WIDTH * 0.82;
+const CARD_HEIGHT = SCREEN_HEIGHT * 0.58;
+
+// Sample images for realistic previews
+const SAMPLE_AVATAR = require('../assets/ecard-sample-avatar.png');
+const SAMPLE_BANNER = require('../assets/ecard-sample-banner.jpg');
 
 interface RouteParams {
   mode?: 'create' | 'edit';
@@ -35,6 +42,464 @@ const SUPER_ADMIN_EMAILS = [
   'daniel@360forbusiness.com',
 ];
 
+// ============================================================
+// TEMPLATE-SPECIFIC PREVIEW RENDERERS
+// Each one matches the reference images pixel-perfectly
+// ============================================================
+
+// --- BASIC: Linktree style ---
+const BasicPreview = ({ colors }: { colors: any }) => (
+  <View style={[prev.card, { backgroundColor: colors.primary }]}>
+    <View style={{ alignItems: 'center', paddingTop: 28, paddingHorizontal: 24, flex: 1 }}>
+      <Image source={SAMPLE_AVATAR} style={{ width: 100, height: 100, borderRadius: 50, marginBottom: 14 }} />
+      <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 }}>@janesmith</Text>
+      <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginBottom: 24, lineHeight: 18 }}>
+        Content creator & digital strategist helping brands grow online
+      </Text>
+      {['Get in Touch', 'Freebies & Resources', 'Read our Latest Blog', 'Shop Templates', 'Visit the Website'].map((label, i) => (
+        <View key={i} style={{
+          width: '100%', height: 48, borderRadius: 10,
+          backgroundColor: colors.accent, marginBottom: 12,
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Text style={{ color: colors.accent === '#2d3436' || colors.accent === '#e94560' ? '#fff' : colors.primary, fontSize: 14, fontWeight: '500' }}>{label}</Text>
+        </View>
+      ))}
+    </View>
+  </View>
+);
+
+// --- BLOGGER: Hannah Stone style ---
+const BloggerPreview = ({ colors }: { colors: any }) => (
+  <View style={[prev.card, { backgroundColor: colors.primary || colors.background }]}>
+    <View style={{ flex: 1, alignItems: 'center', paddingTop: 50, paddingHorizontal: 16 }}>
+      {/* White inner card */}
+      <View style={{
+        backgroundColor: colors.cardBg || '#FFFFFF', borderRadius: 16, width: '100%', flex: 1,
+        alignItems: 'center', paddingTop: 60, paddingHorizontal: 20, paddingBottom: 20,
+        marginTop: 10,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4,
+      }}>
+        <Text style={{ fontSize: 28, fontStyle: 'italic', fontWeight: '300', color: colors.text, marginBottom: 6 }}>Jane Smith</Text>
+        <Text style={{ fontSize: 10, fontWeight: '600', color: colors.textSecondary, letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 20 }}>
+          BUSINESS COACH & ENTREPRENEUR
+        </Text>
+        {['ABOUT', 'MY BLOG', 'SHOP', 'NEWSLETTER', 'FREEBIE', 'CONTACT'].map((label, i) => (
+          <View key={i} style={{
+            width: '100%', height: 40, borderRadius: 4,
+            backgroundColor: colors.accent ? `${colors.accent}30` : `${colors.primary}30`,
+            marginBottom: 10, alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text, letterSpacing: 1.5, textTransform: 'uppercase' }}>{label}</Text>
+          </View>
+        ))}
+      </View>
+      {/* Overlapping circle photo */}
+      <Image source={SAMPLE_AVATAR} style={{
+        width: 110, height: 110, borderRadius: 55,
+        position: 'absolute', top: 0,
+        borderWidth: 4, borderColor: colors.cardBg || '#FFFFFF',
+      }} />
+    </View>
+  </View>
+);
+
+// --- BUSINESS CARD: EdgeKart / Thomas Smith style ---
+const BusinessCardPreview = ({ colors }: { colors: any }) => (
+  <View style={[prev.card, { backgroundColor: colors.cardBg || '#f8f9fa' }]}>
+    {/* Dark top section */}
+    <LinearGradient colors={[colors.primary, colors.secondary]} style={{
+      paddingTop: 24, paddingBottom: 20, alignItems: 'center', paddingHorizontal: 20,
+    }}>
+      {/* Company logo + name */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
+          <Ionicons name="diamond" size={12} color={colors.primary} />
+        </View>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>EdgeKart</Text>
+      </View>
+      {/* Circle photo */}
+      <Image source={SAMPLE_AVATAR} style={{
+        width: 96, height: 96, borderRadius: 48,
+        borderWidth: 3, borderColor: colors.accent || '#fff',
+        marginBottom: 14,
+      }} />
+      <Text style={{ fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: 2 }}>Thomas Smith</Text>
+      <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 2 }}>(He/Him)</Text>
+      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 2 }}>Solutions Manager</Text>
+      <Text style={{ fontSize: 12, color: colors.textSecondary }}>EdgeKart Public Solutions LLP</Text>
+    </LinearGradient>
+
+    {/* Action icon circles */}
+    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 14, paddingVertical: 16 }}>
+      {[
+        { icon: 'call', color: colors.accent || '#3b82f6' },
+        { icon: 'mail', color: colors.accent || '#3b82f6' },
+        { icon: 'globe', color: colors.accent || '#3b82f6' },
+        { icon: 'location', color: colors.accent || '#3b82f6' },
+      ].map((item, i) => (
+        <View key={i} style={{
+          width: 44, height: 44, borderRadius: 22,
+          backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Ionicons name={item.icon as any} size={20} color={colors.text} />
+        </View>
+      ))}
+    </View>
+
+    {/* White bottom - About Me */}
+    <View style={{ paddingHorizontal: 24, paddingTop: 8, flex: 1 }}>
+      <Text style={{ fontSize: 16, fontWeight: '600', color: '#1f2937', marginBottom: 8 }}>About Me</Text>
+      <Text style={{ fontSize: 12, color: '#6b7280', lineHeight: 18 }}>
+        I am a skilled Solutions Manager with seven years of experience in solving problems and engaging customers across industries.
+      </Text>
+    </View>
+  </View>
+);
+
+// --- FULL WIDTH: John Richards style ---
+const FullWidthPreview = ({ colors }: { colors: any }) => (
+  <View style={[prev.card, { backgroundColor: colors.cardBg || '#0a0a0a' }]}>
+    {/* Hero photo with gradient overlay */}
+    <View style={{ height: CARD_HEIGHT * 0.52, position: 'relative', overflow: 'hidden' }}>
+      <Image source={SAMPLE_AVATAR} style={{
+        width: '100%', height: '100%', resizeMode: 'cover',
+      }} />
+      {/* Dark gradient overlay */}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.3)', colors.primary || 'rgba(0,0,0,0.85)']}
+        style={{ ...StyleSheet.absoluteFillObject }}
+      />
+      {/* Name overlaid on photo */}
+      <View style={{ position: 'absolute', bottom: 16, left: 20, right: 20 }}>
+        <Text style={{ fontSize: 26, fontWeight: '800', color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: 1 }}>JANE{'\n'}SMITH</Text>
+        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>Marketing Manager</Text>
+        {/* Company pill */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, backgroundColor: colors.accent || '#3b82f6', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, alignSelf: 'flex-start' }}>
+          <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: 'rgba(255,255,255,0.3)', marginRight: 6 }} />
+          <Text style={{ fontSize: 11, color: colors.primary === '#000000' ? '#000' : '#fff', fontWeight: '600' }}>Teamwork.Co</Text>
+        </View>
+      </View>
+    </View>
+
+    {/* Action icons row */}
+    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, paddingVertical: 14 }}>
+      {['call', 'mail', 'chatbubble', 'globe', 'share-social'].map((icon, i) => (
+        <View key={i} style={{
+          width: 38, height: 38, borderRadius: 19,
+          backgroundColor: colors.accent || '#333', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Ionicons name={icon as any} size={18} color={colors.primary === '#000000' ? '#000' : '#fff'} />
+        </View>
+      ))}
+    </View>
+
+    {/* About Me section */}
+    <View style={{ paddingHorizontal: 20, flex: 1 }}>
+      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 }}>About Me</Text>
+      <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
+        Hi, I am Flody, working as marketing manager at Teamwork.co with a passion for building brands.
+      </Text>
+    </View>
+  </View>
+);
+
+// --- PRO REALTOR: Hannah Realtor style ---
+const ProRealtorPreview = ({ colors }: { colors: any }) => (
+  <View style={[prev.card, { backgroundColor: colors.primary || colors.background }]}>
+    {/* Banner image */}
+    <Image source={SAMPLE_BANNER} style={{
+      width: '100%', height: CARD_HEIGHT * 0.28, resizeMode: 'cover',
+    }} />
+
+    {/* Arch photo overlapping banner */}
+    <View style={{ alignItems: 'center', marginTop: -70 }}>
+      <View style={{
+        width: 120, height: 150, borderTopLeftRadius: 60, borderTopRightRadius: 60,
+        borderBottomLeftRadius: 8, borderBottomRightRadius: 8,
+        overflow: 'hidden', borderWidth: 3, borderColor: colors.border || colors.accent || '#c8a87c',
+        backgroundColor: '#f0f0f0',
+      }}>
+        <Image source={SAMPLE_AVATAR} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+      </View>
+    </View>
+
+    {/* Name section */}
+    <View style={{ alignItems: 'center', paddingHorizontal: 20, marginTop: 12 }}>
+      <Text style={{ fontSize: 20, color: colors.text }}>
+        <Text style={{ fontWeight: '400' }}>HI </Text>
+        <Text style={{ fontWeight: '800' }}>I'M JANE,</Text>
+      </Text>
+      <Text style={{ fontSize: 12, color: colors.textSecondary, letterSpacing: 2, textTransform: 'uppercase', marginTop: 2 }}>
+        YOUR LOCAL REALTOR
+      </Text>
+    </View>
+
+    {/* Link buttons */}
+    <View style={{ paddingHorizontal: 24, marginTop: 14 }}>
+      {['ALL ABOUT ME', 'CLIENT TESTIMONIALS', 'VISIT MY WEBSITE', 'BOOK A FREE CONSULTATION'].map((label, i) => (
+        <View key={i} style={{
+          width: '100%', height: 40, borderRadius: 4,
+          backgroundColor: colors.accent ? `${colors.accent}40` : 'rgba(200,168,124,0.25)',
+          marginBottom: 8, alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text, letterSpacing: 1, textTransform: 'uppercase' }}>{label}</Text>
+        </View>
+      ))}
+    </View>
+
+    {/* Social icons row */}
+    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10, paddingVertical: 10 }}>
+      {['logo-instagram', 'logo-twitter', 'logo-pinterest', 'logo-linkedin', 'logo-facebook', 'globe'].map((icon, i) => (
+        <View key={i} style={{
+          width: 32, height: 32, borderRadius: 16,
+          backgroundColor: colors.accent || '#c8a87c', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Ionicons name={icon as any} size={16} color={colors.primary.startsWith('#f') || colors.primary === '#FFFFFF' ? '#fff' : colors.text} />
+        </View>
+      ))}
+    </View>
+
+    {/* Company footer bar */}
+    <View style={{
+      backgroundColor: colors.accent || '#c8a87c', paddingVertical: 8, alignItems: 'center',
+      borderTopWidth: 2, borderTopColor: colors.border || colors.accent || '#c8a87c',
+    }}>
+      <Text style={{ fontSize: 9, fontWeight: '600', color: colors.primary.startsWith('#f') || colors.primary === '#FFFFFF' ? '#fff' : colors.text, letterSpacing: 2, textTransform: 'uppercase' }}>
+        YOUR COMPANY NAME HERE
+      </Text>
+    </View>
+  </View>
+);
+
+// --- PRO CREATIVE: Arianne / A.Rich Culture style ---
+const ProCreativePreview = ({ colors }: { colors: any }) => (
+  <View style={[prev.card, { backgroundColor: '#FFFFFF' }]}>
+    {/* Colored top section */}
+    <LinearGradient colors={[colors.primary, colors.secondary]} style={{
+      height: CARD_HEIGHT * 0.42, alignItems: 'center', justifyContent: 'center',
+      position: 'relative', overflow: 'hidden',
+    }}>
+      {/* Company logo badge in corner */}
+      <View style={{ position: 'absolute', top: 16, right: 16, backgroundColor: colors.accent || '#f97316', width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff' }}>ARC</Text>
+      </View>
+      {/* Large circle photo */}
+      <Image source={SAMPLE_AVATAR} style={{
+        width: 130, height: 130, borderRadius: 65,
+        borderWidth: 4, borderColor: 'rgba(255,255,255,0.3)',
+      }} />
+    </LinearGradient>
+
+    {/* Wave divider */}
+    <Svg height="30" width={CARD_WIDTH} viewBox={`0 0 ${CARD_WIDTH} 30`} style={{ marginTop: -30 }}>
+      <Path
+        d={`M0,0 L0,10 Q${CARD_WIDTH * 0.25},30 ${CARD_WIDTH * 0.5},10 Q${CARD_WIDTH * 0.75},-10 ${CARD_WIDTH},10 L${CARD_WIDTH},0 Z`}
+        fill={colors.primary}
+      />
+    </Svg>
+
+    {/* White bottom section */}
+    <View style={{ paddingHorizontal: 20, flex: 1, paddingTop: 8 }}>
+      <Text style={{ fontSize: 20, fontWeight: '700', color: '#1f2937', marginBottom: 2 }}>Arianne S. Richardson</Text>
+      <Text style={{ fontSize: 13, color: '#4b5563' }}>Founder & Principal Consultant</Text>
+      <Text style={{ fontSize: 12, fontStyle: 'italic', color: colors.accent || colors.primary, marginBottom: 8 }}>A.Rich Culture</Text>
+      <Text style={{ fontSize: 11, color: '#6b7280', lineHeight: 16, marginBottom: 12 }}>
+        Business Consulting & Talent Management for Caribbean Creatives
+      </Text>
+
+      {/* Contact rows with colored icons */}
+      {[
+        { icon: 'mail', color: '#f97316', text: 'mail@arichculture.com' },
+        { icon: 'call', color: '#22c55e', text: '+1 561 485 7408' },
+        { icon: 'chatbubble', color: '#3b82f6', text: '12425568247' },
+        { icon: 'globe', color: colors.primary, text: 'www.arichculture.com' },
+      ].map((row, i) => (
+        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: row.color, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+            <Ionicons name={row.icon as any} size={16} color="#fff" />
+          </View>
+          <Text style={{ fontSize: 12, color: '#374151' }}>{row.text}</Text>
+        </View>
+      ))}
+    </View>
+  </View>
+);
+
+// --- PRO CORPORATE: Arch Gleason / Blue style ---
+const ProCorporatePreview = ({ colors }: { colors: any }) => (
+  <View style={[prev.card, { backgroundColor: '#FFFFFF' }]}>
+    {/* Blue gradient top with decorative circles */}
+    <LinearGradient colors={[colors.primary, colors.secondary]} style={{
+      height: CARD_HEIGHT * 0.28, position: 'relative', overflow: 'hidden', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 0,
+    }}>
+      {/* Decorative translucent circles */}
+      <View style={{ position: 'absolute', left: -30, top: -20, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+      <View style={{ position: 'absolute', left: 10, top: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+      <View style={{ position: 'absolute', right: -20, top: -10, width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.06)' }} />
+    </LinearGradient>
+
+    {/* Circle photo overlapping */}
+    <View style={{ alignItems: 'center', marginTop: -50 }}>
+      <Image source={SAMPLE_AVATAR} style={{
+        width: 100, height: 100, borderRadius: 50,
+        borderWidth: 4, borderColor: '#FFFFFF',
+      }} />
+    </View>
+
+    {/* Name and title */}
+    <View style={{ alignItems: 'center', paddingHorizontal: 20, marginTop: 10 }}>
+      <Text style={{ fontSize: 22, fontWeight: '700', color: '#1f2937', marginBottom: 2 }}>Jane Smith</Text>
+      <Text style={{ fontSize: 13, color: '#6b7280' }}>General Contractor</Text>
+    </View>
+
+    {/* Action icon circles */}
+    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 14, paddingVertical: 14 }}>
+      {['call', 'mail', 'chatbubble', 'logo-whatsapp'].map((icon, i) => (
+        <View key={i} style={{
+          width: 42, height: 42, borderRadius: 21,
+          backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#e5e7eb',
+          alignItems: 'center', justifyContent: 'center',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2,
+        }}>
+          <Ionicons name={icon as any} size={18} color={colors.primary} />
+        </View>
+      ))}
+    </View>
+
+    {/* Industry section */}
+    <View style={{ paddingHorizontal: 20, flex: 1 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+        <Ionicons name="business" size={16} color={colors.primary} style={{ marginRight: 6 }} />
+        <Text style={{ fontSize: 14, fontWeight: '700', color: '#1f2937' }}>Industry</Text>
+      </View>
+      <View style={{
+        backgroundColor: `${colors.primary}15`, paddingVertical: 8, paddingHorizontal: 14,
+        borderRadius: 8, marginBottom: 12, alignSelf: 'flex-start',
+        borderLeftWidth: 3, borderLeftColor: colors.primary,
+      }}>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>Construction</Text>
+      </View>
+
+      {/* Services grid */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+        <Ionicons name="construct" size={16} color={colors.primary} style={{ marginRight: 6 }} />
+        <Text style={{ fontSize: 14, fontWeight: '700', color: '#1f2937' }}>Services</Text>
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+        {['Remodeling', 'Roofing', 'Plumbing', 'Electrical', 'Painting', 'Flooring'].map((service, i) => (
+          <View key={i} style={{
+            backgroundColor: `${colors.primary}12`, paddingVertical: 6, paddingHorizontal: 12,
+            borderRadius: 16, borderWidth: 1, borderColor: `${colors.primary}30`,
+          }}>
+            <Text style={{ fontSize: 11, fontWeight: '500', color: colors.primary }}>{service}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  </View>
+);
+
+// --- PRO CARD: Craft Media / Aisha Khan style ---
+const ProCardPreview = ({ colors }: { colors: any }) => (
+  <View style={[prev.card, { backgroundColor: '#FFFFFF' }]}>
+    {/* Dark navy top section */}
+    <View style={{
+      backgroundColor: colors.primary, paddingTop: 20, paddingHorizontal: 20,
+      height: CARD_HEIGHT * 0.48, position: 'relative', overflow: 'hidden',
+    }}>
+      {/* Company logo + name */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+        <Ionicons name="paper-plane" size={18} color={colors.accent || '#d4af37'} style={{ marginRight: 8 }} />
+        <View>
+          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>Craft Media</Text>
+          <Text style={{ fontSize: 8, fontWeight: '600', color: colors.accent || '#d4af37', letterSpacing: 2, textTransform: 'uppercase' }}>CREATIVE AGENCY</Text>
+        </View>
+      </View>
+
+      {/* Name + title (left) and Photo (right) */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <View style={{ flex: 1, paddingRight: 10 }}>
+          <Text style={{ fontSize: 24, fontWeight: '700', color: colors.accent || '#d4af37', marginBottom: 2 }}>Ms. Aisha Khan</Text>
+          <Text style={{ fontSize: 12, fontStyle: 'italic', color: colors.textSecondary, marginBottom: 6 }}>(she/her)</Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.accent || '#d4af37' }}>Creative Director</Text>
+          <Text style={{ fontSize: 12, color: colors.textSecondary }}>Craft Media</Text>
+        </View>
+        {/* Photo with decorative ring */}
+        <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{
+            width: 120, height: 120, borderRadius: 60,
+            borderWidth: 2, borderColor: `${colors.accent || '#d4af37'}50`,
+            alignItems: 'center', justifyContent: 'center',
+            position: 'absolute',
+          }} />
+          <View style={{
+            width: 130, height: 130, borderRadius: 65,
+            borderWidth: 1, borderColor: `${colors.accent || '#d4af37'}25`,
+            borderStyle: 'dashed',
+            alignItems: 'center', justifyContent: 'center',
+            position: 'absolute',
+          }} />
+          <Image source={SAMPLE_AVATAR} style={{
+            width: 110, height: 110, borderRadius: 55,
+            borderWidth: 3, borderColor: colors.accent || '#d4af37',
+          }} />
+        </View>
+      </View>
+    </View>
+
+    {/* Diagonal transition (simulated with angled view) */}
+    <View style={{ height: 30, backgroundColor: colors.primary, marginTop: -1 }}>
+      <View style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: 30,
+        backgroundColor: '#FFFFFF', borderTopLeftRadius: 0, borderTopRightRadius: 30,
+      }} />
+    </View>
+
+    {/* White bottom section */}
+    <View style={{ paddingHorizontal: 20, flex: 1, paddingTop: 4 }}>
+      <Text style={{ fontSize: 13, color: '#4b5563', lineHeight: 18, marginBottom: 12 }}>
+        Passionate creative director with a love for storytelling.
+      </Text>
+
+      {/* Divider */}
+      <View style={{ height: 1, backgroundColor: '#e5e7eb', marginBottom: 12 }} />
+
+      {/* Contact rows */}
+      {[
+        { icon: 'call', text: '+44 20 1234 5678', label: 'Work' },
+        { icon: 'mail', text: 'aisha@craftmedia.co.uk', label: 'Work' },
+        { icon: 'globe', text: 'www.craftmedia.co.uk', label: 'Company' },
+      ].map((row, i) => (
+        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+          <View style={{
+            width: 36, height: 36, borderRadius: 18,
+            backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginRight: 12,
+          }}>
+            <Ionicons name={row.icon as any} size={16} color={colors.accent || '#d4af37'} />
+          </View>
+          <View>
+            <Text style={{ fontSize: 13, color: '#1f2937', fontWeight: '500' }}>{row.text}</Text>
+            <Text style={{ fontSize: 10, color: '#9ca3af' }}>{row.label}</Text>
+          </View>
+        </View>
+      ))}
+
+      {/* Add to Contacts button */}
+      <View style={{
+        backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 10,
+        alignItems: 'center', marginTop: 4,
+      }}>
+        <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>+ Add to Contacts</Text>
+      </View>
+    </View>
+  </View>
+);
+
+// ============================================================
+// MAIN GALLERY SCREEN
+// ============================================================
+
 const ECardTemplateGalleryScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
@@ -42,10 +507,7 @@ const ECardTemplateGalleryScreen: React.FC = () => {
   const params = route.params as RouteParams || {};
   const { user, isPro } = useAuth();
   
-  // Check if user is a super admin (has full access to everything)
   const isSuperAdmin = user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase());
-  
-  // Super admins have Pro-level access
   const hasProAccess = isPro || isSuperAdmin;
   
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -53,36 +515,33 @@ const ECardTemplateGalleryScreen: React.FC = () => {
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
 
-  // Filter templates based on user status and selected category
+  // Pro templates are paid templates with layout starting with 'pro-'
+  const isProTemplate = (t: Template) => t.layout.startsWith('pro-');
+
   const allTemplates = useMemo(() => {
     let templates = TEMPLATES;
-    
-    // Filter by category
     switch (selectedCategory) {
       case 'free':
-        templates = templates.filter(t => !t.isPremium && !t.isProOnly);
+        templates = templates.filter(t => !t.isPremium);
         break;
       case 'premium':
-        templates = templates.filter(t => t.isPremium);
+        templates = templates.filter(t => t.isPremium && !isProTemplate(t));
         break;
       case 'pro':
-        templates = templates.filter(t => t.isProOnly);
+        templates = templates.filter(t => isProTemplate(t));
         break;
       default:
-        // Show all, but put Pro templates first if user has Pro access
         if (hasProAccess) {
-          const proTemplates = templates.filter(t => t.isProOnly);
-          const otherTemplates = templates.filter(t => !t.isProOnly);
+          const proTemplates = templates.filter(t => isProTemplate(t));
+          const otherTemplates = templates.filter(t => !isProTemplate(t));
           templates = [...proTemplates, ...otherTemplates];
         }
         break;
     }
-    
     return templates;
   }, [selectedCategory, hasProAccess]);
 
   const handleSelectTemplate = (template: Template) => {
-    // Navigate to color scheme picker, preserving existing data if editing
     navigation.navigate('ECardColorPicker', {
       templateId: template.id,
       mode: params.mode || 'create',
@@ -109,6 +568,22 @@ const ECardTemplateGalleryScreen: React.FC = () => {
     itemVisiblePercentThreshold: 50,
   }).current;
 
+  // Render the correct template-specific preview
+  const renderTemplatePreview = (template: Template) => {
+    const previewColors = template.colorSchemes[0];
+    switch (template.layout) {
+      case 'basic': return <BasicPreview colors={previewColors} />;
+      case 'blogger': return <BloggerPreview colors={previewColors} />;
+      case 'business-card': return <BusinessCardPreview colors={previewColors} />;
+      case 'full-width': return <FullWidthPreview colors={previewColors} />;
+      case 'pro-realtor': return <ProRealtorPreview colors={previewColors} />;
+      case 'pro-creative': return <ProCreativePreview colors={previewColors} />;
+      case 'pro-corporate': return <ProCorporatePreview colors={previewColors} />;
+      case 'pro-card': return <ProCardPreview colors={previewColors} />;
+      default: return <BasicPreview colors={previewColors} />;
+    }
+  };
+
   const renderTemplateCard = ({ item, index }: { item: Template; index: number }) => {
     const inputRange = [
       (index - 1) * SCREEN_WIDTH,
@@ -118,7 +593,7 @@ const ECardTemplateGalleryScreen: React.FC = () => {
 
     const scale = scrollX.interpolate({
       inputRange,
-      outputRange: [0.85, 1, 0.85],
+      outputRange: [0.88, 1, 0.88],
       extrapolate: 'clamp',
     });
 
@@ -128,24 +603,15 @@ const ECardTemplateGalleryScreen: React.FC = () => {
       extrapolate: 'clamp',
     });
 
-    // Get first color scheme for preview
-    const previewColors = item.colorSchemes[0];
-    const gradientColors = previewColors.primary.startsWith('linear') 
-      ? [previewColors.primary, previewColors.secondary]
-      : [previewColors.primary, previewColors.secondary];
-
     return (
       <View style={styles.slideContainer}>
         <Animated.View style={[styles.cardWrapper, { transform: [{ scale }], opacity }]}>
-          {/* Template Preview Card */}
-          <LinearGradient
-            colors={gradientColors as any}
-            style={styles.previewCard}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
+          {/* The actual template preview */}
+          <View style={{ position: 'relative' }}>
+            {renderTemplatePreview(item)}
+
             {/* Pro-Only Badge */}
-            {item.isProOnly && (
+            {isProTemplate(item) && (
               <View style={[styles.premiumBadge, styles.proBadge]}>
                 <Ionicons name="briefcase" size={12} color="#fff" />
                 <Text style={[styles.premiumBadgeText, styles.proBadgeText]}>
@@ -155,7 +621,7 @@ const ECardTemplateGalleryScreen: React.FC = () => {
             )}
 
             {/* Premium Badge */}
-            {item.isPremium && !item.isProOnly && (
+            {item.isPremium && !isProTemplate(item) && (
               <View style={styles.premiumBadge}>
                 <Ionicons name="star" size={12} color="#000" />
                 <Text style={styles.premiumBadgeText}>$4.99/mo</Text>
@@ -163,68 +629,20 @@ const ECardTemplateGalleryScreen: React.FC = () => {
             )}
 
             {/* Free Badge */}
-            {!item.isPremium && !item.isProOnly && (
+            {!item.isPremium && !isProTemplate(item) && (
               <View style={styles.freeBadge}>
                 <Text style={styles.freeBadgeText}>FREE</Text>
               </View>
             )}
 
-            {/* Lock overlay for Pro templates if user does not have Pro access */}
-            {item.isProOnly && !hasProAccess && (
+            {/* Lock overlay for Pro templates */}
+            {isProTemplate(item) && !hasProAccess && (
               <View style={styles.lockOverlay}>
                 <Ionicons name="lock-closed" size={32} color="rgba(255,255,255,0.9)" />
                 <Text style={styles.lockText}>Pro Membership Required</Text>
               </View>
             )}
-
-            {/* Mock Profile Photo */}
-            <View style={[
-              styles.mockPhoto,
-              item.layout.photoStyle === 'ornate' && styles.mockPhotoOrnate,
-              { borderColor: previewColors.accent || 'rgba(255,255,255,0.3)' }
-            ]}>
-              <Ionicons name="person" size={40} color={previewColors.textSecondary} />
-            </View>
-
-            {/* Mock Name */}
-            <Text style={[styles.mockName, { color: previewColors.text }]}>Your Name</Text>
-            <Text style={[styles.mockTitle, { color: previewColors.textSecondary }]}>Your Title</Text>
-
-            {/* Mock Action Buttons */}
-            <View style={styles.mockButtons}>
-              {['Call', 'Text', 'Email'].map((label, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.mockButton,
-                    {
-                      backgroundColor: previewColors.accent,
-                      borderRadius: item.layout.buttonStyle === 'pill' ? 20 : 
-                                   item.layout.buttonStyle === 'square' ? 4 : 12,
-                    }
-                  ]}
-                >
-                  <Ionicons 
-                    name={label === 'Call' ? 'call' : label === 'Text' ? 'chatbubble' : 'mail'} 
-                    size={16} 
-                    color={previewColors.text} 
-                  />
-                </View>
-              ))}
-            </View>
-
-            {/* Mock Social Icons */}
-            <View style={styles.mockSocials}>
-              {['logo-instagram', 'logo-linkedin', 'logo-twitter'].map((icon, i) => (
-                <Ionicons key={i} name={icon as any} size={20} color={previewColors.textSecondary} style={styles.mockSocialIcon} />
-              ))}
-            </View>
-
-            {/* Ornate Border for Luxury */}
-            {item.layout.showBorder && item.layout.borderStyle === 'ornate' && (
-              <View style={[styles.ornateBorder, { borderColor: previewColors.border }]} />
-            )}
-          </LinearGradient>
+          </View>
 
           {/* Template Info */}
           <View style={styles.templateInfo}>
@@ -301,7 +719,7 @@ const ECardTemplateGalleryScreen: React.FC = () => {
                 {
                   width: dotWidth,
                   opacity: dotOpacity,
-                  backgroundColor: allTemplates[index].isProOnly ? '#10b981' : 
+                  backgroundColor: isProTemplate(allTemplates[index]) ? '#10b981' : 
                                    allTemplates[index].isPremium ? '#d4af37' : '#fff',
                 },
               ]}
@@ -347,12 +765,11 @@ const ECardTemplateGalleryScreen: React.FC = () => {
           style={[
             styles.selectButton,
             currentTemplate?.isPremium && styles.selectButtonPremium,
-            currentTemplate?.isProOnly && styles.selectButtonPro,
-            currentTemplate?.isProOnly && !hasProAccess && styles.selectButtonDisabled,
+            currentTemplate && isProTemplate(currentTemplate) && styles.selectButtonPro,
+            currentTemplate && isProTemplate(currentTemplate) && !hasProAccess && styles.selectButtonDisabled,
           ]}
           onPress={() => {
-            if (currentTemplate?.isProOnly && !hasProAccess) {
-              // Navigate to Pro upgrade screen
+            if (currentTemplate && isProTemplate(currentTemplate) && !hasProAccess) {
               Alert.alert('Coming Soon', 'Pro membership will be available in a future update.');
             } else if (currentTemplate) {
               handleSelectTemplate(currentTemplate);
@@ -360,23 +777,22 @@ const ECardTemplateGalleryScreen: React.FC = () => {
           }}
         >
           <Text style={styles.selectButtonText}>
-            {currentTemplate?.isProOnly && !hasProAccess 
+            {currentTemplate && isProTemplate(currentTemplate) && !hasProAccess 
               ? 'Upgrade to Pro' 
-              : currentTemplate?.isProOnly 
+              : currentTemplate && isProTemplate(currentTemplate) 
                 ? 'Use Pro Template' 
                 : currentTemplate?.isPremium 
                   ? 'Select Premium Template' 
                   : 'Use This Template'}
           </Text>
           <Ionicons 
-            name={currentTemplate?.isProOnly && !hasProAccess ? 'arrow-up-circle' : 'arrow-forward'} 
+            name={currentTemplate && isProTemplate(currentTemplate) && !hasProAccess ? 'arrow-up-circle' : 'arrow-forward'} 
             size={20} 
             color="#fff" 
             style={styles.selectButtonIcon} 
           />
         </TouchableOpacity>
 
-        {/* Template Count */}
         <View style={styles.categoryFilter}>
           <Text style={styles.categoryLabel}>
             {currentIndex + 1} of {allTemplates.length} templates
@@ -386,6 +802,25 @@ const ECardTemplateGalleryScreen: React.FC = () => {
     </SafeAreaView>
   );
 };
+
+// ============================================================
+// STYLES
+// ============================================================
+
+// Preview card base styles
+const prev = StyleSheet.create({
+  card: {
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -397,7 +832,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
   },
   backButton: {
     width: 44,
@@ -417,7 +852,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: 'rgba(255,255,255,0.5)',
     fontSize: 14,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   flatListContent: {
     alignItems: 'center',
@@ -430,20 +865,11 @@ const styles = StyleSheet.create({
   cardWrapper: {
     alignItems: 'center',
   },
-  previewCard: {
-    width: SCREEN_WIDTH * 0.75,
-    height: SCREEN_HEIGHT * 0.42,
-    borderRadius: 24,
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-  },
+  // Badges
   premiumBadge: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: 12,
+    right: 12,
     backgroundColor: '#d4af37',
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -451,6 +877,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    zIndex: 10,
   },
   premiumBadgeText: {
     color: '#000',
@@ -459,86 +886,58 @@ const styles = StyleSheet.create({
   },
   freeBadge: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: 12,
+    right: 12,
     backgroundColor: '#22c55e',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
+    zIndex: 10,
   },
   freeBadgeText: {
     color: '#fff',
     fontSize: 11,
     fontWeight: '700',
   },
-  mockPhoto: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+  proBadge: {
+    backgroundColor: '#10b981',
+  },
+  proBadgeText: {
+    color: '#fff',
+  },
+  lockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    marginBottom: 16,
-  },
-  mockPhotoOrnate: {
-    borderWidth: 4,
-  },
-  mockName: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  mockTitle: {
-    fontSize: 16,
-    marginBottom: 24,
-  },
-  mockButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  mockButton: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mockSocials: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  mockSocialIcon: {
-    opacity: 0.8,
-  },
-  ornateBorder: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    right: 8,
-    bottom: 8,
-    borderWidth: 2,
     borderRadius: 20,
-    borderStyle: 'solid',
+    zIndex: 20,
   },
+  lockText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  // Template info below card
   templateInfo: {
-    marginTop: 16,
+    marginTop: 14,
     alignItems: 'center',
     paddingHorizontal: 20,
-    minHeight: 80,
+    minHeight: 70,
   },
   templateName: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 6,
+    marginBottom: 4,
     textAlign: 'center',
   },
   templateDescription: {
     fontSize: 13,
     color: 'rgba(255,255,255,0.6)',
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
     lineHeight: 18,
     paddingHorizontal: 10,
   },
@@ -546,20 +945,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255,255,255,0.4)',
   },
+  // Pagination
   pagination: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 12,
+    marginVertical: 10,
     gap: 6,
   },
   paginationDot: {
     height: 8,
     borderRadius: 4,
   },
+  // Bottom
   bottomContainer: {
     paddingHorizontal: 24,
-    paddingBottom: 16,
+    paddingBottom: 12,
   },
   selectButton: {
     backgroundColor: '#3b82f6',
@@ -568,7 +969,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   selectButtonPremium: {
     backgroundColor: '#d4af37',
@@ -594,33 +995,12 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.4)',
     fontSize: 12,
   },
-  // Pro Badge Styles
-  proBadge: {
-    backgroundColor: '#10b981',
-  },
-  proBadgeText: {
-    color: '#fff',
-  },
-  // Lock Overlay for Pro templates
-  lockOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 24,
-  },
-  lockText: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 8,
-  },
   // Filter Tabs
   filterTabs: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 10,
     paddingHorizontal: 24,
   },
   filterTab: {
