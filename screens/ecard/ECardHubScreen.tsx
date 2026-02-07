@@ -22,6 +22,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
+import { useThemeContext } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabaseClient';
 
 const { width } = Dimensions.get('window');
@@ -44,6 +45,7 @@ interface CardData {
 export default function ECardHubScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
+  const { theme, isDark } = useThemeContext();
   const [cards, setCards] = useState<CardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -106,7 +108,7 @@ export default function ECardHubScreen() {
     return (
       <TouchableOpacity
         key={card.id}
-        style={styles.cardTile}
+        style={[styles.cardTile, { backgroundColor: isDark ? theme.surface : '#fff' }]}
         onPress={() => handleEditCard(card)}
         activeOpacity={0.9}
       >
@@ -161,9 +163,9 @@ export default function ECardHubScreen() {
         </LinearGradient>
 
         {/* Edit Button */}
-        <View style={styles.cardActions}>
-          <Text style={styles.editText}>Edit Card</Text>
-          <Ionicons name="chevron-forward" size={16} color="#666" />
+        <View style={[styles.cardActions, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+          <Text style={[styles.editText, { color: isDark ? '#94A3B8' : '#666' }]}>Edit Card</Text>
+          <Ionicons name="chevron-forward" size={16} color={isDark ? '#94A3B8' : '#666'} />
         </View>
       </TouchableOpacity>
     );
@@ -171,46 +173,54 @@ export default function ECardHubScreen() {
 
   const renderCreateNewTile = () => (
     <TouchableOpacity
-      style={styles.cardTile}
+      style={[styles.cardTile, { backgroundColor: isDark ? theme.surface : '#fff' }]}
       onPress={handleCreateNew}
       activeOpacity={0.9}
     >
-      <View style={styles.createNewGradient}>
+      <View style={[styles.createNewGradient, { 
+        backgroundColor: isDark ? theme.surfaceElevated : '#F8F8F8',
+        borderColor: isDark ? '#374151' : '#E8E8E8',
+      }]}>
         <View style={styles.createNewIcon}>
           <Ionicons name="add" size={40} color="#00C853" />
         </View>
-        <Text style={styles.createNewTitle}>Create New</Text>
-        <Text style={styles.createNewSubtitle}>Start fresh with a new card</Text>
+        <Text style={[styles.createNewTitle, { color: isDark ? '#fff' : '#333' }]}>Create New</Text>
+        <Text style={[styles.createNewSubtitle, { color: isDark ? 'rgba(255,255,255,0.5)' : '#999' }]}>
+          Start fresh with a new card
+        </Text>
       </View>
-      <View style={styles.cardActions}>
-        <Text style={styles.editText}>Get Started</Text>
-        <Ionicons name="chevron-forward" size={16} color="#666" />
+      <View style={[styles.cardActions, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
+        <Text style={[styles.editText, { color: isDark ? '#94A3B8' : '#666' }]}>Get Started</Text>
+        <Ionicons name="chevron-forward" size={16} color={isDark ? '#94A3B8' : '#666'} />
       </View>
     </TouchableOpacity>
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#00C853" />
-          <Text style={styles.loadingText}>Loading your cards...</Text>
+          <Text style={[styles.loadingText, { color: isDark ? '#94A3B8' : '#666' }]}>Loading your cards...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { 
+        backgroundColor: theme.background,
+        borderBottomColor: isDark ? '#1A1A1A' : '#F0F0F0',
+      }]}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: isDark ? theme.surface : '#F5F5F5' }]}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={isDark ? '#fff' : '#333'} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My eCards</Text>
+        <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#333' }]}>My eCards</Text>
         <View style={styles.headerRight} />
       </View>
 
@@ -224,8 +234,8 @@ export default function ECardHubScreen() {
       >
         {/* Hero Section */}
         <View style={styles.heroSection}>
-          <Text style={styles.heroTitle}>Your Digital Business Cards</Text>
-          <Text style={styles.heroSubtitle}>
+          <Text style={[styles.heroTitle, { color: isDark ? '#fff' : '#1A1A1A' }]}>Your Digital Business Cards</Text>
+          <Text style={[styles.heroSubtitle, { color: isDark ? 'rgba(255,255,255,0.6)' : '#666' }]}>
             Create, customize, and share your professional identity
           </Text>
         </View>
@@ -239,23 +249,23 @@ export default function ECardHubScreen() {
         {/* Quick Stats (if user has cards) */}
         {cards.length > 0 && (
           <View style={styles.quickStats}>
-            <Text style={styles.quickStatsTitle}>Quick Stats</Text>
+            <Text style={[styles.quickStatsTitle, { color: isDark ? '#fff' : '#333' }]}>Quick Stats</Text>
             <View style={styles.statsCards}>
-              <View style={styles.statCard}>
+              <View style={[styles.statCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
                 <Text style={styles.statCardValue}>
                   {cards.reduce((sum, card) => sum + (card.view_count || 0), 0)}
                 </Text>
-                <Text style={styles.statCardLabel}>Total Views</Text>
+                <Text style={[styles.statCardLabel, { color: isDark ? '#94A3B8' : '#999' }]}>Total Views</Text>
               </View>
-              <View style={styles.statCard}>
+              <View style={[styles.statCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
                 <Text style={styles.statCardValue}>
                   {cards.reduce((sum, card) => sum + (card.tap_count || 0), 0)}
                 </Text>
-                <Text style={styles.statCardLabel}>Total Taps</Text>
+                <Text style={[styles.statCardLabel, { color: isDark ? '#94A3B8' : '#999' }]}>Total Taps</Text>
               </View>
-              <View style={styles.statCard}>
+              <View style={[styles.statCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
                 <Text style={styles.statCardValue}>{cards.length}</Text>
-                <Text style={styles.statCardLabel}>Cards</Text>
+                <Text style={[styles.statCardLabel, { color: isDark ? '#94A3B8' : '#999' }]}>Cards</Text>
               </View>
             </View>
           </View>
@@ -264,9 +274,9 @@ export default function ECardHubScreen() {
         {/* Empty State (no cards) */}
         {cards.length === 0 && (
           <View style={styles.emptyState}>
-            <Ionicons name="id-card-outline" size={64} color="#E0E0E0" />
-            <Text style={styles.emptyTitle}>No cards yet</Text>
-            <Text style={styles.emptySubtitle}>
+            <Ionicons name="id-card-outline" size={64} color={isDark ? '#374151' : '#E0E0E0'} />
+            <Text style={[styles.emptyTitle, { color: isDark ? '#fff' : '#333' }]}>No cards yet</Text>
+            <Text style={[styles.emptySubtitle, { color: isDark ? 'rgba(255,255,255,0.5)' : '#666' }]}>
               Create your first digital business card and start sharing your professional identity
             </Text>
             <TouchableOpacity
@@ -287,13 +297,13 @@ export default function ECardHubScreen() {
         )}
 
         {/* Pro Tip */}
-        <View style={styles.proTip}>
-          <View style={styles.proTipIcon}>
+        <View style={[styles.proTip, { backgroundColor: isDark ? theme.surface : '#FFF8E1' }]}>
+          <View style={[styles.proTipIcon, { backgroundColor: isDark ? 'rgba(255, 179, 0, 0.15)' : 'rgba(255, 179, 0, 0.2)' }]}>
             <Ionicons name="bulb" size={20} color="#FFB300" />
           </View>
           <View style={styles.proTipContent}>
-            <Text style={styles.proTipTitle}>Pro Tip</Text>
-            <Text style={styles.proTipText}>
+            <Text style={[styles.proTipTitle, { color: isDark ? '#fff' : '#333' }]}>Pro Tip</Text>
+            <Text style={[styles.proTipText, { color: isDark ? 'rgba(255,255,255,0.7)' : '#666' }]}>
               Share your card link on social media bios, email signatures, and business materials for maximum reach.
             </Text>
           </View>
@@ -306,7 +316,6 @@ export default function ECardHubScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
   },
   loadingContainer: {
     flex: 1,
@@ -316,7 +325,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#666',
   },
   header: {
     flexDirection: 'row',
@@ -324,22 +332,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F5F5F5',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
   },
   headerRight: {
     width: 40,
@@ -358,12 +362,10 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#1A1A1A',
     marginBottom: 8,
   },
   heroSubtitle: {
     fontSize: 15,
-    color: '#666',
     lineHeight: 22,
   },
   cardsGrid: {
@@ -374,7 +376,6 @@ const styles = StyleSheet.create({
   },
   cardTile: {
     width: CARD_WIDTH,
-    backgroundColor: '#fff',
     borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -461,21 +462,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
   },
   editText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#333',
   },
   createNewGradient: {
     padding: 16,
     minHeight: 180,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8F8F8',
     borderWidth: 2,
-    borderColor: '#E8E8E8',
     borderStyle: 'dashed',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
@@ -492,11 +489,9 @@ const styles = StyleSheet.create({
   createNewTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
   },
   createNewSubtitle: {
     fontSize: 12,
-    color: '#999',
     textAlign: 'center',
     marginTop: 4,
   },
@@ -507,7 +502,6 @@ const styles = StyleSheet.create({
   quickStatsTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
     marginBottom: 16,
   },
   statsCards: {
@@ -516,7 +510,6 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -533,7 +526,6 @@ const styles = StyleSheet.create({
   },
   statCardLabel: {
     fontSize: 11,
-    color: '#999',
     marginTop: 4,
   },
   emptyState: {
@@ -544,12 +536,10 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#333',
     marginTop: 16,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#666',
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 20,
@@ -573,7 +563,6 @@ const styles = StyleSheet.create({
   },
   proTip: {
     flexDirection: 'row',
-    backgroundColor: '#FFF8E1',
     marginHorizontal: 20,
     marginTop: 32,
     borderRadius: 12,
@@ -584,7 +573,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 179, 0, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -594,12 +582,10 @@ const styles = StyleSheet.create({
   proTipTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#333',
     marginBottom: 4,
   },
   proTipText: {
     fontSize: 13,
-    color: '#666',
     lineHeight: 18,
   },
 });
