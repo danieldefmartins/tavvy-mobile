@@ -71,6 +71,7 @@ interface CardData {
   viewCount: number;
   showContactInfo: boolean;
   showSocialIcons: boolean;
+  fontColor: string | null;
 }
 
 export default function PublicCardViewScreen() {
@@ -174,6 +175,7 @@ export default function PublicCardViewScreen() {
         viewCount: data.view_count || 0,
         showContactInfo: data.show_contact_info !== false,
         showSocialIcons: data.show_social_icons !== false,
+        fontColor: data.font_color || null,
       };
 
       setCardData(card);
@@ -339,6 +341,34 @@ export default function PublicCardViewScreen() {
   const hasSocialLinks = cardData.socialInstagram || cardData.socialFacebook || 
                          cardData.socialLinkedin || cardData.socialTwitter || cardData.socialTiktok;
 
+  // Auto-contrast: compute best text color based on gradient background
+  const getAutoContrastColor = (hex1: string, hex2: string): string => {
+    const hexToRgb = (hex: string) => {
+      const h = hex.replace('#', '');
+      return {
+        r: parseInt(h.substring(0, 2), 16) || 0,
+        g: parseInt(h.substring(2, 4), 16) || 0,
+        b: parseInt(h.substring(4, 6), 16) || 0,
+      };
+    };
+    const c1 = hexToRgb(hex1);
+    const c2 = hexToRgb(hex2);
+    const avgR = (c1.r + c2.r) / 2;
+    const avgG = (c1.g + c2.g) / 2;
+    const avgB = (c1.b + c2.b) / 2;
+    const luminance = (0.299 * avgR + 0.587 * avgG + 0.114 * avgB) / 255;
+    return luminance > 0.55 ? '#1f2937' : '#FFFFFF';
+  };
+
+  const textColor = cardData.fontColor
+    ? cardData.fontColor
+    : getAutoContrastColor(cardData.gradientColors[0], cardData.gradientColors[1]);
+  const textColorFaded = cardData.fontColor
+    ? `${cardData.fontColor}CC`
+    : getAutoContrastColor(cardData.gradientColors[0], cardData.gradientColors[1]) === '#FFFFFF'
+      ? 'rgba(255,255,255,0.8)'
+      : 'rgba(31,41,55,0.7)';
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar barStyle="light-content" />
@@ -358,7 +388,7 @@ export default function PublicCardViewScreen() {
             onPress={() => navigation.goBack()} 
             style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={24} color={textColor} />
           </TouchableOpacity>
 
           {/* Share Button */}
@@ -366,7 +396,7 @@ export default function PublicCardViewScreen() {
             onPress={handleShare} 
             style={styles.shareButton}
           >
-            <Ionicons name="share-outline" size={24} color="#fff" />
+            <Ionicons name="share-outline" size={24} color={textColor} />
           </TouchableOpacity>
 
           {/* Profile Photo */}
@@ -375,20 +405,20 @@ export default function PublicCardViewScreen() {
               <Image source={{ uri: cardData.profilePhotoUrl }} style={styles.profilePhoto} />
             ) : (
               <View style={styles.photoPlaceholder}>
-                <Ionicons name="person" size={50} color="#fff" />
+                <Ionicons name="person" size={50} color={textColor} />
               </View>
             )}
           </View>
 
           {/* Name & Info */}
-          <Text style={styles.name}>{cardData.fullName}</Text>
-          {cardData.title && <Text style={styles.title}>{cardData.title}</Text>}
-          {cardData.company && <Text style={styles.company}>{cardData.company}</Text>}
+          <Text style={[styles.name, { color: textColor }]}>{cardData.fullName}</Text>
+          {cardData.title && <Text style={[styles.title, { color: textColorFaded }]}>{cardData.title}</Text>}
+          {cardData.company && <Text style={[styles.company, { color: textColorFaded }]}>{cardData.company}</Text>}
           
           {(cardData.city || cardData.state) && (
             <View style={styles.locationRow}>
-              <Ionicons name="location" size={16} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.location}>
+              <Ionicons name="location" size={16} color={textColorFaded} />
+              <Text style={[styles.location, { color: textColorFaded }]}>
                 {[cardData.city, cardData.state].filter(Boolean).join(', ')}
               </Text>
             </View>
@@ -401,8 +431,8 @@ export default function PublicCardViewScreen() {
                 style={styles.actionButton}
                 onPress={() => Linking.openURL(`tel:${cardData.phone}`)}
               >
-                <Ionicons name="call" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>Call</Text>
+                <Ionicons name="call" size={20} color={textColor} />
+                <Text style={[styles.actionButtonText, { color: textColor }]}>Call</Text>
               </TouchableOpacity>
             )}
             {cardData.phone && (
@@ -410,8 +440,8 @@ export default function PublicCardViewScreen() {
                 style={styles.actionButton}
                 onPress={() => Linking.openURL(`sms:${cardData.phone}`)}
               >
-                <Ionicons name="chatbubble" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>Text</Text>
+                <Ionicons name="chatbubble" size={20} color={textColor} />
+                <Text style={[styles.actionButtonText, { color: textColor }]}>Text</Text>
               </TouchableOpacity>
             )}
             {cardData.email && (
@@ -419,8 +449,8 @@ export default function PublicCardViewScreen() {
                 style={styles.actionButton}
                 onPress={() => Linking.openURL(`mailto:${cardData.email}`)}
               >
-                <Ionicons name="mail" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>Email</Text>
+                <Ionicons name="mail" size={20} color={textColor} />
+                <Text style={[styles.actionButtonText, { color: textColor }]}>Email</Text>
               </TouchableOpacity>
             )}
             {cardData.website && (
@@ -428,8 +458,8 @@ export default function PublicCardViewScreen() {
                 style={styles.actionButton}
                 onPress={() => Linking.openURL(cardData.website.startsWith('http') ? cardData.website : `https://${cardData.website}`)}
               >
-                <Ionicons name="globe" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>Web</Text>
+                <Ionicons name="globe" size={20} color={textColor} />
+                <Text style={[styles.actionButtonText, { color: textColor }]}>Web</Text>
               </TouchableOpacity>
             )}
           </View>}
@@ -442,7 +472,7 @@ export default function PublicCardViewScreen() {
                   style={styles.socialButton}
                   onPress={() => openSocialLink('instagram', cardData.socialInstagram)}
                 >
-                  <Ionicons name="logo-instagram" size={24} color="#fff" />
+                  <Ionicons name="logo-instagram" size={24} color={textColor} />
                 </TouchableOpacity>
               )}
               {cardData.socialFacebook && (
@@ -450,7 +480,7 @@ export default function PublicCardViewScreen() {
                   style={styles.socialButton}
                   onPress={() => openSocialLink('facebook', cardData.socialFacebook)}
                 >
-                  <Ionicons name="logo-facebook" size={24} color="#fff" />
+                  <Ionicons name="logo-facebook" size={24} color={textColor} />
                 </TouchableOpacity>
               )}
               {cardData.socialLinkedin && (
@@ -458,7 +488,7 @@ export default function PublicCardViewScreen() {
                   style={styles.socialButton}
                   onPress={() => openSocialLink('linkedin', cardData.socialLinkedin)}
                 >
-                  <Ionicons name="logo-linkedin" size={24} color="#fff" />
+                  <Ionicons name="logo-linkedin" size={24} color={textColor} />
                 </TouchableOpacity>
               )}
               {cardData.socialTwitter && (
@@ -466,7 +496,7 @@ export default function PublicCardViewScreen() {
                   style={styles.socialButton}
                   onPress={() => openSocialLink('twitter', cardData.socialTwitter)}
                 >
-                  <Ionicons name="logo-twitter" size={24} color="#fff" />
+                  <Ionicons name="logo-twitter" size={24} color={textColor} />
                 </TouchableOpacity>
               )}
               {cardData.socialTiktok && (
@@ -474,7 +504,7 @@ export default function PublicCardViewScreen() {
                   style={styles.socialButton}
                   onPress={() => openSocialLink('tiktok', cardData.socialTiktok)}
                 >
-                  <Ionicons name="logo-tiktok" size={24} color="#fff" />
+                  <Ionicons name="logo-tiktok" size={24} color={textColor} />
                 </TouchableOpacity>
               )}
             </View>
@@ -501,8 +531,8 @@ export default function PublicCardViewScreen() {
                 ))}
               </View>
               <View style={styles.galleryCountBadge}>
-                <Ionicons name="images" size={14} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.galleryCountText}>{cardData.galleryImages.length} photos</Text>
+                <Ionicons name="images" size={14} color={textColorFaded} />
+                <Text style={[styles.galleryCountText, { color: textColorFaded }]}>{cardData.galleryImages.length} photos</Text>
               </View>
             </View>
           )}
@@ -519,8 +549,8 @@ export default function PublicCardViewScreen() {
                       onPress={() => Linking.openURL(video.url)}
                     >
                       <Ionicons name="videocam" size={20} color="#00C853" />
-                      <Text style={styles.videoCardText}>Tavvy Short</Text>
-                      <Ionicons name="play-circle" size={20} color="rgba(255,255,255,0.6)" />
+                      <Text style={[styles.videoCardText, { color: textColor }]}>Tavvy Short</Text>
+                      <Ionicons name="play-circle" size={20} color={textColorFaded} />
                     </TouchableOpacity>
                   );
                 } else {
@@ -530,9 +560,9 @@ export default function PublicCardViewScreen() {
                       style={styles.videoCard}
                       onPress={() => Linking.openURL(video.url.startsWith('http') ? video.url : `https://${video.url}`)}
                     >
-                      <Ionicons name="videocam" size={20} color="#fff" />
-                      <Text style={styles.videoCardText}>Video</Text>
-                      <Ionicons name="open-outline" size={16} color="rgba(255,255,255,0.6)" />
+                      <Ionicons name="videocam" size={20} color={textColor} />
+                      <Text style={[styles.videoCardText, { color: textColor }]}>Video</Text>
+                      <Ionicons name="open-outline" size={16} color={textColorFaded} />
                     </TouchableOpacity>
                   );
                 }
@@ -551,9 +581,9 @@ export default function PublicCardViewScreen() {
                     style={styles.linkCard}
                     onPress={() => Linking.openURL(href)}
                   >
-                    <Ionicons name={link.icon === 'website' ? 'globe' : 'link'} size={18} color="#fff" />
-                    <Text style={styles.linkCardText}>{link.title}</Text>
-                    <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.5)" />
+                    <Ionicons name={link.icon === 'website' ? 'globe' : 'link'} size={18} color={textColor} />
+                    <Text style={[styles.linkCardText, { color: textColor }]}>{link.title}</Text>
+                    <Ionicons name="chevron-forward" size={16} color={textColorFaded} />
                   </TouchableOpacity>
                 );
               })}
@@ -565,7 +595,7 @@ export default function PublicCardViewScreen() {
             style={styles.poweredBy}
             onPress={() => navigation.getParent()?.navigate('Home')}
           >
-            <Text style={styles.poweredByText}>Powered by Tavvy</Text>
+            <Text style={[styles.poweredByText, { color: textColorFaded }]}>Powered by Tavvy</Text>
           </TouchableOpacity>
         </LinearGradient>
 

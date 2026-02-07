@@ -245,6 +245,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const [selectedFont, setSelectedFont] = useState('default');
   const [gradientColors, setGradientColors] = useState<[string, string]>(['#667eea', '#764ba2']);
   const [profilePhotoSize, setProfilePhotoSize] = useState('medium');
+  const [fontColor, setFontColor] = useState<string | null>(null);
   
   // Background image/video state
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
@@ -483,6 +484,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       setSelectedButtonStyle(insertedCard.button_style || 'fill');
       setSelectedFont(insertedCard.font_style || 'default');
       setProfilePhotoSize(insertedCard.profile_photo_size || 'medium');
+      setFontColor(insertedCard.font_color || null);
     } catch (error: any) {
       console.error('Error inserting links:', error);
     }
@@ -518,6 +520,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             setSelectedButtonStyle(card.button_style || 'fill');
             setSelectedFont(card.font_style || 'default');
             setProfilePhotoSize(card.profile_photo_size || 'medium');
+            setFontColor(card.font_color || null);
             setGalleryImages(card.gallery_images || []);
             setVideos(card.videos || []);
             // Visibility toggles
@@ -665,6 +668,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         profile_photo_url: photoUrl,
         show_contact_info: showContactInfo,
         show_social_icons: showSocialIcons,
+        font_color: fontColor || null,
       };
       
       const { error } = await supabase.from('digital_cards').update(updates).eq('id', cardData.id);
@@ -1634,6 +1638,42 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         </ScrollView>
       </View>
 
+      {/* Font Color */}
+      <View style={[s.section, { backgroundColor: colors.surface }]}>
+        <Text style={[s.sectionTitle, { color: colors.text }]}>Font Color</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: 10 }}>
+          Choose a text color for your card. "Auto" picks the best contrast.
+        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity
+              style={[s.fontColorBtn, !fontColor && s.fontColorBtnSelected]}
+              onPress={() => { setFontColor(null); saveAppearanceSettings({ font_color: null }); }}
+            >
+              <Text style={{ color: !fontColor ? '#fff' : colors.text, fontSize: 13 }}>Auto</Text>
+            </TouchableOpacity>
+            {[
+              { id: '#FFFFFF', name: 'White' },
+              { id: '#000000', name: 'Black' },
+              { id: '#1f2937', name: 'Dark Gray' },
+              { id: '#d4af37', name: 'Gold' },
+              { id: '#E5E7EB', name: 'Light Gray' },
+              { id: '#3B82F6', name: 'Blue' },
+              { id: '#EF4444', name: 'Red' },
+            ].map((color) => (
+              <TouchableOpacity
+                key={color.id}
+                style={[s.fontColorBtn, fontColor === color.id && s.fontColorBtnSelected]}
+                onPress={() => { setFontColor(color.id); saveAppearanceSettings({ font_color: color.id }); }}
+              >
+                <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: color.id, borderWidth: 1, borderColor: 'rgba(128,128,128,0.3)', marginRight: 6 }} />
+                <Text style={{ color: fontColor === color.id ? '#fff' : colors.text, fontSize: 13 }}>{color.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+
       {/* Background Type */}
       <View style={[s.section, { backgroundColor: colors.surface }]}>
         <Text style={[s.sectionTitle, { color: colors.text }]}>Background</Text>
@@ -2357,6 +2397,8 @@ const s = StyleSheet.create({
   fontScroll: { marginBottom: 4 },
   fontOption: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1, marginRight: 8, flexDirection: 'row', alignItems: 'center', gap: 4 },
   fontOptionSelected: { borderColor: ACCENT_GREEN, backgroundColor: 'rgba(0,200,83,0.1)' },
+  fontColorBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(128,128,128,0.3)', flexDirection: 'row', alignItems: 'center' },
+  fontColorBtnSelected: { borderColor: ACCENT_GREEN, backgroundColor: ACCENT_GREEN },
   fontOptionText: { fontSize: 13, fontWeight: '500' },
   bgTypeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   bgTypeBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
