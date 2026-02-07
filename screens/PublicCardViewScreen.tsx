@@ -58,6 +58,14 @@ interface CardData {
   socialLinkedin: string;
   socialTwitter: string;
   socialTiktok: string;
+  socialYoutube: string;
+  socialSnapchat: string;
+  socialPinterest: string;
+  socialWhatsapp: string;
+  featuredSocials: ({ platform: string; url: string } | string)[];
+  galleryImages: { id: string; url: string; caption?: string }[];
+  videos: { type: string; url: string }[];
+  links: { id: string; title: string; url: string; icon: string }[];
   viewCount: number;
 }
 
@@ -100,6 +108,26 @@ export default function PublicCardViewScreen() {
         return;
       }
 
+      // Fetch links from digital_card_links (primary) then card_links (fallback)
+      let linksData: any[] = [];
+      const { data: digitalLinksData } = await supabase
+        .from('digital_card_links')
+        .select('*')
+        .eq('card_id', data.id)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+      if (digitalLinksData && digitalLinksData.length > 0) {
+        linksData = digitalLinksData;
+      } else {
+        const { data: legacyLinksData } = await supabase
+          .from('card_links')
+          .select('*')
+          .eq('card_id', data.id)
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+        linksData = legacyLinksData || [];
+      }
+
       const card: CardData = {
         id: data.id,
         slug: data.slug,
@@ -118,6 +146,25 @@ export default function PublicCardViewScreen() {
         socialLinkedin: data.social_linkedin || '',
         socialTwitter: data.social_twitter || '',
         socialTiktok: data.social_tiktok || '',
+        socialYoutube: data.social_youtube || '',
+        socialSnapchat: data.social_snapchat || '',
+        socialPinterest: data.social_pinterest || '',
+        socialWhatsapp: data.social_whatsapp || '',
+        featuredSocials: data.featured_socials ?
+          (typeof data.featured_socials === 'string' ? JSON.parse(data.featured_socials) : data.featured_socials)
+          : [],
+        galleryImages: data.gallery_images ?
+          (typeof data.gallery_images === 'string' ? JSON.parse(data.gallery_images) : data.gallery_images)
+          : [],
+        videos: data.videos ?
+          (typeof data.videos === 'string' ? JSON.parse(data.videos) : data.videos)
+          : [],
+        links: linksData.map((l: any) => ({
+          id: l.id,
+          title: l.title,
+          url: l.url,
+          icon: l.icon || 'link',
+        })),
         viewCount: data.view_count || 0,
       };
 
@@ -425,6 +472,81 @@ export default function PublicCardViewScreen() {
             </View>
           )}
 
+          {/* Gallery Images */}
+          {cardData.galleryImages && cardData.galleryImages.length > 0 && (
+            <View style={styles.gallerySection}>
+              <View style={styles.galleryGrid}>
+                {cardData.galleryImages.slice(0, 9).map((image, index) => (
+                  <View key={image.id || index} style={styles.galleryImageContainer}>
+                    <Image source={{ uri: image.url }} style={styles.galleryImage} />
+                    {index === 8 && cardData.galleryImages.length > 9 && (
+                      <View style={styles.galleryMoreOverlay}>
+                        <Text style={styles.galleryMoreText}>+{cardData.galleryImages.length - 9}</Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+              <View style={styles.galleryCountBadge}>
+                <Ionicons name="images" size={14} color="rgba(255,255,255,0.7)" />
+                <Text style={styles.galleryCountText}>{cardData.galleryImages.length} photos</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Videos (Tavvy Shorts & External) */}
+          {cardData.videos && cardData.videos.length > 0 && (
+            <View style={styles.videosSection}>
+              {cardData.videos.map((video, index) => {
+                if (video.type === 'tavvy_short') {
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.videoCard}
+                      onPress={() => Linking.openURL(video.url)}
+                    >
+                      <Ionicons name="videocam" size={20} color="#00C853" />
+                      <Text style={styles.videoCardText}>Tavvy Short</Text>
+                      <Ionicons name="play-circle" size={20} color="rgba(255,255,255,0.6)" />
+                    </TouchableOpacity>
+                  );
+                } else {
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.videoCard}
+                      onPress={() => Linking.openURL(video.url.startsWith('http') ? video.url : `https://${video.url}`)}
+                    >
+                      <Ionicons name="videocam" size={20} color="#fff" />
+                      <Text style={styles.videoCardText}>Video</Text>
+                      <Ionicons name="open-outline" size={16} color="rgba(255,255,255,0.6)" />
+                    </TouchableOpacity>
+                  );
+                }
+              })}
+            </View>
+          )}
+
+          {/* Website Links */}
+          {cardData.links && cardData.links.length > 0 && (
+            <View style={styles.linksSection}>
+              {cardData.links.map((link, index) => {
+                const href = link.url.startsWith('http') ? link.url : `https://${link.url}`;
+                return (
+                  <TouchableOpacity
+                    key={link.id || index}
+                    style={styles.linkCard}
+                    onPress={() => Linking.openURL(href)}
+                  >
+                    <Ionicons name={link.icon === 'website' ? 'globe' : 'link'} size={18} color="#fff" />
+                    <Text style={styles.linkCardText}>{link.title}</Text>
+                    <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.5)" />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
           {/* Powered by Tavvy */}
           <TouchableOpacity 
             style={styles.poweredBy}
@@ -723,5 +845,101 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
+  },
+  // Gallery styles
+  gallerySection: {
+    width: '100%',
+    marginTop: 24,
+  },
+  galleryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  galleryImageContainer: {
+    width: (SCREEN_WIDTH - 80 - 8) / 3,
+    height: (SCREEN_WIDTH - 80 - 8) / 3,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  galleryImage: {
+    width: '100%',
+    height: '100%',
+  },
+  galleryMoreOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  galleryMoreText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  galleryCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  galleryCountText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  // Videos styles
+  videosSection: {
+    width: '100%',
+    marginTop: 20,
+    gap: 10,
+  },
+  videoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  videoCardText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    flex: 1,
+  },
+  // Links styles
+  linksSection: {
+    width: '100%',
+    marginTop: 20,
+    gap: 10,
+  },
+  linkCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  linkCardText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    flex: 1,
   },
 });
