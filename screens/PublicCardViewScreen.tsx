@@ -26,6 +26,8 @@ import {
   Image,
   ActivityIndicator,
   Share,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -79,6 +81,8 @@ export default function PublicCardViewScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSavedToWallet, setIsSavedToWallet] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const cardSlug = route.params?.slug;
   const cardId = route.params?.cardId;
@@ -477,14 +481,19 @@ export default function PublicCardViewScreen() {
             <View style={styles.gallerySection}>
               <View style={styles.galleryGrid}>
                 {cardData.galleryImages.slice(0, 9).map((image, index) => (
-                  <View key={image.id || index} style={styles.galleryImageContainer}>
+                  <TouchableOpacity 
+                    key={image.id || index} 
+                    style={styles.galleryImageContainer}
+                    activeOpacity={0.8}
+                    onPress={() => { setLightboxIndex(index); setLightboxOpen(true); }}
+                  >
                     <Image source={{ uri: image.url }} style={styles.galleryImage} />
                     {index === 8 && cardData.galleryImages.length > 9 && (
                       <View style={styles.galleryMoreOverlay}>
                         <Text style={styles.galleryMoreText}>+{cardData.galleryImages.length - 9}</Text>
                       </View>
                     )}
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
               <View style={styles.galleryCountBadge}>
@@ -611,6 +620,62 @@ export default function PublicCardViewScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Photo Lightbox Modal */}
+      <Modal
+        visible={lightboxOpen}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setLightboxOpen(false)}
+      >
+        <View style={styles.lightboxOverlay}>
+          {/* Close button */}
+          <TouchableOpacity 
+            style={styles.lightboxClose}
+            onPress={() => setLightboxOpen(false)}
+          >
+            <Ionicons name="close" size={28} color="white" />
+          </TouchableOpacity>
+
+          {/* Counter */}
+          <View style={styles.lightboxCounter}>
+            <Text style={styles.lightboxCounterText}>
+              {lightboxIndex + 1} / {cardData?.galleryImages?.length || 0}
+            </Text>
+          </View>
+
+          {/* Swipeable image viewer */}
+          <FlatList
+            data={cardData?.galleryImages || []}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            initialScrollIndex={lightboxIndex}
+            getItemLayout={(_, index) => ({
+              length: SCREEN_WIDTH,
+              offset: SCREEN_WIDTH * index,
+              index,
+            })}
+            onMomentumScrollEnd={(e) => {
+              const newIndex = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+              setLightboxIndex(newIndex);
+            }}
+            keyExtractor={(item, index) => item.id || index.toString()}
+            renderItem={({ item }) => (
+              <View style={styles.lightboxSlide}>
+                <Image
+                  source={{ uri: item.url }}
+                  style={styles.lightboxImage}
+                  resizeMode="contain"
+                />
+                {item.caption ? (
+                  <Text style={styles.lightboxCaption}>{item.caption}</Text>
+                ) : null}
+              </View>
+            )}
+          />
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -941,5 +1006,54 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     flex: 1,
+  },
+
+  // Lightbox styles
+  lightboxOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lightboxClose: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 56 : 16,
+    right: 16,
+    zIndex: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lightboxCounter: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 64 : 24,
+    alignSelf: 'center',
+    zIndex: 10,
+  },
+  lightboxCounterText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  lightboxSlide: {
+    width: SCREEN_WIDTH,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  lightboxImage: {
+    width: SCREEN_WIDTH - 32,
+    height: SCREEN_WIDTH - 32,
+    borderRadius: 8,
+  },
+  lightboxCaption: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 16,
+    paddingHorizontal: 32,
   },
 });
