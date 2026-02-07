@@ -26,6 +26,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
+import { Audio } from 'expo-av';
 
 import { supabase } from '../../lib/supabaseClient';
 import { FONTS, PREMIUM_FONT_COUNT } from '../../config/eCardFonts';
@@ -247,6 +248,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
   const [backgroundVideoUrl, setBackgroundVideoUrl] = useState<string | null>(null);
   const [isUploadingBackground, setIsUploadingBackground] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   
   // Industry Icons state
   const [industryIcons, setIndustryIcons] = useState<IndustryIcon[]>([]);
@@ -677,32 +679,50 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const uploadImage = async (uri: string, path: string): Promise<string | null> => {
     try {
       const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
-      const mimeType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+      // Determine MIME type based on extension — support both images and videos
+      const mimeMap: Record<string, string> = {
+        jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp',
+        mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', mpeg: 'video/mpeg', '3gp': 'video/3gpp', avi: 'video/x-msvideo',
+      };
+      const mimeType = mimeMap[ext] || (ext.startsWith('mp') || ext === 'mov' || ext === 'avi' || ext === 'webm' ? 'video/mp4' : 'image/jpeg');
 
-      const formData = new FormData();
-      formData.append('file', {
-        uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
-        name: path.split('/').pop() || `upload.${ext}`,
-        type: mimeType,
-      } as any);
-
-      const { data, error } = await supabase.storage
-        .from('ecard-assets')
-        .upload(path, formData.get('file') as any, {
-          contentType: mimeType,
-          upsert: true,
-        });
-
-      if (error) {
-        // Fallback: try with fetch + arraybuffer
-        console.warn('FormData upload failed, trying arraybuffer:', error.message);
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        const { data: data2, error: error2 } = await supabase.storage
+      // Primary approach: read file as base64 and convert to ArrayBuffer (most reliable on React Native)
+      let uploadSuccess = false;
+      try {
+        const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+        // Convert base64 to Uint8Array
+        const binaryString = atob(base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const { data, error } = await supabase.storage
           .from('ecard-assets')
-          .upload(path, blob, { contentType: mimeType, upsert: true });
-        if (error2) {
-          console.warn('Upload fully failed:', error2.message);
+          .upload(path, bytes.buffer, { contentType: mimeType, upsert: true });
+        if (error) {
+          console.warn('Base64 upload failed:', error.message);
+        } else {
+          uploadSuccess = true;
+        }
+      } catch (base64Err) {
+        console.warn('Base64 read failed, trying fetch approach:', base64Err);
+      }
+
+      // Fallback: try with fetch + blob
+      if (!uploadSuccess) {
+        try {
+          const response = await fetch(uri);
+          const blob = await response.blob();
+          const { data: data2, error: error2 } = await supabase.storage
+            .from('ecard-assets')
+            .upload(path, blob, { contentType: mimeType, upsert: true });
+          if (error2) {
+            console.warn('Blob upload also failed:', error2.message);
+            return null;
+          }
+          uploadSuccess = true;
+        } catch (fetchErr) {
+          console.warn('Fetch+blob upload failed:', fetchErr);
           return null;
         }
       }
@@ -1866,9 +1886,46 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             ))}
           </View>
           {videoType === 'tavvy_short' ? (
+            isUploadingVideo ? (
+              <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                <ActivityIndicator size="large" color={ACCENT_GREEN} />
+                <Text style={[s.addBtnText, { color: colors.textSecondary, marginTop: 8 }]}>Uploading video...</Text>
+              </View>
+            ) : (
             <TouchableOpacity
               style={[s.addBtn, { borderColor: colors.inputBorder, marginTop: 12 }]}
               onPress={() => {
+                // Helper: check video duration and upload
+                const processAndUploadVideo = async (videoUri: string) => {
+                  if (!user?.id) { Alert.alert('Error', 'Please log in to upload videos.'); return; }
+                  setIsUploadingVideo(true);
+                  try {
+                    // Check video duration using expo-av
+                    const { sound } = await Audio.Sound.createAsync({ uri: videoUri });
+                    const status = await sound.getStatusAsync();
+                    await sound.unloadAsync();
+                    if (status.isLoaded && status.durationMillis && status.durationMillis > 16000) {
+                      Alert.alert('Video Too Long', `Your video is ${Math.round(status.durationMillis / 1000)} seconds. Tavvy Short videos must be 15 seconds or less. Please trim your video and try again.`);
+                      setIsUploadingVideo(false);
+                      return;
+                    }
+                    // Upload to Supabase Storage
+                    const ext = videoUri.split('.').pop()?.toLowerCase() || 'mp4';
+                    const uploadedUrl = await uploadImage(videoUri, `${user.id}/video_${Date.now()}.${ext}`);
+                    if (uploadedUrl) {
+                      setVideos(prev => [...prev, { type: 'tavvy_short', url: uploadedUrl }]);
+                      setShowVideoModal(false);
+                    } else {
+                      Alert.alert('Upload Failed', 'Could not upload the video. Please try again.');
+                    }
+                  } catch (err) {
+                    console.warn('Video processing error:', err);
+                    Alert.alert('Error', 'Something went wrong processing the video.');
+                  } finally {
+                    setIsUploadingVideo(false);
+                  }
+                };
+
                 const pickFromLibrary = async () => {
                   const result = await ImagePicker.launchImageLibraryAsync({
                     mediaTypes: ImagePicker.MediaTypeOptions.Videos,
@@ -1877,18 +1934,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
                     videoMaxDuration: 15,
                   });
                   if (!result.canceled && result.assets[0]) {
-                    // Upload to Supabase Storage
-                    if (user?.id) {
-                      const uploadedUrl = await uploadImage(result.assets[0].uri, `${user.id}/video_${Date.now()}.mp4`);
-                      if (uploadedUrl) {
-                        setVideos(prev => [...prev, { type: 'tavvy_short', url: uploadedUrl }]);
-                      } else {
-                        setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
-                      }
-                    } else {
-                      setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
-                    }
-                    setShowVideoModal(false);
+                    await processAndUploadVideo(result.assets[0].uri);
                   }
                 };
                 const recordVideo = async () => {
@@ -1901,34 +1947,14 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
                     videoMaxDuration: 15,
                   });
                   if (!result.canceled && result.assets[0]) {
-                    if (user?.id) {
-                      const uploadedUrl = await uploadImage(result.assets[0].uri, `${user.id}/video_${Date.now()}.mp4`);
-                      if (uploadedUrl) {
-                        setVideos(prev => [...prev, { type: 'tavvy_short', url: uploadedUrl }]);
-                      } else {
-                        setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
-                      }
-                    } else {
-                      setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
-                    }
-                    setShowVideoModal(false);
+                    await processAndUploadVideo(result.assets[0].uri);
                   }
                 };
                 const pickFromFiles = async () => {
                   try {
                     const result = await DocumentPicker.getDocumentAsync({ type: 'video/*' });
                     if (!result.canceled && result.assets?.[0]) {
-                      if (user?.id) {
-                        const uploadedUrl = await uploadImage(result.assets[0].uri, `${user.id}/video_${Date.now()}.mp4`);
-                        if (uploadedUrl) {
-                          setVideos(prev => [...prev, { type: 'tavvy_short', url: uploadedUrl }]);
-                        } else {
-                          setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
-                        }
-                      } else {
-                        setVideos(prev => [...prev, { type: 'tavvy_short', url: result.assets[0].uri }]);
-                      }
-                      setShowVideoModal(false);
+                      await processAndUploadVideo(result.assets[0].uri);
                     }
                   } catch (e) { console.warn('File picker error:', e); }
                 };
@@ -1955,6 +1981,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               <Ionicons name="videocam" size={20} color={ACCENT_GREEN} />
               <Text style={[s.addBtnText, { color: colors.text }]}>Select Video (15s max)</Text>
             </TouchableOpacity>
+            )
           ) : (
             <>
               <TextInput
