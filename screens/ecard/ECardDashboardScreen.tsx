@@ -593,8 +593,8 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   }, [user, isNewCard, cardId]);
 
   // Columns that may not exist in database yet - save locally but don't send to DB
-  // These will be added via SQL migration: industry_icons, background_video_url, gallery_images, pro_credentials
-  const PENDING_COLUMNS = ['industry_icons', 'background_video_url', 'gallery_images', 'pro_credentials'];
+  // gallery_images, pro_credentials, and videos columns now exist in the DB
+  const PENDING_COLUMNS = ['industry_icons', 'background_video_url'];
 
   // Save appearance settings
   const saveAppearanceSettings = async (settings: Partial<CardData>) => {
