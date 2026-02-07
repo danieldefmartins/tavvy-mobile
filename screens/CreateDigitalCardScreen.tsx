@@ -1248,8 +1248,14 @@ export default function CreateDigitalCardScreen() {
             </View>
           )}
 
-          {/* Powered by Tavvy */}
-          <Text style={styles.previewPoweredBy}>Powered by Tavvy</Text>
+          {/* Tavvy Logo */}
+          <View style={styles.tavvyBranding}>
+            <Image 
+              source={require('../assets/brand/tavvy-wordmark-white.png')}
+              style={styles.tavvyLogo}
+              resizeMode="contain"
+            />
+          </View>
         </LinearGradient>
       </View>
 
@@ -1918,10 +1924,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
   },
-  previewPoweredBy: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.5)',
+  tavvyBranding: {
+    alignItems: 'center',
     marginTop: 20,
+  },
+  tavvyLogo: {
+    height: 16,
+    width: 70,
+    opacity: 0.5,
   },
   // Modal styles
   modalOverlay: {

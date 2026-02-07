@@ -540,9 +540,13 @@ export default function MyDigitalCardScreen() {
             </View>
           )}
 
-          {/* Powered by Tavvy */}
-          <View style={styles.poweredBy}>
-            <Text style={styles.poweredByText}>Powered by Tavvy</Text>
+          {/* Tavvy Logo */}
+          <View style={styles.tavvyBranding}>
+            <Image 
+              source={require('../assets/brand/tavvy-wordmark-white.png')}
+              style={styles.tavvyLogo}
+              resizeMode="contain"
+            />
           </View>
         </LinearGradient>
 
@@ -894,19 +898,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  poweredBy: {
+  tavvyBranding: {
+    alignItems: 'center',
     marginTop: 28,
     paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.2)',
     width: '100%',
-    alignItems: 'center',
   },
-  poweredByText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
-    letterSpacing: 0.5,
+  tavvyLogo: {
+    height: 18,
+    width: 80,
+    opacity: 0.5,
   },
   shareSection: {
     margin: 20,

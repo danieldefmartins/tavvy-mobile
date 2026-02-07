@@ -510,10 +510,13 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                     </View>
                   )}
                   
-                  {/* Powered by Tavvy */}
-                  <View style={styles.poweredBy}>
-                    <Text style={styles.poweredByText}>Powered by </Text>
-                    <Text style={styles.poweredByBrand}>Tavvy</Text>
+                  {/* Tavvy Logo */}
+                  <View style={styles.tavvyBranding}>
+                    <Image 
+                      source={require('../../assets/brand/tavvy-wordmark-white.png')}
+                      style={styles.tavvyLogo}
+                      resizeMode="contain"
+                    />
                   </View>
                 </LinearGradient>
               </View>
@@ -647,10 +650,16 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                 </View>
               )}
 
-              {/* Powered by Tavvy */}
-              <View style={styles.poweredBy}>
-                <Text style={[styles.poweredByText, { color: subtitleColor }]}>Powered by </Text>
-                <Text style={[styles.poweredByBrand, { color: textColor }]}>Tavvy</Text>
+              {/* Tavvy Logo */}
+              <View style={styles.tavvyBranding}>
+                <Image 
+                  source={isLightTheme 
+                    ? require('../../assets/brand/tavvy-wordmark-dark.png')
+                    : require('../../assets/brand/tavvy-wordmark-white.png')
+                  }
+                  style={[styles.tavvyLogo, { opacity: isLightTheme ? 0.4 : 0.5 }]}
+                  resizeMode="contain"
+                />
               </View>
             </LinearGradient>
           );
@@ -874,23 +883,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.5)',
   },
-  poweredBy: {
-    flexDirection: 'row',
+  tavvyBranding: {
+    alignItems: 'center',
     marginTop: 24,
     paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
     width: '100%',
-    justifyContent: 'center',
   },
-  poweredByText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
-  },
-  poweredByBrand: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.7)',
+  tavvyLogo: {
+    height: 18,
+    width: 80,
+    opacity: 0.5,
   },
   bottomActions: {
     flexDirection: 'row',
