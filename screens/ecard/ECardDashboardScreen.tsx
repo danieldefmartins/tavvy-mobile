@@ -604,8 +604,8 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
 
   // Save content fields
   const handleSaveContent = async () => {
-    if (!cardData?.id) {
-      Alert.alert('Error', 'Card not found. Please go back and try again.');
+    if (!cardData?.id || !user) {
+      Alert.alert('Error', 'Card not found or not logged in. Please go back and try again.');
       return;
     }
     setIsSaving(true);
@@ -613,7 +613,32 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       const locationParts = locationField.split(',').map(s => s.trim());
       const city = locationParts[0] || '';
       const state = locationParts[1] || '';
-      
+
+      // Upload profile photo if it's a local file
+      let photoUrl = profilePhotoUrl;
+      if (profilePhotoUrl && (profilePhotoUrl.startsWith('file://') || profilePhotoUrl.startsWith('/'))) {
+        const uploaded = await uploadImage(profilePhotoUrl, `${user.id}/profile_${Date.now()}.jpg`);
+        if (uploaded) {
+          photoUrl = uploaded;
+          setProfilePhotoUrl(uploaded);
+        }
+      }
+
+      // Upload gallery images that are local files
+      const uploadedGallery: GalleryImage[] = [];
+      for (const img of galleryImages) {
+        if (img.url.startsWith('file://') || img.url.startsWith('/')) {
+          // Local file — needs upload
+          const uploaded = await uploadImage(img.url, `${user.id}/gallery_${img.id}_${Date.now()}.jpg`);
+          if (uploaded) {
+            uploadedGallery.push({ id: img.id, url: uploaded });
+          }
+        } else {
+          // Already a remote URL — keep as is
+          uploadedGallery.push(img);
+        }
+      }
+
       const updates: Record<string, any> = {
         full_name: fullName,
         title: titleRole,
@@ -623,18 +648,17 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         website: websiteField,
         city,
         state,
-        gallery_images: galleryImages,
+        gallery_images: uploadedGallery,
         videos,
         featured_socials: featuredSocials,
+        profile_photo_url: photoUrl,
       };
-      
-      if (profilePhotoUrl !== cardData.profile_photo_url) {
-        updates.profile_photo_url = profilePhotoUrl;
-      }
       
       const { error } = await supabase.from('digital_cards').update(updates).eq('id', cardData.id);
       if (error) throw error;
       
+      // Update local state with uploaded URLs
+      setGalleryImages(uploadedGallery);
       setCardData(prev => prev ? { ...prev, ...updates } : null);
       Alert.alert('Saved!', 'Your card has been updated.');
     } catch (error) {
@@ -642,6 +666,62 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       Alert.alert('Error', 'Failed to save. Please try again.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Upload image to Supabase Storage
+  const uploadImage = async (uri: string, path: string): Promise<string | null> => {
+    try {
+      const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
+      const mimeType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+
+      const formData = new FormData();
+      formData.append('file', {
+        uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+        name: path.split('/').pop() || `upload.${ext}`,
+        type: mimeType,
+      } as any);
+
+      const { data, error } = await supabase.storage
+        .from('ecard-assets')
+        .upload(path, formData.get('file') as any, {
+          contentType: mimeType,
+          upsert: true,
+        });
+
+      if (error) {
+        // Fallback: try with fetch + arraybuffer
+        console.warn('FormData upload failed, trying arraybuffer:', error.message);
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const { data: data2, error: error2 } = await supabase.storage
+          .from('ecard-assets')
+          .upload(path, blob, { contentType: mimeType, upsert: true });
+        if (error2) {
+          console.warn('Upload fully failed:', error2.message);
+          return null;
+        }
+      }
+
+      const { data: urlData } = supabase.storage.from('ecard-assets').getPublicUrl(path);
+      return urlData.publicUrl;
+    } catch (err) {
+      console.warn('Upload error:', err);
+      return null;
+    }
+  };
+
+  // Delete image from Supabase Storage
+  const deleteFromStorage = async (url: string) => {
+    try {
+      // Extract path from public URL: https://xxx.supabase.co/storage/v1/object/public/ecard-assets/userId/gallery_xxx.jpg
+      const match = url.match(/ecard-assets\/(.+)$/);
+      if (match) {
+        const { error } = await supabase.storage.from('ecard-assets').remove([match[1]]);
+        if (error) console.warn('Failed to delete from storage:', error.message);
+      }
+    } catch (err) {
+      console.warn('Storage delete error:', err);
     }
   };
 
@@ -804,11 +884,21 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     }
   };
 
-  const handleRemoveGalleryImage = (imageId: string) => {
+  const handleRemoveGalleryImage = async (imageId: string) => {
+    const imageToRemove = galleryImages.find(img => img.id === imageId);
     const updated = galleryImages.filter(img => img.id !== imageId);
     setGalleryImages(updated);
     if (updated.length === 0) {
       setSelectedPremiumFeatures(prev => prev.filter(f => f !== 'gallery'));
+    }
+    // Delete from Supabase Storage if it's a remote URL
+    if (imageToRemove && imageToRemove.url && !imageToRemove.url.startsWith('file://') && !imageToRemove.url.startsWith('/')) {
+      await deleteFromStorage(imageToRemove.url);
+    }
+    // Also update the database immediately to remove the image
+    if (cardData?.id) {
+      const uploadedOnly = updated.filter(img => !img.url.startsWith('file://') && !img.url.startsWith('/'));
+      await supabase.from('digital_cards').update({ gallery_images: uploadedOnly }).eq('id', cardData.id).catch(() => {});
     }
   };
 
