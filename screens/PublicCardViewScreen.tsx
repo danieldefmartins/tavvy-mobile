@@ -69,6 +69,8 @@ interface CardData {
   videos: { type: string; url: string }[];
   links: { id: string; title: string; url: string; icon: string }[];
   viewCount: number;
+  showContactInfo: boolean;
+  showSocialIcons: boolean;
 }
 
 export default function PublicCardViewScreen() {
@@ -170,6 +172,8 @@ export default function PublicCardViewScreen() {
           icon: l.icon || 'link',
         })),
         viewCount: data.view_count || 0,
+        showContactInfo: data.show_contact_info !== false,
+        showSocialIcons: data.show_social_icons !== false,
       };
 
       setCardData(card);
@@ -391,7 +395,7 @@ export default function PublicCardViewScreen() {
           )}
 
           {/* Action Buttons */}
-          <View style={styles.actionButtons}>
+          {cardData.showContactInfo && <View style={styles.actionButtons}>
             {cardData.phone && (
               <TouchableOpacity 
                 style={styles.actionButton}
@@ -428,10 +432,10 @@ export default function PublicCardViewScreen() {
                 <Text style={styles.actionButtonText}>Web</Text>
               </TouchableOpacity>
             )}
-          </View>
+          </View>}
 
           {/* Social Links */}
-          {hasSocialLinks && (
+          {cardData.showSocialIcons && hasSocialLinks && (
             <View style={styles.socialLinks}>
               {cardData.socialInstagram && (
                 <TouchableOpacity 

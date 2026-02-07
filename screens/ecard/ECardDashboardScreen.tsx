@@ -235,6 +235,8 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const [websiteField, setWebsiteField] = useState('');
   const [locationField, setLocationField] = useState('');
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
+  const [showContactInfo, setShowContactInfo] = useState(true);
+  const [showSocialIcons, setShowSocialIcons] = useState(true);
   
   // Appearance state
   const [selectedTheme, setSelectedTheme] = useState('classic');
@@ -518,6 +520,9 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             setProfilePhotoSize(card.profile_photo_size || 'medium');
             setGalleryImages(card.gallery_images || []);
             setVideos(card.videos || []);
+            // Visibility toggles
+            setShowContactInfo(card.show_contact_info !== false);
+            setShowSocialIcons(card.show_social_icons !== false);
             // Normalize featured_socials
             const rawSocials = card.featured_socials || [];
             setFeaturedSocials(rawSocials.map((item: any) => {
@@ -658,6 +663,8 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         videos,
         featured_socials: featuredSocials,
         profile_photo_url: photoUrl,
+        show_contact_info: showContactInfo,
+        show_social_icons: showSocialIcons,
       };
       
       const { error } = await supabase.from('digital_cards').update(updates).eq('id', cardData.id);
@@ -1310,7 +1317,19 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
 
       {/* Contact Info */}
       <View style={[s.section, { backgroundColor: colors.surface }]}>
-        <Text style={[s.sectionTitle, { color: colors.text }]}>Contact Info</Text>
+        <View style={s.sectionHeaderToggle}>
+          <Text style={[s.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Contact Info</Text>
+          <View style={s.toggleRow}>
+            <Text style={[s.toggleLabel, { color: colors.textMuted }]}>{showContactInfo ? 'Visible' : 'Hidden'}</Text>
+            <TouchableOpacity
+              style={[s.toggleTrack, showContactInfo && s.toggleTrackActive]}
+              onPress={() => setShowContactInfo(!showContactInfo)}
+              activeOpacity={0.7}
+            >
+              <View style={[s.toggleThumb, showContactInfo && s.toggleThumbActive]} />
+            </TouchableOpacity>
+          </View>
+        </View>
         <View style={s.fieldGroup}>
           <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>Email</Text>
           <TextInput
@@ -1360,9 +1379,21 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
 
       {/* Featured Social Icons */}
       <View style={[s.section, { backgroundColor: colors.surface }]}>
-        <Text style={[s.sectionTitle, { color: colors.text }]}>
-          Featured Social Icons <Text style={{ color: colors.textMuted, fontSize: 13 }}>(up to 4)</Text>
-        </Text>
+        <View style={s.sectionHeaderToggle}>
+          <Text style={[s.sectionTitle, { color: colors.text, marginBottom: 0 }]}>
+            Featured Social Icons <Text style={{ color: colors.textMuted, fontSize: 13 }}>(up to 4)</Text>
+          </Text>
+          <View style={s.toggleRow}>
+            <Text style={[s.toggleLabel, { color: colors.textMuted }]}>{showSocialIcons ? 'Visible' : 'Hidden'}</Text>
+            <TouchableOpacity
+              style={[s.toggleTrack, showSocialIcons && s.toggleTrackActive]}
+              onPress={() => setShowSocialIcons(!showSocialIcons)}
+              activeOpacity={0.7}
+            >
+              <View style={[s.toggleThumb, showSocialIcons && s.toggleThumbActive]} />
+            </TouchableOpacity>
+          </View>
+        </View>
         {featuredSocials.map((fi) => {
           const pi = PLATFORM_ICONS[fi.platformId];
           const pName = FEATURED_PLATFORMS.find(p => p.id === fi.platformId)?.name || fi.platformId;
@@ -1494,7 +1525,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               <Ionicons name={pc.icon as any} size={16} color={pc.color} />
             </View>
             <View style={s.linkContent}>
-              <Text style={[s.linkPlatform, { color: colors.text }]}>{platformName}</Text>
+              <Text style={[s.linkPlatform, { color: colors.text }]}>{link.title || platformName}</Text>
               <Text style={[s.linkValue, { color: colors.textSecondary }]} numberOfLines={1}>{link.value || 'Not set'}</Text>
             </View>
             <View style={s.linkStats}>
@@ -2235,6 +2266,13 @@ const s = StyleSheet.create({
   // Sections
   section: { marginHorizontal: 16, marginTop: 16, borderRadius: 12, padding: 16 },
   sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 12 },
+  sectionHeaderToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  toggleLabel: { fontSize: 12, fontWeight: '500' },
+  toggleTrack: { width: 44, height: 24, borderRadius: 12, backgroundColor: '#374151', justifyContent: 'center', paddingHorizontal: 2 },
+  toggleTrackActive: { backgroundColor: '#22C55E' },
+  toggleThumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
+  toggleThumbActive: { alignSelf: 'flex-end' },
   
   // Photo editing
   photoEditRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
