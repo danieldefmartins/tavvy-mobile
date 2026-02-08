@@ -14,6 +14,8 @@ import {
   Linking,
   ActivityIndicator,
   Alert,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -119,6 +121,51 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
   // Mock reviews data - in production this comes from Tavvy reviews system
   const reviewData = reviews || { count: 0, rating: 0 };
   const hasReviews = reviewData.count > 0;
+
+  // Endorsement popup state
+  const [showEndorsementModal, setShowEndorsementModal] = useState(false);
+  const [endorsementTags, setEndorsementTags] = useState<{ label: string; emoji: string; count: number }[]>([]);
+  const [endorsementCount, setEndorsementCount] = useState(0);
+  const [loadingEndorsements, setLoadingEndorsements] = useState(false);
+
+  const fetchEndorsementData = async () => {
+    if (!cardData?.id) return;
+    setLoadingEndorsements(true);
+    try {
+      // Get endorsement count
+      const { count } = await supabase
+        .from('ecard_endorsements')
+        .select('*', { count: 'exact', head: true })
+        .eq('card_id', cardData.id);
+      setEndorsementCount(count || 0);
+
+      // Get top signal tags (aggregated)
+      const { data: signalTaps } = await supabase
+        .from('ecard_endorsement_signals')
+        .select('signal_id, review_items(label, icon_emoji)')
+        .eq('card_id', cardData.id);
+      if (signalTaps && signalTaps.length > 0) {
+        const tagCounts: Record<string, { label: string; emoji: string; count: number }> = {};
+        signalTaps.forEach((tap: any) => {
+          const ri = tap.review_items;
+          if (ri) {
+            if (!tagCounts[tap.signal_id]) tagCounts[tap.signal_id] = { label: ri.label, emoji: ri.icon_emoji || '\u2B50', count: 0 };
+            tagCounts[tap.signal_id].count++;
+          }
+        });
+        setEndorsementTags(Object.values(tagCounts).sort((a, b) => b.count - a.count).slice(0, 8));
+      }
+    } catch (e) {
+      console.log('Error fetching endorsement data:', e);
+    } finally {
+      setLoadingEndorsements(false);
+    }
+  };
+
+  const handleBadgePress = () => {
+    fetchEndorsementData();
+    setShowEndorsementModal(true);
+  };
 
   // Load card data from database or use passed data
   const loadCardData = useCallback(async () => {
@@ -500,11 +547,11 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                       tapCount={reviewData.count || 0}
                       size="large"
                       isLightBackground={isLightTheme}
-                      onPress={() => console.log('Show validation taps')}
+                      onPress={handleBadgePress}
                     />
                   </View>
                   
-                  {/* Social Icons */
+                  {/* Social Icons */}
                   {(featuredSocials.length > 0 || links.length > 0) && (
                     <View style={styles.socialIconsRow}>
                       {featuredSocials.length > 0 ? (
@@ -565,7 +612,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                   tapCount={reviewData.count || 0}
                   size="large"
                   isLightBackground={isLightTheme}
-                  onPress={() => console.log('Show validation taps')}
+                  onPress={handleBadgePress}
                 />
               </View>
 
@@ -726,6 +773,79 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      {/* Endorsement Modal */}
+      <Modal
+        visible={showEndorsementModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEndorsementModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.endorseOverlay}
+          activeOpacity={1}
+          onPress={() => setShowEndorsementModal(false)}
+        >
+          <View style={styles.endorseSheet} onStartShouldSetResponder={() => true}>
+            {/* Header — Tavvy logo + Endorsements */}
+            <View style={styles.endorseHeader}>
+              <View style={styles.endorseHeaderLeft}>
+                <Image
+                  source={require('../../assets/brand/tavvy-logo-horizontal-light.png')}
+                  style={styles.endorseLogo}
+                  resizeMode="contain"
+                />
+                <Text style={styles.endorseTitle}>Endorsements</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.endorseCloseBtn}
+                onPress={() => setShowEndorsementModal(false)}
+              >
+                <Ionicons name="close" size={18} color="#333" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.endorseSubtitle}>
+              {endorsementCount} total endorsements
+            </Text>
+
+            {/* Endorsement Tags */}
+            {loadingEndorsements ? (
+              <View style={styles.endorseLoading}>
+                <ActivityIndicator size="small" color="#3B9FD9" />
+              </View>
+            ) : endorsementTags.length > 0 ? (
+              <View style={styles.endorseTagList}>
+                {endorsementTags.map((tag, i) => (
+                  <View key={i} style={styles.endorseTagRow}>
+                    <View style={styles.endorseTagLeft}>
+                      <Text style={styles.endorseTagEmoji}>{tag.emoji}</Text>
+                      <Text style={styles.endorseTagLabel}>{tag.label}</Text>
+                    </View>
+                    <Text style={styles.endorseTagCount}>\u00D7{tag.count}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.endorseEmpty}>
+                <Text style={styles.endorseEmptyText}>No endorsements yet. Be the first!</Text>
+              </View>
+            )}
+
+            {/* Endorse Button */}
+            <TouchableOpacity
+              style={styles.endorseBtn}
+              onPress={() => {
+                setShowEndorsementModal(false);
+                // TODO: Navigate to endorse flow
+              }}
+            >
+              <Text style={styles.endorseBtnText}>
+                Endorse {cardData?.full_name?.split(' ')[0] || ''} \u2192
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1041,5 +1161,106 @@ const styles = StyleSheet.create({
   },
   linkIconContainerLight: {
     backgroundColor: 'rgba(0,0,0,0.08)',
+  },
+  // Endorsement Modal styles
+  endorseOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  endorseSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 36,
+    maxHeight: '80%',
+  },
+  endorseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  endorseHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  endorseLogo: {
+    height: 28,
+    width: 90,
+  },
+  endorseTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#2d3a4a',
+    letterSpacing: -0.3,
+  },
+  endorseCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  endorseSubtitle: {
+    fontSize: 13,
+    color: '#888',
+    marginBottom: 16,
+  },
+  endorseLoading: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  endorseTagList: {
+    marginBottom: 24,
+  },
+  endorseTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  endorseTagLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  endorseTagEmoji: {
+    fontSize: 22,
+  },
+  endorseTagLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1a1a2e',
+  },
+  endorseTagCount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#3B9FD9',
+  },
+  endorseEmpty: {
+    paddingVertical: 30,
+    alignItems: 'center',
+  },
+  endorseEmptyText: {
+    fontSize: 15,
+    color: '#aaa',
+  },
+  endorseBtn: {
+    backgroundColor: '#3B9FD9',
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  endorseBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
