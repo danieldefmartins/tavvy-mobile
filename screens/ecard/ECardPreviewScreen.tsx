@@ -664,11 +664,11 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                       <TouchableOpacity style={[styles.actionIconBtn, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.15)' }]} onPress={handleShare}>
                         <Ionicons name="paper-plane-outline" size={24} color="#fff" />
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.walletIconBtn} onPress={() => Alert.alert('Apple Wallet', 'Apple Wallet pass will be generated.')}>
-                        <Image source={require('../../assets/brand/apple-wallet-icon.png')} style={styles.walletIconImg} resizeMode="cover" />
+                      <TouchableOpacity style={[styles.actionIconBtn, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.15)' }]} onPress={() => Alert.alert('Apple Wallet', 'Apple Wallet pass will be generated.')}>
+                        <Ionicons name="wallet-outline" size={24} color="#fff" />
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.walletIconBtn} onPress={() => Alert.alert('Google Wallet', 'Google Wallet pass will be generated.')}>
-                        <Image source={require('../../assets/brand/google-wallet-icon.png')} style={styles.walletIconImg} resizeMode="cover" />
+                      <TouchableOpacity style={[styles.actionIconBtn, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.15)' }]} onPress={() => Alert.alert('Google Wallet', 'Google Wallet pass will be generated.')}>
+                        <Ionicons name="card-outline" size={24} color="#fff" />
                       </TouchableOpacity>
                     </View>
 
@@ -877,11 +877,11 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                   <TouchableOpacity style={[styles.actionIconBtn, { backgroundColor: isLightTheme ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)', borderColor: isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)' }]} onPress={handleShare}>
                     <Ionicons name="paper-plane-outline" size={24} color={isLightTheme ? '#1a1a2e' : '#fff'} />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.walletIconBtn} onPress={() => Alert.alert('Apple Wallet', 'Apple Wallet pass will be generated.')}>
-                    <Image source={require('../../assets/brand/apple-wallet-icon.png')} style={styles.walletIconImg} resizeMode="cover" />
+                  <TouchableOpacity style={[styles.actionIconBtn, { backgroundColor: isLightTheme ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)', borderColor: isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)' }]} onPress={() => Alert.alert('Apple Wallet', 'Apple Wallet pass will be generated.')}>
+                    <Ionicons name="wallet-outline" size={24} color={isLightTheme ? '#1a1a2e' : '#fff'} />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.walletIconBtn} onPress={() => Alert.alert('Google Wallet', 'Google Wallet pass will be generated.')}>
-                    <Image source={require('../../assets/brand/google-wallet-icon.png')} style={styles.walletIconImg} resizeMode="cover" />
+                  <TouchableOpacity style={[styles.actionIconBtn, { backgroundColor: isLightTheme ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)', borderColor: isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)' }]} onPress={() => Alert.alert('Google Wallet', 'Google Wallet pass will be generated.')}>
+                    <Ionicons name="card-outline" size={24} color={isLightTheme ? '#1a1a2e' : '#fff'} />
                   </TouchableOpacity>
                 </View>
 
