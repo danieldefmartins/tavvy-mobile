@@ -667,7 +667,8 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
         {/* Determine photo size and theme */}
         {(() => {
           const photoSizeId = passedCardData?.profile_photo_size || cardData?.profile_photo_size || 'medium';
-          const isCoverPhoto = photoSizeId === 'cover';
+          const isPremiumStatic = selectedTemplate?.layout === 'premium-static';
+          const isCoverPhoto = photoSizeId === 'cover' || isPremiumStatic;
           const photoSize = PHOTO_SIZES[photoSizeId] || 110;
           const themeId = passedCardData?.theme || cardData?.theme || 'classic';
           // Use actual WCAG luminance calculation instead of just theme name matching
