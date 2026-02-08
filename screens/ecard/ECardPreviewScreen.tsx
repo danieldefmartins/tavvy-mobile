@@ -630,27 +630,19 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                       </View>
                     )}
 
-                    {/* Row 2: Save Contact + Share */}
-                    <View style={styles.footerActionRow}>
-                      <TouchableOpacity style={[styles.footerActionBtn, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.15)' }]} onPress={handleSaveContact}>
-                        <Ionicons name="download-outline" size={18} color="#fff" />
-                        <Text style={[styles.footerActionText, { color: '#fff' }]}>Save Contact</Text>
+                    {/* Row 2: Action Icons — Save, Share, Apple Wallet, Google Wallet */}
+                    <View style={styles.actionIconsRow}>
+                      <TouchableOpacity style={[styles.actionIconBtn, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.15)' }]} onPress={handleSaveContact}>
+                        <Ionicons name="person-add-outline" size={24} color="#fff" />
                       </TouchableOpacity>
-                      <TouchableOpacity style={[styles.footerActionBtn, { backgroundColor: '#fff', borderColor: '#E5E7EB' }]} onPress={handleShare}>
-                        <Ionicons name="share-outline" size={18} color="#1a1a2e" />
-                        <Text style={[styles.footerActionText, { color: '#1a1a2e' }]}>Share</Text>
+                      <TouchableOpacity style={[styles.actionIconBtn, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.15)' }]} onPress={handleShare}>
+                        <Ionicons name="paper-plane-outline" size={24} color="#fff" />
                       </TouchableOpacity>
-                    </View>
-
-                    {/* Row 3: Apple Wallet + Google Wallet */}
-                    <View style={styles.footerActionRow}>
-                      <TouchableOpacity style={[styles.footerActionBtn, { backgroundColor: '#000', borderColor: '#000' }]} onPress={() => Alert.alert('Apple Wallet', 'Apple Wallet pass will be generated.')}>
-                        <Ionicons name="logo-apple" size={18} color="#fff" />
-                        <Text style={[styles.footerActionText, { color: '#fff' }]}>Apple Wallet</Text>
+                      <TouchableOpacity style={styles.walletIconBtn} onPress={() => Alert.alert('Apple Wallet', 'Apple Wallet pass will be generated.')}>
+                        <Image source={require('../../assets/brand/apple-wallet-icon.png')} style={styles.walletIconImg} resizeMode="cover" />
                       </TouchableOpacity>
-                      <TouchableOpacity style={[styles.footerActionBtn, { backgroundColor: '#fff', borderColor: '#E5E7EB' }]} onPress={() => Alert.alert('Google Wallet', 'Google Wallet pass will be generated.')}>
-                        <Ionicons name="logo-google" size={18} color="#4285F4" />
-                        <Text style={[styles.footerActionText, { color: '#1f2937' }]}>Google Wallet</Text>
+                      <TouchableOpacity style={styles.walletIconBtn} onPress={() => Alert.alert('Google Wallet', 'Google Wallet pass will be generated.')}>
+                        <Image source={require('../../assets/brand/google-wallet-icon.png')} style={styles.walletIconImg} resizeMode="cover" />
                       </TouchableOpacity>
                     </View>
 
@@ -831,27 +823,19 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                   </View>
                 )}
 
-                {/* Row 2: Save Contact + Share */}
-                <View style={styles.footerActionRow}>
-                  <TouchableOpacity style={[styles.footerActionBtn, { backgroundColor: isLightTheme ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)', borderColor: isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)' }]} onPress={handleSaveContact}>
-                    <Ionicons name="download-outline" size={18} color={isLightTheme ? '#333' : '#fff'} />
-                    <Text style={[styles.footerActionText, { color: isLightTheme ? '#333' : '#fff' }]}>Save Contact</Text>
+                {/* Row 2: Action Icons — Save, Share, Apple Wallet, Google Wallet */}
+                <View style={styles.actionIconsRow}>
+                  <TouchableOpacity style={[styles.actionIconBtn, { backgroundColor: isLightTheme ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)', borderColor: isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)' }]} onPress={handleSaveContact}>
+                    <Ionicons name="person-add-outline" size={24} color={isLightTheme ? '#1a1a2e' : '#fff'} />
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.footerActionBtn, { backgroundColor: '#fff', borderColor: '#E5E7EB' }]} onPress={handleShare}>
-                    <Ionicons name="share-outline" size={18} color="#1a1a2e" />
-                    <Text style={[styles.footerActionText, { color: '#1a1a2e' }]}>Share</Text>
+                  <TouchableOpacity style={[styles.actionIconBtn, { backgroundColor: isLightTheme ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)', borderColor: isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)' }]} onPress={handleShare}>
+                    <Ionicons name="paper-plane-outline" size={24} color={isLightTheme ? '#1a1a2e' : '#fff'} />
                   </TouchableOpacity>
-                </View>
-
-                {/* Row 3: Apple Wallet + Google Wallet */}
-                <View style={styles.footerActionRow}>
-                  <TouchableOpacity style={[styles.footerActionBtn, { backgroundColor: '#000', borderColor: '#000' }]} onPress={() => Alert.alert('Apple Wallet', 'Apple Wallet pass will be generated.')}>
-                    <Ionicons name="logo-apple" size={18} color="#fff" />
-                    <Text style={[styles.footerActionText, { color: '#fff' }]}>Apple Wallet</Text>
+                  <TouchableOpacity style={styles.walletIconBtn} onPress={() => Alert.alert('Apple Wallet', 'Apple Wallet pass will be generated.')}>
+                    <Image source={require('../../assets/brand/apple-wallet-icon.png')} style={styles.walletIconImg} resizeMode="cover" />
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.footerActionBtn, { backgroundColor: '#fff', borderColor: '#E5E7EB' }]} onPress={() => Alert.alert('Google Wallet', 'Google Wallet pass will be generated.')}>
-                    <Ionicons name="logo-google" size={18} color="#4285F4" />
-                    <Text style={[styles.footerActionText, { color: '#1f2937' }]}>Google Wallet</Text>
+                  <TouchableOpacity style={styles.walletIconBtn} onPress={() => Alert.alert('Google Wallet', 'Google Wallet pass will be generated.')}>
+                    <Image source={require('../../assets/brand/google-wallet-icon.png')} style={styles.walletIconImg} resizeMode="cover" />
                   </TouchableOpacity>
                 </View>
 
@@ -1162,6 +1146,32 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.5)',
+  },
+  actionIconsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    width: '100%',
+    paddingVertical: 4,
+  },
+  actionIconBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  walletIconBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  walletIconImg: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
   },
   cardFooter: {
     width: '100%',
