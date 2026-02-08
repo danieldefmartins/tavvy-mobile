@@ -109,8 +109,8 @@ export default function MyCardsScreen() {
       return;
     }
 
-    // Navigate to create new card using the new ECard flow
-    navigation.navigate('ECardCreate');
+    // Navigate to template gallery first so user can choose a template
+    navigation.navigate('ECardTemplateGallery', { mode: 'create' });
   };
 
   const handleEditCard = (card: DigitalCard) => {

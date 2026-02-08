@@ -384,7 +384,7 @@ export default function MyDigitalCardScreen() {
           
           <TouchableOpacity 
             style={styles.createCardButton}
-            onPress={() => navigation.navigate('ECardCreate')}
+            onPress={() => navigation.navigate('ECardTemplateGallery', { mode: 'create' })}
           >
             <LinearGradient
               colors={['#8B5CF6', '#4F46E5']}
