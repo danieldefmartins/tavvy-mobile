@@ -769,6 +769,52 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     }
   };
 
+  // Reset card — clears all content fields
+  const handleResetCard = () => {
+    Alert.alert(
+      'Reset Card',
+      'Are you sure you want to reset this card? This will clear all content (name, title, bio, photo, banner, links, gallery, videos). This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            // Clear content fields
+            setFullName('');
+            setTitleRole('');
+            setBio('');
+            setEmailField('');
+            setPhoneField('');
+            setWebsiteField('');
+            setLocationField('');
+            // Clear media
+            setProfilePhotoUrl(null);
+            setBannerImageUrl(null);
+            setBannerImageFile(null);
+            setGalleryImages([]);
+            setVideos([]);
+            setYoutubeVideoUrl('');
+            // Clear links & socials
+            setLinks([]);
+            setFeaturedSocials([]);
+            // Reset toggles to defaults
+            setShowContactInfo(true);
+            setShowSocialIcons(true);
+            // Clear review URLs
+            setReviewGoogleUrl('');
+            setReviewYelpUrl('');
+            setReviewTripadvisorUrl('');
+            setReviewFacebookUrl('');
+            setReviewBbbUrl('');
+            // Clear industry icons
+            setIndustryIcons([]);
+          },
+        },
+      ],
+    );
+  };
+
   // Upload image to Supabase Storage
   const uploadImage = async (uri: string, path: string): Promise<string | null> => {
     try {
@@ -1289,11 +1335,33 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const renderCrownBadge = () => {
     const reviewCount = cardData?.review_count || 0;
     if (reviewCount === 0) return null;
+    // Compute background luminance to determine badge style
+    const badgeBgIsLight = (() => {
+      const hex = gradientColors?.[0] || '#000000';
+      const clean = hex.replace('#', '');
+      if (clean.length < 6) return false;
+      const r = parseInt(clean.substring(0, 2), 16) / 255;
+      const g = parseInt(clean.substring(2, 4), 16) / 255;
+      const b = parseInt(clean.substring(4, 6), 16) / 255;
+      const toLinear = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+      return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b) > 0.35;
+    })();
     return (
-      <View style={s.crownBadge}>
-        <Text style={s.crownIcon}>★</Text>
-        <Text style={s.crownText}>{reviewCount}</Text>
-        <Text style={s.crownChevron}>˅</Text>
+      <View style={[
+        s.crownBadge,
+        badgeBgIsLight ? {
+          backgroundColor: 'rgba(255,255,255,0.88)',
+          borderColor: 'rgba(0,0,0,0.08)',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 4,
+        } : {}
+      ]}>
+        <Text style={[s.crownIcon, badgeBgIsLight ? { color: '#2563eb', textShadowColor: 'transparent' } : {}]}>★</Text>
+        <Text style={[s.crownText, badgeBgIsLight ? { color: '#1a1a1a', textShadowColor: 'transparent' } : {}]}>{reviewCount}</Text>
+        <Text style={[s.crownChevron, badgeBgIsLight ? { color: 'rgba(0,0,0,0.4)' } : {}]}>˅</Text>
       </View>
     );
   };
@@ -2649,12 +2717,17 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[s.headerTitle, { color: colors.text }]}>My Card</Text>
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('ECardPreview', { cardData, gradientColors, links, featuredSocials })}
-          style={s.previewButton}
-        >
-          <Ionicons name="eye-outline" size={24} color={colors.text} />
-        </TouchableOpacity>
+        <View style={s.headerRight}>
+          <TouchableOpacity onPress={handleResetCard} style={s.headerActionBtn}>
+            <Ionicons name="refresh-outline" size={22} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('ECardPreview', { cardData, gradientColors, links, featuredSocials })}
+            style={s.headerActionBtn}
+          >
+            <Ionicons name="eye-outline" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Live Card Preview */}
@@ -2766,6 +2839,8 @@ const s = StyleSheet.create({
   backButton: { padding: 4 },
   headerTitle: { fontSize: 18, fontWeight: '600' },
   previewButton: { padding: 4 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerActionBtn: { padding: 4 },
   
   // Live Preview
   previewContainer: { paddingHorizontal: 24, paddingVertical: 16, alignItems: 'center' },

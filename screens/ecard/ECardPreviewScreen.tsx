@@ -435,7 +435,18 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
           const isCoverPhoto = photoSizeId === 'cover';
           const photoSize = PHOTO_SIZES[photoSizeId] || 110;
           const themeId = passedCardData?.theme || cardData?.theme || 'classic';
-          const isLightTheme = LIGHT_THEMES.includes(themeId);
+          // Use actual WCAG luminance calculation instead of just theme name matching
+          const hexToLuminance = (hex: string) => {
+            const c = hex.replace('#', '');
+            if (c.length < 6) return 0.5;
+            const r = parseInt(c.substring(0,2),16)/255;
+            const g = parseInt(c.substring(2,4),16)/255;
+            const b = parseInt(c.substring(4,6),16)/255;
+            const toL = (v: number) => v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);
+            return 0.2126*toL(r) + 0.7152*toL(g) + 0.0722*toL(b);
+          };
+          const avgLuminance = (hexToLuminance(gradientColors[0]) + hexToLuminance(gradientColors[1])) / 2;
+          const isLightTheme = avgLuminance > 0.35 || LIGHT_THEMES.includes(themeId);
           const textColor = isLightTheme ? '#1A1A1A' : '#fff';
           const subtitleColor = isLightTheme ? '#666' : 'rgba(255,255,255,0.8)';
           
@@ -488,11 +499,12 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                     <CrownBadge 
                       tapCount={reviewData.count || 0}
                       size="large"
+                      isLightBackground={isLightTheme}
                       onPress={() => console.log('Show validation taps')}
                     />
                   </View>
                   
-                  {/* Social Icons */}
+                  {/* Social Icons */
                   {(featuredSocials.length > 0 || links.length > 0) && (
                     <View style={styles.socialIconsRow}>
                       {featuredSocials.length > 0 ? (
@@ -552,6 +564,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                 <CrownBadge 
                   tapCount={reviewData.count || 0}
                   size="large"
+                  isLightBackground={isLightTheme}
                   onPress={() => console.log('Show validation taps')}
                 />
               </View>

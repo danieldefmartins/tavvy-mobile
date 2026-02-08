@@ -15,6 +15,8 @@ interface CrownBadgeProps {
   onPress?: () => void;
   size?: 'small' | 'medium' | 'large';
   showAnimation?: boolean;
+  /** When true, renders a solid white pill with dark text (for light card backgrounds) */
+  isLightBackground?: boolean;
 }
 
 /**
@@ -27,6 +29,7 @@ interface CrownBadgeProps {
  * 
  * Features:
  * - Frosted glass pill that adapts to any card background
+ * - Contrast-aware: solid white pill on light backgrounds, frosted glass on dark
  * - Subtle pulse animation
  * - Tappable to show endorsement details
  * - Three sizes: small, medium, large
@@ -35,7 +38,8 @@ export default function CrownBadge({
   tapCount, 
   onPress, 
   size = 'medium',
-  showAnimation = true 
+  showAnimation = true,
+  isLightBackground = false,
 }: CrownBadgeProps) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -118,6 +122,14 @@ export default function CrownBadge({
     return null; // Don't show badge if no endorsements
   }
 
+  // Contrast-aware colors
+  const starColor = isLightBackground ? '#2563eb' : '#fff';
+  const textColor = isLightBackground ? '#1a1a1a' : '#fff';
+  const chevronColor = isLightBackground ? '#1a1a1a' : '#fff';
+  const shadowConfig = isLightBackground
+    ? { textShadowColor: 'transparent', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 0 }
+    : { textShadowColor: 'rgba(0, 0, 0, 0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 };
+
   const BadgeContent = (
     <Animated.View
       style={[
@@ -129,13 +141,14 @@ export default function CrownBadge({
           gap: config.gap,
           transform: [{ scale: pulseAnim }],
         },
+        isLightBackground && styles.containerLight,
       ]}
     >
       {/* Star icon */}
-      <Text style={[styles.star, { fontSize: config.starSize }]}>★</Text>
+      <Text style={[styles.star, { fontSize: config.starSize, color: starColor, ...shadowConfig }]}>★</Text>
       
       {/* Endorsement count */}
-      <Text style={[styles.count, { fontSize: config.textSize }]}>
+      <Text style={[styles.count, { fontSize: config.textSize, color: textColor, ...shadowConfig }]}>
         {formatTapCount(tapCount)}
       </Text>
 
@@ -149,7 +162,7 @@ export default function CrownBadge({
       >
         <Path
           d="M1 1L5 5L9 1"
-          stroke="#fff"
+          stroke={chevronColor}
           strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -186,6 +199,23 @@ const styles = StyleSheet.create({
       },
     }),
     overflow: 'hidden',
+  },
+  containerLight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        backgroundColor: 'rgba(255, 255, 255, 0.92)',
+        borderColor: 'rgba(0, 0, 0, 0.1)',
+        elevation: 4,
+      },
+    }),
   },
   star: {
     color: '#fff',
