@@ -72,6 +72,12 @@ interface CardData {
   review_tripadvisor_url?: string;
   review_facebook_url?: string;
   review_bbb_url?: string;
+  show_contact_info?: boolean;
+  show_social_icons?: boolean;
+  address_1?: string;
+  address_2?: string;
+  zip_code?: string;
+  country?: string;
 }
 
 // Photo size configurations
@@ -561,9 +567,34 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                       onPress={handleBadgePress}
                     />
                   </View>
+
+                  {/* Address / Location Badge */}
+                  {(cardData.address_1 || cardData.city) && (
+                    <View style={[styles.addressBadge, isLightTheme ? { backgroundColor: 'rgba(0,0,0,0.06)', borderColor: 'rgba(0,0,0,0.1)' } : { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.15)' }]}>
+                      <Ionicons name="location-outline" size={16} color={isLightTheme ? '#555' : '#ccc'} />
+                      <View style={{ marginLeft: 8, flex: 1 }}>
+                        {cardData.address_1 && (
+                          <Text style={{ fontSize: 13, color: textColor }}>
+                            {cardData.address_1}{cardData.address_2 ? ` ${cardData.address_2}` : ''}
+                          </Text>
+                        )}
+                        {(cardData.city || cardData.state || cardData.zip_code) && (
+                          <Text style={{ fontSize: 12, color: subtitleColor, marginTop: cardData.address_1 ? 2 : 0 }}>
+                            {[cardData.city, cardData.state].filter(Boolean).join(', ')}{cardData.zip_code ? ` ${cardData.zip_code}` : ''}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  )}
+                  {!cardData.address_1 && !cardData.city && cardData.state && (
+                    <View style={[styles.addressBadge, isLightTheme ? { backgroundColor: 'rgba(0,0,0,0.06)', borderColor: 'rgba(0,0,0,0.1)' } : { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.15)' }]}>
+                      <Ionicons name="location-outline" size={16} color={isLightTheme ? '#555' : '#ccc'} />
+                      <Text style={{ marginLeft: 8, fontSize: 13, color: textColor }}>{cardData.state}</Text>
+                    </View>
+                  )}
                   
                   {/* Social Icons */}
-                  {(featuredSocials.length > 0 || links.length > 0 || cardData.review_google_url || cardData.review_yelp_url || cardData.review_tripadvisor_url || cardData.review_facebook_url || cardData.review_bbb_url) && (
+                  {cardData.show_social_icons !== false && (featuredSocials.length > 0 || links.length > 0 || cardData.review_google_url || cardData.review_yelp_url || cardData.review_tripadvisor_url || cardData.review_facebook_url || cardData.review_bbb_url) && (
                     <View style={styles.socialIconsRow}>
                       {featuredSocials.length > 0 ? (
                         featuredSocials.map((social) => {
@@ -701,8 +732,33 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                 ) : null}
               </View>
 
+              {/* Address / Location Badge */}
+              {(cardData.address_1 || cardData.city) && (
+                <View style={[styles.addressBadge, isLightTheme ? { backgroundColor: 'rgba(0,0,0,0.06)', borderColor: 'rgba(0,0,0,0.1)' } : { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.15)' }]}>
+                  <Ionicons name="location-outline" size={16} color={isLightTheme ? '#555' : '#ccc'} />
+                  <View style={{ marginLeft: 8, flex: 1 }}>
+                    {cardData.address_1 && (
+                      <Text style={{ fontSize: 13, color: textColor }}>
+                        {cardData.address_1}{cardData.address_2 ? ` ${cardData.address_2}` : ''}
+                      </Text>
+                    )}
+                    {(cardData.city || cardData.state || cardData.zip_code) && (
+                      <Text style={{ fontSize: 12, color: subtitleColor, marginTop: cardData.address_1 ? 2 : 0 }}>
+                        {[cardData.city, cardData.state].filter(Boolean).join(', ')}{cardData.zip_code ? ` ${cardData.zip_code}` : ''}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              )}
+              {!cardData.address_1 && !cardData.city && cardData.state && (
+                <View style={[styles.addressBadge, isLightTheme ? { backgroundColor: 'rgba(0,0,0,0.06)', borderColor: 'rgba(0,0,0,0.1)' } : { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.15)' }]}>
+                  <Ionicons name="location-outline" size={16} color={isLightTheme ? '#555' : '#ccc'} />
+                  <Text style={{ marginLeft: 8, fontSize: 13, color: textColor }}>{cardData.state}</Text>
+                </View>
+              )}
+
               {/* Social Icons Row - Show featured socials or first 6 links */}
-              {(featuredSocials.length > 0 || links.length > 0 || cardData.review_google_url || cardData.review_yelp_url || cardData.review_tripadvisor_url || cardData.review_facebook_url || cardData.review_bbb_url) && (
+              {cardData.show_social_icons !== false && (featuredSocials.length > 0 || links.length > 0 || cardData.review_google_url || cardData.review_yelp_url || cardData.review_tripadvisor_url || cardData.review_facebook_url || cardData.review_bbb_url) && (
                 <View style={styles.socialIconsRow}>
                   {featuredSocials.length > 0 ? (
                     featuredSocials.map((social) => {
@@ -1086,6 +1142,17 @@ const styles = StyleSheet.create({
     marginTop: 8,
     lineHeight: 20,
     paddingHorizontal: 16,
+  },
+  addressBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+    alignSelf: 'center',
+    maxWidth: '90%',
   },
   socialIconsRow: {
     flexDirection: 'row',

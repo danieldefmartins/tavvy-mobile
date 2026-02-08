@@ -262,6 +262,9 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const [phoneField, setPhoneField] = useState('');
   const [websiteField, setWebsiteField] = useState('');
   const [locationField, setLocationField] = useState('');
+  const [address1Field, setAddress1Field] = useState('');
+  const [address2Field, setAddress2Field] = useState('');
+  const [zipCodeField, setZipCodeField] = useState('');
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
   const [showContactInfo, setShowContactInfo] = useState(true);
   const [showSocialIcons, setShowSocialIcons] = useState(true);
@@ -565,6 +568,9 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             setPhoneField(card.phone || '');
             setWebsiteField(card.website || '');
             setLocationField([card.city, card.state].filter(Boolean).join(', '));
+            setAddress1Field(card.address_1 || '');
+            setAddress2Field(card.address_2 || '');
+            setZipCodeField(card.zip_code || '');
             setProfilePhotoUrl(card.profile_photo_url || null);
             setCardUrl(`tavvy.com/${card.slug}`);
             setGradientColors([card.gradient_color_1 || '#667eea', card.gradient_color_2 || '#764ba2']);
@@ -737,6 +743,9 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         website: websiteField,
         city,
         state,
+        address_1: address1Field || null,
+        address_2: address2Field || null,
+        zip_code: zipCodeField || null,
         gallery_images: uploadedGallery,
         videos,
         featured_socials: featuredSocials,
@@ -788,6 +797,9 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             setPhoneField('');
             setWebsiteField('');
             setLocationField('');
+            setAddress1Field('');
+            setAddress2Field('');
+            setZipCodeField('');
             // Clear media
             setProfilePhotoUrl(null);
             setBannerImageUrl(null);
@@ -1572,6 +1584,41 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             placeholderTextColor={colors.textMuted}
           />
         </View>
+        <View style={s.fieldGroup}>
+          <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>Street Address <Text style={{ fontSize: 11, color: colors.textMuted }}>(optional — full address displays on card)</Text></Text>
+          <TextInput
+            style={[s.fieldInput, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.inputBorder }]}
+            value={address1Field}
+            onChangeText={setAddress1Field}
+            placeholder="123 Main Street"
+            placeholderTextColor={colors.textMuted}
+          />
+        </View>
+        {address1Field ? (
+          <>
+            <View style={s.fieldGroup}>
+              <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>Apt / Suite <Text style={{ fontSize: 11, color: colors.textMuted }}>(optional)</Text></Text>
+              <TextInput
+                style={[s.fieldInput, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.inputBorder }]}
+                value={address2Field}
+                onChangeText={setAddress2Field}
+                placeholder="Apt 4B"
+                placeholderTextColor={colors.textMuted}
+              />
+            </View>
+            <View style={s.fieldGroup}>
+              <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>Zip Code <Text style={{ fontSize: 11, color: colors.textMuted }}>(optional)</Text></Text>
+              <TextInput
+                style={[s.fieldInput, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.inputBorder }]}
+                value={zipCodeField}
+                onChangeText={setZipCodeField}
+                placeholder="33139"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="numeric"
+              />
+            </View>
+          </>
+        ) : null}
       </View>
 
       {/* Professional Category */}
