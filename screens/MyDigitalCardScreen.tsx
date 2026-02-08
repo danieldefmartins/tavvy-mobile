@@ -83,6 +83,7 @@ interface CardData {
   socialTwitter: string;
   socialTiktok: string;
   links?: CardLink[];
+  is_published?: boolean;
 }
 
 // Link icons mapping
@@ -170,6 +171,7 @@ export default function MyDigitalCardScreen() {
         socialLinkedin: data.social_linkedin || '',
         socialTwitter: data.social_twitter || '',
         socialTiktok: data.social_tiktok || '',
+        is_published: data.is_published || false,
         links: linksData?.map(l => ({
           id: l.id,
           title: l.title,
@@ -594,7 +596,21 @@ export default function MyDigitalCardScreen() {
 
         {/* Share Section */}
         <View style={[styles.shareSection, { backgroundColor: V2_COLORS.cardBackground }]}>
-          <Text style={[styles.shareSectionTitle, { color: V2_COLORS.text }]}>Share Your Card</Text>
+          <Text style={[styles.shareSectionTitle, { color: V2_COLORS.text }]}>{cardData.is_published ? 'Share Your Card' : 'Card Not Published'}</Text>
+          {!cardData.is_published && (
+            <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+              <Text style={{ color: V2_COLORS.textSecondary, fontSize: 14, lineHeight: 20, marginBottom: 12 }}>
+                Your card is saved as a draft. Publish it first to share with others.
+              </Text>
+              <TouchableOpacity
+                style={{ backgroundColor: '#8B5CF6', paddingVertical: 12, borderRadius: 12, alignItems: 'center' }}
+                onPress={() => navigation.navigate('ECardDashboard', { cardId: cardData.id })}
+              >
+                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Go to Dashboard to Publish</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {cardData.is_published && (<React.Fragment>
           
           {/* QR Code Button */}
           <TouchableOpacity 
@@ -705,6 +721,7 @@ export default function MyDigitalCardScreen() {
             </View>
             <Ionicons name="chevron-forward" size={20} color={V2_COLORS.textSecondary} />
           </TouchableOpacity>
+          </React.Fragment>)}
         </View>
 
         {/* Save to Contacts */}

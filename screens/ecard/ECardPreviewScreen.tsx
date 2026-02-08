@@ -248,6 +248,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
   );
 
   const cardUrl = `https://tavvy.com/${cardData?.slug || 'preview'}`;
+  const isPublished = !!(cardData as any)?.is_published;
 
   // Check if card has premium features that require payment
   const hasPremiumFeatures = (): boolean => {
@@ -310,7 +311,18 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
       return;
     }
     
-    // No premium features or user is Pro, proceed with share
+    // No premium features or user is Pro — check if published
+    if (!isPublished) {
+      Alert.alert(
+        'Publish First',
+        'You need to publish your card before you can share it. Would you like to publish now?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Publish', onPress: () => navigation.navigate('ECardDashboard', { cardId: cardData?.id }) },
+        ]
+      );
+      return;
+    }
     handleShare();
   };
 
@@ -399,12 +411,16 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
           <Ionicons name="close" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Preview</Text>
-        <TouchableOpacity 
-          style={styles.shareButton}
-          onPress={handlePublishShare}
-        >
-          <Ionicons name="share-outline" size={24} color="#fff" />
-        </TouchableOpacity>
+        {isPublished ? (
+          <TouchableOpacity 
+            style={styles.shareButton}
+            onPress={handleShare}
+          >
+            <Ionicons name="share-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.shareButton} />
+        )}
       </View>
 
       {/* Card Preview */}
@@ -692,8 +708,8 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
             end={{ x: 1, y: 0 }}
             style={styles.publishGradient}
           >
-            <Ionicons name="rocket" size={20} color="#fff" />
-            <Text style={styles.publishButtonText}>Publish & Share</Text>
+            <Ionicons name={isPublished ? 'share' : 'rocket'} size={20} color="#fff" />
+            <Text style={styles.publishButtonText}>{isPublished ? 'Share Card' : 'Publish & Share'}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>

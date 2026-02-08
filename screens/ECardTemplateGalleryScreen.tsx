@@ -22,7 +22,7 @@ import Svg, { Path } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.82;
-const CARD_HEIGHT = SCREEN_HEIGHT * 0.58;
+const CARD_HEIGHT = SCREEN_HEIGHT * 0.52;
 
 // Sample images for realistic previews
 const SAMPLE_AVATAR = require('../assets/ecard-sample-avatar.png');
@@ -610,13 +610,11 @@ const ECardTemplateGalleryScreen: React.FC = () => {
           <View style={{ position: 'relative' }}>
             {renderTemplatePreview(item)}
 
-            {/* Pro-Only Badge */}
+            {/* Pro Badge */}
             {isProTemplate(item) && (
               <View style={[styles.premiumBadge, styles.proBadge]}>
                 <Ionicons name="briefcase" size={12} color="#fff" />
-                <Text style={[styles.premiumBadgeText, styles.proBadgeText]}>
-                  {hasProAccess ? 'PRO' : 'PRO ONLY'}
-                </Text>
+                <Text style={[styles.premiumBadgeText, styles.proBadgeText]}>PRO</Text>
               </View>
             )}
 
@@ -635,13 +633,7 @@ const ECardTemplateGalleryScreen: React.FC = () => {
               </View>
             )}
 
-            {/* Lock overlay for Pro templates */}
-            {isProTemplate(item) && !hasProAccess && (
-              <View style={styles.lockOverlay}>
-                <Ionicons name="lock-closed" size={32} color="rgba(255,255,255,0.9)" />
-                <Text style={styles.lockText}>Pro Membership Required</Text>
-              </View>
-            )}
+            {/* No lock overlay — anyone can create with pro templates, payment required to publish */}
           </View>
 
           {/* Template Info */}
@@ -752,9 +744,7 @@ const ECardTemplateGalleryScreen: React.FC = () => {
             ]}>
               {cat === 'all' ? 'All' : cat === 'free' ? 'Free' : cat === 'premium' ? 'Premium' : 'Pro'}
             </Text>
-            {cat === 'pro' && !hasProAccess && (
-              <Ionicons name="lock-closed" size={10} color="#10b981" style={{ marginLeft: 4 }} />
-            )}
+
           </TouchableOpacity>
         ))}
       </View>
@@ -766,27 +756,22 @@ const ECardTemplateGalleryScreen: React.FC = () => {
             styles.selectButton,
             currentTemplate?.isPremium && styles.selectButtonPremium,
             currentTemplate && isProTemplate(currentTemplate) && styles.selectButtonPro,
-            currentTemplate && isProTemplate(currentTemplate) && !hasProAccess && styles.selectButtonDisabled,
           ]}
           onPress={() => {
-            if (currentTemplate && isProTemplate(currentTemplate) && !hasProAccess) {
-              Alert.alert('Coming Soon', 'Pro membership will be available in a future update.');
-            } else if (currentTemplate) {
+            if (currentTemplate) {
               handleSelectTemplate(currentTemplate);
             }
           }}
         >
           <Text style={styles.selectButtonText}>
-            {currentTemplate && isProTemplate(currentTemplate) && !hasProAccess 
-              ? 'Upgrade to Pro' 
-              : currentTemplate && isProTemplate(currentTemplate) 
-                ? 'Use Pro Template' 
-                : currentTemplate?.isPremium 
-                  ? 'Select Premium Template' 
-                  : 'Use This Template'}
+            {currentTemplate && isProTemplate(currentTemplate) 
+              ? 'Use Pro Template' 
+              : currentTemplate?.isPremium 
+                ? 'Select Premium Template' 
+                : 'Use This Template'}
           </Text>
           <Ionicons 
-            name={currentTemplate && isProTemplate(currentTemplate) && !hasProAccess ? 'arrow-up-circle' : 'arrow-forward'} 
+            name="arrow-forward" 
             size={20} 
             color="#fff" 
             style={styles.selectButtonIcon} 
@@ -860,7 +845,8 @@ const styles = StyleSheet.create({
   slideContainer: {
     width: SCREEN_WIDTH,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 8,
   },
   cardWrapper: {
     alignItems: 'center',
