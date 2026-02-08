@@ -7,6 +7,7 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 interface CrownBadgeProps {
   tapCount: number;
@@ -16,16 +17,16 @@ interface CrownBadgeProps {
 }
 
 /**
- * CrownBadge Component
+ * EndorsementBadge Component (formerly CrownBadge)
  * 
- * Displays a crown badge with the number of validation taps an eCard has received.
- * The crown represents how many people have validated/liked the digital card.
+ * Displays a thumbs-up badge with the number of endorsements an eCard has received.
+ * The thumbs-up icon clearly communicates social proof and approval.
  * 
- * Format: 👑 x [tap_count]
+ * Format: 👍 x12
  * 
  * Features:
  * - Gold pulsing glow animation
- * - Tappable to show validation details
+ * - Tappable to show endorsement details
  * - Three sizes: small, medium, large
  */
 export default function CrownBadge({ 
@@ -37,7 +38,7 @@ export default function CrownBadge({
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0.3)).current;
 
-  // Pulse animation for the crown
+  // Pulse animation
   useEffect(() => {
     if (!showAnimation || tapCount === 0) return;
 
@@ -88,19 +89,19 @@ export default function CrownBadge({
   const sizeConfig = {
     small: {
       container: { paddingHorizontal: 8, paddingVertical: 4 },
-      crown: 14,
+      icon: 20,
       text: 12,
       glow: 20,
     },
     medium: {
       container: { paddingHorizontal: 12, paddingVertical: 6 },
-      crown: 18,
+      icon: 26,
       text: 14,
       glow: 28,
     },
     large: {
       container: { paddingHorizontal: 16, paddingVertical: 8 },
-      crown: 24,
+      icon: 32,
       text: 18,
       glow: 36,
     },
@@ -120,7 +121,7 @@ export default function CrownBadge({
   };
 
   if (tapCount === 0) {
-    return null; // Don't show badge if no taps
+    return null; // Don't show badge if no endorsements
   }
 
   const BadgeContent = (
@@ -143,12 +144,28 @@ export default function CrownBadge({
         ]}
       />
       
-      {/* Crown emoji */}
-      <Text style={[styles.crown, { fontSize: config.crown }]}>👑</Text>
+      {/* Thumbs-up icon */}
+      <Svg width={config.icon} height={config.icon} viewBox="0 0 24 24" fill="none">
+        <Defs>
+          <LinearGradient id="thumbGoldMobile" x1="0%" y1="0%" x2="100%" y2="100%">
+            <Stop offset="0%" stopColor="#FFE066" />
+            <Stop offset="50%" stopColor="#FFD700" />
+            <Stop offset="100%" stopColor="#FFA500" />
+          </LinearGradient>
+        </Defs>
+        <Path
+          d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3m7-2V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"
+          fill="url(#thumbGoldMobile)"
+          stroke="#FFA500"
+          strokeWidth={1}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
       
-      {/* Tap count */}
+      {/* Endorsement count */}
       <Text style={[styles.tapCount, { fontSize: config.text }]}>
-        x {formatTapCount(tapCount)}
+        x{formatTapCount(tapCount)}
       </Text>
     </Animated.View>
   );
@@ -183,11 +200,6 @@ const styles = StyleSheet.create({
     marginTop: -14,
     borderRadius: 20,
     backgroundColor: '#FFD700',
-  },
-  crown: {
-    textShadowColor: 'rgba(255, 215, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
   },
   tapCount: {
     color: '#FFD700',

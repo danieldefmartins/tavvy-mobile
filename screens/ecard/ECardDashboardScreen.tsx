@@ -1291,8 +1291,8 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     if (reviewCount === 0) return null;
     return (
       <View style={s.crownBadge}>
-        <Text style={s.crownIcon}>👑</Text>
-        <Text style={s.crownText}>x {reviewCount}</Text>
+        <Text style={s.crownIcon}>👍</Text>
+        <Text style={s.crownText}>x{reviewCount}</Text>
       </View>
     );
   };
@@ -2778,7 +2778,7 @@ const s = StyleSheet.create({
   previewMoreLinks: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   previewMoreText: { fontSize: 11, fontWeight: '600' },
   crownBadge: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,215,0,0.9)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, gap: 4 },
-  crownIcon: { fontSize: 14 },
+  crownIcon: { fontSize: 18 },
   crownText: { fontSize: 12, fontWeight: '700', color: '#1A1A1A' },
   premiumIndicator: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4 },
   premiumIndicatorText: { fontSize: 12, color: '#F59E0B', fontWeight: '500' },

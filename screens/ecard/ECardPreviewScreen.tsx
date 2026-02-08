@@ -483,7 +483,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
-                  {/* Crown Badge */}
+                  {/* Endorsement Badge */}
                   <View style={styles.crownBadgeContainer}>
                     <CrownBadge 
                       tapCount={reviewData.count || 0}
@@ -547,7 +547,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
               end={{ x: 1, y: 1 }}
               style={[styles.cardContainer, isLightTheme && styles.cardContainerLight]}
             >
-              {/* Crown Badge - Shows validation tap count */}
+              {/* Endorsement Badge - Shows endorsement count */}
               <View style={styles.crownBadgeContainer}>
                 <CrownBadge 
                   tapCount={reviewData.count || 0}
