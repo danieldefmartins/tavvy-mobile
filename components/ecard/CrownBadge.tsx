@@ -15,7 +15,7 @@ interface CrownBadgeProps {
   onPress?: () => void;
   size?: 'small' | 'medium' | 'large';
   showAnimation?: boolean;
-  /** When true, renders a solid white pill with dark text (for light card backgrounds) */
+  /** When true, renders a dark solid pill with white text (for light card backgrounds) */
   isLightBackground?: boolean;
 }
 
@@ -28,8 +28,8 @@ interface CrownBadgeProps {
  * Format: ★ 12 ˅
  * 
  * Features:
- * - Frosted glass pill that adapts to any card background
- * - Contrast-aware: solid white pill on light backgrounds, frosted glass on dark
+ * - Contrast-aware: dark solid pill on light backgrounds, frosted glass on dark
+ * - Always clearly visible regardless of user-chosen card colors/photos
  * - Subtle pulse animation
  * - Tappable to show endorsement details
  * - Three sizes: small, medium, large
@@ -122,13 +122,17 @@ export default function CrownBadge({
     return null; // Don't show badge if no endorsements
   }
 
-  // Contrast-aware colors
-  const starColor = isLightBackground ? '#2563eb' : '#fff';
-  const textColor = isLightBackground ? '#1a1a1a' : '#fff';
-  const chevronColor = isLightBackground ? '#1a1a1a' : '#fff';
-  const shadowConfig = isLightBackground
-    ? { textShadowColor: 'transparent', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 0 }
-    : { textShadowColor: 'rgba(0, 0, 0, 0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 };
+  // Contrast-aware colors:
+  // Light backgrounds → dark solid pill with gold star + white text
+  // Dark backgrounds → frosted glass with gold star + white text
+  const starColor = '#facc15'; // Gold star always
+  const textColor = '#ffffff'; // White text always
+  const chevronColor = '#ffffff';
+  const shadowConfig = {
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  };
 
   const BadgeContent = (
     <Animated.View
@@ -158,7 +162,7 @@ export default function CrownBadge({
         height={config.chevronH} 
         viewBox="0 0 10 6" 
         fill="none"
-        style={{ opacity: 0.5 }}
+        style={{ opacity: 0.6 }}
       >
         <Path
           d="M1 1L5 5L9 1"
@@ -201,24 +205,25 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   containerLight: {
-    backgroundColor: 'rgba(255, 255, 255, 0.88)',
-    borderColor: 'rgba(0, 0, 0, 0.08)',
+    // Dark solid pill for light backgrounds — always clearly visible
+    backgroundColor: 'rgba(20, 20, 35, 0.85)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.25,
         shadowRadius: 8,
       },
       android: {
-        backgroundColor: 'rgba(255, 255, 255, 0.92)',
-        borderColor: 'rgba(0, 0, 0, 0.1)',
-        elevation: 4,
+        backgroundColor: 'rgba(20, 20, 35, 0.9)',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        elevation: 6,
       },
     }),
   },
   star: {
-    color: '#fff',
+    color: '#facc15',
     lineHeight: undefined,
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },

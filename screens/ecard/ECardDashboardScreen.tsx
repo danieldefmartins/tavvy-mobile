@@ -1335,33 +1335,37 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const renderCrownBadge = () => {
     const reviewCount = cardData?.review_count || 0;
     if (reviewCount === 0) return null;
-    // Compute background luminance to determine badge style
+    // Compute background luminance from BOTH actual gradient colors to determine badge style
     const badgeBgIsLight = (() => {
-      const hex = gradientColors?.[0] || '#000000';
-      const clean = hex.replace('#', '');
-      if (clean.length < 6) return false;
-      const r = parseInt(clean.substring(0, 2), 16) / 255;
-      const g = parseInt(clean.substring(2, 4), 16) / 255;
-      const b = parseInt(clean.substring(4, 6), 16) / 255;
-      const toLinear = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-      return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b) > 0.35;
+      const hexToLum = (hex: string) => {
+        const clean = hex.replace('#', '');
+        if (clean.length < 6) return 0;
+        const r = parseInt(clean.substring(0, 2), 16) / 255;
+        const g = parseInt(clean.substring(2, 4), 16) / 255;
+        const b = parseInt(clean.substring(4, 6), 16) / 255;
+        const toLinear = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+      };
+      const lum1 = hexToLum(gradientColors?.[0] || '#000000');
+      const lum2 = hexToLum(gradientColors?.[1] || '#000000');
+      return (lum1 + lum2) / 2 > 0.35;
     })();
     return (
       <View style={[
         s.crownBadge,
         badgeBgIsLight ? {
-          backgroundColor: 'rgba(255,255,255,0.88)',
-          borderColor: 'rgba(0,0,0,0.08)',
+          backgroundColor: 'rgba(20, 20, 35, 0.85)',
+          borderColor: 'rgba(255, 255, 255, 0.15)',
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
+          shadowOpacity: 0.25,
           shadowRadius: 8,
-          elevation: 4,
+          elevation: 6,
         } : {}
       ]}>
-        <Text style={[s.crownIcon, badgeBgIsLight ? { color: '#2563eb', textShadowColor: 'transparent' } : {}]}>★</Text>
-        <Text style={[s.crownText, badgeBgIsLight ? { color: '#1a1a1a', textShadowColor: 'transparent' } : {}]}>{reviewCount}</Text>
-        <Text style={[s.crownChevron, badgeBgIsLight ? { color: 'rgba(0,0,0,0.4)' } : {}]}>˅</Text>
+        <Text style={[s.crownIcon, { color: '#facc15' }]}>★</Text>
+        <Text style={[s.crownText, { color: '#ffffff' }]}>{reviewCount}</Text>
+        <Text style={[s.crownChevron, { color: 'rgba(255,255,255,0.6)' }]}>˅</Text>
       </View>
     );
   };
