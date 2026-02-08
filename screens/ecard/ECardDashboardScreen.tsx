@@ -212,6 +212,33 @@ interface Props {
 
 const ACCENT_GREEN = '#00C853';
 
+// Professional categories matching web app endorsement system
+const PROFESSIONAL_CATEGORIES = [
+  { id: 'universal', label: 'General', icon: 'briefcase' },
+  { id: 'sales', label: 'Sales', icon: 'trending-up' },
+  { id: 'real_estate', label: 'Real Estate', icon: 'home' },
+  { id: 'food_dining', label: 'Food & Dining', icon: 'restaurant' },
+  { id: 'health_wellness', label: 'Health & Wellness', icon: 'fitness' },
+  { id: 'beauty', label: 'Beauty & Personal Care', icon: 'color-palette' },
+  { id: 'home_services', label: 'Home Services', icon: 'construct' },
+  { id: 'legal_finance', label: 'Legal & Finance', icon: 'shield-checkmark' },
+  { id: 'creative_marketing', label: 'Creative & Marketing', icon: 'brush' },
+  { id: 'education_coaching', label: 'Education & Coaching', icon: 'school' },
+  { id: 'tech_it', label: 'Tech & IT', icon: 'code-slash' },
+  { id: 'automotive', label: 'Automotive', icon: 'car' },
+  { id: 'events_entertainment', label: 'Events & Entertainment', icon: 'musical-notes' },
+  { id: 'pets', label: 'Pets', icon: 'paw' },
+];
+
+// External review platforms matching web app
+const EXTERNAL_REVIEW_PLATFORMS = [
+  { id: 'google', label: 'Google Reviews', field: 'reviewGoogleUrl', color: '#4285F4', icon: 'search' },
+  { id: 'yelp', label: 'Yelp', field: 'reviewYelpUrl', color: '#D32323', icon: 'star' },
+  { id: 'tripadvisor', label: 'TripAdvisor', field: 'reviewTripadvisorUrl', color: '#00AF87', icon: 'navigate' },
+  { id: 'facebook', label: 'Facebook Reviews', field: 'reviewFacebookUrl', color: '#1877F2', icon: 'thumbs-up' },
+  { id: 'bbb', label: 'BBB', field: 'reviewBbbUrl', color: '#005A8C', icon: 'shield' },
+];
+
 type Tab = 'content' | 'links' | 'style' | 'stats';
 
 export default function ECardDashboardScreen({ navigation, route }: Props) {
@@ -278,6 +305,15 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const [youtubeVideoUrl, setYoutubeVideoUrl] = useState<string>('');
   const [showYoutubeModal, setShowYoutubeModal] = useState(false);
   const [tempYoutubeUrl, setTempYoutubeUrl] = useState<string>('');
+  
+  // Professional Category & External Reviews (matching web app)
+  const [professionalCategory, setProfessionalCategory] = useState('universal');
+  const [reviewGoogleUrl, setReviewGoogleUrl] = useState('');
+  const [reviewYelpUrl, setReviewYelpUrl] = useState('');
+  const [reviewTripadvisorUrl, setReviewTripadvisorUrl] = useState('');
+  const [reviewFacebookUrl, setReviewFacebookUrl] = useState('');
+  const [reviewBbbUrl, setReviewBbbUrl] = useState('');
+  const [showDashCategoryPicker, setShowDashCategoryPicker] = useState(false);
   
   // Pro Credentials state
   const [proCredentials, setProCredentials] = useState<ProCredentials>({
@@ -495,6 +531,12 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       setSelectedFont(insertedCard.font_style || 'default');
       setProfilePhotoSize(insertedCard.profile_photo_size || 'medium');
       setFontColor(insertedCard.font_color || null);
+      if (insertedCard.professional_category) setProfessionalCategory(insertedCard.professional_category);
+      if (insertedCard.review_google_url) setReviewGoogleUrl(insertedCard.review_google_url);
+      if (insertedCard.review_yelp_url) setReviewYelpUrl(insertedCard.review_yelp_url);
+      if (insertedCard.review_tripadvisor_url) setReviewTripadvisorUrl(insertedCard.review_tripadvisor_url);
+      if (insertedCard.review_facebook_url) setReviewFacebookUrl(insertedCard.review_facebook_url);
+      if (insertedCard.review_bbb_url) setReviewBbbUrl(insertedCard.review_bbb_url);
     } catch (error: any) {
       console.error('Error inserting links:', error);
     }
@@ -546,6 +588,14 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               if (item.platform && !item.platformId) return { platformId: item.platform, url: item.url || '' };
               return item;
             }));
+            // Professional Category & External Reviews
+            if (card.professional_category) setProfessionalCategory(card.professional_category);
+            if (card.review_google_url) setReviewGoogleUrl(card.review_google_url);
+            if (card.review_yelp_url) setReviewYelpUrl(card.review_yelp_url);
+            if (card.review_tripadvisor_url) setReviewTripadvisorUrl(card.review_tripadvisor_url);
+            if (card.review_facebook_url) setReviewFacebookUrl(card.review_facebook_url);
+            if (card.review_bbb_url) setReviewBbbUrl(card.review_bbb_url);
+            
             setProCredentials({
               isLicensed: card.show_licensed_badge || false,
               isInsured: card.show_insured_badge || false,
@@ -695,6 +745,12 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
         font_color: fontColor || null,
         template_id: selectedTemplateId,
         banner_image_url: bannerUrl || null,
+        professional_category: professionalCategory || null,
+        review_google_url: reviewGoogleUrl || null,
+        review_yelp_url: reviewYelpUrl || null,
+        review_tripadvisor_url: reviewTripadvisorUrl || null,
+        review_facebook_url: reviewFacebookUrl || null,
+        review_bbb_url: reviewBbbUrl || null,
       };
       
       const { error } = await supabase.from('digital_cards').update(updates).eq('id', cardData.id);
@@ -1454,6 +1510,57 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             placeholderTextColor={colors.textMuted}
           />
         </View>
+      </View>
+
+      {/* Professional Category */}
+      <View style={[s.section, { backgroundColor: colors.surface }]}>
+        <Text style={[s.sectionTitle, { color: colors.text }]}>Professional Category</Text>
+        <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 10 }}>Determines which endorsement signals appear on your card</Text>
+        <TouchableOpacity
+          style={[s.fieldInput, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14 }]}
+          onPress={() => setShowDashCategoryPicker(true)}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Ionicons name={(PROFESSIONAL_CATEGORIES.find(c => c.id === professionalCategory)?.icon || 'briefcase') as any} size={18} color={colors.text} />
+            <Text style={{ fontSize: 15, color: colors.text }}>
+              {PROFESSIONAL_CATEGORIES.find(c => c.id === professionalCategory)?.label || 'Select Category'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
+      </View>
+
+      {/* External Reviews */}
+      <View style={[s.section, { backgroundColor: colors.surface }]}>
+        <Text style={[s.sectionTitle, { color: colors.text }]}>External Reviews</Text>
+        <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 10 }}>Link your review profiles — badges appear on your public card</Text>
+        {EXTERNAL_REVIEW_PLATFORMS.map(platform => {
+          const reviewMap: Record<string, { value: string; set: (v: string) => void }> = {
+            reviewGoogleUrl: { value: reviewGoogleUrl, set: setReviewGoogleUrl },
+            reviewYelpUrl: { value: reviewYelpUrl, set: setReviewYelpUrl },
+            reviewTripadvisorUrl: { value: reviewTripadvisorUrl, set: setReviewTripadvisorUrl },
+            reviewFacebookUrl: { value: reviewFacebookUrl, set: setReviewFacebookUrl },
+            reviewBbbUrl: { value: reviewBbbUrl, set: setReviewBbbUrl },
+          };
+          const { value, set } = reviewMap[platform.field];
+          return (
+            <View key={platform.id} style={[s.fieldGroup, { flexDirection: 'row', alignItems: 'center', gap: 10 }]}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: platform.color, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name={platform.icon as any} size={16} color="#fff" />
+              </View>
+              <TextInput
+                style={[s.fieldInput, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.inputBorder, flex: 1 }]}
+                value={value}
+                onChangeText={set}
+                placeholder={`${platform.label} URL`}
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+            </View>
+          );
+        })}
       </View>
 
       {/* Featured Social Icons */}
@@ -2464,6 +2571,33 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     </Modal>
   );
 
+  // ── Category Picker Modal ──
+  const renderCategoryPickerModal = () => (
+    <Modal visible={showDashCategoryPicker} transparent animationType="slide" onRequestClose={() => setShowDashCategoryPicker(false)}>
+      <View style={s.modalOverlay}>
+        <View style={[s.modalContent, { backgroundColor: colors.modalBg, maxHeight: '70%' }]}>
+          <Text style={[s.modalTitle, { color: colors.text }]}>Professional Category</Text>
+          <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>Choose the category that best describes your profession</Text>
+          <ScrollView>
+            {PROFESSIONAL_CATEGORIES.map(cat => (
+              <TouchableOpacity
+                key={cat.id}
+                style={[s.credentialRow, { paddingVertical: 14, borderRadius: 10, marginBottom: 2, backgroundColor: professionalCategory === cat.id ? 'rgba(0,200,83,0.1)' : 'transparent' }]}
+                onPress={() => { setProfessionalCategory(cat.id); setShowDashCategoryPicker(false); }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <Ionicons name={cat.icon as any} size={20} color={professionalCategory === cat.id ? ACCENT_GREEN : colors.textMuted} />
+                  <Text style={{ fontSize: 15, color: professionalCategory === cat.id ? colors.text : colors.textSecondary, fontWeight: professionalCategory === cat.id ? '600' : '400' }}>{cat.label}</Text>
+                </View>
+                {professionalCategory === cat.id && <Ionicons name="checkmark-circle" size={22} color={ACCENT_GREEN} />}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+
   // ── Loading State ──
   if (isLoading) {
     return (
@@ -2581,6 +2715,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       {renderColorPickerModal()}
       {renderVideoModal()}
       {renderCredentialsModal()}
+      {renderCategoryPickerModal()}
       
       {/* Saving Indicator */}
       {isSaving && (
