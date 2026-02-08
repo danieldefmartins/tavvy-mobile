@@ -16,7 +16,9 @@ import {
   Alert,
   Modal,
   FlatList,
+  TextInput,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
@@ -78,6 +80,7 @@ interface CardData {
   address_2?: string;
   zip_code?: string;
   country?: string;
+  professional_category?: string;
 }
 
 // Photo size configurations
@@ -138,6 +141,174 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
   const [endorsementTags, setEndorsementTags] = useState<{ label: string; emoji: string; count: number }[]>([]);
   const [endorsementCount, setEndorsementCount] = useState(0);
   const [loadingEndorsements, setLoadingEndorsements] = useState(false);
+
+  // Endorse flow state (badge selection, submission)
+  const [showEndorseFlow, setShowEndorseFlow] = useState(false);
+  const [endorsementSignals, setEndorsementSignals] = useState<{ id: string; label: string; emoji: string; category: string }[]>([]);
+  const [signalTaps, setSignalTaps] = useState<Record<string, number>>({});
+  const [endorseNote, setEndorseNote] = useState('');
+  const [isSubmittingEndorsement, setIsSubmittingEndorsement] = useState(false);
+  const [endorsementSubmitted, setEndorsementSubmitted] = useState(false);
+  const [loadingSignals, setLoadingSignals] = useState(false);
+
+  const selectedSignalCount = Object.keys(signalTaps).length;
+  const fireEmojis = (intensity: number) => '\uD83D\uDD25'.repeat(Math.max(0, intensity - 1));
+
+  const handleSignalTap = (signalId: string) => {
+    setSignalTaps(prev => {
+      const current = prev[signalId] || 0;
+      if (current >= 3) {
+        const next = { ...prev };
+        delete next[signalId];
+        return next;
+      }
+      return { ...prev, [signalId]: current + 1 };
+    });
+  };
+
+  const CAT_COLORS: Record<string, string> = { universal: '#3B9FD9', sales: '#E87D3E', real_estate: '#6B7280', food_dining: '#E53E3E', health_wellness: '#38A169', beauty: '#D53F8C', home_services: '#DD6B20', legal_finance: '#2B6CB0', creative_marketing: '#8B5CF6', education_coaching: '#D69E2E', tech_it: '#319795', automotive: '#718096', events_entertainment: '#9F7AEA', pets: '#ED8936' };
+  const CAT_LABELS: Record<string, string> = { universal: 'Strengths', sales: 'Sales Skills', real_estate: 'Real Estate', food_dining: 'Food & Dining', health_wellness: 'Health & Wellness', beauty: 'Beauty', home_services: 'Home Services', legal_finance: 'Legal & Finance', creative_marketing: 'Creative & Marketing', education_coaching: 'Education & Coaching', tech_it: 'Tech & IT', automotive: 'Automotive', events_entertainment: 'Events & Entertainment', pets: 'Pets' };
+
+  // Fetch endorsement signals (badge options) for this card's category
+  const fetchEndorsementSignals = async () => {
+    if (!cardData?.id) return;
+    setLoadingSignals(true);
+    try {
+      const cardCategory = (cardData as any).professional_category || 'universal';
+      const categoriesToShow = cardCategory === 'universal' ? ['universal'] : ['universal', cardCategory];
+      const { data: signals } = await supabase
+        .from('review_items')
+        .select('id, label, icon_emoji, sort_order, category')
+        .eq('signal_type', 'pro_endorsement')
+        .eq('is_active', true)
+        .in('category', categoriesToShow)
+        .order('sort_order', { ascending: true });
+      setEndorsementSignals((signals || []).map((s: any) => ({
+        id: s.id,
+        label: s.label,
+        emoji: s.icon_emoji || '\u2B50',
+        category: s.category || 'universal',
+      })));
+    } catch (e) {
+      console.log('Error fetching endorsement signals:', e);
+    } finally {
+      setLoadingSignals(false);
+    }
+  };
+
+  // Submit endorsement directly via Supabase
+  const submitEndorsement = async (signals: string[], intensities: Record<string, number>, note: string) => {
+    if (!cardData?.id) return;
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    if (!currentSession?.user) {
+      // Not logged in — save pending and navigate to login
+      await AsyncStorage.setItem('tavvy_pending_endorsement', JSON.stringify({
+        cardId: cardData.id,
+        signals,
+        intensities,
+        note,
+      }));
+      setShowEndorseFlow(false);
+      navigation.navigate('Login');
+      return;
+    }
+
+    const userId = currentSession.user.id;
+
+    // Check if already endorsed
+    const { data: existing } = await supabase
+      .from('ecard_endorsements')
+      .select('id')
+      .eq('card_id', cardData.id)
+      .eq('endorser_id', userId)
+      .single();
+    if (existing) {
+      Alert.alert('Already Endorsed', 'You have already endorsed this card.');
+      return;
+    }
+
+    // Get card owner
+    const { data: cardOwner } = await supabase
+      .from('digital_cards')
+      .select('user_id')
+      .eq('id', cardData.id)
+      .single();
+    if (!cardOwner) {
+      Alert.alert('Error', 'Card not found.');
+      return;
+    }
+    if (cardOwner.user_id === userId) {
+      Alert.alert('Error', 'You cannot endorse your own card.');
+      return;
+    }
+
+    // Create endorsement
+    const { data: endorsement, error: insertError } = await supabase
+      .from('ecard_endorsements')
+      .insert({
+        card_id: cardData.id,
+        card_owner_id: cardOwner.user_id,
+        endorser_id: userId,
+        public_note: note || null,
+      })
+      .select('id')
+      .single();
+    if (insertError) {
+      Alert.alert('Error', 'Failed to submit endorsement.');
+      return;
+    }
+
+    // Create signal taps
+    const signalRows = signals.map((signalId: string) => ({
+      endorsement_id: endorsement.id,
+      card_id: cardData.id,
+      card_owner_id: cardOwner.user_id,
+      signal_id: signalId,
+    }));
+    await supabase.from('ecard_endorsement_signals').insert(signalRows);
+
+    // Update tap count
+    const { data: currentCard } = await supabase
+      .from('digital_cards')
+      .select('tap_count')
+      .eq('id', cardData.id)
+      .single();
+    await supabase
+      .from('digital_cards')
+      .update({ tap_count: (currentCard?.tap_count || 0) + 1 })
+      .eq('id', cardData.id);
+
+    // Update local count
+    setEndorsementCount(prev => prev + 1);
+    setEndorsementSubmitted(true);
+    setShowEndorseFlow(false);
+    // Refresh endorsement data
+    fetchEndorsementData();
+    Alert.alert('Thank You!', 'Your endorsement has been submitted.');
+  };
+
+  // Auto-submit pending endorsement after login
+  useEffect(() => {
+    if (!cardData?.id || !user) return;
+    const checkPending = async () => {
+      try {
+        const pending = await AsyncStorage.getItem('tavvy_pending_endorsement');
+        if (!pending) return;
+        const data = JSON.parse(pending);
+        if (data.cardId !== cardData.id) return;
+        await AsyncStorage.removeItem('tavvy_pending_endorsement');
+        setIsSubmittingEndorsement(true);
+        try {
+          await submitEndorsement(data.signals, data.intensities, data.note);
+        } finally {
+          setIsSubmittingEndorsement(false);
+        }
+      } catch (e) {
+        await AsyncStorage.removeItem('tavvy_pending_endorsement');
+      }
+    };
+    checkPending();
+  }, [cardData?.id, user]);
 
   const fetchEndorsementData = async () => {
     if (!cardData?.id) return;
@@ -1037,13 +1208,129 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
               style={styles.endorseBtn}
               onPress={() => {
                 setShowEndorsementModal(false);
-                // TODO: Navigate to endorse flow
+                setSignalTaps({});
+                setEndorseNote('');
+                setEndorsementSubmitted(false);
+                fetchEndorsementSignals();
+                setShowEndorseFlow(true);
               }}
             >
               <Text style={styles.endorseBtnText}>
                 Endorse {cardData?.full_name?.split(' ')[0] || ''} \u2192
               </Text>
             </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Endorse Flow Modal — Badge Selection */}
+      <Modal
+        visible={showEndorseFlow}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEndorseFlow(false)}
+      >
+        <TouchableOpacity
+          style={styles.endorseOverlay}
+          activeOpacity={1}
+          onPress={() => setShowEndorseFlow(false)}
+        >
+          <View style={[styles.endorseSheet, { maxHeight: '92%' }]} onStartShouldSetResponder={() => true}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Header */}
+              <View style={styles.endorseHeader}>
+                <Text style={{ fontSize: 22, fontWeight: '800', color: '#1a1a2e' }}>What Stood Out?</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#3B9FD9' }}>{selectedSignalCount} selected</Text>
+              </View>
+              <Text style={{ fontSize: 13, color: '#888', marginBottom: 20 }}>Tap to select \u00B7 Tap again to make it stronger</Text>
+
+              {/* Badge Grid grouped by category */}
+              {loadingSignals ? (
+                <View style={styles.endorseLoading}>
+                  <ActivityIndicator size="small" color="#3B9FD9" />
+                </View>
+              ) : (
+                [...new Set(endorsementSignals.map(s => s.category))].map(cat => (
+                  <View key={cat} style={{ marginBottom: 16 }}>
+                    {/* Category Label */}
+                    <View style={{ backgroundColor: CAT_COLORS[cat] || '#3B9FD9', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, alignSelf: 'flex-start', marginBottom: 10 }}>
+                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>{CAT_LABELS[cat] || cat}</Text>
+                    </View>
+                    {/* Signal Tiles */}
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {endorsementSignals.filter(s => s.category === cat).map(signal => {
+                        const intensity = signalTaps[signal.id] || 0;
+                        const isSelected = intensity > 0;
+                        const bgColor = isSelected ? (CAT_COLORS[cat] || '#3B9FD9') : '#f0f4f8';
+                        return (
+                          <TouchableOpacity
+                            key={signal.id}
+                            onPress={() => handleSignalTap(signal.id)}
+                            style={{
+                              width: (width - 72) / 3,
+                              minHeight: 90,
+                              borderRadius: 14,
+                              backgroundColor: bgColor,
+                              borderWidth: isSelected ? 0 : 1.5,
+                              borderColor: '#e0e4e8',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: 6,
+                              position: 'relative' as const,
+                            }}
+                          >
+                            {isSelected && (
+                              <View style={{ position: 'absolute', top: 6, right: 6, width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center' }}>
+                                <Ionicons name="checkmark" size={12} color="#fff" />
+                              </View>
+                            )}
+                            <Text style={{ fontSize: 28, marginBottom: 4 }}>{signal.emoji}</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '600', textAlign: 'center', color: isSelected ? '#fff' : '#555', lineHeight: 14 }}>{signal.label}</Text>
+                            {intensity > 1 && (
+                              <Text style={{ fontSize: 12, marginTop: 2 }}>{fireEmojis(intensity)}</Text>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ))
+              )}
+
+              {/* Optional Note */}
+              <View style={{ marginTop: 8, marginBottom: 16 }}>
+                <TextInput
+                  value={endorseNote}
+                  onChangeText={setEndorseNote}
+                  placeholder="Add a note (optional)..."
+                  placeholderTextColor="#999"
+                  multiline
+                  numberOfLines={2}
+                  style={{ width: '100%', padding: 12, borderRadius: 12, backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#e0e0e0', color: '#333', fontSize: 14, minHeight: 50, textAlignVertical: 'top' }}
+                />
+              </View>
+
+              {/* Submit Button */}
+              <TouchableOpacity
+                style={[styles.endorseBtn, { opacity: selectedSignalCount === 0 || isSubmittingEndorsement ? 0.5 : 1 }]}
+                disabled={selectedSignalCount === 0 || isSubmittingEndorsement}
+                onPress={async () => {
+                  setIsSubmittingEndorsement(true);
+                  try {
+                    const signalIds = Object.keys(signalTaps);
+                    await submitEndorsement(signalIds, signalTaps, endorseNote);
+                  } catch (err) {
+                    Alert.alert('Error', 'Network error. Please try again.');
+                  } finally {
+                    setIsSubmittingEndorsement(false);
+                  }
+                }}
+              >
+                <Text style={styles.endorseBtnText}>
+                  {isSubmittingEndorsement ? 'Submitting...' : `Continue (${selectedSignalCount})`}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </TouchableOpacity>
       </Modal>
