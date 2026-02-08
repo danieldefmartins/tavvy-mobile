@@ -53,6 +53,14 @@ interface RideData {
     duration?: string;
     maxSpeed?: string;
     inversions?: number;
+    getsWet?: string;
+    singleRider?: boolean;
+    childSwap?: boolean;
+    lightningLane?: string;
+    indoorOutdoor?: string;
+    accessibility?: string;
+    ageRecommendation?: string;
+    motionSickness?: string;
   };
 }
 
@@ -120,6 +128,20 @@ const getDefaultImage = (subcategory: string | undefined): string => {
     return 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800';
   }
   return 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800';
+};
+
+const formatAgeRecommendation = (age: string | null): string => {
+  if (!age) return 'All Ages';
+  const labels: Record<string, string> = {
+    all_ages: 'All Ages',
+    '3+': 'Ages 3+',
+    '4+': 'Ages 4+',
+    '6+': 'Ages 6+',
+    '8+': 'Ages 8+',
+    '10+': 'Ages 10+',
+    'teens+': 'Teens & Adults',
+  };
+  return labels[age] || 'All Ages';
 };
 
 const extractPhotos = (photos: any): string[] => {
@@ -224,7 +246,7 @@ export default function RideDetailsScreen() {
       // First try to fetch from Supabase places table
       const { data: placeData, error: placeError } = await supabase
         .from('places')
-        .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos')
+        .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos, description, duration_minutes, min_height_inches, thrill_level, gets_wet, single_rider, child_swap, lightning_lane, indoor_outdoor, accessibility, age_recommendation, motion_sickness')
         .eq('id', params.rideId)
         .single();
 
@@ -232,21 +254,81 @@ export default function RideDetailsScreen() {
 
       if (placeData && !placeError) {
         // Build ride data from Supabase place
-        const thrillLevel = getThrillLevelLabel(placeData.tavvy_subcategory);
+        const thrillLevelRaw = placeData.thrill_level;
+        const thrillLevel = thrillLevelRaw 
+          ? thrillLevelRaw.charAt(0).toUpperCase() + thrillLevelRaw.slice(1)
+          : getThrillLevelLabel(placeData.tavvy_subcategory);
         const rideType = formatSubcategory(placeData.tavvy_subcategory);
-        const audience = getAudienceFromSubcategory(placeData.tavvy_subcategory);
+        const audience = placeData.age_recommendation 
+          ? formatAgeRecommendation(placeData.age_recommendation)
+          : getAudienceFromSubcategory(placeData.tavvy_subcategory);
+
+        const formatLightningLane = (ll: string | null): string => {
+          if (!ll) return '';
+          const labels: Record<string, string> = {
+            individual_ll: 'Individual LL',
+            multi_pass: 'Multi Pass',
+            virtual_queue: 'Virtual Queue',
+            standby_only: 'Standby Only',
+            not_applicable: '',
+          };
+          return labels[ll] || '';
+        };
+
+        const formatGetsWet = (gw: string | null): string => {
+          if (!gw || gw === 'dry') return 'Dry';
+          if (gw === 'light_splash') return 'Light Splash';
+          if (gw === 'soaked') return 'Soaked';
+          return 'Dry';
+        };
+
+        const formatAccessibility = (acc: string | null): string => {
+          if (!acc) return '';
+          const labels: Record<string, string> = {
+            fully_accessible: 'Fully Accessible',
+            wheelchair_accessible: 'Wheelchair Accessible',
+            ecv_to_wheelchair: 'ECV to Wheelchair',
+            must_transfer: 'Must Transfer',
+          };
+          return labels[acc] || '';
+        };
+
+        const formatMotionSickness = (ms: string | null): string => {
+          if (!ms || ms === 'none') return '';
+          return ms.charAt(0).toUpperCase() + ms.slice(1);
+        };
+
+        const formatIndoorOutdoor = (io: string | null): string => {
+          if (!io) return '';
+          const labels: Record<string, string> = {
+            indoor: 'Indoor',
+            outdoor: 'Outdoor',
+            both: 'Indoor & Outdoor',
+          };
+          return labels[io] || '';
+        };
         
         rideData = {
           id: placeData.id,
           name: placeData.name?.toUpperCase() || 'RIDE',
           parkName: params.parkName || placeData.city || 'Theme Park',
-          description: `Experience ${placeData.name}, a ${rideType.toLowerCase()} at ${placeData.city || 'this theme park'}.`,
+          description: placeData.description || `Experience ${placeData.name}, a ${rideType.toLowerCase()} at ${placeData.city || 'this theme park'}.`,
           image: placeData.cover_image_url || getDefaultImage(placeData.tavvy_subcategory),
           thumbnails: extractPhotos(placeData.photos),
           keyInfo: {
             thrillLevel,
             rideType,
             audience,
+            minHeight: placeData.min_height_inches ? `${placeData.min_height_inches}"` : undefined,
+            duration: placeData.duration_minutes ? `${placeData.duration_minutes} min` : undefined,
+            getsWet: formatGetsWet(placeData.gets_wet),
+            singleRider: placeData.single_rider || false,
+            childSwap: placeData.child_swap || false,
+            lightningLane: formatLightningLane(placeData.lightning_lane),
+            indoorOutdoor: formatIndoorOutdoor(placeData.indoor_outdoor),
+            accessibility: formatAccessibility(placeData.accessibility),
+            ageRecommendation: formatAgeRecommendation(placeData.age_recommendation),
+            motionSickness: formatMotionSickness(placeData.motion_sickness),
           },
         };
       } else {
@@ -519,6 +601,7 @@ export default function RideDetailsScreen() {
             {renderKeyInfoTag('🔥', ride.keyInfo.thrillLevel, '#FEE2E2')}
             {renderKeyInfoTag('🎢', ride.keyInfo.rideType, '#E0E7FF')}
             {renderKeyInfoTag('👥', ride.keyInfo.audience, '#FEF3C7')}
+            {ride.keyInfo.indoorOutdoor ? renderKeyInfoTag('🏠', ride.keyInfo.indoorOutdoor, '#ECFDF5') : null}
           </View>
 
           {/* Stats Grid */}
@@ -532,9 +615,45 @@ export default function RideDetailsScreen() {
             {ride.keyInfo.duration && (
               <View style={styles.statItem}>
                 <Text style={styles.statIcon}>⏱️</Text>
-                <Text style={styles.statValue}>{ride.keyInfo.duration} duration</Text>
+                <Text style={styles.statValue}>{ride.keyInfo.duration}</Text>
               </View>
             )}
+            {ride.keyInfo.getsWet && ride.keyInfo.getsWet !== 'Dry' && (
+              <View style={styles.statItem}>
+                <Text style={styles.statIcon}>💧</Text>
+                <Text style={styles.statValue}>{ride.keyInfo.getsWet}</Text>
+              </View>
+            )}
+            {ride.keyInfo.lightningLane ? (
+              <View style={styles.statItem}>
+                <Text style={styles.statIcon}>⚡</Text>
+                <Text style={styles.statValue}>{ride.keyInfo.lightningLane}</Text>
+              </View>
+            ) : null}
+            {ride.keyInfo.singleRider && (
+              <View style={styles.statItem}>
+                <Text style={styles.statIcon}>🧍</Text>
+                <Text style={styles.statValue}>Single Rider</Text>
+              </View>
+            )}
+            {ride.keyInfo.childSwap && (
+              <View style={styles.statItem}>
+                <Text style={styles.statIcon}>👶</Text>
+                <Text style={styles.statValue}>Child Swap</Text>
+              </View>
+            )}
+            {ride.keyInfo.accessibility ? (
+              <View style={styles.statItem}>
+                <Text style={styles.statIcon}>♿</Text>
+                <Text style={styles.statValue}>{ride.keyInfo.accessibility}</Text>
+              </View>
+            ) : null}
+            {ride.keyInfo.motionSickness ? (
+              <View style={styles.statItem}>
+                <Text style={styles.statIcon}>🌀</Text>
+                <Text style={styles.statValue}>Motion: {ride.keyInfo.motionSickness}</Text>
+              </View>
+            ) : null}
             {ride.keyInfo.maxSpeed && (
               <View style={styles.statItem}>
                 <Text style={styles.statIcon}>💨</Text>
