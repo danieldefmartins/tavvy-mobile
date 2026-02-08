@@ -15,31 +15,27 @@ interface CrownBadgeProps {
   onPress?: () => void;
   size?: 'small' | 'medium' | 'large';
   showAnimation?: boolean;
-  /** When true, renders a dark solid pill with white text (for light card backgrounds) */
+  /** @deprecated No longer used — badge always uses universal dark pill style */
   isLightBackground?: boolean;
 }
 
 /**
  * EndorsementBadge Component (formerly CrownBadge)
  * 
- * Displays a frosted glass pill badge with star icon, endorsement count,
+ * Displays a solid dark pill badge with gold star icon, white endorsement count,
  * and a subtle dropdown chevron to indicate it's tappable.
  * 
  * Format: ★ 12 ˅
  * 
- * Features:
- * - Contrast-aware: dark solid pill on light backgrounds, frosted glass on dark
- * - Always clearly visible regardless of user-chosen card colors/photos
- * - Subtle pulse animation
- * - Tappable to show endorsement details
- * - Three sizes: small, medium, large
+ * The badge ALWAYS uses a dark opaque background (#1a1a2e) so it is clearly
+ * visible on ANY card background — photos, light gradients, dark gradients,
+ * white, black, or anything in between. No conditional light/dark logic.
  */
 export default function CrownBadge({ 
   tapCount, 
   onPress, 
   size = 'medium',
   showAnimation = true,
-  isLightBackground = false,
 }: CrownBadgeProps) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -71,37 +67,37 @@ export default function CrownBadge({
     };
   }, [showAnimation, tapCount]);
 
-  // Size configurations
+  // Size configurations — bigger than before for visibility
   const sizeConfig = {
     small: {
-      paddingH: 10,
-      paddingV: 5,
-      starSize: 14,
-      textSize: 13,
+      paddingH: 12,
+      paddingV: 6,
+      starSize: 16,
+      textSize: 14,
       chevronW: 8,
       chevronH: 5,
-      gap: 4,
-      borderRadius: 16,
+      gap: 5,
+      borderRadius: 18,
     },
     medium: {
-      paddingH: 14,
-      paddingV: 8,
-      starSize: 18,
-      textSize: 16,
-      chevronW: 10,
-      chevronH: 6,
-      gap: 6,
-      borderRadius: 24,
-    },
-    large: {
       paddingH: 18,
       paddingV: 10,
       starSize: 22,
-      textSize: 20,
+      textSize: 18,
+      chevronW: 10,
+      chevronH: 6,
+      gap: 8,
+      borderRadius: 26,
+    },
+    large: {
+      paddingH: 22,
+      paddingV: 12,
+      starSize: 26,
+      textSize: 22,
       chevronW: 12,
       chevronH: 7,
-      gap: 8,
-      borderRadius: 28,
+      gap: 10,
+      borderRadius: 30,
     },
   };
 
@@ -122,18 +118,6 @@ export default function CrownBadge({
     return null; // Don't show badge if no endorsements
   }
 
-  // Contrast-aware colors:
-  // Light backgrounds → dark solid pill with gold star + white text
-  // Dark backgrounds → frosted glass with gold star + white text
-  const starColor = '#facc15'; // Gold star always
-  const textColor = '#ffffff'; // White text always
-  const chevronColor = '#ffffff';
-  const shadowConfig = {
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  };
-
   const BadgeContent = (
     <Animated.View
       style={[
@@ -145,14 +129,13 @@ export default function CrownBadge({
           gap: config.gap,
           transform: [{ scale: pulseAnim }],
         },
-        isLightBackground && styles.containerLight,
       ]}
     >
-      {/* Star icon */}
-      <Text style={[styles.star, { fontSize: config.starSize, color: starColor, ...shadowConfig }]}>★</Text>
+      {/* Gold star icon */}
+      <Text style={[styles.star, { fontSize: config.starSize }]}>★</Text>
       
-      {/* Endorsement count */}
-      <Text style={[styles.count, { fontSize: config.textSize, color: textColor, ...shadowConfig }]}>
+      {/* White endorsement count */}
+      <Text style={[styles.count, { fontSize: config.textSize }]}>
         {formatTapCount(tapCount)}
       </Text>
 
@@ -162,12 +145,12 @@ export default function CrownBadge({
         height={config.chevronH} 
         viewBox="0 0 10 6" 
         fill="none"
-        style={{ opacity: 0.6 }}
+        style={{ opacity: 0.7 }}
       >
         <Path
           d="M1 1L5 5L9 1"
-          stroke={chevronColor}
-          strokeWidth={1.5}
+          stroke="#ffffff"
+          strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
@@ -190,50 +173,30 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    // Universal dark opaque pill — visible on ANY background
+    backgroundColor: '#1a1a2e',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
     ...Platform.select({
       ios: {
-        // iOS supports backdrop blur natively
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 10,
       },
       android: {
-        backgroundColor: 'rgba(0, 0, 0, 0.25)',
-        borderColor: 'rgba(255, 255, 255, 0.15)',
+        elevation: 8,
       },
     }),
     overflow: 'hidden',
   },
-  containerLight: {
-    // Dark solid pill for light backgrounds — always clearly visible
-    backgroundColor: 'rgba(20, 20, 35, 0.85)',
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
-      },
-      android: {
-        backgroundColor: 'rgba(20, 20, 35, 0.9)',
-        borderColor: 'rgba(255, 255, 255, 0.2)',
-        elevation: 6,
-      },
-    }),
-  },
   star: {
     color: '#facc15',
     lineHeight: undefined,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
   count: {
-    color: '#fff',
-    fontWeight: '700',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    color: '#ffffff',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
 });

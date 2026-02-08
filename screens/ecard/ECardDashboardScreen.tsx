@@ -1335,37 +1335,12 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const renderCrownBadge = () => {
     const reviewCount = cardData?.review_count || 0;
     if (reviewCount === 0) return null;
-    // Compute background luminance from BOTH actual gradient colors to determine badge style
-    const badgeBgIsLight = (() => {
-      const hexToLum = (hex: string) => {
-        const clean = hex.replace('#', '');
-        if (clean.length < 6) return 0;
-        const r = parseInt(clean.substring(0, 2), 16) / 255;
-        const g = parseInt(clean.substring(2, 4), 16) / 255;
-        const b = parseInt(clean.substring(4, 6), 16) / 255;
-        const toLinear = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-        return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
-      };
-      const lum1 = hexToLum(gradientColors?.[0] || '#000000');
-      const lum2 = hexToLum(gradientColors?.[1] || '#000000');
-      return (lum1 + lum2) / 2 > 0.35;
-    })();
+    // Universal dark pill — always visible on ANY background (photos, gradients, etc.)
     return (
-      <View style={[
-        s.crownBadge,
-        badgeBgIsLight ? {
-          backgroundColor: 'rgba(20, 20, 35, 0.85)',
-          borderColor: 'rgba(255, 255, 255, 0.15)',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.25,
-          shadowRadius: 8,
-          elevation: 6,
-        } : {}
-      ]}>
-        <Text style={[s.crownIcon, { color: '#facc15' }]}>★</Text>
-        <Text style={[s.crownText, { color: '#ffffff' }]}>{reviewCount}</Text>
-        <Text style={[s.crownChevron, { color: 'rgba(255,255,255,0.6)' }]}>˅</Text>
+      <View style={s.crownBadge}>
+        <Text style={s.crownIcon}>★</Text>
+        <Text style={s.crownText}>{reviewCount}</Text>
+        <Text style={s.crownChevron}>˅</Text>
       </View>
     );
   };
@@ -2867,10 +2842,10 @@ const s = StyleSheet.create({
   previewLinkIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   previewMoreLinks: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   previewMoreText: { fontSize: 11, fontWeight: '600' },
-  crownBadge: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, gap: 4 },
-  crownIcon: { fontSize: 14, color: '#fff', textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
-  crownText: { fontSize: 13, fontWeight: '700', color: '#fff', textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
-  crownChevron: { fontSize: 10, color: 'rgba(255,255,255,0.5)', marginLeft: 1 },
+  crownBadge: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a2e', borderWidth: 2, borderColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 18, gap: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8 },
+  crownIcon: { fontSize: 16, color: '#facc15' },
+  crownText: { fontSize: 14, fontWeight: '800', color: '#ffffff', letterSpacing: 0.5 },
+  crownChevron: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginLeft: 1 },
   premiumIndicator: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4 },
   premiumIndicatorText: { fontSize: 12, color: '#F59E0B', fontWeight: '500' },
   
