@@ -14,6 +14,8 @@ import {
   Linking,
   ActivityIndicator,
   Alert,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -65,6 +67,11 @@ interface CardData {
   state?: string;
   profile_photo_size?: string;
   theme?: string;
+  review_google_url?: string;
+  review_yelp_url?: string;
+  review_tripadvisor_url?: string;
+  review_facebook_url?: string;
+  review_bbb_url?: string;
 }
 
 // Photo size configurations
@@ -119,6 +126,51 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
   // Mock reviews data - in production this comes from Tavvy reviews system
   const reviewData = reviews || { count: 0, rating: 0 };
   const hasReviews = reviewData.count > 0;
+
+  // Endorsement popup state
+  const [showEndorsementModal, setShowEndorsementModal] = useState(false);
+  const [endorsementTags, setEndorsementTags] = useState<{ label: string; emoji: string; count: number }[]>([]);
+  const [endorsementCount, setEndorsementCount] = useState(0);
+  const [loadingEndorsements, setLoadingEndorsements] = useState(false);
+
+  const fetchEndorsementData = async () => {
+    if (!cardData?.id) return;
+    setLoadingEndorsements(true);
+    try {
+      // Get endorsement count
+      const { count } = await supabase
+        .from('ecard_endorsements')
+        .select('*', { count: 'exact', head: true })
+        .eq('card_id', cardData.id);
+      setEndorsementCount(count || 0);
+
+      // Get top signal tags (aggregated)
+      const { data: signalTaps } = await supabase
+        .from('ecard_endorsement_signals')
+        .select('signal_id, review_items(label, icon_emoji)')
+        .eq('card_id', cardData.id);
+      if (signalTaps && signalTaps.length > 0) {
+        const tagCounts: Record<string, { label: string; emoji: string; count: number }> = {};
+        signalTaps.forEach((tap: any) => {
+          const ri = tap.review_items;
+          if (ri) {
+            if (!tagCounts[tap.signal_id]) tagCounts[tap.signal_id] = { label: ri.label, emoji: ri.icon_emoji || '\u2B50', count: 0 };
+            tagCounts[tap.signal_id].count++;
+          }
+        });
+        setEndorsementTags(Object.values(tagCounts).sort((a, b) => b.count - a.count).slice(0, 8));
+      }
+    } catch (e) {
+      console.log('Error fetching endorsement data:', e);
+    } finally {
+      setLoadingEndorsements(false);
+    }
+  };
+
+  const handleBadgePress = () => {
+    fetchEndorsementData();
+    setShowEndorsementModal(true);
+  };
 
   // Load card data from database or use passed data
   const loadCardData = useCallback(async () => {
@@ -326,6 +378,12 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
     handleShare();
   };
 
+  const handleSaveContact = () => {
+    if (cardData?.slug) {
+      Linking.openURL(`https://tavvy.com/api/ecard/wallet/vcard?slug=${cardData.slug}`);
+    }
+  };
+
   const handleShare = async () => {
     try {
       await Share.share({
@@ -435,7 +493,18 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
           const isCoverPhoto = photoSizeId === 'cover';
           const photoSize = PHOTO_SIZES[photoSizeId] || 110;
           const themeId = passedCardData?.theme || cardData?.theme || 'classic';
-          const isLightTheme = LIGHT_THEMES.includes(themeId);
+          // Use actual WCAG luminance calculation instead of just theme name matching
+          const hexToLuminance = (hex: string) => {
+            const c = hex.replace('#', '');
+            if (c.length < 6) return 0.5;
+            const r = parseInt(c.substring(0,2),16)/255;
+            const g = parseInt(c.substring(2,4),16)/255;
+            const b = parseInt(c.substring(4,6),16)/255;
+            const toL = (v: number) => v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);
+            return 0.2126*toL(r) + 0.7152*toL(g) + 0.0722*toL(b);
+          };
+          const avgLuminance = (hexToLuminance(gradientColors[0]) + hexToLuminance(gradientColors[1])) / 2;
+          const isLightTheme = avgLuminance > 0.35 || LIGHT_THEMES.includes(themeId);
           const textColor = isLightTheme ? '#1A1A1A' : '#fff';
           const subtitleColor = isLightTheme ? '#666' : 'rgba(255,255,255,0.8)';
           
@@ -488,7 +557,8 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                     <CrownBadge 
                       tapCount={reviewData.count || 0}
                       size="large"
-                      onPress={() => console.log('Show validation taps')}
+                      isLightBackground={isLightTheme}
+                      onPress={handleBadgePress}
                     />
                   </View>
                   
@@ -526,13 +596,65 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                     </View>
                   )}
                   
-                  {/* Tavvy Logo */}
-                  <View style={styles.tavvyBranding}>
-                    <Image 
-                      source={require('../../assets/brand/tavvy-wordmark-white.png')}
-                      style={styles.tavvyLogo}
-                      resizeMode="contain"
-                    />
+                  {/* ═══ CARD FOOTER (cover) ═══ */}
+                  <View style={styles.cardFooter}>
+
+                    {/* Row 1: Review Platforms — icon-only pills */}
+                    {(cardData.review_google_url || cardData.review_yelp_url || cardData.review_tripadvisor_url || cardData.review_facebook_url || cardData.review_bbb_url) && (
+                      <View style={styles.reviewIconsRow}>
+                        {cardData.review_google_url && (
+                          <TouchableOpacity style={[styles.reviewIconPill, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.15)' }]} onPress={() => Linking.openURL(cardData.review_google_url!)}>
+                            <Text style={{ fontSize: 20 }}>G</Text>
+                          </TouchableOpacity>
+                        )}
+                        {cardData.review_yelp_url && (
+                          <TouchableOpacity style={[styles.reviewIconPill, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.15)' }]} onPress={() => Linking.openURL(cardData.review_yelp_url!)}>
+                            <Text style={{ fontSize: 20, fontWeight: '900', color: '#D32323' }}>Y</Text>
+                          </TouchableOpacity>
+                        )}
+                        {cardData.review_tripadvisor_url && (
+                          <TouchableOpacity style={[styles.reviewIconPill, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.15)' }]} onPress={() => Linking.openURL(cardData.review_tripadvisor_url!)}>
+                            <Text style={{ fontSize: 20 }}>{"\ud83e\udd89"}</Text>
+                          </TouchableOpacity>
+                        )}
+                        {cardData.review_facebook_url && (
+                          <TouchableOpacity style={[styles.reviewIconPill, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.15)' }]} onPress={() => Linking.openURL(cardData.review_facebook_url!)}>
+                            <Ionicons name="logo-facebook" size={20} color="#1877F2" />
+                          </TouchableOpacity>
+                        )}
+                        {cardData.review_bbb_url && (
+                          <TouchableOpacity style={[styles.reviewIconPill, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.15)' }]} onPress={() => Linking.openURL(cardData.review_bbb_url!)}>
+                            <Text style={{ fontSize: 18 }}>{"\ud83c\udfdb\ufe0f"}</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Row 2: Action Icons — Save, Share, Apple Wallet, Google Wallet */}
+                    <View style={styles.actionIconsRow}>
+                      <TouchableOpacity style={[styles.actionIconBtn, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.15)' }]} onPress={handleSaveContact}>
+                        <Ionicons name="person-add-outline" size={24} color="#fff" />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.actionIconBtn, { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.15)' }]} onPress={handleShare}>
+                        <Ionicons name="paper-plane-outline" size={24} color="#fff" />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.walletIconBtn} onPress={() => Alert.alert('Apple Wallet', 'Apple Wallet pass will be generated.')}>
+                        <Image source={require('../../assets/brand/apple-wallet-icon.png')} style={styles.walletIconImg} resizeMode="cover" />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.walletIconBtn} onPress={() => Alert.alert('Google Wallet', 'Google Wallet pass will be generated.')}>
+                        <Image source={require('../../assets/brand/google-wallet-icon.png')} style={styles.walletIconImg} resizeMode="cover" />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Row 4: Tavvy Branding */}
+                    <View style={styles.tavvyBranding}>
+                      <Image 
+                        source={require('../../assets/brand/tavvy-wordmark-white.png')}
+                        style={styles.tavvyLogo}
+                        resizeMode="contain"
+                      />
+                      <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>Create your free digital card</Text>
+                    </View>
                   </View>
                 </LinearGradient>
               </View>
@@ -552,7 +674,8 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                 <CrownBadge 
                   tapCount={reviewData.count || 0}
                   size="large"
-                  onPress={() => console.log('Show validation taps')}
+                  isLightBackground={isLightTheme}
+                  onPress={handleBadgePress}
                 />
               </View>
 
@@ -666,16 +789,68 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                 </View>
               )}
 
-              {/* Tavvy Logo */}
-              <View style={styles.tavvyBranding}>
-                <Image 
-                  source={isLightTheme 
-                    ? require('../../assets/brand/tavvy-wordmark-dark.png')
-                    : require('../../assets/brand/tavvy-wordmark-white.png')
-                  }
-                  style={[styles.tavvyLogo, { opacity: isLightTheme ? 0.4 : 0.5 }]}
-                  resizeMode="contain"
-                />
+              {/* ═══ CARD FOOTER ═══ */}
+              <View style={styles.cardFooter}>
+
+                {/* Row 1: Review Platforms — icon-only pills */}
+                {(cardData.review_google_url || cardData.review_yelp_url || cardData.review_tripadvisor_url || cardData.review_facebook_url || cardData.review_bbb_url) && (
+                  <View style={styles.reviewIconsRow}>
+                    {cardData.review_google_url && (
+                      <TouchableOpacity style={[styles.reviewIconPill, { backgroundColor: isLightTheme ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)', borderColor: isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)' }]} onPress={() => Linking.openURL(cardData.review_google_url!)}>
+                        <Text style={{ fontSize: 20 }}>G</Text>
+                      </TouchableOpacity>
+                    )}
+                    {cardData.review_yelp_url && (
+                      <TouchableOpacity style={[styles.reviewIconPill, { backgroundColor: isLightTheme ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)', borderColor: isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)' }]} onPress={() => Linking.openURL(cardData.review_yelp_url!)}>
+                        <Text style={{ fontSize: 20, fontWeight: '900', color: '#D32323' }}>Y</Text>
+                      </TouchableOpacity>
+                    )}
+                    {cardData.review_tripadvisor_url && (
+                      <TouchableOpacity style={[styles.reviewIconPill, { backgroundColor: isLightTheme ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)', borderColor: isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)' }]} onPress={() => Linking.openURL(cardData.review_tripadvisor_url!)}>
+                        <Text style={{ fontSize: 20 }}>{"\ud83e\udd89"}</Text>
+                      </TouchableOpacity>
+                    )}
+                    {cardData.review_facebook_url && (
+                      <TouchableOpacity style={[styles.reviewIconPill, { backgroundColor: isLightTheme ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)', borderColor: isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)' }]} onPress={() => Linking.openURL(cardData.review_facebook_url!)}>
+                        <Ionicons name="logo-facebook" size={20} color="#1877F2" />
+                      </TouchableOpacity>
+                    )}
+                    {cardData.review_bbb_url && (
+                      <TouchableOpacity style={[styles.reviewIconPill, { backgroundColor: isLightTheme ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)', borderColor: isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)' }]} onPress={() => Linking.openURL(cardData.review_bbb_url!)}>
+                        <Text style={{ fontSize: 18 }}>{"\ud83c\udfdb\ufe0f"}</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+
+                {/* Row 2: Action Icons — Save, Share, Apple Wallet, Google Wallet */}
+                <View style={styles.actionIconsRow}>
+                  <TouchableOpacity style={[styles.actionIconBtn, { backgroundColor: isLightTheme ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)', borderColor: isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)' }]} onPress={handleSaveContact}>
+                    <Ionicons name="person-add-outline" size={24} color={isLightTheme ? '#1a1a2e' : '#fff'} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.actionIconBtn, { backgroundColor: isLightTheme ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)', borderColor: isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)' }]} onPress={handleShare}>
+                    <Ionicons name="paper-plane-outline" size={24} color={isLightTheme ? '#1a1a2e' : '#fff'} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.walletIconBtn} onPress={() => Alert.alert('Apple Wallet', 'Apple Wallet pass will be generated.')}>
+                    <Image source={require('../../assets/brand/apple-wallet-icon.png')} style={styles.walletIconImg} resizeMode="cover" />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.walletIconBtn} onPress={() => Alert.alert('Google Wallet', 'Google Wallet pass will be generated.')}>
+                    <Image source={require('../../assets/brand/google-wallet-icon.png')} style={styles.walletIconImg} resizeMode="cover" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Row 4: Tavvy Branding */}
+                <View style={styles.tavvyBranding}>
+                  <Image 
+                    source={isLightTheme 
+                      ? require('../../assets/brand/tavvy-wordmark-dark.png')
+                      : require('../../assets/brand/tavvy-wordmark-white.png')
+                    }
+                    style={[styles.tavvyLogo, { opacity: isLightTheme ? 0.4 : 0.5 }]}
+                    resizeMode="contain"
+                  />
+                  <Text style={{ fontSize: 12, color: isLightTheme ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.45)', marginTop: 4 }}>Create your free digital card</Text>
+                </View>
               </View>
             </LinearGradient>
           );
@@ -713,6 +888,79 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      {/* Endorsement Modal */}
+      <Modal
+        visible={showEndorsementModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEndorsementModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.endorseOverlay}
+          activeOpacity={1}
+          onPress={() => setShowEndorsementModal(false)}
+        >
+          <View style={styles.endorseSheet} onStartShouldSetResponder={() => true}>
+            {/* Header — Tavvy logo + Endorsements */}
+            <View style={styles.endorseHeader}>
+              <View style={styles.endorseHeaderLeft}>
+                <Image
+                  source={require('../../assets/brand/tavvy-logo-horizontal-light.png')}
+                  style={styles.endorseLogo}
+                  resizeMode="contain"
+                />
+                <Text style={styles.endorseTitle}>Endorsements</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.endorseCloseBtn}
+                onPress={() => setShowEndorsementModal(false)}
+              >
+                <Ionicons name="close" size={18} color="#333" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.endorseSubtitle}>
+              {endorsementCount} total endorsements
+            </Text>
+
+            {/* Endorsement Tags */}
+            {loadingEndorsements ? (
+              <View style={styles.endorseLoading}>
+                <ActivityIndicator size="small" color="#3B9FD9" />
+              </View>
+            ) : endorsementTags.length > 0 ? (
+              <View style={styles.endorseTagList}>
+                {endorsementTags.map((tag, i) => (
+                  <View key={i} style={styles.endorseTagRow}>
+                    <View style={styles.endorseTagLeft}>
+                      <Text style={styles.endorseTagEmoji}>{tag.emoji}</Text>
+                      <Text style={styles.endorseTagLabel}>{tag.label}</Text>
+                    </View>
+                    <Text style={styles.endorseTagCount}>\u00D7{tag.count}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.endorseEmpty}>
+                <Text style={styles.endorseEmptyText}>No endorsements yet. Be the first!</Text>
+              </View>
+            )}
+
+            {/* Endorse Button */}
+            <TouchableOpacity
+              style={styles.endorseBtn}
+              onPress={() => {
+                setShowEndorsementModal(false);
+                // TODO: Navigate to endorse flow
+              }}
+            >
+              <Text style={styles.endorseBtnText}>
+                Endorse {cardData?.full_name?.split(' ')[0] || ''} \u2192
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -899,10 +1147,76 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.5)',
   },
+  actionIconsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    width: '100%',
+    paddingVertical: 4,
+  },
+  actionIconBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  walletIconBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  walletIconImg: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+  },
+  cardFooter: {
+    width: '100%',
+    marginTop: 20,
+    alignItems: 'center',
+    gap: 12,
+  },
+  reviewIconsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  reviewIconPill: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  footerActionRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 8,
+  },
+  footerActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  footerActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   tavvyBranding: {
     alignItems: 'center',
-    marginTop: 24,
-    paddingTop: 16,
+    marginTop: 8,
+    paddingTop: 8,
     width: '100%',
   },
   tavvyLogo: {
@@ -1028,5 +1342,106 @@ const styles = StyleSheet.create({
   },
   linkIconContainerLight: {
     backgroundColor: 'rgba(0,0,0,0.08)',
+  },
+  // Endorsement Modal styles
+  endorseOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  endorseSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 36,
+    maxHeight: '80%',
+  },
+  endorseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  endorseHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  endorseLogo: {
+    height: 28,
+    width: 90,
+  },
+  endorseTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#2d3a4a',
+    letterSpacing: -0.3,
+  },
+  endorseCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  endorseSubtitle: {
+    fontSize: 13,
+    color: '#888',
+    marginBottom: 16,
+  },
+  endorseLoading: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  endorseTagList: {
+    marginBottom: 24,
+  },
+  endorseTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  endorseTagLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  endorseTagEmoji: {
+    fontSize: 22,
+  },
+  endorseTagLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1a1a2e',
+  },
+  endorseTagCount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#3B9FD9',
+  },
+  endorseEmpty: {
+    paddingVertical: 30,
+    alignItems: 'center',
+  },
+  endorseEmptyText: {
+    fontSize: 15,
+    color: '#aaa',
+  },
+  endorseBtn: {
+    backgroundColor: '#3B9FD9',
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  endorseBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

@@ -769,6 +769,52 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     }
   };
 
+  // Reset card — clears all content fields
+  const handleResetCard = () => {
+    Alert.alert(
+      'Reset Card',
+      'Are you sure you want to reset this card? This will clear all content (name, title, bio, photo, banner, links, gallery, videos). This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            // Clear content fields
+            setFullName('');
+            setTitleRole('');
+            setBio('');
+            setEmailField('');
+            setPhoneField('');
+            setWebsiteField('');
+            setLocationField('');
+            // Clear media
+            setProfilePhotoUrl(null);
+            setBannerImageUrl(null);
+            setBannerImageFile(null);
+            setGalleryImages([]);
+            setVideos([]);
+            setYoutubeVideoUrl('');
+            // Clear links & socials
+            setLinks([]);
+            setFeaturedSocials([]);
+            // Reset toggles to defaults
+            setShowContactInfo(true);
+            setShowSocialIcons(true);
+            // Clear review URLs
+            setReviewGoogleUrl('');
+            setReviewYelpUrl('');
+            setReviewTripadvisorUrl('');
+            setReviewFacebookUrl('');
+            setReviewBbbUrl('');
+            // Clear industry icons
+            setIndustryIcons([]);
+          },
+        },
+      ],
+    );
+  };
+
   // Upload image to Supabase Storage
   const uploadImage = async (uri: string, path: string): Promise<string | null> => {
     try {
@@ -1289,10 +1335,30 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const renderCrownBadge = () => {
     const reviewCount = cardData?.review_count || 0;
     if (reviewCount === 0) return null;
+    // Detect if the badge area is light or dark using gradient colors
+    const badgeBgIsLight = (() => {
+      const hexToLum = (hex: string) => {
+        const clean = hex.replace('#', '');
+        if (clean.length < 6) return 0;
+        const r = parseInt(clean.substring(0, 2), 16) / 255;
+        const g = parseInt(clean.substring(2, 4), 16) / 255;
+        const b = parseInt(clean.substring(4, 6), 16) / 255;
+        const toLinear = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+      };
+      const lum1 = hexToLum(gradientColors?.[0] || '#000000');
+      const lum2 = hexToLum(gradientColors?.[1] || '#000000');
+      return (lum1 + lum2) / 2 > 0.35;
+    })();
+    // Light bg → white frosted pill with dark text; Dark bg → dark frosted pill with white text
     return (
-      <View style={s.crownBadge}>
-        <Text style={s.crownIcon}>👍</Text>
-        <Text style={s.crownText}>x{reviewCount}</Text>
+      <View style={[
+        s.crownBadge,
+        badgeBgIsLight ? s.crownBadgeLight : s.crownBadgeDark,
+      ]}>
+        <Text style={[s.crownIcon, { color: badgeBgIsLight ? '#d97706' : '#facc15' }]}>★</Text>
+        <Text style={[s.crownText, { color: badgeBgIsLight ? '#1a1a1a' : '#ffffff', textShadowColor: badgeBgIsLight ? 'transparent' : 'rgba(0,0,0,0.3)' }]}>{reviewCount}</Text>
+        <Text style={[s.crownChevron, { color: badgeBgIsLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.6)' }]}>˅</Text>
       </View>
     );
   };
@@ -1303,37 +1369,47 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     const currentTemplate = getTemplateById(selectedTemplateId);
     const templateLayout = currentTemplate?.layout || 'basic';
     // Build a ColorScheme object from the current gradientColors
+    // ALWAYS compute luminance to validate text readability
+    const hexToLum = (hex: string) => {
+      const c = hex.replace('#', '');
+      const r = parseInt(c.substring(0, 2), 16) / 255;
+      const g = parseInt(c.substring(2, 4), 16) / 255;
+      const b = parseInt(c.substring(4, 6), 16) / 255;
+      const toL = (v: number) => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      return 0.2126 * toL(r) + 0.7152 * toL(g) + 0.0722 * toL(b);
+    };
+    const avgBgLum = (hexToLum(gradientColors[0]) + hexToLum(gradientColors[1])) / 2;
+    const bgIsActuallyLight = avgBgLum > 0.35;
+
     const colorScheme = (() => {
       if (currentTemplate) {
-        // Try to find the matching color scheme from the template
         const match = currentTemplate.colorSchemes.find(cs => cs.primary === gradientColors[0] && cs.secondary === gradientColors[1]);
-        if (match) return match;
+        if (match) {
+          // Validate the scheme's text color against actual background
+          const schemeTextLum = hexToLum(match.text?.replace(/[^#0-9a-fA-F]/g, '') || '#FFFFFF');
+          const textIsLight = schemeTextLum > 0.5;
+          // If both bg and text are light, or both are dark, override text color
+          if (bgIsActuallyLight && textIsLight) {
+            return { ...match, text: '#1A1A1A', textSecondary: 'rgba(0,0,0,0.55)' };
+          }
+          if (!bgIsActuallyLight && !textIsLight) {
+            return { ...match, text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.7)' };
+          }
+          return match;
+        }
       }
-      // Fallback: construct a color scheme from the gradient colors
-      const avgLum = (() => {
-        const hexToLum = (hex: string) => {
-          const c = hex.replace('#', '');
-          const r = parseInt(c.substring(0, 2), 16) / 255;
-          const g = parseInt(c.substring(2, 4), 16) / 255;
-          const b = parseInt(c.substring(4, 6), 16) / 255;
-          const toL = (v: number) => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-          return 0.2126 * toL(r) + 0.7152 * toL(g) + 0.0722 * toL(b);
-        };
-        return (hexToLum(gradientColors[0]) + hexToLum(gradientColors[1])) / 2;
-      })();
-      const isLight = avgLum > 0.45;
       return {
         id: 'custom', name: 'Custom',
         primary: gradientColors[0], secondary: gradientColors[1],
-        accent: isLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)',
-        text: isLight ? '#1A1A1A' : '#FFFFFF',
-        textSecondary: isLight ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.7)',
-        background: gradientColors[0], cardBg: isLight ? '#fff' : gradientColors[0],
+        accent: bgIsActuallyLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)',
+        text: bgIsActuallyLight ? '#1A1A1A' : '#FFFFFF',
+        textSecondary: bgIsActuallyLight ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.7)',
+        background: gradientColors[0], cardBg: bgIsActuallyLight ? '#fff' : gradientColors[0],
       };
     })();
     const textColor = colorScheme.text;
     const textSec = colorScheme.textSecondary;
-    const isLight = textColor === '#1A1A1A';
+    const isLight = bgIsActuallyLight;
 
     return (
       <View style={[s.previewContainer, { backgroundColor: colors.surface }]}>
@@ -2638,12 +2714,17 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[s.headerTitle, { color: colors.text }]}>My Card</Text>
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('ECardPreview', { cardData, gradientColors, links, featuredSocials })}
-          style={s.previewButton}
-        >
-          <Ionicons name="eye-outline" size={24} color={colors.text} />
-        </TouchableOpacity>
+        <View style={s.headerRight}>
+          <TouchableOpacity onPress={handleResetCard} style={s.headerActionBtn}>
+            <Ionicons name="refresh-outline" size={22} color={colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('ECardPreview', { cardData, gradientColors, links, featuredSocials })}
+            style={s.headerActionBtn}
+          >
+            <Ionicons name="eye-outline" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Live Card Preview */}
@@ -2755,6 +2836,8 @@ const s = StyleSheet.create({
   backButton: { padding: 4 },
   headerTitle: { fontSize: 18, fontWeight: '600' },
   previewButton: { padding: 4 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerActionBtn: { padding: 4 },
   
   // Live Preview
   previewContainer: { paddingHorizontal: 24, paddingVertical: 16, alignItems: 'center' },
@@ -2777,9 +2860,12 @@ const s = StyleSheet.create({
   previewLinkIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   previewMoreLinks: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   previewMoreText: { fontSize: 11, fontWeight: '600' },
-  crownBadge: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,215,0,0.9)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, gap: 4 },
-  crownIcon: { fontSize: 18 },
-  crownText: { fontSize: 12, fontWeight: '700', color: '#1A1A1A' },
+  crownBadge: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, gap: 4 },
+  crownBadgeLight: { backgroundColor: 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4 },
+  crownBadgeDark: { backgroundColor: 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 6 },
+  crownIcon: { fontSize: 15 },
+  crownText: { fontSize: 13, fontWeight: '700', letterSpacing: 0.3 },
+  crownChevron: { fontSize: 10, marginLeft: 1 },
   premiumIndicator: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4 },
   premiumIndicatorText: { fontSize: 12, color: '#F59E0B', fontWeight: '500' },
   

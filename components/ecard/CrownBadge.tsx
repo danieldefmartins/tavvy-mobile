@@ -6,69 +6,59 @@ import {
   TouchableOpacity,
   Animated,
   Easing,
+  Platform,
 } from 'react-native';
-import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 interface CrownBadgeProps {
   tapCount: number;
   onPress?: () => void;
   size?: 'small' | 'medium' | 'large';
   showAnimation?: boolean;
+  /** true = badge sits on a light area → use white pill with dark text
+   *  false = badge sits on a dark area → use dark frosted pill with white text */
+  isLightBackground?: boolean;
 }
 
 /**
  * EndorsementBadge Component (formerly CrownBadge)
  * 
- * Displays a thumbs-up badge with the number of endorsements an eCard has received.
- * The thumbs-up icon clearly communicates social proof and approval.
+ * Displays a frosted glass pill badge with star icon, endorsement count,
+ * and a subtle dropdown chevron to indicate it's tappable.
  * 
- * Format: 👍 x12
+ * Format: ★ 12 ˅
  * 
- * Features:
- * - Gold pulsing glow animation
- * - Tappable to show endorsement details
- * - Three sizes: small, medium, large
+ * Contrast-adaptive:
+ * - Light background → white frosted pill, dark text, amber star
+ * - Dark background → dark frosted pill, white text, gold star
+ * 
+ * The caller is responsible for determining whether the background behind
+ * the badge is light or dark (e.g. by sampling the profile photo pixels
+ * or checking gradient colors).
  */
 export default function CrownBadge({ 
   tapCount, 
   onPress, 
   size = 'medium',
-  showAnimation = true 
+  showAnimation = true,
+  isLightBackground = false,
 }: CrownBadgeProps) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0.3)).current;
 
-  // Pulse animation
+  // Subtle pulse animation
   useEffect(() => {
     if (!showAnimation || tapCount === 0) return;
 
     const pulseAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.1,
-          duration: 1000,
+          toValue: 1.05,
+          duration: 1500,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    const glowAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, {
-          toValue: 0.8,
-          duration: 1500,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowAnim, {
-          toValue: 0.3,
           duration: 1500,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
@@ -77,33 +67,43 @@ export default function CrownBadge({
     );
 
     pulseAnimation.start();
-    glowAnimation.start();
 
     return () => {
       pulseAnimation.stop();
-      glowAnimation.stop();
     };
   }, [showAnimation, tapCount]);
 
   // Size configurations
   const sizeConfig = {
     small: {
-      container: { paddingHorizontal: 8, paddingVertical: 4 },
-      icon: 20,
-      text: 12,
-      glow: 20,
+      paddingH: 10,
+      paddingV: 5,
+      starSize: 15,
+      textSize: 13,
+      chevronW: 8,
+      chevronH: 5,
+      gap: 4,
+      borderRadius: 16,
     },
     medium: {
-      container: { paddingHorizontal: 12, paddingVertical: 6 },
-      icon: 26,
-      text: 14,
-      glow: 28,
+      paddingH: 14,
+      paddingV: 8,
+      starSize: 20,
+      textSize: 17,
+      chevronW: 10,
+      chevronH: 6,
+      gap: 6,
+      borderRadius: 24,
     },
     large: {
-      container: { paddingHorizontal: 16, paddingVertical: 8 },
-      icon: 32,
-      text: 18,
-      glow: 36,
+      paddingH: 16,
+      paddingV: 9,
+      starSize: 22,
+      textSize: 19,
+      chevronW: 10,
+      chevronH: 6,
+      gap: 7,
+      borderRadius: 26,
     },
   };
 
@@ -124,49 +124,58 @@ export default function CrownBadge({
     return null; // Don't show badge if no endorsements
   }
 
+  // Contrast-adaptive colors
+  const starColor = isLightBackground ? '#d97706' : '#facc15';
+  const textColor = isLightBackground ? '#1a1a1a' : '#ffffff';
+  const chevronColor = isLightBackground ? '#333333' : '#ffffff';
+
   const BadgeContent = (
     <Animated.View
       style={[
-        styles.container,
-        config.container,
-        { transform: [{ scale: pulseAnim }] },
+        isLightBackground ? styles.containerLight : styles.containerDark,
+        {
+          paddingHorizontal: config.paddingH,
+          paddingVertical: config.paddingV,
+          borderRadius: config.borderRadius,
+          gap: config.gap,
+          transform: [{ scale: pulseAnim }],
+        },
       ]}
     >
-      {/* Gold glow effect */}
-      <Animated.View
-        style={[
-          styles.glow,
-          {
-            width: config.glow,
-            height: config.glow,
-            opacity: glowAnim,
-          },
-        ]}
-      />
+      {/* Star icon */}
+      <Text style={{ fontSize: config.starSize, color: starColor, lineHeight: config.starSize * 1.2 }}>★</Text>
       
-      {/* Thumbs-up icon */}
-      <Svg width={config.icon} height={config.icon} viewBox="0 0 24 24" fill="none">
-        <Defs>
-          <LinearGradient id="thumbGoldMobile" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor="#FFE066" />
-            <Stop offset="50%" stopColor="#FFD700" />
-            <Stop offset="100%" stopColor="#FFA500" />
-          </LinearGradient>
-        </Defs>
+      {/* Endorsement count */}
+      <Text style={{
+        fontSize: config.textSize,
+        fontWeight: '700',
+        color: textColor,
+        letterSpacing: 0.3,
+        ...(isLightBackground ? {} : {
+          textShadowColor: 'rgba(0,0,0,0.3)',
+          textShadowOffset: { width: 0, height: 1 },
+          textShadowRadius: 2,
+        }),
+      }}>
+        {formatTapCount(tapCount)}
+      </Text>
+
+      {/* Subtle dropdown chevron */}
+      <Svg 
+        width={config.chevronW} 
+        height={config.chevronH} 
+        viewBox="0 0 10 6" 
+        fill="none"
+        style={{ opacity: 0.6 }}
+      >
         <Path
-          d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3m7-2V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"
-          fill="url(#thumbGoldMobile)"
-          stroke="#FFA500"
-          strokeWidth={1}
+          d="M1 1L5 5L9 1"
+          stroke={chevronColor}
+          strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
       </Svg>
-      
-      {/* Endorsement count */}
-      <Text style={[styles.tapCount, { fontSize: config.text }]}>
-        x{formatTapCount(tapCount)}
-      </Text>
     </Animated.View>
   );
 
@@ -182,30 +191,44 @@ export default function CrownBadge({
 }
 
 const styles = StyleSheet.create({
-  container: {
+  // Light background → white frosted pill with dark text
+  containerLight: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 215, 0, 0.15)',
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.4)',
-    gap: 4,
-    position: 'relative',
-    overflow: 'visible',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+    overflow: 'hidden',
   },
-  glow: {
-    position: 'absolute',
-    left: -4,
-    top: '50%',
-    marginTop: -14,
-    borderRadius: 20,
-    backgroundColor: '#FFD700',
-  },
-  tapCount: {
-    color: '#FFD700',
-    fontWeight: '700',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+  // Dark background → dark frosted pill with white text
+  containerDark: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+    overflow: 'hidden',
   },
 });
