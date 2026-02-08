@@ -1335,12 +1335,30 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const renderCrownBadge = () => {
     const reviewCount = cardData?.review_count || 0;
     if (reviewCount === 0) return null;
-    // Universal dark pill — always visible on ANY background (photos, gradients, etc.)
+    // Detect if the badge area is light or dark using gradient colors
+    const badgeBgIsLight = (() => {
+      const hexToLum = (hex: string) => {
+        const clean = hex.replace('#', '');
+        if (clean.length < 6) return 0;
+        const r = parseInt(clean.substring(0, 2), 16) / 255;
+        const g = parseInt(clean.substring(2, 4), 16) / 255;
+        const b = parseInt(clean.substring(4, 6), 16) / 255;
+        const toLinear = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+      };
+      const lum1 = hexToLum(gradientColors?.[0] || '#000000');
+      const lum2 = hexToLum(gradientColors?.[1] || '#000000');
+      return (lum1 + lum2) / 2 > 0.35;
+    })();
+    // Light bg → white frosted pill with dark text; Dark bg → dark frosted pill with white text
     return (
-      <View style={s.crownBadge}>
-        <Text style={s.crownIcon}>★</Text>
-        <Text style={s.crownText}>{reviewCount}</Text>
-        <Text style={s.crownChevron}>˅</Text>
+      <View style={[
+        s.crownBadge,
+        badgeBgIsLight ? s.crownBadgeLight : s.crownBadgeDark,
+      ]}>
+        <Text style={[s.crownIcon, { color: badgeBgIsLight ? '#d97706' : '#facc15' }]}>★</Text>
+        <Text style={[s.crownText, { color: badgeBgIsLight ? '#1a1a1a' : '#ffffff', textShadowColor: badgeBgIsLight ? 'transparent' : 'rgba(0,0,0,0.3)' }]}>{reviewCount}</Text>
+        <Text style={[s.crownChevron, { color: badgeBgIsLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.6)' }]}>˅</Text>
       </View>
     );
   };
@@ -2842,10 +2860,12 @@ const s = StyleSheet.create({
   previewLinkIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   previewMoreLinks: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   previewMoreText: { fontSize: 11, fontWeight: '600' },
-  crownBadge: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a2e', borderWidth: 2, borderColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 18, gap: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8 },
-  crownIcon: { fontSize: 16, color: '#facc15' },
-  crownText: { fontSize: 14, fontWeight: '800', color: '#ffffff', letterSpacing: 0.5 },
-  crownChevron: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginLeft: 1 },
+  crownBadge: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, gap: 4 },
+  crownBadgeLight: { backgroundColor: 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4 },
+  crownBadgeDark: { backgroundColor: 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 6 },
+  crownIcon: { fontSize: 15 },
+  crownText: { fontSize: 13, fontWeight: '700', letterSpacing: 0.3 },
+  crownChevron: { fontSize: 10, marginLeft: 1 },
   premiumIndicator: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4 },
   premiumIndicatorText: { fontSize: 12, color: '#F59E0B', fontWeight: '500' },
   

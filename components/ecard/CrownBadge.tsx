@@ -15,27 +15,33 @@ interface CrownBadgeProps {
   onPress?: () => void;
   size?: 'small' | 'medium' | 'large';
   showAnimation?: boolean;
-  /** @deprecated No longer used — badge always uses universal dark pill style */
+  /** true = badge sits on a light area → use white pill with dark text
+   *  false = badge sits on a dark area → use dark frosted pill with white text */
   isLightBackground?: boolean;
 }
 
 /**
  * EndorsementBadge Component (formerly CrownBadge)
  * 
- * Displays a solid dark pill badge with gold star icon, white endorsement count,
+ * Displays a frosted glass pill badge with star icon, endorsement count,
  * and a subtle dropdown chevron to indicate it's tappable.
  * 
  * Format: ★ 12 ˅
  * 
- * The badge ALWAYS uses a dark opaque background (#1a1a2e) so it is clearly
- * visible on ANY card background — photos, light gradients, dark gradients,
- * white, black, or anything in between. No conditional light/dark logic.
+ * Contrast-adaptive:
+ * - Light background → white frosted pill, dark text, amber star
+ * - Dark background → dark frosted pill, white text, gold star
+ * 
+ * The caller is responsible for determining whether the background behind
+ * the badge is light or dark (e.g. by sampling the profile photo pixels
+ * or checking gradient colors).
  */
 export default function CrownBadge({ 
   tapCount, 
   onPress, 
   size = 'medium',
   showAnimation = true,
+  isLightBackground = false,
 }: CrownBadgeProps) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -67,37 +73,37 @@ export default function CrownBadge({
     };
   }, [showAnimation, tapCount]);
 
-  // Size configurations — bigger than before for visibility
+  // Size configurations
   const sizeConfig = {
     small: {
-      paddingH: 12,
-      paddingV: 6,
-      starSize: 16,
-      textSize: 14,
+      paddingH: 10,
+      paddingV: 5,
+      starSize: 15,
+      textSize: 13,
       chevronW: 8,
       chevronH: 5,
-      gap: 5,
-      borderRadius: 18,
+      gap: 4,
+      borderRadius: 16,
     },
     medium: {
-      paddingH: 18,
-      paddingV: 10,
-      starSize: 22,
-      textSize: 18,
+      paddingH: 14,
+      paddingV: 8,
+      starSize: 20,
+      textSize: 17,
       chevronW: 10,
       chevronH: 6,
-      gap: 8,
-      borderRadius: 26,
+      gap: 6,
+      borderRadius: 24,
     },
     large: {
-      paddingH: 22,
-      paddingV: 12,
-      starSize: 26,
-      textSize: 22,
-      chevronW: 12,
-      chevronH: 7,
-      gap: 10,
-      borderRadius: 30,
+      paddingH: 16,
+      paddingV: 9,
+      starSize: 22,
+      textSize: 19,
+      chevronW: 10,
+      chevronH: 6,
+      gap: 7,
+      borderRadius: 26,
     },
   };
 
@@ -118,10 +124,15 @@ export default function CrownBadge({
     return null; // Don't show badge if no endorsements
   }
 
+  // Contrast-adaptive colors
+  const starColor = isLightBackground ? '#d97706' : '#facc15';
+  const textColor = isLightBackground ? '#1a1a1a' : '#ffffff';
+  const chevronColor = isLightBackground ? '#333333' : '#ffffff';
+
   const BadgeContent = (
     <Animated.View
       style={[
-        styles.container,
+        isLightBackground ? styles.containerLight : styles.containerDark,
         {
           paddingHorizontal: config.paddingH,
           paddingVertical: config.paddingV,
@@ -131,11 +142,21 @@ export default function CrownBadge({
         },
       ]}
     >
-      {/* Gold star icon */}
-      <Text style={[styles.star, { fontSize: config.starSize }]}>★</Text>
+      {/* Star icon */}
+      <Text style={{ fontSize: config.starSize, color: starColor, lineHeight: config.starSize * 1.2 }}>★</Text>
       
-      {/* White endorsement count */}
-      <Text style={[styles.count, { fontSize: config.textSize }]}>
+      {/* Endorsement count */}
+      <Text style={{
+        fontSize: config.textSize,
+        fontWeight: '700',
+        color: textColor,
+        letterSpacing: 0.3,
+        ...(isLightBackground ? {} : {
+          textShadowColor: 'rgba(0,0,0,0.3)',
+          textShadowOffset: { width: 0, height: 1 },
+          textShadowRadius: 2,
+        }),
+      }}>
         {formatTapCount(tapCount)}
       </Text>
 
@@ -145,12 +166,12 @@ export default function CrownBadge({
         height={config.chevronH} 
         viewBox="0 0 10 6" 
         fill="none"
-        style={{ opacity: 0.7 }}
+        style={{ opacity: 0.6 }}
       >
         <Path
           d="M1 1L5 5L9 1"
-          stroke="#ffffff"
-          strokeWidth={2}
+          stroke={chevronColor}
+          strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
@@ -170,33 +191,44 @@ export default function CrownBadge({
 }
 
 const styles = StyleSheet.create({
-  container: {
+  // Light background → white frosted pill with dark text
+  containerLight: {
     flexDirection: 'row',
     alignItems: 'center',
-    // Universal dark opaque pill — visible on ANY background
-    backgroundColor: '#1a1a2e',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 8,
+        elevation: 4,
       },
     }),
     overflow: 'hidden',
   },
-  star: {
-    color: '#facc15',
-    lineHeight: undefined,
-  },
-  count: {
-    color: '#ffffff',
-    fontWeight: '800',
-    letterSpacing: 0.5,
+  // Dark background → dark frosted pill with white text
+  containerDark: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+    overflow: 'hidden',
   },
 });

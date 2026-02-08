@@ -499,7 +499,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                     <CrownBadge 
                       tapCount={reviewData.count || 0}
                       size="large"
-                      // isLightBackground removed — badge always uses universal dark pill
+                      isLightBackground={isLightTheme}
                       onPress={() => console.log('Show validation taps')}
                     />
                   </View>
@@ -564,7 +564,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                 <CrownBadge 
                   tapCount={reviewData.count || 0}
                   size="large"
-                  // isLightBackground removed — badge always uses universal dark pill
+                  isLightBackground={isLightTheme}
                   onPress={() => console.log('Show validation taps')}
                 />
               </View>
