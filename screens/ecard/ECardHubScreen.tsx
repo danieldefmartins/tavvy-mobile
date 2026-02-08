@@ -57,6 +57,7 @@ export default function ECardHubScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [deleteModalCard, setDeleteModalCard] = useState<CardData | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [duplicating, setDuplicating] = useState<string | null>(null);
 
   const fetchCards = async () => {
     if (!user) {
@@ -232,15 +233,72 @@ export default function ECardHubScreen() {
           </View>
         </LinearGradient>
 
-        {/* Action Row: Edit + Delete */}
+        {/* Action Row: Edit + Duplicate + Delete */}
         <View style={[styles.cardActions, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
           <Text style={[styles.editText, { color: isDark ? '#94A3B8' : '#666' }]}>Edit Card</Text>
           <View style={styles.cardActionsRight}>
             <TouchableOpacity
+              style={styles.duplicateBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              disabled={duplicating === card.id}
+              onPress={async () => {
+                if (!user || duplicating) return;
+                setDuplicating(card.id);
+                try {
+                  // Fetch full card data
+                  const { data: fullCard } = await supabase.from('digital_cards').select('*').eq('id', card.id).single();
+                  if (!fullCard) { Alert.alert('Error', 'Could not load card data.'); return; }
+                  // Fetch links
+                  const { data: links } = await supabase.from('digital_card_links').select('*').eq('card_id', card.id).eq('is_active', true).order('sort_order', { ascending: true });
+                  // Build new card
+                  const suffix = Math.random().toString(36).substring(2, 6);
+                  const { id, created_at, updated_at, slug, view_count, tap_count, review_count, review_rating, ...rest } = fullCard;
+                  const newSlug = (slug || 'card') + '-copy-' + suffix;
+                  const { data: newCard, error } = await supabase.from('digital_cards').insert({
+                    ...rest,
+                    user_id: user.id,
+                    slug: newSlug,
+                    full_name: (fullCard.full_name || 'Card') + ' (Copy)',
+                    is_published: false,
+                    view_count: 0,
+                    tap_count: 0,
+                    review_count: 0,
+                    review_rating: 0,
+                  }).select().single();
+                  if (error || !newCard) { Alert.alert('Error', 'Failed to duplicate card.'); return; }
+                  // Copy links
+                  if (links && links.length > 0) {
+                    const newLinks = links.map((l: any, i: number) => ({
+                      card_id: newCard.id,
+                      platform: l.platform,
+                      title: l.title || l.platform,
+                      url: l.url || l.value,
+                      icon: l.icon || l.platform,
+                      sort_order: i,
+                      is_active: true,
+                    }));
+                    await supabase.from('digital_card_links').insert(newLinks);
+                  }
+                  // Navigate to the new card
+                  navigation.navigate('ECardDashboard', { cardId: newCard.id });
+                } catch (err) {
+                  console.error('Duplicate error:', err);
+                  Alert.alert('Error', 'Failed to duplicate card.');
+                } finally {
+                  setDuplicating(null);
+                }
+              }}
+            >
+              {duplicating === card.id ? (
+                <ActivityIndicator size="small" color={isDark ? '#94A3B8' : '#666'} />
+              ) : (
+                <Ionicons name="copy-outline" size={16} color={isDark ? '#94A3B8' : '#666'} />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
               style={styles.deleteBtn}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              onPress={(e) => {
-                // Prevent the parent onPress from firing
+              onPress={() => {
                 setDeleteModalCard(card);
               }}
             >
@@ -606,6 +664,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   deleteBtn: {
+    padding: 4,
+  },
+  duplicateBtn: {
     padding: 4,
   },
   editText: {

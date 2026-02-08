@@ -1304,37 +1304,47 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     const currentTemplate = getTemplateById(selectedTemplateId);
     const templateLayout = currentTemplate?.layout || 'basic';
     // Build a ColorScheme object from the current gradientColors
+    // ALWAYS compute luminance to validate text readability
+    const hexToLum = (hex: string) => {
+      const c = hex.replace('#', '');
+      const r = parseInt(c.substring(0, 2), 16) / 255;
+      const g = parseInt(c.substring(2, 4), 16) / 255;
+      const b = parseInt(c.substring(4, 6), 16) / 255;
+      const toL = (v: number) => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      return 0.2126 * toL(r) + 0.7152 * toL(g) + 0.0722 * toL(b);
+    };
+    const avgBgLum = (hexToLum(gradientColors[0]) + hexToLum(gradientColors[1])) / 2;
+    const bgIsActuallyLight = avgBgLum > 0.35;
+
     const colorScheme = (() => {
       if (currentTemplate) {
-        // Try to find the matching color scheme from the template
         const match = currentTemplate.colorSchemes.find(cs => cs.primary === gradientColors[0] && cs.secondary === gradientColors[1]);
-        if (match) return match;
+        if (match) {
+          // Validate the scheme's text color against actual background
+          const schemeTextLum = hexToLum(match.text?.replace(/[^#0-9a-fA-F]/g, '') || '#FFFFFF');
+          const textIsLight = schemeTextLum > 0.5;
+          // If both bg and text are light, or both are dark, override text color
+          if (bgIsActuallyLight && textIsLight) {
+            return { ...match, text: '#1A1A1A', textSecondary: 'rgba(0,0,0,0.55)' };
+          }
+          if (!bgIsActuallyLight && !textIsLight) {
+            return { ...match, text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.7)' };
+          }
+          return match;
+        }
       }
-      // Fallback: construct a color scheme from the gradient colors
-      const avgLum = (() => {
-        const hexToLum = (hex: string) => {
-          const c = hex.replace('#', '');
-          const r = parseInt(c.substring(0, 2), 16) / 255;
-          const g = parseInt(c.substring(2, 4), 16) / 255;
-          const b = parseInt(c.substring(4, 6), 16) / 255;
-          const toL = (v: number) => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-          return 0.2126 * toL(r) + 0.7152 * toL(g) + 0.0722 * toL(b);
-        };
-        return (hexToLum(gradientColors[0]) + hexToLum(gradientColors[1])) / 2;
-      })();
-      const isLight = avgLum > 0.45;
       return {
         id: 'custom', name: 'Custom',
         primary: gradientColors[0], secondary: gradientColors[1],
-        accent: isLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)',
-        text: isLight ? '#1A1A1A' : '#FFFFFF',
-        textSecondary: isLight ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.7)',
-        background: gradientColors[0], cardBg: isLight ? '#fff' : gradientColors[0],
+        accent: bgIsActuallyLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)',
+        text: bgIsActuallyLight ? '#1A1A1A' : '#FFFFFF',
+        textSecondary: bgIsActuallyLight ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.7)',
+        background: gradientColors[0], cardBg: bgIsActuallyLight ? '#fff' : gradientColors[0],
       };
     })();
     const textColor = colorScheme.text;
     const textSec = colorScheme.textSecondary;
-    const isLight = textColor === '#1A1A1A';
+    const isLight = bgIsActuallyLight;
 
     return (
       <View style={[s.previewContainer, { backgroundColor: colors.surface }]}>

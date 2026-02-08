@@ -61,8 +61,9 @@ function getContrastTextColor(bgColor1: string, bgColor2: string): { text: strin
   const l1 = hexToLuminance(bgColor1.startsWith('#') ? bgColor1 : '#667eea');
   const l2 = hexToLuminance(bgColor2.startsWith('#') ? bgColor2 : '#764ba2');
   const avgLum = (l1 + l2) / 2;
-  // If background is light (luminance > 0.45), use dark text; otherwise white
-  if (avgLum > 0.45) {
+  // If background is light (luminance > 0.35), use dark text; otherwise white
+  // Lowered from 0.45 to 0.35 to catch more light backgrounds and prevent unreadable text
+  if (avgLum > 0.35) {
     return { text: '#1A1A1A', secondary: 'rgba(0,0,0,0.55)' };
   }
   return { text: '#FFFFFF', secondary: 'rgba(255,255,255,0.7)' };
