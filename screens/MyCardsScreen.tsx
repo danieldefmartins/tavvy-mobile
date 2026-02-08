@@ -57,6 +57,7 @@ export default function MyCardsScreen() {
   const { user, isPro, maxCards, refreshProfile } = useAuth();
   const [cards, setCards] = useState<DigitalCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [duplicating, setDuplicating] = useState<string | null>(null);
 
   const fetchCards = useCallback(async () => {
     if (!user) {
@@ -165,6 +166,157 @@ export default function MyCardsScreen() {
     navigation.navigate('CardSettings', { cardId: card.id, card });
   };
 
+  const handleDuplicateCard = async (card: DigitalCard) => {
+    if (!user || duplicating) return;
+
+    // Check card limit before duplicating
+    if (cards.length >= maxCards) {
+      if (!isPro) {
+        Alert.alert(
+          'Upgrade to Pro',
+          'Free users can only have 1 card. Upgrade to Pro to create up to 5 cards!',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Upgrade', onPress: () => navigation.navigate('ECardPremiumUpsell', { reason: 'card_limit' }) },
+          ]
+        );
+      } else {
+        Alert.alert('Card Limit Reached', `You've reached your limit of ${maxCards} cards.`);
+      }
+      return;
+    }
+
+    setDuplicating(card.id);
+    try {
+      // 1. Fetch the full source card
+      const { data: sourceCard, error: fetchError } = await supabase
+        .from('digital_cards')
+        .select('*')
+        .eq('id', card.id)
+        .single();
+
+      if (fetchError || !sourceCard) {
+        throw new Error('Could not fetch source card');
+      }
+
+      // 2. Generate a unique slug
+      const baseName = (sourceCard.full_name || 'card').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const suffix = Math.random().toString(36).substring(2, 6);
+      const newSlug = `${baseName}-copy-${suffix}`;
+
+      // 3. Build the new card payload — only columns that exist in the table
+      const newCardData: Record<string, any> = {
+        user_id: user.id,
+        slug: newSlug,
+        full_name: sourceCard.full_name ? `${sourceCard.full_name} (Copy)` : 'Card Copy',
+        title: sourceCard.title || null,
+        company: sourceCard.company || null,
+        phone: sourceCard.phone || null,
+        email: sourceCard.email || null,
+        website: sourceCard.website || null,
+        city: sourceCard.city || null,
+        state: sourceCard.state || null,
+        bio: sourceCard.bio || null,
+        address_1: sourceCard.address_1 || null,
+        address_2: sourceCard.address_2 || null,
+        zip_code: sourceCard.zip_code || null,
+        country: sourceCard.country || 'USA',
+        profile_photo_url: sourceCard.profile_photo_url || null,
+        profile_photo_size: sourceCard.profile_photo_size || 'medium',
+        gradient_color_1: sourceCard.gradient_color_1 || '#8B5CF6',
+        gradient_color_2: sourceCard.gradient_color_2 || '#4F46E5',
+        theme: sourceCard.theme || 'classic',
+        background_type: sourceCard.background_type || 'gradient',
+        background_image_url: sourceCard.background_image_url || null,
+        button_style: sourceCard.button_style || 'fill',
+        font_style: sourceCard.font_style || 'default',
+        font_color: sourceCard.font_color || null,
+        template_id: sourceCard.template_id || 'classic-blue',
+        color_scheme_id: sourceCard.color_scheme_id || 'blue',
+        banner_image_url: sourceCard.banner_image_url || null,
+        featured_socials: sourceCard.featured_socials || [],
+        gallery_images: sourceCard.gallery_images || [],
+        gallery_title: sourceCard.gallery_title || null,
+        videos: sourceCard.videos || null,
+        testimonials: sourceCard.testimonials || [],
+        testimonials_title: sourceCard.testimonials_title || null,
+        form_block: sourceCard.form_block || null,
+        pro_credentials: sourceCard.pro_credentials || [],
+        youtube_video_id: sourceCard.youtube_video_id || null,
+        youtube_title: sourceCard.youtube_title || null,
+        qr_style: sourceCard.qr_style || null,
+        card_name: sourceCard.card_name ? `${sourceCard.card_name} (Copy)` : null,
+        custom_domain: null,
+        custom_domain_verified: false,
+        professional_category: sourceCard.professional_category || null,
+        social_instagram: sourceCard.social_instagram || null,
+        social_facebook: sourceCard.social_facebook || null,
+        social_linkedin: sourceCard.social_linkedin || null,
+        social_twitter: sourceCard.social_twitter || null,
+        social_tiktok: sourceCard.social_tiktok || null,
+        social_youtube: sourceCard.social_youtube || null,
+        social_snapchat: sourceCard.social_snapchat || null,
+        social_pinterest: sourceCard.social_pinterest || null,
+        social_whatsapp: sourceCard.social_whatsapp || null,
+        review_google_url: sourceCard.review_google_url || null,
+        review_yelp_url: sourceCard.review_yelp_url || null,
+        review_tripadvisor_url: sourceCard.review_tripadvisor_url || null,
+        review_facebook_url: sourceCard.review_facebook_url || null,
+        review_bbb_url: sourceCard.review_bbb_url || null,
+        show_licensed_badge: sourceCard.show_licensed_badge || false,
+        show_insured_badge: sourceCard.show_insured_badge || false,
+        show_bonded_badge: sourceCard.show_bonded_badge || false,
+        show_tavvy_verified_badge: sourceCard.show_tavvy_verified_badge || false,
+        show_contact_info: sourceCard.show_contact_info !== false,
+        show_social_icons: sourceCard.show_social_icons !== false,
+        is_published: false,
+        is_active: true,
+        view_count: 0,
+        tap_count: 0,
+      };
+
+      // 4. Create the new card
+      const { data: newCard, error: createError } = await supabase
+        .from('digital_cards')
+        .insert(newCardData)
+        .select()
+        .single();
+
+      if (createError || !newCard) {
+        throw new Error(createError?.message || 'Failed to create duplicate card');
+      }
+
+      // 5. Copy links from the source card
+      const { data: sourceLinks } = await supabase
+        .from('card_links')
+        .select('*')
+        .eq('card_id', card.id)
+        .order('sort_order', { ascending: true });
+
+      if (sourceLinks && sourceLinks.length > 0) {
+        const newLinks = sourceLinks.map((link: any) => ({
+          card_id: newCard.id,
+          title: link.title,
+          url: link.url,
+          icon: link.icon,
+          emoji: link.emoji,
+          sort_order: link.sort_order,
+          is_active: link.is_active,
+        }));
+        await supabase.from('card_links').insert(newLinks);
+      }
+
+      // 6. Refresh the list and show success
+      await fetchCards();
+      Alert.alert('Success', `Card duplicated as "${newCardData.full_name}"`);
+    } catch (error: any) {
+      console.error('Error duplicating card:', error);
+      Alert.alert('Error', error.message || 'Failed to duplicate card. Please try again.');
+    } finally {
+      setDuplicating(null);
+    }
+  };
+
   const renderCardItem = (card: DigitalCard, index: number) => (
     <TouchableOpacity
       key={card.id}
@@ -231,6 +383,21 @@ export default function MyCardsScreen() {
         >
           <Ionicons name="settings-outline" size={20} color={V2_COLORS.textSecondary} />
           <Text style={[styles.actionText, { color: V2_COLORS.textSecondary }]}>Settings</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => handleDuplicateCard(card)}
+          disabled={duplicating === card.id}
+        >
+          {duplicating === card.id ? (
+            <ActivityIndicator size={20} color="#6B7FFF" />
+          ) : (
+            <Ionicons name="copy-outline" size={20} color="#6B7FFF" />
+          )}
+          <Text style={[styles.actionText, { color: '#6B7FFF' }]}>
+            {duplicating === card.id ? 'Copying...' : 'Duplicate'}
+          </Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
