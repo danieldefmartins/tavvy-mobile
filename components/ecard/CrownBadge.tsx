@@ -6,8 +6,9 @@ import {
   TouchableOpacity,
   Animated,
   Easing,
+  Platform,
 } from 'react-native';
-import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 interface CrownBadgeProps {
   tapCount: number;
@@ -19,13 +20,14 @@ interface CrownBadgeProps {
 /**
  * EndorsementBadge Component (formerly CrownBadge)
  * 
- * Displays a thumbs-up badge with the number of endorsements an eCard has received.
- * The thumbs-up icon clearly communicates social proof and approval.
+ * Displays a frosted glass pill badge with star icon, endorsement count,
+ * and a subtle dropdown chevron to indicate it's tappable.
  * 
- * Format: 👍 x12
+ * Format: ★ 12 ˅
  * 
  * Features:
- * - Gold pulsing glow animation
+ * - Frosted glass pill that adapts to any card background
+ * - Subtle pulse animation
  * - Tappable to show endorsement details
  * - Three sizes: small, medium, large
  */
@@ -36,39 +38,21 @@ export default function CrownBadge({
   showAnimation = true 
 }: CrownBadgeProps) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0.3)).current;
 
-  // Pulse animation
+  // Subtle pulse animation
   useEffect(() => {
     if (!showAnimation || tapCount === 0) return;
 
     const pulseAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.1,
-          duration: 1000,
+          toValue: 1.05,
+          duration: 1500,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 1000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    const glowAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, {
-          toValue: 0.8,
-          duration: 1500,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowAnim, {
-          toValue: 0.3,
           duration: 1500,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
@@ -77,33 +61,43 @@ export default function CrownBadge({
     );
 
     pulseAnimation.start();
-    glowAnimation.start();
 
     return () => {
       pulseAnimation.stop();
-      glowAnimation.stop();
     };
   }, [showAnimation, tapCount]);
 
   // Size configurations
   const sizeConfig = {
     small: {
-      container: { paddingHorizontal: 8, paddingVertical: 4 },
-      icon: 20,
-      text: 12,
-      glow: 20,
+      paddingH: 10,
+      paddingV: 5,
+      starSize: 14,
+      textSize: 13,
+      chevronW: 8,
+      chevronH: 5,
+      gap: 4,
+      borderRadius: 16,
     },
     medium: {
-      container: { paddingHorizontal: 12, paddingVertical: 6 },
-      icon: 26,
-      text: 14,
-      glow: 28,
+      paddingH: 14,
+      paddingV: 8,
+      starSize: 18,
+      textSize: 16,
+      chevronW: 10,
+      chevronH: 6,
+      gap: 6,
+      borderRadius: 24,
     },
     large: {
-      container: { paddingHorizontal: 16, paddingVertical: 8 },
-      icon: 32,
-      text: 18,
-      glow: 36,
+      paddingH: 18,
+      paddingV: 10,
+      starSize: 22,
+      textSize: 20,
+      chevronW: 12,
+      chevronH: 7,
+      gap: 8,
+      borderRadius: 28,
     },
   };
 
@@ -128,45 +122,39 @@ export default function CrownBadge({
     <Animated.View
       style={[
         styles.container,
-        config.container,
-        { transform: [{ scale: pulseAnim }] },
+        {
+          paddingHorizontal: config.paddingH,
+          paddingVertical: config.paddingV,
+          borderRadius: config.borderRadius,
+          gap: config.gap,
+          transform: [{ scale: pulseAnim }],
+        },
       ]}
     >
-      {/* Gold glow effect */}
-      <Animated.View
-        style={[
-          styles.glow,
-          {
-            width: config.glow,
-            height: config.glow,
-            opacity: glowAnim,
-          },
-        ]}
-      />
+      {/* Star icon */}
+      <Text style={[styles.star, { fontSize: config.starSize }]}>★</Text>
       
-      {/* Thumbs-up icon */}
-      <Svg width={config.icon} height={config.icon} viewBox="0 0 24 24" fill="none">
-        <Defs>
-          <LinearGradient id="thumbGoldMobile" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor="#FFE066" />
-            <Stop offset="50%" stopColor="#FFD700" />
-            <Stop offset="100%" stopColor="#FFA500" />
-          </LinearGradient>
-        </Defs>
+      {/* Endorsement count */}
+      <Text style={[styles.count, { fontSize: config.textSize }]}>
+        {formatTapCount(tapCount)}
+      </Text>
+
+      {/* Subtle dropdown chevron */}
+      <Svg 
+        width={config.chevronW} 
+        height={config.chevronH} 
+        viewBox="0 0 10 6" 
+        fill="none"
+        style={{ opacity: 0.5 }}
+      >
         <Path
-          d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3m7-2V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"
-          fill="url(#thumbGoldMobile)"
-          stroke="#FFA500"
-          strokeWidth={1}
+          d="M1 1L5 5L9 1"
+          stroke="#fff"
+          strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
       </Svg>
-      
-      {/* Endorsement count */}
-      <Text style={[styles.tapCount, { fontSize: config.text }]}>
-        x{formatTapCount(tapCount)}
-      </Text>
     </Animated.View>
   );
 
@@ -185,27 +173,32 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 215, 0, 0.15)',
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.4)',
-    gap: 4,
-    position: 'relative',
-    overflow: 'visible',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    ...Platform.select({
+      ios: {
+        // iOS supports backdrop blur natively
+      },
+      android: {
+        backgroundColor: 'rgba(0, 0, 0, 0.25)',
+        borderColor: 'rgba(255, 255, 255, 0.15)',
+      },
+    }),
+    overflow: 'hidden',
   },
-  glow: {
-    position: 'absolute',
-    left: -4,
-    top: '50%',
-    marginTop: -14,
-    borderRadius: 20,
-    backgroundColor: '#FFD700',
-  },
-  tapCount: {
-    color: '#FFD700',
-    fontWeight: '700',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+  star: {
+    color: '#fff',
+    lineHeight: undefined,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadowRadius: 3,
+  },
+  count: {
+    color: '#fff',
+    fontWeight: '700',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 });
