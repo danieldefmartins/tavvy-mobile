@@ -594,7 +594,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                   )}
                   
                   {/* Social Icons */}
-                  {cardData.show_social_icons !== false && (featuredSocials.length > 0 || links.length > 0 || cardData.review_google_url || cardData.review_yelp_url || cardData.review_tripadvisor_url || cardData.review_facebook_url || cardData.review_bbb_url) && (
+                  {cardData.show_social_icons !== false && (featuredSocials.length > 0 || links.length > 0) && (
                     <View style={styles.socialIconsRow}>
                       {featuredSocials.length > 0 ? (
                         featuredSocials.map((social) => {
@@ -624,30 +624,50 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                           );
                         })
                       )}
-                      {/* Review Platform Icons — in social row */}
+                    </View>
+                  )}
+
+                  {/* Review Links — rendered as regular link rows (cover layout) */}
+                  {(cardData.review_google_url || cardData.review_yelp_url || cardData.review_tripadvisor_url || cardData.review_facebook_url || cardData.review_bbb_url) && (
+                    <View style={styles.linksSection}>
                       {cardData.review_google_url && (
-                        <TouchableOpacity style={styles.socialIconButton} onPress={() => Linking.openURL(cardData.review_google_url!)}>
-                          <Ionicons name="logo-google" size={22} color="#4285F4" />
+                        <TouchableOpacity style={[styles.linkButton]} onPress={() => Linking.openURL(cardData.review_google_url!)} activeOpacity={0.8}>
+                          <View style={[styles.linkIconContainer]}>
+                            <Ionicons name="logo-google" size={18} color="#4285F4" />
+                          </View>
+                          <Text style={[styles.linkButtonText, { color: '#fff' }]}>Google Reviews</Text>
                         </TouchableOpacity>
                       )}
                       {cardData.review_yelp_url && (
-                        <TouchableOpacity style={styles.socialIconButton} onPress={() => Linking.openURL(cardData.review_yelp_url!)}>
-                          <Text style={{ fontSize: 18, fontWeight: '900', color: '#D32323' }}>Y</Text>
+                        <TouchableOpacity style={[styles.linkButton]} onPress={() => Linking.openURL(cardData.review_yelp_url!)} activeOpacity={0.8}>
+                          <View style={[styles.linkIconContainer]}>
+                            <Text style={{ fontSize: 16, fontWeight: '900', color: '#D32323' }}>Y</Text>
+                          </View>
+                          <Text style={[styles.linkButtonText, { color: '#fff' }]}>Yelp Reviews</Text>
                         </TouchableOpacity>
                       )}
                       {cardData.review_tripadvisor_url && (
-                        <TouchableOpacity style={styles.socialIconButton} onPress={() => Linking.openURL(cardData.review_tripadvisor_url!)}>
-                          <Ionicons name="compass-outline" size={22} color="#34E0A1" />
+                        <TouchableOpacity style={[styles.linkButton]} onPress={() => Linking.openURL(cardData.review_tripadvisor_url!)} activeOpacity={0.8}>
+                          <View style={[styles.linkIconContainer]}>
+                            <Ionicons name="compass-outline" size={18} color="#34E0A1" />
+                          </View>
+                          <Text style={[styles.linkButtonText, { color: '#fff' }]}>TripAdvisor Reviews</Text>
                         </TouchableOpacity>
                       )}
                       {cardData.review_facebook_url && (
-                        <TouchableOpacity style={styles.socialIconButton} onPress={() => Linking.openURL(cardData.review_facebook_url!)}>
-                          <Ionicons name="logo-facebook" size={22} color="#1877F2" />
+                        <TouchableOpacity style={[styles.linkButton]} onPress={() => Linking.openURL(cardData.review_facebook_url!)} activeOpacity={0.8}>
+                          <View style={[styles.linkIconContainer]}>
+                            <Ionicons name="logo-facebook" size={18} color="#1877F2" />
+                          </View>
+                          <Text style={[styles.linkButtonText, { color: '#fff' }]}>Facebook Reviews</Text>
                         </TouchableOpacity>
                       )}
                       {cardData.review_bbb_url && (
-                        <TouchableOpacity style={styles.socialIconButton} onPress={() => Linking.openURL(cardData.review_bbb_url!)}>
-                          <Ionicons name="shield-checkmark-outline" size={22} color="#fff" />
+                        <TouchableOpacity style={[styles.linkButton]} onPress={() => Linking.openURL(cardData.review_bbb_url!)} activeOpacity={0.8}>
+                          <View style={[styles.linkIconContainer]}>
+                            <Ionicons name="shield-checkmark-outline" size={18} color="#fff" />
+                          </View>
+                          <Text style={[styles.linkButtonText, { color: '#fff' }]}>BBB</Text>
                         </TouchableOpacity>
                       )}
                     </View>
@@ -758,7 +778,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
               )}
 
               {/* Social Icons Row - Show featured socials or first 6 links */}
-              {cardData.show_social_icons !== false && (featuredSocials.length > 0 || links.length > 0 || cardData.review_google_url || cardData.review_yelp_url || cardData.review_tripadvisor_url || cardData.review_facebook_url || cardData.review_bbb_url) && (
+              {cardData.show_social_icons !== false && (featuredSocials.length > 0 || links.length > 0) && (
                 <View style={styles.socialIconsRow}>
                   {featuredSocials.length > 0 ? (
                     featuredSocials.map((social) => {
@@ -795,32 +815,6 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                         </TouchableOpacity>
                       );
                     })
-                  )}
-                  {/* Review Platform Icons — in social row */}
-                  {cardData.review_google_url && (
-                    <TouchableOpacity style={[styles.socialIconButton, isLightTheme && styles.socialIconButtonLight]} onPress={() => Linking.openURL(cardData.review_google_url!)}>
-                      <Ionicons name="logo-google" size={22} color="#4285F4" />
-                    </TouchableOpacity>
-                  )}
-                  {cardData.review_yelp_url && (
-                    <TouchableOpacity style={[styles.socialIconButton, isLightTheme && styles.socialIconButtonLight]} onPress={() => Linking.openURL(cardData.review_yelp_url!)}>
-                      <Text style={{ fontSize: 18, fontWeight: '900', color: '#D32323' }}>Y</Text>
-                    </TouchableOpacity>
-                  )}
-                  {cardData.review_tripadvisor_url && (
-                    <TouchableOpacity style={[styles.socialIconButton, isLightTheme && styles.socialIconButtonLight]} onPress={() => Linking.openURL(cardData.review_tripadvisor_url!)}>
-                      <Ionicons name="compass-outline" size={22} color="#34E0A1" />
-                    </TouchableOpacity>
-                  )}
-                  {cardData.review_facebook_url && (
-                    <TouchableOpacity style={[styles.socialIconButton, isLightTheme && styles.socialIconButtonLight]} onPress={() => Linking.openURL(cardData.review_facebook_url!)}>
-                      <Ionicons name="logo-facebook" size={22} color="#1877F2" />
-                    </TouchableOpacity>
-                  )}
-                  {cardData.review_bbb_url && (
-                    <TouchableOpacity style={[styles.socialIconButton, isLightTheme && styles.socialIconButtonLight]} onPress={() => Linking.openURL(cardData.review_bbb_url!)}>
-                      <Ionicons name="shield-checkmark-outline" size={22} color={isLightTheme ? '#333' : '#fff'} />
-                    </TouchableOpacity>
                   )}
                 </View>
               )}
@@ -863,6 +857,52 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                 <View style={styles.emptyState}>
                   <Ionicons name="link-outline" size={32} color={isLightTheme ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.5)'} />
                   <Text style={[styles.emptyStateText, { color: subtitleColor }]}>No links added yet</Text>
+                </View>
+              )}
+
+              {/* Review Links — rendered as regular link rows */}
+              {(cardData.review_google_url || cardData.review_yelp_url || cardData.review_tripadvisor_url || cardData.review_facebook_url || cardData.review_bbb_url) && (
+                <View style={styles.linksSection}>
+                  {cardData.review_google_url && (
+                    <TouchableOpacity style={[styles.linkButton, isLightTheme && styles.linkButtonLight]} onPress={() => Linking.openURL(cardData.review_google_url!)} activeOpacity={0.8}>
+                      <View style={[styles.linkIconContainer, isLightTheme && styles.linkIconContainerLight]}>
+                        <Ionicons name="logo-google" size={18} color="#4285F4" />
+                      </View>
+                      <Text style={[styles.linkButtonText, { color: textColor }]}>Google Reviews</Text>
+                    </TouchableOpacity>
+                  )}
+                  {cardData.review_yelp_url && (
+                    <TouchableOpacity style={[styles.linkButton, isLightTheme && styles.linkButtonLight]} onPress={() => Linking.openURL(cardData.review_yelp_url!)} activeOpacity={0.8}>
+                      <View style={[styles.linkIconContainer, isLightTheme && styles.linkIconContainerLight]}>
+                        <Text style={{ fontSize: 16, fontWeight: '900', color: '#D32323' }}>Y</Text>
+                      </View>
+                      <Text style={[styles.linkButtonText, { color: textColor }]}>Yelp Reviews</Text>
+                    </TouchableOpacity>
+                  )}
+                  {cardData.review_tripadvisor_url && (
+                    <TouchableOpacity style={[styles.linkButton, isLightTheme && styles.linkButtonLight]} onPress={() => Linking.openURL(cardData.review_tripadvisor_url!)} activeOpacity={0.8}>
+                      <View style={[styles.linkIconContainer, isLightTheme && styles.linkIconContainerLight]}>
+                        <Ionicons name="compass-outline" size={18} color="#34E0A1" />
+                      </View>
+                      <Text style={[styles.linkButtonText, { color: textColor }]}>TripAdvisor Reviews</Text>
+                    </TouchableOpacity>
+                  )}
+                  {cardData.review_facebook_url && (
+                    <TouchableOpacity style={[styles.linkButton, isLightTheme && styles.linkButtonLight]} onPress={() => Linking.openURL(cardData.review_facebook_url!)} activeOpacity={0.8}>
+                      <View style={[styles.linkIconContainer, isLightTheme && styles.linkIconContainerLight]}>
+                        <Ionicons name="logo-facebook" size={18} color="#1877F2" />
+                      </View>
+                      <Text style={[styles.linkButtonText, { color: textColor }]}>Facebook Reviews</Text>
+                    </TouchableOpacity>
+                  )}
+                  {cardData.review_bbb_url && (
+                    <TouchableOpacity style={[styles.linkButton, isLightTheme && styles.linkButtonLight]} onPress={() => Linking.openURL(cardData.review_bbb_url!)} activeOpacity={0.8}>
+                      <View style={[styles.linkIconContainer, isLightTheme && styles.linkIconContainerLight]}>
+                        <Ionicons name="shield-checkmark-outline" size={18} color={isLightTheme ? '#333' : '#fff'} />
+                      </View>
+                      <Text style={[styles.linkButtonText, { color: textColor }]}>BBB</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
 
