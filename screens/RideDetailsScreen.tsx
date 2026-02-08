@@ -66,16 +66,28 @@ interface RouteParams {
 const getThrillLevelLabel = (subcategory: string | undefined): string => {
   if (!subcategory) return 'Moderate';
   const lower = subcategory.toLowerCase();
-  if (lower.includes('thrill') || lower === 'roller_coaster') return 'High Thrill';
-  if (lower.includes('water') || lower === 'simulator') return 'Moderate-High';
-  if (lower === 'dark_ride' || lower === 'boat_ride') return 'Moderate';
-  if (lower === 'carousel' || lower === 'train' || lower === 'show') return 'Mild';
+  if (lower === 'thrill_rides') return 'High Thrill';
+  if (lower === 'simulators' || lower === 'water_rides') return 'Moderate-High';
+  if (lower === 'dark_rides') return 'Moderate';
+  if (lower === 'family_rides' || lower === 'shows' || lower === 'characters' || lower === 'explore' || lower === 'animals' || lower === 'interactive') return 'Mild';
   return 'Moderate';
 };
 
 const formatSubcategory = (subcategory: string | undefined): string => {
   if (!subcategory) return 'Attraction';
-  return subcategory
+  const labels: Record<string, string> = {
+    thrill_rides: 'Thrill Rides',
+    family_rides: 'Family Rides',
+    dark_rides: 'Dark Rides',
+    shows: 'Shows & Entertainment',
+    characters: 'Characters',
+    explore: 'Explore',
+    animals: 'Animals & Nature',
+    water_rides: 'Water Rides',
+    simulators: 'Simulators',
+    interactive: 'Interactive',
+  };
+  return labels[subcategory] || subcategory
     .split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
@@ -84,22 +96,28 @@ const formatSubcategory = (subcategory: string | undefined): string => {
 const getAudienceFromSubcategory = (subcategory: string | undefined): string => {
   if (!subcategory) return 'All Ages';
   const lower = subcategory.toLowerCase();
-  if (lower.includes('thrill') || lower === 'roller_coaster') return 'Teens & Adults';
-  if (lower === 'playground' || lower === 'meet_greet') return 'Kids & Families';
+  if (lower === 'thrill_rides') return 'Teens & Adults';
+  if (lower === 'characters' || lower === 'interactive' || lower === 'family_rides') return 'Kids & Families';
   return 'All Ages';
 };
 
 const getDefaultImage = (subcategory: string | undefined): string => {
   if (!subcategory) return 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800';
   const lower = subcategory.toLowerCase();
-  if (lower.includes('coaster') || lower.includes('thrill')) {
+  if (lower === 'thrill_rides') {
     return 'https://images.unsplash.com/photo-1560713781-d00f6c18f388?w=800';
   }
-  if (lower.includes('water') || lower.includes('boat')) {
+  if (lower === 'water_rides') {
     return 'https://images.unsplash.com/photo-1582653291997-079a1c04e5a1?w=800';
   }
-  if (lower === 'dark_ride') {
+  if (lower === 'dark_rides') {
     return 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800';
+  }
+  if (lower === 'animals') {
+    return 'https://images.unsplash.com/photo-1474511320723-9a56873571b7?w=800';
+  }
+  if (lower === 'shows') {
+    return 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800';
   }
   return 'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=800';
 };
