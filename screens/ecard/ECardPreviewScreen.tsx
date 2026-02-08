@@ -686,7 +686,235 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
           const textColor = isLightTheme ? '#1A1A1A' : '#fff';
           const subtitleColor = isLightTheme ? '#666' : 'rgba(255,255,255,0.8)';
           
-          // Cover photo layout
+          // Pro Card layout — dark top with name/photo, white bottom with contact rows
+          const isProCard = selectedTemplate?.layout === 'pro-card';
+          const isCoverCard = selectedTemplate?.layout === 'cover-card';
+          const accentColor = selectedColorScheme?.accent || '#fbbf24';
+          const primaryColor = selectedColorScheme?.primary || gradientColors[0];
+
+          if (isProCard) {
+            return (
+              <View style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: '#ffffff' }}>
+                {/* Dark top section */}
+                <LinearGradient
+                  colors={gradientColors}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{ paddingTop: 24, paddingHorizontal: 24, paddingBottom: 40, minHeight: 220 }}
+                >
+                  {/* Company badge */}
+                  {cardData?.company ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: accentColor, marginRight: 8 }} />
+                      <Text style={{ fontSize: 12, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', color: accentColor }}>{cardData.company}</Text>
+                    </View>
+                  ) : null}
+                  {/* Name LEFT + Photo RIGHT */}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View style={{ flex: 1, paddingRight: 10 }}>
+                      <Text style={{ fontSize: 24, fontWeight: '700', color: accentColor, marginBottom: 4 }}>{cardData?.full_name || 'Your Name'}</Text>
+                      {cardData?.title ? <Text style={{ fontSize: 14, fontWeight: '600', color: accentColor, marginTop: 8 }}>{cardData.title}</Text> : null}
+                      {cardData?.company ? <Text style={{ fontSize: 12, color: accentColor, opacity: 0.7, marginTop: 2 }}>{cardData.company}</Text> : null}
+                    </View>
+                    {cardData?.profile_photo_url ? (
+                      <View style={{ width: 120, height: 120, borderRadius: 60, borderWidth: 2, borderColor: `${accentColor}50`, padding: 3, alignItems: 'center', justifyContent: 'center' }}>
+                        <Image source={{ uri: cardData.profile_photo_url }} style={{ width: 108, height: 108, borderRadius: 54 }} />
+                      </View>
+                    ) : null}
+                  </View>
+                </LinearGradient>
+
+                {/* Diagonal transition */}
+                <View style={{ height: 30, backgroundColor: primaryColor, marginTop: -1 }}>
+                  <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 30, backgroundColor: '#FFFFFF', borderTopRightRadius: 30 }} />
+                </View>
+
+                {/* White bottom section */}
+                <View style={{ paddingHorizontal: 24, paddingTop: 4, paddingBottom: 16 }}>
+                  {cardData?.bio ? <Text style={{ fontSize: 14, color: '#555', lineHeight: 20, marginBottom: 12 }}>{cardData.bio}</Text> : null}
+
+                  {/* Contact rows */}
+                  {(cardData as any)?.phone ? (
+                    <TouchableOpacity onPress={() => Linking.openURL(`tel:${(cardData as any).phone}`)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: `${accentColor}15`, alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                        <Ionicons name="call" size={18} color={accentColor} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#333' }}>{(cardData as any).phone}</Text>
+                        <Text style={{ fontSize: 11, color: '#999' }}>Phone</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color="#ccc" />
+                    </TouchableOpacity>
+                  ) : null}
+                  {(cardData as any)?.email ? (
+                    <TouchableOpacity onPress={() => Linking.openURL(`mailto:${(cardData as any).email}`)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#3b82f615', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                        <Ionicons name="mail" size={18} color="#3b82f6" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#333' }}>{(cardData as any).email}</Text>
+                        <Text style={{ fontSize: 11, color: '#999' }}>Email</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color="#ccc" />
+                    </TouchableOpacity>
+                  ) : null}
+                  {(cardData as any)?.website ? (
+                    <TouchableOpacity onPress={() => Linking.openURL((cardData as any).website.startsWith('http') ? (cardData as any).website : `https://${(cardData as any).website}`)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#10b98115', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                        <Ionicons name="globe" size={18} color="#10b981" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#333' }}>{(cardData as any).website.replace(/^https?:\/\//, '')}</Text>
+                        <Text style={{ fontSize: 11, color: '#999' }}>Website</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color="#ccc" />
+                    </TouchableOpacity>
+                  ) : null}
+
+                  {/* Links */}
+                  {links.length > 0 ? (
+                    <View style={{ marginTop: 8 }}>
+                      {links.map((link) => {
+                        const platformConfig = PLATFORM_ICONS[link.platform || link.icon] || PLATFORM_ICONS.other;
+                        return (
+                          <TouchableOpacity key={link.id} onPress={() => handleLinkPress(link)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#f8f9fa', borderRadius: 12, marginBottom: 8, borderWidth: 1, borderColor: '#e8e8e8' }}>
+                            <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: `${accentColor}15`, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                              <Ionicons name={platformConfig.icon as any} size={16} color={accentColor} />
+                            </View>
+                            <Text style={{ flex: 1, fontSize: 14, fontWeight: '500', color: '#1a1a2e' }}>{link.title || 'Link'}</Text>
+                            <Ionicons name="chevron-forward" size={16} color="rgba(0,0,0,0.3)" />
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  ) : null}
+
+                  {/* Footer */}
+                  <View style={{ marginTop: 16, alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+                      <TouchableOpacity style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.06)', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', alignItems: 'center', justifyContent: 'center' }} onPress={handleSaveContact}>
+                        <Ionicons name="person-add-outline" size={22} color="#1a1a2e" />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.06)', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', alignItems: 'center', justifyContent: 'center' }} onPress={handleShare}>
+                        <Ionicons name="paper-plane-outline" size={22} color="#1a1a2e" />
+                      </TouchableOpacity>
+                    </View>
+                    <Image
+                      source={require('../../assets/brand/tavvy-wordmark-dark.png')}
+                      style={{ width: 80, height: 24, opacity: 0.4 }}
+                      resizeMode="contain"
+                    />
+                    <Text style={{ fontSize: 12, color: 'rgba(0,0,0,0.35)', marginTop: 4 }}>Create your free digital card</Text>
+                  </View>
+                </View>
+              </View>
+            );
+          }
+
+          // Cover Card layout — cover photo top, white bottom with contact rows
+          if (isCoverCard) {
+            return (
+              <View style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: '#ffffff' }}>
+                {/* Cover photo */}
+                <View style={{ width: '100%', height: width * 0.55, position: 'relative', backgroundColor: primaryColor, overflow: 'hidden' }}>
+                  {cardData?.profile_photo_url ? (
+                    <Image source={{ uri: cardData.profile_photo_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  ) : (
+                    <LinearGradient colors={gradientColors} style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                      <Ionicons name="image" size={50} color="rgba(255,255,255,0.5)" />
+                      <Text style={{ marginTop: 8, fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>Add Cover Photo</Text>
+                    </LinearGradient>
+                  )}
+                  {/* Company logo overlay */}
+                  {(cardData as any)?.company_logo_url ? (
+                    <View style={{ position: 'absolute', top: 16, right: 16, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 12, padding: 8 }}>
+                      <Image source={{ uri: (cardData as any).company_logo_url }} style={{ height: 28, width: 60 }} resizeMode="contain" />
+                    </View>
+                  ) : null}
+                </View>
+
+                {/* White bottom section */}
+                <View style={{ paddingHorizontal: 24, paddingTop: 12, paddingBottom: 16 }}>
+                  <Text style={{ fontSize: 22, fontWeight: '700', color: '#1a1a2e', marginBottom: 2 }}>{cardData?.full_name || 'Your Name'}</Text>
+                  {cardData?.title ? <Text style={{ fontSize: 14, fontWeight: '600', color: '#444', marginBottom: 2 }}>{cardData.title}</Text> : null}
+                  {cardData?.company ? <Text style={{ fontSize: 13, color: '#888', fontStyle: 'italic', marginBottom: 8 }}>{cardData.company}</Text> : null}
+                  {cardData?.bio ? <Text style={{ fontSize: 14, color: '#555', lineHeight: 20, marginBottom: 12 }}>{cardData.bio}</Text> : null}
+
+                  {/* Contact rows with colored circle icons */}
+                  {(cardData as any)?.email ? (
+                    <TouchableOpacity onPress={() => Linking.openURL(`mailto:${(cardData as any).email}`)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: primaryColor, alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                        <Ionicons name="mail" size={18} color="#fff" />
+                      </View>
+                      <Text style={{ fontSize: 14, fontWeight: '500', color: '#333' }}>{(cardData as any).email}</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {(cardData as any)?.phone ? (
+                    <TouchableOpacity onPress={() => Linking.openURL(`tel:${(cardData as any).phone}`)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: accentColor, alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                        <Ionicons name="call" size={18} color="#fff" />
+                      </View>
+                      <Text style={{ fontSize: 14, fontWeight: '500', color: '#333' }}>{(cardData as any).phone}</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {(cardData as any)?.phone ? (
+                    <TouchableOpacity onPress={() => Linking.openURL(`sms:${(cardData as any).phone}`)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: primaryColor, alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                        <Ionicons name="chatbubble" size={18} color="#fff" />
+                      </View>
+                      <Text style={{ fontSize: 14, fontWeight: '500', color: '#333' }}>Send a Text</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {(cardData as any)?.website ? (
+                    <TouchableOpacity onPress={() => Linking.openURL((cardData as any).website.startsWith('http') ? (cardData as any).website : `https://${(cardData as any).website}`)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: accentColor, alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                        <Ionicons name="globe" size={18} color="#fff" />
+                      </View>
+                      <Text style={{ fontSize: 14, fontWeight: '500', color: '#333' }}>{(cardData as any).website.replace(/^https?:\/\//, '')}</Text>
+                    </TouchableOpacity>
+                  ) : null}
+
+                  {/* Links */}
+                  {links.length > 0 ? (
+                    <View style={{ marginTop: 8 }}>
+                      {links.map((link) => {
+                        const platformConfig = PLATFORM_ICONS[link.platform || link.icon] || PLATFORM_ICONS.other;
+                        return (
+                          <TouchableOpacity key={link.id} onPress={() => handleLinkPress(link)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#f8f9fa', borderRadius: 12, marginBottom: 8, borderWidth: 1, borderColor: '#e8e8e8' }}>
+                            <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: `${accentColor}15`, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                              <Ionicons name={platformConfig.icon as any} size={16} color={accentColor} />
+                            </View>
+                            <Text style={{ flex: 1, fontSize: 14, fontWeight: '500', color: '#1a1a2e' }}>{link.title || 'Link'}</Text>
+                            <Ionicons name="chevron-forward" size={16} color="rgba(0,0,0,0.3)" />
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  ) : null}
+
+                  {/* Footer */}
+                  <View style={{ marginTop: 16, alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+                      <TouchableOpacity style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.06)', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', alignItems: 'center', justifyContent: 'center' }} onPress={handleSaveContact}>
+                        <Ionicons name="person-add-outline" size={22} color="#1a1a2e" />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.06)', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', alignItems: 'center', justifyContent: 'center' }} onPress={handleShare}>
+                        <Ionicons name="paper-plane-outline" size={22} color="#1a1a2e" />
+                      </TouchableOpacity>
+                    </View>
+                    <Image
+                      source={require('../../assets/brand/tavvy-wordmark-dark.png')}
+                      style={{ width: 80, height: 24, opacity: 0.4 }}
+                      resizeMode="contain"
+                    />
+                    <Text style={{ fontSize: 12, color: 'rgba(0,0,0,0.35)', marginTop: 4 }}>Create your free digital card</Text>
+                  </View>
+                </View>
+              </View>
+            );
+          }
+
+          // Cover photo layout (full-width, premium-static)
           if (isCoverPhoto) {
             return (
               <View style={styles.coverContainer}>

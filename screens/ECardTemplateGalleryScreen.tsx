@@ -496,6 +496,60 @@ const ProCardPreview = ({ colors }: { colors: any }) => (
   </View>
 );
 
+// --- COVER CARD: Cover photo top, white bottom with contact rows ---
+const CoverCardPreview = ({ colors }: { colors: any }) => (
+  <View style={[prev.card, { backgroundColor: '#FFFFFF' }]}>
+    {/* Cover photo section */}
+    <View style={{
+      width: '100%', height: CARD_HEIGHT * 0.42, position: 'relative',
+      backgroundColor: colors.primary, overflow: 'hidden',
+    }}>
+      <Image source={SAMPLE_BANNER} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+      {/* Company logo overlay */}
+      <View style={{
+        position: 'absolute', top: 12, right: 12,
+        backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4,
+      }}>
+        <Ionicons name="business" size={18} color={colors.primary} />
+      </View>
+    </View>
+
+    {/* Wavy accent transition */}
+    <Svg width="100%" height={20} viewBox="0 0 400 20" preserveAspectRatio="none" style={{ marginTop: -16 }}>
+      <Path d="M0 20 C100 0 200 18 300 4 C350 -2 380 8 400 0 L400 20 Z" fill="#ffffff" />
+      <Path d="M0 20 C80 6 160 20 260 6 C320 -1 370 12 400 4 L400 20 Z" fill={colors.accent || '#f97316'} opacity={0.15} />
+    </Svg>
+
+    {/* White bottom section */}
+    <View style={{ paddingHorizontal: 20, flex: 1, paddingTop: 2 }}>
+      <Text style={{ fontSize: 20, fontWeight: '700', color: '#1a1a2e', marginBottom: 2 }}>Arianne S. Richardson</Text>
+      <Text style={{ fontSize: 12, fontWeight: '600', color: '#444', marginBottom: 2 }}>Founder & Principal Consultant</Text>
+      <Text style={{ fontSize: 11, color: '#888', fontStyle: 'italic', marginBottom: 8 }}>A.Rich Culture</Text>
+      <Text style={{ fontSize: 11, color: '#555', lineHeight: 16, marginBottom: 10 }}>
+        Business Consulting & Talent Management for Caribbean Creatives
+      </Text>
+
+      {/* Contact rows with colored circle icons */}
+      {[
+        { icon: 'mail', text: 'mail@arichculture.com', color: colors.primary },
+        { icon: 'call', text: '+1 561 485 7408', color: colors.accent || '#f97316' },
+        { icon: 'chatbubble', text: 'Send a Text', color: colors.primary },
+        { icon: 'globe', text: 'www.arichculture.com', color: colors.accent || '#f97316' },
+      ].map((row, i) => (
+        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+          <View style={{
+            width: 32, height: 32, borderRadius: 16,
+            backgroundColor: row.color, alignItems: 'center', justifyContent: 'center', marginRight: 10,
+          }}>
+            <Ionicons name={row.icon as any} size={14} color="#fff" />
+          </View>
+          <Text style={{ fontSize: 12, color: '#333', fontWeight: '500' }}>{row.text}</Text>
+        </View>
+      ))}
+    </View>
+  </View>
+);
+
 // ============================================================
 // MAIN GALLERY SCREEN
 // ============================================================
@@ -580,6 +634,7 @@ const ECardTemplateGalleryScreen: React.FC = () => {
       case 'pro-creative': return <ProCreativePreview colors={previewColors} />;
       case 'pro-corporate': return <ProCorporatePreview colors={previewColors} />;
       case 'pro-card': return <ProCardPreview colors={previewColors} />;
+      case 'cover-card': return <CoverCardPreview colors={previewColors} />;
       default: return <BasicPreview colors={previewColors} />;
     }
   };
