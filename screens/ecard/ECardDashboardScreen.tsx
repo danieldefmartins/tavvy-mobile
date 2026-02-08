@@ -34,6 +34,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import FeaturedSocialsSelector from '../../components/ecard/FeaturedSocialsSelector';
 import { TEMPLATES, getTemplateById, getColorSchemeById, resolveTemplateId } from '../../config/eCardTemplates';
+import { renderTemplateLayout } from './TemplateLayouts';
 
 const { width, height } = Dimensions.get('window');
 const PREVIEW_HEIGHT = height * 0.32;
@@ -275,7 +276,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   const [fontColor, setFontColor] = useState<string | null>(null);
   
   // Template state
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('classic');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('basic');
   
   // Banner image state
   const [bannerImageUrl, setBannerImageUrl] = useState<string | null>(null);
@@ -1298,80 +1299,65 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
 
   // ── RENDER: Live Card Preview ──
   const renderLivePreview = () => {
-    const cardTheme = getCurrentTheme();
-    const textColor = getTextColor();
-    const hasLightBg = cardTheme.id === 'minimal';
-    const photoSize = getCurrentPhotoSize();
-    const isCoverPhoto = photoSize.id === 'cover';
-    const previewPhotoSize = isCoverPhoto ? width - 48 : Math.min(photoSize.size * 0.5, 70);
-    
-    if (isCoverPhoto) {
-      return (
-        <View style={[s.previewContainerCover, { backgroundColor: colors.surface }]}>
-          <View style={s.coverBannerContainer}>
-            {profilePhotoUrl ? (
-              <Image source={{ uri: profilePhotoUrl }} style={s.coverBannerPhoto} resizeMode="cover" />
-            ) : (
-              <LinearGradient colors={gradientColors} style={s.coverBannerPlaceholder} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                <Ionicons name="image" size={40} color="rgba(255,255,255,0.5)" />
-              </LinearGradient>
-            )}
-            <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={s.coverBannerOverlay} />
-            <View style={s.coverBannerTextContainer}>
-              <Text style={s.coverBannerName} numberOfLines={1}>{fullName || 'Your Name'}</Text>
-              <Text style={s.coverBannerTitle} numberOfLines={1}>{titleRole || 'Your Title'}</Text>
-            </View>
-          </View>
-          <LinearGradient colors={gradientColors} style={s.coverLinksContainer} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <View style={s.previewLinksRow}>
-              {links.slice(0, 4).map((link, index) => {
-                const pc = PLATFORM_ICONS[link.platform] || PLATFORM_ICONS.other;
-                return (
-                  <View key={link.id || index} style={s.previewLinkIcon}>
-                    <Ionicons name={pc.icon as any} size={16} color={pc.color} />
-                  </View>
-                );
-              })}
-            </View>
-          </LinearGradient>
-        </View>
-      );
-    }
-    
+    // Find the current template and its first color scheme to pass to the layout renderer
+    const currentTemplate = getTemplateById(selectedTemplateId);
+    const templateLayout = currentTemplate?.layout || 'basic';
+    // Build a ColorScheme object from the current gradientColors
+    const colorScheme = (() => {
+      if (currentTemplate) {
+        // Try to find the matching color scheme from the template
+        const match = currentTemplate.colorSchemes.find(cs => cs.primary === gradientColors[0] && cs.secondary === gradientColors[1]);
+        if (match) return match;
+      }
+      // Fallback: construct a color scheme from the gradient colors
+      const avgLum = (() => {
+        const hexToLum = (hex: string) => {
+          const c = hex.replace('#', '');
+          const r = parseInt(c.substring(0, 2), 16) / 255;
+          const g = parseInt(c.substring(2, 4), 16) / 255;
+          const b = parseInt(c.substring(4, 6), 16) / 255;
+          const toL = (v: number) => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+          return 0.2126 * toL(r) + 0.7152 * toL(g) + 0.0722 * toL(b);
+        };
+        return (hexToLum(gradientColors[0]) + hexToLum(gradientColors[1])) / 2;
+      })();
+      const isLight = avgLum > 0.45;
+      return {
+        id: 'custom', name: 'Custom',
+        primary: gradientColors[0], secondary: gradientColors[1],
+        accent: isLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)',
+        text: isLight ? '#1A1A1A' : '#FFFFFF',
+        textSecondary: isLight ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.7)',
+        background: gradientColors[0], cardBg: isLight ? '#fff' : gradientColors[0],
+      };
+    })();
+    const textColor = colorScheme.text;
+    const textSec = colorScheme.textSecondary;
+    const isLight = textColor === '#1A1A1A';
+
     return (
       <View style={[s.previewContainer, { backgroundColor: colors.surface }]}>
-        <LinearGradient
-          colors={gradientColors}
-          style={[s.previewCard, hasLightBg && s.previewCardBorder]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          {renderCrownBadge()}
-          <View style={[s.previewPhotoContainer, hasLightBg && s.previewPhotoBorderDark, { width: previewPhotoSize, height: previewPhotoSize, borderRadius: previewPhotoSize / 2 }]}>
-            {profilePhotoUrl ? (
-              <Image source={{ uri: profilePhotoUrl }} style={{ width: previewPhotoSize - 4, height: previewPhotoSize - 4, borderRadius: (previewPhotoSize - 4) / 2 }} />
-            ) : (
-              <Ionicons name="person" size={previewPhotoSize * 0.5} color={hasLightBg ? '#666' : 'rgba(255,255,255,0.5)'} />
-            )}
-          </View>
-          <Text style={[s.previewName, { color: textColor }]} numberOfLines={1}>{fullName || 'Your Name'}</Text>
-          <Text style={[s.previewTitle, { color: hasLightBg ? '#666' : 'rgba(255,255,255,0.8)' }]} numberOfLines={1}>{titleRole || 'Your Title'}</Text>
-          <View style={s.previewLinksRow}>
-            {links.slice(0, 4).map((link, index) => {
-              const pc = PLATFORM_ICONS[link.platform] || PLATFORM_ICONS.other;
-              return (
-                <View key={link.id || index} style={s.previewLinkIcon}>
-                  <Ionicons name={pc.icon as any} size={16} color={pc.color} />
-                </View>
-              );
-            })}
-            {links.length > 4 && (
-              <View style={s.previewMoreLinks}>
-                <Text style={[s.previewMoreText, { color: textColor }]}>+{links.length - 4}</Text>
-              </View>
-            )}
-          </View>
-        </LinearGradient>
+        <View style={{ transform: [{ scale: 0.55 }], transformOrigin: 'top center', width: width - 48, marginBottom: -120 }}>
+          {renderTemplateLayout({
+            layout: templateLayout,
+            color: colorScheme,
+            data: {
+              profileImage: profilePhotoUrl,
+              name: fullName || '',
+              titleRole: titleRole || '',
+              bio: bio || '',
+              email: emailField || '',
+              phone: phoneField || '',
+              website: websiteField || '',
+              address: locationField || '',
+            },
+            isEditable: false,
+            textColor,
+            textSecondary: textSec,
+            isLightCard: isLight,
+          })}
+        </View>
+        {renderCrownBadge()}
         {!isPro && hasPremiumFeatures() && (
           <View style={s.premiumIndicator}>
             <Ionicons name="star" size={14} color="#F59E0B" />
@@ -1796,64 +1782,94 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
                 }}
               >
                 <LinearGradient
-                  colors={template.layout === 'minimal' || template.layout === 'split'
-                    ? ['#0f172a', '#1e293b']
-                    : [template.colorSchemes[0]?.primary || '#667eea', template.colorSchemes[0]?.secondary || '#764ba2']}
-                  style={{ width: '100%', height: 60, borderRadius: 8, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}
+                  colors={[template.colorSchemes[0]?.primary || '#667eea', template.colorSchemes[0]?.secondary || '#764ba2']}
+                  style={{ width: '100%', height: 70, borderRadius: 8, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 >
-                  {template.layout === 'classic' && (
+                  {/* basic — centered circle + name lines */}
+                  {template.layout === 'basic' && (
                     <View style={{ alignItems: 'center' }}>
                       <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.3)', marginBottom: 3 }} />
                       <View style={{ width: 30, height: 3, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 2, marginBottom: 2 }} />
                       <View style={{ width: 20, height: 2, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2 }} />
                     </View>
                   )}
-                  {template.layout === 'banner' && (
-                    <View style={{ flex: 1, width: '100%' }}>
-                      <View style={{ height: '40%', backgroundColor: 'rgba(255,255,255,0.15)' }} />
-                      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.4)', alignSelf: 'center', marginTop: -8, borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)' }} />
-                    </View>
-                  )}
-                  {template.layout === 'bold' && (
-                    <View style={{ flex: 1, width: '100%', justifyContent: 'flex-end', padding: 6 }}>
-                      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.3)' }} />
-                      <View style={{ width: '50%', height: 3, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 2, marginBottom: 2 }} />
-                      <View style={{ width: '35%', height: 2, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }} />
-                    </View>
-                  )}
-                  {template.layout === 'minimal' && (
-                    <View style={{ backgroundColor: '#fff', borderRadius: 4, margin: 6, padding: 6, flex: 1, width: '80%', alignItems: 'center', justifyContent: 'center' }}>
-                      <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: '#E5E7EB', marginBottom: 3 }} />
-                      <View style={{ width: '60%', height: 2, backgroundColor: '#D1D5DB', borderRadius: 2, marginBottom: 2 }} />
-                      <View style={{ width: '40%', height: 2, backgroundColor: '#E5E7EB', borderRadius: 2 }} />
-                    </View>
-                  )}
-                  {template.layout === 'elegant' && (
-                    <View style={{ borderWidth: 1, borderColor: 'rgba(212,175,55,0.5)', borderRadius: 3, margin: 5, padding: 5, flex: 1, width: '80%', alignItems: 'center', justifyContent: 'center' }}>
-                      <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: '#d4af37', marginBottom: 3 }} />
-                      <View style={{ width: '50%', height: 2, backgroundColor: '#d4af37', borderRadius: 2 }} />
-                    </View>
-                  )}
-                  {template.layout === 'modern' && (
-                    <View style={{ flex: 1, width: '100%' }}>
-                      <View style={{ width: '100%', height: '35%', backgroundColor: 'rgba(255,255,255,0.15)' }} />
-                      <View style={{ backgroundColor: isDark ? '#27272a' : '#fff', borderRadius: 3, margin: 3, padding: 3, flex: 1 }}>
-                        <View style={{ width: '60%', height: 2, backgroundColor: isDark ? '#52525b' : '#D1D5DB', borderRadius: 2, marginBottom: 2 }} />
-                        <View style={{ width: '40%', height: 2, backgroundColor: isDark ? '#3f3f46' : '#E5E7EB', borderRadius: 2 }} />
+                  {/* blogger — white card cutout with photo overlapping */}
+                  {template.layout === 'blogger' && (
+                    <View style={{ flex: 1, width: '100%', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 4 }}>
+                      <View style={{ backgroundColor: '#fff', borderRadius: 6, width: '80%', paddingTop: 12, paddingBottom: 6, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 }}>
+                        <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: '#E5E7EB', marginTop: -16, marginBottom: 3, borderWidth: 1.5, borderColor: '#fff' }} />
+                        <View style={{ width: '50%', height: 2, backgroundColor: '#D1D5DB', borderRadius: 2, marginBottom: 2 }} />
+                        <View style={{ width: '35%', height: 1.5, backgroundColor: '#E5E7EB', borderRadius: 2 }} />
                       </View>
                     </View>
                   )}
-                  {template.layout === 'neon' && (
-                    <View style={{ alignItems: 'center' }}>
-                      <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.2)', marginBottom: 3, shadowColor: '#ec4899', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 4 }} />
-                      <View style={{ width: 30, height: 3, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 2 }} />
+                  {/* business-card — dark top + light bottom split */}
+                  {template.layout === 'business-card' && (
+                    <View style={{ flex: 1, width: '100%' }}>
+                      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                        <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.4)', marginBottom: 2 }} />
+                        <View style={{ width: 28, height: 2, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 2 }} />
+                      </View>
+                      <View style={{ height: '35%', backgroundColor: '#f8f9fa', alignItems: 'center', justifyContent: 'center' }}>
+                        <View style={{ flexDirection: 'row', gap: 4 }}>
+                          {[0,1,2,3].map(i => <View key={i} style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: template.colorSchemes[0]?.accent || '#d4af37' }} />)}
+                        </View>
+                      </View>
                     </View>
                   )}
-                  {(template.layout === 'split' || template.layout === 'showcase' || template.layout === 'executive') && (
-                    <View style={{ alignItems: 'center' }}>
-                      <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.3)', marginBottom: 3 }} />
-                      <View style={{ width: 28, height: 2, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 2 }} />
+                  {/* full-width — hero photo with gradient overlay */}
+                  {template.layout === 'full-width' && (
+                    <View style={{ flex: 1, width: '100%', justifyContent: 'flex-end', padding: 6 }}>
+                      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.3)' }} />
+                      <View style={{ width: '55%', height: 3, backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: 2, marginBottom: 2 }} />
+                      <View style={{ width: '35%', height: 2, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }} />
+                    </View>
+                  )}
+                  {/* pro-realtor — arch photo with banner */}
+                  {template.layout === 'pro-realtor' && (
+                    <View style={{ flex: 1, width: '100%' }}>
+                      <View style={{ height: '40%', backgroundColor: 'rgba(255,255,255,0.15)' }} />
+                      <View style={{ alignSelf: 'center', marginTop: -10, width: 20, height: 24, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.4)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)' }} />
+                      <View style={{ alignItems: 'center', marginTop: 3 }}>
+                        <View style={{ width: 28, height: 2, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 2, marginBottom: 2 }} />
+                        <View style={{ width: 18, height: 1.5, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2 }} />
+                      </View>
+                    </View>
+                  )}
+                  {/* pro-creative — colored top + white bottom */}
+                  {template.layout === 'pro-creative' && (
+                    <View style={{ flex: 1, width: '100%' }}>
+                      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                      </View>
+                      <View style={{ height: '40%', backgroundColor: '#fff', paddingHorizontal: 6, justifyContent: 'center' }}>
+                        <View style={{ width: '60%', height: 2.5, backgroundColor: '#333', borderRadius: 2, marginBottom: 2 }} />
+                        <View style={{ width: '40%', height: 2, backgroundColor: '#999', borderRadius: 2 }} />
+                      </View>
+                    </View>
+                  )}
+                  {/* pro-corporate — decorative circles + centered photo */}
+                  {template.layout === 'pro-corporate' && (
+                    <View style={{ alignItems: 'center', position: 'relative' }}>
+                      <View style={{ position: 'absolute', top: -8, left: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+                      <View style={{ position: 'absolute', top: 2, right: -4, width: 12, height: 12, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                      <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.4)', marginBottom: 3, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)' }} />
+                      <View style={{ width: 28, height: 2.5, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 2, marginBottom: 2 }} />
+                      <View style={{ width: 18, height: 2, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2 }} />
+                    </View>
+                  )}
+                  {/* pro-card — split layout with name left + photo right */}
+                  {template.layout === 'pro-card' && (
+                    <View style={{ flex: 1, width: '100%' }}>
+                      <View style={{ flex: 1, flexDirection: 'row', padding: 6, alignItems: 'center' }}>
+                        <View style={{ flex: 1 }}>
+                          <View style={{ width: '70%', height: 3, backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: 2, marginBottom: 3 }} />
+                          <View style={{ width: '50%', height: 2, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2 }} />
+                        </View>
+                        <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.3)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)' }} />
+                      </View>
+                      <View style={{ height: '30%', backgroundColor: '#fff' }} />
                     </View>
                   )}
                 </LinearGradient>

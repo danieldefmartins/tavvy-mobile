@@ -41,6 +41,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { TEMPLATES, Template, ColorScheme } from '../../config/eCardTemplates';
+import { renderTemplateLayout, CardData } from './TemplateLayouts';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ACCENT_GREEN = '#00C853';
@@ -587,8 +588,8 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
         template_id: template.id,
         color_scheme_id: color?.id || null,
         theme: template.id,
-        button_style: template.layout.buttonStyle,
-        font_style: template.layout.fontFamily,
+        button_style: template.layoutConfig?.buttonStyle || 'rounded',
+        font_style: template.layoutConfig?.fontFamily || 'modern',
         is_published: false,
         is_active: true,
         gallery_images: uploadedGallery.length > 0 ? uploadedGallery : null,
@@ -737,313 +738,238 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
               </TouchableOpacity>
             )}
 
-            <LinearGradient key={`${templateIndex}_${colorIndex}`} colors={gradientColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.liveCard}>
-              {/* Profile Photo */}
-              {isCover ? (
-                <TouchableOpacity style={styles.coverPhotoContainer} onPress={() => pickImage(false)} activeOpacity={0.8}>
-                  {profileImage ? (
-                    <Image source={{ uri: profileImage }} style={styles.coverPhoto} />
-                  ) : (
-                    <View style={styles.coverPlaceholder}>
-                      <Ionicons name="camera" size={36} color={isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.5)'} />
-                      <Text style={[styles.coverPlaceholderText, { color: isLightCard ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)' }]}>Tap to add cover photo</Text>
+            {/* ── Template-specific card layout ── */}
+            <View key={`${templateIndex}_${colorIndex}`}>
+              {renderTemplateLayout({
+                layout: template?.layout || 'basic',
+                color: color || { id: 'default', name: 'Default', primary: '#667eea', secondary: '#764ba2', accent: '#fff', text: '#fff', textSecondary: 'rgba(255,255,255,0.7)', background: '#667eea', cardBg: '#667eea' },
+                data: { profileImage, name, titleRole, bio, email, phone, website, address },
+                isEditable: true,
+                onChangeName: setName,
+                onChangeTitle: setTitleRole,
+                onChangeBio: setBio,
+                onChangeEmail: setEmail,
+                onChangePhone: setPhone,
+                onChangeWebsite: setWebsite,
+                onChangeAddress: setAddress,
+                onPickPhoto: () => pickImage(false),
+                textColor,
+                textSecondary,
+                isLightCard,
+                children: (
+                  <>
+                    {/* ===== FEATURED SOCIAL ICONS ===== */}
+                    <View style={styles.featuredIconsSection}>
+                      <View style={styles.featuredIconsRow}>
+                        {featuredIcons.map(fi => {
+                          const platform = FEATURED_ICON_PLATFORMS.find(p => p.id === fi.platform);
+                          if (!platform) return null;
+                          return (
+                            <View key={fi.platform} style={[styles.featuredIconSlot, { backgroundColor: platform.color }]}>
+                              <Ionicons name={platform.icon as any} size={18} color="#fff" />
+                              <TouchableOpacity style={styles.featuredIconRemove} onPress={() => removeFeaturedIcon(fi.platform)}>
+                                <Ionicons name="close" size={10} color="#fff" />
+                              </TouchableOpacity>
+                            </View>
+                          );
+                        })}
+                        {featuredIcons.length < 4 && (
+                          <TouchableOpacity
+                            style={[styles.featuredIconAdd, { borderColor: isLightCard ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)' }]}
+                            onPress={() => setShowFeaturedIconPicker(true)}
+                          >
+                            <Ionicons name="add" size={18} color={isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)'} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      {featuredIcons.map(fi => {
+                        const platform = FEATURED_ICON_PLATFORMS.find(p => p.id === fi.platform);
+                        if (!platform) return null;
+                        const placeholder = fi.platform === 'whatsapp' ? 'Phone number' : fi.platform === 'email' ? 'email@example.com' : `${platform.name} URL or @username`;
+                        return (
+                          <View key={`url_${fi.platform}`} style={styles.featuredIconUrlRow}>
+                            <View style={[styles.featuredIconUrlDot, { backgroundColor: platform.color }]}>
+                              <Ionicons name={platform.icon as any} size={10} color="#fff" />
+                            </View>
+                            <TextInput
+                              style={[styles.featuredIconUrlInput, { color: textColor }]}
+                              value={fi.url}
+                              onChangeText={(val) => updateFeaturedIconUrl(fi.platform, val)}
+                              placeholder={placeholder}
+                              placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                              keyboardType="url"
+                            />
+                          </View>
+                        );
+                      })}
                     </View>
-                  )}
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.profilePhotoSection}>
-                  <TouchableOpacity onPress={() => pickImage(false)} activeOpacity={0.8}>
-                    <View style={{ width: currentPhotoSize.size, height: currentPhotoSize.size }}>
-                      {profileImage ? (
-                        <Image source={{ uri: profileImage }} style={{ width: currentPhotoSize.size, height: currentPhotoSize.size, borderRadius: currentPhotoSize.size / 2, borderWidth: 3, borderColor: isLightCard ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.3)' }} />
-                      ) : (
-                        <View style={{ width: currentPhotoSize.size, height: currentPhotoSize.size, borderRadius: currentPhotoSize.size / 2, borderWidth: 2, borderStyle: 'dashed', borderColor: isLightCard ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center' }}>
-                          <Ionicons name="camera" size={currentPhotoSize.size > 100 ? 32 : 24} color={isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.5)'} />
-                        </View>
+
+                    {/* ── Professional Category ── */}
+                    <View style={styles.cardSection}>
+                      <View style={styles.sectionHeader}>
+                        <Text style={[styles.sectionTitle, { color: textColor }]}>Professional Category</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={[styles.categorySelectBtn, { borderColor: isLightCard ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.15)' }]}
+                        onPress={() => setShowCategoryPicker(true)}
+                      >
+                        <Ionicons name={(PROFESSIONAL_CATEGORIES.find(c => c.id === professionalCategory)?.icon || 'briefcase') as any} size={16} color={textColor} />
+                        <Text style={[styles.categorySelectText, { color: textColor }]}>
+                          {PROFESSIONAL_CATEGORIES.find(c => c.id === professionalCategory)?.label || 'Select Category'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={16} color={textSecondary} />
+                      </TouchableOpacity>
+                      <Text style={[styles.categoryHint, { color: isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.35)' }]}>Determines which endorsement signals appear on your card</Text>
+                    </View>
+
+                    {/* ── External Reviews ── */}
+                    <View style={styles.cardSection}>
+                      <View style={styles.sectionHeader}>
+                        <Text style={[styles.sectionTitle, { color: textColor }]}>External Reviews</Text>
+                      </View>
+                      {EXTERNAL_REVIEW_PLATFORMS.map(platform => {
+                        const { value, set } = reviewUrlMap[platform.field];
+                        return (
+                          <View key={platform.id} style={[styles.reviewRow, { borderBottomColor: isLightCard ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)' }]}>
+                            <View style={[styles.reviewBadge, { backgroundColor: platform.color }]}>
+                              <Ionicons name={platform.icon as any} size={14} color="#fff" />
+                            </View>
+                            <TextInput
+                              style={[styles.reviewInput, { color: textColor }]}
+                              value={value}
+                              onChangeText={set}
+                              placeholder={`${platform.label} URL`}
+                              placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                              keyboardType="url"
+                            />
+                            {value ? (
+                              <TouchableOpacity onPress={() => set('')}>
+                                <Ionicons name="close-circle" size={18} color={isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)'} />
+                              </TouchableOpacity>
+                            ) : null}
+                          </View>
+                        );
+                      })}
+                      <Text style={[styles.categoryHint, { color: isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.35)' }]}>Link your review profiles — badges appear on your public card</Text>
+                    </View>
+
+                    {/* ── Social Links ── */}
+                    <View style={styles.cardSection}>
+                      <View style={styles.sectionHeader}>
+                        <Text style={[styles.sectionTitle, { color: textColor }]}>Links</Text>
+                        <TouchableOpacity onPress={() => setShowAddLinkModal(true)}>
+                          <Ionicons name="add-circle" size={24} color={ACCENT_GREEN} />
+                        </TouchableOpacity>
+                      </View>
+                      {links.map((link) => {
+                        const platform = SOCIAL_PLATFORMS.find(p => p.id === link.platform);
+                        return (
+                          <View key={link.id} style={styles.linkRow}>
+                            <View style={[styles.linkIconWrapper, { backgroundColor: platform?.color || '#333' }]}>
+                              <Ionicons name={(platform?.icon || 'globe') as any} size={16} color="#fff" />
+                            </View>
+                            <TextInput
+                              style={[styles.linkInput, { color: textColor }]}
+                              value={link.value}
+                              onChangeText={(val) => updateLink(link.id, val)}
+                              placeholder={platform?.placeholder || 'Enter URL'}
+                              placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
+                              autoCapitalize="none"
+                            />
+                            <TouchableOpacity onPress={() => removeLink(link.id)}>
+                              <Ionicons name="trash" size={16} color="#EF4444" />
+                            </TouchableOpacity>
+                          </View>
+                        );
+                      })}
+                      {links.length === 0 && (
+                        <TouchableOpacity style={[styles.addLinkEmptyBtn, { borderColor: isLightCard ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)' }]} onPress={() => setShowAddLinkModal(true)}>
+                          <Ionicons name="add" size={20} color={isLightCard ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)'} />
+                          <Text style={{ color: isLightCard ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)', fontSize: 14 }}>Add links</Text>
+                        </TouchableOpacity>
                       )}
                     </View>
-                  </TouchableOpacity>
-                </View>
-              )}
 
-              {/* Size hint - ALWAYS visible for all photo sizes */}
-              <TouchableOpacity style={styles.photoSizeHint} onPress={() => setShowPhotoSizeModal(true)}>
-                <Ionicons name="expand" size={12} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.photoSizeHintText}>{currentPhotoSize.label} · Tap to change size</Text>
-              </TouchableOpacity>
-
-              {/* ===== FEATURED SOCIAL ICONS (independent, up to 4, with URLs) ===== */}
-              <View style={styles.featuredIconsSection}>
-                <View style={styles.featuredIconsRow}>
-                  {featuredIcons.map(fi => {
-                    const platform = FEATURED_ICON_PLATFORMS.find(p => p.id === fi.platform);
-                    if (!platform) return null;
-                    return (
-                      <View key={fi.platform} style={[styles.featuredIconSlot, { backgroundColor: platform.color }]}>
-                        <Ionicons name={platform.icon as any} size={18} color="#fff" />
-                        <TouchableOpacity
-                          style={styles.featuredIconRemove}
-                          onPress={() => removeFeaturedIcon(fi.platform)}
-                        >
-                          <Ionicons name="close" size={10} color="#fff" />
+                    {/* ── Photo Gallery ── */}
+                    <View style={styles.cardSection}>
+                      <View style={styles.sectionHeader}>
+                        <Text style={[styles.sectionTitle, { color: textColor }]}>Photo Gallery</Text>
+                        <TouchableOpacity onPress={() => pickImage(true)}>
+                          <Ionicons name="add-circle" size={24} color={ACCENT_GREEN} />
                         </TouchableOpacity>
                       </View>
-                    );
-                  })}
-                  {featuredIcons.length < 4 && (
-                    <TouchableOpacity
-                      style={[styles.featuredIconAdd, { borderColor: isLightCard ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)' }]}
-                      onPress={() => setShowFeaturedIconPicker(true)}
-                    >
-                      <Ionicons name="add" size={18} color={isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)'} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-                {/* URL input for each featured icon */}
-                {featuredIcons.map(fi => {
-                  const platform = FEATURED_ICON_PLATFORMS.find(p => p.id === fi.platform);
-                  if (!platform) return null;
-                  const placeholder = fi.platform === 'whatsapp' ? 'Phone number' : fi.platform === 'email' ? 'email@example.com' : `${platform.name} URL or @username`;
-                  return (
-                    <View key={`url_${fi.platform}`} style={styles.featuredIconUrlRow}>
-                      <View style={[styles.featuredIconUrlDot, { backgroundColor: platform.color }]}>
-                        <Ionicons name={platform.icon as any} size={10} color="#fff" />
-                      </View>
-                      <TextInput
-                        style={[styles.featuredIconUrlInput, { color: textColor }]}
-                        value={fi.url}
-                        onChangeText={(val) => updateFeaturedIconUrl(fi.platform, val)}
-                        placeholder={placeholder}
-                        placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        keyboardType="url"
-                      />
-                    </View>
-                  );
-                })}
-              </View>
-
-              {/* ── Editable Fields ── */}
-              <View style={styles.cardFields}>
-                <TextInput
-                  style={[styles.nameField, { color: textColor }]}
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Your Name"
-                  placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)'}
-                  textAlign="center"
-                />
-                <TextInput
-                  style={[styles.titleField, { color: textSecondary }]}
-                  value={titleRole}
-                  onChangeText={setTitleRole}
-                  placeholder="Title / Role"
-                  placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
-                  textAlign="center"
-                />
-                <TextInput
-                  style={[styles.bioField, { color: textSecondary }]}
-                  value={bio}
-                  onChangeText={setBio}
-                  placeholder="Short bio about yourself..."
-                  placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.3)'}
-                  textAlign="center"
-                  multiline
-                  numberOfLines={2}
-                  maxLength={300}
-                />
-
-                {/* Contact Fields */}
-                <View style={styles.contactFields}>
-                  {[
-                    { icon: 'mail' as const, value: email, set: setEmail, placeholder: 'Email address', kb: 'email-address' as const },
-                    { icon: 'call' as const, value: phone, set: setPhone, placeholder: 'Phone number', kb: 'phone-pad' as const },
-                    { icon: 'globe' as const, value: website, set: setWebsite, placeholder: 'Website URL', kb: 'url' as const },
-                    { icon: 'location-outline' as const, value: address, set: setAddress, placeholder: 'City, State', kb: 'default' as const },
-                  ].map((f, i) => (
-                    <View key={i} style={[styles.contactRow, { borderBottomColor: isLightCard ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)' }]}>
-                      <Ionicons name={f.icon} size={16} color={textSecondary} />
-                      <TextInput
-                        style={[styles.contactInput, { color: textColor }]}
-                        value={f.value}
-                        onChangeText={f.set}
-                        placeholder={f.placeholder}
-                        placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
-                        keyboardType={f.kb}
-                        autoCapitalize="none"
-                      />
-                    </View>
-                  ))}
-                </View>
-              </View>
-
-              {/* ── Professional Category ── */}
-              <View style={styles.cardSection}>
-                <View style={styles.sectionHeader}>
-                  <Text style={[styles.sectionTitle, { color: textColor }]}>Professional Category</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.categorySelectBtn, { borderColor: isLightCard ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.15)' }]}
-                  onPress={() => setShowCategoryPicker(true)}
-                >
-                  <Ionicons name={(PROFESSIONAL_CATEGORIES.find(c => c.id === professionalCategory)?.icon || 'briefcase') as any} size={16} color={textColor} />
-                  <Text style={[styles.categorySelectText, { color: textColor }]}>
-                    {PROFESSIONAL_CATEGORIES.find(c => c.id === professionalCategory)?.label || 'Select Category'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={16} color={textSecondary} />
-                </TouchableOpacity>
-                <Text style={[styles.categoryHint, { color: isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.35)' }]}>Determines which endorsement signals appear on your card</Text>
-              </View>
-
-              {/* ── External Reviews ── */}
-              <View style={styles.cardSection}>
-                <View style={styles.sectionHeader}>
-                  <Text style={[styles.sectionTitle, { color: textColor }]}>External Reviews</Text>
-                </View>
-                {EXTERNAL_REVIEW_PLATFORMS.map(platform => {
-                  const { value, set } = reviewUrlMap[platform.field];
-                  return (
-                    <View key={platform.id} style={[styles.reviewRow, { borderBottomColor: isLightCard ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)' }]}>
-                      <View style={[styles.reviewBadge, { backgroundColor: platform.color }]}>
-                        <Ionicons name={platform.icon as any} size={14} color="#fff" />
-                      </View>
-                      <TextInput
-                        style={[styles.reviewInput, { color: textColor }]}
-                        value={value}
-                        onChangeText={set}
-                        placeholder={`${platform.label} URL`}
-                        placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        keyboardType="url"
-                      />
-                      {value ? (
-                        <TouchableOpacity onPress={() => set('')}>
-                          <Ionicons name="close-circle" size={18} color={isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)'} />
+                      {galleryImages.length > 0 ? (
+                        <View style={styles.galleryGrid}>
+                          {galleryImages.map((img) => (
+                            <TouchableOpacity key={img.id} style={styles.galleryThumb} onPress={() => setLightboxImage(img.uri)} activeOpacity={0.8}>
+                              <Image source={{ uri: img.uri }} style={styles.galleryThumbImage} />
+                              <TouchableOpacity style={styles.galleryRemoveBtn} onPress={() => setGalleryImages(prev => prev.filter(g => g.id !== img.id))}>
+                                <Ionicons name="close" size={12} color="#fff" />
+                              </TouchableOpacity>
+                            </TouchableOpacity>
+                          ))}
+                          <TouchableOpacity style={[styles.galleryAddBtn, { borderColor: isLightCard ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)' }]} onPress={() => pickImage(true)}>
+                            <Ionicons name="add" size={24} color={isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)'} />
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <TouchableOpacity style={[styles.galleryEmptyBtn, { borderColor: isLightCard ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)' }]} onPress={() => pickImage(true)}>
+                          <Ionicons name="images" size={24} color={isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)'} />
+                          <Text style={{ color: isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)', fontSize: 14 }}>Add photos to gallery</Text>
                         </TouchableOpacity>
-                      ) : null}
+                      )}
+                      <Text style={[styles.galleryHint, { color: isLightCard ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.3)' }]}>Tap to view full size</Text>
                     </View>
-                  );
-                })}
-                <Text style={[styles.categoryHint, { color: isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.35)' }]}>Link your review profiles — badges appear on your public card</Text>
-              </View>
 
-              {/* ── Social Links ── */}
-              <View style={styles.cardSection}>
-                <View style={styles.sectionHeader}>
-                  <Text style={[styles.sectionTitle, { color: textColor }]}>Links</Text>
-                  <TouchableOpacity onPress={() => setShowAddLinkModal(true)}>
-                    <Ionicons name="add-circle" size={24} color={ACCENT_GREEN} />
-                  </TouchableOpacity>
-                </View>
-
-                {links.map((link) => {
-                  const platform = SOCIAL_PLATFORMS.find(p => p.id === link.platform);
-                  return (
-                    <View key={link.id} style={styles.linkRow}>
-                      <View style={[styles.linkIconWrapper, { backgroundColor: platform?.color || '#333' }]}>
-                        <Ionicons name={(platform?.icon || 'globe') as any} size={16} color="#fff" />
-                      </View>
-                      <TextInput
-                        style={[styles.linkInput, { color: textColor }]}
-                        value={link.value}
-                        onChangeText={(val) => updateLink(link.id, val)}
-                        placeholder={platform?.placeholder || 'Enter URL'}
-                        placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
-                        autoCapitalize="none"
-                      />
-                      <TouchableOpacity onPress={() => removeLink(link.id)}>
-                        <Ionicons name="trash" size={16} color="#EF4444" />
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })}
-
-                {links.length === 0 && (
-                  <TouchableOpacity style={[styles.addLinkEmptyBtn, { borderColor: isLightCard ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)' }]} onPress={() => setShowAddLinkModal(true)}>
-                    <Ionicons name="add" size={20} color={isLightCard ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)'} />
-                    <Text style={{ color: isLightCard ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)', fontSize: 14 }}>Add links</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* ── Photo Gallery ── */}
-              <View style={styles.cardSection}>
-                <View style={styles.sectionHeader}>
-                  <Text style={[styles.sectionTitle, { color: textColor }]}>Photo Gallery</Text>
-                  <TouchableOpacity onPress={() => pickImage(true)}>
-                    <Ionicons name="add-circle" size={24} color={ACCENT_GREEN} />
-                  </TouchableOpacity>
-                </View>
-
-                {galleryImages.length > 0 ? (
-                  <View style={styles.galleryGrid}>
-                    {galleryImages.map((img) => (
-                      <TouchableOpacity key={img.id} style={styles.galleryThumb} onPress={() => setLightboxImage(img.uri)} activeOpacity={0.8}>
-                        <Image source={{ uri: img.uri }} style={styles.galleryThumbImage} />
-                        <TouchableOpacity style={styles.galleryRemoveBtn} onPress={() => setGalleryImages(prev => prev.filter(g => g.id !== img.id))}>
-                          <Ionicons name="close" size={12} color="#fff" />
+                    {/* ── Videos ── */}
+                    <View style={styles.cardSection}>
+                      <View style={styles.sectionHeader}>
+                        <Text style={[styles.sectionTitle, { color: textColor }]}>Videos</Text>
+                        <TouchableOpacity onPress={() => setShowVideoTypePicker(true)}>
+                          <Ionicons name="add-circle" size={24} color={ACCENT_GREEN} />
                         </TouchableOpacity>
-                      </TouchableOpacity>
-                    ))}
-                    <TouchableOpacity style={[styles.galleryAddBtn, { borderColor: isLightCard ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)' }]} onPress={() => pickImage(true)}>
-                      <Ionicons name="add" size={24} color={isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)'} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={[styles.galleryEmptyBtn, { borderColor: isLightCard ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)' }]} onPress={() => pickImage(true)}>
-                    <Ionicons name="images" size={24} color={isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)'} />
-                    <Text style={{ color: isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)', fontSize: 14 }}>Add photos to gallery</Text>
-                  </TouchableOpacity>
-                )}
-                <Text style={[styles.galleryHint, { color: isLightCard ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.3)' }]}>Tap to view full size</Text>
-              </View>
-
-              {/* ── Videos ── */}
-              <View style={styles.cardSection}>
-                <View style={styles.sectionHeader}>
-                  <Text style={[styles.sectionTitle, { color: textColor }]}>Videos</Text>
-                  <TouchableOpacity onPress={() => setShowVideoTypePicker(true)}>
-                    <Ionicons name="add-circle" size={24} color={ACCENT_GREEN} />
-                  </TouchableOpacity>
-                </View>
-
-                {videos.map((video, idx) => (
-                  <View key={idx} style={[styles.videoItem, { borderBottomColor: isLightCard ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)' }]}>
-                    <View style={[styles.videoTypeIcon, { backgroundColor: video.type === 'youtube' ? '#FF0000' : video.type === 'tavvy_short' ? ACCENT_GREEN : '#6366F1' }]}>
-                      <Ionicons name={video.type === 'youtube' ? 'logo-youtube' : video.type === 'tavvy_short' ? 'film' : 'play'} size={14} color="#fff" />
-                    </View>
-                    {video.type === 'tavvy_short' && video.url ? (
-                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={{ fontSize: 12, color: textColor }}>15s video ready</Text>
                       </View>
-                    ) : (
-                      <TextInput
-                        style={[styles.videoUrlInput, { color: textColor }]}
-                        value={video.url}
-                        onChangeText={(val) => updateVideoUrl(idx, val)}
-                        placeholder={video.type === 'youtube' ? 'YouTube URL' : 'Video URL'}
-                        placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        keyboardType="url"
-                      />
-                    )}
-                    <TouchableOpacity onPress={() => removeVideo(idx)}>
-                      <Ionicons name="trash" size={16} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-
-                {videos.length === 0 && (
-                  <TouchableOpacity style={[styles.addLinkEmptyBtn, { borderColor: isLightCard ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)' }]} onPress={() => setShowVideoTypePicker(true)}>
-                    <Ionicons name="videocam" size={20} color={isLightCard ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)'} />
-                    <Text style={{ color: isLightCard ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)', fontSize: 14 }}>Add videos</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </LinearGradient>
+                      {videos.map((video, idx) => (
+                        <View key={idx} style={[styles.videoItem, { borderBottomColor: isLightCard ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)' }]}>
+                          <View style={[styles.videoTypeIcon, { backgroundColor: video.type === 'youtube' ? '#FF0000' : video.type === 'tavvy_short' ? ACCENT_GREEN : '#6366F1' }]}>
+                            <Ionicons name={video.type === 'youtube' ? 'logo-youtube' : video.type === 'tavvy_short' ? 'film' : 'play'} size={14} color="#fff" />
+                          </View>
+                          {video.type === 'tavvy_short' && video.url ? (
+                            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                              <Text style={{ fontSize: 12, color: textColor }}>15s video ready</Text>
+                            </View>
+                          ) : (
+                            <TextInput
+                              style={[styles.videoUrlInput, { color: textColor }]}
+                              value={video.url}
+                              onChangeText={(val) => updateVideoUrl(idx, val)}
+                              placeholder={video.type === 'youtube' ? 'YouTube URL' : 'Video URL'}
+                              placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                              keyboardType="url"
+                            />
+                          )}
+                          <TouchableOpacity onPress={() => removeVideo(idx)}>
+                            <Ionicons name="trash" size={16} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                      {videos.length === 0 && (
+                        <TouchableOpacity style={[styles.addLinkEmptyBtn, { borderColor: isLightCard ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)' }]} onPress={() => setShowVideoTypePicker(true)}>
+                          <Ionicons name="videocam" size={20} color={isLightCard ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)'} />
+                          <Text style={{ color: isLightCard ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)', fontSize: 14 }}>Add videos</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </>
+                ),
+              })}
+            </View>
           </View>
 
           <View style={{ height: 100 }} />
