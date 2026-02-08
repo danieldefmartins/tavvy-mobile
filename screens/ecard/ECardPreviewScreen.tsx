@@ -278,8 +278,8 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
       .update({ tap_count: (currentCard?.tap_count || 0) + 1 })
       .eq('id', cardData.id);
 
-    // Update local count
-    setEndorsementCount(prev => prev + 1);
+    // Update local count (each signal tap = +1)
+    setEndorsementCount(prev => prev + signalIds.length);
     setEndorsementSubmitted(true);
     setShowEndorseFlow(false);
     // Refresh endorsement data
@@ -314,9 +314,9 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
     if (!cardData?.id) return;
     setLoadingEndorsements(true);
     try {
-      // Get endorsement count
+      // Get endorsement count (each signal tap = +1)
       const { count } = await supabase
-        .from('ecard_endorsements')
+        .from('ecard_endorsement_signals')
         .select('*', { count: 'exact', head: true })
         .eq('card_id', cardData.id);
       setEndorsementCount(count || 0);
