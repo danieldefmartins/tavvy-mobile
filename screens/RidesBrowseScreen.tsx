@@ -176,7 +176,7 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
       // Use ilike for case-insensitive matching
       let query = supabase
         .from('places')
-        .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos, description, short_description, min_height_inches')
+        .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos, description, short_description, min_height_inches, park_name, duration_minutes, thrill_level, gets_wet, single_rider, child_swap, lightning_lane, indoor_outdoor, accessibility, age_recommendation, motion_sickness')
         .eq('tavvy_category', 'attraction')
         .order('name', { ascending: true })
         .limit(100);
@@ -185,7 +185,7 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
       if (filterBy !== 'all') {
         query = supabase
           .from('places')
-          .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos, description, short_description, min_height_inches')
+          .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos, description, short_description, min_height_inches, park_name, duration_minutes, thrill_level, gets_wet, single_rider, child_swap, lightning_lane, indoor_outdoor, accessibility, age_recommendation, motion_sickness')
           .eq('tavvy_category', 'attraction')
           .eq('tavvy_subcategory', filterBy)
           .order('name', { ascending: true })
@@ -204,13 +204,13 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
           name: place.name,
           category: place.tavvy_category || 'attraction',
           subcategory: place.tavvy_subcategory,
-          park_name: place.city,
+          park_name: place.park_name || place.city,
           cover_image_url: place.cover_image_url,
           photos: place.photos,
           description: place.description,
           short_description: place.short_description,
           min_height_inches: place.min_height_inches,
-          thrill_level: getThrillLevelFromSubcategory(place.tavvy_subcategory),
+          thrill_level: place.thrill_level || getThrillLevelFromSubcategory(place.tavvy_subcategory),
           is_must_ride: place.tavvy_subcategory === 'thrill_rides',
           is_featured: false,
         }));
@@ -255,7 +255,7 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
           // Get the places that are attractions
           const { data: placesData } = await supabase
             .from('places')
-            .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos, description, short_description, min_height_inches')
+            .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos, description, short_description, min_height_inches, park_name, duration_minutes, thrill_level, gets_wet, single_rider, child_swap, lightning_lane, indoor_outdoor, accessibility, age_recommendation, motion_sickness')
             .in('id', placeIds)
             .eq('tavvy_category', 'attraction')
             .order('name', { ascending: true });
@@ -266,14 +266,14 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
               name: place.name,
               category: place.tavvy_category || 'attraction',
               subcategory: place.tavvy_subcategory,
-              park_name: universeName,
+              park_name: place.park_name || universeName,
               universe_name: universeName,
               cover_image_url: place.cover_image_url,
               photos: place.photos,
               description: place.description,
               short_description: place.short_description,
               min_height_inches: place.min_height_inches,
-              thrill_level: getThrillLevelFromSubcategory(place.tavvy_subcategory),
+              thrill_level: place.thrill_level || getThrillLevelFromSubcategory(place.tavvy_subcategory),
               is_must_ride: (place.tavvy_subcategory || '').toLowerCase().includes('coaster'),
               is_featured: false,
             }));
@@ -288,7 +288,7 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
       setSearchingByPark(false);
       const { data, error } = await supabase
         .from('places')
-        .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos, description, short_description, min_height_inches')
+        .select('id, name, tavvy_category, tavvy_subcategory, city, region, cover_image_url, photos, description, short_description, min_height_inches, park_name, duration_minutes, thrill_level, gets_wet, single_rider, child_swap, lightning_lane, indoor_outdoor, accessibility, age_recommendation, motion_sickness')
         .eq('tavvy_category', 'attraction')
         .ilike('name', `%${query}%`)
         .order('name', { ascending: true })
@@ -303,13 +303,13 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
           name: place.name,
           category: place.tavvy_category || 'attraction',
           subcategory: place.tavvy_subcategory,
-          park_name: place.city,
+          park_name: place.park_name || place.city,
           cover_image_url: place.cover_image_url,
           photos: place.photos,
           description: place.description,
           short_description: place.short_description,
           min_height_inches: place.min_height_inches,
-          thrill_level: getThrillLevelFromSubcategory(place.tavvy_subcategory),
+          thrill_level: place.thrill_level || getThrillLevelFromSubcategory(place.tavvy_subcategory),
           is_must_ride: (place.tavvy_subcategory || '').toLowerCase().includes('coaster'),
           is_featured: false,
         }));
@@ -557,8 +557,7 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
                       {ride.name}
                     </Text>
                     <Text style={[styles.rideSubtitle, { color: secondaryTextColor }]} numberOfLines={1}>
-                      {formatSubcategory(ride.subcategory)}
-                      {ride.min_height_inches && ` • ${ride.min_height_inches}"`}
+                      {ride.park_name || formatSubcategory(ride.subcategory)}
                     </Text>
                   </View>
                 </TouchableOpacity>
