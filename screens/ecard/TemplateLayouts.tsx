@@ -32,6 +32,7 @@ export interface CardData {
   email: string;
   phone: string;
   website: string;
+  websiteLabel: string;
   address: string;
 }
 
@@ -47,6 +48,7 @@ export interface LayoutProps {
   onChangeEmail?: (v: string) => void;
   onChangePhone?: (v: string) => void;
   onChangeWebsite?: (v: string) => void;
+  onChangeWebsiteLabel?: (v: string) => void;
   onChangeAddress?: (v: string) => void;
   onPickPhoto?: () => void;
   // Computed colors
@@ -121,6 +123,31 @@ function ContactRow({ icon, value, onChange, placeholder, keyboard, textColor, b
   );
 }
 
+// ── Helper: Website Label Row (appears below website when it has a value) ──
+function WebsiteLabelRow({ website, websiteLabel, onChange, textColor, borderColor, isEditable }: {
+  website: string; websiteLabel: string; onChange?: (v: string) => void;
+  textColor: string; borderColor: string; isEditable: boolean;
+}) {
+  if (!website.trim()) return null;
+  return (
+    <View style={[ls.contactRow, { borderBottomColor: borderColor, marginTop: -4 }]}>
+      <Ionicons name="pencil-outline" size={14} color={textColor} style={{ opacity: 0.35 }} />
+      {isEditable && onChange ? (
+        <TextInput
+          style={[ls.contactInput, { color: textColor, fontSize: 12, fontStyle: websiteLabel ? 'normal' : 'italic', opacity: websiteLabel ? 1 : 0.5 }]}
+          value={websiteLabel}
+          onChangeText={onChange}
+          placeholder='Label (e.g. "My Portfolio")'
+          placeholderTextColor="rgba(128,128,128,0.4)"
+          autoCapitalize="none"
+        />
+      ) : (
+        websiteLabel ? <Text style={[ls.contactInput, { color: textColor, fontSize: 12 }]} numberOfLines={1}>{websiteLabel}</Text> : null
+      )}
+    </View>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════
 // MAIN RENDERER
 // ═══════════════════════════════════════════════════════════
@@ -164,6 +191,7 @@ function renderBasicLayout(p: LayoutProps) {
         <ContactRow icon="mail" value={data.email} onChange={p.onChangeEmail} placeholder="Email" keyboard="email-address" textColor={textColor} borderColor={borderCol} isEditable={isEditable} />
         <ContactRow icon="call" value={data.phone} onChange={p.onChangePhone} placeholder="Phone" keyboard="phone-pad" textColor={textColor} borderColor={borderCol} isEditable={isEditable} />
         <ContactRow icon="globe" value={data.website} onChange={p.onChangeWebsite} placeholder="Website" keyboard="url" textColor={textColor} borderColor={borderCol} isEditable={isEditable} />
+        <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor={textColor} borderColor={borderCol} isEditable={isEditable} />
         <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor={textColor} borderColor={borderCol} isEditable={isEditable} />
       </View>
       {children}
@@ -200,6 +228,7 @@ function renderBloggerLayout(p: LayoutProps) {
             <ContactRow icon="mail" value={data.email} onChange={p.onChangeEmail} placeholder="Email" keyboard="email-address" textColor={cardTxt} borderColor={borderCol} isEditable={isEditable} />
             <ContactRow icon="call" value={data.phone} onChange={p.onChangePhone} placeholder="Phone" keyboard="phone-pad" textColor={cardTxt} borderColor={borderCol} isEditable={isEditable} />
             <ContactRow icon="globe" value={data.website} onChange={p.onChangeWebsite} placeholder="Website" keyboard="url" textColor={cardTxt} borderColor={borderCol} isEditable={isEditable} />
+            <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor={cardTxt} borderColor={borderCol} isEditable={isEditable} />
             <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor={cardTxt} borderColor={borderCol} isEditable={isEditable} />
           </View>
         </View>
@@ -262,6 +291,7 @@ function renderBusinessCardLayout(p: LayoutProps) {
           <ContactRow icon="mail" value={data.email} onChange={p.onChangeEmail} placeholder="Email" keyboard="email-address" textColor="#333" borderColor={borderCol} isEditable={isEditable} />
           <ContactRow icon="call" value={data.phone} onChange={p.onChangePhone} placeholder="Phone" keyboard="phone-pad" textColor="#333" borderColor={borderCol} isEditable={isEditable} />
           <ContactRow icon="globe" value={data.website} onChange={p.onChangeWebsite} placeholder="Website" keyboard="url" textColor="#333" borderColor={borderCol} isEditable={isEditable} />
+          <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor={"#333"} borderColor={borderCol} isEditable={isEditable} />
           <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor="#333" borderColor={borderCol} isEditable={isEditable} />
         </View>
       </View>
@@ -317,6 +347,7 @@ function renderFullWidthLayout(p: LayoutProps) {
           <ContactRow icon="mail" value={data.email} onChange={p.onChangeEmail} placeholder="Email" keyboard="email-address" textColor="#333" borderColor={borderCol} isEditable={isEditable} />
           <ContactRow icon="call" value={data.phone} onChange={p.onChangePhone} placeholder="Phone" keyboard="phone-pad" textColor="#333" borderColor={borderCol} isEditable={isEditable} />
           <ContactRow icon="globe" value={data.website} onChange={p.onChangeWebsite} placeholder="Website" keyboard="url" textColor="#333" borderColor={borderCol} isEditable={isEditable} />
+          <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor={"#333"} borderColor={borderCol} isEditable={isEditable} />
           <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor="#333" borderColor={borderCol} isEditable={isEditable} />
         </View>
       </View>
@@ -372,6 +403,7 @@ function renderProRealtorLayout(p: LayoutProps) {
         <ContactRow icon="mail" value={data.email} onChange={p.onChangeEmail} placeholder="Email" keyboard="email-address" textColor={textColor} borderColor={borderCol} isEditable={isEditable} />
         <ContactRow icon="call" value={data.phone} onChange={p.onChangePhone} placeholder="Phone" keyboard="phone-pad" textColor={textColor} borderColor={borderCol} isEditable={isEditable} />
         <ContactRow icon="globe" value={data.website} onChange={p.onChangeWebsite} placeholder="Website" keyboard="url" textColor={textColor} borderColor={borderCol} isEditable={isEditable} />
+        <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor={textColor} borderColor={borderCol} isEditable={isEditable} />
         <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor={textColor} borderColor={borderCol} isEditable={isEditable} />
       </View>
       {/* Company footer */}
@@ -485,6 +517,7 @@ function renderProCorporateLayout(p: LayoutProps) {
           <ContactRow icon="mail" value={data.email} onChange={p.onChangeEmail} placeholder="Email" keyboard="email-address" textColor={cardBg === 'transparent' ? '#fff' : '#333'} borderColor={borderCol} isEditable={isEditable} />
           <ContactRow icon="call" value={data.phone} onChange={p.onChangePhone} placeholder="Phone" keyboard="phone-pad" textColor={cardBg === 'transparent' ? '#fff' : '#333'} borderColor={borderCol} isEditable={isEditable} />
           <ContactRow icon="globe" value={data.website} onChange={p.onChangeWebsite} placeholder="Website" keyboard="url" textColor={cardBg === 'transparent' ? '#fff' : '#333'} borderColor={borderCol} isEditable={isEditable} />
+          <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor={cardBg === 'transparent' ? '#fff' : '#333'} borderColor={borderCol} isEditable={isEditable} />
           <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor={cardBg === 'transparent' ? '#fff' : '#333'} borderColor={borderCol} isEditable={isEditable} />
         </View>
       </View>

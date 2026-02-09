@@ -206,6 +206,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [website, setWebsite] = useState('');
+  const [websiteLabel, setWebsiteLabel] = useState('');
   const [address, setAddress] = useState('');
   const [photoSizeIndex, setPhotoSizeIndex] = useState(1);
 
@@ -260,6 +261,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
     if (card.email) setEmail(card.email);
     if (card.phone) setPhone(card.phone);
     if (card.website) setWebsite(card.website);
+    if (card.website_label) setWebsiteLabel(card.website_label);
     if (card.city) setAddress(card.city);
     if (card.profile_photo_url) setProfileImage(card.profile_photo_url);
     if (card.professional_category) setProfessionalCategory(card.professional_category);
@@ -311,6 +313,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
           if (draft.email) setEmail(draft.email);
           if (draft.phone) setPhone(draft.phone);
           if (draft.website) setWebsite(draft.website);
+          if (draft.websiteLabel) setWebsiteLabel(draft.websiteLabel);
           if (draft.address) setAddress(draft.address);
           if (typeof draft.templateIndex === 'number') setTemplateIndex(draft.templateIndex);
           if (typeof draft.colorIndex === 'number') setColorIndex(draft.colorIndex);
@@ -534,7 +537,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
       // Save draft to AsyncStorage so it can be restored after login
       try {
         const draft = {
-          name, titleRole, bio, email, phone, website, address,
+          name, titleRole, bio, email, phone, website, websiteLabel, address,
           templateIndex, colorIndex, photoSizeIndex,
           featuredIcons, links, videos: videos.map(v => ({ type: v.type, url: v.url })),
           profileImage, professionalCategory,
@@ -581,6 +584,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
         email: email || null,
         phone: phone || null,
         website: website || null,
+        website_label: websiteLabel || null,
         city: address || null,
         profile_photo_url: photoUrl,
         profile_photo_size: currentPhotoSize.id,
@@ -744,7 +748,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
               {renderTemplateLayout({
                 layout: template?.layout || 'basic',
                 color: color || { id: 'default', name: 'Default', primary: '#667eea', secondary: '#764ba2', accent: '#fff', text: '#fff', textSecondary: 'rgba(255,255,255,0.7)', background: '#667eea', cardBg: '#667eea' },
-                data: { profileImage, name, titleRole, bio, email, phone, website, address },
+                data: { profileImage, name, titleRole, bio, email, phone, website, websiteLabel, address },
                 isEditable: true,
                 onChangeName: setName,
                 onChangeTitle: setTitleRole,
@@ -752,6 +756,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
                 onChangeEmail: setEmail,
                 onChangePhone: setPhone,
                 onChangeWebsite: setWebsite,
+                onChangeWebsiteLabel: setWebsiteLabel,
                 onChangeAddress: setAddress,
                 onPickPhoto: () => pickImage(false),
                 textColor,
