@@ -2800,7 +2800,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             <TouchableOpacity style={s.actionButton} onPress={handleShare}>
               <Ionicons name="share-outline" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
-            <TouchableOpacity style={s.actionButton} onPress={generateQRCode}>
+            <TouchableOpacity style={s.actionButton} onPress={() => generateQRCode()}>
               <Ionicons name="qr-code-outline" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
             <TouchableOpacity 
@@ -2835,7 +2835,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
       </View>
 
       {/* Tab Content */}
-      <ScrollView style={s.scrollView} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView style={s.scrollView} contentContainerStyle={{ paddingBottom: 80 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {activeTab === 'content' && renderContentTab()}
         {activeTab === 'links' && renderLinksTab()}
         {activeTab === 'style' && renderStyleTab()}

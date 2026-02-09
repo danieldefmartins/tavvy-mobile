@@ -344,6 +344,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    zIndex: 10,
+    backgroundColor: '#fff',
   },
   backButton: {
     width: 40,
@@ -363,6 +365,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
+    overflow: 'hidden',
   },
   centerContent: {
     alignItems: 'center',
