@@ -550,6 +550,150 @@ const CoverCardPreview = ({ colors }: { colors: any }) => (
   </View>
 );
 
+// --- BIZ TRADITIONAL: Accent bar + centered logo + round photo + centered name + contact rows ---
+const BizTraditionalPreview = ({ colors }: { colors: any }) => (
+  <View style={[prev.card, { backgroundColor: '#FFFFFF' }]}>
+    {/* Top accent bar */}
+    <View style={{ width: '100%', height: 5, backgroundColor: colors.primary || '#0c1b3a' }} />
+    {/* Logo + company */}
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 14, gap: 8 }}>
+      <View style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: colors.primary || '#0c1b3a', alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name="business" size={14} color={colors.accent || '#c9a84c'} />
+      </View>
+      <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary || '#0c1b3a', letterSpacing: 0.5 }}>Apex Industries</Text>
+    </View>
+    {/* Gold accent line */}
+    <View style={{ width: 40, height: 2, backgroundColor: colors.accent || '#c9a84c', alignSelf: 'center', marginVertical: 10 }} />
+    {/* Centered photo */}
+    <View style={{ alignItems: 'center', marginBottom: 8 }}>
+      <View style={{ width: 80, height: 80, borderRadius: 40, borderWidth: 2.5, borderColor: colors.accent || '#c9a84c', overflow: 'hidden' }}>
+        <Image source={SAMPLE_AVATAR} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+      </View>
+    </View>
+    {/* Name + Title centered */}
+    <View style={{ alignItems: 'center', paddingHorizontal: 20 }}>
+      <Text style={{ fontSize: 18, fontWeight: '700', color: '#1a1a2e', marginBottom: 2 }}>James Mitchell</Text>
+      <Text style={{ fontSize: 11, fontWeight: '600', color: colors.primary || '#0c1b3a' }}>Senior Consultant</Text>
+    </View>
+    {/* Divider */}
+    <View style={{ width: '70%', height: 1, backgroundColor: '#e5e5e5', alignSelf: 'center', marginVertical: 10 }} />
+    {/* Contact rows */}
+    {[
+      { icon: 'call-outline' as const, text: '+1 555-234-5678', label: 'Phone' },
+      { icon: 'mail-outline' as const, text: 'james@apex.com', label: 'Email' },
+      { icon: 'globe-outline' as const, text: 'www.apexindustries.com', label: 'Website' },
+      { icon: 'location-outline' as const, text: '123 Business Ave, NY', label: 'Address' },
+    ].map((row, i) => (
+      <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginBottom: 6 }}>
+        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: `${colors.primary || '#0c1b3a'}15`, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+          <Ionicons name={row.icon} size={13} color={colors.primary || '#0c1b3a'} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 11, fontWeight: '500', color: '#333' }} numberOfLines={1}>{row.text}</Text>
+          <Text style={{ fontSize: 9, color: '#999' }}>{row.label}</Text>
+        </View>
+      </View>
+    ))}
+    {/* Bottom accent bar */}
+    <View style={{ width: '100%', height: 3, backgroundColor: colors.accent || '#c9a84c', marginTop: 'auto' }} />
+  </View>
+);
+
+// --- BIZ MODERN: Dark gradient top + name left + photo right + curved transition + white bottom ---
+const BizModernPreview = ({ colors }: { colors: any }) => (
+  <View style={[prev.card, { backgroundColor: '#FFFFFF' }]}>
+    {/* Dark top */}
+    <LinearGradient
+      colors={[colors.primary || '#0f2b5b', colors.secondary || '#1a3f7a']}
+      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+      style={{ width: '100%', height: CARD_HEIGHT * 0.38, paddingHorizontal: 20, paddingTop: 16, position: 'relative' }}
+    >
+      {/* Logo */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+        <View style={{ width: 22, height: 22, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="business" size={11} color="#fff" />
+        </View>
+        <Text style={{ fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.5 }}>Modern Living</Text>
+      </View>
+      {/* Name + Title (left side) */}
+      <View style={{ paddingRight: 90 }}>
+        <Text style={{ fontSize: 20, fontWeight: '700', color: '#fff', lineHeight: 24 }}>Daniel Rodriguez</Text>
+        <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', marginTop: 2 }}>(he/him)</Text>
+        <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>Showroom Manager</Text>
+      </View>
+      {/* Photo (right, overlapping) */}
+      <View style={{ position: 'absolute', right: 20, bottom: -28 }}>
+        <View style={{ width: 80, height: 80, borderRadius: 40, borderWidth: 3, borderColor: '#fff', overflow: 'hidden' }}>
+          <Image source={SAMPLE_AVATAR} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        </View>
+      </View>
+    </LinearGradient>
+    {/* Curved transition */}
+    <Svg width="100%" height={18} viewBox="0 0 400 20" preserveAspectRatio="none" style={{ marginTop: -1 }}>
+      <Path d="M0 0 L400 0 L400 20 C300 0 100 0 0 20 Z" fill={colors.primary || '#0f2b5b'} />
+    </Svg>
+    {/* White bottom */}
+    <View style={{ paddingHorizontal: 20, flex: 1, paddingTop: 16 }}>
+      <Text style={{ fontSize: 11, color: '#555', lineHeight: 16, marginBottom: 12 }}>Creating engaging showroom experiences for customers.</Text>
+      {[
+        { icon: 'call' as const, text: '+1 555-987-6543', label: 'Work' },
+        { icon: 'mail' as const, text: 'daniel@modernliving.com', label: 'Work' },
+        { icon: 'globe' as const, text: 'www.modernliving.com', label: 'Company' },
+      ].map((row, i) => (
+        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+          <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: `${colors.primary || '#0f2b5b'}12`, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+            <Ionicons name={row.icon} size={14} color={colors.primary || '#0f2b5b'} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: '#333' }} numberOfLines={1}>{row.text}</Text>
+            <Text style={{ fontSize: 9, color: '#999', fontWeight: '500' }}>{row.label}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  </View>
+);
+
+// --- BIZ MINIMALIST: Clean white, thin lines, square photo, minimal icons ---
+const BizMinimalistPreview = ({ colors }: { colors: any }) => (
+  <View style={[prev.card, { backgroundColor: '#FFFFFF', paddingHorizontal: 24, paddingTop: 24 }]}>
+    {/* Small logo */}
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+      <View style={{ width: 22, height: 22, borderRadius: 5, borderWidth: 1.5, borderColor: colors.primary || '#111', alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name="business" size={11} color={colors.primary || '#111'} />
+      </View>
+      <Text style={{ fontSize: 9, fontWeight: '500', color: '#999', letterSpacing: 1.5, textTransform: 'uppercase' }}>Apex Industries</Text>
+    </View>
+    {/* Square photo */}
+    <View style={{ width: 90, height: 90, borderRadius: 10, overflow: 'hidden', marginBottom: 14 }}>
+      <Image source={SAMPLE_AVATAR} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+    </View>
+    {/* Name */}
+    <Text style={{ fontSize: 22, fontWeight: '300', color: colors.primary || '#111', letterSpacing: -0.5, marginBottom: 2 }}>James Mitchell</Text>
+    <Text style={{ fontSize: 9, fontWeight: '500', color: '#999', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Senior Consultant</Text>
+    {/* Thin line */}
+    <View style={{ width: 32, height: 1, backgroundColor: '#e0e0e0', marginVertical: 12 }} />
+    {/* Contact rows - ultra clean */}
+    {[
+      { icon: 'call-outline' as const, text: '+1 555-234-5678' },
+      { icon: 'mail-outline' as const, text: 'james@apex.com' },
+      { icon: 'globe-outline' as const, text: 'www.apexindustries.com' },
+      { icon: 'location-outline' as const, text: '123 Business Ave, New York' },
+    ].map((row, i) => (
+      <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 }}>
+        <Ionicons name={row.icon} size={15} color={colors.primary || '#111'} />
+        <Text style={{ fontSize: 12, color: '#333' }} numberOfLines={1}>{row.text}</Text>
+      </View>
+    ))}
+    {/* Social icons row */}
+    <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+      {['logo-instagram', 'logo-tiktok', 'logo-linkedin'].map((icon, i) => (
+        <Ionicons key={i} name={icon as any} size={16} color="#999" />
+      ))}
+    </View>
+  </View>
+);
+
 // ============================================================
 // MAIN GALLERY SCREEN
 // ============================================================
@@ -635,6 +779,9 @@ const ECardTemplateGalleryScreen: React.FC = () => {
       case 'pro-corporate': return <ProCorporatePreview colors={previewColors} />;
       case 'pro-card': return <ProCardPreview colors={previewColors} />;
       case 'cover-card': return <CoverCardPreview colors={previewColors} />;
+      case 'biz-traditional': return <BizTraditionalPreview colors={previewColors} />;
+      case 'biz-modern': return <BizModernPreview colors={previewColors} />;
+      case 'biz-minimalist': return <BizMinimalistPreview colors={previewColors} />;
       default: return <BasicPreview colors={previewColors} />;
     }
   };

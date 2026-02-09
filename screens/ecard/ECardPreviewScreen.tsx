@@ -914,6 +914,329 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
             );
           }
 
+          // Biz Traditional layout
+          const isBizTraditional = selectedTemplate?.layout === 'biz-traditional';
+          const isBizModern = selectedTemplate?.layout === 'biz-modern';
+          const isBizMinimalist = selectedTemplate?.layout === 'biz-minimalist';
+
+          if (isBizTraditional) {
+            return (
+              <View style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: '#ffffff' }}>
+                {/* Top accent bar */}
+                <View style={{ width: '100%', height: 6, backgroundColor: primaryColor }} />
+                {/* Logo + company */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: 16, gap: 10 }}>
+                  {cardData?.company_logo_url ? (
+                    <Image source={{ uri: cardData.company_logo_url }} style={{ width: 32, height: 32, borderRadius: 8 }} resizeMode="contain" />
+                  ) : (
+                    <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: primaryColor, alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="business" size={16} color={accentColor} />
+                    </View>
+                  )}
+                  {cardData?.company && <Text style={{ fontSize: 13, fontWeight: '700', color: primaryColor, letterSpacing: 0.5 }}>{cardData.company}</Text>}
+                </View>
+                {/* Gold accent line */}
+                <View style={{ width: 50, height: 2, backgroundColor: accentColor, alignSelf: 'center', marginVertical: 14 }} />
+                {/* Centered photo */}
+                {cardData?.profile_photo_url && (
+                  <View style={{ alignItems: 'center', marginBottom: 12 }}>
+                    <View style={{ width: 110, height: 110, borderRadius: 55, borderWidth: 3, borderColor: accentColor, overflow: 'hidden' }}>
+                      <Image source={{ uri: cardData.profile_photo_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    </View>
+                  </View>
+                )}
+                {/* Name + Title centered */}
+                <View style={{ alignItems: 'center', paddingHorizontal: 24 }}>
+                  <Text style={{ fontSize: 24, fontWeight: '700', color: '#1a1a2e' }}>{cardData?.full_name || 'Your Name'}</Text>
+                  {cardData?.pronouns && <Text style={{ fontSize: 12, color: '#999', fontStyle: 'italic', marginTop: 2 }}>({cardData.pronouns})</Text>}
+                  {cardData?.title && <Text style={{ fontSize: 14, fontWeight: '600', color: primaryColor, marginTop: 4 }}>{cardData.title}</Text>}
+                </View>
+                {/* Divider */}
+                <View style={{ width: '80%', height: 1, backgroundColor: '#e5e5e5', alignSelf: 'center', marginVertical: 14 }} />
+                {/* Bio */}
+                {cardData?.bio && <Text style={{ fontSize: 13, color: '#555', lineHeight: 20, textAlign: 'center', paddingHorizontal: 24, marginBottom: 8 }}>{cardData.bio}</Text>}
+                {/* Contact rows */}
+                <View style={{ paddingHorizontal: 24, marginBottom: 16 }}>
+                  {cardData?.phone && (
+                    <TouchableOpacity onPress={() => handleLinkPress('phone', cardData.phone)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${primaryColor}15`, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                        <Ionicons name="call-outline" size={16} color={primaryColor} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '500', color: '#333' }}>{cardData.phone}</Text>
+                        <Text style={{ fontSize: 10, color: '#999' }}>Phone</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                  {cardData?.email && (
+                    <TouchableOpacity onPress={() => handleLinkPress('email', cardData.email)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${primaryColor}15`, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                        <Ionicons name="mail-outline" size={16} color={primaryColor} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '500', color: '#333' }}>{cardData.email}</Text>
+                        <Text style={{ fontSize: 10, color: '#999' }}>Email</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                  {cardData?.website && (
+                    <TouchableOpacity onPress={() => handleLinkPress('website', cardData.website)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${primaryColor}15`, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                        <Ionicons name="globe-outline" size={16} color={primaryColor} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '500', color: '#333' }}>{cardData.website?.replace(/^https?:\/\//, '')}</Text>
+                        <Text style={{ fontSize: 10, color: '#999' }}>Website</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                  {cardData?.location && (
+                    <TouchableOpacity onPress={() => handleLinkPress('location', cardData.location)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${primaryColor}15`, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                        <Ionicons name="location-outline" size={16} color={primaryColor} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '500', color: '#333' }}>{cardData.location}</Text>
+                        <Text style={{ fontSize: 10, color: '#999' }}>Address</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {/* Links */}
+                {links.length > 0 && (
+                  <View style={{ paddingHorizontal: 24, marginBottom: 16 }}>
+                    {links.map((link: any, idx: number) => (
+                      <TouchableOpacity key={idx} onPress={() => handleLinkPress('link', link.url)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${accentColor}15`, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                          <Ionicons name="link" size={16} color={accentColor} />
+                        </View>
+                        <Text style={{ fontSize: 14, fontWeight: '500', color: '#333', flex: 1 }} numberOfLines={1}>{link.title || link.url}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+                {/* Bottom accent bar */}
+                <View style={{ width: '100%', height: 4, backgroundColor: accentColor }} />
+                {/* Footer */}
+                <View style={{ alignItems: 'center', paddingVertical: 20, gap: 10 }}>
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: primaryColor, alignItems: 'center', justifyContent: 'center' }} onPress={handleSaveContact}>
+                      <Ionicons name="person-add-outline" size={22} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.06)', alignItems: 'center', justifyContent: 'center' }} onPress={handleShare}>
+                      <Ionicons name="paper-plane-outline" size={22} color="#1a1a2e" />
+                    </TouchableOpacity>
+                  </View>
+                  <Image source={require('../../assets/brand/tavvy-wordmark-dark.png')} style={{ width: 80, height: 24, opacity: 0.4 }} resizeMode="contain" />
+                </View>
+              </View>
+            );
+          }
+
+          // Biz Modern layout
+          if (isBizModern) {
+            return (
+              <View style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: '#ffffff' }}>
+                {/* Dark gradient top */}
+                <LinearGradient
+                  colors={gradientColors}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{ width: '100%', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 56, position: 'relative' }}
+                >
+                  {/* Logo */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                    {cardData?.company_logo_url ? (
+                      <Image source={{ uri: cardData.company_logo_url }} style={{ width: 28, height: 28, borderRadius: 6 }} resizeMode="contain" />
+                    ) : (
+                      <View style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="business" size={14} color="#fff" />
+                      </View>
+                    )}
+                    {cardData?.company && <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.5 }}>{cardData.company}</Text>}
+                  </View>
+                  {/* Name + Title (left) */}
+                  <View style={{ paddingRight: 130 }}>
+                    <Text style={{ fontSize: 26, fontWeight: '700', color: '#fff', lineHeight: 32 }}>{cardData?.full_name || 'Your Name'}</Text>
+                    {cardData?.pronouns && <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', marginTop: 4 }}>({cardData.pronouns})</Text>}
+                    {cardData?.title && <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.85)', marginTop: 6 }}>{cardData.title}</Text>}
+                  </View>
+                  {/* Photo (right, overlapping) */}
+                  {cardData?.profile_photo_url && (
+                    <View style={{ position: 'absolute', right: 24, bottom: -40 }}>
+                      <View style={{ width: 110, height: 110, borderRadius: 55, borderWidth: 4, borderColor: '#fff', overflow: 'hidden' }}>
+                        <Image source={{ uri: cardData.profile_photo_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      </View>
+                    </View>
+                  )}
+                </LinearGradient>
+                {/* White bottom */}
+                <View style={{ backgroundColor: '#fff', paddingHorizontal: 24, paddingTop: 28, paddingBottom: 16 }}>
+                  {cardData?.bio && <Text style={{ fontSize: 14, color: '#555', lineHeight: 22, marginBottom: 16 }}>{cardData.bio}</Text>}
+                  {/* Contact rows */}
+                  {cardData?.phone && (
+                    <TouchableOpacity onPress={() => handleLinkPress('phone', cardData.phone)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: `${primaryColor}12`, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                        <Ionicons name="call" size={18} color={primaryColor} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#333' }}>{cardData.phone}</Text>
+                        <Text style={{ fontSize: 10, color: '#999', fontWeight: '500' }}>Work</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                  {cardData?.email && (
+                    <TouchableOpacity onPress={() => handleLinkPress('email', cardData.email)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: `${primaryColor}12`, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                        <Ionicons name="mail" size={18} color={primaryColor} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#333' }}>{cardData.email}</Text>
+                        <Text style={{ fontSize: 10, color: '#999', fontWeight: '500' }}>Work</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                  {cardData?.website && (
+                    <TouchableOpacity onPress={() => handleLinkPress('website', cardData.website)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: `${primaryColor}12`, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                        <Ionicons name="globe" size={18} color={primaryColor} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#333' }}>{cardData.website?.replace(/^https?:\/\//, '')}</Text>
+                        <Text style={{ fontSize: 10, color: '#999', fontWeight: '500' }}>Company</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                  {cardData?.location && (
+                    <TouchableOpacity onPress={() => handleLinkPress('location', cardData.location)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: `${primaryColor}12`, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                        <Ionicons name="location" size={18} color={primaryColor} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#333' }}>{cardData.location}</Text>
+                        <Text style={{ fontSize: 10, color: '#999', fontWeight: '500' }}>Location</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {/* Links */}
+                {links.length > 0 && (
+                  <View style={{ paddingHorizontal: 24, backgroundColor: '#fff', paddingBottom: 16 }}>
+                    {links.map((link: any, idx: number) => (
+                      <TouchableOpacity key={idx} onPress={() => handleLinkPress('link', link.url)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                        <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: `${accentColor}15`, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                          <Ionicons name="link" size={16} color={accentColor} />
+                        </View>
+                        <Text style={{ fontSize: 14, fontWeight: '500', color: '#333', flex: 1 }} numberOfLines={1}>{link.title || link.url}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+                {/* Footer */}
+                <View style={{ alignItems: 'center', paddingVertical: 20, backgroundColor: '#fff', gap: 10 }}>
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: primaryColor, alignItems: 'center', justifyContent: 'center' }} onPress={handleSaveContact}>
+                      <Ionicons name="person-add-outline" size={22} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.06)', alignItems: 'center', justifyContent: 'center' }} onPress={handleShare}>
+                      <Ionicons name="paper-plane-outline" size={22} color="#1a1a2e" />
+                    </TouchableOpacity>
+                  </View>
+                  <Image source={require('../../assets/brand/tavvy-wordmark-dark.png')} style={{ width: 80, height: 24, opacity: 0.4 }} resizeMode="contain" />
+                </View>
+              </View>
+            );
+          }
+
+          // Biz Minimalist layout
+          if (isBizMinimalist) {
+            return (
+              <View style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: '#ffffff', paddingHorizontal: 28, paddingTop: 28, paddingBottom: 24 }}>
+                {/* Small logo */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+                  {cardData?.company_logo_url ? (
+                    <Image source={{ uri: cardData.company_logo_url }} style={{ width: 28, height: 28, borderRadius: 6 }} resizeMode="contain" />
+                  ) : (
+                    <View style={{ width: 28, height: 28, borderRadius: 6, borderWidth: 1.5, borderColor: primaryColor, alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="business" size={14} color={primaryColor} />
+                    </View>
+                  )}
+                  {cardData?.company && <Text style={{ fontSize: 10, fontWeight: '500', color: '#999', letterSpacing: 1.5, textTransform: 'uppercase' }}>{cardData.company}</Text>}
+                </View>
+                {/* Square photo */}
+                {cardData?.profile_photo_url && (
+                  <View style={{ width: 120, height: 120, borderRadius: 12, overflow: 'hidden', marginBottom: 18 }}>
+                    <Image source={{ uri: cardData.profile_photo_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  </View>
+                )}
+                {/* Name */}
+                <Text style={{ fontSize: 28, fontWeight: '300', color: primaryColor, letterSpacing: -0.5 }}>{cardData?.full_name || 'Your Name'}</Text>
+                {cardData?.pronouns && <Text style={{ fontSize: 11, color: '#999', fontStyle: 'italic', marginTop: 2 }}>({cardData.pronouns})</Text>}
+                {cardData?.title && <Text style={{ fontSize: 11, fontWeight: '500', color: '#999', letterSpacing: 2, textTransform: 'uppercase', marginTop: 6 }}>{cardData.title}</Text>}
+                {/* Thin line */}
+                <View style={{ width: 40, height: 1, backgroundColor: '#e0e0e0', marginVertical: 16 }} />
+                {/* Bio */}
+                {cardData?.bio && <Text style={{ fontSize: 14, color: '#555', lineHeight: 22, marginBottom: 16 }}>{cardData.bio}</Text>}
+                {/* Contact rows - ultra clean */}
+                <View style={{ gap: 14 }}>
+                  {cardData?.phone && (
+                    <TouchableOpacity onPress={() => handleLinkPress('phone', cardData.phone)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <Ionicons name="call-outline" size={18} color={primaryColor} />
+                      <Text style={{ fontSize: 14, color: '#333' }}>{cardData.phone}</Text>
+                    </TouchableOpacity>
+                  )}
+                  {cardData?.email && (
+                    <TouchableOpacity onPress={() => handleLinkPress('email', cardData.email)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <Ionicons name="mail-outline" size={18} color={primaryColor} />
+                      <Text style={{ fontSize: 14, color: '#333' }}>{cardData.email}</Text>
+                    </TouchableOpacity>
+                  )}
+                  {cardData?.website && (
+                    <TouchableOpacity onPress={() => handleLinkPress('website', cardData.website)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <Ionicons name="globe-outline" size={18} color={primaryColor} />
+                      <Text style={{ fontSize: 14, color: '#333' }}>{cardData.website?.replace(/^https?:\/\//, '')}</Text>
+                    </TouchableOpacity>
+                  )}
+                  {cardData?.location && (
+                    <TouchableOpacity onPress={() => handleLinkPress('location', cardData.location)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <Ionicons name="location-outline" size={18} color={primaryColor} />
+                      <Text style={{ fontSize: 14, color: '#333' }}>{cardData.location}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {/* Links */}
+                {links.length > 0 && (
+                  <View style={{ marginTop: 16, gap: 12 }}>
+                    {links.map((link: any, idx: number) => (
+                      <TouchableOpacity key={idx} onPress={() => handleLinkPress('link', link.url)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <Ionicons name="link-outline" size={18} color={primaryColor} />
+                        <Text style={{ fontSize: 14, color: '#333' }} numberOfLines={1}>{link.title || link.url}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+                {/* Social icons */}
+                <View style={{ flexDirection: 'row', gap: 14, marginTop: 20 }}>
+                  {['logo-instagram', 'logo-tiktok', 'logo-linkedin'].map((icon, i) => (
+                    <Ionicons key={i} name={icon as any} size={18} color="#999" />
+                  ))}
+                </View>
+                {/* Footer */}
+                <View style={{ alignItems: 'center', paddingTop: 20, gap: 10 }}>
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: primaryColor, alignItems: 'center', justifyContent: 'center' }} onPress={handleSaveContact}>
+                      <Ionicons name="person-add-outline" size={22} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.06)', alignItems: 'center', justifyContent: 'center' }} onPress={handleShare}>
+                      <Ionicons name="paper-plane-outline" size={22} color="#1a1a2e" />
+                    </TouchableOpacity>
+                  </View>
+                  <Image source={require('../../assets/brand/tavvy-wordmark-dark.png')} style={{ width: 80, height: 24, opacity: 0.4 }} resizeMode="contain" />
+                </View>
+              </View>
+            );
+          }
+
           // Cover photo layout (full-width, premium-static)
           if (isCoverPhoto) {
             return (

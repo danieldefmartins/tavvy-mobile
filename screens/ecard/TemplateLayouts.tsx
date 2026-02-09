@@ -135,6 +135,9 @@ export function renderTemplateLayout(props: LayoutProps) {
     case 'pro-corporate': return renderProCorporateLayout(props);
     case 'pro-card': return renderProCardLayout(props);
     case 'cover-card': return renderCoverCardLayout(props);
+    case 'biz-traditional': return renderBizTraditionalLayout(props);
+    case 'biz-modern': return renderBizModernLayout(props);
+    case 'biz-minimalist': return renderBizMinimalistLayout(props);
     default: return renderBasicLayout(props);
   }
 }
@@ -667,6 +670,231 @@ function renderCoverCardLayout(p: LayoutProps) {
 // ═══════════════════════════════════════════════════════════
 // STYLES
 // ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// 10. BIZ TRADITIONAL — Accent bar + centered photo + centered name + contact rows
+// ═══════════════════════════════════════════════════════════
+function renderBizTraditionalLayout(p: LayoutProps) {
+  const { color, data, isEditable, children } = p;
+  const primaryCol = color.primary;
+  const accentCol = color.accent || '#c9a84c';
+
+  return (
+    <View style={ls.cardBase}>
+      {/* Top accent bar */}
+      <View style={{ width: '100%', height: 6, backgroundColor: primaryCol }} />
+      {/* Logo + company */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: 16, gap: 10 }}>
+        <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: primaryCol, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="business" size={16} color={accentCol} />
+        </View>
+        <EditableText value={data.titleRole ? '' : ''} onChange={undefined} placeholder="Company" style={{ fontSize: 13, fontWeight: '700', color: primaryCol, letterSpacing: 0.5 }} isEditable={false} textAlign="left" />
+      </View>
+      {/* Gold accent line */}
+      <View style={{ width: 50, height: 2, backgroundColor: accentCol, alignSelf: 'center', marginVertical: 14 }} />
+      {/* Centered photo */}
+      <View style={{ alignItems: 'center', marginBottom: 12 }}>
+        <PhotoAvatar uri={data.profileImage} size={110} borderColor={accentCol} onPress={p.onPickPhoto} isEditable={isEditable} />
+      </View>
+      {/* Name + Title centered */}
+      <View style={{ alignItems: 'center', paddingHorizontal: 24 }}>
+        <EditableText value={data.name} onChange={p.onChangeName} placeholder="Your Name" style={{ fontSize: 24, fontWeight: '700', color: '#1a1a2e', textAlign: 'center', width: '100%' }} isEditable={isEditable} textAlign="center" />
+        <EditableText value={data.titleRole} onChange={p.onChangeTitle} placeholder="Your Title" style={{ fontSize: 14, fontWeight: '600', color: primaryCol, marginTop: 4, textAlign: 'center', width: '100%' }} isEditable={isEditable} textAlign="center" />
+      </View>
+      {/* Divider */}
+      <View style={{ width: '80%', height: 1, backgroundColor: '#e5e5e5', alignSelf: 'center', marginVertical: 14 }} />
+      {/* Bio */}
+      <View style={{ paddingHorizontal: 24 }}>
+        <EditableText value={data.bio} onChange={p.onChangeBio} placeholder="Short bio..." style={{ fontSize: 13, color: '#555', lineHeight: 20, textAlign: 'center', width: '100%' }} isEditable={isEditable} multiline maxLength={300} textAlign="center" />
+      </View>
+      {/* Contact rows */}
+      <View style={{ paddingHorizontal: 24, marginTop: 12, gap: 6 }}>
+        {[
+          { icon: 'call-outline', value: data.phone, onChange: p.onChangePhone, placeholder: 'Phone', kb: 'phone-pad', label: 'Phone' },
+          { icon: 'mail-outline', value: data.email, onChange: p.onChangeEmail, placeholder: 'Email', kb: 'email-address', label: 'Email' },
+          { icon: 'globe-outline', value: data.website, onChange: p.onChangeWebsite, placeholder: 'Website', kb: 'url', label: 'Website' },
+          { icon: 'location-outline', value: data.address, onChange: p.onChangeAddress, placeholder: 'Address', kb: 'default', label: 'Address' },
+        ].map((row, i) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${primaryCol}15`, alignItems: 'center', justifyContent: 'center', marginRight: 12, flexShrink: 0 }}>
+              <Ionicons name={row.icon as any} size={16} color={primaryCol} />
+            </View>
+            <View style={{ flex: 1 }}>
+              {isEditable && row.onChange ? (
+                <TextInput
+                  style={{ fontSize: 14, color: '#333', fontWeight: '500', paddingVertical: 2 }}
+                  value={row.value}
+                  onChangeText={row.onChange}
+                  placeholder={row.placeholder}
+                  placeholderTextColor="rgba(128,128,128,0.4)"
+                  keyboardType={row.kb as any}
+                  autoCapitalize="none"
+                />
+              ) : (
+                <Text style={{ fontSize: 14, color: '#333', fontWeight: '500' }} numberOfLines={1}>{row.value || row.placeholder}</Text>
+              )}
+              <Text style={{ fontSize: 10, color: '#999' }}>{row.label}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+      {/* Bottom accent bar */}
+      <View style={{ width: '100%', height: 4, backgroundColor: accentCol, marginTop: 16 }} />
+      {children}
+    </View>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 11. BIZ MODERN — Dark gradient top + name left + photo right + curved transition + white bottom
+// ═══════════════════════════════════════════════════════════
+function renderBizModernLayout(p: LayoutProps) {
+  const { color, data, isEditable, children } = p;
+  const primaryCol = color.primary;
+  const secondaryCol = color.secondary || primaryCol;
+
+  return (
+    <View style={ls.cardBase}>
+      {/* Dark gradient top */}
+      <LinearGradient
+        colors={[primaryCol, secondaryCol]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ width: '100%', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 56, position: 'relative' }}
+      >
+        {/* Logo */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <View style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="business" size={14} color="#fff" />
+          </View>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.5 }}>Company</Text>
+        </View>
+        {/* Name + Title (left) */}
+        <View style={{ paddingRight: 130 }}>
+          <EditableText value={data.name} onChange={p.onChangeName} placeholder="Your Name" style={{ fontSize: 26, fontWeight: '700', color: '#fff', lineHeight: 32, width: '100%' }} isEditable={isEditable} textAlign="left" />
+          <EditableText value={data.titleRole} onChange={p.onChangeTitle} placeholder="Your Title" style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.85)', marginTop: 6, width: '100%' }} isEditable={isEditable} textAlign="left" />
+        </View>
+        {/* Photo (right, overlapping) */}
+        <View style={{ position: 'absolute', right: 24, bottom: -40 }}>
+          <PhotoAvatar uri={data.profileImage} size={110} borderColor="#fff" onPress={p.onPickPhoto} isEditable={isEditable} />
+        </View>
+      </LinearGradient>
+      {/* White bottom */}
+      <View style={{ backgroundColor: '#fff', paddingHorizontal: 24, paddingTop: 28, paddingBottom: 24 }}>
+        {/* Bio */}
+        <EditableText value={data.bio} onChange={p.onChangeBio} placeholder="Short bio..." style={{ fontSize: 14, color: '#555', lineHeight: 22, marginBottom: 16, width: '100%' }} isEditable={isEditable} multiline maxLength={300} textAlign="left" />
+        {/* Contact rows */}
+        <View style={{ gap: 8 }}>
+          {[
+            { icon: 'call', value: data.phone, onChange: p.onChangePhone, placeholder: 'Phone', kb: 'phone-pad', label: 'Work' },
+            { icon: 'mail', value: data.email, onChange: p.onChangeEmail, placeholder: 'Email', kb: 'email-address', label: 'Work' },
+            { icon: 'globe', value: data.website, onChange: p.onChangeWebsite, placeholder: 'Website', kb: 'url', label: 'Company' },
+            { icon: 'location', value: data.address, onChange: p.onChangeAddress, placeholder: 'Address', kb: 'default', label: 'Location' },
+          ].map((row, i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+              <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: `${primaryCol}12`, alignItems: 'center', justifyContent: 'center', marginRight: 12, flexShrink: 0 }}>
+                <Ionicons name={row.icon as any} size={18} color={primaryCol} />
+              </View>
+              <View style={{ flex: 1 }}>
+                {isEditable && row.onChange ? (
+                  <TextInput
+                    style={{ fontSize: 15, color: '#333', fontWeight: '600', paddingVertical: 2 }}
+                    value={row.value}
+                    onChangeText={row.onChange}
+                    placeholder={row.placeholder}
+                    placeholderTextColor="rgba(128,128,128,0.4)"
+                    keyboardType={row.kb as any}
+                    autoCapitalize="none"
+                  />
+                ) : (
+                  <Text style={{ fontSize: 15, color: '#333', fontWeight: '600' }} numberOfLines={1}>{row.value || row.placeholder}</Text>
+                )}
+                <Text style={{ fontSize: 10, color: '#999', fontWeight: '500' }}>{row.label}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 12. BIZ MINIMALIST — Clean white, thin lines, square photo, minimal icons
+// ═══════════════════════════════════════════════════════════
+function renderBizMinimalistLayout(p: LayoutProps) {
+  const { color, data, isEditable, children } = p;
+  const primaryCol = color.primary;
+
+  return (
+    <View style={[ls.cardBase, { backgroundColor: '#fff', paddingHorizontal: 28, paddingTop: 28, paddingBottom: 24 }]}>
+      {/* Small logo */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+        <View style={{ width: 28, height: 28, borderRadius: 6, borderWidth: 1.5, borderColor: primaryCol, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="business" size={14} color={primaryCol} />
+        </View>
+        <Text style={{ fontSize: 10, fontWeight: '500', color: '#999', letterSpacing: 1.5, textTransform: 'uppercase' }}>Company</Text>
+      </View>
+      {/* Square photo */}
+      <TouchableOpacity
+        activeOpacity={isEditable ? 0.8 : 1}
+        onPress={isEditable ? p.onPickPhoto : undefined}
+        style={{ width: 120, height: 120, borderRadius: 12, overflow: 'hidden', marginBottom: 18, backgroundColor: '#f5f5f5' }}
+      >
+        {data.profileImage ? (
+          <Image source={{ uri: data.profileImage }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+        ) : (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="camera" size={28} color="#ccc" />
+          </View>
+        )}
+      </TouchableOpacity>
+      {/* Name */}
+      <EditableText value={data.name} onChange={p.onChangeName} placeholder="Your Name" style={{ fontSize: 28, fontWeight: '300', color: primaryCol, letterSpacing: -0.5, width: '100%' }} isEditable={isEditable} textAlign="left" />
+      <EditableText value={data.titleRole} onChange={p.onChangeTitle} placeholder="Your Title" style={{ fontSize: 11, fontWeight: '500', color: '#999', letterSpacing: 2, textTransform: 'uppercase', marginTop: 4, width: '100%' }} isEditable={isEditable} textAlign="left" />
+      {/* Thin line */}
+      <View style={{ width: 40, height: 1, backgroundColor: '#e0e0e0', marginVertical: 16 }} />
+      {/* Bio */}
+      <EditableText value={data.bio} onChange={p.onChangeBio} placeholder="Short bio..." style={{ fontSize: 14, color: '#555', lineHeight: 22, marginBottom: 16, width: '100%' }} isEditable={isEditable} multiline maxLength={300} textAlign="left" />
+      {/* Contact rows - ultra clean */}
+      <View style={{ gap: 12 }}>
+        {[
+          { icon: 'call-outline', value: data.phone, onChange: p.onChangePhone, placeholder: 'Phone', kb: 'phone-pad' },
+          { icon: 'mail-outline', value: data.email, onChange: p.onChangeEmail, placeholder: 'Email', kb: 'email-address' },
+          { icon: 'globe-outline', value: data.website, onChange: p.onChangeWebsite, placeholder: 'Website', kb: 'url' },
+          { icon: 'location-outline', value: data.address, onChange: p.onChangeAddress, placeholder: 'Address', kb: 'default' },
+        ].map((row, i) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Ionicons name={row.icon as any} size={18} color={primaryCol} />
+            <View style={{ flex: 1 }}>
+              {isEditable && row.onChange ? (
+                <TextInput
+                  style={{ fontSize: 14, color: '#333', paddingVertical: 2 }}
+                  value={row.value}
+                  onChangeText={row.onChange}
+                  placeholder={row.placeholder}
+                  placeholderTextColor="rgba(128,128,128,0.4)"
+                  keyboardType={row.kb as any}
+                  autoCapitalize="none"
+                />
+              ) : (
+                <Text style={{ fontSize: 14, color: '#333' }} numberOfLines={1}>{row.value || row.placeholder}</Text>
+              )}
+            </View>
+          </View>
+        ))}
+      </View>
+      {/* Social icons row */}
+      <View style={{ flexDirection: 'row', gap: 14, marginTop: 18 }}>
+        {['logo-instagram', 'logo-tiktok', 'logo-linkedin'].map((icon, i) => (
+          <Ionicons key={i} name={icon as any} size={18} color="#999" />
+        ))}
+      </View>
+      {children}
+    </View>
+  );
+}
+
 const ls = StyleSheet.create({
   // Shared
   cardBase: { overflow: 'hidden' },
