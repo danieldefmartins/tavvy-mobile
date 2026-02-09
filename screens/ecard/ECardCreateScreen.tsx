@@ -802,7 +802,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
                               value={fi.url}
                               onChangeText={(val) => updateFeaturedIconUrl(fi.platform, val)}
                               placeholder={placeholder}
-                              placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
+                              placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.5)'}
                               autoCapitalize="none"
                               autoCorrect={false}
                               keyboardType="url"
@@ -847,7 +847,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
                               value={value}
                               onChangeText={set}
                               placeholder={`${platform.label} URL`}
-                              placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
+                              placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.5)'}
                               autoCapitalize="none"
                               autoCorrect={false}
                               keyboardType="url"
@@ -883,7 +883,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
                               value={link.value}
                               onChangeText={(val) => updateLink(link.id, val)}
                               placeholder={platform?.placeholder || 'Enter URL'}
-                              placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
+                              placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.5)'}
                               autoCapitalize="none"
                             />
                             <TouchableOpacity onPress={() => removeLink(link.id)}>
@@ -954,7 +954,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
                               value={video.url}
                               onChangeText={(val) => updateVideoUrl(idx, val)}
                               placeholder={video.type === 'youtube' ? 'YouTube URL' : 'Video URL'}
-                              placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.35)'}
+                              placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.5)'}
                               autoCapitalize="none"
                               autoCorrect={false}
                               keyboardType="url"

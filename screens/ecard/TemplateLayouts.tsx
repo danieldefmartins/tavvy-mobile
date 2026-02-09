@@ -76,11 +76,53 @@ function PhotoAvatar({ uri, size, borderColor, onPress, isEditable }: {
   return content;
 }
 
+// ── Helper: detect if a color is light ──
+function isColorLight(color: string): boolean {
+  if (!color) return false;
+  let hex = color;
+  if (hex.startsWith('#')) {
+    hex = hex.slice(1);
+    if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
+    return (0.299 * r + 0.587 * g + 0.114 * b) > 0.5;
+  }
+  if (color.startsWith('rgba') || color.startsWith('rgb')) {
+    const m = color.match(/[\d.]+/g);
+    if (m && m.length >= 3) {
+      const r = parseFloat(m[0]) / 255;
+      const g = parseFloat(m[1]) / 255;
+      const b = parseFloat(m[2]) / 255;
+      return (0.299 * r + 0.587 * g + 0.114 * b) > 0.5;
+    }
+  }
+  // Named colors that are light
+  const lightNames = ['white', '#fff', '#ffffff'];
+  return lightNames.includes(color.toLowerCase());
+}
+
+// Derive placeholder color: if text is light → background is dark → use light placeholder
+function getPlaceholderColor(textColor?: string, isLightCard?: boolean): string {
+  if (isLightCard !== undefined) {
+    return isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.45)';
+  }
+  if (textColor) {
+    // Light text color means dark background → use light placeholder
+    return isColorLight(textColor) ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.3)';
+  }
+  return 'rgba(128,128,128,0.5)';
+}
+
 // ── Helper: Editable Text ──
-function EditableText({ value, onChange, placeholder, style, multiline, textAlign, isEditable, maxLength }: {
+function EditableText({ value, onChange, placeholder, style, multiline, textAlign, isEditable, maxLength, isLightCard }: {
   value: string; onChange?: (v: string) => void; placeholder: string; style: any;
   multiline?: boolean; textAlign?: 'center' | 'left' | 'right'; isEditable: boolean; maxLength?: number;
+  isLightCard?: boolean;
 }) {
+  // Extract text color from style to auto-detect placeholder color
+  const flatStyle = Array.isArray(style) ? Object.assign({}, ...style.filter(Boolean)) : (style || {});
+  const placeholderColor = getPlaceholderColor(flatStyle.color, isLightCard);
   if (isEditable && onChange) {
     return (
       <TextInput
@@ -88,7 +130,7 @@ function EditableText({ value, onChange, placeholder, style, multiline, textAlig
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor="rgba(128,128,128,0.5)"
+        placeholderTextColor={placeholderColor}
         textAlign={textAlign || 'center'}
         multiline={multiline}
         maxLength={maxLength}
@@ -99,10 +141,11 @@ function EditableText({ value, onChange, placeholder, style, multiline, textAlig
 }
 
 // ── Helper: Contact Row ──
-function ContactRow({ icon, value, onChange, placeholder, keyboard, textColor, borderColor, isEditable }: {
+function ContactRow({ icon, value, onChange, placeholder, keyboard, textColor, borderColor, isEditable, isLightCard }: {
   icon: string; value: string; onChange?: (v: string) => void; placeholder: string;
-  keyboard?: any; textColor: string; borderColor: string; isEditable: boolean;
+  keyboard?: any; textColor: string; borderColor: string; isEditable: boolean; isLightCard?: boolean;
 }) {
+  const placeholderColor = getPlaceholderColor(textColor, isLightCard);
   return (
     <View style={[ls.contactRow, { borderBottomColor: borderColor }]}>
       <Ionicons name={icon as any} size={16} color={textColor} style={{ opacity: 0.6 }} />
@@ -112,7 +155,7 @@ function ContactRow({ icon, value, onChange, placeholder, keyboard, textColor, b
           value={value}
           onChangeText={onChange}
           placeholder={placeholder}
-          placeholderTextColor="rgba(128,128,128,0.4)"
+          placeholderTextColor={placeholderColor}
           keyboardType={keyboard || 'default'}
           autoCapitalize="none"
         />
@@ -124,11 +167,12 @@ function ContactRow({ icon, value, onChange, placeholder, keyboard, textColor, b
 }
 
 // ── Helper: Website Label Row (appears below website when it has a value) ──
-function WebsiteLabelRow({ website, websiteLabel, onChange, textColor, borderColor, isEditable }: {
+function WebsiteLabelRow({ website, websiteLabel, onChange, textColor, borderColor, isEditable, isLightCard }: {
   website: string; websiteLabel: string; onChange?: (v: string) => void;
-  textColor: string; borderColor: string; isEditable: boolean;
+  textColor: string; borderColor: string; isEditable: boolean; isLightCard?: boolean;
 }) {
   if (!website.trim()) return null;
+  const placeholderColor = getPlaceholderColor(textColor, isLightCard);
   return (
     <View style={[ls.contactRow, { borderBottomColor: borderColor, marginTop: -4 }]}>
       <Ionicons name="pencil-outline" size={14} color={textColor} style={{ opacity: 0.35 }} />
@@ -138,7 +182,7 @@ function WebsiteLabelRow({ website, websiteLabel, onChange, textColor, borderCol
           value={websiteLabel}
           onChangeText={onChange}
           placeholder='Label (e.g. "My Portfolio")'
-          placeholderTextColor="rgba(128,128,128,0.4)"
+          placeholderTextColor={placeholderColor}
           autoCapitalize="none"
         />
       ) : (
@@ -183,16 +227,16 @@ function renderBasicLayout(p: LayoutProps) {
         <PhotoAvatar uri={data.profileImage} size={110} borderColor={borderCol} onPress={p.onPickPhoto} isEditable={isEditable} />
       </View>
       <View style={ls.fieldsCenter}>
-        <EditableText value={data.name} onChange={p.onChangeName} placeholder="Your Name" style={[ls.nameText, { color: textColor }]} isEditable={isEditable} />
-        <EditableText value={data.titleRole} onChange={p.onChangeTitle} placeholder="Title / Role" style={[ls.titleText, { color: textSecondary }]} isEditable={isEditable} />
-        <EditableText value={data.bio} onChange={p.onChangeBio} placeholder="Short bio..." style={[ls.bioText, { color: textSecondary }]} isEditable={isEditable} multiline maxLength={300} />
+        <EditableText value={data.name} onChange={p.onChangeName} placeholder="Your Name" style={[ls.nameText, { color: textColor }]} isEditable={isEditable} isLightCard={isLightCard} />
+        <EditableText value={data.titleRole} onChange={p.onChangeTitle} placeholder="Title / Role" style={[ls.titleText, { color: textSecondary }]} isEditable={isEditable} isLightCard={isLightCard} />
+        <EditableText value={data.bio} onChange={p.onChangeBio} placeholder="Short bio..." style={[ls.bioText, { color: textSecondary }]} isEditable={isEditable} isLightCard={isLightCard} multiline maxLength={300} />
       </View>
       <View style={ls.contactSection}>
-        <ContactRow icon="mail" value={data.email} onChange={p.onChangeEmail} placeholder="Email" keyboard="email-address" textColor={textColor} borderColor={borderCol} isEditable={isEditable} />
-        <ContactRow icon="call" value={data.phone} onChange={p.onChangePhone} placeholder="Phone" keyboard="phone-pad" textColor={textColor} borderColor={borderCol} isEditable={isEditable} />
-        <ContactRow icon="globe" value={data.website} onChange={p.onChangeWebsite} placeholder="Website" keyboard="url" textColor={textColor} borderColor={borderCol} isEditable={isEditable} />
-        <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor={textColor} borderColor={borderCol} isEditable={isEditable} />
-        <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor={textColor} borderColor={borderCol} isEditable={isEditable} />
+        <ContactRow icon="mail" value={data.email} onChange={p.onChangeEmail} placeholder="Email" keyboard="email-address" textColor={textColor} borderColor={borderCol} isEditable={isEditable} isLightCard={isLightCard} />
+        <ContactRow icon="call" value={data.phone} onChange={p.onChangePhone} placeholder="Phone" keyboard="phone-pad" textColor={textColor} borderColor={borderCol} isEditable={isEditable} isLightCard={isLightCard} />
+        <ContactRow icon="globe" value={data.website} onChange={p.onChangeWebsite} placeholder="Website" keyboard="url" textColor={textColor} borderColor={borderCol} isEditable={isEditable} isLightCard={isLightCard} />
+        <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor={textColor} borderColor={borderCol} isEditable={isEditable} isLightCard={isLightCard} />
+        <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor={textColor} borderColor={borderCol} isEditable={isEditable} isLightCard={isLightCard} />
       </View>
       {children}
     </LinearGradient>
