@@ -922,8 +922,18 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
           if (isBizTraditional) {
             return (
               <View style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: '#ffffff' }}>
-                {/* Top accent bar */}
-                <View style={{ width: '100%', height: 6, backgroundColor: primaryColor }} />
+                {/* Top accent bar or banner image */}
+                {cardData?.banner_image_url ? (
+                  <View style={{ width: '100%', height: 160, position: 'relative', overflow: 'hidden' }}>
+                    <Image source={{ uri: cardData.banner_image_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    <LinearGradient
+                      colors={['transparent', 'rgba(255,255,255,0.8)', '#ffffff']}
+                      style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 40 }}
+                    />
+                  </View>
+                ) : (
+                  <View style={{ width: '100%', height: 6, backgroundColor: primaryColor }} />
+                )}
                 {/* Logo + company */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: 16, gap: 10 }}>
                   {cardData?.company_logo_url ? (
@@ -1038,38 +1048,52 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
             return (
               <View style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: '#ffffff' }}>
                 {/* Dark gradient top */}
-                <LinearGradient
-                  colors={gradientColors}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{ width: '100%', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 56, position: 'relative' }}
-                >
-                  {/* Logo */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                    {cardData?.company_logo_url ? (
-                      <Image source={{ uri: cardData.company_logo_url }} style={{ width: 28, height: 28, borderRadius: 6 }} resizeMode="contain" />
-                    ) : (
-                      <View style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
-                        <Ionicons name="business" size={14} color="#fff" />
+                <View style={{ width: '100%', position: 'relative', overflow: 'hidden' }}>
+                  {cardData?.banner_image_url ? (
+                    <>
+                      <Image source={{ uri: cardData.banner_image_url }} style={{ width: '100%', height: 220 }} resizeMode="cover" />
+                      <LinearGradient
+                        colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.2)', 'rgba(0,0,0,0.7)']}
+                        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                      />
+                    </>
+                  ) : (
+                    <LinearGradient
+                      colors={gradientColors}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{ width: '100%', height: cardData?.banner_image_url ? 220 : undefined, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 56 }}
+                    />
+                  )}
+                  {/* Content overlay */}
+                  <View style={{ position: cardData?.banner_image_url ? 'absolute' : 'relative', bottom: 0, left: 0, right: 0, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 56 }}>
+                    {/* Logo */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                      {cardData?.company_logo_url ? (
+                        <Image source={{ uri: cardData.company_logo_url }} style={{ width: 28, height: 28, borderRadius: 6 }} resizeMode="contain" />
+                      ) : (
+                        <View style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                          <Ionicons name="business" size={14} color="#fff" />
+                        </View>
+                      )}
+                      {cardData?.company && <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.5 }}>{cardData.company}</Text>}
+                    </View>
+                    {/* Name + Title (left) */}
+                    <View style={{ paddingRight: 130 }}>
+                      <Text style={{ fontSize: 26, fontWeight: '700', color: '#fff', lineHeight: 32 }}>{cardData?.full_name || 'Your Name'}</Text>
+                      {cardData?.pronouns && <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', marginTop: 4 }}>({cardData.pronouns})</Text>}
+                      {cardData?.title && <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.85)', marginTop: 6 }}>{cardData.title}</Text>}
+                    </View>
+                    {/* Photo (right, overlapping) */}
+                    {cardData?.profile_photo_url && (
+                      <View style={{ position: 'absolute', right: 24, bottom: -40 }}>
+                        <View style={{ width: 110, height: 110, borderRadius: 55, borderWidth: 4, borderColor: '#fff', overflow: 'hidden' }}>
+                          <Image source={{ uri: cardData.profile_photo_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                        </View>
                       </View>
                     )}
-                    {cardData?.company && <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.5 }}>{cardData.company}</Text>}
                   </View>
-                  {/* Name + Title (left) */}
-                  <View style={{ paddingRight: 130 }}>
-                    <Text style={{ fontSize: 26, fontWeight: '700', color: '#fff', lineHeight: 32 }}>{cardData?.full_name || 'Your Name'}</Text>
-                    {cardData?.pronouns && <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', marginTop: 4 }}>({cardData.pronouns})</Text>}
-                    {cardData?.title && <Text style={{ fontSize: 14, fontWeight: '500', color: 'rgba(255,255,255,0.85)', marginTop: 6 }}>{cardData.title}</Text>}
-                  </View>
-                  {/* Photo (right, overlapping) */}
-                  {cardData?.profile_photo_url && (
-                    <View style={{ position: 'absolute', right: 24, bottom: -40 }}>
-                      <View style={{ width: 110, height: 110, borderRadius: 55, borderWidth: 4, borderColor: '#fff', overflow: 'hidden' }}>
-                        <Image source={{ uri: cardData.profile_photo_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                      </View>
-                    </View>
-                  )}
-                </LinearGradient>
+                </View>
                 {/* White bottom */}
                 <View style={{ backgroundColor: '#fff', paddingHorizontal: 24, paddingTop: 28, paddingBottom: 16 }}>
                   {cardData?.bio && <Text style={{ fontSize: 14, color: '#555', lineHeight: 22, marginBottom: 16 }}>{cardData.bio}</Text>}
@@ -1151,7 +1175,14 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
           // Biz Minimalist layout
           if (isBizMinimalist) {
             return (
-              <View style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: '#ffffff', paddingHorizontal: 28, paddingTop: 28, paddingBottom: 24 }}>
+              <View style={{ borderRadius: 20, overflow: 'hidden', backgroundColor: '#ffffff' }}>
+                {/* Banner image if available */}
+                {cardData?.banner_image_url && (
+                  <View style={{ width: '100%', height: 140, overflow: 'hidden', borderBottomLeftRadius: 12, borderBottomRightRadius: 12, marginBottom: 20 }}>
+                    <Image source={{ uri: cardData.banner_image_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  </View>
+                )}
+                <View style={{ paddingHorizontal: 28, paddingTop: cardData?.banner_image_url ? 0 : 28, paddingBottom: 24 }}>
                 {/* Small logo */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 }}>
                   {cardData?.company_logo_url ? (
@@ -1222,7 +1253,8 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
                   ))}
                 </View>
                 {/* Footer */}
-                <View style={{ alignItems: 'center', paddingTop: 20, gap: 10 }}>
+                </View>
+                <View style={{ alignItems: 'center', paddingTop: 20, paddingBottom: 20, gap: 10 }}>
                   <View style={{ flexDirection: 'row', gap: 12 }}>
                     <TouchableOpacity style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: primaryColor, alignItems: 'center', justifyContent: 'center' }} onPress={handleSaveContact}>
                       <Ionicons name="person-add-outline" size={22} color="#fff" />
