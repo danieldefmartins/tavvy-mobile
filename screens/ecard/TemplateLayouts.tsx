@@ -134,6 +134,7 @@ export function renderTemplateLayout(props: LayoutProps) {
     case 'pro-creative': return renderProCreativeLayout(props);
     case 'pro-corporate': return renderProCorporateLayout(props);
     case 'pro-card': return renderProCardLayout(props);
+    case 'cover-card': return renderCoverCardLayout(props);
     default: return renderBasicLayout(props);
   }
 }
@@ -577,6 +578,85 @@ function renderProCardLayout(p: LayoutProps) {
         {/* Add to Contacts button */}
         <View style={[ls.proCardAddBtn, { backgroundColor: darkBg }]}>
           <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>+ Add to Contacts</Text>
+        </View>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 9. COVER CARD — Cover photo top half, white bottom with contact rows
+// ═══════════════════════════════════════════════════════════
+function renderCoverCardLayout(p: LayoutProps) {
+  const { color, data, isEditable, children } = p;
+  const primaryCol = color.primary;
+  const accentCol = color.accent || '#f97316';
+  const cardBg = color.cardBg || '#fff';
+
+  return (
+    <View style={ls.cardBase}>
+      {/* Cover photo section */}
+      <TouchableOpacity
+        activeOpacity={isEditable ? 0.8 : 1}
+        onPress={isEditable ? p.onPickPhoto : undefined}
+        style={{ width: '100%', height: 220, position: 'relative', overflow: 'hidden' }}
+      >
+        <LinearGradient
+          colors={[primaryCol, color.secondary || primaryCol]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ width: '100%', height: '100%', position: 'absolute' }}
+        />
+        {data.profileImage ? (
+          <Image source={{ uri: data.profileImage }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+        ) : (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="image" size={40} color="rgba(255,255,255,0.4)" />
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontWeight: '500', marginTop: 6 }}>Add Cover Photo</Text>
+          </View>
+        )}
+        {/* Logo overlay placeholder */}
+        <View style={{ position: 'absolute', top: 14, right: 14, backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Ionicons name="business" size={16} color={primaryCol} />
+          <Text style={{ fontSize: 10, color: primaryCol, fontWeight: '600' }}>Logo</Text>
+        </View>
+      </TouchableOpacity>
+      {/* White bottom section */}
+      <View style={{ backgroundColor: cardBg, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 24 }}>
+        <EditableText value={data.name} onChange={p.onChangeName} placeholder="Your Name" style={{ fontSize: 22, fontWeight: '700', color: '#1a1a2e', width: '100%' }} isEditable={isEditable} textAlign="left" />
+        <EditableText value={data.titleRole} onChange={p.onChangeTitle} placeholder="Your Title" style={{ fontSize: 14, fontWeight: '600', color: '#444', marginTop: 2, width: '100%' }} isEditable={isEditable} textAlign="left" />
+        <EditableText value={data.bio} onChange={p.onChangeBio} placeholder="Short bio..." style={{ fontSize: 13, color: '#555', lineHeight: 20, marginTop: 8, width: '100%' }} isEditable={isEditable} multiline maxLength={300} textAlign="left" />
+        <View style={{ height: 1, backgroundColor: '#e5e5e5', marginVertical: 14 }} />
+        {/* Contact rows with colored circles */}
+        <View style={{ gap: 12 }}>
+          {[
+            { icon: 'mail', value: data.email, onChange: p.onChangeEmail, placeholder: 'Email', kb: 'email-address', bg: primaryCol },
+            { icon: 'call', value: data.phone, onChange: p.onChangePhone, placeholder: 'Phone', kb: 'phone-pad', bg: accentCol },
+            { icon: 'chatbubble', value: '', onChange: undefined, placeholder: 'Text Message', kb: 'phone-pad', bg: primaryCol },
+            { icon: 'globe', value: data.website, onChange: p.onChangeWebsite, placeholder: 'Website', kb: 'url', bg: accentCol },
+          ].map((row, i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: row.bg, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Ionicons name={row.icon as any} size={16} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                {isEditable && row.onChange ? (
+                  <TextInput
+                    style={{ fontSize: 13, color: '#333', fontWeight: '500' }}
+                    value={row.value}
+                    onChangeText={row.onChange}
+                    placeholder={row.placeholder}
+                    placeholderTextColor="rgba(128,128,128,0.4)"
+                    keyboardType={row.kb as any}
+                    autoCapitalize="none"
+                  />
+                ) : (
+                  <Text style={{ fontSize: 13, color: '#333', fontWeight: '500' }}>{row.value || row.placeholder}</Text>
+                )}
+              </View>
+            </View>
+          ))}
         </View>
       </View>
       {children}
