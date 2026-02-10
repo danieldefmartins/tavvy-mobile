@@ -1049,10 +1049,6 @@ export async function createStoryWithLocation(
         status: 'active',
         is_permanent: false,
         expires_at: expiresAt.toISOString(),
-        // Store location data for audit
-        geo_lat: params.userLocation.latitude,
-        geo_lng: params.userLocation.longitude,
-        distance_meters: locationCheck.distance,
       })
       .select()
       .single();

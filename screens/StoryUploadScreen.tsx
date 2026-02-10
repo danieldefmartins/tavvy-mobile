@@ -29,7 +29,7 @@ import { Video, ResizeMode } from 'expo-av';
 import { supabase } from '../lib/supabaseClient';
 import { useTranslation } from 'react-i18next';
 import { 
-  createStory, 
+  uploadStory, 
   getQuickFindPresets, 
   QuickFindPreset,
   createStoryWithLocation,
@@ -463,7 +463,7 @@ export default function StoryUploadScreen() {
         });
       } else {
         // Fallback to regular creation (for places without coordinates)
-        const story = await createStory({
+        const story = await uploadStory({
           place_id: placeId,
           user_id: user.id,
           media_url: publicUrl,
