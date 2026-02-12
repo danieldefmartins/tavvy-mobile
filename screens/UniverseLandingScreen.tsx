@@ -106,6 +106,7 @@ export default function UniverseLandingScreen() {
   const [activeTab, setActiveTab] = useState('Places');
   const [activeZone, setActiveZone] = useState('All Zones');
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
   
   // Modal states
   const [showAddPlaceModal, setShowAddPlaceModal] = useState(false);
@@ -218,13 +219,58 @@ export default function UniverseLandingScreen() {
     ...subUniverses.map(su => su.name)
   ];
 
-  // Filter places by search and zone
+  // Category filter definitions
+  const RIDE_SUBCATEGORIES = ['water_rides', 'thrill_rides', 'dark_rides', 'family_rides', 'simulators'];
+  const ATTRACTION_SUBCATEGORIES = ['explore', 'interactive', 'animals'];
+
+  // Filter places by search, zone, and category
   const filteredPlaces = places.filter(place => {
     const matchesSearch = !searchQuery || 
       place.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (place.tavvy_category || '').toLowerCase().includes(searchQuery.toLowerCase());
+      (place.tavvy_category || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (place.tavvy_subcategory || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesZone = activeZone === 'All Zones' || true; // TODO: Filter by zone
-    return matchesSearch && matchesZone;
+    
+    // Category filter
+    let matchesFilter = true;
+    if (activeFilter) {
+      const cat = (place.tavvy_category || '').toLowerCase();
+      const sub = (place.tavvy_subcategory || '').toLowerCase();
+      switch (activeFilter) {
+        case 'rides':
+          matchesFilter = RIDE_SUBCATEGORIES.includes(sub);
+          break;
+        case 'attractions':
+          matchesFilter = ATTRACTION_SUBCATEGORIES.includes(sub) || (cat === 'attraction' && !RIDE_SUBCATEGORIES.includes(sub) && sub !== 'shows' && sub !== 'characters');
+          break;
+        case 'characters':
+          matchesFilter = sub === 'characters';
+          break;
+        case 'shows':
+          matchesFilter = sub === 'shows';
+          break;
+        case 'fireworks':
+          matchesFilter = sub === 'fireworks' || place.name.toLowerCase().includes('firework');
+          break;
+        case 'special_events':
+          matchesFilter = sub === 'special_events' || cat === 'special_events';
+          break;
+        case 'entrance':
+          matchesFilter = cat === 'entrance' || place.name.toLowerCase().includes('entrance');
+          break;
+        case 'dining':
+          matchesFilter = cat === 'restaurant' || cat === 'dining' || place.name.toLowerCase().includes('dining') || place.name.toLowerCase().includes('restaurant');
+          break;
+        case 'restroom':
+          matchesFilter = cat === 'restroom' || place.name.toLowerCase().includes('restroom');
+          break;
+        case 'parking':
+          matchesFilter = cat === 'parking' || place.name.toLowerCase().includes('parking');
+          break;
+      }
+    }
+    
+    return matchesSearch && matchesZone && matchesFilter;
   });
 
   // Format large numbers
@@ -467,24 +513,61 @@ export default function UniverseLandingScreen() {
         </View>
       )}
 
-      {/* Quick Actions */}
-      <View style={styles.quickActions}>
+      {/* Category Filter Icons */}
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+        style={{ marginBottom: 16 }}
+      >
         {[
-          { icon: 'exit-outline', label: "Entrances", type: "entrance", action: () => setSearchQuery('entrance') },
-          { icon: 'restaurant-outline', label: "Dining", type: "dining", action: () => setShowFoodSearchModal(true) },
-          { icon: 'water-outline', label: "Restrooms", type: "restroom", action: () => setSearchQuery('restroom') },
-          { icon: 'car-outline', label: "Parking", type: "parking", action: () => setSearchQuery('parking') }
-        ].map((actionItem, i) => (
-          <TouchableOpacity 
-            key={i} 
-            style={styles.actionButton}
-            onPress={actionItem.action}
-          >
-            <Ionicons name={actionItem.icon as any} size={24} color="#374151" />
-            <Text style={styles.actionLabel}>{actionItem.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+          { icon: 'rocket-outline' as const, label: 'Rides', filter: 'rides', color: '#EF4444' },
+          { icon: 'star-outline' as const, label: 'Attractions', filter: 'attractions', color: '#F59E0B' },
+          { icon: 'people-outline' as const, label: 'Characters', filter: 'characters', color: '#8B5CF6' },
+          { icon: 'musical-notes-outline' as const, label: 'Shows', filter: 'shows', color: '#EC4899' },
+          { icon: 'flash-outline' as const, label: 'Fireworks', filter: 'fireworks', color: '#F97316' },
+          { icon: 'calendar-outline' as const, label: 'Events', filter: 'special_events', color: '#06B6D4' },
+          { icon: 'exit-outline' as const, label: 'Entrances', filter: 'entrance', color: '#6366F1' },
+          { icon: 'restaurant-outline' as const, label: 'Dining', filter: 'dining', color: '#10B981' },
+          { icon: 'water-outline' as const, label: 'Restrooms', filter: 'restroom', color: '#3B82F6' },
+          { icon: 'car-outline' as const, label: 'Parking', filter: 'parking', color: '#6B7280' },
+        ].map((item, i) => {
+          const isActive = activeFilter === item.filter;
+          return (
+            <TouchableOpacity
+              key={i}
+              onPress={() => {
+                if (isActive) {
+                  setActiveFilter(null);
+                } else {
+                  setActiveFilter(item.filter);
+                }
+              }}
+              style={[
+                styles.filterButton,
+                {
+                  backgroundColor: isActive ? item.color : '#fff',
+                  borderWidth: isActive ? 0 : 1,
+                  borderColor: '#E5E7EB',
+                  shadowOpacity: isActive ? 0.15 : 0.05,
+                }
+              ]}
+            >
+              <Ionicons 
+                name={item.icon as any} 
+                size={22} 
+                color={isActive ? '#FFFFFF' : item.color} 
+              />
+              <Text style={[
+                styles.filterLabel,
+                { color: isActive ? '#FFFFFF' : '#6B7280' }
+              ]}>
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
       {/* Places List */}
       <View style={styles.placesSection}>
@@ -1318,6 +1401,22 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 6,
     fontWeight: '500',
+  },
+  filterButton: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    minWidth: 68,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  filterLabel: {
+    fontSize: 10,
+    marginTop: 4,
+    fontWeight: '600',
   },
   placesSection: {
     paddingHorizontal: 16,
