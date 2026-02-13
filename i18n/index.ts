@@ -2,12 +2,17 @@
  * Tavvy Internationalization (i18n) Configuration
  * 
  * Supports 17 languages with:
- * - Auto-detection of device language
- * - Manual override in settings
- * - Persistent language preference
+ * - Auto-detection of device language on first launch
+ * - Manual override in settings (saved preference takes priority)
+ * - Persistent language preference via AsyncStorage
  * - RTL support for Arabic
  * 
- * File: src/i18n/index.ts
+ * Priority order:
+ * 1. User's manual selection (saved in AsyncStorage)
+ * 2. Device/phone language (auto-detected on first launch)
+ * 3. English (fallback)
+ * 
+ * File: i18n/index.ts
  */
 
 import i18n from 'i18next';
@@ -34,8 +39,9 @@ import ja from './locales/ja/translation.json';
 import ko from './locales/ko/translation.json';
 import zh from './locales/zh/translation.json';
 
-// Storage key for language preference
+// Storage keys
 const LANGUAGE_STORAGE_KEY = '@tavvy_language_preference';
+const FIRST_LAUNCH_KEY = '@tavvy_language_initialized';
 
 // Supported languages configuration
 export const SUPPORTED_LANGUAGES = [
@@ -79,29 +85,41 @@ const resources = {
   zh: { translation: zh },
 };
 
-// Get the best matching language from device locale
+/**
+ * Detect the device/phone language.
+ * Checks all device locales and returns the first one we support.
+ * Example: A phone in Brazil → detects "pt", a US phone set to Spanish → detects "es"
+ */
 const getDeviceLanguage = (): string => {
   try {
-    // Safely get device locale with fallback
-    const deviceLocale = Localization.locale || Localization.getLocales?.()?.[0]?.languageCode || 'en';
-    
-    // Handle undefined or invalid locale
-    if (!deviceLocale || typeof deviceLocale !== 'string') {
-      return 'en';
+    // Try to get all device locales (ordered by user preference)
+    const locales = Localization.getLocales?.();
+    if (locales && locales.length > 0) {
+      for (const loc of locales) {
+        const langCode = (loc.languageCode || '').toLowerCase();
+        if (SUPPORTED_LANGUAGES.some(lang => lang.code === langCode)) {
+          return langCode;
+        }
+      }
     }
-    
-    const languageCode = deviceLocale.split('-')[0].toLowerCase();
-    
-    // Check if we support this language
-    const isSupported = SUPPORTED_LANGUAGES.some(lang => lang.code === languageCode);
-    return isSupported ? languageCode : 'en';
+
+    // Fallback: try the single locale string
+    const deviceLocale = Localization.locale;
+    if (deviceLocale && typeof deviceLocale === 'string') {
+      const languageCode = deviceLocale.split('-')[0].toLowerCase();
+      if (SUPPORTED_LANGUAGES.some(lang => lang.code === languageCode)) {
+        return languageCode;
+      }
+    }
+
+    return 'en';
   } catch (error) {
     console.warn('[i18n] Error getting device language, defaulting to English:', error);
     return 'en';
   }
 };
 
-// Initialize i18next
+// Initialize i18next with device language as default
 i18n
   .use(initReactI18next)
   .init({
@@ -117,19 +135,41 @@ i18n
     },
   });
 
-// Load saved language preference on app start
+/**
+ * Load saved language preference on app start.
+ * 
+ * Priority:
+ * 1. If user has manually selected a language before → use that
+ * 2. If first launch → auto-detect device language, save it, and use it
+ * 3. Fallback → English
+ */
 export const loadSavedLanguage = async (): Promise<void> => {
   try {
     const savedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
+    
     if (savedLanguage && SUPPORTED_LANGUAGES.some(lang => lang.code === savedLanguage)) {
+      // User has a saved preference (either manual or from previous auto-detect)
       await i18n.changeLanguage(savedLanguage);
+      return;
     }
+
+    // No saved preference — this is first launch or fresh install
+    // Auto-detect device language and save it
+    const deviceLang = getDeviceLanguage();
+    await i18n.changeLanguage(deviceLang);
+    await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, deviceLang);
+    await AsyncStorage.setItem(FIRST_LAUNCH_KEY, 'true');
+    
+    console.log(`[i18n] First launch: auto-detected device language "${deviceLang}"`);
   } catch (error) {
     console.log('Error loading saved language:', error);
   }
 };
 
-// Change language and persist preference
+/**
+ * Change language manually and persist preference.
+ * This is called when the user explicitly selects a language in Settings.
+ */
 export const changeLanguage = async (languageCode: string): Promise<void> => {
   try {
     await i18n.changeLanguage(languageCode);
