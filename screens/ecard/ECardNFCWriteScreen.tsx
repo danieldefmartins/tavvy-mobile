@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 // NFC Manager will be conditionally imported
 let NfcManager: any = null;
@@ -34,6 +35,7 @@ interface Props {
 }
 
 export default function ECardNFCWriteScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { cardSlug, cardName } = route.params || {};
   const cardUrl = `https://tavvy.com/${cardSlug}`;
   

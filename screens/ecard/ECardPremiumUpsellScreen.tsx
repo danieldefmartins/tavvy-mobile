@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -59,6 +60,7 @@ interface Props {
 }
 
 export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { feature, themeName } = route.params || {};
   const { user, refreshProfile } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');

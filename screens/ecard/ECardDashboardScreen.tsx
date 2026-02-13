@@ -35,6 +35,7 @@ import { useThemeContext } from '../../contexts/ThemeContext';
 import FeaturedSocialsSelector from '../../components/ecard/FeaturedSocialsSelector';
 import { TEMPLATES, getTemplateById, getColorSchemeById, resolveTemplateId } from '../../config/eCardTemplates';
 import { renderTemplateLayout } from './TemplateLayouts';
+import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get('window');
 const PREVIEW_HEIGHT = height * 0.32;
@@ -243,6 +244,7 @@ const EXTERNAL_REVIEW_PLATFORMS = [
 type Tab = 'content' | 'links' | 'style' | 'stats';
 
 export default function ECardDashboardScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { user, isPro } = useAuth();
   const { theme, isDark } = useThemeContext();
   const { templateId, colorSchemeId, profile, links: initialLinks, isNewCard, openAppearance, cardId } = route.params || {};

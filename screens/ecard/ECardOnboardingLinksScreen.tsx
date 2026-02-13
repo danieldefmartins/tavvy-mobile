@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 // Platform configuration with URL patterns
 const PLATFORM_CONFIG: Record<string, { name: string; icon: string; color: string; placeholder: string; prefix: string }> = {
@@ -52,6 +53,7 @@ interface Props {
 }
 
 export default function ECardOnboardingLinksScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { templateId, colorSchemeId, selectedPlatforms, profile } = route.params || {};
   
   const [links, setLinks] = useState<LinkItem[]>([]);

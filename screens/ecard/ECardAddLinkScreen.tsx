@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 // Link types configuration
 const LINK_TYPES = [
@@ -71,6 +72,7 @@ interface Props {
 }
 
 export default function ECardAddLinkScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { onAdd } = route.params || {};
   
   const [selectedType, setSelectedType] = useState<any>(null);

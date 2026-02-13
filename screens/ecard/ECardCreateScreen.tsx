@@ -42,6 +42,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { TEMPLATES, Template, ColorScheme } from '../../config/eCardTemplates';
 import { renderTemplateLayout, CardData } from './TemplateLayouts';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ACCENT_GREEN = '#00C853';
@@ -164,6 +165,7 @@ interface Props {
 }
 
 export default function ECardCreateScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { templateId: initialTemplateId, colorSchemeId: initialColorId } = route.params || {};
   const { user } = useAuth();
 

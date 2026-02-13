@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -86,6 +87,7 @@ interface Props {
 }
 
 export default function ECardEditLinkScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { link, onSave, onDelete } = route.params || {};
   
   // Find the link type configuration

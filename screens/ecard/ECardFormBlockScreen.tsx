@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 // Form provider configurations
 const FORM_PROVIDERS = [
@@ -127,6 +128,7 @@ interface Props {
 }
 
 export default function ECardFormBlockScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { cardId, existingConfig } = route.params || {};
   const { user, isPro } = useAuth();
   

@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import AddressAutocomplete, { AddressData, formatDisplayAddress } from '../../components/ecard/AddressAutocomplete';
 import { getTemplateById, getColorSchemeById } from '../../config/eCardTemplates';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   navigation: any;
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export default function ECardOnboardingProfileScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { templateId, colorSchemeId, selectedPlatforms } = route.params || {};
   
   // Get the selected template and color scheme for preview colors

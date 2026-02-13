@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 // Platform configuration
 const PLATFORMS = [
@@ -43,6 +44,7 @@ interface Props {
 }
 
 export default function ECardOnboardingPlatformsScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const templateId = route.params?.templateId || 'classic-blue';
   const colorSchemeId = route.params?.colorSchemeId || 'blue';

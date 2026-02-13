@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 60) / 2;
@@ -121,6 +122,7 @@ interface Props {
 }
 
 export default function ECardThemesScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { onSelect, currentTheme } = route.params || {};
   const [selectedTheme, setSelectedTheme] = useState(currentTheme || 'classic-gradient');
 

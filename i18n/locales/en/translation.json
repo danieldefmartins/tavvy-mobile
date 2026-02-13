@@ -400,7 +400,21 @@
     "submitForReview": "Submit for Review",
     "saveDraft": "Save Draft",
     "preview": "Preview",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "addCampground": "Add Campground",
+    "addEvent": "Add Event",
+    "addExperience": "Add Experience",
+    "addRide": "Add Ride",
+    "eventCategory": "Event Category",
+    "eventDate": "Event Date",
+    "eventDescription": "Event Description",
+    "eventFree": "Free Event",
+    "eventImage": "Event Image",
+    "eventLocation": "Event Location",
+    "eventName": "Event Name",
+    "eventPrice": "Event Price",
+    "eventTime": "Event Time",
+    "placeAddress": "Place Address"
   },
   "cities": {
     "cities": "Cities",
@@ -465,7 +479,15 @@
     "placesInUniverse": "Places in This Universe",
     "relatedUniverses": "Related Universes",
     "suggestUniverse": "Suggest a Universe",
-    "createUniverse": "Create Universe"
+    "createUniverse": "Create Universe",
+    "joinedUniverses": "Joined Universes",
+    "trendingUniverses": "Trending Universes",
+    "universeEvents": "Universe Events",
+    "universeMembers": "Universe Members",
+    "universeModerators": "Universe Moderators",
+    "universePlaces": "Universe Places",
+    "universePosts": "Universe Posts",
+    "universeRules": "Universe Rules"
   },
   "profile": {
     "title": "Profile",
@@ -795,7 +817,9 @@
     "attachPhoto": "Attach Photo",
     "attachFile": "Attach File",
     "shareContact": "Share Contact",
-    "shareLocation": "Share Location"
+    "shareLocation": "Share Location",
+    "blockUser": "Block User",
+    "reportUser": "Report User"
   },
   "notifications": {
     "title": "Notifications",

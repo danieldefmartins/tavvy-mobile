@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { getTemplateById, getColorSchemeById } from '../../config/eCardTemplates';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export default function ECardOnboardingCompleteScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { templateId, colorSchemeId, profile, links } = route.params || {};
   const confettiRef = useRef<any>(null);
   

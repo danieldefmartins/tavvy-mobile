@@ -26,6 +26,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import CrownBadge from '../../components/ecard/CrownBadge';
 import { WebView } from 'react-native-webview';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -115,6 +116,7 @@ interface Props {
 const FREE_LINK_LIMIT = 5;
 
 export default function ECardPreviewScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { user, isPro } = useAuth();
   const { cardData: passedCardData, profile, links: passedLinks, featuredSocials: passedFeaturedSocials, templateId, colorSchemeId, reviews } = route.params || {};
   
