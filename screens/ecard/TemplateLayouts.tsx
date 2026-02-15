@@ -211,6 +211,7 @@ export function renderTemplateLayout(props: LayoutProps) {
     case 'biz-traditional': return renderBizTraditionalLayout(props);
     case 'biz-modern': return renderBizModernLayout(props);
     case 'biz-minimalist': return renderBizMinimalistLayout(props);
+    case 'civic-card': return renderCivicCardLayout(props);
     default: return renderBasicLayout(props);
   }
 }
@@ -974,8 +975,73 @@ function renderBizMinimalistLayout(p: LayoutProps) {
   );
 }
 
-const ls = StyleSheet.create({
-  // Shared
+// ═══════════════════════════════════════════════════════════
+// 14. CIVIC CARD — Brazilian Political Santinho
+// ═══════════════════════════════════════════════════════════
+function renderCivicCardLayout(p: LayoutProps) {
+  const { color, data, isEditable, children } = p;
+  const partyColor = color.primary;
+  const secondaryColor = color.secondary;
+  const accentCol = color.accent || '#FFD700';
+  const borderCol = 'rgba(0,0,0,0.06)';
+
+  return (
+    <View style={[ls.cardBase, { backgroundColor: '#f5f5f5' }]}>
+      {/* Party color header band */}
+      <LinearGradient
+        colors={[partyColor, secondaryColor] as [string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ padding: 24, paddingBottom: 20 }}
+      >
+        {/* Party name */}
+        <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)', marginBottom: 4 }}>
+          {data.titleRole || 'PARTY NAME'}
+        </Text>
+
+        {/* Office & Region */}
+        <Text style={{ fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.9)', marginBottom: 16 }}>
+          {data.bio || 'Office • Region • Year'}
+        </Text>
+
+        {/* Candidate photo centered */}
+        <View style={{ alignItems: 'center', marginBottom: 16 }}>
+          <PhotoAvatar uri={data.profileImage} size={120} borderColor="rgba(255,255,255,0.9)" onPress={p.onPickPhoto} isEditable={isEditable} />
+        </View>
+
+        {/* Candidate name */}
+        <EditableText
+          value={data.name}
+          onChange={p.onChangeName}
+          placeholder="Candidate Name"
+          style={{ fontSize: 26, fontWeight: '800', color: '#FFFFFF', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }}
+          isEditable={isEditable}
+        />
+      </LinearGradient>
+
+      {/* White content area */}
+      <View style={{ backgroundColor: '#FFFFFF', padding: 20 }}>
+        {/* Contact rows */}
+        <View style={ls.contactSection}>
+          <ContactRow icon="mail" value={data.email} onChange={p.onChangeEmail} placeholder="Email" keyboard="email-address" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <ContactRow icon="call" value={data.phone} onChange={p.onChangePhone} placeholder="Phone" keyboard="phone-pad" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <ContactRow icon="globe" value={data.website} onChange={p.onChangeWebsite} placeholder="Website" keyboard="url" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+        </View>
+
+        {/* Note: Proposals, Q&A, Commitments are rendered via the web view */}
+        <View style={{ marginTop: 16, padding: 16, backgroundColor: `${partyColor}08`, borderRadius: 12, borderLeftWidth: 3, borderLeftColor: partyColor }}>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: partyColor, marginBottom: 4 }}>Civic Card</Text>
+          <Text style={{ fontSize: 11, color: '#666', lineHeight: 16 }}>Proposals, Q&A, and commitments are interactive on the web card. Share your card link for the full experience.</Text>
+        </View>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+const ls = StyleSheet.create({  // Shared
   cardBase: { overflow: 'hidden' },
   fieldsCenter: { paddingHorizontal: 20, alignItems: 'center', width: '100%' },
   nameText: { fontSize: 22, fontWeight: '700', textAlign: 'center', paddingVertical: 4, width: '100%' },

@@ -233,6 +233,14 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
   const [reviewFacebookUrl, setReviewFacebookUrl] = useState('');
   const [reviewBbbUrl, setReviewBbbUrl] = useState('');
 
+  // ── Civic card fields ──
+  const [ballotNumber, setBallotNumber] = useState('');
+  const [partyName, setPartyName] = useState('');
+  const [officeRunningFor, setOfficeRunningFor] = useState('');
+  const [electionYear, setElectionYear] = useState('');
+  const [campaignSlogan, setCampaignSlogan] = useState('');
+  const [civicRegion, setCivicRegion] = useState('');
+
   // ── Auto-fill from previous card ──
   const [showAutoFillBanner, setShowAutoFillBanner] = useState(false);
   const [previousCard, setPreviousCard] = useState<any>(null);
@@ -608,6 +616,15 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
         review_tripadvisor_url: reviewTripadvisorUrl || null,
         review_facebook_url: reviewFacebookUrl || null,
         review_bbb_url: reviewBbbUrl || null,
+        // Civic card fields
+        ...(template.layout === 'civic-card' ? {
+          ballot_number: ballotNumber || null,
+          party_name: partyName || null,
+          office_running_for: officeRunningFor || null,
+          election_year: electionYear || null,
+          campaign_slogan: campaignSlogan || null,
+          region: civicRegion || null,
+        } : {}),
       };
 
       const { data: newCard, error } = await supabase
@@ -814,6 +831,36 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
                       })}
                     </View>
 
+                    {/* ── Civic Card Fields (only for civic-card template) ── */}
+                    {template.layout === 'civic-card' && (
+                      <View style={styles.cardSection}>
+                        <View style={styles.sectionHeader}>
+                          <Text style={[styles.sectionTitle, { color: textColor }]}>🇧🇷 Civic Card Details</Text>
+                        </View>
+                        {[
+                          { label: 'Ballot Number', value: ballotNumber, set: setBallotNumber, placeholder: 'e.g. 12345', keyboard: 'numeric' as const },
+                          { label: 'Party Name', value: partyName, set: setPartyName, placeholder: 'e.g. PT, PSDB, MDB', keyboard: 'default' as const },
+                          { label: 'Office Running For', value: officeRunningFor, set: setOfficeRunningFor, placeholder: 'e.g. Vereador, Prefeito', keyboard: 'default' as const },
+                          { label: 'Election Year', value: electionYear, set: setElectionYear, placeholder: 'e.g. 2026', keyboard: 'numeric' as const },
+                          { label: 'Campaign Slogan', value: campaignSlogan, set: setCampaignSlogan, placeholder: 'Your campaign slogan', keyboard: 'default' as const },
+                          { label: 'Region', value: civicRegion, set: setCivicRegion, placeholder: 'e.g. S\u00e3o Paulo, Belo Horizonte', keyboard: 'default' as const },
+                        ].map((field) => (
+                          <View key={field.label} style={[styles.reviewRow, { borderBottomColor: isLightCard ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)' }]}>
+                            <Text style={{ fontSize: 12, fontWeight: '600', color: textSecondary, width: 90 }}>{field.label}</Text>
+                            <TextInput
+                              style={[styles.reviewInput, { color: textColor, flex: 1 }]}
+                              value={field.value}
+                              onChangeText={field.set}
+                              placeholder={field.placeholder}
+                              placeholderTextColor={isLightCard ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.5)'}
+                              keyboardType={field.keyboard}
+                              autoCapitalize="none"
+                            />
+                          </View>
+                        ))}
+                        <Text style={[styles.categoryHint, { color: isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.35)' }]}>These fields appear on your santinho-style civic card</Text>
+                      </View>
+                    )}
                     {/* ── Professional Category ── */}
                     <View style={styles.cardSection}>
                       <View style={styles.sectionHeader}>

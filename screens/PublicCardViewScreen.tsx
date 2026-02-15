@@ -28,6 +28,7 @@ import {
   Share,
   Modal,
   FlatList,
+  SafeAreaView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +39,7 @@ import { supabase } from '../lib/supabaseClient';
 import * as Contacts from 'expo-contacts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import { WebView } from 'react-native-webview';
 import { getTemplateByIdWithMigration, resolveTemplateId, TemplateLayout } from '../config/eCardTemplates';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -381,6 +383,45 @@ export default function PublicCardViewScreen() {
   const isBoldLayout = templateLayout === 'bold';
   const isMinimalLayout = templateLayout === 'minimal';
   const isNeonLayout = templateLayout === 'neon';
+  const isCivicCard = templateLayout === 'civic-card';
+
+  // For civic cards, render the full web experience in a WebView
+  if (isCivicCard && cardData.slug) {
+    return (
+      <View style={[styles.container, { backgroundColor: '#f5f5f5' }]}>
+        <StatusBar barStyle="dark-content" />
+        <SafeAreaView style={{ flex: 1 }}>
+          {/* Header bar */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e8e8e8' }}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
+              <Ionicons name="arrow-back" size={24} color="#1a1a2e" />
+            </TouchableOpacity>
+            <Text style={{ flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: '#1a1a2e' }}>
+              {cardData.fullName}
+            </Text>
+            <TouchableOpacity onPress={handleShare} style={{ padding: 4 }}>
+              <Ionicons name="share-outline" size={22} color="#1a1a2e" />
+            </TouchableOpacity>
+          </View>
+          {/* WebView with full civic card */}
+          <WebView
+            source={{ uri: `https://tavvy.com/${cardData.slug}` }}
+            style={{ flex: 1 }}
+            startInLoadingState={true}
+            renderLoading={() => (
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f5' }}>
+                <ActivityIndicator size="large" color="#007AFF" />
+                <Text style={{ marginTop: 12, fontSize: 14, color: '#666' }}>Loading Civic Card...</Text>
+              </View>
+            )}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            sharedCookiesEnabled={true}
+          />
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: isMinimalLayout ? '#0f172a' : theme.background }]}>
