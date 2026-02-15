@@ -32,6 +32,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Modal,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -240,6 +241,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
   const [electionYear, setElectionYear] = useState('');
   const [campaignSlogan, setCampaignSlogan] = useState('');
   const [civicRegion, setCivicRegion] = useState('');
+  const [showVoteCounts, setShowVoteCounts] = useState(true);
 
   // ── Auto-fill from previous card ──
   const [showAutoFillBanner, setShowAutoFillBanner] = useState(false);
@@ -624,6 +626,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
           election_year: electionYear || null,
           campaign_slogan: campaignSlogan || null,
           region: civicRegion || null,
+          show_vote_counts: showVoteCounts,
         } : {}),
       };
 
@@ -859,6 +862,20 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
                           </View>
                         ))}
                         <Text style={[styles.categoryHint, { color: isLightCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.35)' }]}>These fields appear on your santinho-style civic card</Text>
+                        
+                        {/* Show/Hide Vote Counts Toggle */}
+                        <View style={[styles.reviewRow, { borderBottomColor: isLightCard ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)', alignItems: 'center' }]}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: textColor }}>Show Vote Counts</Text>
+                            <Text style={{ fontSize: 11, color: textSecondary, marginTop: 2 }}>Display proposal vote counts publicly</Text>
+                          </View>
+                          <Switch
+                            value={showVoteCounts}
+                            onValueChange={setShowVoteCounts}
+                            trackColor={{ false: '#ccc', true: accentColor || '#4CAF50' }}
+                            thumbColor={showVoteCounts ? '#fff' : '#f4f3f4'}
+                          />
+                        </View>
                       </View>
                     )}
                     {/* ── Professional Category ── */}
