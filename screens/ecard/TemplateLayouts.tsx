@@ -212,6 +212,10 @@ export function renderTemplateLayout(props: LayoutProps) {
     case 'biz-modern': return renderBizModernLayout(props);
     case 'biz-minimalist': return renderBizMinimalistLayout(props);
     case 'civic-card': return renderCivicCardLayout(props);
+    case 'civic-card-flag': return renderCivicCardLayout(props);
+    case 'civic-card-bold': return renderCivicCardLayout(props);
+    case 'civic-card-clean': return renderCivicCardLayout(props);
+    case 'civic-card-rally': return renderCivicCardLayout(props);
     default: return renderBasicLayout(props);
   }
 }

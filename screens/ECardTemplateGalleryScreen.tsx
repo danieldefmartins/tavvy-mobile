@@ -50,7 +50,7 @@ const ALL_GENERAL_TEMPLATES = [
 const CARD_TYPE_TEMPLATES: Record<string, string[]> = {
   business: ALL_GENERAL_TEMPLATES,
   personal: ALL_GENERAL_TEMPLATES,
-  politician: ['civic-card'],
+  politician: ['civic-card', 'civic-card-flag', 'civic-card-bold', 'civic-card-clean', 'civic-card-rally'],
 };
 
 // Super admin emails that have full access to all templates

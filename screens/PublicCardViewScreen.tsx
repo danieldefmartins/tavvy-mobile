@@ -383,7 +383,7 @@ export default function PublicCardViewScreen() {
   const isBoldLayout = templateLayout === 'bold';
   const isMinimalLayout = templateLayout === 'minimal';
   const isNeonLayout = templateLayout === 'neon';
-  const isCivicCard = templateLayout === 'civic-card';
+  const isCivicCard = templateLayout.startsWith('civic-card');
 
   // For civic cards, render the full web experience in a WebView
   if (isCivicCard && cardData.slug) {

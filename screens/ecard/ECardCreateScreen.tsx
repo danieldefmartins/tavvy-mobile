@@ -619,7 +619,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
         review_facebook_url: reviewFacebookUrl || null,
         review_bbb_url: reviewBbbUrl || null,
         // Civic card fields
-        ...(template.layout === 'civic-card' ? {
+        ...(template.layout.startsWith('civic-card') ? {
           ballot_number: ballotNumber || null,
           party_name: partyName || null,
           office_running_for: officeRunningFor || null,
@@ -835,7 +835,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
                     </View>
 
                     {/* ── Civic Card Fields (only for civic-card template) ── */}
-                    {template.layout === 'civic-card' && (
+                    {template.layout.startsWith('civic-card') && (
                       <View style={styles.cardSection}>
                         <View style={styles.sectionHeader}>
                           <Text style={[styles.sectionTitle, { color: textColor }]}>🇧🇷 Civic Card Details</Text>
