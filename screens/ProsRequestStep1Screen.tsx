@@ -1,9 +1,9 @@
 /**
- * ProsRequestStep1Screen - Service Category Selection
+ * ProsRequestStep1Screen - Parent Category Selection
  * Install path: screens/ProsRequestStep1Screen.tsx
  * 
- * Step 2 of 6: Users select a service category from dynamic Supabase data
- * Includes search functionality and "Other" option
+ * Step 2 of 7: Users select a broad service type (parent category)
+ * Tapping a category auto-navigates to Step 1b (sub-category selection)
  * Receives customer information from Step 0
  */
 
@@ -16,8 +16,6 @@ import {
   TouchableOpacity,
   TextInput,
   SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
   Alert,
 } from 'react-native';
@@ -25,8 +23,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { ProsColors } from '../constants/ProsConfig';
-import { useProsServiceCategories, ServiceCategory } from '../hooks/useProsServiceCategories';
-import { useProsPendingRequests } from '../hooks/useProsPendingRequests';
+import { useProsParentCategories, ServiceCategory } from '../hooks/useProsServiceCategories';
 import { useTranslation } from 'react-i18next';
 
 type RouteParams = {
@@ -37,6 +34,61 @@ type RouteParams = {
     privacyPreference: 'share' | 'app_only';
   };
 };
+
+// Emoji mapping for parent category icons (Ionicons name → emoji)
+const ICON_EMOJI_MAP: Record<string, string> = {
+  'construct': '🏗️',
+  'sparkles': '✨',
+  'build': '🔧',
+  'car': '🔩',
+  'hammer': '🛠️',
+  'home': '🏠',
+  'leaf': '🌿',
+  'flash': '⚡',
+  'water': '💧',
+  'brush': '🖌️',
+  'bug': '🐛',
+  'car-sport-outline': '🚗',
+  'business': '💼',
+  'settings': '⚙️',
+  'thermometer': '🌡️',
+  'grid': '🏗️',
+};
+
+// Fallback emoji by category name
+const NAME_EMOJI_MAP: Record<string, string> = {
+  'construction': '🏗️',
+  'cleaning': '✨',
+  'repair': '🔧',
+  'mechanic': '🔩',
+  'handyman': '🛠️',
+  'realtor': '🏠',
+  'landscaping': '🌿',
+  'electrical': '⚡',
+  'plumbing': '💧',
+  'painting': '🖌️',
+  'pest control': '🐛',
+  'moving': '🚚',
+  'hvac': '🌡️',
+  'pool services': '🏊',
+  'roofing': '🏠',
+  'flooring': '🏗️',
+  'real estate': '🏠',
+};
+
+function getCategoryEmoji(category: ServiceCategory): string {
+  // Try icon mapping first
+  if (category.icon && ICON_EMOJI_MAP[category.icon]) {
+    return ICON_EMOJI_MAP[category.icon];
+  }
+  // Try name-based mapping
+  const nameLower = category.name.toLowerCase();
+  if (NAME_EMOJI_MAP[nameLower]) {
+    return NAME_EMOJI_MAP[nameLower];
+  }
+  // Default
+  return '🔧';
+}
 
 const ProgressBar = ({ progress }: { progress: number }) => (
   <View style={styles.progressContainer}>
@@ -51,74 +103,32 @@ export default function ProsRequestStep1Screen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
-  const { saveProgress } = useProsPendingRequests();
   
   const { customerInfo } = route.params || {};
   
-  // Fetch categories from Supabase
-  const { data: categories = [], isLoading, error } = useProsServiceCategories();
+  // Fetch parent categories from Supabase
+  const { data: parentCategories = [], isLoading, error } = useProsParentCategories();
   
-  const [selectedService, setSelectedService] = useState<string | null>(null);
-  const [description, setDescription] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Build services list from fetched categories + Other option
-  const allServices = useMemo(() => {
-    const services: (ServiceCategory & { color?: string })[] = categories.map((cat) => ({
-      ...cat,
-      color: ProsColors.primary, // Use primary color for all, can be customized per category
-    }));
-    
-    // Add "Other" option at the end
-    services.push({
-      id: 'other',
-      slug: 'other',
-      name: 'Other',
-      icon: 'ellipsis-horizontal',
-      color: '#6B7280',
-    } as any);
-    
-    return services;
-  }, [categories]);
-
-  // Filter services based on search query
-  const filteredServices = useMemo(() => {
+  // Filter categories based on search query
+  const filteredCategories = useMemo(() => {
     if (!searchQuery.trim()) {
-      return allServices;
+      return parentCategories;
     }
-    
     const query = searchQuery.toLowerCase().trim();
-    return allServices.filter(service => 
-      service.name.toLowerCase().includes(query)
+    return parentCategories.filter(cat => 
+      cat.name.toLowerCase().includes(query)
     );
-  }, [allServices, searchQuery]);
+  }, [parentCategories, searchQuery]);
 
-  const handleNext = async () => {
-    if (!selectedService) {
-      Alert.alert('Please Select', 'Please select a service category to continue.');
-      return;
-    }
-
-    if (!customerInfo) {
-      Alert.alert('Error', 'Customer information is missing. Please start over.');
-      return;
-    }
-    
-    const selectedCategory = allServices.find(s => s.id === selectedService);
-    
-    const formData = {
+  const handleCategorySelect = (category: ServiceCategory) => {
+    // Navigate to sub-category selection (Step 1b)
+    navigation.navigate('ProsRequestStep1b', {
       customerInfo,
-      categoryId: selectedService,
-      categoryName: selectedCategory?.name || 'Service',
-      description,
-    };
-
-    // Auto-save progress
-    if (selectedService !== 'other') {
-      await saveProgress(selectedService, 1, formData);
-    }
-    
-    navigation.navigate('ProsRequestStep2', formData);
+      parentCategoryId: category.id,
+      parentCategoryName: category.name,
+    });
   };
 
   const handleClose = () => {
@@ -163,126 +173,75 @@ export default function ProsRequestStep1Screen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color="#374151" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Request Service</Text>
-          <View style={{ width: 40 }} />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#374151" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Start a Project</Text>
+        <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+          <Ionicons name="close" size={24} color="#374151" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.progressWrapper}>
+        <ProgressBar progress={29} />
+        <Text style={styles.stepText}>Step 2 of 7</Text>
+      </View>
+
+      <View style={styles.content}>
+        <Text style={styles.question}>What type of service?</Text>
+        <Text style={styles.subtext}>Select a service category</Text>
+
+        {/* Search Box */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search services..."
+            placeholderTextColor="#9CA3AF"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
+              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
         </View>
 
-        <View style={styles.progressWrapper}>
-          <ProgressBar progress={33} />
-          <Text style={styles.stepText}>Step 2 of 6</Text>
-        </View>
-
-        <View style={styles.content}>
-          <Text style={styles.question}>What do you need help with?</Text>
-          <Text style={styles.subtext}>Select a service category</Text>
-
-          {/* Search Box */}
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search services..."
-              placeholderTextColor="#9CA3AF"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
-                <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <ScrollView 
-            style={styles.scrollView} 
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.serviceGrid}>
-              {filteredServices.map((service) => (
-                <TouchableOpacity
-                  key={service.id}
-                  style={[
-                    styles.serviceCard,
-                    selectedService === service.id && styles.serviceCardSelected,
-                  ]}
-                  onPress={() => setSelectedService(service.id)}
-                >
-                  <View
-                    style={[
-                      styles.serviceIcon,
-                      { backgroundColor: `${service.color || ProsColors.primary}20` },
-                      selectedService === service.id && styles.serviceIconSelected,
-                      selectedService === service.id && { backgroundColor: service.color || ProsColors.primary },
-                    ]}
-                  >
-                    <Ionicons
-                      name={service.icon as any}
-                      size={22}
-                      color={selectedService === service.id ? '#FFFFFF' : (service.color || ProsColors.primary)}
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.serviceName,
-                      selectedService === service.id && styles.serviceNameSelected,
-                    ]}
-                    numberOfLines={2}
-                  >
-                    {service.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {filteredServices.length === 0 && (
-              <View style={styles.noResults}>
-                <Ionicons name="search-outline" size={48} color="#D1D5DB" />
-                <Text style={styles.noResultsText}>No services found</Text>
-                <Text style={styles.noResultsSubtext}>Try a different search term</Text>
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {filteredCategories.map((category) => (
+            <TouchableOpacity
+              key={category.id}
+              style={styles.categoryRow}
+              onPress={() => handleCategorySelect(category)}
+              activeOpacity={0.6}
+            >
+              <Text style={styles.categoryEmoji}>{getCategoryEmoji(category)}</Text>
+              <View style={styles.categoryInfo}>
+                <Text style={styles.categoryName}>{category.name}</Text>
               </View>
-            )}
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          ))}
 
-            <Text style={styles.descriptionLabel}>Describe your project (optional)</Text>
-            <TextInput
-              style={styles.descriptionInput}
-              placeholder="E.g., I need to fix a leaky faucet in my kitchen..."
-              placeholderTextColor="#9CA3AF"
-              multiline
-              numberOfLines={4}
-              value={description}
-              onChangeText={setDescription}
-              textAlignVertical="top"
-            />
-            
-            <View style={{ height: 20 }} />
-          </ScrollView>
-        </View>
+          {filteredCategories.length === 0 && (
+            <View style={styles.noResults}>
+              <Ionicons name="search-outline" size={48} color="#D1D5DB" />
+              <Text style={styles.noResultsText}>No services found</Text>
+              <Text style={styles.noResultsSubtext}>Try a different search term</Text>
+            </View>
+          )}
 
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.nextButton,
-              !selectedService && styles.nextButtonDisabled,
-            ]}
-            onPress={handleNext}
-            disabled={!selectedService}
-          >
-            <Text style={styles.nextButtonText}>Continue</Text>
-            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
+          <View style={{ height: 20 }} />
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -291,9 +250,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-  },
-  keyboardView: {
-    flex: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -342,6 +298,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   closeButton: {
     width: 40,
@@ -427,49 +389,28 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  serviceGrid: {
+  categoryRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  serviceCard: {
-    width: '31%',
-    aspectRatio: 0.9,
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     backgroundColor: '#F9FAFB',
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    marginBottom: 10,
-    padding: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  serviceCardSelected: {
-    borderColor: ProsColors.primary,
-    backgroundColor: '#EFF6FF',
+  categoryEmoji: {
+    fontSize: 28,
+    marginRight: 16,
   },
-  serviceIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
+  categoryInfo: {
+    flex: 1,
   },
-  serviceIconSelected: {
-    // backgroundColor set dynamically
-  },
-  serviceName: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#374151',
-    textAlign: 'center',
-    lineHeight: 14,
-  },
-  serviceNameSelected: {
-    color: ProsColors.primary,
+  categoryName: {
+    fontSize: 16,
     fontWeight: '600',
+    color: '#111827',
   },
   noResults: {
     alignItems: 'center',
@@ -486,44 +427,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9CA3AF',
     marginTop: 4,
-  },
-  descriptionLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  descriptionInput: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 15,
-    color: '#111827',
-    minHeight: 100,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  footer: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  nextButton: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    backgroundColor: ProsColors.primary,
-    borderRadius: 8,
-    gap: 8,
-  },
-  nextButtonDisabled: {
-    opacity: 0.5,
-  },
-  nextButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
   },
 });

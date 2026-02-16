@@ -2,7 +2,7 @@
  * ProsRequestStep0Screen - Customer Information Collection
  * Install path: screens/ProsRequestStep0Screen.tsx
  * 
- * Step 0 of 6: Collect customer contact information and privacy preference
+ * Step 0 of 7: Collect customer contact information and privacy preference
  * Users provide: Name, Email, Phone, and choose between sharing info or app-only messaging
  */
 
@@ -112,7 +112,7 @@ export default function ProsRequestStep0Screen() {
         </View>
 
         <View style={styles.progressWrapper}>
-          <ProgressBar progress={17} />
+          <ProgressBar progress={14} />
         </View>
 
         <ScrollView 
@@ -122,7 +122,7 @@ export default function ProsRequestStep0Screen() {
         >
           {/* Step Indicator */}
           <View style={styles.stepIndicator}>
-            <Text style={styles.stepNumber}>Step 1 of 6</Text>
+            <Text style={styles.stepNumber}>Step 1 of 7</Text>
             <Text style={styles.stepTitle}>Who are you?</Text>
           </View>
 

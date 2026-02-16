@@ -2,7 +2,7 @@
  * ProsRequestStep2PhotoScreen - Photo Upload Step
  * Install path: screens/ProsRequestStep2PhotoScreen.tsx
  * 
- * Step 6 of 6: Users can upload photos of their project
+ * Step 6 of 7: Users can upload photos of their project
  * Enhanced with contextual prompts based on service category and technical details.
  */
 
@@ -247,8 +247,8 @@ export default function ProsRequestStep2PhotoScreen() {
       </View>
 
       <View style={styles.progressWrapper}>
-        <ProgressBar progress={83} />
-        <Text style={styles.stepText}>Step 6 of 6: Visuals</Text>
+        <ProgressBar progress={86} />
+        <Text style={styles.stepText}>Step 6 of 7: Visuals</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>

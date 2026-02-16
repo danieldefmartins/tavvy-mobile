@@ -2,7 +2,7 @@
  * ProsRequestStep2Screen - Dynamic Category-Specific Questions
  * Install path: screens/ProsRequestStep2Screen.tsx
  * 
- * Step 3 of 6: Users answer specific questions tailored to their selected category
+ * Step 4 of 7: Users answer specific questions tailored to their selected category
  * Fetches questions from Supabase service_category_questions table
  * Implements two-tier logic: Tier 1 (Service Branch) -> Tier 2 (Technical Details)
  */
@@ -172,7 +172,7 @@ export default function ProsRequestStep2Screen() {
   }
 
   const currentQuestion = visibleQuestions[currentQuestionIndex];
-  const progress = 33 + Math.round(((currentQuestionIndex + 1) / visibleQuestions.length) * 17);
+  const progress = 57 + Math.round(((currentQuestionIndex + 1) / visibleQuestions.length) * 14);
 
   const renderQuestionInput = () => {
     switch (currentQuestion.question_type) {
@@ -290,7 +290,7 @@ export default function ProsRequestStep2Screen() {
 
         <View style={styles.progressWrapper}>
           <ProgressBar progress={progress} />
-          <Text style={styles.stepText}>Step 3 of 6: Specifics</Text>
+          <Text style={styles.stepText}>Step 4 of 7: Specifics</Text>
         </View>
 
         <ScrollView 

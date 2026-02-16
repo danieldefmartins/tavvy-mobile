@@ -2,7 +2,7 @@
  * ProsRequestStep3Screen - Project Description
  * Install path: screens/ProsRequestStep3Screen.tsx
  * 
- * Step 4 of 6: Users provide a detailed description of their project
+ * Step 5 of 7: Users provide a detailed description of their project
  * Receives dynamic answers from Step 2
  */
 
@@ -110,8 +110,8 @@ export default function ProsRequestStep3Screen() {
         </View>
 
         <View style={styles.progressWrapper}>
-          <ProgressBar progress={50} />
-          <Text style={styles.stepText}>Step 4 of 6: Description</Text>
+          <ProgressBar progress={71} />
+          <Text style={styles.stepText}>Step 5 of 7: Description</Text>
         </View>
 
         <ScrollView 
