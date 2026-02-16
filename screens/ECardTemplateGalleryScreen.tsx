@@ -38,11 +38,19 @@ interface RouteParams {
   preserveData?: boolean;
 }
 
+// All general templates shared by Business and Personal
+const ALL_GENERAL_TEMPLATES = [
+  'biz-traditional', 'biz-modern', 'biz-minimalist',
+  'basic', 'blogger', 'business-card', 'pro-card',
+  'cover-card', 'full-width', 'pro-realtor',
+  'pro-creative', 'pro-corporate', 'premium-static',
+];
+
 // Card type → template ID mapping
 const CARD_TYPE_TEMPLATES: Record<string, string[]> = {
-  business: ['biz-traditional', 'biz-modern', 'biz-minimalist', 'business-card', 'pro-card', 'pro-realtor', 'pro-creative', 'pro-corporate'],
-  personal: ['basic', 'blogger', 'cover-card', 'full-width', 'premium-static'],
-  politician: ['civic-card'],
+  business: ALL_GENERAL_TEMPLATES,
+  personal: ALL_GENERAL_TEMPLATES,
+  politician: [...ALL_GENERAL_TEMPLATES, 'civic-card'],
 };
 
 // Super admin emails that have full access to all templates
