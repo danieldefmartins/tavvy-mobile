@@ -62,6 +62,12 @@ const PLATFORM_ICONS: Record<string, { icon: string; color: string; bgColor: str
   email: { icon: 'mail', color: '#fff', bgColor: '#EA4335' },
   website: { icon: 'globe', color: '#fff', bgColor: '#4A90D9' },
   phone: { icon: 'call', color: '#fff', bgColor: '#34C759' },
+  spotify: { icon: 'musical-notes', color: '#fff', bgColor: '#1DB954' },
+  github: { icon: 'logo-github', color: '#fff', bgColor: '#181717' },
+  discord: { icon: 'logo-discord', color: '#fff', bgColor: '#5865F2' },
+  pinterest: { icon: 'logo-pinterest', color: '#fff', bgColor: '#E60023' },
+  twitch: { icon: 'logo-twitch', color: '#fff', bgColor: '#9146FF' },
+  telegram: { icon: 'paper-plane', color: '#fff', bgColor: '#0088CC' },
   other: { icon: 'link', color: '#fff', bgColor: '#8E8E93' },
 };
 
@@ -127,6 +133,9 @@ const FEATURED_PLATFORMS = [
   { id: 'spotify', name: 'Spotify' },
   { id: 'github', name: 'GitHub' },
   { id: 'discord', name: 'Discord' },
+  { id: 'pinterest', name: 'Pinterest' },
+  { id: 'twitch', name: 'Twitch' },
+  { id: 'telegram', name: 'Telegram' },
 ];
 
 interface LinkItem {
@@ -1692,13 +1701,15 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           </View>
         </View>
         {featuredSocials.map((fi) => {
-          const pi = PLATFORM_ICONS[fi.platformId];
+          const pi = PLATFORM_ICONS[fi.platformId] || PLATFORM_ICONS.other;
           const pName = FEATURED_PLATFORMS.find(p => p.id === fi.platformId)?.name || fi.platformId;
           return (
             <View key={fi.platformId} style={[s.featuredIconItem, { backgroundColor: colors.surfaceElevated }]}>
               <View style={s.fiHeader}>
                 <View style={s.fiLeft}>
-                  <View style={[s.fiDot, { backgroundColor: pi?.bgColor || '#888' }]} />
+                  <View style={[s.fiIconCircle, { backgroundColor: pi.bgColor }]}>
+                    <Ionicons name={pi.icon as any} size={16} color={pi.color} />
+                  </View>
                   <Text style={[s.fiName, { color: colors.text }]}>{pName}</Text>
                 </View>
                 <TouchableOpacity onPress={() => removeFeaturedIcon(fi.platformId)}>
@@ -1734,16 +1745,21 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
               </TouchableOpacity>
             </View>
             <View style={s.platformGrid}>
-              {FEATURED_PLATFORMS.filter(p => !featuredSocials.some(fi => fi.platformId === p.id)).map((platform) => (
-                <TouchableOpacity
-                  key={platform.id}
-                  style={[s.platformOption, { backgroundColor: colors.inputBg }]}
-                  onPress={() => addFeaturedIcon(platform.id)}
-                >
-                  <View style={[s.fiDot, { backgroundColor: PLATFORM_ICONS[platform.id]?.bgColor || '#888', width: 10, height: 10, borderRadius: 5 }]} />
-                  <Text style={[s.platformOptionText, { color: colors.text }]}>{platform.name}</Text>
-                </TouchableOpacity>
-              ))}
+              {FEATURED_PLATFORMS.filter(p => !featuredSocials.some(fi => fi.platformId === p.id)).map((platform) => {
+                const pIcon = PLATFORM_ICONS[platform.id] || PLATFORM_ICONS.other;
+                return (
+                  <TouchableOpacity
+                    key={platform.id}
+                    style={[s.platformOption, { backgroundColor: colors.inputBg }]}
+                    onPress={() => addFeaturedIcon(platform.id)}
+                  >
+                    <View style={[s.platformPickerIcon, { backgroundColor: pIcon.bgColor }]}>
+                      <Ionicons name={pIcon.icon as any} size={14} color={pIcon.color} />
+                    </View>
+                    <Text style={[s.platformOptionText, { color: colors.text }]}>{platform.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         )}
@@ -2964,6 +2980,8 @@ const s = StyleSheet.create({
   fiHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   fiLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   fiDot: { width: 12, height: 12, borderRadius: 6 },
+  fiIconCircle: { width: 28, height: 28, borderRadius: 14, alignItems: 'center' as const, justifyContent: 'center' as const },
+  platformPickerIcon: { width: 26, height: 26, borderRadius: 13, alignItems: 'center' as const, justifyContent: 'center' as const },
   fiName: { fontSize: 14, fontWeight: '600' },
   fiUrlInput: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14 },
   
