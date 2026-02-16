@@ -128,7 +128,7 @@ const COUNTRIES: CountryItem[] = [
   { code: 'CU', name: 'Cuba', nameLocal: 'Cuba', flag: '🇨🇺', featured: false, template: 'politician-generic' },
 ];
 
-type SheetStep = 'closed' | 'type-picker' | 'country-picker';
+type SheetStep = 'closed' | 'type-picker' | 'country-picker' | 'card-limit';
 
 export default function ECardHubScreen() {
   const { t } = useTranslation();
@@ -144,6 +144,10 @@ export default function ECardHubScreen() {
   const [sheetStep, setSheetStep] = useState<SheetStep>('closed');
   const [countrySearch, setCountrySearch] = useState('');
   const slideAnim = useState(new Animated.Value(0))[0];
+
+  // Role-based card limits
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isPro, setIsPro] = useState(false);
 
   const fetchCards = async () => {
     if (!user) {
@@ -166,11 +170,61 @@ export default function ECardHubScreen() {
     }
   };
 
+  const fetchRoles = async () => {
+    if (!user) return;
+    try {
+      // Check super_admin
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      if (profile?.role === 'super_admin') {
+        setIsSuperAdmin(true);
+        setIsPro(true);
+        return;
+      }
+      // Check pro subscription
+      const { data: sub } = await supabase
+        .from('pro_subscriptions')
+        .select('id, status')
+        .eq('user_id', user.id)
+        .in('status', ['active', 'trialing'])
+        .limit(1);
+      setIsPro(!!(sub && sub.length > 0));
+    } catch (err) {
+      console.error('Error fetching roles:', err);
+    }
+  };
+
   useFocusEffect(
-    React.useCallback(() => { fetchCards(); }, [user])
+    React.useCallback(() => { fetchCards(); fetchRoles(); }, [user])
   );
 
   const onRefresh = () => { setRefreshing(true); fetchCards(); };
+
+  // Card limit constants
+  const FREE_CARD_LIMIT = 1;
+  const PRO_CARD_LIMIT = 1;
+
+  const handleFabClick = () => {
+    // Super admins bypass all limits
+    if (isSuperAdmin) {
+      openSheet('type-picker');
+      return;
+    }
+    // Free users: 1 card
+    if (!isPro && cards.length >= FREE_CARD_LIMIT) {
+      openSheet('card-limit');
+      return;
+    }
+    // Pro users: 1 premium card
+    if (isPro && cards.length >= PRO_CARD_LIMIT) {
+      openSheet('card-limit');
+      return;
+    }
+    openSheet('type-picker');
+  };
 
   const handleEditCard = (card: CardData) => {
     navigation.navigate('ECardDashboard', { cardId: card.id });
@@ -255,6 +309,17 @@ export default function ECardHubScreen() {
 
   const handleDuplicateCard = async (card: CardData) => {
     if (!user || duplicating) return;
+    // Card limit check for duplicate
+    if (!isSuperAdmin) {
+      if (!isPro && cards.length >= FREE_CARD_LIMIT) {
+        openSheet('card-limit');
+        return;
+      }
+      if (isPro && cards.length >= PRO_CARD_LIMIT) {
+        openSheet('card-limit');
+        return;
+      }
+    }
     setDuplicating(card.id);
     try {
       const { data: fullCard } = await supabase.from('digital_cards').select('*').eq('id', card.id).single();
@@ -412,23 +477,23 @@ export default function ECardHubScreen() {
             ))}
           </View>
         ) : (
-          /* ── Empty State ── */
-          <View style={styles.emptyState}>
-            <View style={[styles.emptyIcon, { backgroundColor: 'rgba(0,200,83,0.08)' }]}>
+          /* ── Empty State (clickable) ── */
+          <TouchableOpacity style={styles.emptyState} onPress={handleFabClick} activeOpacity={0.7}>
+            <View style={[styles.emptyIcon, { backgroundColor: 'rgba(0,200,83,0.12)' }]}>
               <Ionicons name="add" size={36} color={ACCENT} />
             </View>
             <Text style={[styles.emptyTitle, { color: isDark ? '#fff' : '#111' }]}>Create your first eCard</Text>
             <Text style={[styles.emptySubtitle, { color: isDark ? 'rgba(255,255,255,0.5)' : '#888' }]}>
-              Tap the + button below to get started with your digital card
+              Tap here to get started with your digital card
             </Text>
-          </View>
+          </TouchableOpacity>
         )}
       </ScrollView>
 
       {/* ── FAB ── */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => openSheet('type-picker')}
+        onPress={handleFabClick}
         activeOpacity={0.85}
       >
         <LinearGradient
@@ -589,6 +654,65 @@ export default function ECardHubScreen() {
                     </View>
                   )}
                 </ScrollView>
+              </View>
+            )}
+            {/* ── STEP: Card Limit Reached ── */}
+            {sheetStep === 'card-limit' && (
+              <View style={{ alignItems: 'center', paddingVertical: 16 }}>
+                <View style={{
+                  width: 64, height: 64, borderRadius: 32,
+                  backgroundColor: isPro ? 'rgba(234,179,8,0.12)' : 'rgba(239,68,68,0.1)',
+                  alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+                }}>
+                  <Ionicons
+                    name={isPro ? 'star' : 'lock-closed'}
+                    size={28}
+                    color={isPro ? '#EAB308' : '#EF4444'}
+                  />
+                </View>
+                <Text style={[styles.sheetTitle, { textAlign: 'center' }]}>
+                  {isPro ? 'Additional Card Required' : 'Upgrade to Pro'}
+                </Text>
+                <Text style={[styles.sheetSubtitle, { textAlign: 'center', maxWidth: 280 }]}>
+                  {isPro
+                    ? `Your Pro plan includes 1 premium card. You currently have ${cards.length} card${cards.length !== 1 ? 's' : ''}. Purchase an additional card slot to create more.`
+                    : `Free accounts can create ${FREE_CARD_LIMIT} card. Upgrade to Pro to unlock premium templates and features.`
+                  }
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20, marginTop: 4 }}>
+                  <Ionicons name="card-outline" size={14} color={isDark ? '#94A3B8' : '#888'} />
+                  <Text style={{ fontSize: 13, color: isDark ? '#94A3B8' : '#888' }}>
+                    {isPro ? 'Pro Plan' : 'Free Plan'} — {cards.length}/{isPro ? PRO_CARD_LIMIT : FREE_CARD_LIMIT} cards used
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={{
+                    width: '100%', paddingVertical: 14, borderRadius: 14,
+                    backgroundColor: isPro ? '#EAB308' : ACCENT,
+                    alignItems: 'center', marginBottom: 10,
+                  }}
+                  onPress={() => {
+                    closeSheet();
+                    if (isPro) {
+                      // Navigate to purchase additional card
+                      navigation.navigate('ProSubscription');
+                    } else {
+                      navigation.navigate('ProSubscription');
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>
+                    {isPro ? 'Purchase Additional Card' : 'Upgrade to Pro'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ paddingVertical: 10 }}
+                  onPress={closeSheet}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ fontSize: 14, color: isDark ? '#94A3B8' : '#888' }}>Maybe Later</Text>
+                </TouchableOpacity>
               </View>
             )}
           </Animated.View>
