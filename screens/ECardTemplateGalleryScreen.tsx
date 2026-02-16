@@ -31,11 +31,19 @@ const SAMPLE_BANNER = require('../assets/ecard-sample-banner.jpg');
 interface RouteParams {
   mode?: 'create' | 'edit';
   cardId?: string;
+  cardType?: 'business' | 'personal' | 'politician';
   existingData?: any;
   existingLinks?: any[];
   existingFeaturedSocials?: any[];
   preserveData?: boolean;
 }
+
+// Card type → template ID mapping
+const CARD_TYPE_TEMPLATES: Record<string, string[]> = {
+  business: ['biz-traditional', 'biz-modern', 'biz-minimalist', 'business-card', 'pro-card', 'pro-realtor', 'pro-creative', 'pro-corporate'],
+  personal: ['basic', 'blogger', 'cover-card', 'full-width', 'premium-static'],
+  politician: ['civic-card'],
+};
 
 // Super admin emails that have full access to all templates
 const SUPER_ADMIN_EMAILS = [
@@ -717,7 +725,11 @@ const ECardTemplateGalleryScreen: React.FC = () => {
   const isProTemplate = (t: Template) => t.layout.startsWith('pro-');
 
   const allTemplates = useMemo(() => {
-    let templates = TEMPLATES;
+    // First filter by card type if specified
+    const cardType = params.cardType;
+    const allowedIds = cardType ? CARD_TYPE_TEMPLATES[cardType] : null;
+    let templates = allowedIds ? TEMPLATES.filter(t => allowedIds.includes(t.id)) : TEMPLATES;
+
     switch (selectedCategory) {
       case 'free':
         templates = templates.filter(t => !t.isPremium);
@@ -737,7 +749,7 @@ const ECardTemplateGalleryScreen: React.FC = () => {
         break;
     }
     return templates;
-  }, [selectedCategory, hasProAccess]);
+  }, [selectedCategory, hasProAccess, params.cardType]);
 
   const handleSelectTemplate = (template: Template) => {
     navigation.navigate('ECardColorPicker', {
