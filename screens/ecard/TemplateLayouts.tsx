@@ -13,6 +13,7 @@ import {
   Text,
   TextInput,
   Image,
+  ImageBackground,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
@@ -212,10 +213,10 @@ export function renderTemplateLayout(props: LayoutProps) {
     case 'biz-modern': return renderBizModernLayout(props);
     case 'biz-minimalist': return renderBizMinimalistLayout(props);
     case 'civic-card': return renderCivicCardLayout(props);
-    case 'civic-card-flag': return renderCivicCardLayout(props);
-    case 'civic-card-bold': return renderCivicCardLayout(props);
-    case 'civic-card-clean': return renderCivicCardLayout(props);
-    case 'civic-card-rally': return renderCivicCardLayout(props);
+    case 'civic-card-flag': return renderCivicCardFlagLayout(props);
+    case 'civic-card-bold': return renderCivicCardBoldLayout(props);
+    case 'civic-card-clean': return renderCivicCardCleanLayout(props);
+    case 'civic-card-rally': return renderCivicCardRallyLayout(props);
     default: return renderBasicLayout(props);
   }
 }
@@ -1037,6 +1038,367 @@ function renderCivicCardLayout(p: LayoutProps) {
         {/* Note: Proposals, Q&A, Commitments are rendered via the web view */}
         <View style={{ marginTop: 16, padding: 16, backgroundColor: `${partyColor}08`, borderRadius: 12, borderLeftWidth: 3, borderLeftColor: partyColor }}>
           <Text style={{ fontSize: 12, fontWeight: '600', color: partyColor, marginBottom: 4 }}>Civic Card</Text>
+          <Text style={{ fontSize: 11, color: '#666', lineHeight: 16 }}>Proposals, Q&A, and commitments are interactive on the web card. Share your card link for the full experience.</Text>
+        </View>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 15. CIVIC CARD FLAG — Brazilian flag background, gold photo ring, dark info overlay
+// Matches web: CivicCardSection.renderFlagHeader()
+// ═══════════════════════════════════════════════════════════
+const BRAZIL_FLAG_IMAGE = require('../../assets/brazil-flag.jpg');
+
+function renderCivicCardFlagLayout(p: LayoutProps) {
+  const { color, data, isEditable, children } = p;
+  const accentCol = color.accent || '#FFDF00';
+  const borderCol = 'rgba(0,0,0,0.06)';
+
+  return (
+    <View style={[ls.cardBase, { backgroundColor: '#f5f5f5' }]}>
+      {/* Flag background header */}
+      <ImageBackground
+        source={BRAZIL_FLAG_IMAGE}
+        style={{ width: '100%' }}
+        resizeMode="cover"
+      >
+        {/* Dark overlay for readability */}
+        <LinearGradient
+          colors={['rgba(0,60,30,0.35)', 'rgba(0,40,20,0.5)'] as [string, string]}
+          style={{ padding: 24, paddingBottom: 20, alignItems: 'center' }}
+        >
+          {/* Candidate photo with gold ring */}
+          <View style={{ marginBottom: 16 }}>
+            <View style={{ borderRadius: 64, borderWidth: 4, borderColor: accentCol, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 6 }}>
+              <PhotoAvatar uri={data.profileImage} size={120} borderColor="transparent" onPress={p.onPickPhoto} isEditable={isEditable} />
+            </View>
+          </View>
+
+          {/* Candidate name */}
+          <EditableText
+            value={data.name}
+            onChange={p.onChangeName}
+            placeholder="Candidate Name"
+            style={{ fontSize: 24, fontWeight: '800', color: '#FFFFFF', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}
+            isEditable={isEditable}
+          />
+
+          {/* Office */}
+          <EditableText
+            value={data.titleRole}
+            onChange={p.onChangeTitle}
+            placeholder="Office"
+            style={{ fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.95)', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4, marginTop: 4 }}
+            isEditable={isEditable}
+          />
+
+          {/* Dark info box overlay */}
+          <View style={{ backgroundColor: 'rgba(0,39,118,0.7)', borderRadius: 16, padding: 20, marginTop: 16, width: '100%', alignItems: 'center' }}>
+            {/* Party name */}
+            <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', color: accentCol, marginBottom: 6 }}>
+              {data.titleRole || 'PARTY NAME'}
+            </Text>
+
+            {/* Office & Region */}
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', marginBottom: 12 }}>
+              {data.bio || 'Office • Region • Year'}
+            </Text>
+
+            {/* VOTE badge */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: accentCol, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 24, marginBottom: 8 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#002776' }}>VOTE</Text>
+              <Text style={{ fontSize: 34, fontWeight: '900', color: '#002776', letterSpacing: 4 }}>
+                {data.phone || '0000'}
+              </Text>
+            </View>
+
+            {/* Slogan */}
+            <EditableText
+              value={data.website}
+              onChange={p.onChangeWebsite}
+              placeholder="Campaign Slogan"
+              style={{ fontSize: 15, fontWeight: '600', color: accentCol, fontStyle: 'italic', textAlign: 'center', marginTop: 8 }}
+              isEditable={isEditable}
+            />
+          </View>
+        </LinearGradient>
+      </ImageBackground>
+
+      {/* White content area */}
+      <View style={{ backgroundColor: '#FFFFFF', padding: 20 }}>
+        <View style={ls.contactSection}>
+          <ContactRow icon="mail" value={data.email} onChange={p.onChangeEmail} placeholder="Email" keyboard="email-address" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <ContactRow icon="call" value={data.phone} onChange={p.onChangePhone} placeholder="Phone" keyboard="phone-pad" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <ContactRow icon="globe" value={data.website} onChange={p.onChangeWebsite} placeholder="Website" keyboard="url" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+        </View>
+        <View style={{ marginTop: 16, padding: 16, backgroundColor: '#00973908', borderRadius: 12, borderLeftWidth: 3, borderLeftColor: '#009739' }}>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: '#009739', marginBottom: 4 }}>Civic Card — Bandeira</Text>
+          <Text style={{ fontSize: 11, color: '#666', lineHeight: 16 }}>Proposals, Q&A, and commitments are interactive on the web card. Share your card link for the full experience.</Text>
+        </View>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 16. CIVIC CARD BOLD — Split layout, large photo right, bold text left
+// Matches web: CivicCardSection.renderBoldHeader()
+// ═══════════════════════════════════════════════════════════
+function renderCivicCardBoldLayout(p: LayoutProps) {
+  const { color, data, isEditable, children } = p;
+  const partyColor = color.primary;
+  const secondaryColor = color.secondary;
+  const accentCol = color.accent || '#FFD700';
+  const borderCol = 'rgba(0,0,0,0.06)';
+
+  return (
+    <View style={[ls.cardBase, { backgroundColor: '#f5f5f5' }]}>
+      {/* Bold split header */}
+      <View style={{ position: 'relative', minHeight: 340, overflow: 'hidden' }}>
+        <LinearGradient
+          colors={[partyColor, secondaryColor] as [string, string]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ ...StyleSheet.absoluteFillObject }}
+        />
+
+        {/* Large photo on right side, faded */}
+        {data.profileImage ? (
+          <Image
+            source={{ uri: data.profileImage }}
+            style={{
+              position: 'absolute', top: 0, right: -20, width: '55%', height: '100%',
+              resizeMode: 'cover', opacity: 0.4,
+            }}
+          />
+        ) : null}
+
+        {/* Left gradient overlay to fade photo into bg */}
+        <LinearGradient
+          colors={[partyColor, 'transparent'] as [string, string]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 0.6, y: 0.5 }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        />
+
+        {/* Content on left */}
+        <View style={{ position: 'relative', zIndex: 1, padding: 24, paddingTop: 32, maxWidth: '65%', justifyContent: 'flex-end', flex: 1 }}>
+          {/* Party name in accent */}
+          <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', color: accentCol, marginBottom: 16 }}>
+            {data.titleRole || 'PARTY NAME'}
+          </Text>
+
+          {/* Bold uppercase name */}
+          <EditableText
+            value={data.name}
+            onChange={p.onChangeName}
+            placeholder="CANDIDATE NAME"
+            style={{ fontSize: 32, fontWeight: '900', color: '#FFFFFF', lineHeight: 36, textTransform: 'uppercase', letterSpacing: -0.5, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}
+            isEditable={isEditable}
+            textAlign="left"
+          />
+
+          {/* Position */}
+          <Text style={{ fontSize: 15, fontWeight: '500', color: 'rgba(255,255,255,0.85)', marginTop: 8, marginBottom: 20 }}>
+            {data.bio || 'Office • Region'}
+          </Text>
+
+          {/* Yellow VOTE badge */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: accentCol, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 24, alignSelf: 'flex-start' }}>
+            <Text style={{ fontSize: 13, fontWeight: '800', color: '#1a1a2e' }}>VOTE</Text>
+            <Text style={{ fontSize: 32, fontWeight: '900', color: '#1a1a2e', letterSpacing: 4 }}>
+              {data.phone || '0000'}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* White content area */}
+      <View style={{ backgroundColor: '#FFFFFF', padding: 20 }}>
+        <View style={ls.contactSection}>
+          <ContactRow icon="mail" value={data.email} onChange={p.onChangeEmail} placeholder="Email" keyboard="email-address" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <ContactRow icon="call" value={data.phone} onChange={p.onChangePhone} placeholder="Phone" keyboard="phone-pad" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <ContactRow icon="globe" value={data.website} onChange={p.onChangeWebsite} placeholder="Website" keyboard="url" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+        </View>
+        <View style={{ marginTop: 16, padding: 16, backgroundColor: `${partyColor}08`, borderRadius: 12, borderLeftWidth: 3, borderLeftColor: partyColor }}>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: partyColor, marginBottom: 4 }}>Civic Card — Impacto</Text>
+          <Text style={{ fontSize: 11, color: '#666', lineHeight: 16 }}>Proposals, Q&A, and commitments are interactive on the web card. Share your card link for the full experience.</Text>
+        </View>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 17. CIVIC CARD CLEAN — White card, centered photo, pill badge, large vote number
+// Matches web: CivicCardSection.renderCleanHeader()
+// ═══════════════════════════════════════════════════════════
+function renderCivicCardCleanLayout(p: LayoutProps) {
+  const { color, data, isEditable, children } = p;
+  const accentColor = color.primary;
+  const borderCol = 'rgba(0,0,0,0.06)';
+
+  return (
+    <View style={[ls.cardBase, { backgroundColor: color.background || '#e8edf2' }]}>
+      {/* Clean white card header */}
+      <View style={{ backgroundColor: '#FFFFFF', padding: 24, paddingTop: 32, alignItems: 'center' }}>
+        {/* Centered photo with subtle border */}
+        <View style={{ marginBottom: 16 }}>
+          <View style={{ borderRadius: 55, borderWidth: 3, borderColor: `${accentColor}20`, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 3 }}>
+            <PhotoAvatar uri={data.profileImage} size={110} borderColor="transparent" onPress={p.onPickPhoto} isEditable={isEditable} />
+          </View>
+        </View>
+
+        {/* Name in bold dark */}
+        <EditableText
+          value={data.name}
+          onChange={p.onChangeName}
+          placeholder="Candidate Name"
+          style={{ fontSize: 26, fontWeight: '800', color: '#1a1a2e', textAlign: 'center' }}
+          isEditable={isEditable}
+        />
+
+        {/* Position in accent color */}
+        <EditableText
+          value={data.titleRole}
+          onChange={p.onChangeTitle}
+          placeholder="Office"
+          style={{ fontSize: 15, fontWeight: '600', color: accentColor, textAlign: 'center', marginTop: 4 }}
+          isEditable={isEditable}
+        />
+
+        {/* Pill badge: Party · Region · Year */}
+        <View style={{ backgroundColor: '#f5f5f5', borderRadius: 20, paddingVertical: 6, paddingHorizontal: 16, marginTop: 12, borderWidth: 1, borderColor: '#e8e8e8' }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: '#555' }}>
+            {data.bio || 'Party • Region • Year'}
+          </Text>
+        </View>
+
+        {/* Separator */}
+        <View style={{ width: '60%', height: 1, backgroundColor: '#e8e8e8', marginVertical: 16 }} />
+
+        {/* VOTE label */}
+        <Text style={{ fontSize: 14, fontWeight: '700', color: '#999', letterSpacing: 2 }}>VOTE</Text>
+
+        {/* Large ballot number */}
+        <Text style={{ fontSize: 42, fontWeight: '900', color: accentColor, letterSpacing: 6, marginTop: 2 }}>
+          {data.phone || '0000'}
+        </Text>
+
+        {/* Separator */}
+        <View style={{ width: '60%', height: 1, backgroundColor: '#e8e8e8', marginVertical: 16 }} />
+
+        {/* Slogan */}
+        <EditableText
+          value={data.website}
+          onChange={p.onChangeWebsite}
+          placeholder="Campaign Slogan"
+          style={{ fontSize: 14, color: '#666', lineHeight: 21, textAlign: 'center', maxWidth: 280 }}
+          isEditable={isEditable}
+        />
+      </View>
+
+      {/* Contact area */}
+      <View style={{ backgroundColor: '#FFFFFF', padding: 20, marginTop: 2 }}>
+        <View style={ls.contactSection}>
+          <ContactRow icon="mail" value={data.email} onChange={p.onChangeEmail} placeholder="Email" keyboard="email-address" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <ContactRow icon="call" value={data.phone} onChange={p.onChangePhone} placeholder="Phone" keyboard="phone-pad" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <ContactRow icon="globe" value={data.website} onChange={p.onChangeWebsite} placeholder="Website" keyboard="url" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+        </View>
+        <View style={{ marginTop: 16, padding: 16, backgroundColor: `${accentColor}08`, borderRadius: 12, borderLeftWidth: 3, borderLeftColor: accentColor }}>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: accentColor, marginBottom: 4 }}>Civic Card — Moderno</Text>
+          <Text style={{ fontSize: 11, color: '#666', lineHeight: 16 }}>Proposals, Q&A, and commitments are interactive on the web card. Share your card link for the full experience.</Text>
+        </View>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 18. CIVIC CARD RALLY — Dark header with photo+name, yellow vote badge, white slogan
+// Matches web: CivicCardSection.renderRallyHeader()
+// ═══════════════════════════════════════════════════════════
+function renderCivicCardRallyLayout(p: LayoutProps) {
+  const { color, data, isEditable, children } = p;
+  const partyColor = color.primary;
+  const secondaryColor = color.secondary;
+  const accentCol = color.accent || '#FFD700';
+  const borderCol = 'rgba(0,0,0,0.06)';
+
+  return (
+    <View style={[ls.cardBase, { backgroundColor: '#f5f5f5' }]}>
+      {/* Dark navy header with photo + name side by side */}
+      <LinearGradient
+        colors={[partyColor, secondaryColor] as [string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ padding: 24, paddingTop: 32 }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+          {/* Photo with gold ring */}
+          <View style={{ borderRadius: 44, borderWidth: 3, borderColor: accentCol, overflow: 'hidden', flexShrink: 0 }}>
+            <PhotoAvatar uri={data.profileImage} size={80} borderColor="transparent" onPress={p.onPickPhoto} isEditable={isEditable} />
+          </View>
+
+          {/* Name + position */}
+          <View style={{ flex: 1 }}>
+            <EditableText
+              value={data.name}
+              onChange={p.onChangeName}
+              placeholder="Candidate Name"
+              style={{ fontSize: 20, fontWeight: '800', color: '#FFFFFF' }}
+              isEditable={isEditable}
+              textAlign="left"
+            />
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>
+              {data.bio || 'Office • Region'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Full-width yellow VOTE badge */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: accentCol, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 24 }}>
+          <Text style={{ fontSize: 13, fontWeight: '800', color: partyColor, letterSpacing: 1 }}>VOTE</Text>
+          <Text style={{ fontSize: 26, fontWeight: '900', color: partyColor, letterSpacing: 4 }}>
+            {data.phone || '0000'}
+          </Text>
+        </View>
+      </LinearGradient>
+
+      {/* White slogan area */}
+      <View style={{ backgroundColor: '#FFFFFF', padding: 16, paddingHorizontal: 20, borderBottomWidth: 3, borderBottomColor: partyColor, alignItems: 'center' }}>
+        <EditableText
+          value={data.website}
+          onChange={p.onChangeWebsite}
+          placeholder="Campaign Slogan"
+          style={{ fontSize: 14, fontWeight: '500', color: partyColor, fontStyle: 'italic', textAlign: 'center' }}
+          isEditable={isEditable}
+        />
+      </View>
+
+      {/* White content area */}
+      <View style={{ backgroundColor: '#FFFFFF', padding: 20 }}>
+        <View style={ls.contactSection}>
+          <ContactRow icon="mail" value={data.email} onChange={p.onChangeEmail} placeholder="Email" keyboard="email-address" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <ContactRow icon="call" value={data.phone} onChange={p.onChangePhone} placeholder="Phone" keyboard="phone-pad" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <ContactRow icon="globe" value={data.website} onChange={p.onChangeWebsite} placeholder="Website" keyboard="url" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+          <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
+        </View>
+        <View style={{ marginTop: 16, padding: 16, backgroundColor: `${partyColor}08`, borderRadius: 12, borderLeftWidth: 3, borderLeftColor: partyColor }}>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: partyColor, marginBottom: 4 }}>Civic Card — Campanha</Text>
           <Text style={{ fontSize: 11, color: '#666', lineHeight: 16 }}>Proposals, Q&A, and commitments are interactive on the web card. Share your card link for the full experience.</Text>
         </View>
       </View>

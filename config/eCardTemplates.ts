@@ -33,7 +33,11 @@ export type TemplateLayout =
   | 'biz-traditional' // Traditional business card: logo, photo, contact info, social
   | 'biz-modern'      // Modern business card: split layout, colored header, clean contact
   | 'biz-minimalist'  // Minimalist business card: ultra-clean, lots of whitespace
-  | 'civic-card';      // Brazilian political santinho: candidate photo, ballot number, proposals, civic engagement
+  | 'civic-card'           // Brazilian political santinho: candidate photo, ballot number, proposals, civic engagement
+  | 'civic-card-flag'      // Brazilian flag background with gradient overlay, patriotic style
+  | 'civic-card-bold'      // Bold split layout: large photo left, info right, strong typography
+  | 'civic-card-clean'     // Clean modern card: white card on colored background, minimal and elegant
+  | 'civic-card-rally';    // Rally/campaign style: diagonal cuts, bold CTA, high energy design
 
 export interface Template {
   id: string;
@@ -541,6 +545,106 @@ export const TEMPLATES: Template[] = [
       photoPosition: 'center',
       photoSize: 'large',
       photoStyle: 'rounded',
+      buttonStyle: 'rounded',
+      fontFamily: 'modern',
+      showBorder: false,
+      hasBannerImage: false,
+    },
+  },
+
+  // 15. CIVIC CARD FLAG — Brazilian Flag Background
+  {
+    id: 'civic-card-flag',
+    name: 'Civic Card — Bandeira',
+    description: 'Brazilian flag background with patriotic style. Photo with gold ring, dark overlay civic info box.',
+    category: 'paid',
+    previewImage: 'civic-card-flag',
+    isPremium: true,
+    features: ['candidate-photo', 'ballot-number', 'party-identity', 'proposals', 'community-feedback', 'qa', 'commitments', 'endorsements'],
+    layout: 'civic-card-flag',
+    colorSchemes: [
+      { id: 'brasil', name: 'Brasil', primary: '#009739', secondary: '#002776', accent: '#FFDF00', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.9)', background: '#009739', cardBg: '#FFFFFF' },
+      { id: 'pl-blue-yellow', name: 'Azul & Amarelo', primary: '#003366', secondary: '#002244', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF' },
+    ],
+    layoutConfig: {
+      photoPosition: 'center',
+      photoSize: 'large',
+      photoStyle: 'circle',
+      buttonStyle: 'rounded',
+      fontFamily: 'modern',
+      showBorder: false,
+      hasBannerImage: false,
+    },
+  },
+
+  // 16. CIVIC CARD BOLD — Impacto
+  {
+    id: 'civic-card-bold',
+    name: 'Civic Card — Impacto',
+    description: 'Bold split layout with large photo on right, strong uppercase typography on left, yellow vote badge.',
+    category: 'paid',
+    previewImage: 'civic-card-bold',
+    isPremium: true,
+    features: ['candidate-photo', 'ballot-number', 'party-identity', 'proposals', 'community-feedback', 'qa', 'commitments', 'endorsements'],
+    layout: 'civic-card-bold',
+    colorSchemes: [
+      { id: 'navy-gold', name: 'Navy & Gold', primary: '#1a2744', secondary: '#0f1a2e', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF' },
+      { id: 'pt-red', name: 'Vermelho', primary: '#CC0000', secondary: '#990000', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f5f5f5', cardBg: '#FFFFFF' },
+    ],
+    layoutConfig: {
+      photoPosition: 'right',
+      photoSize: 'hero',
+      photoStyle: 'cover',
+      buttonStyle: 'rounded',
+      fontFamily: 'modern',
+      showBorder: false,
+      hasSplitLayout: true,
+    },
+  },
+
+  // 17. CIVIC CARD CLEAN — Moderno
+  {
+    id: 'civic-card-clean',
+    name: 'Civic Card — Moderno',
+    description: 'Clean modern card with white background, centered photo, blue accents, pill badge, large vote number.',
+    category: 'paid',
+    previewImage: 'civic-card-clean',
+    isPremium: true,
+    features: ['candidate-photo', 'ballot-number', 'party-identity', 'proposals', 'community-feedback', 'qa', 'commitments', 'endorsements'],
+    layout: 'civic-card-clean',
+    colorSchemes: [
+      { id: 'blue-clean', name: 'Azul Moderno', primary: '#2563EB', secondary: '#1D4ED8', accent: '#DBEAFE', text: '#1a1a2e', textSecondary: '#555555', background: '#e8edf2', cardBg: '#FFFFFF' },
+      { id: 'green-clean', name: 'Verde Moderno', primary: '#059669', secondary: '#047857', accent: '#D1FAE5', text: '#1a1a2e', textSecondary: '#555555', background: '#ecfdf5', cardBg: '#FFFFFF' },
+    ],
+    layoutConfig: {
+      photoPosition: 'center',
+      photoSize: 'medium',
+      photoStyle: 'circle',
+      buttonStyle: 'pill',
+      fontFamily: 'modern',
+      showBorder: false,
+      hasWhiteCard: true,
+    },
+  },
+
+  // 18. CIVIC CARD RALLY — Campanha
+  {
+    id: 'civic-card-rally',
+    name: 'Civic Card — Campanha',
+    description: 'Rally/campaign style with dark navy header, photo + name side by side, full-width yellow vote badge, white slogan area.',
+    category: 'paid',
+    previewImage: 'civic-card-rally',
+    isPremium: true,
+    features: ['candidate-photo', 'ballot-number', 'party-identity', 'proposals', 'community-feedback', 'qa', 'commitments', 'endorsements'],
+    layout: 'civic-card-rally',
+    colorSchemes: [
+      { id: 'navy-yellow', name: 'Navy & Amarelo', primary: '#1a2744', secondary: '#0f1a2e', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#F5C518', cardBg: '#FFFFFF' },
+      { id: 'green-gold', name: 'Verde & Ouro', primary: '#006B2B', secondary: '#004D1A', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#FFD700', cardBg: '#FFFFFF' },
+    ],
+    layoutConfig: {
+      photoPosition: 'left',
+      photoSize: 'medium',
+      photoStyle: 'circle',
       buttonStyle: 'rounded',
       fontFamily: 'modern',
       showBorder: false,
