@@ -56,6 +56,8 @@ const CARD_TYPE_TEMPLATES: Record<string, string[]> = {
 // Super admin emails that have full access to all templates
 const SUPER_ADMIN_EMAILS = [
   'daniel@360forbusiness.com',
+  'alineedaniel@gmail.com',
+  'alinecmartins4@gmail.com',
 ];
 
 // ============================================================

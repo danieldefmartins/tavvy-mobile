@@ -173,13 +173,14 @@ export default function ECardHubScreen() {
   const fetchRoles = async () => {
     if (!user) return;
     try {
-      // Check super_admin
-      const { data: profile } = await supabase
-        .from('profiles')
+      // Check super_admin from user_roles table
+      const { data: roleData } = await supabase
+        .from('user_roles')
         .select('role')
-        .eq('id', user.id)
-        .single();
-      if (profile?.role === 'super_admin') {
+        .eq('user_id', user.id)
+        .eq('role', 'super_admin')
+        .maybeSingle();
+      if (roleData) {
         setIsSuperAdmin(true);
         setIsPro(true);
         return;
