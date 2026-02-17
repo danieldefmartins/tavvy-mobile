@@ -1095,35 +1095,7 @@ function renderCivicCardFlagLayout(p: LayoutProps) {
             isEditable={isEditable}
           />
 
-          {/* Dark info box overlay */}
-          <View style={{ backgroundColor: 'rgba(0,39,118,0.7)', borderRadius: 16, padding: 20, marginTop: 16, width: '100%', alignItems: 'center' }}>
-            {/* Party name */}
-            <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', color: accentCol, marginBottom: 6 }}>
-              {data.titleRole || 'PARTY NAME'}
-            </Text>
 
-            {/* Office & Region */}
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', marginBottom: 12 }}>
-              {data.bio || 'Office • Region • Year'}
-            </Text>
-
-            {/* VOTE badge */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: accentCol, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 24, marginBottom: 8 }}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#002776' }}>VOTE</Text>
-              <Text style={{ fontSize: 34, fontWeight: '900', color: '#002776', letterSpacing: 4 }}>
-                {data.phone || '0000'}
-              </Text>
-            </View>
-
-            {/* Slogan */}
-            <EditableText
-              value={data.website}
-              onChange={p.onChangeWebsite}
-              placeholder="Campaign Slogan"
-              style={{ fontSize: 15, fontWeight: '600', color: accentCol, fontStyle: 'italic', textAlign: 'center', marginTop: 8 }}
-              isEditable={isEditable}
-            />
-          </View>
         </LinearGradient>
       </ImageBackground>
 
