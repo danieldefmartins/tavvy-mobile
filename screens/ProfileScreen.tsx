@@ -16,6 +16,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { useProfile } from '../hooks/useProfile';
 import { useTranslation } from 'react-i18next';
+import { Linking } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const TEAL_PRIMARY = '#0F8A8A';
@@ -204,6 +205,47 @@ export default function ProfileScreen({ navigation }: any) {
         {/* Bio */}
         {profile?.bio && (
           <Text style={styles.bioText}>{profile.bio}</Text>
+        )}
+
+        {/* Social Media Links */}
+        {(profile?.instagram_url || profile?.tiktok_url || profile?.youtube_url || profile?.twitter_url) && (
+          <View style={styles.socialLinksContainer}>
+            <Text style={styles.socialLabel}>Follow me on</Text>
+            <View style={styles.socialIcons}>
+              {profile?.instagram_url && (
+                <TouchableOpacity
+                  style={styles.socialIconButton}
+                  onPress={() => Linking.openURL(profile.instagram_url!)}
+                >
+                  <Ionicons name="logo-instagram" size={22} color="#E4405F" />
+                </TouchableOpacity>
+              )}
+              {profile?.tiktok_url && (
+                <TouchableOpacity
+                  style={styles.socialIconButton}
+                  onPress={() => Linking.openURL(profile.tiktok_url!)}
+                >
+                  <Ionicons name="logo-tiktok" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+              {profile?.youtube_url && (
+                <TouchableOpacity
+                  style={styles.socialIconButton}
+                  onPress={() => Linking.openURL(profile.youtube_url!)}
+                >
+                  <Ionicons name="logo-youtube" size={22} color="#FF0000" />
+                </TouchableOpacity>
+              )}
+              {profile?.twitter_url && (
+                <TouchableOpacity
+                  style={styles.socialIconButton}
+                  onPress={() => Linking.openURL(profile.twitter_url!)}
+                >
+                  <Ionicons name="logo-twitter" size={20} color="#1DA1F2" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
         )}
         
         {/* Level Info */}
@@ -557,6 +599,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     marginTop: 6,
+  },
+  socialLinksContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  socialLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  socialIcons: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  socialIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   editProfileButton: {
     flexDirection: 'row',

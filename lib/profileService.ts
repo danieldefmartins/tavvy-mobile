@@ -15,6 +15,10 @@ export interface UserProfile {
   trusted_contributor: boolean;
   created_at: string;
   updated_at: string;
+  instagram_url: string | null;
+  tiktok_url: string | null;
+  youtube_url: string | null;
+  twitter_url: string | null;
 }
 
 export interface UpdateProfileData {
@@ -22,6 +26,10 @@ export interface UpdateProfileData {
   display_name?: string;
   bio?: string;
   avatar_url?: string;
+  instagram_url?: string | null;
+  tiktok_url?: string | null;
+  youtube_url?: string | null;
+  twitter_url?: string | null;
 }
 
 /**

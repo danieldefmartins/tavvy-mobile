@@ -34,6 +34,11 @@ export default function EditProfileScreen({ navigation }: any) {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [newAvatarUri, setNewAvatarUri] = useState<string | null>(null);
 
+  const [instagramUrl, setInstagramUrl] = useState('');
+  const [tiktokUrl, setTiktokUrl] = useState('');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [twitterUrl, setTwitterUrl] = useState('');
+
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
@@ -49,6 +54,10 @@ export default function EditProfileScreen({ navigation }: any) {
       setUsername(profile.username || '');
       setBio(profile.bio || '');
       setAvatarUri(profile.avatar_url);
+      setInstagramUrl(profile.instagram_url || '');
+      setTiktokUrl(profile.tiktok_url || '');
+      setYoutubeUrl(profile.youtube_url || '');
+      setTwitterUrl(profile.twitter_url || '');
     } else if (user) {
       // Fallback to auth user metadata
       setDisplayName(user.user_metadata?.display_name || user.user_metadata?.full_name || '');
@@ -182,13 +191,21 @@ export default function EditProfileScreen({ navigation }: any) {
       const hasOtherChanges = 
         displayName !== (profile?.display_name || '') ||
         username !== (profile?.username || '') ||
-        bio !== (profile?.bio || '');
+        bio !== (profile?.bio || '') ||
+        instagramUrl !== (profile?.instagram_url || '') ||
+        tiktokUrl !== (profile?.tiktok_url || '') ||
+        youtubeUrl !== (profile?.youtube_url || '') ||
+        twitterUrl !== (profile?.twitter_url || '');
 
       if (hasOtherChanges) {
         const result = await update({
           display_name: displayName.trim() || null,
           username: username.trim().toLowerCase() || null,
           bio: bio.trim() || null,
+          instagram_url: instagramUrl.trim() || null,
+          tiktok_url: tiktokUrl.trim() || null,
+          youtube_url: youtubeUrl.trim() || null,
+          twitter_url: twitterUrl.trim() || null,
         });
 
         if (!result.success) {
@@ -213,7 +230,11 @@ export default function EditProfileScreen({ navigation }: any) {
     displayName !== (profile?.display_name || '') ||
     username !== (profile?.username || '') ||
     bio !== (profile?.bio || '') ||
-    newAvatarUri !== null;
+    newAvatarUri !== null ||
+    instagramUrl !== (profile?.instagram_url || '') ||
+    tiktokUrl !== (profile?.tiktok_url || '') ||
+    youtubeUrl !== (profile?.youtube_url || '') ||
+    twitterUrl !== (profile?.twitter_url || '');
 
   if (profileLoading) {
     return (
@@ -343,6 +364,80 @@ export default function EditProfileScreen({ navigation }: any) {
               <Ionicons name="lock-closed" size={16} color="#94A3B8" />
             </View>
             <Text style={styles.helperText}>Email cannot be changed</Text>
+          </View>
+
+          {/* Social Media Section */}
+          <View style={styles.socialSection}>
+            <Text style={styles.socialSectionTitle}>Social Media</Text>
+            <Text style={styles.socialSectionSubtitle}>Add your social media so other users can follow you</Text>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.socialLabelRow}>
+                <Ionicons name="logo-instagram" size={18} color="#E4405F" />
+                <Text style={styles.label}>Instagram</Text>
+              </View>
+              <TextInput
+                style={styles.input}
+                value={instagramUrl}
+                onChangeText={setInstagramUrl}
+                placeholder="https://instagram.com/yourusername"
+                placeholderTextColor="#94A3B8"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.socialLabelRow}>
+                <Ionicons name="logo-tiktok" size={18} color="#0F172A" />
+                <Text style={styles.label}>TikTok</Text>
+              </View>
+              <TextInput
+                style={styles.input}
+                value={tiktokUrl}
+                onChangeText={setTiktokUrl}
+                placeholder="https://tiktok.com/@yourusername"
+                placeholderTextColor="#94A3B8"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.socialLabelRow}>
+                <Ionicons name="logo-youtube" size={18} color="#FF0000" />
+                <Text style={styles.label}>YouTube</Text>
+              </View>
+              <TextInput
+                style={styles.input}
+                value={youtubeUrl}
+                onChangeText={setYoutubeUrl}
+                placeholder="https://youtube.com/@yourchannel"
+                placeholderTextColor="#94A3B8"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.socialLabelRow}>
+                <Ionicons name="logo-twitter" size={18} color="#1DA1F2" />
+                <Text style={styles.label}>X (Twitter)</Text>
+              </View>
+              <TextInput
+                style={styles.input}
+                value={twitterUrl}
+                onChangeText={setTwitterUrl}
+                placeholder="https://x.com/yourusername"
+                placeholderTextColor="#94A3B8"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+            </View>
           </View>
         </View>
 
@@ -543,6 +638,29 @@ const styles = StyleSheet.create({
   readOnlyText: {
     fontSize: 16,
     color: '#64748B',
+  },
+  socialSection: {
+    marginTop: 12,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  socialSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  socialSectionSubtitle: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginBottom: 20,
+  },
+  socialLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
   },
   buttonContainer: {
     paddingHorizontal: 20,
