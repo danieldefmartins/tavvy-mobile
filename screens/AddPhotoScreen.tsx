@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 
 interface AddPhotoScreenProps {
   route: {
@@ -15,13 +17,90 @@ interface AddPhotoScreenProps {
   navigation: any;
 }
 
+/**
+ * Resolve a placeId to a UUID in the places table.
+ * Handles UUIDs, FSQ IDs (fsq:xxx), and Google Place IDs.
+ */
+async function resolvePlaceUUID(placeId: string): Promise<string | null> {
+  if (!placeId) return null;
+
+  // Strip fsq: prefix if present
+  const cleanId = placeId.startsWith('fsq:') ? placeId.slice(4) : placeId;
+
+  // Check if it's already a UUID (36 chars with dashes)
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
+
+  if (isUUID) {
+    // Verify it exists in places table
+    const { data } = await supabase
+      .from('places')
+      .select('id')
+      .eq('id', cleanId)
+      .maybeSingle();
+    if (data) return data.id;
+  }
+
+  // Try source_id lookup (FSQ IDs stored in places)
+  const { data: bySource } = await supabase
+    .from('places')
+    .select('id')
+    .eq('source_id', cleanId)
+    .maybeSingle();
+  if (bySource) return bySource.id;
+
+  // Try google_place_id lookup
+  const { data: byGoogle } = await supabase
+    .from('places')
+    .select('id')
+    .eq('google_place_id', cleanId)
+    .maybeSingle();
+  if (byGoogle) return byGoogle.id;
+
+  // Try FSQ raw table and auto-promote
+  const { data: fsqPlace } = await supabase
+    .from('fsq_places_raw')
+    .select('*')
+    .eq('fsq_place_id', cleanId)
+    .maybeSingle();
+
+  if (fsqPlace) {
+    const { data: newPlace, error } = await supabase
+      .from('places')
+      .insert({
+        name: fsqPlace.name,
+        source_type: 'fsq',
+        source_id: fsqPlace.fsq_place_id,
+        latitude: fsqPlace.latitude,
+        longitude: fsqPlace.longitude,
+        city: fsqPlace.locality,
+        region: fsqPlace.region,
+        country: fsqPlace.country,
+        postcode: fsqPlace.postcode,
+        phone: fsqPlace.tel,
+        website: fsqPlace.website,
+        email: fsqPlace.email,
+        status: 'active',
+      })
+      .select('id')
+      .single();
+
+    if (newPlace) return newPlace.id;
+    if (error) console.error('Error promoting FSQ place:', error);
+  }
+
+  return null;
+}
+
 export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProps) {
   const { t } = useTranslation();
-  const { placeName } = route?.params || {};
+  const { user } = useAuth();
+  const { placeId, placeName } = route?.params || {};
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('back');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [caption, setCaption] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const cameraRef = useRef<CameraView>(null);
 
   const takePicture = async () => {
@@ -53,14 +132,95 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
     }
   };
 
-  const handleSave = () => {
-    Alert.alert('Success', 'Photo added successfully!', [
-      { text: 'OK', onPress: () => navigation.goBack() }
-    ]);
+  const handleSave = async () => {
+    if (!capturedImage || !placeId) return;
+
+    if (!user?.id) {
+      Alert.alert('Sign In Required', 'Please sign in to add photos.');
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // 1. Resolve the place UUID
+      const resolvedPlaceId = await resolvePlaceUUID(placeId);
+      if (!resolvedPlaceId) {
+        Alert.alert('Error', 'Could not resolve place. Please try again.');
+        setIsUploading(false);
+        return;
+      }
+
+      // 2. Upload image to Supabase Storage
+      const timestamp = Date.now();
+      const fileName = `${resolvedPlaceId}/${user.id}_${timestamp}.jpg`;
+
+      // Convert image URI to array buffer (React Native compatible)
+      const response = await fetch(capturedImage);
+      const arrayBuffer = await response.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('place-photos')
+        .upload(fileName, uint8Array, {
+          contentType: 'image/jpeg',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        Alert.alert('Upload Failed', uploadError.message || 'Failed to upload photo. Please try again.');
+        setIsUploading(false);
+        return;
+      }
+
+      // 3. Get the public URL
+      const { data: urlData } = supabase.storage
+        .from('place-photos')
+        .getPublicUrl(fileName);
+
+      const publicUrl = urlData.publicUrl;
+
+      // 4. Insert record into place_photos table
+      const { error: insertError } = await supabase
+        .from('place_photos')
+        .insert({
+          place_id: resolvedPlaceId,
+          uploaded_by: user.id,
+          user_id: user.id,
+          url: publicUrl,
+          caption: caption.trim() || null,
+          is_owner_photo: false,
+          status: 'live',
+        });
+
+      if (insertError) {
+        console.error('Insert error:', insertError);
+        // Photo is uploaded but DB insert failed - still show success
+        // since the photo is in storage
+        Alert.alert('Photo Uploaded', 'Photo was uploaded but there was an issue saving details. It may appear shortly.', [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
+        setIsUploading(false);
+        return;
+      }
+
+      // 5. Success!
+      Alert.alert('Photo Added!', `Your photo of ${placeName || 'this place'} has been added.`, [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
+
+    } catch (error: any) {
+      console.error('Photo upload error:', error);
+      Alert.alert('Error', error.message || 'Something went wrong. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleRetake = () => {
     setCapturedImage(null);
+    setCaption('');
   };
 
   if (!permission) {
@@ -84,7 +244,10 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
   return (
     <View style={styles.container}>
       {capturedImage ? (
-        <View style={styles.previewContainer}>
+        <KeyboardAvoidingView 
+          style={styles.previewContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <Image source={{ uri: capturedImage }} style={styles.previewImage} />
           <View style={styles.previewOverlay}>
             <View style={styles.previewHeader}>
@@ -92,16 +255,42 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
                 <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
             </View>
-            <View style={styles.previewFooter}>
-              <TouchableOpacity onPress={handleRetake} style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>Retake</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleSave} style={styles.primaryButton}>
-                <Text style={styles.primaryButtonText}>Use Photo</Text>
-              </TouchableOpacity>
+            <View style={styles.previewBottom}>
+              {/* Caption input */}
+              <View style={styles.captionContainer}>
+                <TextInput
+                  style={styles.captionInput}
+                  placeholder="Add a caption (optional)"
+                  placeholderTextColor="rgba(255,255,255,0.5)"
+                  value={caption}
+                  onChangeText={setCaption}
+                  maxLength={200}
+                  multiline={false}
+                  returnKeyType="done"
+                />
+              </View>
+              <View style={styles.previewFooter}>
+                <TouchableOpacity onPress={handleRetake} style={styles.secondaryButton} disabled={isUploading}>
+                  <Text style={styles.secondaryButtonText}>Retake</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={handleSave} 
+                  style={[styles.primaryButton, isUploading && styles.primaryButtonDisabled]} 
+                  disabled={isUploading}
+                >
+                  {isUploading ? (
+                    <View style={styles.uploadingRow}>
+                      <ActivityIndicator size="small" color="#fff" />
+                      <Text style={[styles.primaryButtonText, { marginLeft: 8 }]}>Uploading...</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Use Photo</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       ) : (
         <CameraView 
           style={styles.camera} 
@@ -221,6 +410,7 @@ const styles = StyleSheet.create({
   previewContainer: {
     flex: 1,
     backgroundColor: '#000',
+    width: '100%',
   },
   previewImage: {
     flex: 1,
@@ -235,6 +425,20 @@ const styles = StyleSheet.create({
   },
   previewHeader: {
     alignItems: 'flex-start',
+  },
+  previewBottom: {
+    gap: 12,
+  },
+  captionContainer: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  captionInput: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '500',
   },
   previewFooter: {
     flexDirection: 'row',
@@ -258,10 +462,17 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     backgroundColor: '#2DD4BF',
   },
+  primaryButtonDisabled: {
+    opacity: 0.7,
+  },
   primaryButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  uploadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backButtonLarge: {
     backgroundColor: '#2DD4BF',
