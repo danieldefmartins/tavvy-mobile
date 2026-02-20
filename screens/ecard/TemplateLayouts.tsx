@@ -21,7 +21,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TemplateLayout, ColorScheme } from '../../config/eCardTemplates';
-import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -198,7 +197,6 @@ function WebsiteLabelRow({ website, websiteLabel, onChange, textColor, borderCol
 // MAIN RENDERER
 // ═══════════════════════════════════════════════════════════
 export function renderTemplateLayout(props: LayoutProps) {
-  const { t } = useTranslation();
   switch (props.layout) {
     case 'basic': return renderBasicLayout(props);
     case 'blogger': return renderBloggerLayout(props);
