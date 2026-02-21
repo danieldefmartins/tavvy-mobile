@@ -1,27 +1,34 @@
 /**
  * searchService.ts
- * 
- * OPTIMIZED Centralized search service with:
- * 1. Location-biased queries (local results first)
- * 2. Progressive search strategy (local → regional → global)
- * 3. Client-side caching for instant results
- * 4. Geo-bounded database queries
- * 5. Parallel query execution for speed
- * 
- * This is the SINGLE source of truth for text-based place search across the app.
+ *
+ * Centralized search service — now powered by the canonical Search API.
+ *
+ * Primary path:  /api/search/places (Typesense, server-side)
+ * Fallback path: Supabase ILIKE (offline / API unreachable)
+ *
+ * Features:
+ *   1. Location-biased queries (local results first)
+ *   2. Client-side caching for instant results
+ *   3. Offline fallback to Supabase
+ *   4. Pre-fetch nearby places for instant autocomplete
+ *   5. Address search (Nominatim)
  */
 
 import { supabase } from './supabaseClient';
 import { PlaceCard, PlaceSource } from './placeService';
-import { searchPlaces as typesenseSearch, healthCheck as typesenseHealthCheck } from './typesenseService';
+import {
+  searchPlacesApi,
+  searchAutocomplete as apiAutocomplete,
+  SearchHit,
+} from './searchApiClient';
 
 // ============================================
 // TYPES
 // ============================================
 
 export interface SearchResult extends PlaceCard {
-  matchScore?: number;           // Relevance score for sorting
-  distance?: number;             // Distance from user if location provided
+  matchScore?: number;
+  distance?: number;
 }
 
 export interface SearchOptions {
@@ -29,13 +36,13 @@ export interface SearchOptions {
   location?: {
     latitude: number;
     longitude: number;
-    radiusKm?: number;           // Default: 50km
+    radiusKm?: number;
   };
   filters?: {
     category?: string;
   };
   limit?: number;
-  fallbackThreshold?: number;    // Default: 10
+  fallbackThreshold?: number;
 }
 
 export interface SearchResultResponse {
@@ -66,12 +73,8 @@ export interface AddressSuggestion {
 
 const DEFAULT_LIMIT = 20;
 const DEFAULT_FALLBACK_THRESHOLD = 10;
-const DEFAULT_RADIUS_KM = 50;
-
-// Progressive search radius tiers (in degrees, ~1 degree ≈ 69 miles)
-const SEARCH_RADIUS_LOCAL = 0.3;      // ~20 miles - fastest, most relevant
-const SEARCH_RADIUS_REGIONAL = 0.8;   // ~55 miles - expanded search
-const SEARCH_RADIUS_STATE = 2.0;      // ~140 miles - state-level
+const SEARCH_RADIUS_LOCAL = 0.3;
+const SEARCH_RADIUS_REGIONAL = 0.8;
 
 // ============================================
 // CLIENT-SIDE CACHE
@@ -83,36 +86,26 @@ interface CacheEntry<T> {
   location?: { latitude: number; longitude: number };
 }
 
-// LRU Cache for search results
 const searchCache = new Map<string, CacheEntry<SearchResult[]>>();
 const addressCache = new Map<string, CacheEntry<AddressSuggestion[]>>();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 5 * 60 * 1000;
 const MAX_CACHE_SIZE = 100;
 
-/**
- * Get cached results if available and not expired
- */
 function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string): T | null {
   const entry = cache.get(key);
   if (entry && Date.now() - entry.timestamp < CACHE_TTL_MS) {
     return entry.data;
   }
-  if (entry) {
-    cache.delete(key); // Remove expired entry
-  }
+  if (entry) cache.delete(key);
   return null;
 }
 
-/**
- * Set cache entry with LRU eviction
- */
 function setCache<T>(
-  cache: Map<string, CacheEntry<T>>, 
-  key: string, 
+  cache: Map<string, CacheEntry<T>>,
+  key: string,
   data: T,
   location?: { latitude: number; longitude: number }
 ): void {
-  // LRU eviction if cache is full
   if (cache.size >= MAX_CACHE_SIZE) {
     const oldestKey = cache.keys().next().value;
     if (oldestKey) cache.delete(oldestKey);
@@ -120,13 +113,9 @@ function setCache<T>(
   cache.set(key, { data, timestamp: Date.now(), location });
 }
 
-/**
- * Generate cache key from query and location
- */
 function getCacheKey(query: string, location?: { latitude: number; longitude: number }): string {
   const normalizedQuery = query.trim().toLowerCase();
   if (location) {
-    // Round location to reduce cache fragmentation
     const lat = Math.round(location.latitude * 100) / 100;
     const lng = Math.round(location.longitude * 100) / 100;
     return `${normalizedQuery}:${lat}:${lng}`;
@@ -134,9 +123,6 @@ function getCacheKey(query: string, location?: { latitude: number; longitude: nu
   return normalizedQuery;
 }
 
-/**
- * Clear all caches (useful for testing or forced refresh)
- */
 export function clearSearchCache(): void {
   searchCache.clear();
   addressCache.clear();
@@ -144,77 +130,106 @@ export function clearSearchCache(): void {
 }
 
 // ============================================
+// TRANSFORM: API Hit → SearchResult
+// ============================================
+
+function hitToSearchResult(hit: SearchHit): SearchResult {
+  const isTavvy = hit.id.startsWith('tavvy:');
+  return {
+    id: hit.id,
+    source: (isTavvy ? 'places' : 'fsq_raw') as PlaceSource,
+    source_id: hit.fsq_place_id,
+    source_type: isTavvy ? 'tavvy' : 'fsq',
+    name: hit.name,
+    latitude: hit.lat,
+    longitude: hit.lng,
+    address: hit.address,
+    city: hit.locality,
+    region: hit.region,
+    country: hit.country,
+    category: hit.categories?.[0] || 'Other',
+    phone: hit.tel,
+    website: hit.website,
+    distance: hit.distance_meters ? hit.distance_meters / 1000 : undefined, // meters → km
+    cover_image_url: undefined,
+    photos: [],
+    status: 'active',
+  };
+}
+
+// ============================================
 // MAIN SEARCH FUNCTION
 // ============================================
 
 /**
- * Search for places by text query using hybrid strategy.
- * 
- * Strategy:
- * 1. Query `fsq_places_raw` table first (104M places - ALL available data)
- * 2. If results < threshold, query `places` as fallback (curated data)
- * 3. Deduplicate by source_id
- * 4. Return unified SearchResult[] format
+ * Search for places — canonical API first, Supabase ILIKE fallback.
  */
 export async function searchPlaces(options: SearchOptions): Promise<SearchResultResponse> {
   const startTime = Date.now();
-  const { query, location, filters, limit = DEFAULT_LIMIT, fallbackThreshold = DEFAULT_FALLBACK_THRESHOLD } = options;
+  const { query, location, filters, limit = DEFAULT_LIMIT } = options;
 
   if (!query || query.trim().length === 0) {
     return {
       results: [],
-      metrics: {
-        fromPlacesSearch: 0,
-        fromFsqRaw: 0,
-        fallbackTriggered: false,
-        totalTime: 0,
-      },
+      metrics: { fromPlacesSearch: 0, fromFsqRaw: 0, fallbackTriggered: false, totalTime: 0 },
     };
   }
 
+  // ── Try canonical Search API ──
+  try {
+    const response = await searchPlacesApi({
+      q: query.trim(),
+      lat: location?.latitude,
+      lng: location?.longitude,
+      radius: location?.radiusKm || (location ? 50 : undefined),
+      category: filters?.category,
+      limit,
+    });
+
+    const results = response.hits.map(hitToSearchResult);
+
+    return {
+      results,
+      metrics: {
+        fromPlacesSearch: results.filter(r => r.source === 'places').length,
+        fromFsqRaw: results.filter(r => r.source === 'fsq_raw').length,
+        fallbackTriggered: false,
+        totalTime: Date.now() - startTime,
+      },
+    };
+  } catch (apiError) {
+    console.warn('[searchService] API search failed, falling back to Supabase:', apiError);
+  }
+
+  // ── Fallback: Supabase ILIKE (offline / API down) ──
+  return searchPlacesFallback(options, startTime);
+}
+
+/**
+ * Supabase ILIKE fallback — only used when the Search API is unreachable.
+ */
+async function searchPlacesFallback(options: SearchOptions, startTime: number): Promise<SearchResultResponse> {
+  const { query, location, filters, limit = DEFAULT_LIMIT, fallbackThreshold = DEFAULT_FALLBACK_THRESHOLD } = options;
   const searchTerm = query.trim().toLowerCase();
   let resultsFromFsqRaw: SearchResult[] = [];
   let resultsFromPlacesSearch: SearchResult[] = [];
-  let fallbackTriggered = false;
 
-  // ============================================
-  // STEP 1: Query fsq_places_raw first (ALL 104M places)
-  // ============================================
   try {
-    const { data: fsqData, error: fsqError } = await supabase
+    const { data: fsqData } = await supabase
       .from('fsq_places_raw')
       .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, postcode, tel, website, fsq_category_labels')
       .or(`name.ilike.%${searchTerm}%,locality.ilike.%${searchTerm}%`)
       .is('date_closed', null)
       .limit(limit);
 
-    if (fsqError) {
-      console.warn('[searchService] Error querying fsq_places_raw:', fsqError);
-    } else if (fsqData) {
+    if (fsqData) {
       resultsFromFsqRaw = fsqData.map(p => transformFsqToSearchResult(p, location));
-      console.log(`[searchService] Found ${resultsFromFsqRaw.length} results from fsq_places_raw table`);
     }
   } catch (error) {
-    console.error('[searchService] Exception querying fsq_places_raw:', error);
+    console.error('[searchService] Fallback fsq_places_raw error:', error);
   }
 
-  // ============================================
-  // STEP 2: Check if fallback to places table is needed
-  // ============================================
   if (resultsFromFsqRaw.length < fallbackThreshold) {
-    fallbackTriggered = true;
-    console.log(`[searchService] Fallback triggered: ${resultsFromFsqRaw.length} < ${fallbackThreshold} threshold`);
-
-    // Get source_ids to exclude
-    const existingSourceIds = new Set(
-      resultsFromFsqRaw
-        .filter(r => r.source_id)
-        .map(r => r.source_id)
-    );
-
-    // ============================================
-    // STEP 3: Query places table as fallback (curated data)
-    // ============================================
     try {
       let searchQuery = supabase
         .from('places')
@@ -227,57 +242,241 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
         searchQuery = searchQuery.eq('tavvy_category', filters.category);
       }
 
-      const { data: placesData, error: searchError } = await searchQuery;
-
-      if (searchError) {
-        console.warn('[searchService] Error querying places:', searchError);
-      } else if (placesData) {
-        // Filter out places already in results
-        const newPlacesResults = placesData.filter(p => !existingSourceIds.has(p.id));
-        resultsFromPlacesSearch = newPlacesResults.map(p => transformToSearchResult(p, 'places', location));
-        console.log(`[searchService] Found ${placesData.length} from places, ${resultsFromPlacesSearch.length} after dedup`);
+      const { data: placesData } = await searchQuery;
+      if (placesData) {
+        const existingIds = new Set(resultsFromFsqRaw.map(r => r.source_id));
+        resultsFromPlacesSearch = placesData
+          .filter(p => !existingIds.has(p.id))
+          .map(p => transformToSearchResult(p, 'places', location));
       }
     } catch (error) {
-      console.error('[searchService] Exception querying places:', error);
+      console.error('[searchService] Fallback places error:', error);
     }
   }
 
-  // ============================================
-  // STEP 4: Merge, sort, and return results
-  // ============================================
   let allResults = [...resultsFromFsqRaw, ...resultsFromPlacesSearch];
-
-  // Sort by distance if location provided, otherwise by name
   if (location) {
     allResults.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
-  } else {
-    allResults.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  const endTime = Date.now();
-
-  const result: SearchResultResponse = {
+  return {
     results: allResults,
     metrics: {
       fromPlacesSearch: resultsFromPlacesSearch.length,
       fromFsqRaw: resultsFromFsqRaw.length,
-      fallbackTriggered,
-      totalTime: endTime - startTime,
+      fallbackTriggered: true,
+      totalTime: Date.now() - startTime,
     },
   };
+}
 
-  console.log(`[searchService] Total: ${allResults.length} results (${result.metrics.fromFsqRaw} fsq_raw, ${result.metrics.fromPlacesSearch} places) in ${result.metrics.totalTime}ms`);
+// ============================================
+// AUTOCOMPLETE SUGGESTIONS
+// ============================================
 
-  return result;
+/**
+ * Search for suggestions (autocomplete) — canonical API first, Supabase fallback.
+ */
+export async function searchSuggestions(
+  query: string,
+  limit: number = 8,
+  userLocation?: { latitude: number; longitude: number }
+): Promise<SearchResult[]> {
+  if (!query || query.trim().length < 1) return [];
+
+  const searchTerm = query.trim().toLowerCase();
+  const cacheKey = getCacheKey(searchTerm, userLocation);
+
+  // Check cache first
+  const cached = getCached(searchCache, cacheKey);
+  if (cached) {
+    console.log(`[searchService] Cache hit for "${searchTerm}"`);
+    return cached;
+  }
+
+  const startTime = Date.now();
+
+  // ── Try canonical Search API ──
+  try {
+    const hits = await apiAutocomplete(searchTerm, {
+      lat: userLocation?.latitude,
+      lng: userLocation?.longitude,
+      radius: userLocation ? 50 : undefined,
+      limit,
+    });
+
+    if (hits.length > 0) {
+      const results = hits.map(hitToSearchResult);
+      setCache(searchCache, cacheKey, results, userLocation);
+      console.log(`[searchService] ⚡ API: ${results.length} results in ${Date.now() - startTime}ms`);
+      return results;
+    }
+  } catch (apiError) {
+    console.warn('[searchService] API autocomplete failed, falling back to Supabase:', apiError);
+  }
+
+  // ── Fallback: Supabase ILIKE ──
+  try {
+    let results: SearchResult[] = [];
+
+    if (userLocation) {
+      results = await searchWithGeoBounds(searchTerm, userLocation, SEARCH_RADIUS_LOCAL, limit);
+      if (results.length < 3) {
+        const regional = await searchWithGeoBounds(searchTerm, userLocation, SEARCH_RADIUS_REGIONAL, limit);
+        const seenIds = new Set(results.map(r => r.id));
+        for (const r of regional) {
+          if (!seenIds.has(r.id)) results.push(r);
+        }
+      }
+      if (results.length === 0) {
+        results = await searchWithoutLocation(searchTerm, limit);
+      }
+      results.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+    } else {
+      results = await searchWithoutLocation(searchTerm, limit);
+    }
+
+    results = results.slice(0, limit);
+    setCache(searchCache, cacheKey, results, userLocation);
+    console.log(`[searchService] Supabase fallback: ${results.length} results in ${Date.now() - startTime}ms`);
+    return results;
+  } catch (error) {
+    console.error('[searchService] Error in searchSuggestions:', error);
+    return [];
+  }
+}
+
+// ============================================
+// SUPABASE FALLBACK HELPERS
+// ============================================
+
+async function searchWithGeoBounds(
+  searchTerm: string,
+  location: { latitude: number; longitude: number },
+  radiusDegrees: number,
+  limit: number
+): Promise<SearchResult[]> {
+  const { latitude, longitude } = location;
+  const minLat = latitude - radiusDegrees;
+  const maxLat = latitude + radiusDegrees;
+  const minLng = longitude - radiusDegrees;
+  const maxLng = longitude + radiusDegrees;
+
+  const [placesResult, fsqResult] = await Promise.all([
+    supabase
+      .from('places')
+      .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, street, phone')
+      .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
+      .eq('status', 'active')
+      .gte('latitude', minLat).lte('latitude', maxLat)
+      .gte('longitude', minLng).lte('longitude', maxLng)
+      .limit(limit),
+    supabase
+      .from('fsq_places_raw')
+      .select('fsq_place_id, name, locality, region, latitude, longitude, fsq_category_labels')
+      .or(`name.ilike.%${searchTerm}%,locality.ilike.%${searchTerm}%`)
+      .is('date_closed', null)
+      .gte('latitude', minLat).lte('latitude', maxLat)
+      .gte('longitude', minLng).lte('longitude', maxLng)
+      .limit(limit)
+  ]);
+
+  return processSearchResults(placesResult.data, fsqResult.data, location, searchTerm);
+}
+
+async function searchWithoutLocation(searchTerm: string, limit: number): Promise<SearchResult[]> {
+  const [placesResult, fsqResult] = await Promise.all([
+    supabase
+      .from('places')
+      .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, street, phone')
+      .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
+      .eq('status', 'active')
+      .limit(limit),
+    supabase
+      .from('fsq_places_raw')
+      .select('fsq_place_id, name, locality, region, latitude, longitude, fsq_category_labels')
+      .or(`name.ilike.%${searchTerm}%,locality.ilike.%${searchTerm}%`)
+      .is('date_closed', null)
+      .limit(limit)
+  ]);
+
+  return processSearchResults(placesResult.data, fsqResult.data, undefined, searchTerm);
+}
+
+function processSearchResults(
+  placesData: any[] | null,
+  fsqData: any[] | null,
+  location: { latitude: number; longitude: number } | undefined,
+  searchTerm: string
+): SearchResult[] {
+  const results: SearchResult[] = [];
+  const seenNames = new Set<string>();
+
+  if (placesData) {
+    for (const s of placesData) {
+      const nameKey = s.name.toLowerCase();
+      if (!seenNames.has(nameKey)) {
+        seenNames.add(nameKey);
+        const result: SearchResult = {
+          id: s.id,
+          source: 'places' as PlaceSource,
+          source_id: s.id,
+          name: s.name,
+          latitude: s.latitude,
+          longitude: s.longitude,
+          city: s.city,
+          region: s.region,
+          category: s.tavvy_category,
+          cover_image_url: s.cover_image_url,
+          address: s.street,
+          phone: s.phone,
+        };
+        if (location && s.latitude && s.longitude) {
+          result.distance = calculateDistance(location.latitude, location.longitude, s.latitude, s.longitude);
+        }
+        results.push(result);
+      }
+    }
+  }
+
+  if (fsqData) {
+    for (const p of fsqData) {
+      const nameKey = p.name.toLowerCase();
+      if (!seenNames.has(nameKey)) {
+        seenNames.add(nameKey);
+        const result: SearchResult = {
+          id: `fsq:${p.fsq_place_id}`,
+          source: 'fsq_raw' as PlaceSource,
+          source_id: p.fsq_place_id,
+          name: p.name,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          city: p.locality,
+          region: p.region,
+          category: extractCategory(p.fsq_category_labels),
+        };
+        if (location && p.latitude && p.longitude) {
+          result.distance = calculateDistance(location.latitude, location.longitude, p.latitude, p.longitude);
+        }
+        results.push(result);
+      }
+    }
+  }
+
+  results.sort((a, b) => {
+    const aStartsWith = a.name.toLowerCase().startsWith(searchTerm) ? 0 : 1;
+    const bStartsWith = b.name.toLowerCase().startsWith(searchTerm) ? 0 : 1;
+    if (aStartsWith !== bStartsWith) return aStartsWith - bStartsWith;
+    return (a.distance || Infinity) - (b.distance || Infinity);
+  });
+
+  return results;
 }
 
 // ============================================
 // TRANSFORM FUNCTIONS
 // ============================================
 
-/**
- * Transform a canonical place to SearchResult format
- */
 function transformToSearchResult(place: any, source: PlaceSource, location?: { latitude: number; longitude: number }): SearchResult {
   const result: SearchResult = {
     id: place.id,
@@ -287,7 +486,7 @@ function transformToSearchResult(place: any, source: PlaceSource, location?: { l
     name: place.name || 'Unknown',
     latitude: place.latitude,
     longitude: place.longitude,
-    address: place.street, // 'street' column in DB, mapped to 'address' in app
+    address: place.street,
     city: place.city,
     region: place.region,
     country: place.country,
@@ -302,22 +501,13 @@ function transformToSearchResult(place: any, source: PlaceSource, location?: { l
   };
 
   if (location && place.latitude && place.longitude) {
-    result.distance = calculateDistance(
-      location.latitude,
-      location.longitude,
-      place.latitude,
-      place.longitude
-    );
+    result.distance = calculateDistance(location.latitude, location.longitude, place.latitude, place.longitude);
   }
 
   return result;
 }
 
-/**
- * Transform an FSQ raw place to SearchResult format
- */
 function transformFsqToSearchResult(place: any, location?: { latitude: number; longitude: number }): SearchResult {
-  // Extract category
   let category = 'Other';
   if (place.fsq_category_labels) {
     let labels: string[] = [];
@@ -354,12 +544,7 @@ function transformFsqToSearchResult(place: any, location?: { latitude: number; l
   };
 
   if (location && place.latitude && place.longitude) {
-    result.distance = calculateDistance(
-      location.latitude,
-      location.longitude,
-      place.latitude,
-      place.longitude
-    );
+    result.distance = calculateDistance(location.latitude, location.longitude, place.latitude, place.longitude);
   }
 
   return result;
@@ -369,12 +554,8 @@ function transformFsqToSearchResult(place: any, location?: { latitude: number; l
 // UTILITY FUNCTIONS
 // ============================================
 
-/**
- * Calculate distance between two points using Haversine formula
- * Returns distance in kilometers
- */
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth's radius in km
+  const R = 6371;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
   const a =
@@ -388,422 +569,64 @@ function toRad(deg: number): number {
   return deg * (Math.PI / 180);
 }
 
-// ============================================
-// OPTIMIZED AUTOCOMPLETE SEARCH
-// ============================================
-
-/**
- * OPTIMIZED Search for suggestions (autocomplete)
- * 
- * Features:
- * - Client-side caching for instant results
- * - Geo-bounded queries (local results first)
- * - Progressive search (local → regional if needed)
- * - Parallel query execution
- * 
- * @param query - Search query string
- * @param limit - Maximum results to return
- * @param userLocation - User's current location for geo-biasing
- * @returns Promise<SearchResult[]>
- */
-export async function searchSuggestions(
-  query: string, 
-  limit: number = 8,
-  userLocation?: { latitude: number; longitude: number }
-): Promise<SearchResult[]> {
-  // Start searching from 1 character
-  if (!query || query.trim().length < 1) {
-    return [];
+function extractCategory(labels: any): string {
+  if (!labels) return 'Other';
+  let labelArray: string[] = [];
+  if (Array.isArray(labels)) {
+    labelArray = labels;
+  } else if (typeof labels === 'string') {
+    labelArray = labels.split(',').map(s => s.trim());
   }
-
-  const searchTerm = query.trim().toLowerCase();
-  const cacheKey = getCacheKey(searchTerm, userLocation);
-  
-  // Check cache first (instant results!)
-  const cached = getCached(searchCache, cacheKey);
-  if (cached) {
-    console.log(`[searchService] Cache hit for "${searchTerm}"`);
-    return cached;
+  if (labelArray.length > 0) {
+    const parts = labelArray[0].split('>');
+    return parts[parts.length - 1].trim();
   }
-
-  const startTime = Date.now();
-
-  // ============================================
-  // TRY TYPESENSE FIRST (100-500x faster!)
-  // ============================================
-  
-  // Retry logic with exponential backoff
-  const MAX_RETRIES = 2;
-  let lastError: any = null;
-  
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      if (attempt > 0) {
-        // Exponential backoff: 100ms, 200ms, 400ms
-        const delay = 100 * Math.pow(2, attempt - 1);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        console.log(`[searchService] Retrying Typesense (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
-      }
-      
-      // STRICT LOCATION FILTERING:
-      // When user has location, ONLY show nearby places (within 50km/30mi)
-      // This prevents showing places from other countries/states
-      // To search other locations, user must explicitly include location in query
-      // (e.g., "restaurants in New York" - handled by HomeScreen's parseSearchQuery)
-      const typesenseResult = await typesenseSearch({
-        query: searchTerm,
-        latitude: userLocation?.latitude,
-        longitude: userLocation?.longitude,
-        radiusKm: userLocation ? 50 : undefined, // Only apply radius if we have location
-        limit,
-      });
-
-      if (typesenseResult.places && typesenseResult.places.length > 0) {
-      // Transform Typesense results to SearchResult format
-      const results: SearchResult[] = typesenseResult.places.map(place => {
-        // Determine source based on ID prefix
-        const isTavvyPlace = place.id.startsWith('tavvy:');
-        
-        return {
-        id: place.id,
-        source: (isTavvyPlace ? 'places' : 'fsq_raw') as PlaceSource,
-        source_id: isTavvyPlace ? place.id.replace('tavvy:', '') : place.fsq_place_id,
-        source_type: isTavvyPlace ? 'tavvy' : 'fsq',
-        name: place.name,
-        latitude: place.latitude,
-        longitude: place.longitude,
-        address: place.address,
-        city: place.locality,
-        region: place.region,
-        country: place.country,
-        postcode: place.postcode,
-        category: place.category,
-        subcategory: place.subcategory,
-        phone: place.tel,
-        website: place.website,
-        distance: place.distance,
-        cover_image_url: undefined,
-        photos: [],
-        status: 'active',
-      };
-      });
-
-      // Cache results
-      setCache(searchCache, cacheKey, results, userLocation);
-      
-      console.log(`[searchService] ⚡ Typesense: ${results.length} results in ${typesenseResult.searchTimeMs}ms`);
-      return results;
-    }
-    } catch (typesenseError) {
-      lastError = typesenseError;
-      if (attempt === MAX_RETRIES) {
-        console.warn(`[searchService] Typesense failed after ${MAX_RETRIES + 1} attempts, falling back to Supabase:`, typesenseError);
-      }
-      // Continue to next retry attempt
-    }
-  }
-
-  // ============================================
-  // FALLBACK TO SUPABASE (if Typesense fails)
-  // ============================================
-
-  try {
-    let results: SearchResult[] = [];
-    
-    if (userLocation) {
-      // PROGRESSIVE SEARCH: Start local, expand if needed
-      results = await searchWithGeoBounds(
-        searchTerm, 
-        userLocation, 
-        SEARCH_RADIUS_LOCAL, 
-        limit
-      );
-      
-      // If not enough results, expand to regional
-      if (results.length < 3) {
-        console.log(`[searchService] Expanding search to regional (${results.length} local results)`);
-        const regionalResults = await searchWithGeoBounds(
-          searchTerm, 
-          userLocation, 
-          SEARCH_RADIUS_REGIONAL, 
-          limit
-        );
-        
-        // Merge and dedupe
-        const seenIds = new Set(results.map(r => r.id));
-        for (const r of regionalResults) {
-          if (!seenIds.has(r.id)) {
-            results.push(r);
-            seenIds.add(r.id);
-          }
-        }
-      }
-      
-      // If STILL no results, do global search (no geo bounds)
-      if (results.length === 0) {
-        console.log(`[searchService] No bounded results, expanding search globally`);
-        const globalResults = await searchWithoutLocation(searchTerm, limit);
-        results = globalResults;
-      }
-      
-      // Sort by distance
-      results.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
-    } else {
-      // No location - use standard search
-      results = await searchWithoutLocation(searchTerm, limit);
-    }
-
-    // Limit results
-    results = results.slice(0, limit);
-    
-    // Cache results
-    setCache(searchCache, cacheKey, results, userLocation);
-    
-    console.log(`[searchService] Suggestions: ${results.length} results in ${Date.now() - startTime}ms`);
-    return results;
-    
-  } catch (error) {
-    console.error('[searchService] Error in searchSuggestions:', error);
-    return [];
-  }
-}
-
-/**
- * Search with geo-bounded queries for faster, more relevant results
- */
-async function searchWithGeoBounds(
-  searchTerm: string,
-  location: { latitude: number; longitude: number },
-  radiusDegrees: number,
-  limit: number
-): Promise<SearchResult[]> {
-  const { latitude, longitude } = location;
-  const minLat = latitude - radiusDegrees;
-  const maxLat = latitude + radiusDegrees;
-  const minLng = longitude - radiusDegrees;
-  const maxLng = longitude + radiusDegrees;
-
-  // Search both sources in parallel with geo bounds
-  const [placesResult, fsqResult] = await Promise.all([
-    // Search places table with geo bounds
-    supabase
-      .from('places')
-      .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, street, phone')
-      .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
-      .eq('status', 'active')
-      .gte('latitude', minLat)
-      .lte('latitude', maxLat)
-      .gte('longitude', minLng)
-      .lte('longitude', maxLng)
-      .limit(limit),
-    // Search fsq_places_raw table with geo bounds
-    supabase
-      .from('fsq_places_raw')
-      .select('fsq_place_id, name, locality, region, latitude, longitude, fsq_category_labels')
-      .or(`name.ilike.%${searchTerm}%,locality.ilike.%${searchTerm}%`)
-      .is('date_closed', null)
-      .gte('latitude', minLat)
-      .lte('latitude', maxLat)
-      .gte('longitude', minLng)
-      .lte('longitude', maxLng)
-      .limit(limit)
-  ]);
-
-  return processSearchResults(placesResult.data, fsqResult.data, location, searchTerm);
-}
-
-/**
- * Search without location constraints
- */
-async function searchWithoutLocation(
-  searchTerm: string,
-  limit: number
-): Promise<SearchResult[]> {
-  const [placesResult, fsqResult] = await Promise.all([
-    supabase
-      .from('places')
-      .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, street, phone')
-      .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
-      .eq('status', 'active')
-      .limit(limit),
-    supabase
-      .from('fsq_places_raw')
-      .select('fsq_place_id, name, locality, region, latitude, longitude, fsq_category_labels')
-      .or(`name.ilike.%${searchTerm}%,locality.ilike.%${searchTerm}%`)
-      .is('date_closed', null)
-      .limit(limit)
-  ]);
-
-  return processSearchResults(placesResult.data, fsqResult.data, undefined, searchTerm);
-}
-
-/**
- * Process and merge search results from both sources
- */
-function processSearchResults(
-  placesData: any[] | null,
-  fsqData: any[] | null,
-  location: { latitude: number; longitude: number } | undefined,
-  searchTerm: string
-): SearchResult[] {
-  const results: SearchResult[] = [];
-  const seenNames = new Set<string>();
-
-  // Process places results first (higher priority)
-  if (placesData) {
-    for (const s of placesData) {
-      const nameKey = s.name.toLowerCase();
-      if (!seenNames.has(nameKey)) {
-        seenNames.add(nameKey);
-        const result: SearchResult = {
-          id: s.id,
-          source: 'places' as PlaceSource,
-          source_id: s.id,
-          name: s.name,
-          latitude: s.latitude,
-          longitude: s.longitude,
-          city: s.city,
-          region: s.region,
-          category: s.tavvy_category,
-          cover_image_url: s.cover_image_url,
-          address: s.street,
-          phone: s.phone,
-        };
-        if (location && s.latitude && s.longitude) {
-          result.distance = calculateDistance(
-            location.latitude, location.longitude,
-            s.latitude, s.longitude
-          );
-        }
-        results.push(result);
-      }
-    }
-  }
-
-  // Add FSQ results (deduplicated)
-  if (fsqData) {
-    for (const p of fsqData) {
-      const nameKey = p.name.toLowerCase();
-      if (!seenNames.has(nameKey)) {
-        seenNames.add(nameKey);
-        const result: SearchResult = {
-          id: `fsq:${p.fsq_place_id}`,
-          source: 'fsq_raw' as PlaceSource,
-          source_id: p.fsq_place_id,
-          name: p.name,
-          latitude: p.latitude,
-          longitude: p.longitude,
-          city: p.locality,
-          region: p.region,
-          category: extractCategory(p.fsq_category_labels),
-        };
-        if (location && p.latitude && p.longitude) {
-          result.distance = calculateDistance(
-            location.latitude, location.longitude,
-            p.latitude, p.longitude
-          );
-        }
-        results.push(result);
-      }
-    }
-  }
-
-  // Sort: prioritize exact prefix matches, then by distance
-  results.sort((a, b) => {
-    const aStartsWith = a.name.toLowerCase().startsWith(searchTerm) ? 0 : 1;
-    const bStartsWith = b.name.toLowerCase().startsWith(searchTerm) ? 0 : 1;
-    if (aStartsWith !== bStartsWith) return aStartsWith - bStartsWith;
-    return (a.distance || Infinity) - (b.distance || Infinity);
-  });
-
-  return results;
+  return 'Other';
 }
 
 // ============================================
-// OPTIMIZED ADDRESS SEARCH
+// ADDRESS SEARCH (Nominatim — unchanged)
 // ============================================
 
-/**
- * OPTIMIZED Search for address suggestions using Nominatim
- * 
- * Features:
- * - Location bias (viewbox) for faster local results
- * - Country code restriction
- * - Client-side caching
- * - Progressive search (bounded first, then unbounded)
- * 
- * @param query - Address search query
- * @param limit - Maximum results
- * @param userLocation - User's location for biasing
- * @param countryCode - Country code to restrict results (default: 'us')
- */
 export async function searchAddresses(
   query: string,
   limit: number = 5,
   userLocation?: { latitude: number; longitude: number },
   countryCode: string = 'us'
 ): Promise<AddressSuggestion[]> {
-  if (!query || query.trim().length < 3) {
-    return [];
-  }
+  if (!query || query.trim().length < 3) return [];
 
   const cacheKey = `addr:${getCacheKey(query, userLocation)}`;
-  
-  // Check cache first
   const cached = getCached(addressCache, cacheKey);
-  if (cached) {
-    console.log(`[searchService] Address cache hit for "${query}"`);
-    return cached;
-  }
-
-  const startTime = Date.now();
+  if (cached) return cached;
 
   try {
-    // Build URL with location bias
     let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=${limit}&addressdetails=1`;
-    
-    // Add location bias for faster, more relevant results
+
     if (userLocation) {
-      // Create a viewbox ~50 miles around user (0.5 degrees ≈ 35 miles)
       const viewboxSize = 0.5;
       const viewbox = [
-        userLocation.longitude - viewboxSize, // west
-        userLocation.latitude + viewboxSize,  // north
-        userLocation.longitude + viewboxSize, // east
-        userLocation.latitude - viewboxSize   // south
+        userLocation.longitude - viewboxSize,
+        userLocation.latitude + viewboxSize,
+        userLocation.longitude + viewboxSize,
+        userLocation.latitude - viewboxSize
       ].join(',');
-      
       url += `&viewbox=${viewbox}&bounded=1`;
     }
-    
-    // Add country code to limit search scope
-    if (countryCode) {
-      url += `&countrycodes=${countryCode}`;
-    }
-    
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Tavvy-App/1.0',
-      },
-    });
+    if (countryCode) url += `&countrycodes=${countryCode}`;
+
+    const response = await fetch(url, { headers: { 'User-Agent': 'Tavvy-App/1.0' } });
 
     if (!response.ok) {
-      // If bounded search fails, try unbounded
-      if (userLocation) {
-        console.log('[searchService] Bounded search failed, trying unbounded');
-        return searchAddressesUnbounded(query, limit, countryCode);
-      }
+      if (userLocation) return searchAddressesUnbounded(query, limit, countryCode);
       return [];
     }
 
     let results = await response.json();
-    
-    // If no results with bounds, try without bounds
     if (results.length === 0 && userLocation) {
-      console.log('[searchService] No bounded results, expanding search');
       return searchAddressesUnbounded(query, limit, countryCode);
     }
-    
+
     const suggestions = results.map((r: any) => ({
       id: r.place_id,
       displayName: r.display_name,
@@ -815,22 +638,15 @@ export async function searchAddresses(
       state: r.address?.state,
       country: r.address?.country,
     }));
-    
-    // Cache results
+
     setCache(addressCache, cacheKey, suggestions, userLocation);
-    
-    console.log(`[searchService] Address search: ${suggestions.length} results in ${Date.now() - startTime}ms`);
     return suggestions;
-    
   } catch (error) {
     console.error('[searchService] Error in searchAddresses:', error);
     return [];
   }
 }
 
-/**
- * Unbounded address search (fallback when bounded search returns no results)
- */
 async function searchAddressesUnbounded(
   query: string,
   limit: number,
@@ -838,23 +654,12 @@ async function searchAddressesUnbounded(
 ): Promise<AddressSuggestion[]> {
   try {
     let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=${limit}&addressdetails=1`;
-    
-    if (countryCode) {
-      url += `&countrycodes=${countryCode}`;
-    }
-    
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Tavvy-App/1.0',
-      },
-    });
+    if (countryCode) url += `&countrycodes=${countryCode}`;
 
-    if (!response.ok) {
-      return [];
-    }
+    const response = await fetch(url, { headers: { 'User-Agent': 'Tavvy-App/1.0' } });
+    if (!response.ok) return [];
 
     const results = await response.json();
-    
     return results.map((r: any) => ({
       id: r.place_id,
       displayName: r.display_name,
@@ -876,37 +681,24 @@ async function searchAddressesUnbounded(
 // PRE-FETCH NEARBY PLACES
 // ============================================
 
-/**
- * Pre-fetch nearby places for instant autocomplete
- * Call this on app launch to cache local places
- * 
- * @param userLocation - User's current location
- * @param limit - Maximum places to cache (default: 100)
- */
 export async function prefetchNearbyPlaces(
   userLocation: { latitude: number; longitude: number },
   limit: number = 100
 ): Promise<SearchResult[]> {
   const { latitude, longitude } = userLocation;
-  const radiusDegrees = SEARCH_RADIUS_LOCAL; // ~20 miles
-  
+  const radiusDegrees = SEARCH_RADIUS_LOCAL;
+
   const minLat = latitude - radiusDegrees;
   const maxLat = latitude + radiusDegrees;
   const minLng = longitude - radiusDegrees;
   const maxLng = longitude + radiusDegrees;
 
-  console.log(`[searchService] Pre-fetching nearby places within ${radiusDegrees} degrees`);
-  const startTime = Date.now();
-
   try {
-    // Use 'places' table (canonical) instead of 'places_search' which may not exist
     const { data, error } = await supabase
       .from('places')
       .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, street, phone')
-      .gte('latitude', minLat)
-      .lte('latitude', maxLat)
-      .gte('longitude', minLng)
-      .lte('longitude', maxLng)
+      .gte('latitude', minLat).lte('latitude', maxLat)
+      .gte('longitude', minLng).lte('longitude', maxLng)
       .eq('status', 'active')
       .limit(limit);
 
@@ -931,72 +723,33 @@ export async function prefetchNearbyPlaces(
       distance: calculateDistance(latitude, longitude, s.latitude, s.longitude),
     }));
 
-    // Sort by distance
     results.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
-
-    console.log(`[searchService] Pre-fetched ${results.length} nearby places in ${Date.now() - startTime}ms`);
     return results;
-    
   } catch (error) {
     console.error('[searchService] Exception pre-fetching places:', error);
     return [];
   }
 }
 
-/**
- * Search pre-fetched places locally (instant results)
- * 
- * @param query - Search query
- * @param prefetchedPlaces - Array of pre-fetched places
- * @param limit - Maximum results
- */
 export function searchPrefetchedPlaces(
   query: string,
   prefetchedPlaces: SearchResult[],
   limit: number = 5
 ): SearchResult[] {
-  if (!query || query.trim().length < 1 || !prefetchedPlaces.length) {
-    return [];
-  }
+  if (!query || query.trim().length < 1 || !prefetchedPlaces.length) return [];
 
   const searchTerm = query.trim().toLowerCase();
-  
-  // Filter and sort matching places
-  const matches = prefetchedPlaces
-    .filter(p => 
+
+  return prefetchedPlaces
+    .filter(p =>
       p.name.toLowerCase().includes(searchTerm) ||
       (p.city && p.city.toLowerCase().includes(searchTerm))
     )
     .sort((a, b) => {
-      // Prioritize prefix matches
       const aStartsWith = a.name.toLowerCase().startsWith(searchTerm) ? 0 : 1;
       const bStartsWith = b.name.toLowerCase().startsWith(searchTerm) ? 0 : 1;
       if (aStartsWith !== bStartsWith) return aStartsWith - bStartsWith;
-      // Then by distance
       return (a.distance || Infinity) - (b.distance || Infinity);
     })
     .slice(0, limit);
-
-  return matches;
-}
-
-/**
- * Extract category from fsq_category_labels
- */
-function extractCategory(labels: any): string {
-  if (!labels) return 'Other';
-  
-  let labelArray: string[] = [];
-  if (Array.isArray(labels)) {
-    labelArray = labels;
-  } else if (typeof labels === 'string') {
-    labelArray = labels.split(',').map(s => s.trim());
-  }
-  
-  if (labelArray.length > 0) {
-    const parts = labelArray[0].split('>');
-    return parts[parts.length - 1].trim();
-  }
-  
-  return 'Other';
 }
