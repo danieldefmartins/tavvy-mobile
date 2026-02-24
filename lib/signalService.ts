@@ -89,6 +89,9 @@ async function loadSignalCache(): Promise<void> {
     signalsBySlug = new Map();
     
     (data || []).forEach((item: any) => {
+      // Only cache the 3 main signal types (not pro_endorsement)
+      if (!['best_for', 'vibe', 'heads_up'].includes(item.signal_type)) return;
+
       const signal: CachedSignal = {
         id: item.id,
         slug: item.slug,
@@ -647,12 +650,12 @@ export async function submitReview(
 // THE TAVVY ENGINE: Time Decay Calculation
 // ============================================
 
-function calculateDecayedScore(intensity: number, createdAt: string): number {
+export function calculateDecayedScore(intensity: number, createdAt: string): number {
   const now = new Date();
   const created = new Date(createdAt);
   const diffTime = Math.abs(now.getTime() - created.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
+
   const MAX_AGE_DAYS = 180;
 
   if (diffDays >= MAX_AGE_DAYS) {

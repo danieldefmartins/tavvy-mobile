@@ -409,33 +409,39 @@ export function getPlaceIdForNavigation(place: PlaceCard): string {
  */
 export async function fetchPlaceById(placeId: string): Promise<PlaceCard | null> {
   // First try canonical places table
-  const { data: canonicalData, error: canonicalError } = await supabase
+  const { data: canonicalRows, error: canonicalError } = await supabase
     .from('places')
     .select('*')
     .or(`id.eq.${placeId},source_id.eq.${placeId}`)
-    .single();
+    .limit(1);
+
+  const canonicalData = canonicalRows?.[0] || null;
 
   if (canonicalData && !canonicalError) {
     return transformCanonicalPlace(canonicalData);
   }
 
   // Fallback to fsq_places_raw
-  const { data: fsqData, error: fsqError } = await supabase
+  const { data: fsqRows, error: fsqError } = await supabase
     .from('fsq_places_raw')
     .select('*')
     .eq('fsq_place_id', placeId)
-    .single();
+    .limit(1);
+
+  const fsqData = fsqRows?.[0] || null;
 
   if (fsqData && !fsqError) {
     return transformFsqRawPlace(fsqData);
   }
 
   // Try places_unified view as last resort
-  const { data: unifiedData, error: unifiedError } = await supabase
+  const { data: unifiedRows, error: unifiedError } = await supabase
     .from('places_unified')
     .select('*')
     .eq('id', placeId)
-    .single();
+    .limit(1);
+
+  const unifiedData = unifiedRows?.[0] || null;
 
   if (unifiedData && !unifiedError) {
     return {

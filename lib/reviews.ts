@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { calculateDecayedScore } from './signalService';
 
 // Types matching the database schema
 export interface ReviewSignalTap {
@@ -226,12 +227,12 @@ export async function submitReview(
   try {
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
+
     if (userError || !user) {
-      console.log('No authenticated user, submitting as anonymous');
+      return { success: false, error: 'Must be logged in to submit a review' };
     }
 
-    const userId = user?.id || null;
+    const userId = user.id;
 
     // RESOLVE PLACE ID — handles UUIDs, FSQ IDs, and Google Place IDs
     const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(googlePlaceId);
@@ -298,23 +299,6 @@ export async function submitReview(
   }
 }
 
-// THE TAVVY ENGINE: Time Decay Calculation
-function calculateDecayedScore(intensity: number, createdAt: string): number {
-  const now = new Date();
-  const created = new Date(createdAt);
-  const diffTime = Math.abs(now.getTime() - created.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  const MAX_AGE_DAYS = 180; // 6 Months
-
-  if (diffDays >= MAX_AGE_DAYS) {
-    return 0; // The Zombie is Dead ⚰️
-  }
-
-  // Linear Decay Formula: Value = Intensity * (1 - (Age / 180))
-  const decayFactor = 1 - (diffDays / MAX_AGE_DAYS);
-  return intensity * decayFactor;
-}
 
 // Helper: Check if string is a valid UUID
 function isValidUUID(str: string): boolean {

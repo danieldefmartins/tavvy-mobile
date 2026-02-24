@@ -161,12 +161,12 @@ export async function submitEventReview(
   try {
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
+
     if (userError || !user) {
-      console.log('No authenticated user, submitting as anonymous');
+      return { success: false, error: 'Must be logged in to submit a review' };
     }
 
-    const userId = user?.id || null;
+    const userId = user.id;
 
     // Get or create event UUID
     const targetEventId = await getOrCreateEvent(eventId, eventName);
