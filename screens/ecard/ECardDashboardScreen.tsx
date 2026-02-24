@@ -525,7 +525,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             };
           });
         if (linksToInsert.length > 0) {
-          await supabase.from('card_links').insert(linksToInsert);
+          await supabase.from('digital_card_links').insert(linksToInsert);
         }
       }
       
@@ -625,7 +625,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             });
 
             const { data: cardLinks, error: linksError } = await supabase
-              .from('card_links')
+              .from('digital_card_links')
               .select('*')
               .eq('card_id', card.id)
               .order('sort_order', { ascending: true });
@@ -668,27 +668,13 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
     loadCardData();
   }, [user, isNewCard, cardId]);
 
-  // Columns that may not exist in database yet
-  const PENDING_COLUMNS = ['industry_icons', 'background_video_url'];
-
   // Save appearance settings
   const saveAppearanceSettings = async (settings: Partial<CardData>) => {
     if (!cardData?.id) return;
     setIsSaving(true);
     try {
-      const dbSettings: Record<string, any> = {};
-      const localSettings: Record<string, any> = {};
-      for (const [key, value] of Object.entries(settings)) {
-        if (PENDING_COLUMNS.includes(key)) {
-          localSettings[key] = value;
-        } else {
-          dbSettings[key] = value;
-        }
-      }
-      if (Object.keys(dbSettings).length > 0) {
-        const { error } = await supabase.from('digital_cards').update(dbSettings).eq('id', cardData.id);
-        if (error) throw error;
-      }
+      const { error } = await supabase.from('digital_cards').update(settings).eq('id', cardData.id);
+      if (error) throw error;
       setCardData(prev => prev ? { ...prev, ...settings } : null);
     } catch (error) {
       console.error('Error saving settings:', error);

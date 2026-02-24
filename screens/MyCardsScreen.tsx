@@ -140,7 +140,7 @@ export default function MyCardsScreen() {
           onPress: async () => {
             try {
               // Delete card links first
-              await supabase.from('card_links').delete().eq('card_id', card.id);
+              await supabase.from('digital_card_links').delete().eq('card_id', card.id);
               // Delete the card
               const { error } = await supabase
                 .from('digital_cards')
@@ -288,7 +288,7 @@ export default function MyCardsScreen() {
 
       // 5. Copy links from the source card
       const { data: sourceLinks } = await supabase
-        .from('card_links')
+        .from('digital_card_links')
         .select('*')
         .eq('card_id', card.id)
         .order('sort_order', { ascending: true });
@@ -303,7 +303,7 @@ export default function MyCardsScreen() {
           sort_order: link.sort_order,
           is_active: link.is_active,
         }));
-        await supabase.from('card_links').insert(newLinks);
+        await supabase.from('digital_card_links').insert(newLinks);
       }
 
       // 6. Refresh the list and show success

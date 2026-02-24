@@ -269,7 +269,7 @@ export default function CreateDigitalCardScreen() {
         if (data && !error) {
           // Load links
           const { data: linksData } = await supabase
-            .from('card_links')
+            .from('digital_card_links')
             .select('*')
             .eq('card_id', data.id)
             .order('sort_order', { ascending: true });
@@ -707,7 +707,7 @@ export default function CreateDigitalCardScreen() {
       // Save links
       if (cardId) {
         // Delete existing links
-        await supabase.from('card_links').delete().eq('card_id', cardId);
+        await supabase.from('digital_card_links').delete().eq('card_id', cardId);
         
         // Insert new links if any
         if (cardData.links.length > 0) {
@@ -720,7 +720,7 @@ export default function CreateDigitalCardScreen() {
             is_active: true,
           }));
           
-          const { error: linksError } = await supabase.from('card_links').insert(linksToInsert);
+          const { error: linksError } = await supabase.from('digital_card_links').insert(linksToInsert);
           if (linksError) console.error('Error saving links:', linksError);
         }
       }

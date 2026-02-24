@@ -381,7 +381,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
           console.log('No passed links, loading from database');
           // Load links from database
           const { data: linksData } = await supabase
-            .from('card_links')
+            .from('digital_card_links')
             .select('*')
             .eq('card_id', passedCardData.id)
             .eq('is_active', true)
@@ -449,7 +449,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
         
         // Load links
         const { data: linksData } = await supabase
-          .from('card_links')
+          .from('digital_card_links')
           .select('*')
           .eq('card_id', data.id)
           .eq('is_active', true)

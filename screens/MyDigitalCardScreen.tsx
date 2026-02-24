@@ -30,9 +30,9 @@ import {
   Linking,
   Image,
   Modal,
-  Clipboard,
   ActivityIndicator,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -147,7 +147,7 @@ export default function MyDigitalCardScreen() {
 
       // Also fetch links for this card
       const { data: linksData } = await supabase
-        .from('card_links')
+        .from('digital_card_links')
         .select('*')
         .eq('card_id', data.id)
         .eq('is_active', true)
@@ -293,7 +293,7 @@ export default function MyDigitalCardScreen() {
 
   // Copy link to clipboard
   const handleCopyLink = () => {
-    Clipboard.setString(cardUrl);
+    Clipboard.setStringAsync(cardUrl);
     Alert.alert('Copied!', `${cardUrl} copied to clipboard.`);
   };
 

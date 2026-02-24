@@ -15,8 +15,8 @@ import {
   Alert,
   ActivityIndicator,
   Linking,
-  Clipboard,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
@@ -173,7 +173,7 @@ export default function CardSettingsScreen() {
   };
 
   const copyToClipboard = (text: string) => {
-    Clipboard.setString(text);
+    Clipboard.setStringAsync(text);
     Alert.alert('Copied!', 'Text copied to clipboard.');
   };
 
@@ -378,7 +378,7 @@ export default function CardSettingsScreen() {
                     style: 'destructive',
                     onPress: async () => {
                       try {
-                        await supabase.from('card_links').delete().eq('card_id', cardId);
+                        await supabase.from('digital_card_links').delete().eq('card_id', cardId);
                         await supabase.from('digital_cards').delete().eq('id', cardId);
                         Alert.alert('Success', 'Card deleted.');
                         navigation.navigate('MyCards');
