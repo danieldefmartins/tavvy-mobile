@@ -13,7 +13,7 @@
 
 import { supabase } from './supabaseClient';
 import { PlaceCard, PlaceSource } from './placeService';
-import { searchPlaces as typesenseSearch, healthCheck as typesenseHealthCheck } from './typesenseService';
+import { searchPlaces as typesenseSearch } from './typesenseService';
 
 // ============================================
 // TYPES
@@ -22,30 +22,6 @@ import { searchPlaces as typesenseSearch, healthCheck as typesenseHealthCheck } 
 export interface SearchResult extends PlaceCard {
   matchScore?: number;           // Relevance score for sorting
   distance?: number;             // Distance from user if location provided
-}
-
-export interface SearchOptions {
-  query: string;
-  location?: {
-    latitude: number;
-    longitude: number;
-    radiusKm?: number;           // Default: 50km
-  };
-  filters?: {
-    category?: string;
-  };
-  limit?: number;
-  fallbackThreshold?: number;    // Default: 10
-}
-
-export interface SearchResultResponse {
-  results: SearchResult[];
-  metrics: {
-    fromPlacesSearch: number;
-    fromFsqRaw: number;
-    fallbackTriggered: boolean;
-    totalTime: number;
-  };
 }
 
 export interface AddressSuggestion {
@@ -64,14 +40,9 @@ export interface AddressSuggestion {
 // CONSTANTS
 // ============================================
 
-const DEFAULT_LIMIT = 20;
-const DEFAULT_FALLBACK_THRESHOLD = 10;
-const DEFAULT_RADIUS_KM = 50;
-
 // Progressive search radius tiers (in degrees, ~1 degree ≈ 69 miles)
 const SEARCH_RADIUS_LOCAL = 0.3;      // ~20 miles - fastest, most relevant
 const SEARCH_RADIUS_REGIONAL = 0.8;   // ~55 miles - expanded search
-const SEARCH_RADIUS_STATE = 2.0;      // ~140 miles - state-level
 
 // ============================================
 // CLIENT-SIDE CACHE
@@ -141,228 +112,6 @@ export function clearSearchCache(): void {
   searchCache.clear();
   addressCache.clear();
   console.log('[searchService] Cache cleared');
-}
-
-// ============================================
-// MAIN SEARCH FUNCTION
-// ============================================
-
-/**
- * Search for places by text query using hybrid strategy.
- * 
- * Strategy:
- * 1. Query `fsq_places_raw` table first (104M places - ALL available data)
- * 2. If results < threshold, query `places` as fallback (curated data)
- * 3. Deduplicate by source_id
- * 4. Return unified SearchResult[] format
- */
-export async function searchPlaces(options: SearchOptions): Promise<SearchResultResponse> {
-  const startTime = Date.now();
-  const { query, location, filters, limit = DEFAULT_LIMIT, fallbackThreshold = DEFAULT_FALLBACK_THRESHOLD } = options;
-
-  if (!query || query.trim().length === 0) {
-    return {
-      results: [],
-      metrics: {
-        fromPlacesSearch: 0,
-        fromFsqRaw: 0,
-        fallbackTriggered: false,
-        totalTime: 0,
-      },
-    };
-  }
-
-  const searchTerm = query.trim().toLowerCase();
-  let resultsFromFsqRaw: SearchResult[] = [];
-  let resultsFromPlacesSearch: SearchResult[] = [];
-  let fallbackTriggered = false;
-
-  // ============================================
-  // STEP 1: Query fsq_places_raw first (ALL 104M places)
-  // ============================================
-  try {
-    const { data: fsqData, error: fsqError } = await supabase
-      .from('fsq_places_raw')
-      .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, postcode, tel, website, fsq_category_labels')
-      .or(`name.ilike.%${searchTerm}%,locality.ilike.%${searchTerm}%`)
-      .is('date_closed', null)
-      .limit(limit);
-
-    if (fsqError) {
-      console.warn('[searchService] Error querying fsq_places_raw:', fsqError);
-    } else if (fsqData) {
-      resultsFromFsqRaw = fsqData.map(p => transformFsqToSearchResult(p, location));
-      console.log(`[searchService] Found ${resultsFromFsqRaw.length} results from fsq_places_raw table`);
-    }
-  } catch (error) {
-    console.error('[searchService] Exception querying fsq_places_raw:', error);
-  }
-
-  // ============================================
-  // STEP 2: Check if fallback to places table is needed
-  // ============================================
-  if (resultsFromFsqRaw.length < fallbackThreshold) {
-    fallbackTriggered = true;
-    console.log(`[searchService] Fallback triggered: ${resultsFromFsqRaw.length} < ${fallbackThreshold} threshold`);
-
-    // Get source_ids to exclude
-    const existingSourceIds = new Set(
-      resultsFromFsqRaw
-        .filter(r => r.source_id)
-        .map(r => r.source_id)
-    );
-
-    // ============================================
-    // STEP 3: Query places table as fallback (curated data)
-    // ============================================
-    try {
-      let searchQuery = supabase
-        .from('places')
-        .select('id, name, city, region, tavvy_category, tavvy_subcategory, latitude, longitude, cover_image_url, street, phone, website, photos, status')
-        .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
-        .eq('status', 'active')
-        .limit(limit - resultsFromFsqRaw.length);
-
-      if (filters?.category) {
-        searchQuery = searchQuery.eq('tavvy_category', filters.category);
-      }
-
-      const { data: placesData, error: searchError } = await searchQuery;
-
-      if (searchError) {
-        console.warn('[searchService] Error querying places:', searchError);
-      } else if (placesData) {
-        // Filter out places already in results
-        const newPlacesResults = placesData.filter(p => !existingSourceIds.has(p.id));
-        resultsFromPlacesSearch = newPlacesResults.map(p => transformToSearchResult(p, 'places', location));
-        console.log(`[searchService] Found ${placesData.length} from places, ${resultsFromPlacesSearch.length} after dedup`);
-      }
-    } catch (error) {
-      console.error('[searchService] Exception querying places:', error);
-    }
-  }
-
-  // ============================================
-  // STEP 4: Merge, sort, and return results
-  // ============================================
-  let allResults = [...resultsFromFsqRaw, ...resultsFromPlacesSearch];
-
-  // Sort by distance if location provided, otherwise by name
-  if (location) {
-    allResults.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
-  } else {
-    allResults.sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  const endTime = Date.now();
-
-  const result: SearchResultResponse = {
-    results: allResults,
-    metrics: {
-      fromPlacesSearch: resultsFromPlacesSearch.length,
-      fromFsqRaw: resultsFromFsqRaw.length,
-      fallbackTriggered,
-      totalTime: endTime - startTime,
-    },
-  };
-
-  console.log(`[searchService] Total: ${allResults.length} results (${result.metrics.fromFsqRaw} fsq_raw, ${result.metrics.fromPlacesSearch} places) in ${result.metrics.totalTime}ms`);
-
-  return result;
-}
-
-// ============================================
-// TRANSFORM FUNCTIONS
-// ============================================
-
-/**
- * Transform a canonical place to SearchResult format
- */
-function transformToSearchResult(place: any, source: PlaceSource, location?: { latitude: number; longitude: number }): SearchResult {
-  const result: SearchResult = {
-    id: place.id,
-    source,
-    source_id: place.source_id || place.id,
-    source_type: place.source_type,
-    name: place.name || 'Unknown',
-    latitude: place.latitude,
-    longitude: place.longitude,
-    address: place.street, // 'street' column in DB, mapped to 'address' in app
-    city: place.city,
-    region: place.region,
-    country: place.country,
-    postcode: place.postcode,
-    category: place.tavvy_category,
-    subcategory: place.tavvy_subcategory,
-    phone: place.phone,
-    website: place.website,
-    cover_image_url: place.cover_image_url,
-    photos: place.photos || [],
-    status: place.status,
-  };
-
-  if (location && place.latitude && place.longitude) {
-    result.distance = calculateDistance(
-      location.latitude,
-      location.longitude,
-      place.latitude,
-      place.longitude
-    );
-  }
-
-  return result;
-}
-
-/**
- * Transform an FSQ raw place to SearchResult format
- */
-function transformFsqToSearchResult(place: any, location?: { latitude: number; longitude: number }): SearchResult {
-  // Extract category
-  let category = 'Other';
-  if (place.fsq_category_labels) {
-    let labels: string[] = [];
-    if (Array.isArray(place.fsq_category_labels)) {
-      labels = place.fsq_category_labels;
-    } else if (typeof place.fsq_category_labels === 'string') {
-      labels = place.fsq_category_labels.split(',').map((s: string) => s.trim());
-    }
-    if (labels.length > 0) {
-      const parts = labels[0].split('>');
-      category = parts[parts.length - 1].trim();
-    }
-  }
-
-  const result: SearchResult = {
-    id: `fsq:${place.fsq_place_id}`,
-    source: 'fsq_raw',
-    source_id: place.fsq_place_id,
-    source_type: 'fsq',
-    name: place.name || 'Unknown',
-    latitude: place.latitude,
-    longitude: place.longitude,
-    address: place.address,
-    city: place.locality,
-    region: place.region,
-    country: place.country,
-    postcode: place.postcode,
-    category,
-    phone: place.tel,
-    website: place.website,
-    cover_image_url: undefined,
-    photos: [],
-    status: 'active',
-  };
-
-  if (location && place.latitude && place.longitude) {
-    result.distance = calculateDistance(
-      location.latitude,
-      location.longitude,
-      place.latitude,
-      place.longitude
-    );
-  }
-
-  return result;
 }
 
 // ============================================

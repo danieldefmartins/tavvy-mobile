@@ -4,15 +4,10 @@
  * Run these tests to verify all optimizations are working correctly.
  */
 
-import { searchPlaces, clearQueryCache } from '../typesenseService';
+import { searchPlaces } from '../typesenseService';
 import { configureSynonyms } from '../typesenseSynonyms';
 
 describe('Typesense Optimizations', () => {
-  
-  beforeEach(() => {
-    // Clear cache before each test
-    clearQueryCache();
-  });
 
   describe('Optimization #1: Tap Signals', () => {
     it('should search tap_signals field with highest weight', async () => {
@@ -48,32 +43,6 @@ describe('Typesense Optimizations', () => {
       expect(typoResult.places.length).toBeGreaterThan(0);
       // Should return similar results despite typo
       expect(typoResult.places.length).toBeGreaterThanOrEqual(correctResult.places.length * 0.5);
-    });
-  });
-
-  describe('Optimization #3: Query Caching', () => {
-    it('should cache and retrieve query results', async () => {
-      const query = {
-        query: 'pizza',
-        latitude: 37.7749,
-        longitude: -122.4194,
-        limit: 10,
-      };
-      
-      // First query - should hit Typesense
-      const start1 = Date.now();
-      const result1 = await searchPlaces(query);
-      const time1 = Date.now() - start1;
-      
-      // Second query - should hit cache
-      const start2 = Date.now();
-      const result2 = await searchPlaces(query);
-      const time2 = Date.now() - start2;
-      
-      expect(result2.places.length).toBe(result1.places.length);
-      // Cache should be significantly faster
-      expect(time2).toBeLessThan(time1 * 0.5);
-      console.log(`Cache speedup: ${time1}ms → ${time2}ms (${Math.round((1 - time2/time1) * 100)}% faster)`);
     });
   });
 

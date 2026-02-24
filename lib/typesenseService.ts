@@ -19,61 +19,6 @@ const TYPESENSE_PORT = process.env.EXPO_PUBLIC_TYPESENSE_PORT || '443';
 const TYPESENSE_PROTOCOL = process.env.EXPO_PUBLIC_TYPESENSE_PROTOCOL || 'https';
 const TYPESENSE_API_KEY = process.env.EXPO_PUBLIC_TYPESENSE_API_KEY || '231eb42383d0a3a2832f47ec44b817e33692211d9cf2d158f49e5c3e608e6277';
 
-// ============================================
-// QUERY CACHE
-// ============================================
-
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-}
-
-const queryCache = new Map<string, CacheEntry<SearchResult>>();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const MAX_CACHE_SIZE = 100;
-
-/**
- * Get cached query result if available and not expired
- */
-function getCachedQuery(key: string): SearchResult | null {
-  const entry = queryCache.get(key);
-  if (entry && Date.now() - entry.timestamp < CACHE_TTL_MS) {
-    console.log('[typesense] Cache hit!');
-    return entry.data;
-  }
-  if (entry) {
-    queryCache.delete(key); // Remove expired entry
-  }
-  return null;
-}
-
-/**
- * Set cache entry with LRU eviction
- */
-function setCachedQuery(key: string, data: SearchResult): void {
-  // LRU eviction if cache is full
-  if (queryCache.size >= MAX_CACHE_SIZE) {
-    const oldestKey = queryCache.keys().next().value;
-    if (oldestKey) queryCache.delete(oldestKey);
-  }
-  queryCache.set(key, { data, timestamp: Date.now() });
-}
-
-/**
- * Generate cache key from search options
- */
-function getCacheKey(options: SearchOptions): string {
-  return JSON.stringify(options);
-}
-
-/**
- * Clear query cache
- */
-export function clearQueryCache(): void {
-  queryCache.clear();
-  console.log('[typesense] Query cache cleared');
-}
-
 export interface TypesensePlace {
   fsq_place_id: string;
   name: string;
@@ -91,7 +36,7 @@ export interface TypesensePlace {
   instagram?: string;
   facebook_id?: string;
   popularity: number;
-  // NEW: Tap-based fields
+  // Future — requires sync pipeline update to populate these fields in Typesense
   tap_signals?: string[];      // e.g., ["Quality Food", "Great Service"]
   tap_categories?: string[];   // e.g., ["quality", "service"]
   tap_total?: number;          // Total tap count
@@ -227,13 +172,6 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
     query
   });
 
-  // Check cache first
-  const cacheKey = getCacheKey(options);
-  const cached = getCachedQuery(cacheKey);
-  if (cached) {
-    return cached;
-  }
-
   try {
     const searchParams: any = {
       q: query || '*',
@@ -303,7 +241,7 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
 
     // Add timeout to prevent hanging requests (especially for 502 errors)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
     try {
       const response = await fetch(`${url}?${queryString}`, {
@@ -314,8 +252,7 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
       });
 
       clearTimeout(timeoutId);
-      console.log('[Typesense] Full URL:', `${url}?${queryString}`);
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.warn('[Typesense] HTTP Error:', response.status, errorText);
@@ -330,8 +267,6 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
       }
 
       const data = await response.json();
-      console.log('[Typesense] Full response:', JSON.stringify(data, null, 2));
-      
       console.log('[Typesense] Response:', { found: data.found, hits: data.hits?.length, searchTimeMs: data.search_time_ms });
 
       const places = data.hits.map((hit: any) => {
@@ -349,10 +284,7 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
         searchTimeMs: data.search_time_ms,
         page: data.page,
       };
-      
-      // Cache the result
-      setCachedQuery(cacheKey, result);
-      
+
       // Log analytics
       logSearchAnalytics({
         query: query || '*',
@@ -371,7 +303,7 @@ export async function searchPlaces(options: SearchOptions): Promise<SearchResult
       
       // Handle abort/timeout specifically
       if (fetchError.name === 'AbortError') {
-        console.warn('[Typesense] Request timed out after 8 seconds');
+        console.warn('[Typesense] Request timed out after 5 seconds');
         throw new Error('TYPESENSE_TIMEOUT: Search request timed out');
       }
       
@@ -416,19 +348,13 @@ export async function searchPlacesInBounds(options: {
     const latDiff = maxLat - minLat;
     const lngDiff = maxLng - minLng;
     const radiusKm = Math.max(latDiff, lngDiff) * 111; // 1 degree ≈ 111km
-    const radiusMeters = Math.ceil(radiusKm * 1000);
 
     const searchParams: any = {
       q: category || '*',
-      // Search by name and categories
       query_by: 'name,categories',
       query_by_weights: '3,2',
-      
-      // Sort by popularity (geo-sorting requires geopoint field in schema)
-      sort_by: 'popularity:desc',
-      
-      // Note: Not using filter_by to avoid schema issues
-      // Results will be sorted by distance from center point
+      filter_by: `location:(${centerLat}, ${centerLng}, ${radiusKm} km)`,
+      sort_by: `location(${centerLat}, ${centerLng}):asc,popularity:desc`,
       per_page: limit,
     };
 
