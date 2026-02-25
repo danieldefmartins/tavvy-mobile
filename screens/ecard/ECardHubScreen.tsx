@@ -4,7 +4,7 @@
  * Single "+" FAB navigates to the new ECardNew wizard screen.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,15 +18,21 @@ import {
   Alert,
   Modal,
   Animated,
+  ActionSheetIOS,
+  Platform,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../contexts/AuthContext';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabaseClient';
 import { useTranslation } from 'react-i18next';
+import SwipeableCardRow from '../../components/ecard/hub/SwipeableCardRow';
+import CardSearchBar from '../../components/ecard/hub/CardSearchBar';
 
 const { width } = Dimensions.get('window');
 const ACCENT = '#00C853';
@@ -65,9 +71,23 @@ export default function ECardHubScreen() {
   const [sheetStep, setSheetStep] = useState<SheetStep>('closed');
   const slideAnim = useState(new Animated.Value(0))[0];
 
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Role-based card limits
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isPro, setIsPro] = useState(false);
+
+  // Filtered cards based on search query
+  const filteredCards = useMemo(() => {
+    if (!searchQuery.trim()) return cards;
+    const q = searchQuery.toLowerCase().trim();
+    return cards.filter(
+      (c) =>
+        (c.full_name || '').toLowerCase().includes(q) ||
+        (c.title || '').toLowerCase().includes(q) ||
+        (c.is_published ? 'live' : 'draft').includes(q)
+    );
+  }, [cards, searchQuery]);
 
   const fetchCards = async () => {
     if (!user) {
@@ -129,9 +149,45 @@ export default function ECardHubScreen() {
   const PRO_PUBLISH_LIMIT = Infinity;
 
   const handleFabClick = () => {
-    // Always navigate — card limits are enforced at creation time, not at entry
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     navigation.navigate('ECardNew');
   };
+
+  // Context menu (long press) — uses ActionSheetIOS on iOS, Alert on Android
+  const handleLongPress = useCallback((card: CardData) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const options = ['Edit Card', 'View Stats', 'Copy Link', 'Duplicate', 'Delete', 'Cancel'];
+    const destructiveIndex = 4;
+    const cancelIndex = 5;
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, cancelButtonIndex: cancelIndex, destructiveButtonIndex: destructiveIndex },
+        (buttonIndex) => {
+          switch (buttonIndex) {
+            case 0: navigation.navigate('ECardEdit', { cardId: card.id }); break;
+            case 1: navigation.navigate('ECardStats', { cardId: card.id }); break;
+            case 2: Share.share({ message: `https://tavvy.com/${card.slug || 'preview'}`, url: `https://tavvy.com/${card.slug || 'preview'}` }); break;
+            case 3: handleDuplicateCard(card); break;
+            case 4: setDeleteModalCard(card); break;
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        card.full_name || 'Card',
+        undefined,
+        [
+          { text: 'Edit Card', onPress: () => navigation.navigate('ECardEdit', { cardId: card.id }) },
+          { text: 'View Stats', onPress: () => navigation.navigate('ECardStats', { cardId: card.id }) },
+          { text: 'Copy Link', onPress: () => Share.share({ message: `https://tavvy.com/${card.slug || 'preview'}` }) },
+          { text: 'Duplicate', onPress: () => handleDuplicateCard(card) },
+          { text: 'Delete', style: 'destructive', onPress: () => setDeleteModalCard(card) },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    }
+  }, [navigation, handleDuplicateCard]);
 
   const handleEditCard = (card: CardData) => {
     navigation.navigate('ECardEdit', { cardId: card.id });
@@ -249,117 +305,99 @@ export default function ECardHubScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} colors={[ACCENT]} />}
       >
         {cards.length > 0 ? (
           /* ── Cards List ── */
           <View style={{ padding: 20, gap: 12 }}>
-            {cards.map((card) => (
-              <TouchableOpacity
-                key={card.id}
-                style={[styles.cardRow, { backgroundColor: isDark ? '#1A1A1A' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
-                onPress={() => handleEditCard(card)}
-                activeOpacity={0.8}
-              >
-                {/* Thumbnail */}
-                <LinearGradient
-                  colors={[card.gradient_color_1 || '#667eea', card.gradient_color_2 || '#764ba2']}
-                  style={styles.cardThumb}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
+            {/* Search bar */}
+            <CardSearchBar value={searchQuery} onChangeText={setSearchQuery} isDark={isDark} />
+
+            {filteredCards.length === 0 && searchQuery.trim() ? (
+              <View style={{ alignItems: 'center', paddingTop: 40 }}>
+                <Ionicons name="search-outline" size={36} color={isDark ? '#64748B' : '#9CA3AF'} />
+                <Text style={{ fontSize: 15, color: isDark ? '#94A3B8' : '#888', marginTop: 12 }}>
+                  No cards match "{searchQuery}"
+                </Text>
+              </View>
+            ) : (
+              filteredCards.map((card) => (
+                <SwipeableCardRow
+                  key={card.id}
+                  onDelete={() => setDeleteModalCard(card)}
+                  onStats={() => navigation.navigate('ECardStats', { cardId: card.id })}
+                  onDuplicate={() => handleDuplicateCard(card)}
+                  isDark={isDark}
+                  duplicating={duplicating === card.id}
                 >
-                  {card.profile_photo_url ? (
-                    <Image source={{ uri: card.profile_photo_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                  ) : (
-                    <Text style={{ fontSize: 22, color: 'rgba(255,255,255,0.8)', fontWeight: '700' }}>
-                      {(card.full_name || 'U')[0].toUpperCase()}
-                    </Text>
-                  )}
-                </LinearGradient>
-
-                {/* Info */}
-                <View style={{ flex: 1, marginLeft: 14 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={[styles.cardName, { color: isDark ? '#fff' : '#111' }]} numberOfLines={1}>
-                      {card.full_name || 'Untitled Card'}
-                    </Text>
-                    <View style={[styles.badge, { backgroundColor: card.is_published ? 'rgba(0,200,83,0.12)' : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)') }]}>
-                      <Text style={[styles.badgeText, { color: card.is_published ? ACCENT : (isDark ? '#94A3B8' : '#888') }]}>
-                        {card.is_published ? 'Live' : 'Draft'}
-                      </Text>
-                    </View>
-                  </View>
-                  {card.title ? (
-                    <Text style={[styles.cardSubtitle, { color: isDark ? 'rgba(255,255,255,0.5)' : '#888' }]} numberOfLines={1}>
-                      {card.title}
-                    </Text>
-                  ) : null}
-                  <View style={{ flexDirection: 'row', gap: 14, marginTop: 6 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Ionicons name="eye-outline" size={12} color={isDark ? '#94A3B8' : '#888'} />
-                      <Text style={{ fontSize: 12, color: isDark ? '#94A3B8' : '#888' }}>{card.view_count || 0}</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Ionicons name="hand-left-outline" size={12} color={isDark ? '#94A3B8' : '#888'} />
-                      <Text style={{ fontSize: 12, color: isDark ? '#94A3B8' : '#888' }}>{card.tap_count || 0}</Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Actions */}
-                <View style={{ flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                  {/* Stats button — prominent */}
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('ECardStats', { cardId: card.id })}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 4,
-                      paddingHorizontal: 10,
-                      paddingVertical: 5,
-                      borderRadius: 8,
-                      backgroundColor: isDark ? 'rgba(0,200,83,0.1)' : 'rgba(0,200,83,0.08)',
-                    }}
+                    style={[styles.cardRow, { backgroundColor: isDark ? '#1A1A1A' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
+                    onPress={() => handleEditCard(card)}
+                    onLongPress={() => handleLongPress(card)}
+                    activeOpacity={0.8}
+                    delayLongPress={400}
                   >
-                    <Ionicons name="bar-chart-outline" size={14} color={ACCENT} />
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>Stats</Text>
-                  </TouchableOpacity>
-                  {/* Secondary actions row */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                    <TouchableOpacity
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      onPress={() => handleDuplicateCard(card)}
-                      disabled={duplicating === card.id}
-                      style={{ padding: 4, opacity: duplicating === card.id ? 0.4 : 1 }}
+                    {/* Thumbnail */}
+                    <LinearGradient
+                      colors={[card.gradient_color_1 || '#667eea', card.gradient_color_2 || '#764ba2']}
+                      style={styles.cardThumb}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
                     >
-                      {duplicating === card.id ? (
-                        <ActivityIndicator size="small" color={isDark ? '#94A3B8' : '#888'} />
+                      {card.profile_photo_url ? (
+                        <Image source={{ uri: card.profile_photo_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                       ) : (
-                        <Ionicons name="copy-outline" size={14} color={isDark ? '#94A3B8' : '#888'} />
+                        <Text style={{ fontSize: 22, color: 'rgba(255,255,255,0.8)', fontWeight: '700' }}>
+                          {(card.full_name || 'U')[0].toUpperCase()}
+                        </Text>
                       )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      onPress={() => setDeleteModalCard(card)}
-                      style={{ padding: 4 }}
-                    >
-                      <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                    </TouchableOpacity>
-                    <Ionicons name="chevron-forward" size={14} color={isDark ? '#94A3B8' : '#888'} />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
+                    </LinearGradient>
+
+                    {/* Info */}
+                    <View style={{ flex: 1, marginLeft: 14 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={[styles.cardName, { color: isDark ? '#fff' : '#111' }]} numberOfLines={1}>
+                          {card.full_name || 'Untitled Card'}
+                        </Text>
+                        <View style={[styles.badge, { backgroundColor: card.is_published ? 'rgba(0,200,83,0.12)' : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)') }]}>
+                          <Text style={[styles.badgeText, { color: card.is_published ? ACCENT : (isDark ? '#94A3B8' : '#888') }]}>
+                            {card.is_published ? 'Live' : 'Draft'}
+                          </Text>
+                        </View>
+                      </View>
+                      {card.title ? (
+                        <Text style={[styles.cardSubtitle, { color: isDark ? 'rgba(255,255,255,0.5)' : '#888' }]} numberOfLines={1}>
+                          {card.title}
+                        </Text>
+                      ) : null}
+                      <View style={{ flexDirection: 'row', gap: 14, marginTop: 6 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Ionicons name="eye-outline" size={12} color={isDark ? '#94A3B8' : '#888'} />
+                          <Text style={{ fontSize: 12, color: isDark ? '#94A3B8' : '#888' }}>{card.view_count || 0}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Ionicons name="hand-left-outline" size={12} color={isDark ? '#94A3B8' : '#888'} />
+                          <Text style={{ fontSize: 12, color: isDark ? '#94A3B8' : '#888' }}>{card.tap_count || 0}</Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Chevron indicator */}
+                    <Ionicons name="chevron-forward" size={16} color={isDark ? '#64748B' : '#9CA3AF'} />
+                  </TouchableOpacity>
+                </SwipeableCardRow>
+              ))
+            )}
           </View>
         ) : (
-          /* ── Empty State (clickable) ── */
+          /* ── Empty State ── */
           <TouchableOpacity style={styles.emptyState} onPress={handleFabClick} activeOpacity={0.7}>
             <View style={[styles.emptyIcon, { backgroundColor: 'rgba(0,200,83,0.12)' }]}>
-              <Ionicons name="add" size={36} color={ACCENT} />
+              <Ionicons name="id-card-outline" size={40} color={ACCENT} />
             </View>
             <Text style={[styles.emptyTitle, { color: isDark ? '#fff' : '#111' }]}>Create your first eCard</Text>
             <Text style={[styles.emptySubtitle, { color: isDark ? 'rgba(255,255,255,0.5)' : '#888' }]}>
-              Tap here to get started with your digital card
+              Share your professional identity with a beautiful digital business card
             </Text>
           </TouchableOpacity>
         )}

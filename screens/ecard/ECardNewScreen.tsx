@@ -4,7 +4,7 @@
  * Ported from web: pages/app/ecard/new.tsx
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  SlideInRight,
+  SlideInLeft,
+  SlideOutLeft,
+  SlideOutRight,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../contexts/AuthContext';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabaseClient';
@@ -41,6 +50,9 @@ export default function ECardNewScreen() {
   const [selectedColorSchemeId, setSelectedColorSchemeId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
+  // Track navigation direction for animation
+  const directionRef = useRef<'forward' | 'back'>('forward');
+
   // ── Theme colors ──────────────────────────────────────────
   const bg = isDark ? '#000000' : '#FAFAFA';
   const headerBg = isDark ? '#0A0A0A' : '#FFFFFF';
@@ -52,12 +64,14 @@ export default function ECardNewScreen() {
 
   // ── Step 1: Type selection ────────────────────────────────
   const handleTypeSelect = (type: string, country?: string, template?: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setCardType(type);
     setCountryCode(country);
     setCountryTemplate(template);
     if (template) {
       setSelectedTemplateId(template);
     }
+    directionRef.current = 'forward';
     setStep('template');
   };
 
@@ -69,6 +83,8 @@ export default function ECardNewScreen() {
 
   const handleContinueToSetup = () => {
     if (selectedTemplateId) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      directionRef.current = 'forward';
       setStep('setup');
     }
   };
@@ -142,8 +158,10 @@ export default function ECardNewScreen() {
     if (step === 'type') {
       navigation.goBack();
     } else if (step === 'template') {
+      directionRef.current = 'back';
       setStep('type');
     } else {
+      directionRef.current = 'back';
       setStep('template');
     }
   };
@@ -198,27 +216,38 @@ export default function ECardNewScreen() {
       {/* ── Content ── */}
       <View style={styles.content}>
         {step === 'type' && (
-          <View style={styles.typeContainer}>
+          <Animated.View
+            key="type"
+            entering={directionRef.current === 'back' ? SlideInLeft.duration(300) : FadeIn.duration(200)}
+            exiting={SlideOutLeft.duration(250)}
+            style={styles.typeContainer}
+          >
             <TypePicker onSelect={handleTypeSelect} isDark={isDark} />
-          </View>
+          </Animated.View>
         )}
 
         {step === 'template' && (
-          <View style={styles.templateContainer}>
+          <Animated.View
+            key="template"
+            entering={directionRef.current === 'forward' ? SlideInRight.duration(300) : SlideInLeft.duration(300)}
+            exiting={directionRef.current === 'forward' ? SlideOutLeft.duration(250) : SlideOutRight.duration(250)}
+            style={styles.templateContainer}
+          >
             <TemplateGallery
               cardType={cardType}
               countryTemplate={countryTemplate}
               selectedTemplateId={selectedTemplateId}
               selectedColorSchemeId={selectedColorSchemeId}
               onSelect={handleTemplateSelect}
-              onBack={() => setStep('type')}
+              onBack={() => { directionRef.current = 'back'; setStep('type'); }}
               isPro={isPro}
               isDark={isDark}
             />
 
             {/* Continue button (floating at bottom) */}
             {selectedTemplateId && (
-              <View
+              <Animated.View
+                entering={FadeIn.duration(200)}
                 style={[
                   styles.continueContainer,
                   {
@@ -236,22 +265,27 @@ export default function ECardNewScreen() {
                 >
                   <Text style={styles.continueButtonText}>Continue</Text>
                 </TouchableOpacity>
-              </View>
+              </Animated.View>
             )}
-          </View>
+          </Animated.View>
         )}
 
         {step === 'setup' && selectedTemplateId && (
-          <View style={styles.setupContainer}>
+          <Animated.View
+            key="setup"
+            entering={directionRef.current === 'forward' ? SlideInRight.duration(300) : SlideInLeft.duration(300)}
+            exiting={SlideOutRight.duration(250)}
+            style={styles.setupContainer}
+          >
             <QuickSetup
               templateId={selectedTemplateId}
               colorSchemeId={selectedColorSchemeId}
-              onBack={() => setStep('template')}
+              onBack={() => { directionRef.current = 'back'; setStep('template'); }}
               onCreateCard={handleCreate}
               creating={creating}
               isDark={isDark}
             />
-          </View>
+          </Animated.View>
         )}
       </View>
     </SafeAreaView>

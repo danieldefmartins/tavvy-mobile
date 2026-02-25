@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { TEMPLATES, Template, ColorScheme } from '../../../config/eCardTemplates';
 import { renderTemplateLayout } from '../../../screens/ecard/TemplateLayouts';
 
@@ -178,6 +179,7 @@ export default function TemplateGallery({
   // ── Color scheme selection ──
   const handleColorSelect = useCallback(
     (templateId: string, schemeIndex: number) => {
+      Haptics.selectionAsync();
       setColorIndices(prev => ({ ...prev, [templateId]: schemeIndex }));
       const tmpl = filteredTemplates.find(t => t.id === templateId);
       if (tmpl) {

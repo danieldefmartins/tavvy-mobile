@@ -22,6 +22,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
 
 const ACCENT = '#00C853';
 
@@ -120,6 +121,7 @@ export default function QuickSetup({
   // ── Submit handler ────────────────────────────────────────
   const handleCreate = () => {
     if (!canCreate || creating) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onCreateCard({
       name: fullName.trim(),
       title: title.trim(),
@@ -254,7 +256,7 @@ export default function QuickSetup({
               return (
                 <TouchableOpacity
                   key={color}
-                  onPress={() => setPrimaryColor(color)}
+                  onPress={() => { Haptics.selectionAsync(); setPrimaryColor(color); }}
                   activeOpacity={0.7}
                   style={[
                     styles.colorCircleOuter,

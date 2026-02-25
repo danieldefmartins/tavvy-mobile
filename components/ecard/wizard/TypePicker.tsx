@@ -16,6 +16,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 
 const ACCENT = '#00C853';
 
@@ -205,35 +207,40 @@ export default function TypePicker({ onSelect, isDark }: TypePickerProps) {
       </Text>
 
       <View style={styles.optionsContainer}>
-        {TYPE_OPTIONS.map(({ id, name, desc, icon, gradient }) => (
-          <TouchableOpacity
+        {TYPE_OPTIONS.map(({ id, name, desc, icon, gradient }, index) => (
+          <Animated.View
             key={id}
-            activeOpacity={0.7}
-            onPress={() =>
-              id === 'politician' ? setShowCountries(true) : onSelect(id)
-            }
-            style={[
-              styles.typeCard,
-              {
-                backgroundColor: cardBg,
-                borderColor: border,
-              },
-            ]}
+            entering={FadeInDown.delay(index * 100).duration(400).springify()}
           >
-            <LinearGradient
-              colors={gradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.iconContainer}
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                Haptics.selectionAsync();
+                id === 'politician' ? setShowCountries(true) : onSelect(id);
+              }}
+              style={[
+                styles.typeCard,
+                {
+                  backgroundColor: cardBg,
+                  borderColor: border,
+                },
+              ]}
             >
-              <Ionicons name={icon} size={26} color="#FFFFFF" />
-            </LinearGradient>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.typeName, { color: textPrimary }]}>{name}</Text>
-              <Text style={[styles.typeDesc, { color: textSecondary }]}>{desc}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={textSecondary} />
-          </TouchableOpacity>
+              <LinearGradient
+                colors={gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.iconContainer}
+              >
+                <Ionicons name={icon} size={26} color="#FFFFFF" />
+              </LinearGradient>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.typeName, { color: textPrimary }]}>{name}</Text>
+                <Text style={[styles.typeDesc, { color: textSecondary }]}>{desc}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={textSecondary} />
+            </TouchableOpacity>
+          </Animated.View>
         ))}
       </View>
     </View>

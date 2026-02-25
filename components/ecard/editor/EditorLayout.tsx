@@ -9,7 +9,7 @@
  * - Conditional sections based on template_id
  */
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -24,15 +24,26 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { useEditor } from '../../../lib/ecard/EditorContext';
 import { useAutoSave } from '../../../lib/ecard/useAutoSave';
+import LivePreviewCard from './LivePreviewCard';
 import SectionNavigator from './SectionNavigator';
 import ProfileSection from './sections/ProfileSection';
 import ContactSection from './sections/ContactSection';
 import SocialSection from './sections/SocialSection';
 import LinksSection from './sections/LinksSection';
 import MediaSection from './sections/MediaSection';
-import StyleSection from './sections/StyleSection';
+import TemplateColorSection from './sections/TemplateColorSection';
+import ImagesLayoutSection from './sections/ImagesLayoutSection';
+import TypographySection from './sections/TypographySection';
 import CivicSection from './sections/CivicSection';
 import MobileBusinessSection from './sections/MobileBusinessSection';
 import AdvancedSection from './sections/AdvancedSection';
@@ -99,7 +110,9 @@ export default function EditorLayout({
       { id: 'social', label: 'Social' },
       { id: 'links', label: 'Links' },
       { id: 'media', label: 'Media' },
-      { id: 'style', label: 'Style' },
+      { id: 'template-colors', label: 'Template' },
+      { id: 'images-layout', label: 'Images' },
+      { id: 'typography', label: 'Fonts' },
     ];
     if (isCivic) base.push({ id: 'civic', label: 'Civic' });
     if (isMobileBiz) base.push({ id: 'mobile-business', label: 'Menu' });
@@ -139,6 +152,42 @@ export default function EditorLayout({
       ? ACCENT
       : textSecondary;
 
+  // ── Save animation ───────────────────────────────────────────────────────
+  const saveScale = useSharedValue(1);
+  const saveFlashOpacity = useSharedValue(0);
+  const prevLastSavedRef = useRef<Date | null>(null);
+
+  useEffect(() => {
+    if (lastSaved && lastSaved !== prevLastSavedRef.current) {
+      // Animate checkmark scale-in
+      saveScale.value = withSequence(
+        withTiming(0.7, { duration: 50 }),
+        withSpring(1, { damping: 10, stiffness: 200 })
+      );
+      // Brief green flash
+      saveFlashOpacity.value = withSequence(
+        withTiming(0.3, { duration: 100 }),
+        withTiming(0, { duration: 400 })
+      );
+      prevLastSavedRef.current = lastSaved;
+    }
+  }, [lastSaved, saveScale, saveFlashOpacity]);
+
+  const saveAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: saveScale.value }],
+  }));
+
+  const flashStyle = useAnimatedStyle(() => ({
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: ACCENT,
+    borderRadius: 8,
+    opacity: saveFlashOpacity.value,
+  }));
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -177,38 +226,41 @@ export default function EditorLayout({
         {/* Save + Preview */}
         <View style={styles.headerRight}>
           {/* Save button */}
-          <TouchableOpacity
-            onPress={saveNow}
-            disabled={isSaving || !isDirty}
-            activeOpacity={isDirty ? 0.7 : 1}
-            style={[
-              styles.saveButton,
-              { backgroundColor: saveButtonBg },
-            ]}
-            accessibilityLabel={saveStatusText}
-            accessibilityRole="button"
-          >
-            {isSaving && (
-              <ActivityIndicator
-                size="small"
-                color={saveButtonTextColor}
-                style={styles.saveSpinner}
-              />
-            )}
-            {!isDirty && lastSaved && !isSaving && (
-              <Ionicons
-                name="checkmark"
-                size={14}
-                color={ACCENT}
-                style={styles.saveIcon}
-              />
-            )}
-            <Text
-              style={[styles.saveText, { color: saveButtonTextColor }]}
+          <Animated.View style={saveAnimStyle}>
+            <TouchableOpacity
+              onPress={saveNow}
+              disabled={isSaving || !isDirty}
+              activeOpacity={isDirty ? 0.7 : 1}
+              style={[
+                styles.saveButton,
+                { backgroundColor: saveButtonBg, overflow: 'hidden' },
+              ]}
+              accessibilityLabel={saveStatusText}
+              accessibilityRole="button"
             >
-              {saveStatusText}
-            </Text>
-          </TouchableOpacity>
+              <Animated.View style={flashStyle} />
+              {isSaving && (
+                <ActivityIndicator
+                  size="small"
+                  color={saveButtonTextColor}
+                  style={styles.saveSpinner}
+                />
+              )}
+              {!isDirty && lastSaved && !isSaving && (
+                <Ionicons
+                  name="checkmark"
+                  size={14}
+                  color={ACCENT}
+                  style={styles.saveIcon}
+                />
+              )}
+              <Text
+                style={[styles.saveText, { color: saveButtonTextColor }]}
+              >
+                {saveStatusText}
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
 
           {/* QR Code */}
           {!!cardId && (
@@ -260,12 +312,17 @@ export default function EditorLayout({
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       >
+        {/* Live preview card — updates in real-time as user edits */}
+        <LivePreviewCard isDark={isDark} onExpandPreview={onPreview} />
+
         <ProfileSection isDark={isDark} isPro={isPro} />
         <ContactSection isDark={isDark} isPro={isPro} />
         <SocialSection isDark={isDark} isPro={isPro} />
         <LinksSection isDark={isDark} isPro={isPro} />
         <MediaSection isDark={isDark} isPro={isPro} />
-        <StyleSection isDark={isDark} isPro={isPro} />
+        <TemplateColorSection isDark={isDark} isPro={isPro} />
+        <ImagesLayoutSection isDark={isDark} isPro={isPro} />
+        <TypographySection isDark={isDark} isPro={isPro} />
 
         {isCivic && <CivicSection isDark={isDark} isPro={isPro} />}
         {isMobileBiz && <MobileBusinessSection isDark={isDark} isPro={isPro} />}
