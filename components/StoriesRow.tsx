@@ -251,7 +251,11 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
   if (places.length === 0 && !onAddStoryPress) {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>Discovering nearby places...</Text>
+        <Ionicons name="sparkles-outline" size={28} color="#06B6D4" style={{ marginBottom: 8 }} />
+        <Text style={styles.emptyTitle}>Stories are coming soon</Text>
+        <Text style={styles.emptyText}>
+          Great stories about your favorite places are about to go live. Stay tuned!
+        </Text>
       </View>
     );
   }
@@ -311,14 +315,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyContainer: {
-    height: 100,
+    paddingVertical: 24,
+    paddingHorizontal: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+    textAlign: 'center',
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#999',
+    textAlign: 'center',
+    lineHeight: 18,
   },
   scrollContent: {
     paddingHorizontal: 12,
