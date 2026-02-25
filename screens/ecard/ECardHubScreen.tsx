@@ -124,23 +124,12 @@ export default function ECardHubScreen() {
 
   const onRefresh = () => { setRefreshing(true); fetchCards(); };
 
-  // Card limit constants
-  const FREE_CARD_LIMIT = 1;
-  const PRO_CARD_LIMIT = 5;
+  // Publish limit — free users can publish 1 card, Pro unlimited
+  const FREE_PUBLISH_LIMIT = 1;
+  const PRO_PUBLISH_LIMIT = Infinity;
 
   const handleFabClick = () => {
-    if (isSuperAdmin) {
-      navigation.navigate('ECardNew');
-      return;
-    }
-    if (!isPro && cards.length >= FREE_CARD_LIMIT) {
-      openSheet('card-limit');
-      return;
-    }
-    if (isPro && cards.length >= PRO_CARD_LIMIT) {
-      openSheet('card-limit');
-      return;
-    }
+    // Always navigate — card limits are enforced at creation time, not at entry
     navigation.navigate('ECardNew');
   };
 
@@ -201,17 +190,6 @@ export default function ECardHubScreen() {
 
   const handleDuplicateCard = async (card: CardData) => {
     if (!user || duplicating) return;
-    // Card limit check for duplicate
-    if (!isSuperAdmin) {
-      if (!isPro && cards.length >= FREE_CARD_LIMIT) {
-        openSheet('card-limit');
-        return;
-      }
-      if (isPro && cards.length >= PRO_CARD_LIMIT) {
-        openSheet('card-limit');
-        return;
-      }
-    }
     setDuplicating(card.id);
     try {
       const { data: fullCard } = await supabase.from('digital_cards').select('*').eq('id', card.id).single();
@@ -435,18 +413,15 @@ export default function ECardHubScreen() {
                   />
                 </View>
                 <Text style={[styles.sheetTitle, { textAlign: 'center' }]}>
-                  {isPro ? 'Additional Card Required' : 'Upgrade to Pro'}
+                  Publish Limit Reached
                 </Text>
                 <Text style={[styles.sheetSubtitle, { textAlign: 'center', maxWidth: 280 }]}>
-                  {isPro
-                    ? `Your Pro plan includes up to ${PRO_CARD_LIMIT} cards. You currently have ${cards.length} card${cards.length !== 1 ? 's' : ''}. Contact support for additional card slots.`
-                    : `Free accounts can create ${FREE_CARD_LIMIT} card. Upgrade to Pro to create up to ${PRO_CARD_LIMIT} cards and unlock premium templates.`
-                  }
+                  Free accounts can publish {FREE_PUBLISH_LIMIT} card with a share link. Upgrade to Pro to publish unlimited cards.
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20, marginTop: 4 }}>
                   <Ionicons name="card-outline" size={14} color={isDark ? '#94A3B8' : '#888'} />
                   <Text style={{ fontSize: 13, color: isDark ? '#94A3B8' : '#888' }}>
-                    {isPro ? 'Pro Plan' : 'Free Plan'} — {cards.length}/{isPro ? PRO_CARD_LIMIT : FREE_CARD_LIMIT} cards used
+                    Free Plan — {FREE_PUBLISH_LIMIT} published card
                   </Text>
                 </View>
                 <TouchableOpacity
