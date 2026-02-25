@@ -1,0 +1,310 @@
+/**
+ * EditorLayout -- main editor shell with sticky header, scrollable sections,
+ * and floating dot navigator.
+ *
+ * React Native port of the web EditorLayout.tsx.
+ * - SafeAreaView for proper insets
+ * - ScrollView body with section components
+ * - Sticky header: back, card name + save status, preview
+ * - Conditional sections based on template_id
+ */
+
+import React, { useMemo, useRef } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Platform,
+  SafeAreaView,
+  ActivityIndicator,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useEditor } from '../../../lib/ecard/EditorContext';
+import { useAutoSave } from '../../../lib/ecard/useAutoSave';
+import SectionNavigator from './SectionNavigator';
+import ProfileSection from './sections/ProfileSection';
+import ContactSection from './sections/ContactSection';
+import SocialSection from './sections/SocialSection';
+import LinksSection from './sections/LinksSection';
+import MediaSection from './sections/MediaSection';
+import StyleSection from './sections/StyleSection';
+import CivicSection from './sections/CivicSection';
+import MobileBusinessSection from './sections/MobileBusinessSection';
+import AdvancedSection from './sections/AdvancedSection';
+
+const ACCENT = '#00C853';
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface EditorLayoutProps {
+  isDark: boolean;
+  isPro: boolean;
+  userId?: string;
+  onBack: () => void;
+  onPreview: () => void;
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
+
+export default function EditorLayout({
+  isDark,
+  isPro,
+  userId,
+  onBack,
+  onPreview,
+}: EditorLayoutProps) {
+  const scrollViewRef = useRef<ScrollView>(null);
+  const { state } = useEditor();
+  const { isSaving, isDirty, lastSaved, saveNow } = useAutoSave({
+    userId,
+    isPro,
+  });
+
+  const card = state.card;
+  const cardId = card?.id;
+  const templateId = card?.template_id || 'basic';
+
+  // Determine which conditional sections to show
+  const isCivic =
+    templateId.startsWith('civic-') || templateId === 'politician-generic';
+  const isMobileBiz = templateId === 'mobile-business';
+  const isProTemplate =
+    templateId.startsWith('pro-') ||
+    templateId === 'business-card' ||
+    templateId === 'cover-card';
+
+  // Build section list for SectionNavigator
+  const sections = useMemo(() => {
+    const base = [
+      { id: 'profile', label: 'Profile' },
+      { id: 'contact', label: 'Contact' },
+      { id: 'social', label: 'Social' },
+      { id: 'links', label: 'Links' },
+      { id: 'media', label: 'Media' },
+      { id: 'style', label: 'Style' },
+    ];
+    if (isCivic) base.push({ id: 'civic', label: 'Civic' });
+    if (isMobileBiz) base.push({ id: 'mobile-business', label: 'Menu' });
+    if (isProTemplate) base.push({ id: 'advanced', label: 'Advanced' });
+    return base;
+  }, [isCivic, isMobileBiz, isProTemplate]);
+
+  // ── Theme colors ─────────────────────────────────────────────────────────
+
+  const bg = isDark ? '#000000' : '#FAFAFA';
+  const headerBg = isDark ? '#0A0A0A' : '#FFFFFF';
+  const textPrimary = isDark ? '#FFFFFF' : '#111111';
+  const textSecondary = isDark ? '#94A3B8' : '#6B7280';
+  const borderColor = isDark
+    ? 'rgba(255,255,255,0.08)'
+    : 'rgba(0,0,0,0.06)';
+
+  // ── Save status ──────────────────────────────────────────────────────────
+
+  const saveStatusText = isSaving
+    ? 'Saving...'
+    : isDirty
+      ? 'Save'
+      : lastSaved
+        ? 'Saved'
+        : 'Save';
+
+  const saveButtonBg = isDirty
+    ? ACCENT
+    : isDark
+      ? 'rgba(255,255,255,0.06)'
+      : '#F3F4F6';
+
+  const saveButtonTextColor = isDirty
+    ? '#FFFFFF'
+    : lastSaved
+      ? ACCENT
+      : textSecondary;
+
+  // ── Render ───────────────────────────────────────────────────────────────
+
+  return (
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: headerBg }]}>
+      {/* ── Sticky Header ─────────────────────────────────────────────── */}
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: headerBg,
+            borderBottomColor: borderColor,
+          },
+        ]}
+      >
+        {/* Back */}
+        <TouchableOpacity
+          onPress={onBack}
+          style={styles.headerButton}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="arrow-back" size={22} color={textPrimary} />
+        </TouchableOpacity>
+
+        {/* Card name */}
+        <View style={styles.headerCenter}>
+          <Text
+            style={[styles.headerTitle, { color: textPrimary }]}
+            numberOfLines={1}
+          >
+            {card?.card_name || card?.full_name || 'Edit Card'}
+          </Text>
+        </View>
+
+        {/* Save + Preview */}
+        <View style={styles.headerRight}>
+          {/* Save button */}
+          <TouchableOpacity
+            onPress={saveNow}
+            disabled={isSaving || !isDirty}
+            activeOpacity={isDirty ? 0.7 : 1}
+            style={[
+              styles.saveButton,
+              { backgroundColor: saveButtonBg },
+            ]}
+            accessibilityLabel={saveStatusText}
+            accessibilityRole="button"
+          >
+            {isSaving && (
+              <ActivityIndicator
+                size="small"
+                color={saveButtonTextColor}
+                style={styles.saveSpinner}
+              />
+            )}
+            {!isDirty && lastSaved && !isSaving && (
+              <Ionicons
+                name="checkmark"
+                size={14}
+                color={ACCENT}
+                style={styles.saveIcon}
+              />
+            )}
+            <Text
+              style={[styles.saveText, { color: saveButtonTextColor }]}
+            >
+              {saveStatusText}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Preview */}
+          {!!cardId && (
+            <TouchableOpacity
+              onPress={onPreview}
+              style={styles.headerButton}
+              accessibilityLabel="Preview card"
+              accessibilityRole="button"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="eye-outline" size={20} color={textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* ── Scrollable sections ───────────────────────────────────────── */}
+      <ScrollView
+        ref={scrollViewRef}
+        style={[styles.scrollView, { backgroundColor: bg }]}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+      >
+        <ProfileSection isDark={isDark} isPro={isPro} />
+        <ContactSection isDark={isDark} isPro={isPro} />
+        <SocialSection isDark={isDark} isPro={isPro} />
+        <LinksSection isDark={isDark} isPro={isPro} />
+        <MediaSection isDark={isDark} isPro={isPro} />
+        <StyleSection isDark={isDark} isPro={isPro} />
+
+        {isCivic && <CivicSection isDark={isDark} isPro={isPro} />}
+        {isMobileBiz && <MobileBusinessSection isDark={isDark} isPro={isPro} />}
+        {isProTemplate && <AdvancedSection isDark={isDark} isPro={isPro} />}
+      </ScrollView>
+
+      {/* ── Section navigator (floating dots) ─────────────────────────── */}
+      <SectionNavigator
+        sections={sections}
+        scrollViewRef={scrollViewRef}
+        isDark={isDark}
+      />
+    </SafeAreaView>
+  );
+}
+
+// ── Styles ──────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  headerButton: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 8,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  saveSpinner: {
+    marginRight: 4,
+  },
+  saveIcon: {
+    marginRight: 4,
+  },
+  saveText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+});
