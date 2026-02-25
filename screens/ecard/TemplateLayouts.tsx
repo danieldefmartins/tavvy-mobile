@@ -21,6 +21,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TemplateLayout, ColorScheme } from '../../config/eCardTemplates';
+import CivicCardSection, { SAMPLE_CIVIC_DATA } from '../../components/ecard/civic/CivicCardSection';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -1036,11 +1037,14 @@ function renderCivicCardLayout(p: LayoutProps) {
           <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
         </View>
 
-        {/* Note: Proposals, Q&A, Commitments are rendered via the web view */}
-        <View style={{ marginTop: 16, padding: 16, backgroundColor: `${partyColor}08`, borderRadius: 12, borderLeftWidth: 3, borderLeftColor: partyColor }}>
-          <Text style={{ fontSize: 12, fontWeight: '600', color: partyColor, marginBottom: 4 }}>Civic Card</Text>
-          <Text style={{ fontSize: 11, color: '#666', lineHeight: 16 }}>Proposals, Q&A, and commitments are interactive on the web card. Share your card link for the full experience.</Text>
-        </View>
+        {/* Proposals, Q&A, Commitments */}
+        <CivicCardSection
+          proposals={SAMPLE_CIVIC_DATA.proposals}
+          questions={SAMPLE_CIVIC_DATA.questions}
+          commitments={SAMPLE_CIVIC_DATA.commitments}
+          accentColor={partyColor}
+          isPreview
+        />
       </View>
       {children}
     </View>
@@ -1109,10 +1113,13 @@ function renderCivicCardFlagLayout(p: LayoutProps) {
           <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
           <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
         </View>
-        <View style={{ marginTop: 16, padding: 16, backgroundColor: '#00973908', borderRadius: 12, borderLeftWidth: 3, borderLeftColor: '#009739' }}>
-          <Text style={{ fontSize: 12, fontWeight: '600', color: '#009739', marginBottom: 4 }}>Civic Card — Bandeira</Text>
-          <Text style={{ fontSize: 11, color: '#666', lineHeight: 16 }}>Proposals, Q&A, and commitments are interactive on the web card. Share your card link for the full experience.</Text>
-        </View>
+        <CivicCardSection
+          proposals={SAMPLE_CIVIC_DATA.proposals}
+          questions={SAMPLE_CIVIC_DATA.questions}
+          commitments={SAMPLE_CIVIC_DATA.commitments}
+          accentColor="#009739"
+          isPreview
+        />
       </View>
       {children}
     </View>
@@ -1201,10 +1208,13 @@ function renderCivicCardBoldLayout(p: LayoutProps) {
           <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
           <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
         </View>
-        <View style={{ marginTop: 16, padding: 16, backgroundColor: `${partyColor}08`, borderRadius: 12, borderLeftWidth: 3, borderLeftColor: partyColor }}>
-          <Text style={{ fontSize: 12, fontWeight: '600', color: partyColor, marginBottom: 4 }}>Civic Card — Impacto</Text>
-          <Text style={{ fontSize: 11, color: '#666', lineHeight: 16 }}>Proposals, Q&A, and commitments are interactive on the web card. Share your card link for the full experience.</Text>
-        </View>
+        <CivicCardSection
+          proposals={SAMPLE_CIVIC_DATA.proposals}
+          questions={SAMPLE_CIVIC_DATA.questions}
+          commitments={SAMPLE_CIVIC_DATA.commitments}
+          accentColor={partyColor}
+          isPreview
+        />
       </View>
       {children}
     </View>
@@ -1289,10 +1299,13 @@ function renderCivicCardCleanLayout(p: LayoutProps) {
           <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
           <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
         </View>
-        <View style={{ marginTop: 16, padding: 16, backgroundColor: `${accentColor}08`, borderRadius: 12, borderLeftWidth: 3, borderLeftColor: accentColor }}>
-          <Text style={{ fontSize: 12, fontWeight: '600', color: accentColor, marginBottom: 4 }}>Civic Card — Moderno</Text>
-          <Text style={{ fontSize: 11, color: '#666', lineHeight: 16 }}>Proposals, Q&A, and commitments are interactive on the web card. Share your card link for the full experience.</Text>
-        </View>
+        <CivicCardSection
+          proposals={SAMPLE_CIVIC_DATA.proposals}
+          questions={SAMPLE_CIVIC_DATA.questions}
+          commitments={SAMPLE_CIVIC_DATA.commitments}
+          accentColor={accentColor}
+          isPreview
+        />
       </View>
       {children}
     </View>
@@ -1370,10 +1383,13 @@ function renderCivicCardRallyLayout(p: LayoutProps) {
           <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
           <ContactRow icon="location-outline" value={data.address} onChange={p.onChangeAddress} placeholder="City, State" textColor="#1a1a2e" borderColor={borderCol} isEditable={isEditable} isLightCard={true} />
         </View>
-        <View style={{ marginTop: 16, padding: 16, backgroundColor: `${partyColor}08`, borderRadius: 12, borderLeftWidth: 3, borderLeftColor: partyColor }}>
-          <Text style={{ fontSize: 12, fontWeight: '600', color: partyColor, marginBottom: 4 }}>Civic Card — Campanha</Text>
-          <Text style={{ fontSize: 11, color: '#666', lineHeight: 16 }}>Proposals, Q&A, and commitments are interactive on the web card. Share your card link for the full experience.</Text>
-        </View>
+        <CivicCardSection
+          proposals={SAMPLE_CIVIC_DATA.proposals}
+          questions={SAMPLE_CIVIC_DATA.questions}
+          commitments={SAMPLE_CIVIC_DATA.commitments}
+          accentColor={partyColor}
+          isPreview
+        />
       </View>
       {children}
     </View>
