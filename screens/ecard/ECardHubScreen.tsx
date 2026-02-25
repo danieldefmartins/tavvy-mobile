@@ -329,34 +329,46 @@ export default function ECardHubScreen() {
                 </View>
 
                 {/* Actions */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                <View style={{ flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                  {/* Stats button — prominent */}
                   <TouchableOpacity
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    onPress={() => handleDuplicateCard(card)}
-                    disabled={duplicating === card.id}
-                    style={{ padding: 6, opacity: duplicating === card.id ? 0.4 : 1 }}
-                  >
-                    {duplicating === card.id ? (
-                      <ActivityIndicator size="small" color={isDark ? '#94A3B8' : '#888'} />
-                    ) : (
-                      <Ionicons name="copy-outline" size={16} color={isDark ? '#94A3B8' : '#888'} />
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     onPress={() => navigation.navigate('ECardStats', { cardId: card.id })}
-                    style={{ padding: 6 }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                      borderRadius: 8,
+                      backgroundColor: isDark ? 'rgba(0,200,83,0.1)' : 'rgba(0,200,83,0.08)',
+                    }}
                   >
-                    <Ionicons name="bar-chart-outline" size={16} color={isDark ? '#94A3B8' : '#888'} />
+                    <Ionicons name="bar-chart-outline" size={14} color={ACCENT} />
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: ACCENT }}>Stats</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    onPress={() => setDeleteModalCard(card)}
-                    style={{ padding: 6 }}
-                  >
-                    <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                  </TouchableOpacity>
-                  <Ionicons name="chevron-forward" size={16} color={isDark ? '#94A3B8' : '#888'} />
+                  {/* Secondary actions row */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                    <TouchableOpacity
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      onPress={() => handleDuplicateCard(card)}
+                      disabled={duplicating === card.id}
+                      style={{ padding: 4, opacity: duplicating === card.id ? 0.4 : 1 }}
+                    >
+                      {duplicating === card.id ? (
+                        <ActivityIndicator size="small" color={isDark ? '#94A3B8' : '#888'} />
+                      ) : (
+                        <Ionicons name="copy-outline" size={14} color={isDark ? '#94A3B8' : '#888'} />
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      onPress={() => setDeleteModalCard(card)}
+                      style={{ padding: 4 }}
+                    >
+                      <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                    </TouchableOpacity>
+                    <Ionicons name="chevron-forward" size={14} color={isDark ? '#94A3B8' : '#888'} />
+                  </View>
                 </View>
               </TouchableOpacity>
             ))}

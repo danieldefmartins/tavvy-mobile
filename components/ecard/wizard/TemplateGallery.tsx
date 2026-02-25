@@ -194,6 +194,32 @@ export default function TemplateGallery({
   const activeTemplate = items[activeIndex]?.template;
   const activeColorIndex = activeTemplate ? (colorIndices[activeTemplate.id] ?? 0) : 0;
 
+  // ── Safe template renderer (prevents silent FlatList crash) ──
+  const safeRenderLayout = useCallback(
+    (template: Template, scheme: ColorScheme) => {
+      try {
+        return renderTemplateLayout({
+          layout: template.layout,
+          color: scheme,
+          data: SAMPLE_DATA,
+          isEditable: false,
+          textColor: scheme.text || '#fff',
+          textSecondary: scheme.textSecondary || 'rgba(255,255,255,0.7)',
+          isLightCard: scheme.text === '#2d2d2d',
+        });
+      } catch (err) {
+        console.error(`[TemplateGallery] render failed for ${template.id}:`, err);
+        return (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, minHeight: 300 }}>
+            <Ionicons name="image-outline" size={40} color="rgba(0,0,0,0.2)" />
+            <Text style={{ marginTop: 8, fontSize: 13, color: 'rgba(0,0,0,0.4)' }}>Preview unavailable</Text>
+          </View>
+        );
+      }
+    },
+    [],
+  );
+
   // ── Render a single carousel card ──
   const renderItem = useCallback(
     ({ item }: { item: TemplateItem }) => {
@@ -204,7 +230,7 @@ export default function TemplateGallery({
       const isSelected = selectedTemplateId === template.id;
 
       return (
-        <View style={[styles.slideContainer, { width: CARD_WIDTH }]}>
+        <View style={[styles.slideContainer, { width: CARD_WIDTH, marginRight: GAP }]}>
           {/* Phone-shaped card frame */}
           <TouchableOpacity
             activeOpacity={isLocked ? 0.6 : 0.9}
@@ -224,15 +250,7 @@ export default function TemplateGallery({
           >
             {/* Render actual template layout */}
             <View style={styles.layoutWrapper} pointerEvents="none">
-              {renderTemplateLayout({
-                layout: template.layout,
-                color: scheme,
-                data: SAMPLE_DATA,
-                isEditable: false,
-                textColor: scheme.text || '#fff',
-                textSecondary: scheme.textSecondary || 'rgba(255,255,255,0.7)',
-                isLightCard: scheme.text === '#2d2d2d',
-              })}
+              {safeRenderLayout(template, scheme)}
             </View>
 
             {/* Lock overlay for premium templates */}
@@ -263,19 +281,22 @@ export default function TemplateGallery({
         </View>
       );
     },
-    [colorIndices, isPro, selectedTemplateId, onSelect, textPrimary, textSecondary],
+    [colorIndices, isPro, selectedTemplateId, onSelect, textPrimary, textSecondary, safeRenderLayout],
   );
 
   const keyExtractor = useCallback((item: TemplateItem) => item.template.id, []);
 
-  const getItemLayout = useCallback(
-    (_: any, index: number) => ({
-      length: SNAP_INTERVAL,
-      offset: SNAP_INTERVAL * index,
-      index,
-    }),
-    [],
-  );
+  // ── Scroll to pre-selected template on mount ──
+  useEffect(() => {
+    if (activeIndex > 0 && flatListRef.current) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({
+          offset: SNAP_INTERVAL * activeIndex,
+          animated: false,
+        });
+      }, 100);
+    }
+  }, []); // Run once on mount
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
@@ -305,14 +326,21 @@ export default function TemplateGallery({
         snapToAlignment="start"
         decelerationRate="fast"
         contentContainerStyle={{
-          paddingHorizontal: SIDE_PADDING,
+          paddingLeft: SIDE_PADDING,
+          paddingRight: SIDE_PADDING,
+          flexGrow: items.length === 0 ? 1 : undefined,
         }}
-        ItemSeparatorComponent={() => <View style={{ width: GAP }} />}
-        getItemLayout={getItemLayout}
-        initialScrollIndex={activeIndex}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         onMomentumScrollEnd={handleMomentumScrollEnd}
+        ListEmptyComponent={
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+            <Ionicons name="albums-outline" size={48} color={textSecondary} />
+            <Text style={{ marginTop: 12, fontSize: 15, color: textSecondary, textAlign: 'center' }}>
+              No templates available for this category
+            </Text>
+          </View>
+        }
       />
 
       {/* ── Dot indicators ── */}

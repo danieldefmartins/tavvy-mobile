@@ -27,6 +27,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
+import QRCode from 'react-native-qrcode-svg';
 
 import { supabase } from '../../lib/supabaseClient';
 import { FONTS, PREMIUM_FONT_COUNT } from '../../config/eCardFonts';
@@ -1313,10 +1314,8 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
   ];
 
   const generateQRCode = (dotColor?: string, bgColor?: string) => {
-    const dc = (dotColor || qrDotColor).replace('#', '');
-    const bc = (bgColor || qrBgColor).replace('#', '');
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://${cardUrl}&color=${dc}&bgcolor=${bc}`;
-    setQrCodeUrl(qrUrl);
+    if (dotColor) setQrDotColor(dotColor);
+    if (bgColor) setQrBgColor(bgColor);
     setShowQRModal(true);
   };
 
@@ -2334,11 +2333,14 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           </Text>
           
           {/* QR Code Preview */}
-          {qrCodeUrl ? (
-            <View style={{ alignItems: 'center', marginBottom: 16, padding: 16, borderRadius: 16, backgroundColor: qrBgColor }}>
-              <Image source={{ uri: qrCodeUrl }} style={s.qrImage} />
-            </View>
-          ) : null}
+          <View style={{ alignItems: 'center', marginBottom: 16, padding: 16, borderRadius: 16, backgroundColor: qrBgColor }}>
+            <QRCode
+              value={`https://${cardUrl}`}
+              size={200}
+              backgroundColor={qrBgColor}
+              color={qrDotColor}
+            />
+          </View>
 
           {/* Style Presets */}
           <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>Style</Text>
@@ -2351,10 +2353,6 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
                     setQrStylePreset(preset.id);
                     setQrDotColor(preset.dotColor);
                     setQrBgColor(preset.bgColor);
-                    // Regenerate QR with new colors
-                    const dc = preset.dotColor.replace('#', '');
-                    const bc = preset.bgColor.replace('#', '');
-                    setQrCodeUrl(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://${cardUrl}&color=${dc}&bgcolor=${bc}`);
                   }}
                   style={{
                     alignItems: 'center', gap: 4, padding: 8,

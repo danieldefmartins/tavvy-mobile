@@ -9,7 +9,7 @@
  * - Conditional sections based on template_id
  */
 
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -19,8 +19,11 @@ import {
   Platform,
   SafeAreaView,
   ActivityIndicator,
+  Modal,
+  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import QRCode from 'react-native-qrcode-svg';
 import { useEditor } from '../../../lib/ecard/EditorContext';
 import { useAutoSave } from '../../../lib/ecard/useAutoSave';
 import SectionNavigator from './SectionNavigator';
@@ -56,6 +59,7 @@ export default function EditorLayout({
   onPreview,
 }: EditorLayoutProps) {
   const scrollViewRef = useRef<ScrollView>(null);
+  const [showQR, setShowQR] = useState(false);
   const { state } = useEditor();
   const { isSaving, isDirty, lastSaved, saveNow } = useAutoSave({
     userId,
@@ -65,6 +69,18 @@ export default function EditorLayout({
   const card = state.card;
   const cardId = card?.id;
   const templateId = card?.template_id || 'basic';
+  const cardUrl = `https://tavvy.com/${card?.slug || 'preview'}`;
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `Check out my digital card: ${cardUrl}`,
+        url: cardUrl,
+      });
+    } catch {
+      // User cancelled
+    }
+  };
 
   // Determine which conditional sections to show
   const isCivic =
@@ -194,6 +210,32 @@ export default function EditorLayout({
             </Text>
           </TouchableOpacity>
 
+          {/* QR Code */}
+          {!!cardId && (
+            <TouchableOpacity
+              onPress={() => setShowQR(true)}
+              style={styles.headerButton}
+              accessibilityLabel="QR Code"
+              accessibilityRole="button"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="qr-code-outline" size={20} color={textSecondary} />
+            </TouchableOpacity>
+          )}
+
+          {/* Share */}
+          {!!cardId && (
+            <TouchableOpacity
+              onPress={handleShare}
+              style={styles.headerButton}
+              accessibilityLabel="Share card"
+              accessibilityRole="button"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="share-outline" size={20} color={textSecondary} />
+            </TouchableOpacity>
+          )}
+
           {/* Preview */}
           {!!cardId && (
             <TouchableOpacity
@@ -236,6 +278,74 @@ export default function EditorLayout({
         scrollViewRef={scrollViewRef}
         isDark={isDark}
       />
+
+      {/* ── QR Code Modal ────────────────────────────────────────────── */}
+      <Modal
+        visible={showQR}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowQR(false)}
+      >
+        <View style={styles.qrOverlay}>
+          <View
+            style={[
+              styles.qrModal,
+              { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.qrCloseBtn}
+              onPress={() => setShowQR(false)}
+            >
+              <Ionicons
+                name="close"
+                size={22}
+                color={isDark ? '#94A3B8' : '#666'}
+              />
+            </TouchableOpacity>
+
+            <Text
+              style={[styles.qrTitle, { color: textPrimary }]}
+            >
+              QR Code
+            </Text>
+            <Text
+              style={[styles.qrSubtitle, { color: textSecondary }]}
+            >
+              Scan to view your card
+            </Text>
+
+            <View style={styles.qrContainer}>
+              <QRCode
+                value={cardUrl}
+                size={200}
+                backgroundColor="#FFFFFF"
+                color="#000000"
+              />
+            </View>
+
+            <Text
+              style={[styles.qrUrl, { color: textSecondary }]}
+              numberOfLines={1}
+            >
+              {cardUrl}
+            </Text>
+
+            <View style={styles.qrActions}>
+              <TouchableOpacity
+                style={[styles.qrActionBtn, { backgroundColor: ACCENT }]}
+                onPress={() => {
+                  setShowQR(false);
+                  handleShare();
+                }}
+              >
+                <Ionicons name="share-outline" size={18} color="#FFFFFF" />
+                <Text style={styles.qrActionText}>Share</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -306,5 +416,64 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 100,
+  },
+
+  // QR Modal
+  qrOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  qrModal: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 24,
+    padding: 28,
+    alignItems: 'center',
+  },
+  qrCloseBtn: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    padding: 6,
+    borderRadius: 8,
+  },
+  qrTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  qrSubtitle: {
+    fontSize: 14,
+    marginBottom: 24,
+  },
+  qrContainer: {
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  qrUrl: {
+    fontSize: 13,
+    marginBottom: 20,
+  },
+  qrActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  qrActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+  },
+  qrActionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
