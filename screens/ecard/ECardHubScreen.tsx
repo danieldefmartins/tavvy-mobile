@@ -1,11 +1,10 @@
 /**
  * ECardHubScreen.tsx
  * Clean, simple entry point — shows existing cards or prompts to create one.
- * Single "+" FAB to create. Card type picker before template gallery.
- * Politician flow includes a country selector with search.
+ * Single "+" FAB navigates to the new ECardNew wizard screen.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,8 +18,6 @@ import {
   Alert,
   Modal,
   Animated,
-  TextInput,
-  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -52,83 +49,7 @@ interface CardData {
   created_at: string;
 }
 
-interface CountryItem {
-  code: string;
-  name: string;
-  nameLocal: string;
-  flag: string;
-  featured: boolean;
-  template: string;
-}
-
-const CARD_TYPES = [
-  {
-    id: 'business',
-    icon: 'business-outline' as const,
-    label: 'Business',
-    desc: 'For your company, store, or service',
-    gradient: ['#3B82F6', '#1D4ED8'] as [string, string],
-  },
-  {
-    id: 'personal',
-    icon: 'person-outline' as const,
-    label: 'Personal',
-    desc: 'Your personal brand & link page',
-    gradient: ['#8B5CF6', '#6D28D9'] as [string, string],
-  },
-  {
-    id: 'politician',
-    icon: 'flag-outline' as const,
-    label: 'Politician',
-    desc: 'For public servants & candidates',
-    gradient: ['#00C853', '#00A843'] as [string, string],
-  },
-];
-
-const COUNTRIES: CountryItem[] = [
-  { code: 'BR', name: 'Brazil', nameLocal: 'Brasil', flag: '🇧🇷', featured: true, template: 'civic-card' },
-  { code: 'US', name: 'United States', nameLocal: 'Estados Unidos', flag: '🇺🇸', featured: false, template: 'politician-generic' },
-  { code: 'GB', name: 'United Kingdom', nameLocal: 'Reino Unido', flag: '🇬🇧', featured: false, template: 'politician-generic' },
-  { code: 'CA', name: 'Canada', nameLocal: 'Canadá', flag: '🇨🇦', featured: false, template: 'politician-generic' },
-  { code: 'MX', name: 'Mexico', nameLocal: 'México', flag: '🇲🇽', featured: false, template: 'politician-generic' },
-  { code: 'AR', name: 'Argentina', nameLocal: 'Argentina', flag: '🇦🇷', featured: false, template: 'politician-generic' },
-  { code: 'CO', name: 'Colombia', nameLocal: 'Colombia', flag: '🇨🇴', featured: false, template: 'politician-generic' },
-  { code: 'CL', name: 'Chile', nameLocal: 'Chile', flag: '🇨🇱', featured: false, template: 'politician-generic' },
-  { code: 'PE', name: 'Peru', nameLocal: 'Perú', flag: '🇵🇪', featured: false, template: 'politician-generic' },
-  { code: 'PT', name: 'Portugal', nameLocal: 'Portugal', flag: '🇵🇹', featured: false, template: 'politician-generic' },
-  { code: 'ES', name: 'Spain', nameLocal: 'España', flag: '🇪🇸', featured: false, template: 'politician-generic' },
-  { code: 'FR', name: 'France', nameLocal: 'France', flag: '🇫🇷', featured: false, template: 'politician-generic' },
-  { code: 'DE', name: 'Germany', nameLocal: 'Deutschland', flag: '🇩🇪', featured: false, template: 'politician-generic' },
-  { code: 'IT', name: 'Italy', nameLocal: 'Italia', flag: '🇮🇹', featured: false, template: 'politician-generic' },
-  { code: 'AU', name: 'Australia', nameLocal: 'Australia', flag: '🇦🇺', featured: false, template: 'politician-generic' },
-  { code: 'JP', name: 'Japan', nameLocal: '日本', flag: '🇯🇵', featured: false, template: 'politician-generic' },
-  { code: 'KR', name: 'South Korea', nameLocal: '대한민국', flag: '🇰🇷', featured: false, template: 'politician-generic' },
-  { code: 'IN', name: 'India', nameLocal: 'भारत', flag: '🇮🇳', featured: false, template: 'politician-generic' },
-  { code: 'NG', name: 'Nigeria', nameLocal: 'Nigeria', flag: '🇳🇬', featured: false, template: 'politician-generic' },
-  { code: 'ZA', name: 'South Africa', nameLocal: 'South Africa', flag: '🇿🇦', featured: false, template: 'politician-generic' },
-  { code: 'KE', name: 'Kenya', nameLocal: 'Kenya', flag: '🇰🇪', featured: false, template: 'politician-generic' },
-  { code: 'EG', name: 'Egypt', nameLocal: 'مصر', flag: '🇪🇬', featured: false, template: 'politician-generic' },
-  { code: 'IL', name: 'Israel', nameLocal: 'ישראל', flag: '🇮🇱', featured: false, template: 'politician-generic' },
-  { code: 'PH', name: 'Philippines', nameLocal: 'Pilipinas', flag: '🇵🇭', featured: false, template: 'politician-generic' },
-  { code: 'ID', name: 'Indonesia', nameLocal: 'Indonesia', flag: '🇮🇩', featured: false, template: 'politician-generic' },
-  { code: 'PL', name: 'Poland', nameLocal: 'Polska', flag: '🇵🇱', featured: false, template: 'politician-generic' },
-  { code: 'SE', name: 'Sweden', nameLocal: 'Sverige', flag: '🇸🇪', featured: false, template: 'politician-generic' },
-  { code: 'UY', name: 'Uruguay', nameLocal: 'Uruguay', flag: '🇺🇾', featured: false, template: 'politician-generic' },
-  { code: 'PY', name: 'Paraguay', nameLocal: 'Paraguay', flag: '🇵🇾', featured: false, template: 'politician-generic' },
-  { code: 'EC', name: 'Ecuador', nameLocal: 'Ecuador', flag: '🇪🇨', featured: false, template: 'politician-generic' },
-  { code: 'VE', name: 'Venezuela', nameLocal: 'Venezuela', flag: '🇻🇪', featured: false, template: 'politician-generic' },
-  { code: 'BO', name: 'Bolivia', nameLocal: 'Bolivia', flag: '🇧🇴', featured: false, template: 'politician-generic' },
-  { code: 'CR', name: 'Costa Rica', nameLocal: 'Costa Rica', flag: '🇨🇷', featured: false, template: 'politician-generic' },
-  { code: 'PA', name: 'Panama', nameLocal: 'Panamá', flag: '🇵🇦', featured: false, template: 'politician-generic' },
-  { code: 'DO', name: 'Dominican Republic', nameLocal: 'República Dominicana', flag: '🇩🇴', featured: false, template: 'politician-generic' },
-  { code: 'GT', name: 'Guatemala', nameLocal: 'Guatemala', flag: '🇬🇹', featured: false, template: 'politician-generic' },
-  { code: 'HN', name: 'Honduras', nameLocal: 'Honduras', flag: '🇭🇳', featured: false, template: 'politician-generic' },
-  { code: 'SV', name: 'El Salvador', nameLocal: 'El Salvador', flag: '🇸🇻', featured: false, template: 'politician-generic' },
-  { code: 'NI', name: 'Nicaragua', nameLocal: 'Nicaragua', flag: '🇳🇮', featured: false, template: 'politician-generic' },
-  { code: 'CU', name: 'Cuba', nameLocal: 'Cuba', flag: '🇨🇺', featured: false, template: 'politician-generic' },
-];
-
-type SheetStep = 'closed' | 'type-picker' | 'country-picker' | 'card-limit';
+type SheetStep = 'closed' | 'card-limit';
 
 export default function ECardHubScreen() {
   const { t } = useTranslation();
@@ -142,7 +63,6 @@ export default function ECardHubScreen() {
   const [deleting, setDeleting] = useState(false);
   const [duplicating, setDuplicating] = useState<string | null>(null);
   const [sheetStep, setSheetStep] = useState<SheetStep>('closed');
-  const [countrySearch, setCountrySearch] = useState('');
   const slideAnim = useState(new Animated.Value(0))[0];
 
   // Role-based card limits
@@ -209,26 +129,23 @@ export default function ECardHubScreen() {
   const PRO_CARD_LIMIT = 1;
 
   const handleFabClick = () => {
-    // Super admins bypass all limits
     if (isSuperAdmin) {
-      openSheet('type-picker');
+      navigation.navigate('ECardNew');
       return;
     }
-    // Free users: 1 card
     if (!isPro && cards.length >= FREE_CARD_LIMIT) {
       openSheet('card-limit');
       return;
     }
-    // Pro users: 1 premium card
     if (isPro && cards.length >= PRO_CARD_LIMIT) {
       openSheet('card-limit');
       return;
     }
-    openSheet('type-picker');
+    navigation.navigate('ECardNew');
   };
 
   const handleEditCard = (card: CardData) => {
-    navigation.navigate('ECardDashboard', { cardId: card.id });
+    navigation.navigate('ECardEdit', { cardId: card.id });
   };
 
   const openSheet = (step: SheetStep) => {
@@ -239,33 +156,7 @@ export default function ECardHubScreen() {
   const closeSheet = () => {
     Animated.timing(slideAnim, { toValue: 0, useNativeDriver: true, duration: 200 }).start(() => {
       setSheetStep('closed');
-      setCountrySearch('');
     });
-  };
-
-  const handleCreateWithType = (type: string) => {
-    if (type === 'politician') {
-      // Transition to country picker step
-      setSheetStep('country-picker');
-      setCountrySearch('');
-      return;
-    }
-    closeSheet();
-    setTimeout(() => {
-      navigation.navigate('ECardTemplateGallery', { mode: 'create', cardType: type });
-    }, 250);
-  };
-
-  const handleSelectCountry = (country: CountryItem) => {
-    closeSheet();
-    setTimeout(() => {
-      navigation.navigate('ECardTemplateGallery', {
-        mode: 'create',
-        cardType: 'politician',
-        countryCode: country.code,
-        templateOverride: country.template,
-      });
-    }, 250);
   };
 
   const handleDeleteCard = async () => {
@@ -342,7 +233,7 @@ export default function ECardHubScreen() {
         }));
         await supabase.from('digital_card_links').insert(newLinks);
       }
-      navigation.navigate('ECardDashboard', { cardId: newCard.id });
+      navigation.navigate('ECardEdit', { cardId: newCard.id });
     } catch (err) {
       console.error('Duplicate error:', err);
       Alert.alert('Error', 'Failed to duplicate card.');
@@ -350,20 +241,6 @@ export default function ECardHubScreen() {
       setDuplicating(null);
     }
   };
-
-  /* ── Filtered countries ── */
-  const filteredCountries = useMemo(() => {
-    const q = countrySearch.toLowerCase().trim();
-    if (!q) return COUNTRIES;
-    return COUNTRIES.filter(c =>
-      c.name.toLowerCase().includes(q) ||
-      c.nameLocal.toLowerCase().includes(q) ||
-      c.code.toLowerCase().includes(q)
-    );
-  }, [countrySearch]);
-
-  const featuredCountries = filteredCountries.filter(c => c.featured);
-  const otherCountries = filteredCountries.filter(c => !c.featured);
 
   // ── Loading ──
   if (loading) {
@@ -467,6 +344,13 @@ export default function ECardHubScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    onPress={() => navigation.navigate('ECardStats', { cardId: card.id })}
+                    style={{ padding: 6 }}
+                  >
+                    <Ionicons name="bar-chart-outline" size={16} color={isDark ? '#94A3B8' : '#888'} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     onPress={() => setDeleteModalCard(card)}
                     style={{ padding: 6 }}
                   >
@@ -508,7 +392,7 @@ export default function ECardHubScreen() {
       </TouchableOpacity>
 
       {/* ══════════════════════════════════════════════════════════
-          BOTTOM SHEET: Card Type Picker + Country Selector
+          BOTTOM SHEET: Card Limit
          ══════════════════════════════════════════════════════════ */}
       {sheetStep !== 'closed' && (
         <View style={StyleSheet.absoluteFill}>
@@ -520,143 +404,10 @@ export default function ECardHubScreen() {
             {
               backgroundColor: isDark ? '#1A1A1A' : '#fff',
               transform: [{ translateY }],
-              maxHeight: sheetStep === 'country-picker' ? '80%' : undefined,
             },
           ]}>
             <View style={[styles.sheetHandle, { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : '#DDD' }]} />
 
-            {/* ── STEP 1: Card Type Picker ── */}
-            {sheetStep === 'type-picker' && (
-              <>
-                <Text style={[styles.sheetTitle, { color: isDark ? '#fff' : '#111' }]}>Choose your card type</Text>
-                <Text style={[styles.sheetSubtitle, { color: isDark ? 'rgba(255,255,255,0.5)' : '#888' }]}>
-                  Select the type that best fits your needs
-                </Text>
-                <View style={{ gap: 10, marginTop: 4 }}>
-                  {CARD_TYPES.map((ct) => (
-                    <TouchableOpacity
-                      key={ct.id}
-                      style={[styles.typeRow, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F7F7F7', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
-                      onPress={() => handleCreateWithType(ct.id)}
-                      activeOpacity={0.8}
-                    >
-                      <LinearGradient colors={ct.gradient} style={styles.typeIcon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                        <Ionicons name={ct.icon} size={24} color="#fff" />
-                      </LinearGradient>
-                      <View style={{ flex: 1, marginLeft: 16 }}>
-                        <Text style={[styles.typeLabel, { color: isDark ? '#fff' : '#111' }]}>{ct.label}</Text>
-                        <Text style={[styles.typeDesc, { color: isDark ? 'rgba(255,255,255,0.5)' : '#888' }]}>{ct.desc}</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={18} color={isDark ? '#94A3B8' : '#888'} />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </>
-            )}
-
-            {/* ── STEP 2: Country Selector (Politician only) ── */}
-            {sheetStep === 'country-picker' && (
-              <View style={{ flex: 1 }}>
-                {/* Header with back */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <TouchableOpacity
-                    onPress={() => setSheetStep('type-picker')}
-                    style={{ padding: 6, borderRadius: 8 }}
-                  >
-                    <Ionicons name="chevron-back" size={22} color={isDark ? '#fff' : '#111'} />
-                  </TouchableOpacity>
-                  <View>
-                    <Text style={[styles.sheetTitle, { marginBottom: 0 }]}>Select your country</Text>
-                    <Text style={[styles.sheetSubtitle, { marginBottom: 0, marginTop: 2 }]}>
-                      Choose where the politician operates
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Search bar */}
-                <View style={[styles.searchBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
-                  <Ionicons name="search" size={18} color={isDark ? '#94A3B8' : '#888'} />
-                  <TextInput
-                    style={[styles.searchInput, { color: isDark ? '#fff' : '#111' }]}
-                    placeholder="Search country..."
-                    placeholderTextColor={isDark ? '#94A3B8' : '#999'}
-                    value={countrySearch}
-                    onChangeText={setCountrySearch}
-                    autoFocus
-                  />
-                  {countrySearch.length > 0 && (
-                    <TouchableOpacity onPress={() => setCountrySearch('')}>
-                      <Ionicons name="close-circle" size={18} color={isDark ? '#94A3B8' : '#888'} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* Country list */}
-                <ScrollView style={{ flex: 1, marginTop: 8 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                  {/* Featured countries */}
-                  {featuredCountries.length > 0 && (
-                    <>
-                      <Text style={[styles.sectionLabel, { color: ACCENT }]}>FEATURED</Text>
-                      {featuredCountries.map((country) => (
-                        <TouchableOpacity
-                          key={country.code}
-                          style={[styles.countryRowFeatured, {
-                            backgroundColor: isDark ? 'rgba(0,200,83,0.08)' : 'rgba(0,200,83,0.06)',
-                            borderColor: `${ACCENT}33`,
-                          }]}
-                          onPress={() => handleSelectCountry(country)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.countryFlag}>{country.flag}</Text>
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.countryName, { color: isDark ? '#fff' : '#111' }]}>{country.name}</Text>
-                            {country.nameLocal !== country.name && (
-                              <Text style={[styles.countryNameLocal, { color: isDark ? '#94A3B8' : '#888' }]}>{country.nameLocal}</Text>
-                            )}
-                          </View>
-                          <View style={styles.civicBadge}>
-                            <Text style={styles.civicBadgeText}>Civic Card</Text>
-                          </View>
-                          <Ionicons name="chevron-forward" size={16} color={isDark ? '#94A3B8' : '#888'} />
-                        </TouchableOpacity>
-                      ))}
-                    </>
-                  )}
-
-                  {/* Other countries */}
-                  {otherCountries.length > 0 && (
-                    <>
-                      <Text style={[styles.sectionLabel, { color: isDark ? '#94A3B8' : '#888', marginTop: 16 }]}>ALL COUNTRIES</Text>
-                      {otherCountries.map((country) => (
-                        <TouchableOpacity
-                          key={country.code}
-                          style={[styles.countryRow, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]}
-                          onPress={() => handleSelectCountry(country)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.countryFlagSmall}>{country.flag}</Text>
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.countryName, { color: isDark ? '#fff' : '#111' }]}>{country.name}</Text>
-                            {country.nameLocal !== country.name && (
-                              <Text style={[styles.countryNameLocal, { color: isDark ? '#94A3B8' : '#888' }]}>{country.nameLocal}</Text>
-                            )}
-                          </View>
-                          <Ionicons name="chevron-forward" size={16} color={isDark ? '#94A3B8' : '#888'} />
-                        </TouchableOpacity>
-                      ))}
-                    </>
-                  )}
-
-                  {filteredCountries.length === 0 && (
-                    <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                      <Text style={{ fontSize: 15, color: isDark ? '#94A3B8' : '#888' }}>
-                        No countries found for "{countrySearch}"
-                      </Text>
-                    </View>
-                  )}
-                </ScrollView>
-              </View>
-            )}
             {/* ── STEP: Card Limit Reached ── */}
             {sheetStep === 'card-limit' && (
               <View style={{ alignItems: 'center', paddingVertical: 16 }}>

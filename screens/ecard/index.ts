@@ -13,3 +13,6 @@ export { default as ECardPreviewScreen } from './ECardPreviewScreen';
 export { default as ECardNFCWriteScreen } from './ECardNFCWriteScreen';
 export { default as ECardFormBlockScreen } from './ECardFormBlockScreen';
 export { default as ECardCreateScreen } from './ECardCreateScreen';
+export { default as ECardNewScreen } from './ECardNewScreen';
+export { default as ECardEditScreen } from './ECardEditScreen';
+export { default as ECardStatsScreen } from './ECardStatsScreen';

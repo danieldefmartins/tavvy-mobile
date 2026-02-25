@@ -207,6 +207,9 @@ export type RootStackParamList = {
     links?: any[];
     templateId?: string;
   };
+  ECardNew: undefined;
+  ECardEdit: { cardId: string };
+  ECardStats: { cardId: string };
 };
 
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;
