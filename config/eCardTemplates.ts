@@ -37,7 +37,9 @@ export type TemplateLayout =
   | 'civic-card-flag'      // Brazilian flag background with gradient overlay, patriotic style
   | 'civic-card-bold'      // Bold split layout: large photo left, info right, strong typography
   | 'civic-card-clean'     // Clean modern card: white card on colored background, minimal and elegant
-  | 'civic-card-rally';    // Rally/campaign style: diagonal cuts, bold CTA, high energy design
+  | 'civic-card-rally'     // Rally/campaign style: diagonal cuts, bold CTA, high energy design
+  | 'politician-generic'   // Generic politician card for all countries: photo, bio, platform, endorsements
+  | 'mobile-business';     // Mobile business (food trucks, pop-ups): cover photo, menu section, endorsements
 
 export interface Template {
   id: string;
@@ -649,6 +651,63 @@ export const TEMPLATES: Template[] = [
       fontFamily: 'modern',
       showBorder: false,
       hasBannerImage: false,
+    },
+  },
+
+  // 19. GENERIC POLITICIAN CARD — International
+  {
+    id: 'politician-generic',
+    name: 'Politician Card',
+    description: 'Political e-Card for candidates and public servants worldwide. Photo, bio, platform positions, endorsements, and civic engagement.',
+    category: 'paid',
+    previewImage: 'politician-generic',
+    isPremium: true,
+    features: ['candidate-photo', 'bio', 'platform-positions', 'endorsements', 'community-feedback', 'qa'],
+    layout: 'politician-generic',
+    colorSchemes: [
+      { id: 'classic-blue', name: 'Classic Blue', primary: '#1a365d', secondary: '#2a4a7f', accent: '#c9a84c', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF' },
+      { id: 'patriot-red', name: 'Patriot Red', primary: '#8b1a1a', secondary: '#6b1010', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#faf0f0', cardBg: '#FFFFFF' },
+      { id: 'forest-green', name: 'Forest Green', primary: '#1a4d2e', secondary: '#0d3320', accent: '#c9a84c', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f5f0', cardBg: '#FFFFFF' },
+      { id: 'royal-purple', name: 'Royal Purple', primary: '#4a1a6b', secondary: '#350f50', accent: '#c9a84c', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f5f0fa', cardBg: '#FFFFFF' },
+      { id: 'midnight', name: 'Midnight', primary: '#111827', secondary: '#1f2937', accent: '#f59e0b', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f3f4f6', cardBg: '#FFFFFF' },
+      { id: 'slate', name: 'Slate', primary: '#334155', secondary: '#1e293b', accent: '#38bdf8', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f1f5f9', cardBg: '#FFFFFF' },
+    ],
+    layoutConfig: {
+      photoPosition: 'center',
+      photoSize: 'large',
+      photoStyle: 'rounded',
+      buttonStyle: 'rounded',
+      fontFamily: 'modern',
+      showBorder: false,
+      hasBannerImage: false,
+    },
+  },
+
+  // 20. MOBILE BUSINESS — Food trucks, pop-ups, mobile vendors
+  {
+    id: 'mobile-business',
+    name: 'Mobile Business',
+    description: 'Perfect for food trucks, pop-ups, and mobile vendors. Cover photo, full menu with categories and prices, Tavvy endorsements, and location info.',
+    category: 'free',
+    previewImage: 'mobile-business',
+    isPremium: false,
+    features: ['cover-photo', 'menu-section', 'endorsements', 'location', 'social-icons', 'order-online', 'catering-info'],
+    layout: 'mobile-business',
+    colorSchemes: [
+      { id: 'fire-smoke', name: 'Fire & Smoke', primary: '#1a1a1a', secondary: '#2d2d2d', accent: '#e85d04', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#faf5f0', cardBg: '#FFFFFF', border: '#e85d04', isFree: true },
+      { id: 'fresh-green', name: 'Fresh & Green', primary: '#1b4332', secondary: '#2d6a4f', accent: '#52b788', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0faf5', cardBg: '#FFFFFF', border: '#52b788', isFree: true },
+      { id: 'street-gold', name: 'Street Gold', primary: '#292524', secondary: '#44403c', accent: '#f59e0b', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#fefce8', cardBg: '#FFFFFF', border: '#f59e0b', isFree: true },
+      { id: 'ocean-blue', name: 'Ocean Blue', primary: '#0c4a6e', secondary: '#075985', accent: '#38bdf8', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f9ff', cardBg: '#FFFFFF', border: '#38bdf8' },
+      { id: 'berry-cream', name: 'Berry & Cream', primary: '#831843', secondary: '#9d174d', accent: '#f472b6', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#fdf2f8', cardBg: '#FFFFFF', border: '#f472b6' },
+    ],
+    layoutConfig: {
+      photoPosition: 'cover',
+      photoSize: 'hero',
+      photoStyle: 'cover',
+      buttonStyle: 'rounded',
+      fontFamily: 'modern',
+      showBorder: false,
+      hasBannerImage: true,
     },
   },
 ];

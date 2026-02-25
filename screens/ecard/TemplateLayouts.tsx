@@ -215,6 +215,9 @@ export function renderTemplateLayout(props: LayoutProps) {
     case 'civic-card-bold': return renderCivicCardBoldLayout(props);
     case 'civic-card-clean': return renderCivicCardCleanLayout(props);
     case 'civic-card-rally': return renderCivicCardRallyLayout(props);
+    case 'premium-static': return renderFullWidthLayout(props);
+    case 'politician-generic': return renderCivicCardLayout(props);
+    case 'mobile-business': return renderCoverCardLayout(props);
     default: return renderBasicLayout(props);
   }
 }

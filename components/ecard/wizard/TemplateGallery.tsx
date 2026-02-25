@@ -7,7 +7,7 @@
  * color-scheme picker row for the currently visible template.
  */
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -154,6 +154,26 @@ export default function TemplateGallery({
       onSelect(template.id, scheme.id);
     }
   }, [activeIndex, items, colorIndices, isPro, onSelect]);
+
+  // ── Auto-select first template on mount (matches web behavior) ──
+  const hasAutoSelected = useRef(false);
+  useEffect(() => {
+    if (hasAutoSelected.current) return;
+    if (items.length === 0) return;
+    // If a template is already selected (e.g. politician flow), keep it
+    if (selectedTemplateId) {
+      hasAutoSelected.current = true;
+      return;
+    }
+    const item = items[0];
+    const { template } = item;
+    if (template.isPremium && !isPro) return; // Skip locked
+    const scheme = template.colorSchemes[0];
+    if (scheme) {
+      hasAutoSelected.current = true;
+      onSelect(template.id, scheme.id);
+    }
+  }, [items, selectedTemplateId, isPro, onSelect]);
 
   // ── Color scheme selection ──
   const handleColorSelect = useCallback(
