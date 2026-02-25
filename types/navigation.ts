@@ -203,9 +203,14 @@ export type RootStackParamList = {
     themeName?: string;
   };
   ECardPreview: {
+    cardId?: string;
+    cardData?: any;
     profile?: any;
     links?: any[];
+    featuredSocials?: any[];
     templateId?: string;
+    colorSchemeId?: string;
+    reviews?: any;
   };
   ECardNew: undefined;
   ECardEdit: { cardId: string };

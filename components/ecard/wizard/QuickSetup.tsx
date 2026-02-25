@@ -34,7 +34,7 @@ const QUICK_COLORS = [
 // ── Props ───────────────────────────────────────────────────
 interface QuickSetupProps {
   templateId: string;
-  colorSchemeId: string;
+  colorSchemeId?: string | null;
   onBack: () => void;
   onCreateCard: (data: {
     name: string;

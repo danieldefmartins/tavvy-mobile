@@ -118,7 +118,7 @@ const FREE_LINK_LIMIT = 5;
 export default function ECardPreviewScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const { user, isPro } = useAuth();
-  const { cardData: passedCardData, profile, links: passedLinks, featuredSocials: passedFeaturedSocials, templateId, colorSchemeId, reviews } = route.params || {};
+  const { cardId, cardData: passedCardData, profile, links: passedLinks, featuredSocials: passedFeaturedSocials, templateId, colorSchemeId, reviews } = route.params || {};
   
   // Get the selected template and color scheme for proper colors
   const selectedTemplate = templateId ? getTemplateById(templateId) : null;
@@ -435,14 +435,15 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
         setIsLoading(false);
         return;
       }
-      
-      const { data, error } = await supabase
-        .from('digital_cards')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+
+      // If cardId was passed, load that specific card
+      let query = supabase.from('digital_cards').select('*');
+      if (cardId) {
+        query = query.eq('id', cardId);
+      } else {
+        query = query.eq('user_id', user.id).order('created_at', { ascending: false }).limit(1);
+      }
+      const { data, error } = await query.single();
       
       if (data && !error) {
         setCardData(data);
@@ -470,7 +471,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
     } finally {
       setIsLoading(false);
     }
-  }, [user, passedCardData, profile, passedLinks]);
+  }, [user, cardId, passedCardData, profile, passedLinks]);
 
   // Load on focus
   useFocusEffect(

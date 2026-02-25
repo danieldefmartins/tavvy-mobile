@@ -93,26 +93,27 @@ export default function ECardNewScreen() {
       // Generate slug from name
       const slug = generateSlug(data.name);
 
+      // Build insert payload — only include defined values
+      const insertPayload: Record<string, any> = {
+        user_id: user.id,
+        full_name: data.name.trim(),
+        slug,
+        template_id: selectedTemplateId || 'basic',
+        gradient_color_1: data.primaryColor || '#3B82F6',
+        gradient_color_2: data.primaryColor || '#3B82F6',
+        card_type: cardType || 'business',
+        is_published: false,
+        is_active: true,
+      };
+      if (data.title) insertPayload.title = data.title.trim();
+      if (selectedColorSchemeId) insertPayload.color_scheme_id = selectedColorSchemeId;
+      if (photoUrl) insertPayload.profile_photo_url = photoUrl;
+      if (countryCode) insertPayload.country_code = countryCode;
+
       // Insert card into digital_cards
       const { data: newCard, error } = await supabase
         .from('digital_cards')
-        .insert({
-          user_id: user.id,
-          full_name: data.name,
-          title: data.title || null,
-          slug,
-          template_id: selectedTemplateId || 'basic',
-          color_scheme_id: selectedColorSchemeId || undefined,
-          gradient_color_1: data.primaryColor || '#3B82F6',
-          gradient_color_2: data.primaryColor || '#3B82F6',
-          profile_photo_url: photoUrl || null,
-          card_type: cardType || 'business',
-          country_code: countryCode || null,
-          is_published: false,
-          is_active: true,
-          view_count: 0,
-          tap_count: 0,
-        })
+        .insert(insertPayload)
         .select()
         .single();
 
@@ -240,7 +241,7 @@ export default function ECardNewScreen() {
           </View>
         )}
 
-        {step === 'setup' && selectedTemplateId && selectedColorSchemeId && (
+        {step === 'setup' && selectedTemplateId && (
           <View style={styles.setupContainer}>
             <QuickSetup
               templateId={selectedTemplateId}

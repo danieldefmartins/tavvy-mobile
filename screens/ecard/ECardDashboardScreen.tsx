@@ -2377,6 +2377,19 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
             https://{cardUrl}
           </Text>
 
+          {/* Share Button */}
+          <TouchableOpacity
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: ACCENT_GREEN, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12, marginBottom: 12 }}
+            onPress={async () => {
+              try {
+                await Share.share({ message: `Check out my digital card: https://${cardUrl}`, url: `https://${cardUrl}` });
+              } catch {}
+            }}
+          >
+            <Ionicons name="share-outline" size={18} color="#FFFFFF" />
+            <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>Share</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={s.modalCloseBtn} onPress={() => setShowQRModal(false)}>
             <Text style={s.modalCloseBtnText}>Close</Text>
           </TouchableOpacity>
