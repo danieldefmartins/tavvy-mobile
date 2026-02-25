@@ -126,7 +126,7 @@ export default function ECardHubScreen() {
 
   // Card limit constants
   const FREE_CARD_LIMIT = 1;
-  const PRO_CARD_LIMIT = 1;
+  const PRO_CARD_LIMIT = 5;
 
   const handleFabClick = () => {
     if (isSuperAdmin) {
@@ -439,8 +439,8 @@ export default function ECardHubScreen() {
                 </Text>
                 <Text style={[styles.sheetSubtitle, { textAlign: 'center', maxWidth: 280 }]}>
                   {isPro
-                    ? `Your Pro plan includes 1 premium card. You currently have ${cards.length} card${cards.length !== 1 ? 's' : ''}. Purchase an additional card slot to create more.`
-                    : `Free accounts can create ${FREE_CARD_LIMIT} card. Upgrade to Pro to unlock premium templates and features.`
+                    ? `Your Pro plan includes up to ${PRO_CARD_LIMIT} cards. You currently have ${cards.length} card${cards.length !== 1 ? 's' : ''}. Contact support for additional card slots.`
+                    : `Free accounts can create ${FREE_CARD_LIMIT} card. Upgrade to Pro to create up to ${PRO_CARD_LIMIT} cards and unlock premium templates.`
                   }
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20, marginTop: 4 }}>
