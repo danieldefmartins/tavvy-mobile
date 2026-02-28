@@ -15,10 +15,12 @@ import {
   Alert,
   Dimensions,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useEditor } from '../../../../lib/ecard/EditorContext';
+import { supabase } from '../../../../lib/supabaseClient';
 import EditorSection from '../shared/EditorSection';
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -79,6 +81,7 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [videoType, setVideoType] = useState<VideoType>('youtube');
   const [videoUrl, setVideoUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   // Theme colors
   const textPrimary = isDark ? '#FFFFFF' : '#111111';
@@ -172,6 +175,71 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
     },
     [dispatch],
   );
+
+  const handleVideoFileUpload = useCallback(async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'Please grant photo library access to upload videos.',
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['videos'],
+      allowsEditing: false,
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    setUploading(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) {
+        Alert.alert('Error', 'Please sign in to upload videos.');
+        return;
+      }
+
+      const filename = asset.uri.split('/').pop() || `video_${Date.now()}.mp4`;
+      const storagePath = `${userId}/videos/${Date.now()}_${filename}`;
+      const mimeType = asset.mimeType || 'video/mp4';
+
+      const { data, error } = await supabase.storage
+        .from('ecard-assets')
+        .upload(storagePath, {
+          uri: asset.uri,
+          type: mimeType,
+          name: filename,
+        } as any, {
+          contentType: mimeType,
+          upsert: true,
+        });
+
+      if (error) {
+        console.error('Video upload error:', error);
+        Alert.alert('Upload Failed', 'Failed to upload video. Please try again.');
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('ecard-assets')
+        .getPublicUrl(data.path);
+
+      if (urlData?.publicUrl) {
+        setVideoUrl(urlData.publicUrl);
+      }
+    } catch (err) {
+      console.error('Video upload error:', err);
+      Alert.alert('Upload Failed', 'Failed to upload video. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  }, []);
 
   // -- Render -----------------------------------------------------------------
 
@@ -383,8 +451,45 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
               </View>
             </View>
 
-            {/* URL input */}
+            {/* Upload / URL input */}
             <View style={styles.urlSection}>
+              {videoType === 'tavvy_short' && (
+                <>
+                  <Text style={[styles.typeLabel, { color: textSecondary }]}>
+                    Upload Video
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.uploadButton,
+                      {
+                        borderColor: uploading ? '#00C853' : borderColor,
+                        backgroundColor: uploading
+                          ? isDark ? 'rgba(0,200,83,0.08)' : 'rgba(0,200,83,0.04)'
+                          : 'transparent',
+                      },
+                    ]}
+                    onPress={handleVideoFileUpload}
+                    disabled={uploading}
+                    activeOpacity={0.7}
+                  >
+                    {uploading ? (
+                      <ActivityIndicator size="small" color="#00C853" />
+                    ) : (
+                      <Ionicons name="cloud-upload" size={20} color={textSecondary} />
+                    )}
+                    <Text style={[styles.uploadButtonText, { color: uploading ? '#00C853' : textSecondary }]}>
+                      {uploading ? 'Uploading...' : 'Choose Video from Device'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.dividerRow}>
+                    <View style={[styles.dividerLine, { backgroundColor: borderColor }]} />
+                    <Text style={[styles.dividerText, { color: textSecondary }]}>or paste URL</Text>
+                    <View style={[styles.dividerLine, { backgroundColor: borderColor }]} />
+                  </View>
+                </>
+              )}
+
               <Text style={[styles.typeLabel, { color: textSecondary }]}>
                 Video URL
               </Text>
@@ -625,6 +730,36 @@ const styles = StyleSheet.create({
   typeOptionText: {
     fontSize: 11,
     fontWeight: '500',
+  },
+
+  // -- Upload button --
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderRadius: 10,
+  },
+  uploadButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginVertical: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    fontSize: 12,
   },
 
   // -- URL input --
