@@ -313,6 +313,112 @@ export default function StyleSection({ isDark, isPro }: StyleSectionProps) {
         </View>
       </View>
 
+      {/* ===== Button Color ===== */}
+      <View style={styles.block}>
+        <SectionLabel isDark={isDark}>Button Color</SectionLabel>
+        <Text style={{ fontSize: 12, color: textSecondary, marginBottom: 10 }}>
+          Override the default button background. Auto uses theme colors.
+        </Text>
+        <View style={styles.buttonGroup}>
+          <TouchableOpacity
+            onPress={() => dispatch({ type: 'SET_FIELD', field: 'button_color', value: null })}
+            activeOpacity={0.7}
+            style={[
+              styles.chipButton,
+              {
+                borderColor: !card.button_color ? ACCENT : borderColor,
+                backgroundColor: !card.button_color
+                  ? isDark ? 'rgba(0,200,83,0.1)' : 'rgba(0,200,83,0.05)'
+                  : cardBg,
+              },
+            ]}
+          >
+            <Text style={[styles.chipLabel, { color: !card.button_color ? ACCENT : textPrimary, fontWeight: !card.button_color ? '600' : '400' }]}>
+              Auto
+            </Text>
+          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: card.button_color || '#f8f9fa', borderWidth: 1, borderColor }} />
+            <TextInput
+              value={card.button_color || ''}
+              onChangeText={(v) => {
+                if (/^#[0-9a-fA-F]{0,6}$/.test(v)) {
+                  dispatch({ type: 'SET_FIELD', field: 'button_color', value: v || null });
+                }
+              }}
+              placeholder="#f8f9fa"
+              placeholderTextColor={isDark ? '#475569' : '#BDBDBD'}
+              maxLength={7}
+              style={{
+                width: 90,
+                paddingHorizontal: 10,
+                paddingVertical: 8,
+                borderWidth: 1,
+                borderColor,
+                borderRadius: 8,
+                fontSize: 13,
+                backgroundColor: isDark ? '#1E293B' : '#fff',
+                color: isDark ? '#fff' : '#333',
+                fontFamily: 'monospace',
+              }}
+            />
+          </View>
+        </View>
+      </View>
+
+      {/* ===== Icon Color ===== */}
+      <View style={styles.block}>
+        <SectionLabel isDark={isDark}>Icon Color</SectionLabel>
+        <Text style={{ fontSize: 12, color: textSecondary, marginBottom: 10 }}>
+          Override the default icon accent color. Auto uses theme colors.
+        </Text>
+        <View style={styles.buttonGroup}>
+          <TouchableOpacity
+            onPress={() => dispatch({ type: 'SET_FIELD', field: 'icon_color', value: null })}
+            activeOpacity={0.7}
+            style={[
+              styles.chipButton,
+              {
+                borderColor: !card.icon_color ? ACCENT : borderColor,
+                backgroundColor: !card.icon_color
+                  ? isDark ? 'rgba(0,200,83,0.1)' : 'rgba(0,200,83,0.05)'
+                  : cardBg,
+              },
+            ]}
+          >
+            <Text style={[styles.chipLabel, { color: !card.icon_color ? ACCENT : textPrimary, fontWeight: !card.icon_color ? '600' : '400' }]}>
+              Auto
+            </Text>
+          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: card.icon_color || '#333333', borderWidth: 1, borderColor }} />
+            <TextInput
+              value={card.icon_color || ''}
+              onChangeText={(v) => {
+                if (/^#[0-9a-fA-F]{0,6}$/.test(v)) {
+                  dispatch({ type: 'SET_FIELD', field: 'icon_color', value: v || null });
+                }
+              }}
+              placeholder="#333333"
+              placeholderTextColor={isDark ? '#475569' : '#BDBDBD'}
+              maxLength={7}
+              style={{
+                width: 90,
+                paddingHorizontal: 10,
+                paddingVertical: 8,
+                borderWidth: 1,
+                borderColor,
+                borderRadius: 8,
+                fontSize: 13,
+                backgroundColor: isDark ? '#1E293B' : '#fff',
+                color: isDark ? '#fff' : '#333',
+                fontFamily: 'monospace',
+              }}
+            />
+          </View>
+        </View>
+      </View>
+
       {/* ===== Font Selector ===== */}
       <View style={styles.block}>
         <SectionLabel isDark={isDark}>Font</SectionLabel>

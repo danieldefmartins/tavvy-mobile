@@ -61,6 +61,8 @@ export interface CardData {
   font_style: string;
   font_color?: string;
   button_style: string;
+  button_color?: string;
+  icon_color?: string;
 
   show_contact_info?: boolean;
   show_social_icons?: boolean;
