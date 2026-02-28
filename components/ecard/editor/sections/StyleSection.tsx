@@ -316,107 +316,21 @@ export default function StyleSection({ isDark, isPro }: StyleSectionProps) {
       {/* ===== Button Color ===== */}
       <View style={styles.block}>
         <SectionLabel isDark={isDark}>Button Color</SectionLabel>
-        <Text style={{ fontSize: 12, color: textSecondary, marginBottom: 10 }}>
-          Override the default button background. Auto uses theme colors.
-        </Text>
-        <View style={styles.buttonGroup}>
-          <TouchableOpacity
-            onPress={() => dispatch({ type: 'SET_FIELD', field: 'button_color', value: null })}
-            activeOpacity={0.7}
-            style={[
-              styles.chipButton,
-              {
-                borderColor: !card.button_color ? ACCENT : borderColor,
-                backgroundColor: !card.button_color
-                  ? isDark ? 'rgba(0,200,83,0.1)' : 'rgba(0,200,83,0.05)'
-                  : cardBg,
-              },
-            ]}
-          >
-            <Text style={[styles.chipLabel, { color: !card.button_color ? ACCENT : textPrimary, fontWeight: !card.button_color ? '600' : '400' }]}>
-              Auto
-            </Text>
-          </TouchableOpacity>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: card.button_color || '#f8f9fa', borderWidth: 1, borderColor }} />
-            <TextInput
-              value={card.button_color || ''}
-              onChangeText={(v) => {
-                if (/^#[0-9a-fA-F]{0,6}$/.test(v)) {
-                  dispatch({ type: 'SET_FIELD', field: 'button_color', value: v || null });
-                }
-              }}
-              placeholder="#f8f9fa"
-              placeholderTextColor={isDark ? '#475569' : '#BDBDBD'}
-              maxLength={7}
-              style={{
-                width: 90,
-                paddingHorizontal: 10,
-                paddingVertical: 8,
-                borderWidth: 1,
-                borderColor,
-                borderRadius: 8,
-                fontSize: 13,
-                backgroundColor: isDark ? '#1E293B' : '#fff',
-                color: isDark ? '#fff' : '#333',
-                fontFamily: 'monospace',
-              }}
-            />
-          </View>
-        </View>
+        <ColorSwatchPicker
+          value={card.button_color || null}
+          onChange={(v) => dispatch({ type: 'SET_FIELD', field: 'button_color', value: v })}
+          isDark={isDark}
+        />
       </View>
 
       {/* ===== Icon Color ===== */}
       <View style={styles.block}>
         <SectionLabel isDark={isDark}>Icon Color</SectionLabel>
-        <Text style={{ fontSize: 12, color: textSecondary, marginBottom: 10 }}>
-          Override the default icon accent color. Auto uses theme colors.
-        </Text>
-        <View style={styles.buttonGroup}>
-          <TouchableOpacity
-            onPress={() => dispatch({ type: 'SET_FIELD', field: 'icon_color', value: null })}
-            activeOpacity={0.7}
-            style={[
-              styles.chipButton,
-              {
-                borderColor: !card.icon_color ? ACCENT : borderColor,
-                backgroundColor: !card.icon_color
-                  ? isDark ? 'rgba(0,200,83,0.1)' : 'rgba(0,200,83,0.05)'
-                  : cardBg,
-              },
-            ]}
-          >
-            <Text style={[styles.chipLabel, { color: !card.icon_color ? ACCENT : textPrimary, fontWeight: !card.icon_color ? '600' : '400' }]}>
-              Auto
-            </Text>
-          </TouchableOpacity>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: card.icon_color || '#333333', borderWidth: 1, borderColor }} />
-            <TextInput
-              value={card.icon_color || ''}
-              onChangeText={(v) => {
-                if (/^#[0-9a-fA-F]{0,6}$/.test(v)) {
-                  dispatch({ type: 'SET_FIELD', field: 'icon_color', value: v || null });
-                }
-              }}
-              placeholder="#333333"
-              placeholderTextColor={isDark ? '#475569' : '#BDBDBD'}
-              maxLength={7}
-              style={{
-                width: 90,
-                paddingHorizontal: 10,
-                paddingVertical: 8,
-                borderWidth: 1,
-                borderColor,
-                borderRadius: 8,
-                fontSize: 13,
-                backgroundColor: isDark ? '#1E293B' : '#fff',
-                color: isDark ? '#fff' : '#333',
-                fontFamily: 'monospace',
-              }}
-            />
-          </View>
-        </View>
+        <ColorSwatchPicker
+          value={card.icon_color || null}
+          onChange={(v) => dispatch({ type: 'SET_FIELD', field: 'icon_color', value: v })}
+          isDark={isDark}
+        />
       </View>
 
       {/* ===== Font Selector ===== */}
@@ -754,6 +668,168 @@ function ColorInput({
     </View>
   );
 }
+
+// ── Color Swatch Picker ─────────────────────────────────────────────────────
+
+const COLOR_PRESETS = [
+  { color: '#1e293b', name: 'Navy' },
+  { color: '#c9a84c', name: 'Gold' },
+  { color: '#ef4444', name: 'Red' },
+  { color: '#10b981', name: 'Green' },
+  { color: '#3b82f6', name: 'Blue' },
+  { color: '#8b5cf6', name: 'Purple' },
+  { color: '#f97316', name: 'Orange' },
+  { color: '#111111', name: 'Black' },
+  { color: '#f8f9fa', name: 'White' },
+  { color: '#7A5330', name: 'Bronze' },
+];
+
+function ColorSwatchPicker({
+  value,
+  onChange,
+  isDark,
+}: {
+  value: string | null;
+  onChange: (v: string | null) => void;
+  isDark: boolean;
+}) {
+  const [showCustom, setShowCustom] = React.useState(false);
+  const borderColor = isDark ? '#334155' : '#E5E7EB';
+  const cardBg = isDark ? 'rgba(255,255,255,0.04)' : '#FAFAFA';
+  const inputBg = isDark ? '#1E293B' : '#fff';
+  const inputColor = isDark ? '#fff' : '#333';
+
+  const isPreset = value != null && COLOR_PRESETS.some((p) => p.color === value);
+  const isCustom = value != null && !isPreset;
+
+  return (
+    <View>
+      <View style={swatchStyles.grid}>
+        {/* Auto button */}
+        <TouchableOpacity
+          onPress={() => { onChange(null); setShowCustom(false); }}
+          activeOpacity={0.7}
+          style={[
+            swatchStyles.swatch,
+            {
+              borderColor: !value ? ACCENT : borderColor,
+              backgroundColor: cardBg,
+            },
+          ]}
+        >
+          <Text style={{ fontSize: 13, fontWeight: '700', color: !value ? ACCENT : (isDark ? '#94A3B8' : '#6B7280') }}>
+            A
+          </Text>
+          {!value && <View style={[swatchStyles.dot, { borderColor: isDark ? '#1E293B' : '#fff' }]} />}
+        </TouchableOpacity>
+
+        {/* Preset swatches */}
+        {COLOR_PRESETS.map((preset) => {
+          const isSelected = value === preset.color;
+          return (
+            <TouchableOpacity
+              key={preset.color}
+              onPress={() => { onChange(preset.color); setShowCustom(false); }}
+              activeOpacity={0.7}
+              style={[
+                swatchStyles.swatch,
+                {
+                  borderColor: isSelected ? ACCENT : borderColor,
+                  backgroundColor: preset.color,
+                },
+              ]}
+            >
+              {isSelected && <View style={[swatchStyles.dot, { borderColor: isDark ? '#1E293B' : '#fff' }]} />}
+            </TouchableOpacity>
+          );
+        })}
+
+        {/* Custom color button (rainbow ring) */}
+        <TouchableOpacity
+          onPress={() => setShowCustom(!showCustom)}
+          activeOpacity={0.7}
+          style={[
+            swatchStyles.swatch,
+            {
+              borderColor: isCustom ? ACCENT : borderColor,
+              backgroundColor: isCustom ? value : '#888',
+            },
+          ]}
+        >
+          {!isCustom && (
+            <Ionicons name="color-palette-outline" size={16} color="#fff" />
+          )}
+          {isCustom && <View style={[swatchStyles.dot, { borderColor: isDark ? '#1E293B' : '#fff' }]} />}
+        </TouchableOpacity>
+      </View>
+
+      {/* Custom hex input (expanded) */}
+      {showCustom && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 }}>
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              backgroundColor: value || '#333333',
+              borderWidth: 1,
+              borderColor,
+            }}
+          />
+          <TextInput
+            value={value || ''}
+            onChangeText={(v) => {
+              if (/^#[0-9a-fA-F]{0,6}$/.test(v)) onChange(v || null);
+            }}
+            placeholder="#333333"
+            placeholderTextColor={isDark ? '#475569' : '#BDBDBD'}
+            maxLength={7}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={{
+              width: 100,
+              paddingHorizontal: 10,
+              paddingVertical: 8,
+              borderWidth: 1,
+              borderColor,
+              borderRadius: 8,
+              fontSize: 13,
+              backgroundColor: inputBg,
+              color: inputColor,
+              fontFamily: 'monospace',
+            }}
+          />
+        </View>
+      )}
+    </View>
+  );
+}
+
+const swatchStyles = StyleSheet.create({
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  swatch: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dot: {
+    position: 'absolute',
+    bottom: -3,
+    right: -3,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: ACCENT,
+    borderWidth: 2,
+  },
+});
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
