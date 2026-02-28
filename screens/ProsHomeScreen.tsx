@@ -175,7 +175,7 @@ export default function ProsHomeScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        
+
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           {/* Header */}
           <View style={styles.header}>
@@ -213,65 +213,74 @@ export default function ProsHomeScreen() {
             </View>
           </View>
 
-          {/* Pro Dashboard */}
+          {/* Pro Landing */}
           <View style={styles.proDashboard}>
-            <Text style={[styles.welcomeText, { color: textColor }]}>Welcome, Pro!</Text>
-            
-            {/* Quick Stats */}
-            <View style={styles.statsRow}>
-              <View style={[styles.statCard, { backgroundColor: surfaceColor, ...cardShadow }]}>
-                <Text style={[styles.statNumber, { color: textColor }]}>3</Text>
-                <Text style={[styles.statLabel, { color: secondaryTextColor }]}>New Leads</Text>
-              </View>
-              <View style={[styles.statCard, { backgroundColor: surfaceColor, ...cardShadow }]}>
-                <Text style={[styles.statNumber, { color: textColor }]}>1</Text>
-                <Text style={[styles.statLabel, { color: secondaryTextColor }]}>Messages</Text>
-              </View>
-              <View style={[styles.statCard, { backgroundColor: surfaceColor, ...cardShadow }]}>
-                <Text style={[styles.statNumber, { color: textColor }]}>128</Text>
-                <Text style={[styles.statLabel, { color: secondaryTextColor }]}>Views</Text>
-              </View>
-            </View>
+            {/* Go to Dashboard CTA */}
+            <TouchableOpacity
+              style={styles.startProjectCard}
+              onPress={handleProDashboard}
+              activeOpacity={0.9}
+            >
+              <LinearGradient
+                colors={['#6B7FFF', '#5563E8']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.startProjectGradient}
+              >
+                <View style={styles.startProjectIcon}>
+                  <Ionicons name="stats-chart" size={28} color="#FFFFFF" />
+                </View>
+                <View style={styles.startProjectContent}>
+                  <Text style={styles.startProjectTitle}>Go to Dashboard</Text>
+                  <Text style={styles.startProjectSubtitle}>Manage leads, messages & profile</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={24} color="#FFFFFF" />
+              </LinearGradient>
+            </TouchableOpacity>
 
-            {/* Action Grid */}
+            {/* Quick Actions */}
             <View style={styles.actionGrid}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.actionCard, { backgroundColor: surfaceColor, borderWidth: 1, borderColor, ...cardShadow }]}
                 onPress={() => navigation.navigate('ProsLeads')}
               >
                 <Ionicons name="mail-outline" size={28} color={COLORS.successGreen} />
                 <Text style={[styles.actionLabel, { color: textColor }]}>Leads</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.actionCard, { backgroundColor: surfaceColor, borderWidth: 1, borderColor, ...cardShadow }]}
                 onPress={() => navigation.navigate('ProsMessages')}
               >
                 <Ionicons name="chatbubbles-outline" size={28} color={COLORS.primaryBlue} />
                 <Text style={[styles.actionLabel, { color: textColor }]}>Messages</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.actionCard, { backgroundColor: surfaceColor, borderWidth: 1, borderColor, ...cardShadow }]}
-                onPress={() => navigation.navigate('ProsProfile', { slug: 'my-profile' })}
+                onPress={handleProDashboard}
               >
                 <Ionicons name="person-outline" size={28} color={COLORS.warningAmber} />
                 <Text style={[styles.actionLabel, { color: textColor }]}>Profile</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.actionCard, { backgroundColor: surfaceColor, borderWidth: 1, borderColor, ...cardShadow }]}
-                onPress={handleProDashboard}
+                onPress={handleProSignup}
               >
-                <Ionicons name="stats-chart-outline" size={28} color="#EC4899" />
-                <Text style={[styles.actionLabel, { color: textColor }]}>Analytics</Text>
+                <Ionicons name="add-circle-outline" size={28} color="#EC4899" />
+                <Text style={[styles.actionLabel, { color: textColor }]}>Register</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Early Adopter Banner */}
-            <View style={[styles.earlyAdopterBanner, { borderColor: COLORS.primaryBlue }]}>
-              <Text style={styles.bannerTitle}>You're an Early Adopter!</Text>
+            {/* Not a Pro Yet CTA */}
+            <TouchableOpacity
+              style={[styles.earlyAdopterBanner, { borderColor: COLORS.primaryBlue }]}
+              onPress={handleProSignup}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.bannerTitle}>Not a Pro yet?</Text>
               <Text style={styles.bannerSubtitle}>
-                {EARLY_ADOPTER_SPOTS_LEFT} spots left at ${EARLY_ADOPTER_PRICE}/year
+                Join now — {EARLY_ADOPTER_SPOTS_LEFT} early adopter spots left at ${EARLY_ADOPTER_PRICE}/year
               </Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
           <View style={{ height: 100 }} />

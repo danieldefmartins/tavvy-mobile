@@ -22,7 +22,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { ProsColors } from '../constants/ProsConfig';
-import { useProProfile, useProSubscription, useProStats } from '../hooks/usePros';
+import { useProDashboard, useProsSubscription, useProsLeads, useProsConversations } from '../hooks/usePros';
 import { ProsSubscriptionStatusBanner } from '../components/ProsSubscriptionBanner';
 import { useTranslation } from 'react-i18next';
 
@@ -31,25 +31,27 @@ export default function ProsDashboardScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuth();
-  const { profile, loading: profileLoading, refresh: refreshProfile } = useProProfile();
-  const { subscription, loading: subscriptionLoading, refresh: refreshSubscription } = useProSubscription();
-  const { stats, loading: statsLoading, refresh: refreshStats } = useProStats();
+  const { profile, loading: profileLoading, fetchProfile } = useProDashboard();
+  const { subscription, loading: subscriptionLoading, fetchSubscription } = useProsSubscription();
+  const { leads, loading: leadsLoading, fetchLeads } = useProsLeads();
+  const { conversations, fetchConversations } = useProsConversations();
   const [refreshing, setRefreshing] = useState(false);
   // Calculate stats
   const rating = profile?.averageRating || 0;
-  const newLeadsCount = stats?.newLeads || 0;
-  const unreadMessagesCount = stats?.unreadMessages || 0;
+  const newLeadsCount = leads.filter(l => l.status === 'pending').length;
+  const unreadMessagesCount = conversations.filter(c => (c as any).unreadCount > 0).length;
   // Refresh data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      refreshProfile();
-      refreshSubscription();
-      refreshStats();
+      fetchProfile();
+      fetchSubscription();
+      fetchLeads();
+      fetchConversations();
     }, [])
   );
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refreshProfile(), refreshSubscription(), refreshStats()]);
+    await Promise.all([fetchProfile(), fetchSubscription(), fetchLeads(), fetchConversations()]);
     setRefreshing(false);
   };
   if (!user) {
@@ -146,8 +148,7 @@ export default function ProsDashboardScreen() {
         {/* Subscription Status */}
         <ProsSubscriptionStatusBanner
           tier={subscription?.tier || null}
-          status={(subscription?.status as any) || null}
-          earlyAdopterNumber={(subscription as any)?.earlyAdopterNumber || undefined}
+          status={subscription?.status === 'cancelled' ? 'expired' : (subscription?.status as any) || null}
           expiresAt={subscription?.endDate}
           onUpgrade={() => Alert.alert('Coming Soon', 'Subscription upgrades will be available in a future update.')}
         />
