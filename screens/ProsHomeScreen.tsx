@@ -40,6 +40,7 @@ import {
   EARLY_ADOPTER_SPOTS_LEFT,
   EARLY_ADOPTER_SAVINGS,
 } from '../constants/ProsConfig';
+import { useAuth } from '../contexts/AuthContext';
 import { useSearchPros } from '../hooks/usePros';
 import { useCategories } from '../hooks/useCategories';
 import { useProsPendingRequests } from '../hooks/useProsPendingRequests';
@@ -120,8 +121,8 @@ export default function ProsHomeScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { theme, isDark } = useThemeContext();
+  const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
-  const [viewMode, setViewMode] = useState<'user' | 'pro'>('user');
 
   const { pros, loading, searchPros } = useSearchPros();
   const { categories, loading: categoriesLoading } = useCategories();
@@ -156,6 +157,14 @@ export default function ProsHomeScreen() {
     navigation.navigate('ProsDashboard');
   };
 
+  const handleImAPro = () => {
+    if (!user) {
+      navigation.navigate('ProsLogin');
+    } else {
+      navigation.navigate('ProsDashboard');
+    }
+  };
+
   const backgroundColor = isDark ? COLORS.background : '#FAFAFA';
   const surfaceColor = isDark ? COLORS.surface : '#FFFFFF';
   const surfaceAltColor = isDark ? COLORS.surfaceAlt : '#F3F4F6';
@@ -169,125 +178,6 @@ export default function ProsHomeScreen() {
   const textColor = isDark ? COLORS.textPrimary : '#111827';
   const secondaryTextColor = isDark ? COLORS.textSecondary : '#6B7280';
   const borderColor = isDark ? COLORS.border : '#E5E7EB';
-
-  // Pro Mode View
-  if (viewMode === 'pro') {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
-        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: textColor }]}>Pros</Text>
-            <Text style={[styles.tagline, { color: COLORS.primaryBlue }]}>
-              Grow your business with Tavvy.
-            </Text>
-          </View>
-
-          {/* Segmented Control */}
-          <View style={styles.segmentedControlContainer}>
-            <View style={[styles.segmentedControl, { backgroundColor: surfaceColor }]}>
-              <TouchableOpacity
-                style={[styles.segment, viewMode === 'user' && styles.segmentActive]}
-                onPress={() => setViewMode('user')}
-              >
-                <Text style={[
-                  styles.segmentText,
-                  { color: viewMode === 'user' ? '#FFFFFF' : secondaryTextColor }
-                ]}>
-                  Find a Pro
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.segment, viewMode === 'pro' && styles.segmentActive]}
-                onPress={() => setViewMode('pro')}
-              >
-                <Text style={[
-                  styles.segmentText,
-                  { color: viewMode === 'pro' ? '#FFFFFF' : secondaryTextColor }
-                ]}>
-                  I'm a Pro
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Pro Landing */}
-          <View style={styles.proDashboard}>
-            {/* Go to Dashboard CTA */}
-            <TouchableOpacity
-              style={styles.startProjectCard}
-              onPress={handleProDashboard}
-              activeOpacity={0.9}
-            >
-              <LinearGradient
-                colors={['#6B7FFF', '#5563E8']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.startProjectGradient}
-              >
-                <View style={styles.startProjectIcon}>
-                  <Ionicons name="stats-chart" size={28} color="#FFFFFF" />
-                </View>
-                <View style={styles.startProjectContent}>
-                  <Text style={styles.startProjectTitle}>Go to Dashboard</Text>
-                  <Text style={styles.startProjectSubtitle}>Manage leads, messages & profile</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color="#FFFFFF" />
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Quick Actions */}
-            <View style={styles.actionGrid}>
-              <TouchableOpacity
-                style={[styles.actionCard, { backgroundColor: surfaceColor, borderWidth: 1, borderColor, ...cardShadow }]}
-                onPress={() => navigation.navigate('ProsLeads')}
-              >
-                <Ionicons name="mail-outline" size={28} color={COLORS.successGreen} />
-                <Text style={[styles.actionLabel, { color: textColor }]}>Leads</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionCard, { backgroundColor: surfaceColor, borderWidth: 1, borderColor, ...cardShadow }]}
-                onPress={() => navigation.navigate('ProsMessages')}
-              >
-                <Ionicons name="chatbubbles-outline" size={28} color={COLORS.primaryBlue} />
-                <Text style={[styles.actionLabel, { color: textColor }]}>Messages</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionCard, { backgroundColor: surfaceColor, borderWidth: 1, borderColor, ...cardShadow }]}
-                onPress={handleProDashboard}
-              >
-                <Ionicons name="person-outline" size={28} color={COLORS.warningAmber} />
-                <Text style={[styles.actionLabel, { color: textColor }]}>Profile</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionCard, { backgroundColor: surfaceColor, borderWidth: 1, borderColor, ...cardShadow }]}
-                onPress={handleProSignup}
-              >
-                <Ionicons name="add-circle-outline" size={28} color="#EC4899" />
-                <Text style={[styles.actionLabel, { color: textColor }]}>Register</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Not a Pro Yet CTA */}
-            <TouchableOpacity
-              style={[styles.earlyAdopterBanner, { borderColor: COLORS.primaryBlue }]}
-              onPress={handleProSignup}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.bannerTitle}>Not a Pro yet?</Text>
-              <Text style={styles.bannerSubtitle}>
-                Join now — {EARLY_ADOPTER_SPOTS_LEFT} early adopter spots left at ${EARLY_ADOPTER_PRICE}/year
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={{ height: 100 }} />
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
 
   // User Mode (Find a Pro) - V2 THE TAVVY WAY
   return (
@@ -307,24 +197,17 @@ export default function ProsHomeScreen() {
         <View style={styles.segmentedControlContainer}>
           <View style={[styles.segmentedControl, { backgroundColor: surfaceColor }]}>
             <TouchableOpacity
-              style={[styles.segment, viewMode === 'user' && styles.segmentActive]}
-              onPress={() => setViewMode('user')}
+              style={[styles.segment, styles.segmentActive]}
             >
-              <Text style={[
-                styles.segmentText,
-                { color: viewMode === 'user' ? '#FFFFFF' : secondaryTextColor }
-              ]}>
+              <Text style={[styles.segmentText, { color: '#FFFFFF' }]}>
                 Find a Pro
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.segment, viewMode === 'pro' && styles.segmentActive]}
-              onPress={() => setViewMode('pro')}
+              style={styles.segment}
+              onPress={handleImAPro}
             >
-              <Text style={[
-                styles.segmentText,
-                { color: viewMode === 'pro' ? '#FFFFFF' : secondaryTextColor }
-              ]}>
+              <Text style={[styles.segmentText, { color: secondaryTextColor }]}>
                 I'm a Pro
               </Text>
             </TouchableOpacity>
