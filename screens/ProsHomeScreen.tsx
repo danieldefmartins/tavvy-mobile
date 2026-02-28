@@ -159,7 +159,7 @@ export default function ProsHomeScreen() {
 
   const handleImAPro = () => {
     if (!user) {
-      navigation.navigate('ProsLogin');
+      navigation.navigate('Login');
     } else {
       navigation.navigate('ProsDashboard');
     }
