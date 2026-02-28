@@ -287,13 +287,14 @@ export default function PublicCardViewScreen() {
 
   const handleShare = async () => {
     if (!cardData) return;
-    
+    const shareUrl = `https://tavvy.com/${cardData.slug}`;
+
     try {
-      await Share.share({
-        message: `Check out ${cardData.fullName}'s digital card: https://tavvy.com/${cardData.slug}`,
-        url: `https://tavvy.com/${cardData.slug}`,
-        title: `${cardData.fullName}'s Digital Card`,
-      });
+      if (Platform.OS === 'ios') {
+        await Share.share({ url: shareUrl });
+      } else {
+        await Share.share({ message: shareUrl, title: `${cardData.fullName}'s Digital Card` });
+      }
     } catch (error) {
       console.error('Error sharing:', error);
     }

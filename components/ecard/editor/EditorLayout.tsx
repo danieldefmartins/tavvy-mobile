@@ -84,10 +84,11 @@ export default function EditorLayout({
 
   const handleShare = async () => {
     try {
-      await Share.share({
-        message: `Check out my digital card: ${cardUrl}`,
-        url: cardUrl,
-      });
+      if (Platform.OS === 'ios') {
+        await Share.share({ url: cardUrl });
+      } else {
+        await Share.share({ message: cardUrl });
+      }
     } catch {
       // User cancelled
     }
