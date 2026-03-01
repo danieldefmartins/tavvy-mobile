@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Linking, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,6 +33,12 @@ export default function ProsPaywallScreen() {
   const handleBack = () => navigation.goBack();
 
   const handleSubscribe = async () => {
+    // iOS requires purchases through Apple IAP — redirect to web
+    if (Platform.OS === 'ios') {
+      Linking.openURL('https://tavvy.com/app/pros');
+      return;
+    }
+
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('pros-stripe-create-checkout');

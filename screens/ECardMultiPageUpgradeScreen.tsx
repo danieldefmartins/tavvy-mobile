@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -69,20 +70,26 @@ const ECardMultiPageUpgradeScreen: React.FC = () => {
   ];
 
   const handleSubscribe = async () => {
+    // iOS requires purchases through Apple IAP — redirect to web
+    if (Platform.OS === 'ios') {
+      Linking.openURL('https://tavvy.com/app/ecard');
+      return;
+    }
+
     setLoading(true);
-    
+
     try {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         Alert.alert('Error', 'Please log in to subscribe');
         setLoading(false);
         return;
       }
 
-      // Create Stripe checkout session via your backend/edge function
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      // Create Stripe checkout session via edge function
+      const { data, error } = await supabase.functions.invoke('ecard-stripe-create-checkout', {
         body: {
           priceId: MULTI_PAGE_PRICE_ID,
           userId: user.id,

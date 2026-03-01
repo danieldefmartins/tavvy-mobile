@@ -1,12 +1,12 @@
 /**
  * Pros Profile Screen
  * Install path: screens/ProsProfileScreen.tsx
- * 
+ *
  * Individual pro profile with details, photos, reviews.
- * Uses sample data for testing.
+ * Uses useProProfile() hook to fetch real data from Supabase.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,13 +16,15 @@ import {
   TouchableOpacity,
   Linking,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { ProsColors, SAMPLE_PROS, DAYS_OF_WEEK, SamplePro } from '../constants/ProsConfig';
+import { ProsColors, DAYS_OF_WEEK } from '../constants/ProsConfig';
+import { useProProfile } from '../hooks/usePros';
 import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
@@ -35,24 +37,25 @@ type RouteParams = {
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
-// Sample reviews - empty, real data from Supabase
-const SAMPLE_REVIEWS: any[] = [];
-
-// Sample photos - empty, real data from Supabase
-const SAMPLE_PHOTOS: string[] = [];
-
 export default function ProsProfileScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProp<RouteParams, 'ProsProfile'>>();
   const { slug } = route.params;
 
+  const { pro: profileData, loading, error, fetchPro } = useProProfile();
   const [activeTab, setActiveTab] = useState<'about' | 'photos' | 'reviews'>('about');
 
-  // Find pro from sample data
-  const pro = useMemo(() => {
-    return SAMPLE_PROS.find(p => p.slug === slug);
-  }, [slug]);
+  useEffect(() => {
+    if (slug) {
+      fetchPro(slug);
+    }
+  }, [slug, fetchPro]);
+
+  const pro = profileData?.provider;
+  const reviews = profileData?.reviews || [];
+  const photos = profileData?.photos || [];
+  const availability = profileData?.availability || [];
 
   const handleCall = () => {
     if (pro?.phone) {
@@ -61,20 +64,38 @@ export default function ProsProfileScreen() {
   };
 
   const handleMessage = () => {
-    navigation.navigate('ProsMessages', { 
+    navigation.navigate('ProsMessages', {
       recipientId: pro?.id,
-      recipientName: pro?.businessName 
+      recipientName: pro?.businessName
     });
   };
 
   const handleRequestQuote = () => {
-    navigation.navigate('ProsRequestQuote', { 
-      proId: pro?.id, 
-      proName: pro?.businessName 
+    navigation.navigate('ProsRequestQuote', {
+      proId: pro?.id,
+      proName: pro?.businessName
     });
   };
 
-  if (!pro) {
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={ProsColors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={ProsColors.primary} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error / not found state
+  if (error || !pro) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -85,8 +106,8 @@ export default function ProsProfileScreen() {
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={ProsColors.error} />
           <Text style={styles.errorTitle}>Pro not found</Text>
-          <Text style={styles.errorText}>Unable to load this profile</Text>
-          <TouchableOpacity 
+          <Text style={styles.errorText}>{error || 'Unable to load this profile'}</Text>
+          <TouchableOpacity
             style={styles.backHomeButton}
             onPress={() => navigation.navigate('ProsHome')}
           >
@@ -96,6 +117,16 @@ export default function ProsProfileScreen() {
       </SafeAreaView>
     );
   }
+
+  const rating = pro.averageRating || 0;
+  const reviewCount = pro.totalReviews || reviews.length || 0;
+
+  // Build availability display from real data
+  const getHoursForDay = (dayValue: number): string => {
+    const dayAvail = availability.find(a => a.dayOfWeek === dayValue);
+    if (!dayAvail || !dayAvail.isAvailable) return 'Closed';
+    return `${dayAvail.startTime} - ${dayAvail.endTime}`;
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -111,8 +142,8 @@ export default function ProsProfileScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Cover Image */}
-        <Image 
-          source={{ uri: pro.profileImage }} 
+        <Image
+          source={{ uri: pro.coverPhotoUrl || pro.profilePhotoUrl || 'https://images.unsplash.com/photo-1556761175-4b46a572b786?w=800' }}
           style={styles.coverImage}
           resizeMode="cover"
         />
@@ -126,32 +157,35 @@ export default function ProsProfileScreen() {
                 <Ionicons name="checkmark-circle" size={20} color={ProsColors.primary} />
               )}
             </View>
-            <Text style={styles.categoryName}>{pro.categoryName}</Text>
+            {pro.categories && pro.categories.length > 0 && (
+              <Text style={styles.categoryName}>{pro.categories[0].name}</Text>
+            )}
 
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={18} color="#F59E0B" />
-              <Text style={styles.ratingText}>{pro.rating.toFixed(1)}</Text>
+              <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
               <Text style={styles.reviewCount}>
-                ({pro.reviewCount} {pro.reviewCount === 1 ? 'review' : 'reviews'})
+                ({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})
               </Text>
             </View>
 
             <View style={styles.locationRow}>
               <Ionicons name="location-outline" size={16} color={ProsColors.textSecondary} />
               <Text style={styles.locationText}>
-                {pro.city}, {pro.state} • Serves {pro.serviceRadius} mi radius
+                {[pro.city, pro.state].filter(Boolean).join(', ')}
+                {pro.serviceRadius ? ` \u2022 Serves ${pro.serviceRadius} mi radius` : ''}
               </Text>
             </View>
 
             {/* Badges */}
             <View style={styles.badges}>
-              {(pro as any).isInsured && (
+              {pro.isInsured && (
                 <View style={styles.badge}>
                   <Ionicons name="shield-checkmark" size={14} color={ProsColors.primary} />
                   <Text style={styles.badgeText}>Insured</Text>
                 </View>
               )}
-              {(pro as any).isLicensed && (
+              {pro.licenseNumber && (
                 <View style={styles.badge}>
                   <Ionicons name="document-text" size={14} color={ProsColors.primary} />
                   <Text style={styles.badgeText}>Licensed</Text>
@@ -193,8 +227,8 @@ export default function ProsProfileScreen() {
             >
               <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                {tab === 'photos' && ` (${SAMPLE_PHOTOS.length})`}
-                {tab === 'reviews' && ` (${pro.reviewCount})`}
+                {tab === 'photos' && ` (${photos.length})`}
+                {tab === 'reviews' && ` (${reviewCount})`}
               </Text>
             </TouchableOpacity>
           ))}
@@ -206,18 +240,22 @@ export default function ProsProfileScreen() {
             {/* About */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>About</Text>
-              <Text style={styles.description}>{pro.description}</Text>
+              <Text style={styles.description}>{pro.description || 'No description provided.'}</Text>
             </View>
 
             {/* Services */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Services</Text>
-              <View style={styles.servicesList}>
-                <View style={styles.serviceTag}>
-                  <Text style={styles.serviceTagText}>{pro.categoryName}</Text>
+            {pro.categories && pro.categories.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Services</Text>
+                <View style={styles.servicesList}>
+                  {pro.categories.map((cat) => (
+                    <View key={cat.id} style={styles.serviceTag}>
+                      <Text style={styles.serviceTagText}>{cat.name}</Text>
+                    </View>
+                  ))}
                 </View>
               </View>
-            </View>
+            )}
 
             {/* Contact Info */}
             <View style={styles.section}>
@@ -229,7 +267,7 @@ export default function ProsProfileScreen() {
                 </TouchableOpacity>
               )}
               {pro.email && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.contactRow}
                   onPress={() => Linking.openURL(`mailto:${pro.email}`)}
                 >
@@ -237,33 +275,42 @@ export default function ProsProfileScreen() {
                   <Text style={styles.contactText}>{pro.email}</Text>
                 </TouchableOpacity>
               )}
+              {pro.website && (
+                <TouchableOpacity
+                  style={styles.contactRow}
+                  onPress={() => Linking.openURL(pro.website!)}
+                >
+                  <Ionicons name="globe-outline" size={18} color={ProsColors.primary} />
+                  <Text style={styles.contactText}>{pro.website}</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Business Hours */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Business Hours</Text>
-              {DAYS_OF_WEEK.map((day) => (
-                <View key={day.value} style={styles.hoursRow}>
-                  <Text style={styles.dayText}>{day.label}</Text>
-                  <Text style={styles.hoursText}>
-                    {day.label === 'Sunday' ? 'Closed' : '8:00 AM - 6:00 PM'}
-                  </Text>
-                </View>
-              ))}
-            </View>
+            {availability.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Business Hours</Text>
+                {DAYS_OF_WEEK.map((day) => (
+                  <View key={day.value} style={styles.hoursRow}>
+                    <Text style={styles.dayText}>{day.label}</Text>
+                    <Text style={styles.hoursText}>{getHoursForDay(day.value)}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
         {activeTab === 'photos' && (
           <View style={styles.tabContent}>
             <View style={styles.photosGrid}>
-              {SAMPLE_PHOTOS.map((photo, index) => (
-                <TouchableOpacity key={index} style={styles.photoItem}>
-                  <Image source={{ uri: photo }} style={styles.photoImage} />
+              {photos.map((photo) => (
+                <TouchableOpacity key={photo.id} style={styles.photoItem}>
+                  <Image source={{ uri: photo.url }} style={styles.photoImage} />
                 </TouchableOpacity>
               ))}
             </View>
-            {SAMPLE_PHOTOS.length === 0 && (
+            {photos.length === 0 && (
               <View style={styles.emptyState}>
                 <Ionicons name="images-outline" size={48} color={ProsColors.textMuted} />
                 <Text style={styles.emptyStateText}>No photos yet</Text>
@@ -276,24 +323,24 @@ export default function ProsProfileScreen() {
           <View style={styles.tabContent}>
             {/* Rating Summary */}
             <View style={styles.ratingSummary}>
-              <Text style={styles.ratingBig}>{pro.rating.toFixed(1)}</Text>
+              <Text style={styles.ratingBig}>{rating.toFixed(1)}</Text>
               <View style={styles.starsRow}>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Ionicons
                     key={star}
-                    name={star <= Math.round(pro.rating) ? 'star' : 'star-outline'}
+                    name={star <= Math.round(rating) ? 'star' : 'star-outline'}
                     size={20}
                     color="#F59E0B"
                   />
                 ))}
               </View>
               <Text style={styles.totalReviews}>
-                Based on {pro.reviewCount} reviews
+                Based on {reviewCount} reviews
               </Text>
             </View>
 
             {/* Reviews List */}
-            {SAMPLE_REVIEWS.map((review) => (
+            {reviews.map((review) => (
               <View key={review.id} style={styles.reviewCard}>
                 <View style={styles.reviewHeader}>
                   <View style={styles.reviewUser}>
@@ -301,9 +348,9 @@ export default function ProsProfileScreen() {
                       <Ionicons name="person" size={16} color={ProsColors.textMuted} />
                     </View>
                     <View>
-                      <Text style={styles.reviewUserName}>{review.userName}</Text>
+                      <Text style={styles.reviewUserName}>{review.userName || 'Anonymous'}</Text>
                       <Text style={styles.reviewDate}>
-                        {new Date(review.date).toLocaleDateString()}
+                        {new Date(review.createdAt).toLocaleDateString()}
                       </Text>
                     </View>
                   </View>
@@ -318,9 +365,18 @@ export default function ProsProfileScreen() {
                     ))}
                   </View>
                 </View>
-                <Text style={styles.reviewContent}>{review.content}</Text>
+                {review.content && (
+                  <Text style={styles.reviewContent}>{review.content}</Text>
+                )}
               </View>
             ))}
+
+            {reviews.length === 0 && (
+              <View style={styles.emptyState}>
+                <Ionicons name="chatbubble-outline" size={48} color={ProsColors.textMuted} />
+                <Text style={styles.emptyStateText}>No reviews yet</Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -363,6 +419,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.9)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: ProsColors.textSecondary,
+    marginTop: 12,
   },
   coverImage: {
     width: '100%',

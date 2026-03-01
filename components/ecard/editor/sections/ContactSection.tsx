@@ -152,7 +152,7 @@ export default function ContactSection({ isDark, isPro }: ContactSectionProps) {
           <View style={styles.collapsibleContent}>
             <EditorField
               label="Address Line 1"
-              value={card.address_1 || card.address || ''}
+              value={card.address_1 || ''}
               onChange={(v) => handleFieldChange('address_1', v)}
               placeholder="123 Main Street"
               isDark={isDark}

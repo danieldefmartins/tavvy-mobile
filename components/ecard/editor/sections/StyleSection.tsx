@@ -111,7 +111,7 @@ export default function StyleSection({ isDark, isPro }: StyleSectionProps) {
   };
 
   const handleLogoSelect = (uri: string) => {
-    dispatch({ type: 'SET_FIELD', field: 'logo_url', value: uri });
+    dispatch({ type: 'SET_FIELD', field: 'company_logo_url', value: uri });
     dispatch({
       type: 'SET_PENDING_UPLOAD',
       key: 'logo',
@@ -120,7 +120,7 @@ export default function StyleSection({ isDark, isPro }: StyleSectionProps) {
   };
 
   const handleLogoRemove = () => {
-    dispatch({ type: 'SET_FIELD', field: 'logo_url', value: null });
+    dispatch({ type: 'SET_FIELD', field: 'company_logo_url', value: null });
     dispatch({ type: 'CLEAR_PENDING_UPLOAD', key: 'logo' });
   };
 
@@ -211,7 +211,7 @@ export default function StyleSection({ isDark, isPro }: StyleSectionProps) {
       <View style={styles.block}>
         <SectionLabel isDark={isDark}>Company Logo</SectionLabel>
         <ImageUploader
-          imageUrl={card.logo_url}
+          imageUrl={card.company_logo_url}
           onImageSelected={handleLogoSelect}
           onRemove={handleLogoRemove}
           label="Upload Logo"

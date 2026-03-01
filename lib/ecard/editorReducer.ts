@@ -47,12 +47,13 @@ export interface CardData {
 
   city?: string;
   state?: string;
-  address?: string;
+  address_1?: string;
+  address_2?: string;
   zip_code?: string;
 
   profile_photo_url?: string;
   banner_image_url?: string;
-  logo_url?: string;
+  company_logo_url?: string;
   profile_photo_size?: string;
   background_image_url?: string;
 
@@ -406,12 +407,13 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
           website_label: '',
           city: '',
           state: '',
-          address: '',
+          address_1: '',
+          address_2: '',
           zip_code: '',
           profile_photo_url: undefined,
           profile_photo_size: 'medium',
           banner_image_url: undefined,
-          logo_url: undefined,
+          company_logo_url: undefined,
           gallery_images: [],
           videos: [],
           featured_socials: [],

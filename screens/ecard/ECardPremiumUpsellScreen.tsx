@@ -68,6 +68,12 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
   const [isRestoring, setIsRestoring] = useState(false);
 
   const handleSubscribe = async () => {
+    // iOS requires purchases through Apple IAP — redirect to web
+    if (Platform.OS === 'ios') {
+      Linking.openURL('https://tavvy.com/app/ecard');
+      return;
+    }
+
     if (!user) {
       Alert.alert('Sign In Required', 'Please sign in to subscribe to Pro.');
       return;

@@ -390,11 +390,15 @@ export default function UniverseLandingScreen() {
     }
 
     try {
+      // Get current user for the suggestion
+      const { data: { user } } = await supabase.auth.getUser();
+
       // Insert suggestion into database
       const { error } = await supabase
         .from('universe_suggestions')
         .insert({
           universe_id: universeId,
+          user_id: user?.id || null,
           suggestion_text: suggestionText,
           status: 'pending'
         });

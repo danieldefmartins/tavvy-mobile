@@ -135,7 +135,7 @@ export function useAutoSave({
         if (uploaded) bannerUrl = uploaded;
       }
 
-      let logoUrl = card.logo_url;
+      let logoUrl = card.company_logo_url;
       const logoUpload = pendingUploads.get('logo');
       if (logoUpload) {
         const uploaded = await uploadFile(userId, logoUpload, 'logo');
@@ -168,12 +168,13 @@ export function useAutoSave({
         website_label: card.website_label || null,
         city: card.city || null,
         state: card.state || null,
-        address: card.address || null,
+        address_1: card.address_1 || null,
+        address_2: card.address_2 || null,
         zip_code: card.zip_code || null,
         profile_photo_url: cleanUrl(photoUrl) || null,
         profile_photo_size: card.profile_photo_size || 'medium',
         banner_image_url: cleanUrl(bannerUrl) || null,
-        logo_url: cleanUrl(logoUrl) || null,
+        company_logo_url: cleanUrl(logoUrl) || null,
         background_image_url: cleanUrl(card.background_image_url) || null,
         gradient_color_1: card.gradient_color_1 || '#667eea',
         gradient_color_2: card.gradient_color_2 || '#764ba2',
@@ -201,7 +202,6 @@ export function useAutoSave({
         show_bonded_badge: card.show_bonded_badge || false,
         show_tavvy_verified_badge: card.show_tavvy_verified_badge || false,
         form_block: card.form_block || null,
-        industry_icons: card.industry_icons || null,
         // Civic fields
         ballot_number: card.ballot_number || null,
         party_name: card.party_name || null,
