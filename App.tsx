@@ -167,6 +167,7 @@ import {
   ECardCreateScreen,
   ECardNewScreen,
   ECardEditScreen,
+  ECardStudioScreen,
   ECardStatsScreen,
 } from './screens/ecard';
 import VerificationUploadScreen from './screens/VerificationUploadScreen';
@@ -378,6 +379,7 @@ function AppsStack() {
       <MenuStackNav.Screen name="ECardCreate" component={ECardCreateScreen} />
       <MenuStackNav.Screen name="ECardNew" component={ECardNewScreen} />
       <MenuStackNav.Screen name="ECardEdit" component={ECardEditScreen} />
+      <MenuStackNav.Screen name="ECardStudio" component={ECardStudioScreen} options={{ headerShown: false }} />
       <MenuStackNav.Screen name="ECardStats" component={ECardStatsScreen} />
       <MenuStackNav.Screen name="VerificationUpload" component={VerificationUploadScreen} />
       
