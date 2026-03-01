@@ -35,8 +35,6 @@ const FONT_COLOR_OPTIONS: { id: string | null; label: string; color: string | nu
   { id: null, label: 'Auto', color: null },
   { id: '#000000', label: 'Black', color: '#000000' },
   { id: '#FFFFFF', label: 'White', color: '#FFFFFF' },
-  { id: '#333333', label: 'Dark Gray', color: '#333333' },
-  { id: '#D4AF37', label: 'Gold', color: '#D4AF37' },
 ];
 
 // ── Props ────────────────────────────────────────────────────────────────────
@@ -52,9 +50,9 @@ export default function TypographySection({ isDark, isPro }: TypographySectionPr
   const { state, dispatch } = useEditor();
   const card = state.card;
   const [customFontColor, setCustomFontColor] = useState(
-    card?.font_color && !['#000000', '#FFFFFF', '#333333', '#D4AF37'].includes(card.font_color)
+    card?.font_color && !['#000000', '#FFFFFF'].includes(card.font_color)
       ? card.font_color
-      : '#555555'
+      : '#333333'
   );
 
   if (!card) return null;
@@ -80,6 +78,82 @@ export default function TypographySection({ isDark, isPro }: TypographySectionPr
       defaultOpen={false}
       isDark={isDark}
     >
+      {/* ===== Button Style ===== */}
+      <View style={styles.block}>
+        <SectionLabel isDark={isDark}>Button Style</SectionLabel>
+        <View style={styles.buttonGroup}>
+          {BUTTON_STYLES.map((style) => {
+            const isSelected = (card.button_style || 'fill') === style.id;
+            return (
+              <TouchableOpacity
+                key={style.id}
+                onPress={() =>
+                  dispatch({
+                    type: 'SET_FIELD',
+                    field: 'button_style',
+                    value: style.id,
+                  })
+                }
+                activeOpacity={0.7}
+                style={[
+                  styles.chipButton,
+                  {
+                    borderColor: isSelected ? ACCENT : borderColor,
+                    backgroundColor: isSelected
+                      ? isDark
+                        ? 'rgba(0,200,83,0.1)'
+                        : 'rgba(0,200,83,0.05)'
+                      : cardBg,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.chipLabel,
+                    {
+                      color: isSelected ? ACCENT : textPrimary,
+                      fontWeight: isSelected ? '600' : '400',
+                    },
+                  ]}
+                >
+                  {style.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* ===== Button Color ===== */}
+      <View style={styles.block}>
+        <SectionLabel isDark={isDark}>Button Color</SectionLabel>
+        <ColorSwatchPicker
+          value={card.button_color || null}
+          onChange={(v) => dispatch({ type: 'SET_FIELD', field: 'button_color', value: v })}
+          isDark={isDark}
+        />
+      </View>
+
+      {/* ===== Icon Color ===== */}
+      <View style={styles.block}>
+        <SectionLabel isDark={isDark}>Icon Color</SectionLabel>
+        <ColorSwatchPicker
+          value={card.icon_color || null}
+          onChange={(v) => dispatch({ type: 'SET_FIELD', field: 'icon_color', value: v })}
+          isDark={isDark}
+        />
+      </View>
+
+      {/* ===== Social Media Icon Color ===== */}
+      <View style={styles.block}>
+        <SectionLabel isDark={isDark}>Social Media Icon Color</SectionLabel>
+        <SocialIconColorPicker
+          value={card.social_icon_color || null}
+          onChange={(v) => dispatch({ type: 'SET_FIELD', field: 'social_icon_color', value: v })}
+          isDark={isDark}
+        />
+      </View>
+
       {/* ===== Font Selector ===== */}
       <View style={styles.block}>
         <SectionLabel isDark={isDark}>Font</SectionLabel>
@@ -148,7 +222,7 @@ export default function TypographySection({ isDark, isPro }: TypographySectionPr
       </View>
 
       {/* ===== Font Color ===== */}
-      <View style={styles.block}>
+      <View style={styles.lastBlock}>
         <SectionLabel isDark={isDark}>Font Color</SectionLabel>
         <View style={styles.buttonGroup}>
           {FONT_COLOR_OPTIONS.map((opt) => {
@@ -261,7 +335,7 @@ export default function TypographySection({ isDark, isPro }: TypographySectionPr
                   dispatch({ type: 'SET_FIELD', field: 'font_color', value: val });
                 }
               }}
-              placeholder="#555555"
+              placeholder="#333333"
               placeholderTextColor={isDark ? '#475569' : '#BDBDBD'}
               maxLength={7}
               autoCapitalize="none"
@@ -277,82 +351,6 @@ export default function TypographySection({ isDark, isPro }: TypographySectionPr
             />
           </View>
         )}
-      </View>
-
-      {/* ===== Button Color ===== */}
-      <View style={styles.block}>
-        <SectionLabel isDark={isDark}>Button Color</SectionLabel>
-        <ColorSwatchPicker
-          value={card.button_color || null}
-          onChange={(v) => dispatch({ type: 'SET_FIELD', field: 'button_color', value: v })}
-          isDark={isDark}
-        />
-      </View>
-
-      {/* ===== Icon Color ===== */}
-      <View style={styles.block}>
-        <SectionLabel isDark={isDark}>Icon Color</SectionLabel>
-        <ColorSwatchPicker
-          value={card.icon_color || null}
-          onChange={(v) => dispatch({ type: 'SET_FIELD', field: 'icon_color', value: v })}
-          isDark={isDark}
-        />
-      </View>
-
-      {/* ===== Social Media Icon Color ===== */}
-      <View style={styles.block}>
-        <SectionLabel isDark={isDark}>Social Media Icon Color</SectionLabel>
-        <SocialIconColorPicker
-          value={card.social_icon_color || null}
-          onChange={(v) => dispatch({ type: 'SET_FIELD', field: 'social_icon_color', value: v })}
-          isDark={isDark}
-        />
-      </View>
-
-      {/* ===== Button Style ===== */}
-      <View style={styles.lastBlock}>
-        <SectionLabel isDark={isDark}>Button Style</SectionLabel>
-        <View style={styles.buttonGroup}>
-          {BUTTON_STYLES.map((style) => {
-            const isSelected = (card.button_style || 'fill') === style.id;
-            return (
-              <TouchableOpacity
-                key={style.id}
-                onPress={() =>
-                  dispatch({
-                    type: 'SET_FIELD',
-                    field: 'button_style',
-                    value: style.id,
-                  })
-                }
-                activeOpacity={0.7}
-                style={[
-                  styles.chipButton,
-                  {
-                    borderColor: isSelected ? ACCENT : borderColor,
-                    backgroundColor: isSelected
-                      ? isDark
-                        ? 'rgba(0,200,83,0.1)'
-                        : 'rgba(0,200,83,0.05)'
-                      : cardBg,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.chipLabel,
-                    {
-                      color: isSelected ? ACCENT : textPrimary,
-                      fontWeight: isSelected ? '600' : '400',
-                    },
-                  ]}
-                >
-                  {style.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
       </View>
     </EditorSection>
   );
