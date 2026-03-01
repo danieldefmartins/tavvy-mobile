@@ -386,9 +386,12 @@ export async function searchPlacesInBounds(options: {
       };
     }
 
-    const places = data.hits.map((hit: any) => 
-      transformTypesensePlace(hit.document)
-    );
+    const places = data.hits
+      .map((hit: any) => transformTypesensePlace(hit.document))
+      .filter((p: PlaceSearchResult) =>
+        typeof p.latitude === 'number' && typeof p.longitude === 'number' &&
+        !isNaN(p.latitude) && !isNaN(p.longitude)
+      );
 
     return {
       places,
