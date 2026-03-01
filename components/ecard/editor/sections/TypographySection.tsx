@@ -279,6 +279,36 @@ export default function TypographySection({ isDark, isPro }: TypographySectionPr
         )}
       </View>
 
+      {/* ===== Button Color ===== */}
+      <View style={styles.block}>
+        <SectionLabel isDark={isDark}>Button Color</SectionLabel>
+        <ColorSwatchPicker
+          value={card.button_color || null}
+          onChange={(v) => dispatch({ type: 'SET_FIELD', field: 'button_color', value: v })}
+          isDark={isDark}
+        />
+      </View>
+
+      {/* ===== Icon Color ===== */}
+      <View style={styles.block}>
+        <SectionLabel isDark={isDark}>Icon Color</SectionLabel>
+        <ColorSwatchPicker
+          value={card.icon_color || null}
+          onChange={(v) => dispatch({ type: 'SET_FIELD', field: 'icon_color', value: v })}
+          isDark={isDark}
+        />
+      </View>
+
+      {/* ===== Social Media Icon Color ===== */}
+      <View style={styles.block}>
+        <SectionLabel isDark={isDark}>Social Media Icon Color</SectionLabel>
+        <SocialIconColorPicker
+          value={card.social_icon_color || null}
+          onChange={(v) => dispatch({ type: 'SET_FIELD', field: 'social_icon_color', value: v })}
+          isDark={isDark}
+        />
+      </View>
+
       {/* ===== Button Style ===== */}
       <View style={styles.lastBlock}>
         <SectionLabel isDark={isDark}>Button Style</SectionLabel>
@@ -349,6 +379,255 @@ function SectionLabel({
     </Text>
   );
 }
+
+// ── Color Pickers ─────────────────────────────────────────────────────────────
+
+const COLOR_PRESETS = [
+  { color: '#1e293b', name: 'Navy' },
+  { color: '#c9a84c', name: 'Gold' },
+  { color: '#ef4444', name: 'Red' },
+  { color: '#10b981', name: 'Green' },
+  { color: '#3b82f6', name: 'Blue' },
+  { color: '#8b5cf6', name: 'Purple' },
+  { color: '#f97316', name: 'Orange' },
+  { color: '#111111', name: 'Black' },
+  { color: '#f8f9fa', name: 'White' },
+  { color: '#7A5330', name: 'Bronze' },
+];
+
+function ColorSwatchPicker({
+  value,
+  onChange,
+  isDark,
+}: {
+  value: string | null;
+  onChange: (v: string | null) => void;
+  isDark: boolean;
+}) {
+  const [showCustom, setShowCustom] = React.useState(false);
+  const [customHex, setCustomHex] = React.useState(value || '#333333');
+  const borderColor = isDark ? '#334155' : '#E5E7EB';
+  const cardBg = isDark ? 'rgba(255,255,255,0.04)' : '#FAFAFA';
+  const inputBg = isDark ? '#1E293B' : '#FFFFFF';
+  const inputColor = isDark ? '#FFFFFF' : '#333333';
+
+  const isPreset = value && COLOR_PRESETS.some(p => p.color === value);
+  const isCustom = value != null && !isPreset;
+
+  return (
+    <View>
+      <View style={swatchStyles.row}>
+        {/* Auto */}
+        <TouchableOpacity
+          onPress={() => { onChange(null); setShowCustom(false); }}
+          style={[swatchStyles.swatch, {
+            borderColor: !value ? ACCENT : borderColor,
+            backgroundColor: cardBg,
+          }]}
+        >
+          <Text style={{ fontSize: 11, fontWeight: '600', color: !value ? ACCENT : (isDark ? '#94A3B8' : '#6B7280') }}>A</Text>
+        </TouchableOpacity>
+
+        {/* Presets */}
+        {COLOR_PRESETS.map((preset) => (
+          <TouchableOpacity
+            key={preset.color}
+            onPress={() => { onChange(preset.color); setShowCustom(false); }}
+            style={[swatchStyles.swatch, {
+              borderColor: value === preset.color ? ACCENT : borderColor,
+              backgroundColor: preset.color,
+            }]}
+          />
+        ))}
+
+        {/* Custom */}
+        <TouchableOpacity
+          onPress={() => setShowCustom(!showCustom)}
+          style={[swatchStyles.swatch, {
+            borderColor: isCustom ? ACCENT : borderColor,
+            backgroundColor: isCustom ? value : '#888',
+          }]}
+        >
+          <Ionicons name="color-palette" size={14} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      {showCustom && (
+        <View style={swatchStyles.customRow}>
+          <View style={[swatchStyles.customPreview, { backgroundColor: value || customHex, borderColor }]} />
+          <TextInput
+            value={value || customHex}
+            onChangeText={(val) => {
+              setCustomHex(val);
+              if (/^#[0-9a-fA-F]{6}$/.test(val)) onChange(val);
+            }}
+            placeholder="#333333"
+            placeholderTextColor={isDark ? '#475569' : '#BDBDBD'}
+            maxLength={7}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={[swatchStyles.hexInput, { backgroundColor: inputBg, color: inputColor, borderColor }]}
+          />
+        </View>
+      )}
+    </View>
+  );
+}
+
+const SOCIAL_ICON_OPTIONS: { id: string | null; label: string; swatch: string | null }[] = [
+  { id: null, label: 'Standard', swatch: null },
+  { id: '#FFFFFF', label: 'White', swatch: '#FFFFFF' },
+  { id: '#000000', label: 'Black', swatch: '#000000' },
+];
+
+function SocialIconColorPicker({
+  value,
+  onChange,
+  isDark,
+}: {
+  value: string | null;
+  onChange: (v: string | null) => void;
+  isDark: boolean;
+}) {
+  const [showCustom, setShowCustom] = React.useState(false);
+  const [customHex, setCustomHex] = React.useState(value || '#333333');
+  const borderColor = isDark ? '#334155' : '#E5E7EB';
+  const cardBg = isDark ? 'rgba(255,255,255,0.04)' : '#FAFAFA';
+  const inputBg = isDark ? '#1E293B' : '#FFFFFF';
+  const inputColor = isDark ? '#FFFFFF' : '#333333';
+
+  const isPreset = value && SOCIAL_ICON_OPTIONS.some(o => o.id === value);
+  const isCustom = value != null && !isPreset;
+
+  return (
+    <View>
+      <View style={swatchStyles.row}>
+        {SOCIAL_ICON_OPTIONS.map((opt) => {
+          const sel = value === opt.id;
+          return (
+            <TouchableOpacity
+              key={opt.label}
+              onPress={() => { onChange(opt.id); setShowCustom(false); }}
+              style={[swatchStyles.socialChip, {
+                borderColor: sel ? ACCENT : borderColor,
+                backgroundColor: sel
+                  ? (isDark ? 'rgba(0,200,83,0.1)' : 'rgba(0,200,83,0.05)')
+                  : cardBg,
+              }]}
+            >
+              {opt.swatch && (
+                <View style={[swatchStyles.miniSwatch, {
+                  backgroundColor: opt.swatch,
+                  borderColor: opt.swatch === '#FFFFFF' ? '#ddd' : 'transparent',
+                }]} />
+              )}
+              <Text style={{
+                fontSize: 13,
+                fontWeight: sel ? '600' : '500',
+                color: sel ? ACCENT : (isDark ? '#94A3B8' : '#6B7280'),
+              }}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+
+        {/* Custom */}
+        <TouchableOpacity
+          onPress={() => setShowCustom(!showCustom)}
+          style={[swatchStyles.socialChip, {
+            borderColor: isCustom ? ACCENT : borderColor,
+            backgroundColor: isCustom
+              ? (isDark ? 'rgba(0,200,83,0.1)' : 'rgba(0,200,83,0.05)')
+              : cardBg,
+          }]}
+        >
+          <View style={[swatchStyles.miniSwatch, {
+            backgroundColor: isCustom ? value : '#888',
+          }]} />
+          <Text style={{
+            fontSize: 13,
+            fontWeight: isCustom ? '600' : '500',
+            color: isCustom ? ACCENT : (isDark ? '#94A3B8' : '#6B7280'),
+          }}>
+            Custom
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {showCustom && (
+        <View style={swatchStyles.customRow}>
+          <View style={[swatchStyles.customPreview, { backgroundColor: value || customHex, borderColor }]} />
+          <TextInput
+            value={value || customHex}
+            onChangeText={(val) => {
+              setCustomHex(val);
+              if (/^#[0-9a-fA-F]{6}$/.test(val)) onChange(val);
+            }}
+            placeholder="#333333"
+            placeholderTextColor={isDark ? '#475569' : '#BDBDBD'}
+            maxLength={7}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={[swatchStyles.hexInput, { backgroundColor: inputBg, color: inputColor, borderColor }]}
+          />
+        </View>
+      )}
+    </View>
+  );
+}
+
+const swatchStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  swatch: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  socialChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 2,
+  },
+  miniSwatch: {
+    width: 18,
+    height: 18,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  customRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 12,
+  },
+  customPreview: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  hexInput: {
+    width: 100,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderRadius: 8,
+    fontSize: 13,
+    fontFamily: 'monospace',
+  },
+});
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 

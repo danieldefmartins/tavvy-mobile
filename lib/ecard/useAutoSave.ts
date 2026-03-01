@@ -182,6 +182,7 @@ export function useAutoSave({
         button_style: card.button_style || 'fill',
         button_color: card.button_color || null,
         icon_color: card.icon_color || null,
+        social_icon_color: card.social_icon_color || null,
         template_id: card.template_id,
         color_scheme_id: card.color_scheme_id || null,
         theme: card.theme || 'basic',
