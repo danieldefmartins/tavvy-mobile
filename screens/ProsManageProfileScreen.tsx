@@ -43,24 +43,39 @@ export default function ProsManageProfileScreen() {
       if (!user) return;
 
       const { data, error } = await supabase
-        .from('pros')
-        .select('*, category:service_categories(name, id)')
+        .from('pro_providers')
+        .select('*')
         .eq('user_id', user.id)
         .single();
 
       if (error) throw error;
-      setProfile(data);
+      setProfile({
+        ...data,
+        // Normalize service_radius → service_radius_miles for the UI
+        service_radius_miles: data.service_radius ?? 25,
+      });
 
-      // Fetch available specialties for this category from the question library
-      const { data: questions } = await supabase
-        .from('service_category_questions')
-        .select('options')
-        .eq('category_id', data.category_id)
-        .is('parent_question_id', null)
-        .single();
+      // Fetch available specialties by matching trade_category to service_categories
+      if (data.trade_category) {
+        const { data: cat } = await supabase
+          .from('service_categories')
+          .select('id, name')
+          .eq('slug', data.trade_category)
+          .single();
 
-      if (questions && questions.options) {
-        setAvailableSpecialties(questions.options);
+        if (cat) {
+          setProfile((prev: any) => ({ ...prev, category: cat }));
+          const { data: questions } = await supabase
+            .from('service_category_questions')
+            .select('options')
+            .eq('category_id', cat.id)
+            .is('parent_question_id', null)
+            .single();
+
+          if (questions?.options) {
+            setAvailableSpecialties(questions.options);
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -82,11 +97,12 @@ export default function ProsManageProfileScreen() {
     setSaving(true);
     try {
       const { error } = await supabase
-        .from('pros')
+        .from('pro_providers')
         .update({
           business_name: profile.business_name,
           specialties: profile.specialties,
-          service_radius_miles: profile.service_radius_miles,
+          service_radius: profile.service_radius_miles,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', profile.id);
 
