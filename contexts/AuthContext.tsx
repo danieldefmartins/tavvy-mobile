@@ -37,16 +37,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Computed values
+  // Computed values — isPro is set during fetchProfile (includes pro_providers check)
   const isPro = profile?.subscription_status === 'active' && profile?.subscription_plan !== 'free';
   const maxCards = profile?.max_cards || 1;
 
   // Fetch user profile from database
+  // Mirrors web logic: checks pro_providers first, then profiles.is_pro
   const fetchProfile = useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('user_id, display_name, avatar_url, subscription_status, subscription_plan, subscription_expires_at, max_cards')
+        .select('user_id, display_name, avatar_url, is_pro, subscription_status, subscription_plan, subscription_expires_at, max_cards')
         .eq('user_id', userId)
         .single();
 
@@ -66,12 +67,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      let subStatus = data.subscription_status || 'free';
+      let subPlan = data.subscription_plan || 'free';
+
+      // If profile doesn't already show pro, check pro_providers table
+      // (Pro providers get automatic pro access — matches web roleService logic)
+      if (subStatus !== 'active' || subPlan === 'free') {
+        if (data.is_pro) {
+          // profiles.is_pro flag set by web — trust it
+          subStatus = 'active';
+          subPlan = 'pro';
+        } else {
+          // Check if user is a registered Pro provider
+          const { data: provider } = await supabase
+            .from('pro_providers')
+            .select('id')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (provider) {
+            subStatus = 'active';
+            subPlan = 'pro';
+            // Sync profiles table so future fetches are fast
+            supabase.from('profiles')
+              .update({ is_pro: true, subscription_status: 'active', subscription_plan: 'pro' })
+              .eq('user_id', userId)
+              .then(() => {});
+          }
+        }
+      }
+
       setProfile({
         id: data.user_id,
         display_name: data.display_name,
         avatar_url: data.avatar_url,
-        subscription_status: data.subscription_status || 'free',
-        subscription_plan: data.subscription_plan || 'free',
+        subscription_status: subStatus,
+        subscription_plan: subPlan,
         subscription_expires_at: data.subscription_expires_at,
         max_cards: data.max_cards || 1,
       });
