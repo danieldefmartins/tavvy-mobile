@@ -30,7 +30,7 @@ export default function ECardDashboardScreen({ navigation, route }: Props) {
           index: 1,
           routes: [
             { name: 'ECardHub' },
-            { name: 'ECardEdit', params: { cardId } },
+            { name: 'ECardStudio', params: { cardId } },
           ],
         })
       );

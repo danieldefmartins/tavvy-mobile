@@ -28,7 +28,7 @@ const AMBER = '#FF9F0A';
 // ── Inner shell (must be inside EditorProvider) ──────────────────────────────
 function StudioShell() {
   const navigation = useNavigation();
-  const route = useRoute<RouteProp<RootStackParamList, 'ECardEdit'>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'ECardStudio'>>();
   const { cardId } = route.params;
   const { user, loading: authLoading, isPro } = useAuth();
   const { state, loadCard } = useEditor();

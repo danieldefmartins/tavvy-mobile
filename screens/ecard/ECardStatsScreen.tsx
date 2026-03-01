@@ -171,7 +171,7 @@ export default function ECardStatsScreen() {
         <TouchableOpacity
           style={styles.headerButton}
           onPress={() =>
-            navigation.navigate('ECardEdit' as never, { cardId } as never)
+            navigation.navigate('ECardStudio' as never, { cardId } as never)
           }
         >
           <Ionicons name="create-outline" size={20} color={textSecondary} />
