@@ -285,8 +285,32 @@ export function useProsSubscription() {
     setLoading(true);
     setError(null);
     try {
-      const data = await invokeFunction<ProSubscription | null>('pros-subscriptions-get-my-subscription');
-      setSubscription(data);
+      // Query pro_providers directly for subscription data
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data, error: dbError } = await supabase
+        .from('pro_providers')
+        .select('id, subscription_plan, subscription_status, subscription_started_at, subscription_expires_at')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (dbError) throw dbError;
+      if (!data || !data.subscription_status || data.subscription_status === 'none') {
+        setSubscription(null);
+        return;
+      }
+
+      setSubscription({
+        id: data.id,
+        providerId: data.id,
+        tier: data.subscription_plan === 'early_adopter' ? 'early_adopter' : 'standard',
+        status: (data.subscription_status as ProSubscription['status']) || 'pending',
+        amount: 0,
+        startDate: data.subscription_started_at || '',
+        endDate: data.subscription_expires_at || '',
+        createdAt: data.subscription_started_at || '',
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch subscription');
     } finally {
@@ -334,8 +358,52 @@ export function useProDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const data = await invokeFunction<Pro>('pros-dashboard-get-profile');
-      setProfile(data);
+      // Query pro_providers directly — edge functions return 401 on mobile
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data, error: dbError } = await supabase
+        .from('pro_providers')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (dbError) throw dbError;
+      if (!data) {
+        setProfile(null);
+        return;
+      }
+
+      // Map snake_case DB columns to camelCase Pro interface
+      setProfile({
+        id: data.id,
+        userId: data.user_id,
+        businessName: data.business_name || '',
+        slug: data.slug || '',
+        description: data.description,
+        phone: data.phone,
+        email: data.email,
+        website: data.website,
+        address: data.address,
+        city: data.city,
+        state: data.state,
+        zipCode: data.zip_code,
+        latitude: data.latitude ? parseFloat(data.latitude) : undefined,
+        longitude: data.longitude ? parseFloat(data.longitude) : undefined,
+        serviceRadius: data.service_radius,
+        yearsInBusiness: data.years_in_business,
+        licenseNumber: data.license_number,
+        isInsured: data.is_insured || false,
+        isVerified: data.is_verified || false,
+        isActive: data.is_active || false,
+        profilePhotoUrl: data.profile_photo_url || data.logo_url,
+        coverPhotoUrl: data.cover_photo_url || data.cover_image_url,
+        averageRating: data.average_rating ? parseFloat(data.average_rating) : 0,
+        totalReviews: data.total_reviews || 0,
+        responseTime: data.response_time,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      } as any);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch profile');
     } finally {

@@ -121,8 +121,8 @@ export default function ProsDashboardScreen() {
           onPress={() => Alert.alert('Coming Soon', 'Edit Profile will be available in a future update.')}
         >
           <View style={styles.profileHeader}>
-            {(profile as any).logoUrl ? (
-              <Image source={{ uri: (profile as any).logoUrl }} style={styles.profileLogo} />
+            {(profile.profilePhotoUrl) ? (
+              <Image source={{ uri: profile.profilePhotoUrl }} style={styles.profileLogo} />
             ) : (
               <View style={styles.profileLogoPlaceholder}>
                 <Ionicons name="business" size={28} color={ProsColors.textMuted} />
