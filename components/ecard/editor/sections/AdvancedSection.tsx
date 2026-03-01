@@ -83,6 +83,30 @@ export default function AdvancedSection({ isDark, isPro }: AdvancedSectionProps)
           textColor={rowText}
           isLast
         />
+
+        {/* Badge Approval Status */}
+        {(card as any).badge_approval_status && (card as any).badge_approval_status !== 'none' && (
+          <View style={[styles.approvalStatus, {
+            backgroundColor: (card as any).badge_approval_status === 'pending'
+              ? (isDark ? '#422006' : '#FFFBEB')
+              : (card as any).badge_approval_status === 'approved'
+              ? (isDark ? '#064E3B' : '#ECFDF5')
+              : (isDark ? '#7F1D1D' : '#FEF2F2'),
+          }]}>
+            <Text style={{
+              fontSize: 13, fontWeight: '500',
+              color: (card as any).badge_approval_status === 'pending'
+                ? (isDark ? '#FDE68A' : '#92400E')
+                : (card as any).badge_approval_status === 'approved'
+                ? (isDark ? '#6EE7B7' : '#059669')
+                : (isDark ? '#FCA5A5' : '#DC2626'),
+            }}>
+              {(card as any).badge_approval_status === 'pending' && 'Pending Review'}
+              {(card as any).badge_approval_status === 'approved' && 'Approved'}
+              {(card as any).badge_approval_status === 'rejected' && 'Rejected'}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* ===== Professional Category ===== */}
@@ -168,6 +192,12 @@ function ToggleRow({
 const styles = StyleSheet.create({
   block: {
     marginBottom: 20,
+  },
+  approvalStatus: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   formBlock: {
     marginTop: 8,

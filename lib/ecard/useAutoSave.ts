@@ -196,6 +196,10 @@ export function useAutoSave({
         country_code: card.country_code || null,
         pro_credentials: card.pro_credentials || null,
         professional_category: card.professional_category || null,
+        show_licensed_badge: card.show_licensed_badge || false,
+        show_insured_badge: card.show_insured_badge || false,
+        show_bonded_badge: card.show_bonded_badge || false,
+        show_tavvy_verified_badge: card.show_tavvy_verified_badge || false,
         form_block: card.form_block || null,
         industry_icons: card.industry_icons || null,
         // Civic fields
@@ -206,6 +210,17 @@ export function useAutoSave({
         campaign_slogan: card.campaign_slogan || null,
         region: card.region || null,
       };
+
+      // Auto-set badge approval status to pending when any badge is toggled on
+      const anyBadgeOn = !!(
+        updatePayload.show_licensed_badge ||
+        updatePayload.show_insured_badge ||
+        updatePayload.show_bonded_badge ||
+        updatePayload.show_tavvy_verified_badge
+      );
+      if (anyBadgeOn) {
+        updatePayload.badge_approval_status = 'pending';
+      }
 
       // 3. Save card ──────────────────────────────────────────────────────
 
