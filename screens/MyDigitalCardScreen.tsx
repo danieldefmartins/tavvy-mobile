@@ -38,6 +38,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import QRCode from 'react-native-qrcode-svg';
+import { saveQRCodeToCameraRoll } from '../lib/ecard/saveQRCode';
 import * as Contacts from 'expo-contacts';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
@@ -106,6 +107,7 @@ export default function MyDigitalCardScreen() {
   const { theme, isDark } = useThemeContext();
   const { user } = useAuth();
   const [showQRModal, setShowQRModal] = useState(false);
+  const qrRef = useRef<any>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -766,18 +768,28 @@ export default function MyDigitalCardScreen() {
                 size={200}
                 backgroundColor="#fff"
                 color="#000"
+                getRef={(ref: any) => (qrRef.current = ref)}
               />
             </View>
-            
+
             <Text style={styles.qrUrl}>{cardUrl}</Text>
-            
-            <TouchableOpacity 
-              style={styles.qrCopyButton}
-              onPress={handleCopyLink}
-            >
-              <Ionicons name="copy" size={18} color="#fff" />
-              <Text style={styles.qrCopyText}>Copy Link</Text>
-            </TouchableOpacity>
+
+            <View style={styles.qrButtonRow}>
+              <TouchableOpacity
+                style={styles.qrDownloadButton}
+                onPress={() => saveQRCodeToCameraRoll(qrRef.current)}
+              >
+                <Ionicons name="download-outline" size={18} color="#fff" />
+                <Text style={styles.qrCopyText}>Save PNG</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.qrCopyButton}
+                onPress={handleCopyLink}
+              >
+                <Ionicons name="copy" size={18} color="#fff" />
+                <Text style={styles.qrCopyText}>Copy Link</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1036,11 +1048,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#64748B',
   },
+  qrButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+  },
+  qrDownloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 24,
+    backgroundColor: '#334155',
+    gap: 8,
+  },
   qrCopyButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
-    paddingHorizontal: 28,
+    paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 24,
     backgroundColor: '#8B5CF6',

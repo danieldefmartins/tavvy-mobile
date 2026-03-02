@@ -706,14 +706,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
       <View style={styles.bottomActions}>
         <TouchableOpacity
           style={styles.editButton}
-          onPress={() => navigation.navigate('ECardCreate', { 
-            mode: 'edit', 
-            cardId: cardData?.id, 
-            existingData: cardData,
-            existingLinks: links,
-            existingFeaturedSocials: featuredSocials,
-            preserveData: true 
-          })}
+          onPress={() => navigation.navigate('ECardEdit', { cardId: cardData?.id })}
         >
           <Ionicons name="pencil" size={20} color="#00C853" />
           <Text style={styles.editButtonText}>Edit Card</Text>

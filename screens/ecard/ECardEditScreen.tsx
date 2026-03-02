@@ -20,7 +20,7 @@ import { RootStackParamList } from '../../types/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import { EditorProvider, useEditor } from '../../lib/ecard/EditorContext';
-import EditorLayout from '../../components/ecard/editor/EditorLayout';
+import CardStudioLayout from '../../components/ecard/editor/CardStudioLayout';
 
 const ACCENT = '#00C853';
 
@@ -91,7 +91,7 @@ function EditorShell() {
   // ── Editor ──────────────────────────────────────────────────────────────────
 
   return (
-    <EditorLayout
+    <CardStudioLayout
       isDark={isDark}
       isPro={isPro}
       userId={user?.id}

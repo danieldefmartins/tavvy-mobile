@@ -144,9 +144,9 @@ export default function TypographySection({ isDark, isPro }: TypographySectionPr
         />
       </View>
 
-      {/* ===== Social Media Icon Color ===== */}
+      {/* ===== Social Icon Color ===== */}
       <View style={styles.block}>
-        <SectionLabel isDark={isDark}>Social Media Icon Color</SectionLabel>
+        <SectionLabel isDark={isDark}>Social Icon Color</SectionLabel>
         <SocialIconColorPicker
           value={card.social_icon_color || null}
           onChange={(v) => dispatch({ type: 'SET_FIELD', field: 'social_icon_color', value: v })}
@@ -473,9 +473,18 @@ function ColorSwatchPicker({
 }
 
 const SOCIAL_ICON_OPTIONS: { id: string | null; label: string; swatch: string | null }[] = [
-  { id: null, label: 'Standard', swatch: null },
-  { id: '#FFFFFF', label: 'White', swatch: '#FFFFFF' },
-  { id: '#000000', label: 'Black', swatch: '#000000' },
+  { id: null, label: 'Brand', swatch: null },
+];
+
+const SOCIAL_COLOR_PRESETS = [
+  { color: '#111111', name: 'Black' },
+  { color: '#FFFFFF', name: 'White' },
+  { color: '#1e293b', name: 'Navy' },
+  { color: '#c9a84c', name: 'Gold' },
+  { color: '#ef4444', name: 'Red' },
+  { color: '#8b5cf6', name: 'Purple' },
+  { color: '#3b82f6', name: 'Blue' },
+  { color: '#10b981', name: 'Green' },
 ];
 
 function SocialIconColorPicker({
@@ -488,68 +497,66 @@ function SocialIconColorPicker({
   isDark: boolean;
 }) {
   const [showCustom, setShowCustom] = React.useState(false);
-  const [customHex, setCustomHex] = React.useState(value || '#333333');
+  const [customHex, setCustomHex] = React.useState(
+    value && !SOCIAL_COLOR_PRESETS.some(p => p.color === value) ? value : '#333333'
+  );
   const borderColor = isDark ? '#334155' : '#E5E7EB';
   const cardBg = isDark ? 'rgba(255,255,255,0.04)' : '#FAFAFA';
   const inputBg = isDark ? '#1E293B' : '#FFFFFF';
   const inputColor = isDark ? '#FFFFFF' : '#333333';
 
-  const isPreset = value && SOCIAL_ICON_OPTIONS.some(o => o.id === value);
+  const isPreset = value && SOCIAL_COLOR_PRESETS.some(p => p.color === value);
   const isCustom = value != null && !isPreset;
 
   return (
     <View>
       <View style={swatchStyles.row}>
-        {SOCIAL_ICON_OPTIONS.map((opt) => {
-          const sel = value === opt.id;
-          return (
-            <TouchableOpacity
-              key={opt.label}
-              onPress={() => { onChange(opt.id); setShowCustom(false); }}
-              style={[swatchStyles.socialChip, {
-                borderColor: sel ? ACCENT : borderColor,
-                backgroundColor: sel
-                  ? (isDark ? 'rgba(0,200,83,0.1)' : 'rgba(0,200,83,0.05)')
-                  : cardBg,
-              }]}
-            >
-              {opt.swatch && (
-                <View style={[swatchStyles.miniSwatch, {
-                  backgroundColor: opt.swatch,
-                  borderColor: opt.swatch === '#FFFFFF' ? '#ddd' : 'transparent',
-                }]} />
-              )}
-              <Text style={{
-                fontSize: 13,
-                fontWeight: sel ? '600' : '500',
-                color: sel ? ACCENT : (isDark ? '#94A3B8' : '#6B7280'),
-              }}>
-                {opt.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-
-        {/* Custom */}
+        {/* Brand (default) — each platform uses its own color */}
         <TouchableOpacity
-          onPress={() => setShowCustom(!showCustom)}
+          onPress={() => { onChange(null); setShowCustom(false); }}
           style={[swatchStyles.socialChip, {
-            borderColor: isCustom ? ACCENT : borderColor,
-            backgroundColor: isCustom
+            borderColor: !value ? ACCENT : borderColor,
+            backgroundColor: !value
               ? (isDark ? 'rgba(0,200,83,0.1)' : 'rgba(0,200,83,0.05)')
               : cardBg,
           }]}
         >
+          {/* Rainbow mini swatch to indicate brand colors */}
           <View style={[swatchStyles.miniSwatch, {
-            backgroundColor: isCustom ? value : '#888',
+            backgroundColor: '#E4405F',
+            borderColor: 'transparent',
           }]} />
           <Text style={{
             fontSize: 13,
-            fontWeight: isCustom ? '600' : '500',
-            color: isCustom ? ACCENT : (isDark ? '#94A3B8' : '#6B7280'),
+            fontWeight: !value ? '600' : '500',
+            color: !value ? ACCENT : (isDark ? '#94A3B8' : '#6B7280'),
           }}>
-            Custom
+            Brand
           </Text>
+        </TouchableOpacity>
+
+        {/* Color presets */}
+        {SOCIAL_COLOR_PRESETS.map((preset) => (
+          <TouchableOpacity
+            key={preset.color}
+            onPress={() => { onChange(preset.color); setShowCustom(false); }}
+            style={[swatchStyles.swatch, {
+              borderColor: value === preset.color ? ACCENT : borderColor,
+              backgroundColor: preset.color,
+              borderWidth: preset.color === '#FFFFFF' ? 2 : 2,
+            }]}
+          />
+        ))}
+
+        {/* Custom */}
+        <TouchableOpacity
+          onPress={() => setShowCustom(!showCustom)}
+          style={[swatchStyles.swatch, {
+            borderColor: isCustom ? ACCENT : borderColor,
+            backgroundColor: isCustom ? value : '#888',
+          }]}
+        >
+          <Ionicons name="color-palette" size={14} color="#fff" />
         </TouchableOpacity>
       </View>
 

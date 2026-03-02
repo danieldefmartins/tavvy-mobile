@@ -4,7 +4,7 @@
  * Path: screens/ProCardDetailScreen.tsx
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import * as Contacts from 'expo-contacts';
 import QRCode from 'react-native-qrcode-svg';
+import { saveQRCodeToCameraRoll } from '../lib/ecard/saveQRCode';
 import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
@@ -70,6 +71,7 @@ export default function ProCardDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('contact');
   const [showQR, setShowQR] = useState(false);
+  const qrRef = useRef<any>(null);
   const [isSaved, setIsSaved] = useState(false);
 
   // Load card data
@@ -564,17 +566,27 @@ export default function ProCardDetailScreen() {
                 value={cardUrl}
                 size={200}
                 backgroundColor="#fff"
+                getRef={(ref: any) => (qrRef.current = ref)}
               />
             </View>
             <Text style={[styles.qrSubtitle, dynamicStyles.textSecondary]}>
               Scan this QR code to open {cardData.company_name}'s digital card
             </Text>
-            <TouchableOpacity
-              style={styles.qrCloseButton}
-              onPress={() => setShowQR(false)}
-            >
-              <Text style={styles.qrCloseText}>Close</Text>
-            </TouchableOpacity>
+            <View style={styles.qrButtonRow}>
+              <TouchableOpacity
+                style={styles.qrDownloadButton}
+                onPress={() => saveQRCodeToCameraRoll(qrRef.current)}
+              >
+                <Ionicons name="download-outline" size={16} color="#FFFFFF" />
+                <Text style={styles.qrDownloadText}>Save PNG</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.qrCloseButton}
+                onPress={() => setShowQR(false)}
+              >
+                <Text style={styles.qrCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -889,8 +901,28 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
-  qrCloseButton: {
+  qrButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
     width: '100%',
+  },
+  qrDownloadButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    backgroundColor: '#1E293B',
+    borderRadius: 24,
+  },
+  qrDownloadText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  qrCloseButton: {
+    flex: 1,
     paddingVertical: 14,
     backgroundColor: '#F3F4F6',
     borderRadius: 24,

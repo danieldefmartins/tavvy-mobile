@@ -324,11 +324,13 @@ export default function LivePreviewCard({
             {socials.length > 0 && (
               <View style={styles.socialsRow}>
                 {socials.slice(0, 6).map((social, index) => {
-                  const { icon, color } = getSocialIcon(social.platform);
+                  const { icon, color: brandColor } = getSocialIcon(social.platform);
+                  // Linktree-style: null = brand colors, custom = uniform bg
+                  const bubbleBg = card?.social_icon_color || brandColor;
                   return (
                     <View
                       key={`${social.platform}-${index}`}
-                      style={[styles.socialBubble, { backgroundColor: color }]}
+                      style={[styles.socialBubble, { backgroundColor: bubbleBg }]}
                     >
                       <Ionicons
                         name={icon as any}

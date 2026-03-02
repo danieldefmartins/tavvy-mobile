@@ -149,8 +149,9 @@ export type EditorAction =
   | { type: 'ADD_GALLERY_IMAGE'; image: { id: string; url: string; uri?: string; type?: string } }
   | { type: 'REMOVE_GALLERY_IMAGE'; id: string }
   | { type: 'REORDER_GALLERY'; fromIndex: number; toIndex: number }
-  | { type: 'ADD_VIDEO'; video: { type: string; url: string } }
+  | { type: 'ADD_VIDEO'; video: { type: string; url: string; thumbnail_url?: string } }
   | { type: 'REMOVE_VIDEO'; index: number }
+  | { type: 'UPDATE_VIDEO_THUMBNAIL'; index: number; thumbnail_url: string }
   | { type: 'ADD_FEATURED_SOCIAL'; social: FeaturedSocial }
   | { type: 'UPDATE_FEATURED_SOCIAL'; platform: string; url: string }
   | { type: 'REMOVE_FEATURED_SOCIAL'; platform: string }
@@ -316,6 +317,22 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return {
         ...state,
         card: { ...state.card, videos: newVideos },
+        isDirty: true,
+      };
+    }
+
+    case 'UPDATE_VIDEO_THUMBNAIL': {
+      if (!state.card) return state;
+      const updatedVideos = [...(state.card.videos || [])];
+      if (action.index >= 0 && action.index < updatedVideos.length) {
+        updatedVideos[action.index] = {
+          ...updatedVideos[action.index],
+          thumbnail_url: action.thumbnail_url,
+        };
+      }
+      return {
+        ...state,
+        card: { ...state.card, videos: updatedVideos },
         isDirty: true,
       };
     }

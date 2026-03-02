@@ -192,7 +192,6 @@ export function useAutoSave({
         featured_socials: card.featured_socials || [],
         gallery_images: galleryImages,
         videos: card.videos || [],
-        pronouns: card.pronouns || null,
         card_type: card.card_type || null,
         country_code: card.country_code || null,
         pro_credentials: card.pro_credentials || null,

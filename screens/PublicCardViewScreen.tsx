@@ -31,6 +31,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
@@ -672,12 +673,39 @@ export default function PublicCardViewScreen() {
                   return (
                     <TouchableOpacity
                       key={index}
-                      style={styles.videoCard}
+                      style={styles.videoCardWithThumb}
                       onPress={() => Linking.openURL(video.url)}
+                      activeOpacity={0.9}
                     >
-                      <Ionicons name="videocam" size={20} color="#00C853" />
-                      <Text style={[styles.videoCardText, { color: textColor }]}>Tavvy Short</Text>
-                      <Ionicons name="play-circle" size={20} color={textColorFaded} />
+                      <View style={styles.videoThumbContainer}>
+                        {video.thumbnail_url ? (
+                          <Image
+                            source={{ uri: video.thumbnail_url }}
+                            style={styles.videoThumbImage}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <Video
+                            source={{ uri: video.url }}
+                            style={styles.videoThumbImage}
+                            resizeMode={ResizeMode.COVER}
+                            shouldPlay={false}
+                            isMuted
+                            positionMillis={1000}
+                          />
+                        )}
+                        {/* Play button overlay */}
+                        <View style={styles.videoThumbPlayOverlay}>
+                          <View style={styles.videoPlayButton}>
+                            <Ionicons name="play" size={22} color="#1a1a2e" style={{ marginLeft: 2 }} />
+                          </View>
+                        </View>
+                      </View>
+                      {/* Bottom label bar */}
+                      <View style={styles.videoThumbBottomBar}>
+                        <Ionicons name="videocam" size={14} color="#00C853" />
+                        <Text style={[styles.videoThumbBottomText, { color: textColorFaded }]}>Tavvy Short</Text>
+                      </View>
                     </TouchableOpacity>
                   );
                 } else {
@@ -1205,6 +1233,53 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     flex: 1,
+  },
+  videoCardWithThumb: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: '#1a1a2e',
+  },
+  videoThumbContainer: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    position: 'relative',
+    backgroundColor: '#1a1a2e',
+  },
+  videoThumbImage: {
+    width: '100%',
+    height: '100%',
+  },
+  videoThumbPlayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  videoPlayButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  videoThumbBottomBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  videoThumbBottomText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
   // Links styles
   linksSection: {
