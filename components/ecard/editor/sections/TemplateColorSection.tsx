@@ -32,6 +32,10 @@ export default function TemplateColorSection({ isDark, isPro }: TemplateColorSec
 
   if (!card) return null;
 
+  const cardTypeCategory = card.card_type === 'politician' ? 'politician'
+    : card.card_type === 'personal' ? 'personal'
+    : 'business';
+
   const borderColor = isDark ? '#334155' : '#E5E7EB';
 
   // ── Handlers ────────────────────────────────────────────────────────────
@@ -62,6 +66,7 @@ export default function TemplateColorSection({ isDark, isPro }: TemplateColorSec
           onSelect={handleTemplateSelect}
           isPro={isPro}
           isDark={isDark}
+          filterCategory={cardTypeCategory}
         />
       </View>
 

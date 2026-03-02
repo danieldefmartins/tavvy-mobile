@@ -79,7 +79,7 @@ function PhotoAvatar({ uri, size, borderColor, onPress, isEditable }: {
 }
 
 // ── Helper: detect if a color is light ──
-function isColorLight(color: string): boolean {
+export function isColorLight(color: string): boolean {
   if (!color) return false;
   let hex = color;
   if (hex.startsWith('#')) {
