@@ -74,25 +74,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // (Pro providers get automatic pro access — matches web roleService logic)
       if (subStatus !== 'active' || subPlan === 'free') {
         if (data.is_pro) {
-          // profiles.is_pro flag set by web — trust it
-          subStatus = 'active';
-          subPlan = 'pro';
+          // profiles.is_pro flag set by web — verify with pro_providers
+          const { data: providerCheck } = await supabase
+            .from('pro_providers')
+            .select('id, subscription_status, subscription_plan, subscription_expires_at, is_active')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (providerCheck && providerCheck.is_active) {
+            // Free plan: always active (no expiry)
+            if (providerCheck.subscription_plan === 'free') {
+              subStatus = 'active';
+              subPlan = 'free';
+            } else if (providerCheck.subscription_status === 'active') {
+              // Paid plan: check if expired
+              const isExpired = providerCheck.subscription_expires_at &&
+                new Date(providerCheck.subscription_expires_at) < new Date();
+              if (isExpired) {
+                subStatus = 'expired';
+                subPlan = data.subscription_plan || 'pro';
+                // Deactivate in background
+                supabase.from('pro_providers').update({
+                  subscription_status: 'expired', is_active: false, updated_at: new Date().toISOString(),
+                }).eq('id', providerCheck.id).then(() => {});
+                supabase.from('profiles').update({
+                  is_pro: false, subscription_status: 'expired', updated_at: new Date().toISOString(),
+                }).eq('user_id', userId).then(() => {});
+              } else {
+                subStatus = 'active';
+                subPlan = providerCheck.subscription_plan || 'pro';
+              }
+            } else {
+              subStatus = providerCheck.subscription_status || 'expired';
+              subPlan = providerCheck.subscription_plan || 'pro';
+            }
+          } else if (providerCheck && !providerCheck.is_active) {
+            subStatus = 'expired';
+            subPlan = data.subscription_plan || 'free';
+          }
         } else {
           // Check if user is a registered Pro provider
           const { data: provider } = await supabase
             .from('pro_providers')
-            .select('id')
+            .select('id, subscription_status, subscription_plan, subscription_expires_at, is_active')
             .eq('user_id', userId)
             .maybeSingle();
 
-          if (provider) {
-            subStatus = 'active';
-            subPlan = 'pro';
-            // Sync profiles table so future fetches are fast
-            supabase.from('profiles')
-              .update({ is_pro: true, subscription_status: 'active', subscription_plan: 'pro' })
-              .eq('user_id', userId)
-              .then(() => {});
+          if (provider && provider.is_active) {
+            // Free plan: always active
+            if (provider.subscription_plan === 'free') {
+              subStatus = 'active';
+              subPlan = 'free';
+            } else if (provider.subscription_status === 'active') {
+              // Paid plan: check expiry
+              const isExpired = provider.subscription_expires_at &&
+                new Date(provider.subscription_expires_at) < new Date();
+              subStatus = isExpired ? 'expired' : 'active';
+              subPlan = provider.subscription_plan || 'pro';
+            } else {
+              subStatus = provider.subscription_status || 'expired';
+              subPlan = provider.subscription_plan || 'pro';
+            }
+            // Sync profiles table
+            if (subStatus === 'active') {
+              supabase.from('profiles')
+                .update({ is_pro: true, subscription_status: 'active', subscription_plan: subPlan })
+                .eq('user_id', userId)
+                .then(() => {});
+            }
           }
         }
       }
