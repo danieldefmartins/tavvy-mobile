@@ -131,6 +131,9 @@ export default function ProsRegistrationScreen() {
 
   const handleSubmit = async () => {
     try {
+      // Resolve primary category slug for trade_category
+      const primaryCat = PROS_CATEGORIES.find(c => c.id === formData.primaryCategoryId);
+
       // Register the business
       await register({
         businessName: formData.businessName,
@@ -140,6 +143,8 @@ export default function ProsRegistrationScreen() {
         city: formData.city,
         state: formData.state,
         zipCode: formData.zipCode || '',
+        location: formData.city && formData.state ? `${formData.city}, ${formData.state}` : '',
+        tradeCategory: primaryCat?.slug || null,
         categoryIds: formData.categoryIds,
       } as any);
 

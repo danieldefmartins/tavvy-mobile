@@ -28,9 +28,38 @@ serve(async (req) => {
 
     const form = await req.json();
 
+    // Map camelCase client fields to snake_case database columns
+    const fieldMap: Record<string, string> = {
+      businessName: 'business_name',
+      description: 'description',
+      phone: 'phone',
+      email: 'email',
+      website: 'website',
+      address: 'address',
+      city: 'city',
+      state: 'state',
+      zipCode: 'zip_code',
+      serviceRadius: 'service_radius',
+      yearsInBusiness: 'years_in_business',
+      licenseNumber: 'license_number',
+      isInsured: 'is_insured',
+      tradeCategory: 'trade_category',
+      specialties: 'specialties',
+      location: 'location',
+      bio: 'bio',
+      profilePhotoUrl: 'profile_photo_url',
+      coverPhotoUrl: 'cover_photo_url',
+    };
+
+    const dbUpdate: Record<string, any> = { updated_at: new Date().toISOString() };
+    for (const [key, value] of Object.entries(form)) {
+      const dbKey = fieldMap[key] || key;
+      dbUpdate[dbKey] = value;
+    }
+
     const { data, error } = await supabase
       .from('pro_providers')
-      .update(form)
+      .update(dbUpdate)
       .eq('user_id', user.id)
       .select()
       .single();

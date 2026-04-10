@@ -100,8 +100,14 @@ export default function ProsManageProfileScreen() {
         .from('pro_providers')
         .update({
           business_name: profile.business_name,
+          description: profile.description,
+          phone: profile.phone,
+          email: profile.email,
+          location: profile.location,
           specialties: profile.specialties,
           service_radius: profile.service_radius_miles,
+          years_in_business: profile.years_in_business || null,
+          trade_category: profile.trade_category || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', profile.id);
@@ -151,6 +157,42 @@ export default function ProsManageProfileScreen() {
           <View style={styles.categoryBadge}>
             <Text style={styles.categoryText}>{profile.category?.name}</Text>
           </View>
+          <TextInput
+            style={[styles.input, { marginTop: 12, minHeight: 100, textAlignVertical: 'top' }]}
+            value={profile.description || ''}
+            onChangeText={(text) => setProfile({ ...profile, description: text })}
+            placeholder="Describe your business and services..."
+            multiline
+            numberOfLines={4}
+          />
+          <TextInput
+            style={[styles.input, { marginTop: 12 }]}
+            value={profile.phone || ''}
+            onChangeText={(text) => setProfile({ ...profile, phone: text })}
+            placeholder="Phone number"
+            keyboardType="phone-pad"
+          />
+          <TextInput
+            style={[styles.input, { marginTop: 12 }]}
+            value={profile.email || ''}
+            onChangeText={(text) => setProfile({ ...profile, email: text })}
+            placeholder="Email address"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <TextInput
+            style={[styles.input, { marginTop: 12 }]}
+            value={profile.location || ''}
+            onChangeText={(text) => setProfile({ ...profile, location: text })}
+            placeholder="City, State"
+          />
+          <TextInput
+            style={[styles.input, { marginTop: 12 }]}
+            value={profile.years_in_business ? String(profile.years_in_business) : ''}
+            onChangeText={(text) => setProfile({ ...profile, years_in_business: parseInt(text) || null })}
+            placeholder="Years in business"
+            keyboardType="number-pad"
+          />
         </View>
 
         <View style={styles.section}>

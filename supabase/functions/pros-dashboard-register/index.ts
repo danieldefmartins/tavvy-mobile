@@ -28,9 +28,35 @@ serve(async (req) => {
 
     const form = await req.json();
 
+    // Map camelCase client fields to snake_case database columns
+    const dbRecord: Record<string, any> = {
+      user_id: user.id,
+      business_name: form.businessName || form.business_name,
+      description: form.description,
+      phone: form.phone,
+      email: form.email || user.email,
+      website: form.website,
+      address: form.address,
+      city: form.city,
+      state: form.state,
+      zip_code: form.zipCode || form.zip_code,
+      service_radius: form.serviceRadius || form.service_radius || 25,
+      years_in_business: form.yearsInBusiness || form.years_in_business || null,
+      license_number: form.licenseNumber || form.license_number || null,
+      location: form.location || (form.city && form.state ? `${form.city}, ${form.state}` : null),
+      is_insured: form.isInsured || form.is_insured || false,
+      trade_category: form.tradeCategory || form.trade_category || null,
+      is_active: true,
+    };
+
+    // Remove undefined/null optional fields to avoid overwriting defaults
+    Object.keys(dbRecord).forEach(key => {
+      if (dbRecord[key] === undefined) delete dbRecord[key];
+    });
+
     const { data, error } = await supabase
       .from('pro_providers')
-      .insert({ ...form, user_id: user.id })
+      .insert(dbRecord)
       .select()
       .single();
 
