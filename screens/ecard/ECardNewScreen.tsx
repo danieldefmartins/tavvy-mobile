@@ -144,7 +144,7 @@ export default function ECardNewScreen() {
       }
 
       // Navigate to the card editor
-      navigation.navigate('ECardEdit', { cardId: newCard.id });
+      navigation.navigate('ECardStudio', { cardId: newCard.id });
     } catch (err: any) {
       console.error('Error creating card:', err);
       Alert.alert('Error', err?.message || 'Failed to create card. Please try again.');
