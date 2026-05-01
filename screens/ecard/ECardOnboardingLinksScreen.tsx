@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#1E0A3C',
     marginBottom: 8,
   },
   subtitle: {
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: '#1E0A3C',
   },
   removeButton: {
     padding: 4,
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#1A1A1A',
+    color: '#1E0A3C',
   },
   linkInputFull: {
     paddingLeft: 12,

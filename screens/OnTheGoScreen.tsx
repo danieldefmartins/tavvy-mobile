@@ -74,13 +74,13 @@ const COLORS = {
   glassyLight: 'rgba(255, 255, 255, 0.9)',
   accent: '#6B7FFF',  // V2 Blue gradient start
   accentEnd: '#5563E8',  // V2 Blue gradient end
-  accentGreen: '#10B981',  // Tavvy green
+  accentGreen: '#00C2CB',  // Tavvy green
   accentGold: '#F59E0B',  // Tavvy gold
   textPrimary: '#FFFFFF',
   textSecondary: 'rgba(255, 255, 255, 0.6)',  // V2 Secondary text
   textMuted: '#6B7280',
   live: '#EF4444',
-  success: '#10B981',
+  success: '#00C2CB',
 };
 
 // Category icons mapping
@@ -121,30 +121,30 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Food Trucks': '#EF4444',
   'Coffee': '#78350F',
   'Ice Cream': '#EC4899',
-  'BBQ': '#F97316',
+  'BBQ': '#00C2CB',
   'Tacos': '#EAB308',
   'Pizza': '#DC2626',
-  'Pop-ups': '#8B5CF6',
+  'Pop-ups': '#8A05BE',
   // Auto - Blue/Gray
-  'Mobile Car Wash': '#3B82F6',
+  'Mobile Car Wash': '#8A05BE',
   'Mobile Detailing': '#6366F1',
   'Mobile Mechanic': '#64748B',
   'Mobile Tire Service': '#475569',
   // Pet - Green
-  'Mobile Pet Grooming': '#10B981',
+  'Mobile Pet Grooming': '#00C2CB',
   'Mobile Dog Training': '#059669',
   'Mobile Vet': '#14B8A6',
   // Personal Care - Pink/Purple
   'Mobile Hair Stylist': '#D946EF',
   'Mobile Nail Tech': '#A855F7',
-  'Mobile Massage': '#8B5CF6',
+  'Mobile Massage': '#8A05BE',
   // Professional - Teal/Blue
   'Mobile Notary': '#0891B2',
   'Mobile DJ': '#7C3AED',
   'Mobile Photo Booth': '#2563EB',
   // General
-  'Mobile Services': '#3B82F6',
-  'default': '#10B981',
+  'Mobile Services': '#8A05BE',
+  'default': '#00C2CB',
 };
 
 // Filter categories - On The Go mobile businesses

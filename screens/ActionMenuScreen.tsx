@@ -39,7 +39,7 @@ export default function ActionMenuScreen({ visible, onClose }: { visible: boolea
             
             <MenuItem 
               icon="planet" 
-              color="#8B5CF6" 
+              color="#8A05BE" 
               title={t('actionMenu.universe')} 
               subtitle={t('actionMenu.universeSubtitle')}
               onPress={() => handleAction('universe')} 
@@ -53,7 +53,7 @@ export default function ActionMenuScreen({ visible, onClose }: { visible: boolea
             />
             <MenuItem 
               icon="business" 
-              color="#10B981" 
+              color="#00C2CB" 
               title={t('actionMenu.city')} 
               subtitle={t('actionMenu.citySubtitle')}
               onPress={() => handleAction('city')} 

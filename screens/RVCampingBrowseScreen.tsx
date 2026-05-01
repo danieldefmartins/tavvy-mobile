@@ -39,12 +39,12 @@ const COLORS = {
   backgroundLight: '#FAFAFA',
   surface: '#111827',
   surfaceLight: '#FFFFFF',
-  glassy: '#1A1A1A',
+  glassy: '#1E0A3C',
   accent: '#667EEA',
   textPrimary: '#FFFFFF',
   textSecondary: '#9CA3AF',
   textMuted: '#6B7280',
-  success: '#10B981',
+  success: '#00C2CB',
 };
 
 type FilterOption = 'all' | 'rv_park' | 'campground' | 'dump_station';

@@ -54,13 +54,13 @@ export default function TavvyShieldScreen() {
       icon: 'analytics',
       title: 'Real Activity Signals',
       description: 'No fake reviews. We track real visits, live activity, and verified behavior patterns',
-      color: '#8B5CF6',
+      color: '#8A05BE',
     },
     {
       icon: 'card',
       title: 'Payment Protection',
       description: 'Choose to pay directly or let Tavvy handle payments. All transactions are tracked and accountable',
-      color: '#10B981',
+      color: '#00C2CB',
     },
     {
       icon: 'construct',
@@ -76,7 +76,7 @@ export default function TavvyShieldScreen() {
       title: 'Pay Contractor Directly',
       description: 'After Tavvy approval, pay the contractor directly with full transparency',
       badge: 'Popular',
-      badgeColor: '#10B981',
+      badgeColor: '#00C2CB',
     },
     {
       icon: 'shield-checkmark-outline',
@@ -227,7 +227,7 @@ export default function TavvyShieldScreen() {
             </View>
             {inspectionFeatures.map((item, index) => (
               <View key={index} style={styles.inspectionItem}>
-                <Ionicons name={item.icon as any} size={20} color="#10B981" />
+                <Ionicons name={item.icon as any} size={20} color="#00C2CB" />
                 <Text style={[styles.inspectionItemText, { color: secondaryTextColor }]}>{item.text}</Text>
               </View>
             ))}
@@ -252,7 +252,7 @@ export default function TavvyShieldScreen() {
               </View>
               {benefit.items.map((item, idx) => (
                 <View key={idx} style={styles.benefitItem}>
-                  <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                  <Ionicons name="checkmark-circle" size={18} color="#00C2CB" />
                   <Text style={[styles.benefitItemText, { color: secondaryTextColor }]}>{item}</Text>
                 </View>
               ))}

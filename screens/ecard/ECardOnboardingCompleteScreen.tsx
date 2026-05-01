@@ -250,7 +250,7 @@ export default function ECardOnboardingCompleteScreen({ navigation, route }: Pro
           autoStart={false}
           fadeOut
           fallSpeed={2500}
-          colors={['#00C853', '#00E676', '#69F0AE', '#B9F6CA', '#FFD700', '#FF6B6B', '#EC4899', '#8B5CF6']}
+          colors={['#00C853', '#00E676', '#69F0AE', '#B9F6CA', '#FFD700', '#FF6B6B', '#EC4899', '#8A05BE']}
         />
       </View>
     </SafeAreaView>
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#1E0A3C',
     marginBottom: 8,
   },
   subtitle: {

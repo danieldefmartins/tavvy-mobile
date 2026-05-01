@@ -53,10 +53,10 @@ const { width } = Dimensions.get('window');
 const COLORS = {
   background: '#121212',
   surface: '#1E1E1E',
-  surfaceAlt: '#2A2A2A',
+  surfaceAlt: '#250E45',
   primaryBlue: '#6B7FFF',
   accentTeal: '#00CED1',
-  successGreen: '#10B981',
+  successGreen: '#00C2CB',
   warningAmber: '#F59E0B',
   errorRed: '#EF4444',
   textPrimary: '#FFFFFF',
@@ -68,19 +68,19 @@ const COLORS = {
 // Category configuration with icons and colors
 const CATEGORY_CONFIG = [
   { slug: 'home', label: 'Home', icon: 'home-outline', color: '#6B7FFF' },
-  { slug: 'auto', label: 'Auto', icon: 'car-outline', color: '#10B981' },
+  { slug: 'auto', label: 'Auto', icon: 'car-outline', color: '#00C2CB' },
   { slug: 'marine', label: 'Marine', icon: 'boat-outline', color: '#00CED1' },
   { slug: 'events', label: 'Events', icon: 'camera-outline', color: '#F59E0B' },
-  { slug: 'business', label: 'Business', icon: 'briefcase-outline', color: '#8B5CF6' },
+  { slug: 'business', label: 'Business', icon: 'briefcase-outline', color: '#8A05BE' },
   { slug: 'creative', label: 'Creative', icon: 'color-palette-outline', color: '#EC4899' },
 ];
 
 // Popular Services
 const POPULAR_SERVICES = [
   { slug: 'auto-mechanic', label: 'Auto Mechanic', icon: 'construct-outline', color: '#6B7FFF', desc: 'Car repairs' },
-  { slug: 'landscaping', label: 'Landscaping', icon: 'leaf-outline', color: '#10B981', desc: 'Lawn & garden' },
+  { slug: 'landscaping', label: 'Landscaping', icon: 'leaf-outline', color: '#00C2CB', desc: 'Lawn & garden' },
   { slug: 'electrical', label: 'Electrician', icon: 'flash-outline', color: '#F59E0B', desc: 'Electrical work' },
-  { slug: 'contractor', label: 'Contractor', icon: 'hammer-outline', color: '#8B5CF6', desc: 'Remodeling' },
+  { slug: 'contractor', label: 'Contractor', icon: 'hammer-outline', color: '#8A05BE', desc: 'Remodeling' },
   { slug: 'plumbing', label: 'Plumber', icon: 'water-outline', color: '#EF4444', desc: 'Plumbing' },
   { slug: 'boat-mechanic', label: 'Boat Mechanic', icon: 'boat-outline', color: '#00CED1', desc: 'Marine repairs' },
 ];
@@ -955,7 +955,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   earlyAdopterBanner: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1E0A3C',
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',

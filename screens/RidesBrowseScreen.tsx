@@ -40,7 +40,7 @@ const COLORS = {
   backgroundLight: '#FAFAFA',
   surface: '#111827',
   surfaceLight: '#FFFFFF',
-  glassy: '#1A1A1A',
+  glassy: '#1E0A3C',
   accent: '#667EEA',
   textPrimary: '#FFFFFF',
   textSecondary: '#9CA3AF',
@@ -83,8 +83,8 @@ const FILTER_OPTIONS: { key: FilterOption; label: string }[] = [
 ];
 
 const THRILL_LABELS: Record<string, { label: string; color: string }> = {
-  mild: { label: 'Mild', color: '#10B981' },
-  moderate: { label: 'Moderate', color: '#3B82F6' },
+  mild: { label: 'Mild', color: '#00C2CB' },
+  moderate: { label: 'Moderate', color: '#8A05BE' },
   thrilling: { label: 'Thrilling', color: '#F59E0B' },
   extreme: { label: 'Extreme', color: '#EF4444' },
 };

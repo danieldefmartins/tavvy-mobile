@@ -428,7 +428,7 @@ export default function VerificationUploadScreen({ navigation }: { navigation: a
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
+          <Ionicons name="arrow-back" size={24} color="#1E0A3C" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Get Verified</Text>
         <View style={{ width: 32 }} />
@@ -526,7 +526,7 @@ export default function VerificationUploadScreen({ navigation }: { navigation: a
           disabled={isSaving}
         >
           <LinearGradient 
-            colors={['#059669', '#10B981']} 
+            colors={['#059669', '#00C2CB']} 
             style={styles.submitGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: '#1E0A3C',
   },
   content: {
     flex: 1,
@@ -650,7 +650,7 @@ const styles = StyleSheet.create({
   documentTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: '#1E0A3C',
   },
   documentDescription: {
     fontSize: 13,
@@ -705,7 +705,7 @@ const styles = StyleSheet.create({
   },
   uploadedDocName: {
     fontSize: 14,
-    color: '#1A1A1A',
+    color: '#1E0A3C',
     marginLeft: 8,
     flex: 1,
   },

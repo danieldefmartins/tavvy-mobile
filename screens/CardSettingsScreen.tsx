@@ -310,13 +310,13 @@ export default function CardSettingsScreen() {
               {/* DNS Instructions */}
               <View style={[styles.dnsInstructions, { backgroundColor: isDark ? '#1F1F1F' : '#F0F9FF' }]}>
                 <View style={styles.dnsHeader}>
-                  <Ionicons name="information-circle" size={20} color="#0EA5E9" />
+                  <Ionicons name="information-circle" size={20} color="#8A05BE" />
                   <Text style={[styles.dnsTitle, { color: theme.text }]}>DNS Setup Instructions</Text>
                 </View>
                 <Text style={[styles.dnsText, { color: theme.textSecondary }]}>
                   To use a custom domain, add a CNAME record in your DNS settings:
                 </Text>
-                <View style={[styles.dnsRecord, { backgroundColor: isDark ? '#2A2A2A' : '#fff' }]}>
+                <View style={[styles.dnsRecord, { backgroundColor: isDark ? '#250E45' : '#fff' }]}>
                   <View style={styles.dnsRow}>
                     <Text style={[styles.dnsLabel, { color: theme.textSecondary }]}>Type:</Text>
                     <Text style={[styles.dnsValue, { color: theme.text }]}>CNAME</Text>
@@ -348,7 +348,7 @@ export default function CardSettingsScreen() {
               style={styles.upgradeBox}
               onPress={() => navigation.navigate('ECardPremiumUpsell')}
             >
-              <Ionicons name="lock-closed" size={24} color="#8B5CF6" />
+              <Ionicons name="lock-closed" size={24} color="#8A05BE" />
               <View style={styles.upgradeContent}>
                 <Text style={[styles.upgradeTitle, { color: theme.text }]}>
                   Upgrade to Pro
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   proBadge: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#8A05BE',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#0EA5E9',
+    backgroundColor: '#8A05BE',
     paddingVertical: 12,
     borderRadius: 12,
     marginTop: 12,

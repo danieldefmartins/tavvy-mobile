@@ -103,7 +103,7 @@ export default function StoryAnalyticsScreen() {
     value: string,
     subvalue?: string,
     trend?: number,
-    color: string = '#3B82F6'
+    color: string = '#8A05BE'
   ) => (
     <View style={styles.metricCard}>
       <View style={[styles.metricIcon, { backgroundColor: `${color}15` }]}>
@@ -117,9 +117,9 @@ export default function StoryAnalyticsScreen() {
           <Ionicons
             name={trend >= 0 ? 'trending-up' : 'trending-down'}
             size={14}
-            color={trend >= 0 ? '#10B981' : '#EF4444'}
+            color={trend >= 0 ? '#00C2CB' : '#EF4444'}
           />
-          <Text style={[styles.trendText, { color: trend >= 0 ? '#10B981' : '#EF4444' }]}>
+          <Text style={[styles.trendText, { color: trend >= 0 ? '#00C2CB' : '#EF4444' }]}>
             {trend >= 0 ? '+' : ''}{trend.toFixed(1)}%
           </Text>
         </View>
@@ -210,7 +210,7 @@ export default function StoryAnalyticsScreen() {
                 // Navigate to story viewer
               }}
             >
-              <Ionicons name="eye-outline" size={20} color="#3B82F6" />
+              <Ionicons name="eye-outline" size={20} color="#8A05BE" />
             </TouchableOpacity>
           </View>
         ))}
@@ -221,7 +221,7 @@ export default function StoryAnalyticsScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+        <ActivityIndicator size="large" color="#8A05BE" />
         <Text style={styles.loadingText}>Loading analytics...</Text>
       </SafeAreaView>
     );
@@ -239,7 +239,7 @@ export default function StoryAnalyticsScreen() {
           {placeName && <Text style={styles.headerSubtitle}>{placeName}</Text>}
         </View>
         <TouchableOpacity onPress={onRefresh}>
-          <Ionicons name="refresh" size={24} color="#3B82F6" />
+          <Ionicons name="refresh" size={24} color="#8A05BE" />
         </TouchableOpacity>
       </View>
 
@@ -283,7 +283,7 @@ export default function StoryAnalyticsScreen() {
                 formatNumber(placeAnalytics.totalStoryViews),
                 undefined,
                 undefined,
-                '#3B82F6'
+                '#8A05BE'
               )}
               {renderMetricCard(
                 'images',
@@ -291,7 +291,7 @@ export default function StoryAnalyticsScreen() {
                 placeAnalytics.totalStories.toString(),
                 `${placeAnalytics.activeStories} active`,
                 undefined,
-                '#8B5CF6'
+                '#8A05BE'
               )}
               {renderMetricCard(
                 'people',
@@ -299,7 +299,7 @@ export default function StoryAnalyticsScreen() {
                 formatNumber(placeAnalytics.followerCount),
                 undefined,
                 placeAnalytics.followerGrowth,
-                '#10B981'
+                '#00C2CB'
               )}
               {renderMetricCard(
                 'flame',
@@ -314,7 +314,7 @@ export default function StoryAnalyticsScreen() {
             {/* Avg Views Per Story */}
             <View style={styles.highlightCard}>
               <LinearGradient
-                colors={['#3B82F6', '#8B5CF6']}
+                colors={['#8A05BE', '#8A05BE']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.highlightGradient}
@@ -345,7 +345,7 @@ export default function StoryAnalyticsScreen() {
                 formatNumber(storyAnalytics.totalViews),
                 undefined,
                 undefined,
-                '#3B82F6'
+                '#8A05BE'
               )}
               {renderMetricCard(
                 'person',
@@ -353,7 +353,7 @@ export default function StoryAnalyticsScreen() {
                 formatNumber(storyAnalytics.uniqueViews),
                 undefined,
                 undefined,
-                '#8B5CF6'
+                '#8A05BE'
               )}
               {renderMetricCard(
                 'checkmark-circle',
@@ -361,7 +361,7 @@ export default function StoryAnalyticsScreen() {
                 formatPercentage(storyAnalytics.completionRate),
                 undefined,
                 undefined,
-                '#10B981'
+                '#00C2CB'
               )}
               {renderMetricCard(
                 'time',
@@ -378,12 +378,12 @@ export default function StoryAnalyticsScreen() {
               <Text style={styles.sectionTitle}>Engagement</Text>
               <View style={styles.engagementGrid}>
                 <View style={styles.engagementItem}>
-                  <Ionicons name="share-outline" size={24} color="#3B82F6" />
+                  <Ionicons name="share-outline" size={24} color="#8A05BE" />
                   <Text style={styles.engagementValue}>{storyAnalytics.shareCount}</Text>
                   <Text style={styles.engagementLabel}>Shares</Text>
                 </View>
                 <View style={styles.engagementItem}>
-                  <Ionicons name="person-circle-outline" size={24} color="#8B5CF6" />
+                  <Ionicons name="person-circle-outline" size={24} color="#8A05BE" />
                   <Text style={styles.engagementValue}>{storyAnalytics.profileVisits}</Text>
                   <Text style={styles.engagementLabel}>Profile Visits</Text>
                 </View>
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   toggleButtonActive: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#8A05BE',
   },
   toggleText: {
     fontSize: 14,
@@ -596,7 +596,7 @@ const styles = StyleSheet.create({
   },
   chartBarFill: {
     width: '100%',
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#8A05BE',
     borderRadius: 4,
     minHeight: 4,
   },
@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
   },
   hourlyBarFill: {
     width: '100%',
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#8A05BE',
     borderRadius: 2,
     minHeight: 2,
   },
@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
   topStoryRankText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3B82F6',
+    color: '#8A05BE',
   },
   topStoryInfo: {
     flex: 1,

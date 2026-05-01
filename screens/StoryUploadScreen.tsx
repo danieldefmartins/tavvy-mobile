@@ -516,7 +516,7 @@ export default function StoryUploadScreen() {
     if (checkingPermissions) {
       return (
         <View style={styles.permissionContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+          <ActivityIndicator size="large" color="#8A05BE" />
           <Text style={styles.permissionTitle}>Checking permissions...</Text>
           <Text style={styles.permissionText}>
             Verifying your location and account status.
@@ -638,7 +638,7 @@ export default function StoryUploadScreen() {
     if (loadingPlaces) {
       return (
         <View style={styles.permissionContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+          <ActivityIndicator size="large" color="#8A05BE" />
           <Text style={styles.permissionTitle}>Loading places...</Text>
         </View>
       );
@@ -829,7 +829,7 @@ export default function StoryUploadScreen() {
                   onPress={() => toggleTag(tag)}
                 >
                   <Text style={styles.selectedTagText}>#{tag}</Text>
-                  <Ionicons name="close-circle" size={16} color="#3B82F6" />
+                  <Ionicons name="close-circle" size={16} color="#8A05BE" />
                 </TouchableOpacity>
               ))}
             </View>
@@ -847,7 +847,7 @@ export default function StoryUploadScreen() {
               returnKeyType="done"
             />
             <TouchableOpacity style={styles.addTagButton} onPress={addCustomTag}>
-              <Ionicons name="add" size={20} color="#3B82F6" />
+              <Ionicons name="add" size={20} color="#8A05BE" />
             </TouchableOpacity>
           </View>
 
@@ -930,7 +930,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
-    backgroundColor: '#0F1233',
+    backgroundColor: '#17013A',
   },
   permissionTitle: {
     fontSize: 20,
@@ -946,7 +946,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   permissionButton: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#8A05BE',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
@@ -1118,7 +1118,7 @@ const styles = StyleSheet.create({
   nextButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#8A05BE',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -1169,7 +1169,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   postButton: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#8A05BE',
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 20,
@@ -1247,7 +1247,7 @@ const styles = StyleSheet.create({
   },
   selectedTagText: {
     fontSize: 13,
-    color: '#3B82F6',
+    color: '#8A05BE',
     fontWeight: '500',
   },
   customTagContainer: {
@@ -1299,7 +1299,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   suggestedTagTextSelected: {
-    color: '#3B82F6',
+    color: '#8A05BE',
   },
   uploadProgress: {
     marginTop: 16,
@@ -1312,7 +1312,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#8A05BE',
   },
   progressText: {
     fontSize: 12,

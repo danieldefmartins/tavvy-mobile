@@ -39,7 +39,7 @@ const RealtorColors = {
   textLight: '#6B7280',
   textMuted: '#9CA3AF',
   border: '#E5E7EB',
-  success: '#10B981',
+  success: '#00C2CB',
 };
 
 export default function RealtorMatchCompleteScreen() {

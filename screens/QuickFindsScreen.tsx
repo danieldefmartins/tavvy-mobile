@@ -25,7 +25,7 @@ export default function QuickFindsScreen() {
       {/* Placeholder Content */}
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Ionicons name="flash" size={64} color="#FF9500" />
+          <Ionicons name="flash" size={64} color="#F5A623" />
         </View>
         <Text style={styles.title}>Quick Finds</Text>
         <Text style={styles.subtitle}>
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 30,
-    backgroundColor: '#FF950015',
+    backgroundColor: '#F5A62315',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,

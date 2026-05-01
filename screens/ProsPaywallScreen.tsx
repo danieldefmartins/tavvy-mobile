@@ -116,7 +116,7 @@ export default function ProsPaywallScreen() {
           </View>
         </View>
         <View style={styles.guaranteeSection}>
-          <Ionicons name="shield-checkmark" size={24} color="#10B981" />
+          <Ionicons name="shield-checkmark" size={24} color="#00C2CB" />
           <View style={styles.guaranteeContent}><Text style={styles.guaranteeTitle}>30-Day Money-Back Guarantee</Text><Text style={styles.guaranteeText}>Try Tavvy Pros risk-free.</Text></View>
         </View>
       </ScrollView>
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   plansSection: { paddingHorizontal: 16, gap: 12 },
   planCard: { backgroundColor: '#F9FAFB', borderRadius: 16, padding: 16, borderWidth: 2, borderColor: 'transparent' },
   planCardSelected: { backgroundColor: '#EFF6FF', borderColor: ProsColors.primary },
-  planBadge: { position: 'absolute', top: -10, right: 16, backgroundColor: '#10B981', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12 },
+  planBadge: { position: 'absolute', top: -10, right: 16, backgroundColor: '#00C2CB', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12 },
   planBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: 'bold' },
   planHeader: { flexDirection: 'row', alignItems: 'center' },
   radioButton: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#D1D5DB', alignItems: 'center', justifyContent: 'center', marginRight: 12 },

@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#1E0A3C',
   },
   scrollView: {
     flex: 1,
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
   selectedTypeName: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#1E0A3C',
     marginBottom: 4,
   },
   changeTypeText: {
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#1A1A1A',
+    color: '#1E0A3C',
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
   previewButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: '#1E0A3C',
   },
   bottomContainer: {
     position: 'absolute',

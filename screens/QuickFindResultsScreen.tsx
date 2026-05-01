@@ -192,7 +192,7 @@ export default function QuickFindResultsScreen() {
       {/* Content */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+          <ActivityIndicator size="large" color="#8A05BE" />
           <Text style={[styles.loadingText, { color: isDark ? theme.textSecondary : '#6B7280' }]}>
             Finding places...
           </Text>
@@ -224,7 +224,7 @@ export default function QuickFindResultsScreen() {
           </Text>
           <View style={[styles.emptyCard, { backgroundColor: isDark ? theme.cardBackground : '#fff' }]}>
             <View style={styles.emptyCardRow}>
-              <Ionicons name="trending-up" size={24} color="#10B981" />
+              <Ionicons name="trending-up" size={24} color="#00C2CB" />
               <View style={styles.emptyCardText}>
                 <Text style={[styles.emptyCardTitle, { color: isDark ? theme.text : '#1F2937' }]}>
                   Growing Fast
@@ -236,7 +236,7 @@ export default function QuickFindResultsScreen() {
             </View>
             <View style={styles.emptyCardDivider} />
             <View style={styles.emptyCardRow}>
-              <Ionicons name="sparkles" size={24} color="#8B5CF6" />
+              <Ionicons name="sparkles" size={24} color="#8A05BE" />
               <View style={styles.emptyCardText}>
                 <Text style={[styles.emptyCardTitle, { color: isDark ? theme.text : '#1F2937' }]}>
                   Personalized For You
@@ -248,7 +248,7 @@ export default function QuickFindResultsScreen() {
             </View>
             <View style={styles.emptyCardDivider} />
             <View style={styles.emptyCardRow}>
-              <Ionicons name="calendar" size={24} color="#3B82F6" />
+              <Ionicons name="calendar" size={24} color="#8A05BE" />
               <View style={styles.emptyCardText}>
                 <Text style={[styles.emptyCardTitle, { color: isDark ? theme.text : '#1F2937' }]}>
                   Check Back Soon
@@ -264,7 +264,7 @@ export default function QuickFindResultsScreen() {
             onPress={() => navigation.goBack()}
           >
             <LinearGradient
-              colors={['#3B82F6', '#2563EB']}
+              colors={['#8A05BE', '#2563EB']}
               style={styles.exploreButtonGradient}
             >
               <Text style={styles.exploreButtonText}>Explore Other Features</Text>
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#8A05BE',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

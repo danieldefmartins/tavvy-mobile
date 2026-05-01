@@ -89,7 +89,7 @@ const STEPS = [
     subtitle: 'What did you like? Tap the highlights.',
     theme: 'positive',
     limit: 5,
-    accent: '#0A84FF', // Apple Blue
+    accent: '#00C2CB', // Teal
     icon: 'thumbs-up',
   },
   {
@@ -98,7 +98,7 @@ const STEPS = [
     subtitle: "How's the atmosphere? Set the scene.",
     theme: 'vibe',
     limit: 5,
-    accent: '#8B5CF6', // Purple
+    accent: '#8A05BE', // Brand Purple
     icon: 'sparkles',
   },
   {
@@ -107,7 +107,7 @@ const STEPS = [
     subtitle: 'Any warnings? Help others prepare.',
     theme: 'negative',
     limit: 2,
-    accent: '#FF9500', // Orange
+    accent: '#F5A623', // Amber
     icon: 'warning',
   }
 ] as const;

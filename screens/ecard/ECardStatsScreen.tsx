@@ -255,7 +255,7 @@ export default function ECardStatsScreen() {
                   style={[
                     styles.placeholder,
                     {
-                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                      backgroundColor: isDark ? '#1E0A3C' : '#FFFFFF',
                       borderColor: border,
                     },
                   ]}
@@ -281,7 +281,7 @@ export default function ECardStatsScreen() {
               style={[
                 styles.placeholder,
                 {
-                  backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                  backgroundColor: isDark ? '#1E0A3C' : '#FFFFFF',
                   borderColor: border,
                 },
               ]}

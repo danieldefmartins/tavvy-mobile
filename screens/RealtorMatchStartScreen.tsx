@@ -29,12 +29,12 @@ const { width, height } = Dimensions.get('window');
 const Colors = {
   background: '#0A0A0F',
   surface: '#1A1A24',
-  primary: '#3B82F6',
+  primary: '#8A05BE',
   secondary: '#C9A227',
   text: '#FFFFFF',
   textSecondary: '#9CA3AF',
   textMuted: '#6B7280',
-  success: '#10B981',
+  success: '#00C2CB',
 };
 
 export default function RealtorMatchStartScreen() {

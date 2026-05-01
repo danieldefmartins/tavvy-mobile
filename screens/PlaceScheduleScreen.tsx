@@ -36,9 +36,9 @@ const SUPABASE_URL = 'https://scasgwrikoqdwlwlwcff.supabase.co';
 // Category colors
 const CATEGORY_COLORS: Record<string, string[]> = {
   'Food Trucks': ['#EF4444', '#DC2626'],
-  'Mobile Services': ['#3B82F6', '#2563EB'],
-  'Pop-ups': ['#8B5CF6', '#7C3AED'],
-  'default': ['#10B981', '#059669'],
+  'Mobile Services': ['#8A05BE', '#2563EB'],
+  'Pop-ups': ['#8A05BE', '#7C3AED'],
+  'default': ['#00C2CB', '#059669'],
 };
 
 interface ScheduledEvent {
@@ -167,7 +167,7 @@ export default function PlaceScheduleScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, styles.centered, dynamicStyles.container]}>
-        <ActivityIndicator size="large" color="#10B981" />
+        <ActivityIndicator size="large" color="#00C2CB" />
         <Text style={[styles.loadingText, dynamicStyles.textSecondary]}>
           Loading schedule...
         </Text>
@@ -217,7 +217,7 @@ export default function PlaceScheduleScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={() => fetchSchedule(true)}
-            tintColor="#10B981"
+            tintColor="#00C2CB"
           />
         }
       >
@@ -276,7 +276,7 @@ export default function PlaceScheduleScreen() {
             {/* Actions */}
             {place.phone && (
               <TouchableOpacity style={styles.callButton} onPress={callBusiness}>
-                <Ionicons name="call" size={18} color="#10B981" />
+                <Ionicons name="call" size={18} color="#00C2CB" />
                 <Text style={styles.callButtonText}>Call Business</Text>
               </TouchableOpacity>
             )}
@@ -332,7 +332,7 @@ export default function PlaceScheduleScreen() {
 
                   {/* Location */}
                   <View style={styles.eventRow}>
-                    <Ionicons name="location" size={16} color="#10B981" />
+                    <Ionicons name="location" size={16} color="#00C2CB" />
                     <View style={styles.locationInfo}>
                       <Text style={[styles.locationName, dynamicStyles.text]}>
                         {event.location_name}
@@ -418,13 +418,13 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#10B981',
+    backgroundColor: '#00C2CB',
     marginRight: 6,
   },
   liveText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#10B981',
+    color: '#00C2CB',
   },
   headerSpacer: {
     width: 40,
@@ -491,13 +491,13 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#10B981',
+    backgroundColor: '#00C2CB',
     marginRight: 8,
   },
   statusLiveText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#10B981',
+    color: '#00C2CB',
   },
   statusOffline: {
     flexDirection: 'row',
@@ -514,13 +514,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#10B981',
+    borderColor: '#00C2CB',
     marginTop: 12,
   },
   callButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#10B981',
+    color: '#00C2CB',
     marginLeft: 8,
   },
 
@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   dateBadge: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#00C2CB',
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#10B981',
+    backgroundColor: '#00C2CB',
     paddingVertical: 12,
     borderRadius: 8,
   },

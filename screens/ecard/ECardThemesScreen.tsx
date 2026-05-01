@@ -46,7 +46,7 @@ const THEMES = [
     id: 'midnight-dark',
     name: 'Midnight',
     isPro: false,
-    colors: ['#1A1A1A', '#333333'],
+    colors: ['#1E0A3C', '#333333'],
     textColor: '#fff',
     buttonStyle: 'outline',
   },
@@ -55,7 +55,7 @@ const THEMES = [
     name: 'Minimal White',
     isPro: false,
     colors: ['#FFFFFF', '#F5F5F5'],
-    textColor: '#1A1A1A',
+    textColor: '#1E0A3C',
     buttonStyle: 'outline',
   },
   {
@@ -102,7 +102,7 @@ const THEMES = [
     id: 'luxury-black',
     name: 'Luxury Black',
     isPro: true,
-    colors: ['#0D0D0D', '#1A1A1A'],
+    colors: ['#0D0D0D', '#1E0A3C'],
     textColor: '#D4AF37',
     buttonStyle: 'outline',
   },
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#1E0A3C',
   },
   applyText: {
     fontSize: 16,
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#1E0A3C',
     marginBottom: 16,
   },
   proHeader: {

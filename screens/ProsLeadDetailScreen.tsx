@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   },
   complexityHigh: { backgroundColor: '#EF4444' },
   complexityMedium: { backgroundColor: '#F59E0B' },
-  complexityStandard: { backgroundColor: '#10B981' },
+  complexityStandard: { backgroundColor: '#00C2CB' },
   matchBadge: {
     flexDirection: 'row',
     alignItems: 'center',

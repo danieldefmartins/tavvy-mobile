@@ -7,9 +7,9 @@
  * Used in: HomeScreen, PlaceDetailsScreen, and any future screens
  * 
  * COLORS (Single source of truth):
- * - The Good (positive): Blue #0A84FF
- * - The Vibe (neutral): Purple #8B5CF6
- * - Heads Up (negative): Orange #FF9500
+ * - The Good (positive): Teal #00C2CB
+ * - The Vibe (neutral): Brand Purple #8A05BE
+ * - Heads Up (negative): Amber #F5A623
  */
 
 import React, { useState } from 'react';
@@ -36,17 +36,17 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 // ============================================
 export const SIGNAL_COLORS = {
   positive: {
-    background: '#0A84FF',  // Blue - The Good
+    background: '#00C2CB',  // Teal - The Good
     text: '#FFFFFF',
     icon: '#FFFFFF',
   },
   neutral: {
-    background: '#8B5CF6',  // Purple - The Vibe
+    background: '#8A05BE',  // Brand Purple - The Vibe
     text: '#FFFFFF',
     icon: '#FFFFFF',
   },
   negative: {
-    background: '#FF9500',  // Orange - Heads Up
+    background: '#F5A623',  // Amber - Heads Up
     text: '#FFFFFF',
     icon: '#FFFFFF',
   },

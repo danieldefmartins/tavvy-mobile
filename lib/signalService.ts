@@ -448,15 +448,15 @@ export function isSignalApplicableToCategory(
 
 export const CATEGORY_COLORS = {
   best_for: {
-    bg: '#0A84FF',
+    bg: '#00C2CB',
     text: '#FFFFFF',
   },
   vibe: {
-    bg: '#8B5CF6',  // Purple
+    bg: '#8A05BE',  // Brand Purple
     text: '#FFFFFF',
   },
   heads_up: {
-    bg: '#FF9500',
+    bg: '#F5A623',
     text: '#FFFFFF',
   },
 } as const;

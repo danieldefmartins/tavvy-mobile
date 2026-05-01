@@ -152,7 +152,7 @@ export default function PublicCardViewScreen() {
         website: data.website || '',
         city: data.city || '',
         state: data.state || '',
-        gradientColors: [data.gradient_color_1 || '#8B5CF6', data.gradient_color_2 || '#4F46E5'],
+        gradientColors: [data.gradient_color_1 || '#8A05BE', data.gradient_color_2 || '#4F46E5'],
         profilePhotoUrl: data.profile_photo_url,
         socialInstagram: data.social_instagram || '',
         socialFacebook: data.social_facebook || '',
@@ -328,7 +328,7 @@ export default function PublicCardViewScreen() {
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ActivityIndicator size="large" color="#8A05BE" />
           <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading card...</Text>
         </View>
       </View>
@@ -763,7 +763,7 @@ export default function PublicCardViewScreen() {
             disabled={isSavedToWallet || isSaving}
           >
             <LinearGradient
-              colors={isSavedToWallet ? ['#9CA3AF', '#6B7280'] : ['#8B5CF6', '#6366F1']}
+              colors={isSavedToWallet ? ['#9CA3AF', '#6B7280'] : ['#8A05BE', '#6366F1']}
               style={styles.saveButtonGradient}
             >
               {isSaving ? (
@@ -846,8 +846,8 @@ export default function PublicCardViewScreen() {
             style={[styles.contactButton, { borderColor: theme.border }]}
             onPress={handleSaveToContacts}
           >
-            <Ionicons name="person-add" size={20} color="#8B5CF6" />
-            <Text style={[styles.contactButtonText, { color: '#8B5CF6' }]}>
+            <Ionicons name="person-add" size={20} color="#8A05BE" />
+            <Text style={[styles.contactButtonText, { color: '#8A05BE' }]}>
               Save to Contacts
             </Text>
           </TouchableOpacity>
@@ -1091,7 +1091,7 @@ const styles = StyleSheet.create({
   saveButton: {
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
+    shadowColor: '#8A05BE',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1146,11 +1146,11 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   ctaButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#8A05BE',
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 28,
-    shadowColor: '#8B5CF6',
+    shadowColor: '#8A05BE',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

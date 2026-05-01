@@ -331,7 +331,7 @@ export default function ECardHubScreen() {
                   duplicating={duplicating === card.id}
                 >
                   <TouchableOpacity
-                    style={[styles.cardRow, { backgroundColor: isDark ? '#1A1A1A' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
+                    style={[styles.cardRow, { backgroundColor: isDark ? '#1E0A3C' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
                     onPress={() => handleEditCard(card)}
                     onLongPress={() => handleLongPress(card)}
                     activeOpacity={0.8}
@@ -430,7 +430,7 @@ export default function ECardHubScreen() {
           <Animated.View style={[
             styles.bottomSheet,
             {
-              backgroundColor: isDark ? '#1A1A1A' : '#fff',
+              backgroundColor: isDark ? '#1E0A3C' : '#fff',
               transform: [{ translateY }],
             },
           ]}>
@@ -499,7 +499,7 @@ export default function ECardHubScreen() {
       {/* ── Delete Confirmation Modal ── */}
       <Modal visible={!!deleteModalCard} transparent animationType="fade" onRequestClose={() => !deleting && setDeleteModalCard(null)}>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: isDark ? '#1E293B' : '#fff' }]}>
+          <View style={[styles.modalContent, { backgroundColor: isDark ? '#1E0A3C' : '#fff' }]}>
             <TouchableOpacity style={styles.modalClose} onPress={() => !deleting && setDeleteModalCard(null)}>
               <Ionicons name="close" size={20} color={isDark ? '#94A3B8' : '#666'} />
             </TouchableOpacity>
@@ -512,7 +512,7 @@ export default function ECardHubScreen() {
             </Text>
             <View style={styles.modalActions}>
               <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}
+                style={[styles.modalBtn, { backgroundColor: isDark ? '#250E45' : '#F1F5F9' }]}
                 onPress={() => setDeleteModalCard(null)}
                 disabled={deleting}
               >

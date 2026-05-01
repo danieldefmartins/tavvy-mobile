@@ -53,7 +53,7 @@ const apps: AppItem[] = [
     id: 'map-lens',
     name: 'Map Lens',
     icon: 'scan',
-    color: '#10B981',
+    color: '#00C2CB',
     bgColor: '#D1FAE5',
     comingSoon: true,
   },
@@ -61,7 +61,7 @@ const apps: AppItem[] = [
     id: 'pros',
     name: 'Pros',
     icon: 'briefcase',
-    color: '#3B82F6',
+    color: '#8A05BE',
     bgColor: '#DBEAFE',
     route: 'ProsHome',
   },
@@ -85,7 +85,7 @@ const apps: AppItem[] = [
     id: 'create',
     name: 'Create',
     icon: 'add-circle',
-    color: '#10B981',
+    color: '#00C2CB',
     bgColor: '#D1FAE5',
     route: 'UniversalAdd',
   },
@@ -127,7 +127,7 @@ export default function AppsHomeScreen() {
             <Ionicons
               name="person-outline"
               size={18}
-              color={loginMode === 'personal' ? '#3B82F6' : '#6B7280'}
+              color={loginMode === 'personal' ? '#8A05BE' : '#6B7280'}
             />
             <Text
               style={[
@@ -149,7 +149,7 @@ export default function AppsHomeScreen() {
             <Ionicons
               name="briefcase-outline"
               size={18}
-              color={loginMode === 'pro' ? '#3B82F6' : '#6B7280'}
+              color={loginMode === 'pro' ? '#8A05BE' : '#6B7280'}
             />
             <Text
               style={[
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   toggleButtonActive: {
-    borderColor: '#3B82F6',
+    borderColor: '#8A05BE',
     backgroundColor: '#EFF6FF',
   },
   toggleText: {
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   toggleTextActive: {
-    color: '#3B82F6',
+    color: '#8A05BE',
   },
   appsGrid: {
     flexDirection: 'row',

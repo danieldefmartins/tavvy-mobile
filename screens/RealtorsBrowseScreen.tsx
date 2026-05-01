@@ -37,16 +37,16 @@ const Colors = {
   background: '#0A0A0F',       // Deep black
   surface: '#1A1A24',          // Dark card background
   surfaceLight: '#252532',     // Lighter surface for inputs
-  primary: '#3B82F6',          // Blue accent (matching other screens)
+  primary: '#8A05BE',          // Blue accent (matching other screens)
   secondary: '#C9A227',        // Gold accent for realtors
   text: '#FFFFFF',
   textSecondary: '#9CA3AF',
   textMuted: '#6B7280',
-  success: '#10B981',
+  success: '#00C2CB',
   border: '#2D2D3A',
   cardBorder: '#3D3D4A',
   badge: '#EF4444',            // Red for badges like "TOP RATED"
-  badgeBlue: '#3B82F6',        // Blue for "FEATURED"
+  badgeBlue: '#8A05BE',        // Blue for "FEATURED"
 };
 
 // Specialties for filtering
@@ -309,7 +309,7 @@ export default function RealtorsBrowseScreen() {
               key={star}
               name={star <= Math.round(realtor.rating) ? "star" : "star-outline"} 
               size={12} 
-              color="#3B82F6" 
+              color="#8A05BE" 
             />
           ))}
         </View>

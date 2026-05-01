@@ -66,7 +66,7 @@ function getContrastTextColor(bgColor1: string, bgColor2: string): { text: strin
   // If background is light (luminance > 0.35), use dark text; otherwise white
   // Lowered from 0.45 to 0.35 to catch more light backgrounds and prevent unreadable text
   if (avgLum > 0.35) {
-    return { text: '#1A1A1A', secondary: 'rgba(0,0,0,0.55)' };
+    return { text: '#1E0A3C', secondary: 'rgba(0,0,0,0.55)' };
   }
   return { text: '#FFFFFF', secondary: 'rgba(255,255,255,0.7)' };
 }
@@ -199,7 +199,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
   const textColor = computedContrast.text;
   const textSecondary = computedContrast.secondary;
   const accentColor = color?.accent || 'rgba(255,255,255,0.2)';
-  const isLightCard = textColor === '#1A1A1A';
+  const isLightCard = textColor === '#1E0A3C';
 
   // ── Card data ──
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -1341,7 +1341,7 @@ const styles = StyleSheet.create({
 
   // ── Modals ──
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#1E293B', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%', paddingBottom: 40 },
+  modalContent: { backgroundColor: '#1E0A3C', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%', paddingBottom: 40 },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
   modalSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.5)', paddingHorizontal: 20, marginTop: -8, marginBottom: 8 },

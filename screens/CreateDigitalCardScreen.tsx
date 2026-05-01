@@ -53,21 +53,21 @@ const CARD_TEMPLATES = [
     name: 'Professional',
     description: 'Clean business card',
     icon: 'briefcase-outline',
-    gradient: ['#1E293B', '#334155'],
+    gradient: ['#1E0A3C', '#250E45'],
   },
   {
     id: 'creator',
     name: 'Creator',
     description: 'Social media focused',
     icon: 'sparkles-outline',
-    gradient: ['#8B5CF6', '#EC4899'],
+    gradient: ['#8A05BE', '#EC4899'],
   },
   {
     id: 'entrepreneur',
     name: 'Entrepreneur',
     description: 'Business + social',
     icon: 'rocket-outline',
-    gradient: ['#3B82F6', '#06B6D4'],
+    gradient: ['#8A05BE', '#06B6D4'],
   },
   {
     id: 'personal',
@@ -81,18 +81,18 @@ const CARD_TEMPLATES = [
     name: 'Custom',
     description: 'Start from scratch',
     icon: 'create-outline',
-    gradient: ['#8B5CF6', '#4F46E5'],
+    gradient: ['#8A05BE', '#4F46E5'],
   },
 ];
 
 // Gradient presets
 const GRADIENT_PRESETS = [
-  { id: 'purple-indigo', colors: ['#8B5CF6', '#4F46E5'], name: 'Purple' },
-  { id: 'blue-cyan', colors: ['#3B82F6', '#06B6D4'], name: 'Ocean' },
-  { id: 'orange-red', colors: ['#F97316', '#EF4444'], name: 'Sunset' },
+  { id: 'purple-indigo', colors: ['#8A05BE', '#4F46E5'], name: 'Purple' },
+  { id: 'blue-cyan', colors: ['#8A05BE', '#06B6D4'], name: 'Ocean' },
+  { id: 'orange-red', colors: ['#00C2CB', '#EF4444'], name: 'Sunset' },
   { id: 'green-teal', colors: ['#22C55E', '#14B8A6'], name: 'Forest' },
   { id: 'pink-rose', colors: ['#EC4899', '#F43F5E'], name: 'Rose' },
-  { id: 'slate-dark', colors: ['#1E293B', '#334155'], name: 'Dark' },
+  { id: 'slate-dark', colors: ['#1E0A3C', '#250E45'], name: 'Dark' },
   { id: 'indigo-purple', colors: ['#6366F1', '#A855F7'], name: 'Violet' },
   { id: 'teal-green', colors: ['#14B8A6', '#22C55E'], name: 'Mint' },
 ];
@@ -911,7 +911,7 @@ export default function CreateDigitalCardScreen() {
           <Text style={[styles.inputLabel, { color: theme.text }]}>Card URL *</Text>
           {cardData.fullName && !slugInput && (
             <TouchableOpacity onPress={autoGenerateSlug}>
-              <Text style={{ color: '#8B5CF6', fontSize: 12, fontWeight: '600' }}>Auto-generate</Text>
+              <Text style={{ color: '#8A05BE', fontSize: 12, fontWeight: '600' }}>Auto-generate</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -930,7 +930,7 @@ export default function CreateDigitalCardScreen() {
             autoCorrect={false}
           />
           {isCheckingSlug && (
-            <ActivityIndicator size="small" color="#8B5CF6" style={{ marginLeft: 8 }} />
+            <ActivityIndicator size="small" color="#8A05BE" style={{ marginLeft: 8 }} />
           )}
           {!isCheckingSlug && slugAvailable === true && (
             <Ionicons name="checkmark-circle" size={20} color="#22C55E" style={{ marginLeft: 8 }} />
@@ -1510,7 +1510,7 @@ const styles = StyleSheet.create({
   },
   miniPreviewHint: {
     fontSize: 9,
-    color: '#8B5CF6',
+    color: '#8A05BE',
     marginTop: 2,
   },
   stepIndicator: {
@@ -1532,7 +1532,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   stepDotActive: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#8A05BE',
   },
   stepDotPast: {
     backgroundColor: '#22C55E',
@@ -1550,7 +1550,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   stepLabelActive: {
-    color: '#8B5CF6',
+    color: '#8A05BE',
     fontWeight: '600',
   },
   content: {
@@ -1793,7 +1793,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   gradientOptionSelected: {
-    borderColor: '#8B5CF6',
+    borderColor: '#8A05BE',
   },
   gradientPreview: {
     width: '100%',

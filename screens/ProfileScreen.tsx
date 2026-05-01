@@ -25,9 +25,9 @@ const TEAL_PRIMARY = '#0F8A8A';
 const getUserLevel = (points: number) => {
   if (points >= 10000) return { level: 'Tavvy Legend', icon: '👑', color: '#FFD700', nextLevel: null, progress: 1 };
   if (points >= 5000) return { level: 'Tavvy Master', icon: '⭐', color: '#9333EA', nextLevel: 'Legend', progress: (points - 5000) / 5000 };
-  if (points >= 2000) return { level: 'Tavvy Expert', icon: '🔥', color: '#F97316', nextLevel: 'Master', progress: (points - 2000) / 3000 };
-  if (points >= 500) return { level: 'Tavvy Explorer', icon: '🧭', color: '#3B82F6', nextLevel: 'Expert', progress: (points - 500) / 1500 };
-  if (points >= 100) return { level: 'Tavvy Starter', icon: '🌱', color: '#10B981', nextLevel: 'Explorer', progress: (points - 100) / 400 };
+  if (points >= 2000) return { level: 'Tavvy Expert', icon: '🔥', color: '#00C2CB', nextLevel: 'Master', progress: (points - 2000) / 3000 };
+  if (points >= 500) return { level: 'Tavvy Explorer', icon: '🧭', color: '#8A05BE', nextLevel: 'Expert', progress: (points - 500) / 1500 };
+  if (points >= 100) return { level: 'Tavvy Starter', icon: '🌱', color: '#00C2CB', nextLevel: 'Explorer', progress: (points - 100) / 400 };
   return { level: 'Newcomer', icon: '👋', color: '#94A3B8', nextLevel: 'Starter', progress: points / 100 };
 };
 
@@ -124,7 +124,7 @@ export default function ProfileScreen({ navigation }: any) {
     return (
       <View style={styles.container}>
         <LinearGradient
-          colors={['#0F1233', '#1E293B']}
+          colors={['#17013A', '#1E0A3C']}
           style={styles.guestGradient}
         >
           <View style={styles.guestContent}>
@@ -166,13 +166,13 @@ export default function ProfileScreen({ navigation }: any) {
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       {/* Header Profile Card with Gradient */}
       <LinearGradient
-        colors={['#0F1233', '#1E293B']}
+        colors={['#17013A', '#1E0A3C']}
         style={styles.profileHeader}
       >
         {/* Avatar - Tap for Stories */}
         <TouchableOpacity style={styles.avatarContainer} onPress={handleAvatarPress}>
           <LinearGradient
-            colors={[TEAL_PRIMARY, '#3B82F6']}
+            colors={[TEAL_PRIMARY, '#8A05BE']}
             style={styles.avatarGradient}
           >
             {avatarUrl ? (
@@ -285,7 +285,7 @@ export default function ProfileScreen({ navigation }: any) {
         <View style={styles.statsRow}>
           <TouchableOpacity style={styles.statCard}>
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-              <Ionicons name="star" size={24} color="#10B981" />
+              <Ionicons name="star" size={24} color="#00C2CB" />
             </View>
             <Text style={styles.statValue}>{profileStats.reviews}</Text>
             <Text style={styles.statLabel}>Reviews</Text>
@@ -293,7 +293,7 @@ export default function ProfileScreen({ navigation }: any) {
 
           <TouchableOpacity style={styles.statCard}>
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(249, 115, 22, 0.15)' }]}>
-              <Ionicons name="bookmark" size={24} color="#F97316" />
+              <Ionicons name="bookmark" size={24} color="#00C2CB" />
             </View>
             <Text style={styles.statValue}>{profileStats.savedPlaces}</Text>
             <Text style={styles.statLabel}>Saved</Text>
@@ -345,9 +345,9 @@ export default function ProfileScreen({ navigation }: any) {
 
         {profile?.trusted_contributor && (
           <View style={styles.infoRow}>
-            <Ionicons name="checkmark-circle-outline" size={20} color="#10B981" />
+            <Ionicons name="checkmark-circle-outline" size={20} color="#00C2CB" />
             <Text style={styles.infoLabel}>Status</Text>
-            <Text style={[styles.infoValue, { color: '#10B981' }]}>Trusted Contributor</Text>
+            <Text style={[styles.infoValue, { color: '#00C2CB' }]}>Trusted Contributor</Text>
           </View>
         )}
       </View>
@@ -358,8 +358,8 @@ export default function ProfileScreen({ navigation }: any) {
           style={styles.menuItem}
           onPress={() => navigation.navigate('Settings')}
         >
-          <View style={[styles.menuIconContainer, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-            <Ionicons name="settings-outline" size={22} color="#3B82F6" />
+          <View style={[styles.menuIconContainer, { backgroundColor: 'rgba(138, 5, 190, 0.1)' }]}>
+            <Ionicons name="settings-outline" size={22} color="#8A05BE" />
           </View>
           <Text style={styles.menuText}>Settings</Text>
           <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
@@ -370,7 +370,7 @@ export default function ProfileScreen({ navigation }: any) {
           onPress={() => navigation.navigate('MyDigitalCard')}
         >
           <View style={[styles.menuIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-            <Ionicons name="card-outline" size={22} color="#10B981" />
+            <Ionicons name="card-outline" size={22} color="#00C2CB" />
           </View>
           <Text style={styles.menuText}>My Digital Card</Text>
           <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
@@ -454,11 +454,11 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   primaryButton: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#8A05BE',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#3B82F6',
+    shadowColor: '#8A05BE',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   },
   avatarInner: {
     flex: 1,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1E0A3C',
     borderRadius: 52,
     justifyContent: 'center',
     alignItems: 'center',
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#0F1233',
+    borderColor: '#17013A',
   },
   levelBadgeText: {
     fontSize: 16,
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#0F1233',
+    borderColor: '#17013A',
   },
   userName: {
     fontSize: 26,

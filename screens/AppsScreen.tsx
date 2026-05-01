@@ -43,7 +43,7 @@ const COLORS = {
   backgroundLight: '#FAFAFA',
   surface: '#111827',
   surfaceLight: '#FFFFFF',
-  glassy: '#1A1A1A',
+  glassy: '#1E0A3C',
   accent: '#667EEA',
   textPrimary: '#FFFFFF',
   textSecondary: '#9CA3AF',
@@ -69,7 +69,7 @@ const FEATURED_APPS: AppTile[] = [
     name: 'Pros',
     icon: 'construct',
     iconType: 'ionicons',
-    gradientColors: ['#3B82F6', '#1D4ED8'],
+    gradientColors: ['#8A05BE', '#1D4ED8'],
     route: 'Pros',
     isFeatured: true,
   },
@@ -108,7 +108,7 @@ const APP_TILES: AppTile[] = [
     name: 'On The Go',
     icon: 'car-sport', // Changed to better represent mobile businesses
     iconType: 'ionicons',
-    gradientColors: ['#10B981', '#059669'],
+    gradientColors: ['#00C2CB', '#059669'],
     route: 'OnTheGo',
   },
   {
@@ -141,7 +141,7 @@ const APP_TILES: AppTile[] = [
     name: 'Wallet',
     icon: 'wallet',
     iconType: 'ionicons',
-    gradientColors: ['#8B5CF6', '#6366F1'],
+    gradientColors: ['#8A05BE', '#6366F1'],
     route: 'Wallet',
   },
   {
@@ -149,7 +149,7 @@ const APP_TILES: AppTile[] = [
     name: 'Cities',
     icon: 'business',
     iconType: 'ionicons',
-    gradientColors: ['#60A5FA', '#3B82F6'],
+    gradientColors: ['#D4A0FF', '#8A05BE'],
     route: 'CitiesBrowse',
   },
   {
@@ -173,7 +173,7 @@ const APP_TILES: AppTile[] = [
     name: 'Create',
     icon: 'add-circle',
     iconType: 'ionicons',
-    gradientColors: ['#34D399', '#10B981'],
+    gradientColors: ['#34D399', '#00C2CB'],
     route: 'UniversalAdd',
   },
   {

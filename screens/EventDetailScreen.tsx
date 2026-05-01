@@ -315,9 +315,9 @@ export default function EventDetailScreen() {
               </View>
             ) : hasReviews ? (
               <>
-                {renderSignalSection('The Good', signals.best_for, '#0A84FF', 'thumbs-up')}
-                {renderSignalSection('The Vibe', signals.vibe, '#8B5CF6', 'sparkles')}
-                {renderSignalSection('Heads Up', signals.heads_up, '#FF9500', 'warning')}
+                {renderSignalSection('The Good', signals.best_for, '#00C2CB', 'thumbs-up')}
+                {renderSignalSection('The Vibe', signals.vibe, '#8A05BE', 'sparkles')}
+                {renderSignalSection('Heads Up', signals.heads_up, '#F5A623', 'warning')}
               </>
             ) : (
               <View style={styles.emptyReviewsContainer}>

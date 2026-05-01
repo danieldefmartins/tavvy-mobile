@@ -47,19 +47,19 @@ export const PROS_CATEGORIES = [
 
 // Pros theme colors (add to your Colors.ts)
 export const ProsColors = {
-  primary: '#0D9668',
-  primaryLight: '#10B981',
-  primaryDark: '#047857',
+  primary: '#8A05BE',
+  primaryLight: '#00C2CB',
+  primaryDark: '#6B0496',
   secondary: '#F59E0B',
-  accent: '#3B82F6',
+  accent: '#8A05BE',
   success: '#22C55E',
   warning: '#F59E0B',
   error: '#EF4444',
-  
+
   // Backgrounds
   cardBg: '#FFFFFF',
   sectionBg: '#F9FAFB',
-  heroBg: '#F0FDF4',
+  heroBg: '#F5F0FF',
   
   // Text
   textPrimary: '#111827',

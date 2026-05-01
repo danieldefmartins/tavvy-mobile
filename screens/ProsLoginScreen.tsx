@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 const { width, height } = Dimensions.get('window');
 
 // Pros brand green color
-const PROS_GREEN = '#10B981';
+const PROS_GREEN = '#00C2CB';
 const PROS_GREEN_DARK = '#059669';
 const PROS_GREEN_LIGHT = '#34D399';
 
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1E293B',
+    color: '#1E0A3C',
     marginBottom: 6,
   },
   inputContainer: {
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 12,
     fontSize: 15,
-    color: '#1E293B',
+    color: '#1E0A3C',
   },
   passwordInput: {
     paddingRight: 50,

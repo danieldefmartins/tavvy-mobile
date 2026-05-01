@@ -527,13 +527,13 @@ export default function UniverseLandingScreen() {
         {[
           { icon: 'rocket-outline' as const, label: 'Rides', filter: 'rides', color: '#EF4444' },
           { icon: 'star-outline' as const, label: 'Attractions', filter: 'attractions', color: '#F59E0B' },
-          { icon: 'people-outline' as const, label: 'Characters', filter: 'characters', color: '#8B5CF6' },
+          { icon: 'people-outline' as const, label: 'Characters', filter: 'characters', color: '#8A05BE' },
           { icon: 'musical-notes-outline' as const, label: 'Shows', filter: 'shows', color: '#EC4899' },
-          { icon: 'flash-outline' as const, label: 'Fireworks', filter: 'fireworks', color: '#F97316' },
+          { icon: 'flash-outline' as const, label: 'Fireworks', filter: 'fireworks', color: '#00C2CB' },
           { icon: 'calendar-outline' as const, label: 'Events', filter: 'special_events', color: '#06B6D4' },
           { icon: 'exit-outline' as const, label: 'Entrances', filter: 'entrance', color: '#6366F1' },
-          { icon: 'restaurant-outline' as const, label: 'Dining', filter: 'dining', color: '#10B981' },
-          { icon: 'water-outline' as const, label: 'Restrooms', filter: 'restroom', color: '#3B82F6' },
+          { icon: 'restaurant-outline' as const, label: 'Dining', filter: 'dining', color: '#00C2CB' },
+          { icon: 'water-outline' as const, label: 'Restrooms', filter: 'restroom', color: '#8A05BE' },
           { icon: 'car-outline' as const, label: 'Parking', filter: 'parking', color: '#6B7280' },
         ].map((item, i) => {
           const isActive = activeFilter === item.filter;
@@ -670,7 +670,7 @@ export default function UniverseLandingScreen() {
         
         {/* The Good - Blue */}
         <TouchableOpacity 
-          style={[styles.signalBar, { backgroundColor: '#0A84FF' }]}
+          style={[styles.signalBar, { backgroundColor: '#00C2CB' }]}
           onPress={() => navigation.navigate('AddUniverseReview', { 
             universeId: universeId, 
             universeName: universe?.name,
@@ -688,7 +688,7 @@ export default function UniverseLandingScreen() {
         
         {/* The Vibe - Purple */}
         <TouchableOpacity 
-          style={[styles.signalBar, { backgroundColor: '#8B5CF6' }]}
+          style={[styles.signalBar, { backgroundColor: '#8A05BE' }]}
           onPress={() => navigation.navigate('AddUniverseReview', { 
             universeId: universeId, 
             universeName: universe?.name,
@@ -706,7 +706,7 @@ export default function UniverseLandingScreen() {
         
         {/* Heads Up - Orange */}
         <TouchableOpacity 
-          style={[styles.signalBar, { backgroundColor: '#FF9500', marginBottom: 0 }]}
+          style={[styles.signalBar, { backgroundColor: '#F5A623', marginBottom: 0 }]}
           onPress={() => navigation.navigate('AddUniverseReview', { 
             universeId: universeId, 
             universeName: universe?.name,
@@ -731,9 +731,9 @@ export default function UniverseLandingScreen() {
             <View key={review.id} style={styles.reviewCard}>
               <View style={[
                 styles.reviewTypeBadge,
-                review.type === 'good' && { backgroundColor: '#0A84FF' },
-                review.type === 'vibe' && { backgroundColor: '#8B5CF6' },
-                review.type === 'heads_up' && { backgroundColor: '#FF9500' },
+                review.type === 'good' && { backgroundColor: '#00C2CB' },
+                review.type === 'vibe' && { backgroundColor: '#8A05BE' },
+                review.type === 'heads_up' && { backgroundColor: '#F5A623' },
               ]}>
                 <Ionicons 
                   name={review.type === 'good' ? 'thumbs-up' : review.type === 'vibe' ? 'sparkles' : 'alert-circle'} 

@@ -237,7 +237,7 @@ export default function BusinessStoryModerationScreen() {
   // Render place selection list
   const renderPlaceList = () => (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#0F1233', '#1a1f4e']} style={styles.header}>
+      <LinearGradient colors={['#17013A', '#1a1f4e']} style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
@@ -252,7 +252,7 @@ export default function BusinessStoryModerationScreen() {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+          <ActivityIndicator size="large" color="#8A05BE" />
           <Text style={styles.loadingText}>Loading your places...</Text>
         </View>
       ) : adminPlaces.length === 0 ? (
@@ -277,7 +277,7 @@ export default function BusinessStoryModerationScreen() {
               onPress={() => selectPlace(item)}
             >
               <View style={styles.placeIcon}>
-                <Ionicons name="business" size={24} color="#3B82F6" />
+                <Ionicons name="business" size={24} color="#8A05BE" />
               </View>
               <View style={styles.placeInfo}>
                 <Text style={styles.placeName}>{item.place_name}</Text>
@@ -303,7 +303,7 @@ export default function BusinessStoryModerationScreen() {
   // Render reported stories list
   const renderStoriesList = () => (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#0F1233', '#1a1f4e']} style={styles.header}>
+      <LinearGradient colors={['#17013A', '#1a1f4e']} style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => setSelectedPlace(null)}
@@ -322,12 +322,12 @@ export default function BusinessStoryModerationScreen() {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+          <ActivityIndicator size="large" color="#8A05BE" />
           <Text style={styles.loadingText}>Loading reported stories...</Text>
         </View>
       ) : reportedStories.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="checkmark-circle-outline" size={64} color="#10B981" />
+          <Ionicons name="checkmark-circle-outline" size={64} color="#00C2CB" />
           <Text style={styles.emptyTitle}>All Clear!</Text>
           <Text style={styles.emptyText}>
             No reported stories need your review at this place.
@@ -857,7 +857,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   approveButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#00C2CB',
   },
   dismissButton: {
     backgroundColor: '#6B7280',

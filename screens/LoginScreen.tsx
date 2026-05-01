@@ -229,7 +229,7 @@ export default function LoginScreen({ navigation }: any) {
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={['#3B82F6', '#2563EB']}
+                colors={['#8A05BE', '#2563EB']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.loginButtonGradient}
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#8A05BE',
     opacity: 0.15,
   },
   glowBottom: {
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: '#F97316',
+    backgroundColor: '#00C2CB',
     opacity: 0.1,
   },
   keyboardView: {
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
     right: -20,
     bottom: -15,
     borderRadius: 20,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#8A05BE',
     opacity: 0.25,
     zIndex: 0,
   },
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1E293B',
+    color: '#1E0A3C',
     marginBottom: 6,
   },
   inputContainer: {
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 12,
     fontSize: 15,
-    color: '#1E293B',
+    color: '#1E0A3C',
   },
   passwordInput: {
     paddingRight: 50,
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3B82F6',
+    color: '#8A05BE',
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
   signUpLink: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#3B82F6',
+    color: '#8A05BE',
   },
   proLinkButton: {
     flexDirection: 'row',
@@ -521,6 +521,6 @@ const styles = StyleSheet.create({
   proLinkAction: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#10B981',
+    color: '#00C2CB',
   },
 });

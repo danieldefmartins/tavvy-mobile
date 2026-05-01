@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   },
   colorCard: {
     width: 120,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#1E0A3C',
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 2,
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   continueButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#8A05BE',
     paddingVertical: 16,
     borderRadius: 16,
     flexDirection: 'row',

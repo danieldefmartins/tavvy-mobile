@@ -13,9 +13,9 @@ const { width } = Dimensions.get('window');
 
 // Category colors matching the universal review system (same as PlaceDetailsScreen)
 const CATEGORY_COLORS = {
-  best_for: '#0A84FF',  // Blue - The Good
-  vibe: '#8B5CF6',      // Purple - The Vibe
-  heads_up: '#FF9500',  // Orange - Heads Up
+  best_for: '#00C2CB',  // Blue - The Good
+  vibe: '#8A05BE',      // Purple - The Vibe
+  heads_up: '#F5A623',  // Orange - Heads Up
 };
 
 interface CityData {

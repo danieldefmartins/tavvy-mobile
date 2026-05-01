@@ -185,7 +185,7 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
       <StatusBar barStyle="light-content" />
       
       <LinearGradient
-        colors={['#1A1A1A', '#333333']}
+        colors={['#1E0A3C', '#333333']}
         style={styles.gradient}
       >
         {/* Close Button */}
@@ -326,7 +326,7 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
               style={styles.subscribeGradient}
             >
               {isLoading ? (
-                <ActivityIndicator color="#1A1A1A" size="small" />
+                <ActivityIndicator color="#1E0A3C" size="small" />
               ) : (
                 <Text style={styles.subscribeText}>Subscribe Now</Text>
               )}
@@ -357,7 +357,7 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#1E0A3C',
   },
   gradient: {
     flex: 1,
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   bestValueText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#1E0A3C',
   },
   planHeader: {
     flexDirection: 'row',
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 24,
     paddingBottom: 40,
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#1E0A3C',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.1)',
   },
@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
   subscribeText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#1E0A3C',
   },
   restoreButton: {
     alignItems: 'center',

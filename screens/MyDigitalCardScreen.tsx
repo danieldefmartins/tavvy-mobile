@@ -166,7 +166,7 @@ export default function MyDigitalCardScreen() {
         website: data.website || '',
         city: data.city || '',
         state: data.state || '',
-        gradientColors: [data.gradient_color_1 || '#8B5CF6', data.gradient_color_2 || '#4F46E5'],
+        gradientColors: [data.gradient_color_1 || '#8A05BE', data.gradient_color_2 || '#4F46E5'],
         profilePhotoUri: data.profile_photo_url,
         socialInstagram: data.social_instagram || '',
         socialFacebook: data.social_facebook || '',
@@ -354,7 +354,7 @@ export default function MyDigitalCardScreen() {
       <View style={[styles.container, { backgroundColor: V2_COLORS.background }]}>
         <StatusBar barStyle="light-content" />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ActivityIndicator size="large" color="#8A05BE" />
           <Text style={[styles.loadingText, { color: V2_COLORS.textSecondary }]}>Loading your card...</Text>
         </View>
       </View>
@@ -375,7 +375,7 @@ export default function MyDigitalCardScreen() {
           </TouchableOpacity>
           
           <LinearGradient
-            colors={['#8B5CF6', '#4F46E5']}
+            colors={['#8A05BE', '#4F46E5']}
             style={styles.noCardIcon}
           >
             <Ionicons name="id-card" size={48} color="#fff" />
@@ -391,7 +391,7 @@ export default function MyDigitalCardScreen() {
             onPress={() => navigation.navigate('ECardTemplateGallery', { mode: 'create' })}
           >
             <LinearGradient
-              colors={['#8B5CF6', '#4F46E5']}
+              colors={['#8A05BE', '#4F46E5']}
               style={styles.createCardButtonGradient}
             >
               <Ionicons name="add" size={24} color="#fff" />
@@ -414,7 +414,7 @@ export default function MyDigitalCardScreen() {
       >
         {/* Card Display */}
         <LinearGradient
-          colors={cardData.gradientColors || ['#8B5CF6', '#4F46E5']}
+          colors={cardData.gradientColors || ['#8A05BE', '#4F46E5']}
           style={styles.card}
         >
           {/* Back Button */}
@@ -605,7 +605,7 @@ export default function MyDigitalCardScreen() {
                 Your card is saved as a draft. Publish it first to share with others.
               </Text>
               <TouchableOpacity
-                style={{ backgroundColor: '#8B5CF6', paddingVertical: 12, borderRadius: 12, alignItems: 'center' }}
+                style={{ backgroundColor: '#8A05BE', paddingVertical: 12, borderRadius: 12, alignItems: 'center' }}
                 onPress={() => navigation.navigate('ECardDashboard', { cardId: cardData.id })}
               >
                 <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Go to Dashboard to Publish</Text>
@@ -619,7 +619,7 @@ export default function MyDigitalCardScreen() {
             style={[styles.shareOption, { backgroundColor: V2_COLORS.background }]}
             onPress={() => setShowQRModal(true)}
           >
-            <View style={[styles.shareIconContainer, { backgroundColor: '#8B5CF6' }]}>
+            <View style={[styles.shareIconContainer, { backgroundColor: '#8A05BE' }]}>
               <Ionicons name="qr-code" size={24} color="#fff" />
             </View>
             <View style={styles.shareOptionText}>
@@ -634,7 +634,7 @@ export default function MyDigitalCardScreen() {
             style={[styles.shareOption, { backgroundColor: V2_COLORS.background }]}
             onPress={handleNativeShare}
           >
-            <View style={[styles.shareIconContainer, { backgroundColor: '#3B82F6' }]}>
+            <View style={[styles.shareIconContainer, { backgroundColor: '#8A05BE' }]}>
               <Ionicons name="share" size={24} color="#fff" />
             </View>
             <View style={styles.shareOptionText}>
@@ -732,7 +732,7 @@ export default function MyDigitalCardScreen() {
           onPress={handleSaveToContacts}
         >
           <LinearGradient
-            colors={['#8B5CF6', '#6366F1']}
+            colors={['#8A05BE', '#6366F1']}
             style={styles.saveContactGradient}
           >
             <Ionicons name="download" size={20} color="#fff" />
@@ -980,7 +980,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
+    shadowColor: '#8A05BE',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1027,7 +1027,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 20,
     letterSpacing: -0.3,
-    color: '#1E293B',
+    color: '#1E0A3C',
   },
   qrSubtitle: {
     fontSize: 16,
@@ -1059,7 +1059,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 24,
-    backgroundColor: '#334155',
+    backgroundColor: '#250E45',
     gap: 8,
   },
   qrCopyButton: {
@@ -1068,7 +1068,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 24,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#8A05BE',
     gap: 8,
   },
   qrCopyText: {
@@ -1154,7 +1154,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   toggleTabActive: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#8A05BE',
   },
   toggleTabText: {
     fontSize: 15,

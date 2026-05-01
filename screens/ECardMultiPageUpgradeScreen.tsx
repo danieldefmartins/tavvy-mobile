@@ -357,12 +357,12 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   previewCard1: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#8A05BE',
     transform: [{ rotate: '-10deg' }],
     zIndex: 1,
   },
   previewCard2: {
-    backgroundColor: '#8b5cf6',
+    backgroundColor: '#8A05BE',
     height: 130,
     zIndex: 2,
   },
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#1E0A3C',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   termsLink: {
-    color: '#3b82f6',
+    color: '#8A05BE',
     textDecorationLine: 'underline',
   },
 });

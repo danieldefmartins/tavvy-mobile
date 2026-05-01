@@ -191,7 +191,7 @@ export default function ExperiencePathsScreen() {
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'Easy': return '#10B981';
+      case 'Easy': return '#00C2CB';
       case 'Moderate': return '#F59E0B';
       case 'Challenging': return '#EF4444';
       default: return ExperienceColors.textMuted;

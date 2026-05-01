@@ -57,7 +57,7 @@ export default function ProsProjectStatusScreen() {
                 <Text style={styles.proCompany}>{pro.company}</Text>
                 <View style={styles.proRating}><Ionicons name="star" size={14} color="#F59E0B" /><Text style={styles.ratingText}>{pro.rating}</Text><Text style={styles.reviewsText}>({pro.reviews} reviews)</Text></View>
               </View>
-              {pro.status === 'responded' ? <View style={styles.respondedBadge}><Ionicons name="checkmark-circle" size={16} color="#10B981" /></View> : <View style={styles.pendingBadge}><Ionicons name="time" size={16} color="#9CA3AF" /></View>}
+              {pro.status === 'responded' ? <View style={styles.respondedBadge}><Ionicons name="checkmark-circle" size={16} color="#00C2CB" /></View> : <View style={styles.pendingBadge}><Ionicons name="time" size={16} color="#9CA3AF" /></View>}
             </View>
             {pro.status === 'responded' ? (
               <>
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   pendingBadge: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
   estimateRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   estimateLabel: { fontSize: 14, color: '#6B7280', marginRight: 8 },
-  estimateValue: { fontSize: 16, fontWeight: '600', color: '#10B981' },
+  estimateValue: { fontSize: 16, fontWeight: '600', color: '#00C2CB' },
   responseTime: { fontSize: 12, color: '#9CA3AF', marginBottom: 12 },
   proActions: { flexDirection: 'row', gap: 12 },
   viewProfileButton: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center' },

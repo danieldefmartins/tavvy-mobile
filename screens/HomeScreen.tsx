@@ -250,7 +250,7 @@ const CATEGORY_FILTERS: { [key: string]: {
 
 // Theme colors
 const BG = '#F9F7F2';
-const ACCENT = '#0F1233';
+const ACCENT = '#17013A';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -834,7 +834,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           subtitle: randomAirport.location || 'Terminals, lounges & more',
           image: randomAirport.thumbnail_image_url,
           icon: 'airplane-outline',
-          color: '#3B82F6',
+          color: '#8A05BE',
           route: 'UniverseLanding',
           data: randomAirport,
           isPlaceholder: false,
@@ -849,7 +849,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           subtitle: 'Terminals, lounges & more',
           image: null,
           icon: 'airplane-outline',
-          color: '#3B82F6',
+          color: '#8A05BE',
           route: 'UniverseDiscovery',
           isPlaceholder: true,
         });
@@ -871,7 +871,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           subtitle: `${themeParks.length}+ parks to explore`,
           image: null,
           icon: 'rocket-outline',
-          color: '#8B5CF6',
+          color: '#8A05BE',
           route: 'RidesBrowse',
           data: { count: themeParks.length },
           isPlaceholder: false,
@@ -885,7 +885,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           subtitle: 'Rides & attractions',
           image: null,
           icon: 'rocket-outline',
-          color: '#8B5CF6',
+          color: '#8A05BE',
           route: 'RidesBrowse',
           isPlaceholder: true,
         });
@@ -907,7 +907,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           subtitle: `${camping.length}+ campgrounds nearby`,
           image: null,
           icon: 'bonfire-outline',
-          color: '#10B981',
+          color: '#00C2CB',
           route: 'RVCampingBrowse',
           data: { count: camping.length },
           isPlaceholder: false,
@@ -921,7 +921,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           subtitle: 'Campgrounds & RV parks',
           image: null,
           icon: 'bonfire-outline',
-          color: '#10B981',
+          color: '#00C2CB',
           route: 'RVCampingBrowse',
           isPlaceholder: true,
         });
@@ -2109,9 +2109,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
   const getSignalColor = (bucket: string) => {
     const type = getSignalType(bucket);
-    if (type === 'positive') return '#0A84FF'; // Blue - The Good
-    if (type === 'negative') return '#FF9500'; // Orange - Heads Up
-    return '#8B5CF6'; // Purple - The Vibe
+    if (type === 'positive') return '#00C2CB'; // Teal - The Good
+    if (type === 'negative') return '#F5A623'; // Amber - Heads Up
+    return '#8A05BE'; // Purple - The Vibe
   };
 
   const getSignalIconColor = (bucket: string) => {
@@ -2232,16 +2232,16 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       cafe: '#F59E0B',             // Orange/Amber
       'coffee': '#F59E0B',         // Orange/Amber
       'coffee shop': '#F59E0B',    // Orange/Amber
-      bars: '#8B5CF6',             // Purple
-      bar: '#8B5CF6',              // Purple
-      'nightlife': '#8B5CF6',      // Purple
-      'pub': '#8B5CF6',            // Purple
-      'brewery': '#8B5CF6',        // Purple
+      bars: '#8A05BE',             // Purple
+      bar: '#8A05BE',              // Purple
+      'nightlife': '#8A05BE',      // Purple
+      'pub': '#8A05BE',            // Purple
+      'brewery': '#8A05BE',        // Purple
       // Shopping
-      shopping: '#3B82F6',         // Blue
-      'retail': '#3B82F6',         // Blue
-      'store': '#3B82F6',          // Blue
-      'mall': '#3B82F6',           // Blue
+      shopping: '#8A05BE',         // Purple
+      'retail': '#8A05BE',         // Purple
+      'store': '#8A05BE',          // Purple
+      'mall': '#8A05BE',           // Purple
       // Travel & Lodging
       'rv & camping': '#22C55E',   // Green
       'camping': '#22C55E',        // Green
@@ -2257,11 +2257,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       'fuel': '#FF6B35',           // Orange-Red
       'automotive': '#FF6B35',     // Orange-Red
       // Entertainment
-      'entertainment': '#10B981',  // Emerald
-      'arts': '#10B981',           // Emerald
-      'museum': '#10B981',         // Emerald
-      'theater': '#10B981',        // Emerald
-      'cinema': '#10B981',         // Emerald
+      'entertainment': '#00C2CB',  // Teal
+      'arts': '#00C2CB',           // Teal
+      'museum': '#00C2CB',         // Teal
+      'theater': '#00C2CB',        // Teal
+      'cinema': '#00C2CB',         // Teal
       // Services
       'services': '#6366F1',       // Indigo
       'health': '#6366F1',         // Indigo
@@ -2269,9 +2269,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       'fitness': '#6366F1',        // Indigo
       'gym': '#6366F1',            // Indigo
       // Travel
-      'travel': '#0EA5E9',         // Sky Blue
-      'airport': '#0EA5E9',        // Sky Blue
-      'transit': '#0EA5E9',        // Sky Blue
+      'travel': '#8A05BE',         // Purple
+      'airport': '#8A05BE',        // Purple
+      'transit': '#8A05BE',        // Purple
       // Attractions
       'attractions': '#F43F5E',    // Rose
       'theme park': '#F43F5E',     // Rose
@@ -2374,9 +2374,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 name={suggestion.icon as any}
                 size={18}
                 color={
-                  suggestion.type === 'place' ? '#0A84FF' :
+                  suggestion.type === 'place' ? '#00C2CB' :
                   suggestion.type === 'category' ? '#34C759' :
-                  suggestion.type === 'location' ? '#FF9500' :
+                  suggestion.type === 'location' ? '#F5A623' :
                   suggestion.type === 'address' ? '#AF52DE' : '#8E8E93'
                 }
               />
@@ -2413,7 +2413,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             onPress={() => handleSearchSubmit()}
           >
             <View style={[styles.suggestionIconContainer, styles.suggestionIconSearch]}>
-              <Ionicons name="search" size={18} color="#0A84FF" />
+              <Ionicons name="search" size={18} color="#00C2CB" />
             </View>
             <View style={styles.suggestionTextContainer}>
               <Text style={[styles.suggestionTitle, { color: isDark ? theme.text : '#000' }]}>Search for "{searchQuery}"</Text>
@@ -2570,7 +2570,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.addressActionButton} onPress={handleSaveParking} accessibilityLabel="Save parking location" accessibilityRole="button">
-            <View style={[styles.addressActionIcon, { backgroundColor: '#FF9500' }]}>
+            <View style={[styles.addressActionIcon, { backgroundColor: '#F5A623' }]}>
               <Ionicons name="car" size={20} color="#fff" />
             </View>
             <Text style={[styles.addressActionText, { color: isDark ? theme.textSecondary : '#666' }]}>Park Here</Text>
@@ -3075,7 +3075,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 style={[
                   styles.nearbyItem,
                   { 
-                    backgroundColor: isDark ? '#1A1A1A' : '#fff',
+                    backgroundColor: isDark ? '#1E0A3C' : '#fff',
                     borderWidth: isDark ? 1 : 0,
                     borderColor: 'rgba(255,255,255,0.04)',
                     shadowColor: isDark ? 'transparent' : '#000',
@@ -3098,7 +3098,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 <View style={[
                   styles.nearbyImage, 
                   { 
-                    backgroundColor: index === 0 ? '#FF6B6B' : index === 1 ? '#667EEA' : '#10B981',
+                    backgroundColor: index === 0 ? '#FF6B6B' : index === 1 ? '#667EEA' : '#00C2CB',
                   }
                 ]}>
                   {item.image && (
@@ -3113,9 +3113,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                     {item.category} • {item.subtitle || '0.4 mi'}
                   </Text>
                 </View>
-                <View style={[styles.nearbySignal, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                <View style={[styles.nearbySignal, { backgroundColor: 'rgba(0, 194, 203, 0.15)' }]}>
                   <Text style={styles.nearbySignalIcon}>📶</Text>
-                  <Text style={[styles.nearbySignalText, { color: '#10B981' }]}>Strong</Text>
+                  <Text style={[styles.nearbySignalText, { color: '#00C2CB' }]}>Strong</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -3127,7 +3127,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           <View style={[
             styles.searchWrap, 
             { 
-              borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,18,51,0.14)', 
+              borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(23,1,58,0.14)', 
               backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#fff' 
             },
             isSearchFocused && styles.searchWrapFocused
@@ -3259,7 +3259,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                     onPress={() => Linking.openURL('https://tavvy.com/about-us')}
                   >
                     <Text style={styles.learnMoreText}>Learn More About Tavvy</Text>
-                    <Ionicons name="arrow-forward" size={16} color="#0A84FF" />
+                    <Ionicons name="arrow-forward" size={16} color="#00C2CB" />
                   </TouchableOpacity>
                 </>
               )}
@@ -3653,8 +3653,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             {[
               { color: '#EF4444', name: 'Restaurants' },
               { color: '#F59E0B', name: 'Cafes' },
-              { color: '#8B5CF6', name: 'Bars' },
-              { color: '#3B82F6', name: 'Shopping' },
+              { color: '#8A05BE', name: 'Bars' },
+              { color: '#8A05BE', name: 'Shopping' },
               { color: '#22C55E', name: 'RV & Camping' },
               { color: '#EC4899', name: 'Hotels' },
             ].map((item, index) => (
@@ -4004,7 +4004,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           {/* Results List */}
           {isLoadingCategoryResults ? (
             <View style={styles.categoryResultsLoading}>
-              <ActivityIndicator size="large" color="#0A84FF" />
+              <ActivityIndicator size="large" color="#00C2CB" />
               <Text style={[styles.loadingText, { color: isDark ? theme.textSecondary : '#666' }]}>Finding {selectedCategory.toLowerCase()}...</Text>
             </View>
           ) : (
@@ -4161,7 +4161,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           </ScrollView>
           <View style={[styles.filterModalButtons, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee', backgroundColor: isDark ? theme.background : '#fff' }]}>
             <TouchableOpacity style={[styles.filterClearBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e8f4f8' }]} onPress={clearFilters}>
-              <Text style={[styles.filterClearBtnText, { color: '#0A84FF' }]}>Clear</Text>
+              <Text style={[styles.filterClearBtnText, { color: '#00C2CB' }]}>Clear</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.filterApplyBtn} onPress={applyFilters}>
               <Text style={styles.filterApplyBtnText}>Apply</Text>
@@ -4426,7 +4426,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 });
               }}
             >
-              <Text style={[styles.filterClearBtnText, { color: '#0A84FF' }]}>Reset All</Text>
+              <Text style={[styles.filterClearBtnText, { color: '#00C2CB' }]}>Reset All</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.filterApplyBtn} 
@@ -4450,7 +4450,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: isDark ? theme.background : '#fff' }]}>
-        <ActivityIndicator size="large" color="#0A84FF" />
+        <ActivityIndicator size="large" color="#00C2CB" />
         <Text style={[styles.loadingText, { color: isDark ? theme.textSecondary : '#666' }]}>Loading places...</Text>
       </View>
     );
@@ -4548,7 +4548,7 @@ const styles = StyleSheet.create({
   },
   searchWrapFocused: {
     borderWidth: 2,
-    borderColor: '#0A84FF',
+    borderColor: '#00C2CB',
   },
   searchInput: {
     flex: 1,
@@ -5429,7 +5429,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FF9500',
+    backgroundColor: '#F5A623',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -5440,7 +5440,7 @@ const styles = StyleSheet.create({
   },
   parkingMarkerTime: {
     fontSize: 10,
-    color: '#FF9500',
+    color: '#F5A623',
     fontWeight: '700',
     marginTop: 2,
     backgroundColor: '#fff',
@@ -5485,7 +5485,7 @@ const styles = StyleSheet.create({
   },
   addressDistance: {
     fontSize: 14,
-    color: '#0A84FF',
+    color: '#00C2CB',
     fontWeight: '500',
   },
   addressActionsRow: {
@@ -5663,7 +5663,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   filterChipActive: {
-    backgroundColor: '#0F1233',
+    backgroundColor: '#17013A',
   },
   filterChipText: {
     fontSize: 14,
@@ -5908,7 +5908,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   moreFilterChipActive: {
-    backgroundColor: '#0F1233',
+    backgroundColor: '#17013A',
   },
   moreFilterChipText: {
     fontSize: 14,
@@ -6087,7 +6087,7 @@ const styles = StyleSheet.create({
   leaderboardAvatarText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0A84FF',
+    color: '#00C2CB',
   },
   leaderboardName: {
     fontSize: 15,
@@ -6179,7 +6179,7 @@ const styles = StyleSheet.create({
   learnMoreText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0A84FF',
+    color: '#00C2CB',
     marginRight: 6,
   },
   emptyFeatureCard: {

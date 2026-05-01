@@ -721,12 +721,12 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
       case 'hidden_gem':
         icon = 'diamond';
         label = 'Hidden Gem';
-        color = '#3B82F6'; // Blue
+        color = '#8A05BE'; // Purple
         break;
       case 'comeback_king':
         icon = 'shield-checkmark';
         label = 'Comeback King';
-        color = '#10B981'; // Green
+        color = '#00C2CB'; // Teal
         break;
     }
 
@@ -993,7 +993,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           )}
           {hasRvWarnings && (
             <View style={styles.warningBadge}>
-              <Ionicons name="warning" size={12} color="#f97316" />
+              <Ionicons name="warning" size={12} color="#00C2CB" />
               <Text style={styles.warningText}>
                 {[
                   entrance.tightTurns && 'Tight turns',
@@ -1286,13 +1286,13 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
               {(signals.best_for?.length > 0 || signals.vibe?.length > 0 || signals.heads_up?.length > 0) ? (
                 <>
                   {/* The Good - Blue */}
-                  {renderSignalLine('best_for', 'The Good', signals.best_for, { primary: '#0A84FF', light: 'rgba(10, 132, 255, 0.15)', text: '#FFFFFF' })}
+                  {renderSignalLine('best_for', 'The Good', signals.best_for, { primary: '#00C2CB', light: 'rgba(0, 194, 203, 0.15)', text: '#FFFFFF' })}
 
                   {/* The Vibe - Purple */}
-                  {renderSignalLine('vibe', 'The Vibe', signals.vibe, { primary: '#8B5CF6', light: 'rgba(139, 92, 246, 0.15)', text: '#FFFFFF' })}
+                  {renderSignalLine('vibe', 'The Vibe', signals.vibe, { primary: '#8A05BE', light: 'rgba(138, 5, 190, 0.15)', text: '#FFFFFF' })}
 
                   {/* Heads Up - Orange */}
-                  {renderSignalLine('heads_up', 'Heads Up', signals.heads_up, { primary: '#FF9500', light: 'rgba(255, 149, 0, 0.15)', text: '#FFFFFF' })}
+                  {renderSignalLine('heads_up', 'Heads Up', signals.heads_up, { primary: '#F5A623', light: 'rgba(245, 166, 35, 0.15)', text: '#FFFFFF' })}
                 </>
               ) : (
                 /* Empty State Signal Bars - Show placeholder bars when no reviews exist */
@@ -1321,7 +1321,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
                     onPress={() => navigation.navigate('AddReview', { placeId: place.id, placeName: place.name, placeCategory: place.primaryCategory })}
                     activeOpacity={0.8}
                     style={{
-                      backgroundColor: '#0A84FF',
+                      backgroundColor: '#00C2CB',
                       borderRadius: 12,
                       paddingVertical: 14,
                       paddingHorizontal: 16,
@@ -1341,7 +1341,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
                     onPress={() => navigation.navigate('AddReview', { placeId: place.id, placeName: place.name, placeCategory: place.primaryCategory })}
                     activeOpacity={0.8}
                     style={{
-                      backgroundColor: '#8B5CF6',
+                      backgroundColor: '#8A05BE',
                       borderRadius: 12,
                       paddingVertical: 14,
                       paddingHorizontal: 16,
@@ -1361,7 +1361,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
                     onPress={() => navigation.navigate('AddReview', { placeId: place.id, placeName: place.name, placeCategory: place.primaryCategory })}
                     activeOpacity={0.8}
                     style={{
-                      backgroundColor: '#FF9500',
+                      backgroundColor: '#F5A623',
                       borderRadius: 12,
                       paddingVertical: 14,
                       paddingHorizontal: 16,
@@ -2104,7 +2104,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   quickInfoLabelOpen: {
-    color: '#10b981',
+    color: '#00C2CB',
   },
   quickInfoValue: {
     fontSize: 15,
@@ -2451,7 +2451,7 @@ const styles = StyleSheet.create({
   },
   warningText: {
     fontSize: 12,
-    color: '#f97316',
+    color: '#00C2CB',
   },
   navigateButton: {
     backgroundColor: '#007AFF',

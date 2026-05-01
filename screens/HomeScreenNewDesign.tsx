@@ -526,7 +526,7 @@ const renderStandardMode = () => {
                 style={[
                   newStyles.nearbyItem,
                   { 
-                    backgroundColor: isDark ? '#1A1A1A' : '#fff',
+                    backgroundColor: isDark ? '#1E0A3C' : '#fff',
                     borderWidth: isDark ? 1 : 0,
                     borderColor: 'rgba(255,255,255,0.04)',
                     shadowColor: isDark ? 'transparent' : '#000',
@@ -549,7 +549,7 @@ const renderStandardMode = () => {
                 <View style={[
                   newStyles.nearbyImage, 
                   { 
-                    backgroundColor: index === 0 ? '#FF6B6B' : index === 1 ? '#667EEA' : '#10B981',
+                    backgroundColor: index === 0 ? '#FF6B6B' : index === 1 ? '#667EEA' : '#00C2CB',
                   }
                 ]}>
                   {item.image && (
@@ -566,7 +566,7 @@ const renderStandardMode = () => {
                 </View>
                 <View style={[newStyles.nearbySignal, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
                   <Text style={newStyles.nearbySignalIcon}>📶</Text>
-                  <Text style={[newStyles.nearbySignalText, { color: '#10B981' }]}>Strong</Text>
+                  <Text style={[newStyles.nearbySignalText, { color: '#00C2CB' }]}>Strong</Text>
                 </View>
               </TouchableOpacity>
             ))}

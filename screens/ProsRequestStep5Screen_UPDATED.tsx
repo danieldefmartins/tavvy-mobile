@@ -323,7 +323,7 @@ export default function ProsRequestStep5Screen() {
               {/* Success Icon */}
               <View style={styles.successIconContainer}>
                 <View style={styles.successIcon}>
-                  <Ionicons name="checkmark-circle" size={64} color="#10B981" />
+                  <Ionicons name="checkmark-circle" size={64} color="#00C2CB" />
                 </View>
               </View>
 
@@ -339,7 +339,7 @@ export default function ProsRequestStep5Screen() {
                 
                 <View style={styles.benefitItem}>
                   <View style={styles.benefitCheckmark}>
-                    <Ionicons name="checkmark" size={16} color="#10B981" />
+                    <Ionicons name="checkmark" size={16} color="#00C2CB" />
                   </View>
                   <View style={styles.benefitContent}>
                     <Text style={styles.benefitLabel}>Real-time notifications</Text>
@@ -349,7 +349,7 @@ export default function ProsRequestStep5Screen() {
 
                 <View style={styles.benefitItem}>
                   <View style={styles.benefitCheckmark}>
-                    <Ionicons name="checkmark" size={16} color="#10B981" />
+                    <Ionicons name="checkmark" size={16} color="#00C2CB" />
                   </View>
                   <View style={styles.benefitContent}>
                     <Text style={styles.benefitLabel}>Direct communication</Text>
@@ -359,7 +359,7 @@ export default function ProsRequestStep5Screen() {
 
                 <View style={styles.benefitItem}>
                   <View style={styles.benefitCheckmark}>
-                    <Ionicons name="checkmark" size={16} color="#10B981" />
+                    <Ionicons name="checkmark" size={16} color="#00C2CB" />
                   </View>
                   <View style={styles.benefitContent}>
                     <Text style={styles.benefitLabel}>Project tracking</Text>
@@ -369,7 +369,7 @@ export default function ProsRequestStep5Screen() {
 
                 <View style={styles.benefitItem}>
                   <View style={styles.benefitCheckmark}>
-                    <Ionicons name="checkmark" size={16} color="#10B981" />
+                    <Ionicons name="checkmark" size={16} color="#00C2CB" />
                   </View>
                   <View style={styles.benefitContent}>
                     <Text style={styles.benefitLabel}>Secure reviews</Text>
@@ -454,13 +454,13 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#10B981',
+    backgroundColor: '#00C2CB',
     borderRadius: 4,
   },
   progressText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#10B981',
+    color: '#00C2CB',
     width: 40,
     textAlign: 'right',
   },
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#E5E7EB',
   },
   submitButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#00C2CB',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

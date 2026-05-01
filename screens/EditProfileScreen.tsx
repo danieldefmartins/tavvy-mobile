@@ -252,7 +252,7 @@ export default function EditProfileScreen({ navigation }: any) {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <LinearGradient
-          colors={['#0F1233', '#1E293B']}
+          colors={['#17013A', '#1E0A3C']}
           style={styles.header}
         >
           <View style={styles.headerContent}>
@@ -326,7 +326,7 @@ export default function EditProfileScreen({ navigation }: any) {
                 <Ionicons 
                   name={usernameAvailable ? 'checkmark-circle' : 'close-circle'} 
                   size={20} 
-                  color={usernameAvailable ? '#10B981' : '#EF4444'} 
+                  color={usernameAvailable ? '#00C2CB' : '#EF4444'} 
                   style={styles.usernameIndicator}
                 />
               )}
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1E0A3C',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,

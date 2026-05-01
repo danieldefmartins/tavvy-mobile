@@ -254,7 +254,7 @@ export default function StoryModerationScreen() {
   const getStatusColor = (status: ModerationStatus) => {
     switch (status) {
       case 'pending': return '#F59E0B';
-      case 'active': return '#10B981';
+      case 'active': return '#00C2CB';
       case 'flagged': return '#EF4444';
       case 'removed': return '#6B7280';
       default: return '#6B7280';
@@ -378,7 +378,7 @@ export default function StoryModerationScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+        <ActivityIndicator size="large" color="#8A05BE" />
         <Text style={styles.loadingText}>Loading moderation queue...</Text>
       </SafeAreaView>
     );
@@ -393,7 +393,7 @@ export default function StoryModerationScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Story Moderation</Text>
         <TouchableOpacity onPress={onRefresh}>
-          <Ionicons name="refresh" size={24} color="#3B82F6" />
+          <Ionicons name="refresh" size={24} color="#8A05BE" />
         </TouchableOpacity>
       </View>
 
@@ -693,7 +693,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   filterTabActive: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#8A05BE',
   },
   filterTabText: {
     fontSize: 14,
@@ -810,7 +810,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   approveAction: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#00C2CB',
   },
   rejectAction: {
     backgroundColor: '#EF4444',
@@ -893,7 +893,7 @@ const styles = StyleSheet.create({
   },
   detailTagText: {
     fontSize: 13,
-    color: '#3B82F6',
+    color: '#8A05BE',
   },
   statusRow: {
     flexDirection: 'row',
@@ -944,7 +944,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   approveBtn: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#00C2CB',
   },
   flagBtn: {
     backgroundColor: '#F59E0B',

@@ -121,7 +121,7 @@ export default function WalletScreen() {
               phone: item.pro_cards.phone || '',
               email: item.pro_cards.email || '',
               gradientColors: [
-                item.pro_cards.gradient_color_1 || '#8B5CF6',
+                item.pro_cards.gradient_color_1 || '#8A05BE',
                 item.pro_cards.gradient_color_2 || '#6366F1',
               ] as [string, string],
               profilePhoto: item.pro_cards.profile_photo_url,
@@ -289,7 +289,7 @@ export default function WalletScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, dynamicStyles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color="#8B5CF6" />
+        <ActivityIndicator size="large" color="#8A05BE" />
         <Text style={[styles.loadingText, dynamicStyles.subtitle]}>Loading your wallet...</Text>
       </View>
     );
@@ -318,7 +318,7 @@ export default function WalletScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            tintColor="#8B5CF6"
+            tintColor="#8A05BE"
           />
         }
       >
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#8A05BE',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
   },
   browseButton: {
     marginTop: 24,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#8A05BE',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 24,

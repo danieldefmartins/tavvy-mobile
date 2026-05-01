@@ -45,10 +45,10 @@ const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1506905925346-21bda
 
 // Planet colors based on index (for visual variety)
 const PLANET_COLORS = [
-  '#3B82F6', // Blue
-  '#8B5CF6', // Purple
+  '#8A05BE', // Blue
+  '#8A05BE', // Purple
   '#EC4899', // Pink
-  '#10B981', // Green
+  '#00C2CB', // Green
   '#F59E0B', // Amber
   '#06B6D4', // Cyan
   '#EF4444', // Red

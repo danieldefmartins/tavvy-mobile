@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#0A84FF',
+    backgroundColor: '#00C2CB',
     borderRadius: 2,
   },
   progressText: {
@@ -554,14 +554,14 @@ const styles = StyleSheet.create({
   scanStepLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#0A84FF',
+    color: '#00C2CB',
     letterSpacing: 1,
     marginBottom: 8,
   },
   scanTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#1E0A3C',
     marginBottom: 8,
   },
   scanSubtitle: {
@@ -575,7 +575,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f8fffe',
     borderWidth: 2,
-    borderColor: '#0A84FF',
+    borderColor: '#00C2CB',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 12,
-    backgroundColor: '#0A84FF',
+    backgroundColor: '#00C2CB',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -595,7 +595,7 @@ const styles = StyleSheet.create({
   scanCardTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: '#1E0A3C',
     marginBottom: 4,
   },
   scanCardDescription: {
@@ -1232,7 +1232,7 @@ export default function UniversalAddScreenV2() {
                 Take a photo and we'll extract the details
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={24} color="#0A84FF" />
+            <Ionicons name="chevron-forward" size={24} color="#00C2CB" />
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.manualCard} onPress={skipScan}>
@@ -1251,15 +1251,15 @@ export default function UniversalAddScreenV2() {
           <View style={styles.tipsContainer}>
             <Text style={styles.tipsTitle}>Tips for scanning:</Text>
             <View style={styles.tipRow}>
-              <Ionicons name="checkmark-circle" size={16} color="#0A84FF" />
+              <Ionicons name="checkmark-circle" size={16} color="#00C2CB" />
               <Text style={styles.tipText}>Good lighting helps accuracy</Text>
             </View>
             <View style={styles.tipRow}>
-              <Ionicons name="checkmark-circle" size={16} color="#0A84FF" />
+              <Ionicons name="checkmark-circle" size={16} color="#00C2CB" />
               <Text style={styles.tipText}>Hold the card flat and steady</Text>
             </View>
             <View style={styles.tipRow}>
-              <Ionicons name="checkmark-circle" size={16} color="#0A84FF" />
+              <Ionicons name="checkmark-circle" size={16} color="#00C2CB" />
               <Text style={styles.tipText}>Make sure text is readable</Text>
             </View>
           </View>

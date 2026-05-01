@@ -29,9 +29,9 @@ const { width } = Dimensions.get('window');
 
 // Tavvy Signal Colors
 const SignalColors = {
-  theGood: '#0A84FF',      // Blue - positive
-  theVibe: '#8B5CF6',      // Purple - vibe
-  headsUp: '#FF9500',      // Orange - heads up
+  theGood: '#00C2CB',      // Blue - positive
+  theVibe: '#8A05BE',      // Purple - vibe
+  headsUp: '#F5A623',      // Orange - heads up
 };
 
 // Realtor-specific colors
@@ -43,7 +43,7 @@ const RealtorColors = {
   text: '#1F2937',
   textLight: '#6B7280',
   textMuted: '#9CA3AF',
-  success: '#10B981',
+  success: '#00C2CB',
   border: '#E5E7EB',
 };
 

@@ -43,7 +43,7 @@ const ONBOARDING_SLIDES: OnboardingSlide[] = [
     body: 'Find spots you\'ll love — based on real experiences, vibes, and honest heads-ups from the community.',
     icon: 'sparkles',
     gradientColors: ['#1E3A5F', '#0F172A'],
-    accentColor: '#3B82F6',
+    accentColor: '#8A05BE',
   },
   {
     id: 'difference',
@@ -68,7 +68,7 @@ const ONBOARDING_SLIDES: OnboardingSlide[] = [
     chips: ['🍔 Best Late-Night Eats', '🎢 Theme Park Rides', '🏕 RV-Friendly Stops'],
     icon: 'planet',
     gradientColors: ['#4C1D95', '#1E1B4B'],
-    accentColor: '#8B5CF6',
+    accentColor: '#8A05BE',
   },
   {
     id: 'pros',
@@ -78,7 +78,7 @@ const ONBOARDING_SLIDES: OnboardingSlide[] = [
     trustBadges: ['Community-driven', 'No review bombing', 'Experience-weighted feedback'],
     icon: 'construct',
     gradientColors: ['#065F46', '#064E3B'],
-    accentColor: '#10B981',
+    accentColor: '#00C2CB',
   },
   {
     id: 'ecards',

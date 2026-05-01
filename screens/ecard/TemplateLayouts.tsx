@@ -260,7 +260,7 @@ function renderBloggerLayout(p: LayoutProps) {
   const { color, data, isEditable, children } = p;
   const accentCol = color.accent || '#c8a87c';
   const bgCol = color.primary;
-  const cardTxt = '#1a1a1a';
+  const cardTxt = '#1E0A3C';
   const cardSub = '#666666';
   const borderCol = 'rgba(0,0,0,0.06)';
 
@@ -475,7 +475,7 @@ function renderProRealtorLayout(p: LayoutProps) {
 function renderProCreativeLayout(p: LayoutProps) {
   const { color, data, isEditable, children } = p;
   const gradientColors: [string, string] = [color.primary, color.secondary];
-  const accentCol = color.accent || '#f97316';
+  const accentCol = color.accent || '#00C2CB';
   const cardBg = color.cardBg || '#fff';
   const borderCol = 'rgba(0,0,0,0.06)';
 
@@ -553,7 +553,7 @@ function renderProCorporateLayout(p: LayoutProps) {
       </LinearGradient>
       {/* Name section */}
       <View style={[ls.corporateNameSection, { backgroundColor: cardBg === 'transparent' ? color.primary : cardBg }]}>
-        <EditableText value={data.name} onChange={p.onChangeName} placeholder="Your Name" style={[ls.corporateName, { color: cardBg === 'transparent' ? '#fff' : '#1a1a1a' }]} isEditable={isEditable} />
+        <EditableText value={data.name} onChange={p.onChangeName} placeholder="Your Name" style={[ls.corporateName, { color: cardBg === 'transparent' ? '#fff' : '#1E0A3C' }]} isEditable={isEditable} />
         <EditableText value={data.titleRole} onChange={p.onChangeTitle} placeholder="Title / Role" style={[ls.corporateTitle, { color: cardBg === 'transparent' ? 'rgba(255,255,255,0.6)' : '#777' }]} isEditable={isEditable} />
       </View>
       {/* Action icons */}
@@ -681,7 +681,7 @@ function renderProCardLayout(p: LayoutProps) {
 function renderCoverCardLayout(p: LayoutProps) {
   const { color, data, isEditable, children } = p;
   const primaryCol = color.primary;
-  const accentCol = color.accent || '#f97316';
+  const accentCol = color.accent || '#00C2CB';
   const cardBg = color.cardBg || '#fff';
 
   return (
@@ -1453,7 +1453,7 @@ const ls = StyleSheet.create({  // Shared
   creativeTop: { paddingVertical: 28, paddingHorizontal: 24, alignItems: 'center', position: 'relative' },
   creativeLogoBadge: { position: 'absolute', top: 16, right: 20, width: 28, height: 28, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   creativeBottom: { padding: 24 },
-  creativeName: { fontSize: 22, fontWeight: '700', color: '#1a1a1a', width: '100%' },
+  creativeName: { fontSize: 22, fontWeight: '700', color: '#1E0A3C', width: '100%' },
   creativeTitle: { fontSize: 14, color: '#555', fontWeight: '500', marginTop: 2, width: '100%' },
   creativeContactIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
 

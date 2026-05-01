@@ -223,7 +223,7 @@ export default function MyCardsScreen() {
         country: sourceCard.country || 'USA',
         profile_photo_url: sourceCard.profile_photo_url || null,
         profile_photo_size: sourceCard.profile_photo_size || 'medium',
-        gradient_color_1: sourceCard.gradient_color_1 || '#8B5CF6',
+        gradient_color_1: sourceCard.gradient_color_1 || '#8A05BE',
         gradient_color_2: sourceCard.gradient_color_2 || '#4F46E5',
         theme: sourceCard.theme || 'classic',
         background_type: sourceCard.background_type || 'gradient',
@@ -325,7 +325,7 @@ export default function MyCardsScreen() {
       activeOpacity={0.8}
     >
       <LinearGradient
-        colors={[card.gradient_color_1 || '#8B5CF6', card.gradient_color_2 || '#4F46E5']}
+        colors={[card.gradient_color_1 || '#8A05BE', card.gradient_color_2 || '#4F46E5']}
         style={styles.cardGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}

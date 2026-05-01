@@ -31,9 +31,9 @@ const { width } = Dimensions.get('window');
 
 // Category colors matching the universal review system
 const CATEGORY_COLORS = {
-  best_for: '#0A84FF',  // Blue - The Good
-  vibe: '#8B5CF6',      // Purple - The Vibe
-  heads_up: '#FF9500',  // Orange - Heads Up
+  best_for: '#00C2CB',  // Blue - The Good
+  vibe: '#8A05BE',      // Purple - The Vibe
+  heads_up: '#F5A623',  // Orange - Heads Up
 };
 
 interface RideData {
@@ -508,7 +508,7 @@ export default function RideDetailsScreen() {
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color="#0A84FF" />
+        <ActivityIndicator size="large" color="#00C2CB" />
         <Text style={styles.loadingText}>Loading ride...</Text>
       </View>
     );
@@ -519,7 +519,7 @@ export default function RideDetailsScreen() {
       <View style={[styles.container, styles.loadingContainer]}>
         <Text style={styles.loadingText}>Ride not found</Text>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: '#0A84FF', marginTop: 16 }}>Go Back</Text>
+          <Text style={{ color: '#00C2CB', marginTop: 16 }}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );

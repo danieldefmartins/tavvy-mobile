@@ -100,7 +100,7 @@ const FORM_PROVIDERS = [
     id: 'native',
     name: 'Built-in Contact Form',
     icon: 'mail-outline',
-    color: '#3B82F6',
+    color: '#8A05BE',
     description: 'Collect leads directly',
     placeholder: '',
     helpText: 'Create a native contact form',

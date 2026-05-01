@@ -301,15 +301,15 @@ export default function ProsRequestStep2PhotoScreen() {
         <View style={styles.tipsContainer}>
           <Text style={styles.tipsTitle}>Contractor Tips</Text>
           <View style={styles.tip}>
-            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+            <Ionicons name="checkmark-circle" size={18} color="#00C2CB" />
             <Text style={styles.tipText}>Show the area that needs work</Text>
           </View>
           <View style={styles.tip}>
-            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+            <Ionicons name="checkmark-circle" size={18} color="#00C2CB" />
             <Text style={styles.tipText}>Include close-ups of any damage or issues</Text>
           </View>
           <View style={styles.tip}>
-            <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+            <Ionicons name="checkmark-circle" size={18} color="#00C2CB" />
             <Text style={styles.tipText}>Take photos in good lighting</Text>
           </View>
         </View>

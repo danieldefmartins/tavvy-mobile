@@ -154,7 +154,7 @@ export default function ECardNFCWriteScreen({ navigation, route }: Props) {
   const renderNfcNotSupported = () => (
     <View style={styles.centerContent}>
       <View style={styles.iconContainer}>
-        <Ionicons name="wifi-outline" size={60} color="#F97316" style={{ transform: [{ rotate: '90deg' }] }} />
+        <Ionicons name="wifi-outline" size={60} color="#00C2CB" style={{ transform: [{ rotate: '90deg' }] }} />
       </View>
       <Text style={styles.title}>NFC Not Available</Text>
       <Text style={styles.subtitle}>
@@ -191,7 +191,7 @@ export default function ECardNFCWriteScreen({ navigation, route }: Props) {
           }}
         >
           <View style={styles.alternativeIcon}>
-            <Ionicons name="share-outline" size={24} color="#3B82F6" />
+            <Ionicons name="share-outline" size={24} color="#8A05BE" />
           </View>
           <View style={styles.alternativeText}>
             <Text style={styles.alternativeLabel}>Share Link</Text>
@@ -210,7 +210,7 @@ export default function ECardNFCWriteScreen({ navigation, route }: Props) {
   const renderNfcDisabled = () => (
     <View style={styles.centerContent}>
       <View style={styles.iconContainer}>
-        <Ionicons name="wifi-outline" size={60} color="#F97316" />
+        <Ionicons name="wifi-outline" size={60} color="#00C2CB" />
       </View>
       <Text style={styles.title}>NFC is Disabled</Text>
       <Text style={styles.subtitle}>

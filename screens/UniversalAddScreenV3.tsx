@@ -601,7 +601,7 @@ export default function UniversalAddScreenV3() {
     <Modal visible={showResumeModal} transparent animationType="fade">
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
-          <Ionicons name="document-text-outline" size={48} color="#0A84FF" />
+          <Ionicons name="document-text-outline" size={48} color="#00C2CB" />
           <Text style={styles.modalTitle}>Continue where you left off?</Text>
           <Text style={styles.modalDescription}>
             You have an unfinished draft from {pendingDraft?.updated_at ? new Date(pendingDraft.updated_at).toLocaleDateString() : 'earlier'}.
@@ -661,20 +661,20 @@ export default function UniversalAddScreenV3() {
         </View>
       ) : isLoadingLocation ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0A84FF" />
+          <ActivityIndicator size="large" color="#00C2CB" />
           <Text style={styles.loadingText}>Getting your location...</Text>
         </View>
       ) : currentDraft?.formatted_address ? (
         <>
           <View style={styles.locationCard}>
-            <Ionicons name="location" size={32} color="#0A84FF" />
+            <Ionicons name="location" size={32} color="#00C2CB" />
             <Text style={styles.locationAddress}>{currentDraft.formatted_address}</Text>
             <Text style={styles.locationCoords}>({currentDraft.latitude?.toFixed(6)}, {currentDraft.longitude?.toFixed(6)})</Text>
           </View>
           {/* Warning if address is missing street number */}
           {!hasStreetNumber(currentDraft.address_line1 || currentDraft.formatted_address) && (
             <View style={styles.addressWarning}>
-              <Ionicons name="warning" size={18} color="#FF9500" />
+              <Ionicons name="warning" size={18} color="#F5A623" />
               <Text style={styles.addressWarningText}>This address may be missing a street number</Text>
             </View>
           )}
@@ -711,7 +711,7 @@ export default function UniversalAddScreenV3() {
       {BUSINESS_TYPES.map((type) => (
         <TouchableOpacity key={type.id} style={[styles.optionCard, selectedBusinessType === type.id && styles.optionCardSelected]}
           onPress={() => handleSelectBusinessType(type.id)}>
-          <View style={styles.optionIconContainer}><Ionicons name={type.icon as any} size={28} color="#0A84FF" /></View>
+          <View style={styles.optionIconContainer}><Ionicons name={type.icon as any} size={28} color="#00C2CB" /></View>
           <View style={styles.optionContent}>
             <Text style={styles.optionTitle}>{type.title}</Text>
             <Text style={styles.optionDescription}>{type.description}</Text>
@@ -741,7 +741,7 @@ export default function UniversalAddScreenV3() {
       
       <TouchableOpacity style={styles.yesNoButton} onPress={() => handleServiceLocationAnswer(false)}>
         <View style={styles.yesNoIconContainer}>
-          <Ionicons name="car-outline" size={32} color="#0A84FF" />
+          <Ionicons name="car-outline" size={32} color="#00C2CB" />
         </View>
         <View style={styles.yesNoContent}>
           <Text style={styles.yesNoTitle}>No, I go to my customers</Text>
@@ -763,7 +763,7 @@ export default function UniversalAddScreenV3() {
         <View key={type.id}>
           <TouchableOpacity style={[styles.optionCard, selectedContentType === type.id && styles.optionCardSelected]}
             onPress={() => type.subtypes ? setSelectedContentType(type.id) : handleSelectContentType(type.id)}>
-            <View style={styles.optionIconContainer}><Ionicons name={type.icon as any} size={28} color="#0A84FF" /></View>
+            <View style={styles.optionIconContainer}><Ionicons name={type.icon as any} size={28} color="#00C2CB" /></View>
             <View style={styles.optionContent}>
               <Text style={styles.optionTitle}>{type.title}</Text>
               <Text style={styles.optionDescription}>{type.description}</Text>
@@ -775,7 +775,7 @@ export default function UniversalAddScreenV3() {
               {type.subtypes.map((subtype) => (
                 <TouchableOpacity key={subtype.id} style={[styles.subtypeCard, selectedSubtype === subtype.id && styles.subtypeCardSelected]}
                   onPress={() => handleSelectContentType(type.id, subtype.id)}>
-                  <Ionicons name={subtype.icon as any} size={20} color="#0A84FF" />
+                  <Ionicons name={subtype.icon as any} size={20} color="#00C2CB" />
                   <Text style={styles.subtypeTitle}>{subtype.title}</Text>
                 </TouchableOpacity>
               ))}
@@ -841,7 +841,7 @@ export default function UniversalAddScreenV3() {
       {/* Add Photos Button */}
       {photos.length < 30 && (
         <TouchableOpacity style={styles.addPhotoButtonSingle} onPress={addPhotos}>
-          <Ionicons name="add-circle-outline" size={32} color="#0A84FF" />
+          <Ionicons name="add-circle-outline" size={32} color="#00C2CB" />
           <Text style={styles.addPhotoText}>Add Photos</Text>
         </TouchableOpacity>
       )}
@@ -893,8 +893,8 @@ export default function UniversalAddScreenV3() {
         <TouchableOpacity onPress={handleBack} style={styles.headerButton}><Ionicons name="arrow-back" size={24} color="#333" /></TouchableOpacity>
         <Text style={styles.headerTitle}>{stepTitle}</Text>
         <View style={styles.headerRight}>
-          {isSaving && <ActivityIndicator size="small" color="#0A84FF" />}
-          {!isOnline && <View style={styles.offlineBadge}><Ionicons name="cloud-offline" size={16} color="#FF9500" /></View>}
+          {isSaving && <ActivityIndicator size="small" color="#00C2CB" />}
+          {!isOnline && <View style={styles.offlineBadge}><Ionicons name="cloud-offline" size={16} color="#F5A623" /></View>}
         </View>
       </View>
       <View style={styles.progressContainer}>
@@ -919,7 +919,7 @@ const styles = StyleSheet.create({
   offlineBadge: { marginLeft: 8 },
   progressContainer: { paddingHorizontal: 16, paddingVertical: 8 },
   progressBar: { height: 4, backgroundColor: '#eee', borderRadius: 2 },
-  progressFill: { height: '100%', backgroundColor: '#0A84FF', borderRadius: 2 },
+  progressFill: { height: '100%', backgroundColor: '#00C2CB', borderRadius: 2 },
   progressText: { fontSize: 12, color: '#999', marginTop: 4, textAlign: 'right' },
   content: { flex: 1 },
   scrollView: { flex: 1 },
@@ -941,28 +941,28 @@ const styles = StyleSheet.create({
   confirmButtonText: { fontSize: 18, fontWeight: '600', color: '#fff' },
   noLocationContainer: { alignItems: 'center', paddingVertical: 60 },
   noLocationText: { fontSize: 16, color: '#999', marginTop: 12 },
-  retryButton: { marginTop: 16, paddingVertical: 12, paddingHorizontal: 24, backgroundColor: '#0A84FF', borderRadius: 8 },
+  retryButton: { marginTop: 16, paddingVertical: 12, paddingHorizontal: 24, backgroundColor: '#00C2CB', borderRadius: 8 },
   retryButtonText: { color: '#fff', fontWeight: '600' },
   optionCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8f9fa', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 2, borderColor: 'transparent' },
-  optionCardSelected: { borderColor: '#0A84FF', backgroundColor: '#f0f7ff' },
+  optionCardSelected: { borderColor: '#00C2CB', backgroundColor: '#f0f7ff' },
   optionIconContainer: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#e8f4ff', alignItems: 'center', justifyContent: 'center' },
   optionContent: { flex: 1, marginLeft: 12 },
   optionTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
   optionDescription: { fontSize: 14, color: '#666', marginTop: 2 },
   subtypeContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12, marginLeft: 16 },
   subtypeCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8f9fa', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12, marginRight: 8, marginBottom: 8, borderWidth: 1, borderColor: '#eee' },
-  subtypeCardSelected: { borderColor: '#0A84FF', backgroundColor: '#e8f4ff' },
+  subtypeCardSelected: { borderColor: '#00C2CB', backgroundColor: '#e8f4ff' },
   subtypeTitle: { fontSize: 14, color: '#333', marginLeft: 6 },
   inputGroup: { marginBottom: 20 },
   inputLabel: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 8 },
   input: { backgroundColor: '#f8f9fa', borderRadius: 12, padding: 16, fontSize: 16, color: '#333', borderWidth: 1, borderColor: '#eee' },
   inputMultiline: { height: 100, textAlignVertical: 'top' },
-  nextButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0A84FF', borderRadius: 12, paddingVertical: 16, marginTop: 24, gap: 8 },
+  nextButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#00C2CB', borderRadius: 12, paddingVertical: 16, marginTop: 24, gap: 8 },
   nextButtonText: { fontSize: 18, fontWeight: '600', color: '#fff' },
   photoButtonsRow: { flexDirection: 'row', gap: 16, marginTop: 16 },
   addPhotoButton: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f9fa', borderRadius: 12, padding: 24, borderWidth: 2, borderColor: '#ddd', borderStyle: 'dashed' },
-  addPhotoButtonSingle: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f9fa', borderRadius: 12, padding: 32, marginTop: 16, borderWidth: 2, borderColor: '#0A84FF', borderStyle: 'dashed' },
-  addPhotoText: { fontSize: 16, color: '#0A84FF', marginTop: 8, fontWeight: '600' },
+  addPhotoButtonSingle: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f9fa', borderRadius: 12, padding: 32, marginTop: 16, borderWidth: 2, borderColor: '#00C2CB', borderStyle: 'dashed' },
+  addPhotoText: { fontSize: 16, color: '#00C2CB', marginTop: 8, fontWeight: '600' },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16 },
   photoItem: { position: 'relative', width: (SCREEN_WIDTH - 80) / 3, height: (SCREEN_WIDTH - 80) / 3 },
   photoThumbnail: { width: '100%', height: '100%', borderRadius: 8 },
@@ -980,7 +980,7 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: '#fff', borderRadius: 20, padding: 24, width: SCREEN_WIDTH - 48, alignItems: 'center' },
   modalTitle: { fontSize: 20, fontWeight: '700', color: '#333', marginTop: 16 },
   modalDescription: { fontSize: 16, color: '#666', textAlign: 'center', marginTop: 8, marginBottom: 24 },
-  modalButtonPrimary: { backgroundColor: '#0A84FF', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, width: '100%', alignItems: 'center', marginBottom: 12 },
+  modalButtonPrimary: { backgroundColor: '#00C2CB', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, width: '100%', alignItems: 'center', marginBottom: 12 },
   modalButtonPrimaryText: { fontSize: 16, fontWeight: '600', color: '#fff' },
   modalButtonSecondary: { backgroundColor: '#f8f9fa', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, width: '100%', alignItems: 'center', marginBottom: 12 },
   modalButtonSecondaryText: { fontSize: 16, fontWeight: '600', color: '#333' },
@@ -992,20 +992,20 @@ const styles = StyleSheet.create({
   selectedAddressDetails: { flex: 1 },
   selectedAddressText: { fontSize: 16, fontWeight: '600', color: '#333' },
   selectedAddressSubtext: { fontSize: 14, color: '#666', marginTop: 4 },
-  selectedAddressCoords: { fontSize: 12, color: '#0A84FF', marginTop: 4 },
+  selectedAddressCoords: { fontSize: 12, color: '#00C2CB', marginTop: 4 },
   address2Container: { marginTop: 16 },
   address2Label: { fontSize: 14, fontWeight: '500', color: '#666', marginBottom: 8 },
   address2Input: { backgroundColor: '#f8f9fa', borderRadius: 12, padding: 16, fontSize: 16, color: '#333', borderWidth: 1, borderColor: '#ddd' },
   coordsNote: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f9ff', borderRadius: 8, padding: 12, marginTop: 16, gap: 8 },
-  coordsNoteText: { fontSize: 12, color: '#0A84FF' },
+  coordsNoteText: { fontSize: 12, color: '#00C2CB' },
   manualAddressButtons: { flexDirection: 'row', gap: 12, marginTop: 24 },
   cancelButton: { flex: 1, backgroundColor: '#f8f9fa', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   cancelButtonText: { fontSize: 16, fontWeight: '600', color: '#666' },
-  saveAddressButton: { flex: 2, backgroundColor: '#0A84FF', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  saveAddressButton: { flex: 2, backgroundColor: '#00C2CB', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   saveAddressButtonDisabled: { opacity: 0.5 },
   saveAddressButtonText: { fontSize: 16, fontWeight: '600', color: '#fff' },
   manualEntryLink: { marginTop: 16, alignItems: 'center' },
-  manualEntryLinkText: { fontSize: 14, color: '#0A84FF', textDecorationLine: 'underline' },
+  manualEntryLinkText: { fontSize: 14, color: '#00C2CB', textDecorationLine: 'underline' },
   // Service location step styles
   locationQuestionHint: { fontSize: 14, color: '#666', marginBottom: 24, textAlign: 'center' },
   yesNoButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8f9fa', borderRadius: 16, padding: 20, marginBottom: 16, gap: 16 },
@@ -1014,5 +1014,5 @@ const styles = StyleSheet.create({
   yesNoTitle: { fontSize: 17, fontWeight: '600', color: '#333' },
   yesNoDescription: { fontSize: 14, color: '#666', marginTop: 4 },
   cancelLink: { alignItems: 'center', marginTop: 24, paddingVertical: 12 },
-  cancelLinkText: { fontSize: 14, color: '#0A84FF' },
+  cancelLinkText: { fontSize: 14, color: '#00C2CB' },
 });

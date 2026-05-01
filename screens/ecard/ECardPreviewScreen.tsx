@@ -169,7 +169,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
     });
   };
 
-  const CAT_COLORS: Record<string, string> = { universal: '#3B9FD9', sales: '#E87D3E', real_estate: '#6B7280', food_dining: '#E53E3E', health_wellness: '#38A169', beauty: '#D53F8C', home_services: '#DD6B20', legal_finance: '#2B6CB0', creative_marketing: '#8B5CF6', education_coaching: '#D69E2E', tech_it: '#319795', automotive: '#718096', events_entertainment: '#9F7AEA', pets: '#ED8936' };
+  const CAT_COLORS: Record<string, string> = { universal: '#3B9FD9', sales: '#E87D3E', real_estate: '#6B7280', food_dining: '#E53E3E', health_wellness: '#38A169', beauty: '#D53F8C', home_services: '#DD6B20', legal_finance: '#2B6CB0', creative_marketing: '#8A05BE', education_coaching: '#D69E2E', tech_it: '#319795', automotive: '#718096', events_entertainment: '#9F7AEA', pets: '#ED8936' };
   const CAT_LABELS: Record<string, string> = { universal: 'Strengths', sales: 'Sales Skills', real_estate: 'Real Estate', food_dining: 'Food & Dining', health_wellness: 'Health & Wellness', beauty: 'Beauty', home_services: 'Home Services', legal_finance: 'Legal & Finance', creative_marketing: 'Creative & Marketing', education_coaching: 'Education & Coaching', tech_it: 'Tech & IT', automotive: 'Automotive', events_entertainment: 'Events & Entertainment', pets: 'Pets' };
 
   // Fetch endorsement signals (badge options) for this card's category

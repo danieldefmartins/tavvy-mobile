@@ -94,7 +94,7 @@ export default function ProCardDetailScreen() {
           city: passedCard.city,
           state: passedCard.state,
           category: passedCard.category,
-          gradient_color_1: passedCard.gradientColors?.[0] || '#8B5CF6',
+          gradient_color_1: passedCard.gradientColors?.[0] || '#8A05BE',
           gradient_color_2: passedCard.gradientColors?.[1] || '#6366F1',
           profile_photo_url: passedCard.profilePhoto || null,
           logo_url: null,
@@ -294,7 +294,7 @@ export default function ProCardDetailScreen() {
   if (isLoading || !cardData) {
     return (
       <View style={[styles.container, dynamicStyles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color="#8B5CF6" />
+        <ActivityIndicator size="large" color="#8A05BE" />
       </View>
     );
   }
@@ -526,7 +526,7 @@ export default function ProCardDetailScreen() {
               onPress={saveToWallet}
             >
               <LinearGradient
-                colors={['#F97316', '#EA580C']}
+                colors={['#00C2CB', '#EA580C']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.walletBannerGradient}
@@ -675,7 +675,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#8A05BE',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -913,7 +913,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 14,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1E0A3C',
     borderRadius: 24,
   },
   qrDownloadText: {

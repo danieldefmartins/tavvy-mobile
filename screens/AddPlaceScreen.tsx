@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#1E0A3C',
     marginBottom: 8,
   },
   subtitle: {
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
   scanCardTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: '#1E0A3C',
     marginBottom: 4,
   },
   scanCardDescription: {

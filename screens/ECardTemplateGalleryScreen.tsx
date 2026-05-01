@@ -151,10 +151,10 @@ const BusinessCardPreview = ({ colors }: { colors: any }) => (
     {/* Action icon circles */}
     <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 14, paddingVertical: 16 }}>
       {[
-        { icon: 'call', color: colors.accent || '#3b82f6' },
-        { icon: 'mail', color: colors.accent || '#3b82f6' },
-        { icon: 'globe', color: colors.accent || '#3b82f6' },
-        { icon: 'location', color: colors.accent || '#3b82f6' },
+        { icon: 'call', color: colors.accent || '#8A05BE' },
+        { icon: 'mail', color: colors.accent || '#8A05BE' },
+        { icon: 'globe', color: colors.accent || '#8A05BE' },
+        { icon: 'location', color: colors.accent || '#8A05BE' },
       ].map((item, i) => (
         <View key={i} style={{
           width: 44, height: 44, borderRadius: 22,
@@ -193,7 +193,7 @@ const FullWidthPreview = ({ colors }: { colors: any }) => (
         <Text style={{ fontSize: 26, fontWeight: '800', color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: 1 }}>JANE{'\n'}SMITH</Text>
         <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>Marketing Manager</Text>
         {/* Company pill */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, backgroundColor: colors.accent || '#3b82f6', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, alignSelf: 'flex-start' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, backgroundColor: colors.accent || '#8A05BE', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, alignSelf: 'flex-start' }}>
           <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: 'rgba(255,255,255,0.3)', marginRight: 6 }} />
           <Text style={{ fontSize: 11, color: colors.primary === '#000000' ? '#000' : '#fff', fontWeight: '600' }}>Teamwork.Co</Text>
         </View>
@@ -299,7 +299,7 @@ const ProCreativePreview = ({ colors }: { colors: any }) => (
       position: 'relative', overflow: 'hidden',
     }}>
       {/* Company logo badge in corner */}
-      <View style={{ position: 'absolute', top: 16, right: 16, backgroundColor: colors.accent || '#f97316', width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ position: 'absolute', top: 16, right: 16, backgroundColor: colors.accent || '#00C2CB', width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff' }}>ARC</Text>
       </View>
       {/* Large circle photo */}
@@ -328,9 +328,9 @@ const ProCreativePreview = ({ colors }: { colors: any }) => (
 
       {/* Contact rows with colored icons */}
       {[
-        { icon: 'mail', color: '#f97316', text: 'mail@arichculture.com' },
+        { icon: 'mail', color: '#00C2CB', text: 'mail@arichculture.com' },
         { icon: 'call', color: '#22c55e', text: '+1 561 485 7408' },
-        { icon: 'chatbubble', color: '#3b82f6', text: '12425568247' },
+        { icon: 'chatbubble', color: '#8A05BE', text: '12425568247' },
         { icon: 'globe', color: colors.primary, text: 'www.arichculture.com' },
       ].map((row, i) => (
         <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
@@ -535,7 +535,7 @@ const CoverCardPreview = ({ colors }: { colors: any }) => (
     {/* Wavy accent transition */}
     <Svg width="100%" height={20} viewBox="0 0 400 20" preserveAspectRatio="none" style={{ marginTop: -16 }}>
       <Path d="M0 20 C100 0 200 18 300 4 C350 -2 380 8 400 0 L400 20 Z" fill="#ffffff" />
-      <Path d="M0 20 C80 6 160 20 260 6 C320 -1 370 12 400 4 L400 20 Z" fill={colors.accent || '#f97316'} opacity={0.15} />
+      <Path d="M0 20 C80 6 160 20 260 6 C320 -1 370 12 400 4 L400 20 Z" fill={colors.accent || '#00C2CB'} opacity={0.15} />
     </Svg>
 
     {/* White bottom section */}
@@ -550,9 +550,9 @@ const CoverCardPreview = ({ colors }: { colors: any }) => (
       {/* Contact rows with colored circle icons */}
       {[
         { icon: 'mail', text: 'mail@arichculture.com', color: colors.primary },
-        { icon: 'call', text: '+1 561 485 7408', color: colors.accent || '#f97316' },
+        { icon: 'call', text: '+1 561 485 7408', color: colors.accent || '#00C2CB' },
         { icon: 'chatbubble', text: 'Send a Text', color: colors.primary },
-        { icon: 'globe', text: 'www.arichculture.com', color: colors.accent || '#f97316' },
+        { icon: 'globe', text: 'www.arichculture.com', color: colors.accent || '#00C2CB' },
       ].map((row, i) => (
         <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
           <View style={{
@@ -935,7 +935,7 @@ const ECardTemplateGalleryScreen: React.FC = () => {
                 {
                   width: dotWidth,
                   opacity: dotOpacity,
-                  backgroundColor: isProTemplate(allTemplates[index]) ? '#10b981' : 
+                  backgroundColor: isProTemplate(allTemplates[index]) ? '#00C2CB' : 
                                    allTemplates[index].isPremium ? '#d4af37' : '#fff',
                 },
               ]}
@@ -1110,7 +1110,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   proBadge: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#00C2CB',
   },
   proBadgeText: {
     color: '#fff',
@@ -1173,7 +1173,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   selectButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#8A05BE',
     paddingVertical: 16,
     borderRadius: 16,
     flexDirection: 'row',
@@ -1185,7 +1185,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#d4af37',
   },
   selectButtonPro: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#00C2CB',
   },
   selectButtonDisabled: {
     backgroundColor: '#374151',
@@ -1222,15 +1222,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterTabActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#8A05BE',
   },
   filterTabPro: {
     borderWidth: 1,
-    borderColor: '#10b981',
+    borderColor: '#00C2CB',
   },
   filterTabProActive: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+    backgroundColor: '#00C2CB',
+    borderColor: '#00C2CB',
   },
   filterTabText: {
     color: 'rgba(255,255,255,0.6)',
@@ -1241,7 +1241,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   filterTabTextPro: {
-    color: '#10b981',
+    color: '#00C2CB',
   },
 });
 

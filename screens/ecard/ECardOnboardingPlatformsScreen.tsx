@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#1E0A3C',
     marginBottom: 8,
   },
   subtitle: {

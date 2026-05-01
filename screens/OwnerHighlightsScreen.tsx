@@ -373,7 +373,7 @@ export default function OwnerHighlightsScreen() {
           <Ionicons
             name={highlight.is_active ? 'eye' : 'eye-off'}
             size={18}
-            color={highlight.is_active ? '#10B981' : '#9CA3AF'}
+            color={highlight.is_active ? '#00C2CB' : '#9CA3AF'}
           />
         </TouchableOpacity>
         <TouchableOpacity
@@ -424,7 +424,7 @@ export default function OwnerHighlightsScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+        <ActivityIndicator size="large" color="#8A05BE" />
         <Text style={styles.loadingText}>Loading highlights...</Text>
       </SafeAreaView>
     );
@@ -445,13 +445,13 @@ export default function OwnerHighlightsScreen() {
           style={styles.addButton}
           onPress={() => setShowCreateModal(true)}
         >
-          <Ionicons name="add" size={28} color="#3B82F6" />
+          <Ionicons name="add" size={28} color="#8A05BE" />
         </TouchableOpacity>
       </View>
 
       {/* Info Banner */}
       <View style={styles.infoBanner}>
-        <Ionicons name="information-circle" size={20} color="#3B82F6" />
+        <Ionicons name="information-circle" size={20} color="#8A05BE" />
         <Text style={styles.infoText}>
           Highlights are permanent story collections that appear on your place profile.
           Unlike regular stories, they don't expire.
@@ -602,7 +602,7 @@ export default function OwnerHighlightsScreen() {
               disabled={isSaving}
             >
               {isSaving ? (
-                <ActivityIndicator size="small" color="#3B82F6" />
+                <ActivityIndicator size="small" color="#8A05BE" />
               ) : (
                 <Text style={styles.pickerDoneText}>Done</Text>
               )}
@@ -726,7 +726,7 @@ const styles = StyleSheet.create({
   createButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#8A05BE',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 12,
@@ -866,7 +866,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   modalCreateButton: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#8A05BE',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 10,
@@ -905,7 +905,7 @@ const styles = StyleSheet.create({
   },
   pickerDoneText: {
     fontSize: 15,
-    color: '#3B82F6',
+    color: '#8A05BE',
     fontWeight: '600',
   },
   pickerSubtitle: {
@@ -926,7 +926,7 @@ const styles = StyleSheet.create({
   },
   storyItemSelected: {
     borderWidth: 3,
-    borderColor: '#3B82F6',
+    borderColor: '#8A05BE',
   },
   storyThumbnail: {
     width: '100%',
@@ -934,7 +934,7 @@ const styles = StyleSheet.create({
   },
   selectedOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(59, 130, 246, 0.3)',
+    backgroundColor: 'rgba(138, 5, 190, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -942,7 +942,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#8A05BE',
     justifyContent: 'center',
     alignItems: 'center',
   },
