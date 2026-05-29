@@ -133,6 +133,7 @@ import QuickFindResultsScreen from './screens/QuickFindResultsScreen';
 import HappeningNowScreen from './screens/HappeningNowScreen';
 import EventDetailScreen from './screens/EventDetailScreen';
 import ExperiencePathDetailScreen from './screens/ExperiencePathDetailScreen';
+import SignalSearchScreen from './screens/SignalSearchScreen';
 import WalletScreen from './screens/WalletScreen';
 import ProCardDetailScreen from './screens/ProCardDetailScreen';
 import CreateDigitalCardScreen from './screens/CreateDigitalCardScreen';
@@ -231,6 +232,7 @@ function HomeStack() {
       <HomeStackNav.Screen name="QuickFindResults" component={QuickFindResultsScreen} />
       <HomeStackNav.Screen name="HappeningNow" component={HappeningNowScreen} />
       <HomeStackNav.Screen name="EventDetail" component={EventDetailScreen} />
+      <HomeStackNav.Screen name="SignalSearch" component={SignalSearchScreen} />
     </HomeStackNav.Navigator>
   );
 }
@@ -340,6 +342,7 @@ function AppsStack() {
       {/* Happening Now - accessible from Apps */}
       <MenuStackNav.Screen name="HappeningNow" component={HappeningNowScreen} />
       <MenuStackNav.Screen name="EventDetail" component={EventDetailScreen} />
+      <MenuStackNav.Screen name="SignalSearch" component={SignalSearchScreen} />
       <MenuStackNav.Screen name="ExperiencePathDetail" component={ExperiencePathDetailScreen} />
       
       {/* On The Go - Live mobile businesses map */}

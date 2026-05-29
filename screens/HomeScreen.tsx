@@ -2934,10 +2934,27 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <Text style={[styles.quickActionSubtext, { color: isDark ? 'rgba(255,255,255,0.5)' : '#9CA3AF' }]}>Let Tavvy decide</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
-                styles.quickAction, 
-                { 
+                styles.quickAction,
+                {
+                  backgroundColor: isDark
+                    ? 'rgba(138, 5, 190, 0.12)'
+                    : 'rgba(138, 5, 190, 0.06)',
+                  borderColor: isDark ? 'rgba(138, 5, 190, 0.25)' : 'rgba(138, 5, 190, 0.15)',
+                }
+              ]}
+              onPress={() => navigation.navigate('SignalSearch')}
+            >
+              <Text style={styles.quickActionIcon}>📡</Text>
+              <Text style={[styles.quickActionText, { color: isDark ? '#C77DFF' : '#8A05BE' }]}>Signals</Text>
+              <Text style={[styles.quickActionSubtext, { color: isDark ? 'rgba(255,255,255,0.5)' : '#9CA3AF' }]}>Search by vibe</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.quickAction,
+                {
                   backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F9FAFB',
                   borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB',
                 }
