@@ -57,6 +57,7 @@ import AtlasSearchScreen from './screens/AtlasSearchScreen';
 import OwnerSpotlightScreen from './screens/OwnerSpotlightScreen';
 
 import MenuScreen from './screens/MenuScreen';
+import MenuGalleryScreen from './screens/MenuGalleryScreen';
 import AppsScreen from './screens/AppsScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SavedScreen from './screens/SavedScreen';
@@ -203,6 +204,7 @@ function HomeStack() {
     <HomeStackNav.Navigator screenOptions={{ headerShown: false }}>
       <HomeStackNav.Screen name="HomeMain" component={HomeScreen} />
       <HomeStackNav.Screen name="PlaceDetails" component={PlaceDetailsScreen} />
+      <HomeStackNav.Screen name="MenuGallery" component={MenuGalleryScreen} />
       <HomeStackNav.Screen name="AddReview" component={AddReviewScreen} />
       <HomeStackNav.Screen name="AddPhoto" component={AddPhotoScreen as any} />
       <HomeStackNav.Screen name="PlacePhotos" component={PlacePhotosScreen as any} />
@@ -250,6 +252,7 @@ function AtlasStack() {
       <AtlasStackNav.Screen name="CategoryBrowse" component={CategoryBrowseScreen} />
       <AtlasStackNav.Screen name="AtlasSearch" component={AtlasSearchScreen} />
       <AtlasStackNav.Screen name="PlaceDetails" component={PlaceDetailsScreen} />
+      <AtlasStackNav.Screen name="MenuGallery" component={MenuGalleryScreen} />
     </AtlasStackNav.Navigator>
   );
 }
@@ -414,6 +417,7 @@ function UniverseStack() {
       <UniverseStackNav.Screen name="UniverseDiscovery" component={UniverseDiscoveryScreen} />
       <UniverseStackNav.Screen name="UniverseLanding" component={UniverseLandingScreen} />
       <UniverseStackNav.Screen name="PlaceDetails" component={PlaceDetailsScreen} />
+      <UniverseStackNav.Screen name="MenuGallery" component={MenuGalleryScreen} />
     </UniverseStackNav.Navigator>
   );
 }

@@ -1,0 +1,10 @@
+.git
+node_modules/.cache
+.expo
+*.log
+logs/
+.DS_Store
+android/app/build
+ios/build
+ios/Pods
+*.tgz

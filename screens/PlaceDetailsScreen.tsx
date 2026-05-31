@@ -1505,9 +1505,19 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
                 </View>
               )}
 
+              {/* Menu Gallery Button */}
+              <TouchableOpacity
+                style={styles.menuGalleryButton}
+                onPress={() => navigation.navigate('MenuGallery', { placeId: place.id, placeName: place.name })}
+              >
+                <Ionicons name="restaurant-outline" size={20} color="#8A05BE" />
+                <Text style={styles.menuGalleryText}>Menu Gallery</Text>
+                <Ionicons name="chevron-forward" size={16} color="#8A05BE" />
+              </TouchableOpacity>
+
               {/* Claim Business Button */}
               <View style={styles.claimContainer}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.claimButton}
                   onPress={() => navigation.navigate('ClaimBusiness', { placeId: place.id, placeName: place.name })}
                 >
@@ -2317,6 +2327,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#6B7280',
+  },
+  menuGalleryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    backgroundColor: 'rgba(138, 5, 190, 0.08)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(138, 5, 190, 0.2)',
+  },
+  menuGalleryText: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#8A05BE',
   },
 
   // ===== CONTACT =====
