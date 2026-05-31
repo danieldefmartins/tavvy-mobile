@@ -1233,13 +1233,13 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           
           <View style={styles.quickInfoDivider} />
           
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.quickInfoItem}
-            onPress={() => handleNavigate(place.latitude, place.longitude, place.name)}
+            onPress={() => navigation.navigate('MenuGallery' as any, { placeId: place.id, placeName: place.name })}
           >
-            <Text style={styles.quickInfoIcon}>🚗</Text>
-            <Text style={styles.quickInfoValue}>{driveTime}</Text>
-            <Text style={styles.quickInfoSub}>Drive</Text>
+            <Text style={styles.quickInfoIcon}>📖</Text>
+            <Text style={styles.quickInfoValue}>Menu</Text>
+            <Text style={styles.quickInfoSub}>View</Text>
           </TouchableOpacity>
         </View>
 
