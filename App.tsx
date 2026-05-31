@@ -58,6 +58,8 @@ import OwnerSpotlightScreen from './screens/OwnerSpotlightScreen';
 
 import MenuScreen from './screens/MenuScreen';
 import MenuGalleryScreen from './screens/MenuGalleryScreen';
+import OrderScreen from './screens/OrderScreen';
+import OrderDashboardScreen from './screens/OrderDashboardScreen';
 import AppsScreen from './screens/AppsScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SavedScreen from './screens/SavedScreen';
@@ -205,6 +207,8 @@ function HomeStack() {
       <HomeStackNav.Screen name="HomeMain" component={HomeScreen} />
       <HomeStackNav.Screen name="PlaceDetails" component={PlaceDetailsScreen} />
       <HomeStackNav.Screen name="MenuGallery" component={MenuGalleryScreen} />
+      <HomeStackNav.Screen name="Order" component={OrderScreen} />
+      <HomeStackNav.Screen name="OrderDashboard" component={OrderDashboardScreen} />
       <HomeStackNav.Screen name="AddReview" component={AddReviewScreen} />
       <HomeStackNav.Screen name="AddPhoto" component={AddPhotoScreen as any} />
       <HomeStackNav.Screen name="PlacePhotos" component={PlacePhotosScreen as any} />
@@ -299,6 +303,10 @@ function AppsStack() {
       <MenuStackNav.Screen name="AddReview" component={AddReviewScreen} />
       <MenuStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
       
+      {/* Order Screens accessible from Apps */}
+      <MenuStackNav.Screen name="Order" component={OrderScreen} />
+      <MenuStackNav.Screen name="OrderDashboard" component={OrderDashboardScreen} />
+
       {/* Create functionality moved to Menu */}
       <MenuStackNav.Screen name="UniversalAdd" component={UniversalAddScreenV3} />
       <MenuStackNav.Screen name="AddPlace" component={AddPlaceScreen} />
