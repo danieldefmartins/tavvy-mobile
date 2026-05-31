@@ -1111,6 +1111,9 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
             <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
               <Ionicons name="share-outline" size={22} color="#000" />
             </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('MenuGallery' as any, { placeId: place.id, placeName: place.name })}>
+              <Ionicons name="restaurant-outline" size={22} color="#000" />
+            </TouchableOpacity>
           </View>
           
           {/* Photo Count Badge */}
