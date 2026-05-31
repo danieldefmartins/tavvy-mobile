@@ -79,13 +79,16 @@ type RouteParams = {
 };
 
 const DIETARY_LABELS: Record<string, { icon: string; label: string }> = {
-  vegan: { icon: '\u{1F331}', label: 'Vegan' },
-  vegetarian: { icon: '\u{1F331}', label: 'Veggie' },
-  gluten_free: { icon: '\u{1F33E}', label: 'GF' },
-  gf: { icon: '\u{1F33E}', label: 'GF' },
-  dairy_free: { icon: '\u{1F95B}', label: 'DF' },
-  nut_free: { icon: '\u{1F330}', label: 'NF' },
-  spicy: { icon: '\u{1F336}\uFE0F', label: 'Spicy' },
+  vegan: { icon: '🌱', label: 'Vegan' },
+  vegetarian: { icon: '🌱', label: 'Veggie' },
+  'gluten-free': { icon: '🌾', label: 'GF' },
+  gluten_free: { icon: '🌾', label: 'GF' },
+  gf: { icon: '🌾', label: 'GF' },
+  dairy_free: { icon: '🥛', label: 'DF' },
+  nut_free: { icon: '🌰', label: 'NF' },
+  spicy: { icon: '🌶️', label: 'Mild' },
+  'spicy-2': { icon: '🌶️🌶️', label: 'Spicy' },
+  'spicy-3': { icon: '🌶️🌶️🌶️', label: 'Hot' },
 };
 
 const PERIOD_LABELS: Record<MealPeriod, string> = {
