@@ -610,6 +610,7 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
           entrance_1_low_clearance: placeData.entrance_1_low_clearance,
           entrance_1_seasonal_access: placeData.entrance_1_seasonal_access,
           entrance_1_seasonal_notes: placeData.entrance_1_seasonal_notes,
+          slug: placeData.slug,
         };
 
         setPlace(mappedPlace);
@@ -815,9 +816,13 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   const handleShare = async () => {
     if (!place) return;
     try {
+      const slug = (place as any).slug || place.id;
+      const shareUrl = `https://tavvy.com/${slug}`;
+      const shareText = `${place.name} on Tavvy — see what people are really saying`;
       await Share.share({
-        message: `Check out ${place.name} on Tavvy!`,
+        message: `${shareText}\n${shareUrl}`,
         title: place.name,
+        url: shareUrl,
       });
     } catch (error) {
       console.error('Error sharing:', error);

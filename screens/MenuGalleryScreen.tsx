@@ -23,6 +23,7 @@ import {
   Dimensions,
   ActivityIndicator,
   StatusBar,
+  Share,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
@@ -108,6 +109,7 @@ export default function MenuGalleryScreen() {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [allItems, setAllItems] = useState<MenuItem[]>([]);
   const [placeName, setPlaceName] = useState<string>(initialPlaceName || '');
+  const [placeSlug, setPlaceSlug] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [noMenu, setNoMenu] = useState(false);
 
@@ -128,16 +130,15 @@ export default function MenuGalleryScreen() {
   const loadMenu = async (pid: string) => {
     setLoading(true);
     try {
-      // Fetch place name if not provided
-      if (!initialPlaceName) {
-        const { data: placeData } = await supabase
-          .from('places')
-          .select('name')
-          .eq('id', pid)
-          .maybeSingle();
-        if (placeData) {
-          setPlaceName(placeData.name || '');
-        }
+      // Fetch place name and slug
+      const { data: placeData } = await supabase
+        .from('places')
+        .select('name, slug')
+        .eq('id', pid)
+        .maybeSingle();
+      if (placeData) {
+        if (!initialPlaceName) setPlaceName(placeData.name || '');
+        setPlaceSlug(placeData.slug || '');
       }
 
       const { data: menuData } = await supabase
@@ -231,6 +232,20 @@ export default function MenuGalleryScreen() {
     setActiveIndex(index);
   }, []);
 
+  const handleShareDish = async (item: MenuItem) => {
+    const slug = placeSlug || placeId;
+    const shareUrl = `https://tavvy.com/${slug}/menu-gallery?dish=${item.id}`;
+    const priceStr = formatPrice(item.price, item.price_label);
+    const shareText = `${item.name} at ${placeName}${priceStr ? ` — ${priceStr}` : ''}`;
+    try {
+      await Share.share({
+        message: `${shareText}\n${shareUrl}`,
+        title: item.name,
+        url: shareUrl,
+      });
+    } catch {}
+  };
+
   const renderCard = useCallback(({ item, index }: { item: MenuItem; index: number }) => {
     const priceStr = formatPrice(item.price, item.price_label);
     const imageUrl = item.image_url || menu?.cover_image_url || null;
@@ -255,12 +270,21 @@ export default function MenuGalleryScreen() {
             pointerEvents="none"
           />
 
-          {/* Price badge (top right) */}
-          {priceStr ? (
-            <View style={styles.priceBadge}>
-              <Text style={styles.priceBadgeText}>{priceStr}</Text>
-            </View>
-          ) : null}
+          {/* Price badge + share (top right) */}
+          <View style={styles.topRightGroup}>
+            {priceStr ? (
+              <View style={styles.priceBadge}>
+                <Text style={styles.priceBadgeText}>{priceStr}</Text>
+              </View>
+            ) : null}
+            <TouchableOpacity
+              style={styles.shareBtn}
+              onPress={() => handleShareDish(item)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="share-outline" size={16} color="#fff" />
+            </TouchableOpacity>
+          </View>
 
           {/* Badges (top left) */}
           <View style={styles.badgesTopLeft}>
@@ -610,11 +634,17 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
 
-  // Price badge
-  priceBadge: {
+  // Top right group (price + share)
+  topRightGroup: {
     position: 'absolute',
     top: 12,
     right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    zIndex: 2,
+  },
+  priceBadge: {
     backgroundColor: 'rgba(0,0,0,0.6)',
     paddingVertical: 6,
     paddingHorizontal: 14,
@@ -624,6 +654,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
+  },
+  shareBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Badges top left
