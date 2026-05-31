@@ -293,7 +293,6 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   const [error, setError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [expandedSection, setExpandedSection] = useState<'best_for' | 'vibe' | 'heads_up' | null>(null);
-  const [activeTab, setActiveTab] = useState<'signals' | 'info' | 'photos' | 'entrances'>('signals');
   const [showHoursModal, setShowHoursModal] = useState(false);
   const [showNavModal, setShowNavModal] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
@@ -1069,540 +1068,368 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
   const driveTime = getDriveTime(place.distance);
   const categoryEmoji = getCategoryEmoji(place.primaryCategory);
 
+  // State for info section collapse
+  const [showInfo, setShowInfo] = useState(false);
+  const [showFullSignals, setShowFullSignals] = useState(false);
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* ===== NEW HERO SECTION ===== */}
+        {/* ===== 1. HERO (40% screen) ===== */}
         <View style={styles.heroContainer}>
-          {/* Photo Carousel */}
-          <FlatList
-            ref={carouselRef}
-            data={photos.length > 0 ? photos : [{ id: 'placeholder', url: getCategoryFallbackImage(place.primaryCategory) }]}
-            renderItem={renderCarouselItem}
-            keyExtractor={(item) => item.id}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleCarouselScroll}
-            scrollEventThrottle={16}
+          <Image
+            source={{ uri: photos.length > 0 ? photos[0].url : getCategoryFallbackImage(place.primaryCategory) }}
+            style={styles.carouselImage}
+            resizeMode="cover"
           />
-          
+
           {/* Gradient Overlay */}
-          <View style={styles.heroGradient} />
-          
-          {/* Back Button */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.9)']}
+            locations={[0.4, 0.6, 1]}
+            style={styles.heroGradientOverlay}
+          />
+
+          {/* Back Button (top-left) */}
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#000" />
+            <Ionicons name="chevron-back" size={22} color="#1a1a1a" />
           </TouchableOpacity>
-          
-          {/* Top Right Buttons */}
+
+          {/* Top Right: Share + Save */}
           <View style={styles.topRightButtons}>
-            <Image 
-              source={require('../assets/brand/logo-icon.png')} 
-              style={styles.headerLogoSmall}
-              resizeMode="contain"
-            />
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="heart-outline" size={22} color="#000" />
-            </TouchableOpacity>
             <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-              <Ionicons name="share-outline" size={22} color="#000" />
+              <Ionicons name="share-outline" size={20} color="#1a1a1a" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('MenuGallery' as any, { placeId: place.id, placeName: place.name })}>
-              <Ionicons name="restaurant-outline" size={22} color="#000" />
+            <TouchableOpacity style={styles.actionButton}>
+              <Ionicons name="heart-outline" size={20} color="#1a1a1a" />
             </TouchableOpacity>
           </View>
-          
-          {/* Photo Count Badge */}
-          {photos.length > 1 && (
-            <TouchableOpacity style={styles.photoCountBadge} onPress={handleViewAllPhotos}>
-              <Ionicons name="camera" size={14} color="#fff" />
-              <Text style={styles.photoCountText}>{photos.length}</Text>
-            </TouchableOpacity>
-          )}
-          
-          {/* Pagination Dots */}
-          {photos.length > 1 && (
-            <View style={styles.paginationDots}>
-              {photos.map((_, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.paginationDot,
-                    index === currentPhotoIndex && styles.paginationDotActive,
-                  ]}
-                />
-              ))}
-            </View>
-          )}
-          
-	          {/* Hero Text Overlay */}
-	          <View style={styles.heroTextContainer}>
-                <View style={{flexDirection: 'row', alignItems: 'center', gap: 12}}>
-                  {/* Story Ring around Logo */}
-                  <TouchableOpacity 
-                    onPress={() => stories.length > 0 && setShowStoryViewer(true)}
-                    disabled={stories.length === 0}
-                    activeOpacity={0.8}
-                  >
-                    {storyRingState !== 'none' ? (
-                      <LinearGradient
-                        colors={storyRingState === 'unseen' 
-                          ? ['#FF6B6B', '#FFE66D', '#4ECDC4', '#45B7D1'] 
-                          : ['#C4C4C4', '#A0A0A0']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.storyRing}
-                      >
-                        <View style={styles.storyRingInner}>
-                          {place.logo_url ? (
-                            <Image source={{ uri: place.logo_url }} style={styles.logoImageWithRing} />
-                          ) : (
-                            <View style={styles.logoPlaceholder}>
-                              <Ionicons name="storefront" size={24} color="#666" />
-                            </View>
-                          )}
-                        </View>
-                      </LinearGradient>
-                    ) : (
-                      place.logo_url && (
-                        <Image source={{ uri: place.logo_url }} style={styles.logoImage} />
-                      )
-                    )}
-                    {stories.length > 0 && (
-                      <View style={styles.storyCountBadge}>
-                        <Text style={styles.storyCountText}>{stories.length}</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                  <View style={{flex: 1}}>
-                    <Text style={styles.placeName}>{place.name}</Text>
-                    <View style={styles.heroSubtitle}>
-                      <Text style={styles.heroSubtitleText}>
-                        {categoryEmoji} {place.primaryCategory}
-                      </Text>
-                      {priceDisplay && (
-                        <Text style={styles.heroSubtitleText}>{priceDisplay}</Text>
-                      )}
-                      <Text style={styles.heroSubtitleText}>📍 {place.distance} mi</Text>
-                    </View>
-                  </View>
-                </View>
-	          </View>
-	        </View>
 
-        {/* ===== QUICK INFO BAR ===== */}
-        <View style={styles.quickInfoBar}>
-          <TouchableOpacity 
-            style={styles.quickInfoItem}
-            onPress={() => setShowHoursModal(true)}
+          {/* Hero Text at bottom */}
+          <View style={styles.heroTextContainer}>
+            <Text style={styles.placeName}>{place.name}</Text>
+            <Text style={styles.heroSubtitleText}>
+              {categoryEmoji} {place.primaryCategory}
+            </Text>
+          </View>
+        </View>
+
+        {/* ===== 2. STICKY ACTION BAR ===== */}
+        <View style={styles.actionBar}>
+          {/* Menu - Primary CTA (purple, larger) */}
+          <TouchableOpacity
+            style={styles.actionBarPrimary}
+            onPress={() => navigation.navigate('MenuGallery' as any, { placeId: place.id, placeName: place.name })}
+            activeOpacity={0.85}
           >
-            <Text style={styles.quickInfoIcon}>🕐</Text>
-            <Text style={[styles.quickInfoLabel, isOpen && styles.quickInfoLabelOpen]}>
-              {isOpen ? 'Open' : 'Closed'}
-            </Text>
-            <Text style={styles.quickInfoSub}>
-              {place.closingTime ? `Until ${place.closingTime}` : (place.is24_7 ? '24/7' : '')}
-            </Text>
+            <Text style={styles.actionBarPrimaryIcon}>📖</Text>
+            <Text style={styles.actionBarPrimaryLabel}>Menu</Text>
           </TouchableOpacity>
-          
-          <View style={styles.quickInfoDivider} />
-          
-          <TouchableOpacity 
-            style={styles.quickInfoItem}
+
+          {/* Call */}
+          <TouchableOpacity
+            style={styles.actionBarBtn}
             onPress={() => handleCall(place.phone || '')}
           >
-            <Text style={styles.quickInfoIcon}>📞</Text>
-            <Text style={styles.quickInfoValue}>Call</Text>
-            <Text style={styles.quickInfoSub}>Business</Text>
+            <Text style={styles.actionBarIcon}>📞</Text>
           </TouchableOpacity>
-          
-          <View style={styles.quickInfoDivider} />
-          
-          <TouchableOpacity 
-            style={styles.quickInfoItem}
-            onPress={() => setActiveTab('photos')}
-          >
-            <Text style={styles.quickInfoIcon}>📷</Text>
-            <Text style={styles.quickInfoValue}>{photos.length}</Text>
-            <Text style={styles.quickInfoSub}>Photos</Text>
-          </TouchableOpacity>
-          
-          <View style={styles.quickInfoDivider} />
-          
+
+          {/* Directions */}
           <TouchableOpacity
-            style={styles.quickInfoItem}
-            onPress={() => navigation.navigate('MenuGallery' as any, { placeId: place.id, placeName: place.name })}
+            style={styles.actionBarBtn}
+            onPress={() => handleNavigate(place.latitude, place.longitude, place.name)}
           >
-            <Text style={styles.quickInfoIcon}>📖</Text>
-            <Text style={styles.quickInfoValue}>Menu</Text>
-            <Text style={styles.quickInfoSub}>View</Text>
+            <Text style={styles.actionBarIcon}>📍</Text>
+          </TouchableOpacity>
+
+          {/* Share */}
+          <TouchableOpacity
+            style={styles.actionBarBtn}
+            onPress={handleShare}
+          >
+            <Text style={styles.actionBarIcon}>↗️</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ===== QUICK INFO PILLS (NEW - Category-based) ===== */}
-        {quickInfoPills.length > 0 && (
-          <View style={styles.quickInfoPillsContainer}>
-            {quickInfoPills.map((pill, index) => (
-              <View key={index} style={[styles.quickInfoPill, { backgroundColor: pill.color + '20' }]}>
-                <Ionicons name={pill.icon} size={14} color={pill.color} />
-                <Text style={[styles.quickInfoPillText, { color: pill.color }]}>{pill.label}</Text>
+        {/* ===== 3. SIGNAL SUMMARY (immediately visible, NO tabs) ===== */}
+        <View style={styles.signalSummarySection}>
+          {/* Medals first */}
+          {signals.medals && signals.medals.length > 0 && (
+            <View style={styles.medalsRow}>
+              {signals.medals.map((medalId) => renderMedal(medalId))}
+            </View>
+          )}
+
+          {(signals.best_for?.length > 0 || signals.vibe?.length > 0 || signals.heads_up?.length > 0) ? (
+            <>
+              {/* The Good — teal pills */}
+              {signals.best_for?.length > 0 && (
+                <View style={styles.signalPillGroup}>
+                  {signals.best_for.slice(0, 5).map((s) => (
+                    <View key={s.signal_id} style={styles.pillGood}>
+                      <Text style={styles.pillEmoji}>{s.icon}</Text>
+                      <Text style={styles.pillLabelGood}>{s.label}</Text>
+                      <Text style={styles.pillCountGood}>{s.review_count}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* The Vibe — purple pills */}
+              {signals.vibe?.length > 0 && (
+                <View style={styles.signalPillGroup}>
+                  {signals.vibe.slice(0, 3).map((s) => (
+                    <View key={s.signal_id} style={styles.pillVibe}>
+                      <Text style={styles.pillEmoji}>{s.icon}</Text>
+                      <Text style={styles.pillLabelVibe}>{s.label}</Text>
+                      <Text style={styles.pillCountVibe}>{s.review_count}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Heads Up — amber pills */}
+              {signals.heads_up?.length > 0 && (
+                <View style={styles.signalPillGroup}>
+                  {signals.heads_up.slice(0, 2).map((s) => (
+                    <View key={s.signal_id} style={styles.pillHeadsUp}>
+                      <Text style={styles.pillEmoji}>{s.icon}</Text>
+                      <Text style={styles.pillLabelHeadsUp}>{s.label}</Text>
+                      <Text style={styles.pillCountHeadsUp}>{s.review_count}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* See all signals link */}
+              <TouchableOpacity onPress={() => setShowFullSignals(true)}>
+                <Text style={styles.seeAllSignalsLink}>See all signals →</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={styles.noSignalsContainer}>
+              <Text style={styles.noSignalsText}>No signals yet — be the first to share!</Text>
+              <TouchableOpacity
+                style={styles.addSignalBtn}
+                onPress={() => navigation.navigate('AddReview', { placeId: place.id, placeName: place.name, placeCategory: place.primaryCategory })}
+              >
+                <Text style={styles.addSignalBtnText}>✏️ Add Your Signal</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        {/* ===== 4. MENU PREVIEW CARD ===== */}
+        <View style={styles.sectionPadding}>
+          <View style={styles.menuCard}>
+            <View style={styles.menuCardHeader}>
+              <Text style={styles.menuCardTitle}>Menu</Text>
+              {photos.length > 0 && (
+                <Text style={styles.menuCardCount}>{photos.length} items</Text>
+              )}
+            </View>
+            {photos.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.menuThumbnailScroll}>
+                {photos.slice(0, 4).map((photo, idx) => (
+                  <View key={photo.id || idx} style={styles.menuThumb}>
+                    <Image source={{ uri: photo.url }} style={styles.menuThumbImg} />
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+            <TouchableOpacity
+              style={styles.menuCTA}
+              onPress={() => navigation.navigate('MenuGallery' as any, { placeId: place.id, placeName: place.name })}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.menuCTAText}>View Full Menu →</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ===== 5. FULL SIGNAL BREAKDOWN ===== */}
+        {showFullSignals && (
+          <View style={styles.sectionPadding}>
+            <View style={styles.breakdownCard}>
+              {/* The Good */}
+              <View style={styles.breakdownGroup}>
+                <View style={styles.breakdownHeader}>
+                  <View style={[styles.breakdownDot, { backgroundColor: '#00C2CB' }]} />
+                  <Text style={styles.breakdownTitle}>The Good</Text>
+                </View>
+                {signals.best_for?.length > 0 ? (
+                  signals.best_for.map((signal) => renderSignalBar(signal, '#00C2CB'))
+                ) : (
+                  <Text style={styles.emptySignalText}>Be the first to tap!</Text>
+                )}
               </View>
-            ))}
+
+              <View style={styles.breakdownDivider} />
+
+              {/* The Vibe */}
+              <View style={styles.breakdownGroup}>
+                <View style={styles.breakdownHeader}>
+                  <View style={[styles.breakdownDot, { backgroundColor: '#8A05BE' }]} />
+                  <Text style={styles.breakdownTitle}>The Vibe</Text>
+                </View>
+                {signals.vibe?.length > 0 ? (
+                  signals.vibe.map((signal) => renderSignalBar(signal, '#8A05BE'))
+                ) : (
+                  <Text style={styles.emptySignalText}>Be the first to tap!</Text>
+                )}
+              </View>
+
+              <View style={styles.breakdownDivider} />
+
+              {/* Heads Up */}
+              <View style={styles.breakdownGroup}>
+                <View style={styles.breakdownHeader}>
+                  <View style={[styles.breakdownDot, { backgroundColor: '#F5A623' }]} />
+                  <Text style={styles.breakdownTitle}>Heads Up</Text>
+                </View>
+                {signals.heads_up?.length > 0 ? (
+                  signals.heads_up.map((signal) => renderSignalBar(signal, '#F5A623'))
+                ) : (
+                  <Text style={styles.emptySignalText}>Be the first to tap!</Text>
+                )}
+              </View>
+
+              {/* Add Signal CTA */}
+              <TouchableOpacity
+                style={[styles.addSignalBtn, { marginTop: 20 }]}
+                onPress={() => navigation.navigate('AddReview', { placeId: place.id, placeName: place.name, placeCategory: place.primaryCategory })}
+              >
+                <Text style={styles.addSignalBtnText}>✏️ Add Your Signal</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
-        {/* ===== TAB NAVIGATION ===== */}
-        <View style={styles.tabContainer}>
-          {(['signals', 'info', 'photos', 'entrances'] as const).map((tab) => {
-            // Map internal tab names to display labels
-            const tabLabels: Record<string, string> = {
-              signals: 'Reviews',
-              info: 'Info',
-              photos: 'Photos',
-              entrances: 'Entrances',
-            };
-            
-            // NEW: Conditionally show entrances tab based on category or if entrances exist
-            if (tab === 'entrances' && !showEntrancesTabForCategory && entrances.length === 0) {
-              return null;
-            }
-            
-            return (
-              <TouchableOpacity
-                key={tab}
-                style={[styles.tab, activeTab === tab && styles.tabActive]}
-                onPress={() => setActiveTab(tab)}
-              >
-                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                  {tabLabels[tab]}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+        {!showFullSignals && (signals.best_for?.length > 0 || signals.vibe?.length > 0 || signals.heads_up?.length > 0) && (
+          <View style={styles.sectionPadding}>
+            <TouchableOpacity
+              style={styles.expandBtn}
+              onPress={() => setShowFullSignals(true)}
+            >
+              <Text style={styles.expandBtnText}>Show Full Signal Breakdown</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ===== 6. PHOTOS GRID (2x2 with +X more) ===== */}
+        <View style={styles.sectionPadding}>
+          <View style={styles.cardContainer}>
+            <Text style={styles.cardTitle}>Photos</Text>
+            {photos.length > 0 ? (
+              <View style={styles.photoGrid}>
+                {photos.slice(0, 4).map((photo, idx) => (
+                  <TouchableOpacity
+                    key={photo.id}
+                    style={styles.photoGridItem}
+                    onPress={handleViewAllPhotos}
+                  >
+                    <Image source={{ uri: photo.url }} style={styles.photoGridImage} />
+                    {idx === 3 && photos.length > 4 && (
+                      <View style={styles.photoGridOverlay}>
+                        <Text style={styles.photoGridOverlayText}>+{photos.length - 4}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.noPhotosText}>No photos yet</Text>
+            )}
+            <TouchableOpacity style={styles.addPhotoButton} onPress={handleAddPhoto}>
+              <Ionicons name="camera-outline" size={20} color="#8A05BE" />
+              <Text style={[styles.addPhotoText, { color: '#8A05BE' }]}>Add a Photo</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* ===== TAB CONTENT ===== */}
-        <View style={styles.content}>
-          {/* Signals Tab (UPDATED) */}
-          {activeTab === 'signals' && (
-            <View style={styles.tabContent}>
-              {/* Show signal bars OR empty state bars */}
-              {(signals.best_for?.length > 0 || signals.vibe?.length > 0 || signals.heads_up?.length > 0) ? (
-                <>
-                  {/* The Good - Blue */}
-                  {renderSignalLine('best_for', 'The Good', signals.best_for, { primary: '#00C2CB', light: 'rgba(0, 194, 203, 0.15)', text: '#FFFFFF' })}
+        {/* ===== 7. INFO SECTION (collapsed/expandable) ===== */}
+        <View style={styles.sectionPadding}>
+          <View style={styles.cardContainer}>
+            <TouchableOpacity
+              style={styles.infoToggle}
+              onPress={() => setShowInfo(!showInfo)}
+            >
+              <Text style={styles.cardTitle}>Info & Contact</Text>
+              <Ionicons
+                name={showInfo ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color="#9CA3AF"
+              />
+            </TouchableOpacity>
 
-                  {/* The Vibe - Purple */}
-                  {renderSignalLine('vibe', 'The Vibe', signals.vibe, { primary: '#8A05BE', light: 'rgba(138, 5, 190, 0.15)', text: '#FFFFFF' })}
-
-                  {/* Heads Up - Orange */}
-                  {renderSignalLine('heads_up', 'Heads Up', signals.heads_up, { primary: '#F5A623', light: 'rgba(245, 166, 35, 0.15)', text: '#FFFFFF' })}
-                </>
-              ) : (
-                /* Empty State Signal Bars - Show placeholder bars when no reviews exist */
-                <View style={{
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: 16,
-                  marginBottom: 16,
-                  padding: 16,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.06,
-                  shadowRadius: 8,
-                  elevation: 2,
-                }}>
-                  <Text style={{ 
-                    fontSize: 18, 
-                    fontWeight: '700', 
-                    color: '#1F2937',
-                    marginBottom: 16,
-                  }}>
-                    Community Signals
-                  </Text>
-                  
-                  {/* The Good - Blue Empty Bar */}
-                  <TouchableOpacity 
-                    onPress={() => navigation.navigate('AddReview', { placeId: place.id, placeName: place.name, placeCategory: place.primaryCategory })}
-                    activeOpacity={0.8}
-                    style={{
-                      backgroundColor: '#00C2CB',
-                      borderRadius: 12,
-                      paddingVertical: 14,
-                      paddingHorizontal: 16,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      marginBottom: 8,
-                    }}
+            {showInfo && (
+              <View style={styles.infoContent}>
+                {fullAddress ? (
+                  <TouchableOpacity
+                    style={styles.contactItem}
+                    onPress={() => setShowAddressModal(true)}
                   >
-                    <Ionicons name="thumbs-up" size={18} color="#FFFFFF" style={{ marginRight: 10 }} />
-                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600', fontStyle: 'italic', opacity: 0.9 }}>
-                      The Good · Be the first to tap!
-                    </Text>
+                    <Text style={styles.infoIcon}>📍</Text>
+                    <Text style={styles.infoLink}>{fullAddress}</Text>
                   </TouchableOpacity>
-                  
-                  {/* The Vibe - Purple Empty Bar */}
-                  <TouchableOpacity 
-                    onPress={() => navigation.navigate('AddReview', { placeId: place.id, placeName: place.name, placeCategory: place.primaryCategory })}
-                    activeOpacity={0.8}
-                    style={{
-                      backgroundColor: '#8A05BE',
-                      borderRadius: 12,
-                      paddingVertical: 14,
-                      paddingHorizontal: 16,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      marginBottom: 8,
-                    }}
+                ) : null}
+
+                {place.phone ? (
+                  <TouchableOpacity
+                    style={styles.contactItem}
+                    onPress={() => handleCall(place.phone!)}
                   >
-                    <Ionicons name="sparkles" size={18} color="#FFFFFF" style={{ marginRight: 10 }} />
-                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600', fontStyle: 'italic', opacity: 0.9 }}>
-                      The Vibe · Be the first to tap!
-                    </Text>
+                    <Text style={styles.infoIcon}>📞</Text>
+                    <Text style={styles.infoLink}>{place.phone}</Text>
                   </TouchableOpacity>
-                  
-                  {/* Heads Up - Orange Empty Bar */}
-                  <TouchableOpacity 
-                    onPress={() => navigation.navigate('AddReview', { placeId: place.id, placeName: place.name, placeCategory: place.primaryCategory })}
-                    activeOpacity={0.8}
-                    style={{
-                      backgroundColor: '#F5A623',
-                      borderRadius: 12,
-                      paddingVertical: 14,
-                      paddingHorizontal: 16,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                    }}
+                ) : null}
+
+                {place.website ? (
+                  <TouchableOpacity
+                    style={styles.contactItem}
+                    onPress={() => handleWebsite(place.website!)}
                   >
-                    <Ionicons name="alert-circle" size={18} color="#FFFFFF" style={{ marginRight: 10 }} />
-                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600', fontStyle: 'italic', opacity: 0.9 }}>
-                      Heads Up · Be the first to tap!
-                    </Text>
+                    <Text style={styles.infoIcon}>🌐</Text>
+                    <Text style={styles.infoLink}>{place.website.replace(/^https?:\/\//, '')}</Text>
                   </TouchableOpacity>
-                </View>
-              )}
+                ) : null}
 
-              {/* Recent Momentum Thermometer */}
-              {(signals.best_for?.length > 0 || signals.vibe?.length > 0 || signals.heads_up?.length > 0) && (
-                <View style={{
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: 16,
-                  marginBottom: 16,
-                  padding: 16,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.06,
-                  shadowRadius: 8,
-                  elevation: 2,
-                }}>
-                  <Text style={{ 
-                    fontSize: 18, 
-                    fontWeight: '700', 
-                    color: '#1F2937',
-                    marginBottom: 4,
-                  }}>
-                    Recent Momentum
-                  </Text>
-                  <Text style={{ 
-                    fontSize: 13, 
-                    color: '#6B7280',
-                    marginBottom: 16,
-                  }}>
-                    Last 3 Months
-                  </Text>
-                  <MomentumThermometer
-                    goodTaps={signals.best_for?.reduce((sum, s) => sum + (s.tap_total || 0), 0) || 0}
-                    vibeTaps={signals.vibe?.reduce((sum, s) => sum + (s.tap_total || 0), 0) || 0}
-                    headsUpTaps={signals.heads_up?.reduce((sum, s) => sum + (s.tap_total || 0), 0) || 0}
-                    showLabels={true}
-                    height={12}
-                  />
-                </View>
-              )}
+                {place.instagramUrl ? (
+                  <TouchableOpacity
+                    style={styles.contactItem}
+                    onPress={() => Linking.openURL(place.instagramUrl!)}
+                  >
+                    <Text style={styles.infoIcon}>📸</Text>
+                    <Text style={styles.infoLink}>Instagram</Text>
+                  </TouchableOpacity>
+                ) : null}
 
-              {/* Add Your Tap Card (Moved to Bottom) */}
-              <View style={{ marginTop: 24 }}>
-                <AddYourTapCardEnhanced 
-                  placeId={place.id} 
-                  placeName={place.name}
-                  placeCategory={place.primaryCategory || 'default'}
-                  onPress={() => navigation.navigate('AddReview', { placeId: place.id })}
-                  onQuickTap={(signalId, signalName) => quickTap(place.id, signalId, signalName)}
-                  hasUserReviewed={hasTapped}
-                  userSignalsCount={userSignals.length}
-                  todayTapCount={0}
-                  lastTapTime={null}
-                  totalTapCount={0}
-                  userStreak={gamification?.currentStreak || 0}
-                  userBadges={gamification?.badges || []}
-                  userImpactCount={gamification?.impactCount || 0}
-                />
-              </View>
-
-              {/* Empty state text removed - now using empty state signal bars above */}
-            </View>
-          )}
-
-	          {/* Info Tab */}
-	          {activeTab === 'info' && (
-	            <View style={styles.section}>
-                  {/* Trust Badges Section */}
-                  {(place.is_insured || place.is_licensed || place.established_date) && (
-                    <View style={{marginBottom: 20}}>
-                      <Text style={styles.sectionTitle}>Trust & Verification</Text>
-                      {renderTrustBadges()}
-                    </View>
-                  )}
-
-                  {/* Social Media Section */}
-                  {place.socials && Object.keys(place.socials).length > 0 && (
-                    <View style={{marginBottom: 20}}>
-                      <Text style={styles.sectionTitle}>Connect</Text>
-                      {renderSocials()}
-                    </View>
-                  )}
-
-	              <Text style={styles.sectionTitle}>Location & Contact</Text>
-              
-              {fullAddress && (
-                <TouchableOpacity 
-                  style={styles.contactItem}
-                  onPress={() => setShowAddressModal(true)}
+                <TouchableOpacity
+                  style={styles.directionsBtn}
+                  onPress={() => handleNavigate(place.latitude, place.longitude, place.name)}
                 >
-                  <Ionicons name="location" size={20} color="#007AFF" />
-                  <Text style={[styles.contactText, styles.contactLink]}>{fullAddress}</Text>
-                </TouchableOpacity>
-              )}
-              
-              {place.phone && (
-                <TouchableOpacity 
-                  style={styles.contactItem}
-                  onPress={() => handleCall(place.phone!)}
-                >
-                  <Ionicons name="call" size={20} color="#007AFF" />
-                  <Text style={[styles.contactText, styles.contactLink]}>{place.phone}</Text>
-                </TouchableOpacity>
-              )}
-              
-              {place.website && (
-                <TouchableOpacity 
-                  style={styles.contactItem}
-                  onPress={() => handleWebsite(place.website!)}
-                >
-                  <Ionicons name="globe" size={20} color="#007AFF" />
-                  <Text style={[styles.contactText, styles.contactLink]}>
-                    {place.website.replace(/^https?:\/\//, '')}
+                  <Text style={styles.directionsBtnText}>
+                    🚗 Get Directions{driveTime !== '< 1 min' ? ` (${driveTime})` : ''}
                   </Text>
                 </TouchableOpacity>
-              )}
 
-              {/* Features */}
-              {place.features && place.features.length > 0 && (
-                <View style={styles.featuresContainer}>
-                  <Text style={styles.featuresTitle}>Features</Text>
-                  <View style={styles.featuresList}>
-                    {place.features.map((feature, idx) => (
-                      <View key={idx} style={styles.featureTag}>
-                        <Text style={styles.featureText}>{feature}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              {/* Menu Gallery Button */}
-              <TouchableOpacity
-                style={styles.menuGalleryButton}
-                onPress={() => navigation.navigate('MenuGallery', { placeId: place.id, placeName: place.name })}
-              >
-                <Ionicons name="restaurant-outline" size={20} color="#8A05BE" />
-                <Text style={styles.menuGalleryText}>Menu Gallery</Text>
-                <Ionicons name="chevron-forward" size={16} color="#8A05BE" />
-              </TouchableOpacity>
-
-              {/* Claim Business Button */}
-              <View style={styles.claimContainer}>
+                <View style={styles.claimDivider} />
                 <TouchableOpacity
                   style={styles.claimButton}
                   onPress={() => navigation.navigate('ClaimBusiness', { placeId: place.id, placeName: place.name })}
                 >
-                  <Ionicons name="business-outline" size={20} color="#6B7280" />
-                  <Text style={styles.claimText}>Claim This Business</Text>
+                  <Text style={styles.claimText}>🏢 Claim This Business</Text>
                 </TouchableOpacity>
               </View>
-            </View>
-          )}
-
-          {/* Photos Tab */}
-          {activeTab === 'photos' && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Photos</Text>
-                {photos.length > 0 && (
-                  <TouchableOpacity onPress={handleViewAllPhotos}>
-                    <Text style={styles.seeAllText}>See all {photos.length}</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-              
-              {photos.length > 0 ? (
-                <View style={styles.photoGrid}>
-                  {photos.slice(0, 4).map((photo, idx) => (
-                    <TouchableOpacity 
-                      key={photo.id} 
-                      style={styles.photoGridItem}
-                      onPress={handleViewAllPhotos}
-                    >
-                      <Image source={{ uri: photo.url }} style={styles.photoGridImage} />
-                      {idx === 3 && photos.length > 4 && (
-                        <View style={styles.photoGridOverlay}>
-                          <Text style={styles.photoGridOverlayText}>+{photos.length - 4}</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.noPhotosText}>No photos yet</Text>
-              )}
-
-              <TouchableOpacity style={styles.addPhotoButton} onPress={handleAddPhoto}>
-                <Ionicons name="camera-outline" size={20} color="#007AFF" />
-                <Text style={styles.addPhotoText}>Add a Photo</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Entrances Tab */}
-          {activeTab === 'entrances' && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Entrances</Text>
-              
-              {entrances.length > 0 ? (
-                <View style={styles.entrancesList}>
-                  {entrances.map((entrance, idx) => 
-                    renderEntranceItem(entrance, idx, { lat: place.latitude, lng: place.longitude })
-                  )}
-                </View>
-              ) : (
-                <View style={styles.noEntrancesContainer}>
-                  <Ionicons name="navigate-outline" size={48} color="#ccc" />
-                  <Text style={styles.noEntrancesText}>No entrance information available</Text>
-                  <TouchableOpacity
-                    style={styles.defaultNavigateButton}
-                    onPress={() => handleNavigate(place.latitude, place.longitude, place.name)}
-                  >
-                    <Ionicons name="navigate" size={20} color="#fff" />
-                    <Text style={styles.defaultNavigateText}>Navigate to {place.name}</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          )}
+            )}
+          </View>
         </View>
+
+        {/* Bottom spacing */}
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       {/* Hours Modal */}
@@ -1854,14 +1681,14 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F8F9FA',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F8F9FA',
   },
   scrollView: {
     flex: 1,
@@ -1879,7 +1706,7 @@ const styles = StyleSheet.create({
   },
   errorButton: {
     marginTop: 20,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#8A05BE',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -1889,8 +1716,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
-  
-  // ===== NEW HERO STYLES =====
+
+  // ===== 1. HERO (40% screen) =====
   heroContainer: {
     position: 'relative',
     height: 320,
@@ -1900,351 +1727,501 @@ const styles = StyleSheet.create({
     width: width,
     height: 320,
   },
-  heroGradient: {
+  heroGradientOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 180,
-    backgroundColor: 'transparent',
+    height: '60%',
   },
   backButton: {
     position: 'absolute',
-    top: 50,
+    top: 54,
     left: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#fff',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.92)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
     elevation: 3,
   },
   topRightButtons: {
     position: 'absolute',
-    top: 50,
+    top: 54,
     right: 16,
     flexDirection: 'row',
     gap: 8,
     alignItems: 'center',
   },
-  headerLogoSmall: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    marginRight: 4,
-  },
   actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#fff',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.92)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
     elevation: 3,
-  },
-  photoCountBadge: {
-    position: 'absolute',
-    bottom: 80,
-    right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  photoCountText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  paginationDots: {
-    position: 'absolute',
-    bottom: 70,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  paginationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  paginationDotActive: {
-    backgroundColor: '#fff',
   },
   heroTextContainer: {
     position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
-  },
-  logoImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  // Story ring styles
-  storyRing: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    padding: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  storyRingInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#fff',
-    overflow: 'hidden',
-  },
-  logoImageWithRing: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 30,
-  },
-  logoPlaceholder: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 30,
-    backgroundColor: '#F0F0F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  storyCountBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: '#0F8A8A',
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-    paddingHorizontal: 4,
-  },
-  storyCountText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#fff',
+    bottom: 20,
+    left: 20,
+    right: 20,
   },
   placeName: {
-    fontSize: 26,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '800',
     color: '#fff',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+    marginBottom: 4,
+    letterSpacing: -0.3,
+  },
+  heroSubtitleText: {
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.85)',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
-    marginBottom: 6,
   },
-  trustContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-    marginBottom: 12,
-  },
-  trustBadge: {
+
+  // ===== 2. ACTION BAR (sticky) =====
+  actionBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
-  },
-  trustText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#065F46',
-  },
-  socialsContainer: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 16,
-  },
-  socialIcon: {
-    padding: 4,
-  },
-  heroSubtitle: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 12,
-  },
-  heroSubtitleText: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  
-  // ===== QUICK INFO BAR =====
-  quickInfoBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    backgroundColor: '#fff',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-  },
-  quickInfoItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  quickInfoIcon: {
-    fontSize: 18,
-    marginBottom: 4,
-  },
-  quickInfoLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#333',
-  },
-  quickInfoLabelOpen: {
-    color: '#00C2CB',
-  },
-  quickInfoValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#333',
-  },
-  quickInfoSub: {
-    fontSize: 11,
-    color: '#666',
-    marginTop: 2,
-  },
-  quickInfoDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: '#e5e5e5',
-  },
-  
-  // ===== QUICK INFO PILLS (NEW) =====
-  quickInfoPillsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(255,255,255,0.97)',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-    gap: 8,
-  },
-  quickInfoPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 16,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-  quickInfoPillText: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  
-  // ===== TAB NAVIGATION =====
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabActive: {
-    borderBottomColor: '#007AFF',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
-  },
-  tabTextActive: {
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  
-  // ===== CONTENT =====
-  content: {
-    padding: 16,
-  },
-  section: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    borderBottomColor: 'rgba(0,0,0,0.06)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 2,
   },
-  sectionHeader: {
+  actionBarPrimary: {
+    flex: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'center',
+    gap: 8,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#8A05BE',
+    shadowColor: '#8A05BE',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  sectionTitle: {
+  actionBarPrimaryIcon: {
+    fontSize: 18,
+  },
+  actionBarPrimaryLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  actionBarBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionBarIcon: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 12,
   },
-  seeAllText: {
-    fontSize: 14,
-    color: '#007AFF',
-    fontWeight: '500',
+
+  // ===== 3. SIGNAL SUMMARY =====
+  signalSummarySection: {
+    padding: 24,
+    paddingHorizontal: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.04)',
   },
-  
-  // ===== SIGNALS & MEDALS =====
-  medalsContainer: {
+  medalsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 20,
     gap: 8,
-    paddingHorizontal: 20,
+    marginBottom: 16,
   },
   medalBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
   },
   medalText: {
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontSize: 13,
+    fontWeight: '700',
     marginLeft: 6,
   },
+  signalPillGroup: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  // Good pills (teal)
+  pillGood: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0, 194, 203, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 194, 203, 0.25)',
+  },
+  pillLabelGood: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#00A5AD',
+  },
+  pillCountGood: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#00A5AD',
+    opacity: 0.7,
+    marginLeft: 2,
+  },
+  // Vibe pills (purple)
+  pillVibe: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    backgroundColor: 'rgba(138, 5, 190, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(138, 5, 190, 0.2)',
+  },
+  pillLabelVibe: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#8A05BE',
+  },
+  pillCountVibe: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8A05BE',
+    opacity: 0.7,
+    marginLeft: 2,
+  },
+  // Heads Up pills (amber)
+  pillHeadsUp: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    backgroundColor: 'rgba(245, 166, 35, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 166, 35, 0.2)',
+  },
+  pillLabelHeadsUp: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#D4850A',
+  },
+  pillCountHeadsUp: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#D4850A',
+    opacity: 0.7,
+    marginLeft: 2,
+  },
+  pillEmoji: {
+    fontSize: 16,
+  },
+  seeAllSignalsLink: {
+    marginTop: 16,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8A05BE',
+  },
+  noSignalsContainer: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  noSignalsText: {
+    fontSize: 15,
+    color: '#9CA3AF',
+    marginBottom: 16,
+  },
+  addSignalBtn: {
+    width: '100%',
+    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderColor: '#8A05BE',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  addSignalBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8A05BE',
+  },
+
+  // ===== 4. MENU PREVIEW CARD =====
+  sectionPadding: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+  },
+  menuCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  menuCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  menuCardTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  menuCardCount: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  menuThumbnailScroll: {
+    marginBottom: 16,
+  },
+  menuThumb: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginRight: 8,
+  },
+  menuThumbImg: {
+    width: '100%',
+    height: '100%',
+  },
+  menuCTA: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#8A05BE',
+    alignItems: 'center',
+  },
+  menuCTAText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  // ===== 5. FULL SIGNAL BREAKDOWN =====
+  breakdownCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  breakdownGroup: {
+    marginBottom: 8,
+  },
+  breakdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  breakdownDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  breakdownTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1F2937',
+  },
+  breakdownDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    marginVertical: 16,
+  },
+  emptySignalText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    opacity: 0.5,
+    color: '#6B7280',
+    paddingLeft: 16,
+    marginBottom: 14,
+  },
+  expandBtn: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  expandBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+
+  // ===== 6. PHOTOS GRID =====
+  cardContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 16,
+  },
+  photoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  photoGridItem: {
+    width: (width - 40 - 20 - 8) / 2,
+    aspectRatio: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  photoGridImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoGridOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoGridOverlayText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  noPhotosText: {
+    fontSize: 15,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+    marginBottom: 16,
+  },
+  addPhotoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderColor: '#8A05BE',
+    borderRadius: 12,
+  },
+  addPhotoText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#8A05BE',
+  },
+
+  // ===== 7. INFO SECTION =====
+  infoToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  infoContent: {
+    marginTop: 16,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 14,
+  },
+  infoIcon: {
+    fontSize: 18,
+  },
+  infoLink: {
+    fontSize: 15,
+    color: '#8A05BE',
+    flex: 1,
+    lineHeight: 20,
+  },
+  directionsBtn: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  directionsBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  claimDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 20,
+  },
+  claimButton: {
+    alignItems: 'center',
+  },
+  claimText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#9CA3AF',
+  },
+
+  // ===== SIGNALS & MEDALS (renderSignalBar helper) =====
   signalRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2294,162 +2271,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontStyle: 'italic',
   },
-  noReviewsText: {
-    fontSize: 14,
-    color: '#999',
-    fontStyle: 'italic',
-    marginBottom: 16,
-  },
-  addReviewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-    borderRadius: 8,
-  },
-  addReviewText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  
-  // ===== CLAIM BUSINESS =====
-  claimContainer: {
-    marginTop: 24,
-    paddingTop: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    alignItems: 'center',
-  },
-  claimButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-  },
-  claimText: {
-    marginLeft: 8,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  menuGalleryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-    backgroundColor: 'rgba(138, 5, 190, 0.08)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(138, 5, 190, 0.2)',
-  },
-  menuGalleryText: {
-    flex: 1,
-    marginLeft: 10,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#8A05BE',
-  },
 
-  // ===== CONTACT =====
-  contactItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 12,
-  },
-  contactText: {
-    fontSize: 15,
-    color: '#333',
-    flex: 1,
-  },
-  contactLink: {
-    color: '#007AFF',
-  },
-  featuresContainer: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e5e5',
-  },
-  featuresTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
-  },
-  featuresList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  featureTag: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  featureText: {
-    fontSize: 13,
-    color: '#333',
-  },
-  
-  // ===== PHOTOS =====
-  photoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginBottom: 16,
-  },
-  photoGridItem: {
-    width: (width - 48 - 4) / 2,
-    height: 100,
-    borderRadius: 8,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  photoGridImage: {
-    width: '100%',
-    height: '100%',
-  },
-  photoGridOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  photoGridOverlayText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  noPhotosText: {
-    fontSize: 14,
-    color: '#999',
-    fontStyle: 'italic',
-    marginBottom: 16,
-  },
-  addPhotoButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-    borderRadius: 8,
-  },
-  addPhotoText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  
   // ===== ENTRANCES =====
   entrancesList: {
     gap: 12,
@@ -2473,7 +2295,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   entranceNamePrimary: {
-    color: '#007AFF',
+    color: '#8A05BE',
   },
   entranceDetail: {
     fontSize: 13,
@@ -2491,7 +2313,7 @@ const styles = StyleSheet.create({
     color: '#00C2CB',
   },
   navigateButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#8A05BE',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -2515,7 +2337,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#8A05BE',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
@@ -2525,6 +2347,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
+
+  // ===== MODALS =====
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -2562,7 +2386,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingVertical: 12,
     paddingHorizontal: 32,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#8A05BE',
     borderRadius: 24,
   },
   closeButtonText: {
@@ -2655,33 +2479,8 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
   },
-    // ===== MISSING STYLES =====
-  signalLineContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  signalLine: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    padding: 12,
-  },
-  tabContent: {
-    flex: 1,
-    padding: 16,
-    paddingBottom: 40, // Extra padding at bottom for scrolling
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#999',
-    textAlign: 'center',
-    marginTop: 40,
-  },
+
+  // ===== MISC =====
   markerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -2699,5 +2498,35 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
+  },
+  // Legacy styles kept for helpers
+  trustContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  trustBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  trustText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#065F46',
+  },
+  socialsContainer: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+  },
+  socialIcon: {
+    padding: 4,
   },
 });
