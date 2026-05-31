@@ -234,7 +234,7 @@ export default function MenuGalleryScreen() {
 
   const handleShareDish = async (item: MenuItem) => {
     const slug = placeSlug || placeId;
-    const shareUrl = `https://tavvy.com/${slug}/menu-gallery?dish=${item.id}`;
+    const shareUrl = `https://tavvy.com/place/${placeId}/menu-gallery?dish=${item.id}`;
     const priceStr = formatPrice(item.price, item.price_label);
     const shareText = `${item.name} at ${placeName}${priceStr ? ` — ${priceStr}` : ''}`;
     try {
