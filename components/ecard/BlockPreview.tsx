@@ -4,7 +4,8 @@
  * Used in card preview and web rendering
  */
 
-import React from 'react';
+import React, { useContext } from 'react';
+import { EditorContext } from '../../lib/ecard/EditorContext';
 import {
   View,
   Text,
