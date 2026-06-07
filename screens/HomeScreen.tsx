@@ -30,6 +30,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchPlacesInBounds, PlaceCard, getPlaceIdForNavigation, formatDistance } from '../lib/placeService';
+import SignalMatrix from '../components/SignalMatrix';
 import { searchSuggestions as searchPlaceSuggestions, searchAddresses, prefetchNearbyPlaces, searchPrefetchedPlaces, SearchResult } from '../lib/searchService';
 import { searchPlaces as typesenseSearchPlaces } from '../lib/typesenseService';
 import { parseSearchQuery } from '../lib/smartQueryParser';
@@ -2702,50 +2703,26 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           placeCategory={place.category || place.primary_category}
         />
         
-        {/* Signals - Always show with fallbacks for empty categories */}
+        {/* Signal Matrix — compact 2x2 grid */}
         <View style={styles.signalsContainer}>
-          <View style={styles.signalsRow}>
-            {getDisplaySignals(place.signals).slice(0, 2).map((signal, index) => (
-              <View key={`${place.id}-row1-sig-${index}`} style={styles.signalPillWrapper}>
-                <View style={[styles.signalPill, { backgroundColor: getSignalColor(signal.bucket) }]}>
-                  <Ionicons 
-                    name={getSignalIcon(signal.bucket) as any} 
-                    size={12} 
-                    color={getSignalIconColor(signal.bucket)} 
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text style={[styles.signalText, signal.isEmpty && styles.signalTextEmpty]} numberOfLines={1}>
-                    {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
-                  </Text>
-                </View>
-                {!signal.isEmpty && (
-                  <Text style={styles.signalTapCount}>x{signal.tap_total}</Text>
-                )}
-              </View>
-            ))}
-          </View>
-          {getDisplaySignals(place.signals).length > 2 && (
-            <View style={styles.signalsRow}>
-              {getDisplaySignals(place.signals).slice(2, 4).map((signal, index) => (
-                <View key={`${place.id}-row2-sig-${index}`} style={styles.signalPillWrapper}>
-                  <View style={[styles.signalPill, { backgroundColor: getSignalColor(signal.bucket) }]}>
-                    <Ionicons 
-                      name={getSignalIcon(signal.bucket) as any} 
-                      size={12} 
-                      color={getSignalIconColor(signal.bucket)} 
-                      style={{ marginRight: 4 }}
-                    />
-                    <Text style={[styles.signalText, signal.isEmpty && styles.signalTextEmpty]} numberOfLines={1}>
-                      {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
-                    </Text>
-                  </View>
-                  {!signal.isEmpty && (
-                    <Text style={styles.signalTapCount}>x{signal.tap_total}</Text>
-                  )}
-                </View>
-              ))}
-            </View>
-          )}
+          <SignalMatrix
+            signals={{
+              best_for: (place.signals || []).filter((s: any) => {
+                const lower = (s.bucket || '').toLowerCase();
+                return !['cash only','no reservation','wait','noisy','crowded','slow','expensive','limited','parking','small','closed'].some(kw => lower.includes(kw)) &&
+                       !['vibe','cozy','romantic','lively','casual','upscale','old school','trendy','family','quiet','loud','intimate','modern','classic','chill','energetic'].some(kw => lower.includes(kw));
+              }).map((s: any) => ({ signal_id: s.bucket, tap_total: s.tap_total, review_count: s.tap_total, label: s.bucket, icon: '', category: 'best_for' as const })),
+              vibe: (place.signals || []).filter((s: any) => {
+                const lower = (s.bucket || '').toLowerCase();
+                return ['vibe','cozy','romantic','lively','casual','upscale','old school','trendy','family','quiet','loud','intimate','modern','classic','chill','energetic'].some(kw => lower.includes(kw));
+              }).map((s: any) => ({ signal_id: s.bucket, tap_total: s.tap_total, review_count: s.tap_total, label: s.bucket, icon: '', category: 'vibe' as const })),
+              heads_up: (place.signals || []).filter((s: any) => {
+                const lower = (s.bucket || '').toLowerCase();
+                return ['cash only','no reservation','wait','noisy','crowded','slow','expensive','limited','parking','small','closed'].some(kw => lower.includes(kw));
+              }).map((s: any) => ({ signal_id: s.bucket, tap_total: s.tap_total, review_count: s.tap_total, label: s.bucket, icon: '', category: 'heads_up' as const })),
+            }}
+            compact={true}
+          />
         </View>
         
         {/* Quick Actions */}
