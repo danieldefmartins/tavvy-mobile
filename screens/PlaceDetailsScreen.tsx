@@ -27,6 +27,7 @@ import {
 } from '../lib/categories';
 import { supabase } from '../lib/supabaseClient';
 import { fetchPlaceSignals, getPlaceReviewCount, SignalAggregate } from '../lib/reviews';
+import SignalMatrix from '../components/SignalMatrix';
 import { Colors } from '../constants/Colors';
 import AddYourTapCardEnhanced from '../components/AddYourTapCardEnhanced';
 import MomentumThermometer from '../components/MomentumThermometer';
@@ -1163,63 +1164,10 @@ export default function PlaceDetailScreen({ route, navigation }: any) {
             </View>
           )}
 
-          {(signals.best_for?.length > 0 || signals.vibe?.length > 0 || signals.heads_up?.length > 0) ? (
-            <>
-              {/* The Good — teal pills */}
-              {signals.best_for?.length > 0 && (
-                <View style={styles.signalPillGroup}>
-                  {signals.best_for.slice(0, 5).map((s) => (
-                    <View key={s.signal_id} style={styles.pillGood}>
-                      <Text style={styles.pillEmoji}>{s.icon}</Text>
-                      <Text style={styles.pillLabelGood}>{s.label}</Text>
-                      <Text style={styles.pillCountGood}>{s.review_count}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* The Vibe — purple pills */}
-              {signals.vibe?.length > 0 && (
-                <View style={styles.signalPillGroup}>
-                  {signals.vibe.slice(0, 3).map((s) => (
-                    <View key={s.signal_id} style={styles.pillVibe}>
-                      <Text style={styles.pillEmoji}>{s.icon}</Text>
-                      <Text style={styles.pillLabelVibe}>{s.label}</Text>
-                      <Text style={styles.pillCountVibe}>{s.review_count}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* Heads Up — amber pills */}
-              {signals.heads_up?.length > 0 && (
-                <View style={styles.signalPillGroup}>
-                  {signals.heads_up.slice(0, 2).map((s) => (
-                    <View key={s.signal_id} style={styles.pillHeadsUp}>
-                      <Text style={styles.pillEmoji}>{s.icon}</Text>
-                      <Text style={styles.pillLabelHeadsUp}>{s.label}</Text>
-                      <Text style={styles.pillCountHeadsUp}>{s.review_count}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* See all signals link */}
-              <TouchableOpacity onPress={() => setShowFullSignals(true)}>
-                <Text style={styles.seeAllSignalsLink}>See all signals →</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <View style={styles.noSignalsContainer}>
-              <Text style={styles.noSignalsText}>No signals yet — be the first to share!</Text>
-              <TouchableOpacity
-                style={styles.addSignalBtn}
-                onPress={() => navigation.navigate('AddReview', { placeId: place.id, placeName: place.name, placeCategory: place.primaryCategory })}
-              >
-                <Text style={styles.addSignalBtnText}>✏️ Add Your Signal</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          <SignalMatrix
+            signals={signals}
+            onReview={() => navigation.navigate('AddReview', { placeId: place.id, placeName: place.name, placeCategory: place.primaryCategory })}
+          />
         </View>
 
         {/* ===== 4. MENU PREVIEW CARD ===== */}
