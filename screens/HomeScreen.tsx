@@ -1182,13 +1182,26 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         
         let signalAggregates: any[] = [];
         try {
-          const { data: signalData } = await supabase
-            .from('place_signal_aggregates')
-            .select('place_id, signal_label, total_taps')
+          const { data: tapData } = await supabase
+            .from('tap_activity')
+            .select('place_id, signal_name')
             .in('place_id', placeIds);
-          signalAggregates = signalData || [];
+          if (tapData && tapData.length > 0) {
+            // Aggregate taps per place + signal
+            const counts = new Map<string, Map<string, number>>();
+            for (const tap of tapData) {
+              if (!counts.has(tap.place_id)) counts.set(tap.place_id, new Map());
+              const signalMap = counts.get(tap.place_id)!;
+              signalMap.set(tap.signal_name, (signalMap.get(tap.signal_name) || 0) + 1);
+            }
+            for (const [placeId, signalMap] of counts) {
+              for (const [label, total] of signalMap) {
+                signalAggregates.push({ place_id: placeId, signal_label: label, total_taps: total });
+              }
+            }
+          }
         } catch (e) {
-          console.log('No signal aggregates table or data');
+          console.log('Error fetching tap_activity:', e);
         }
 
         // Map PlaceCard[] to existing Place[] shape for UI compatibility
@@ -1301,13 +1314,26 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         
         let signalAggregates: any[] = [];
         try {
-          const { data: signalData } = await supabase
-            .from('place_signal_aggregates')
-            .select('place_id, signal_label, total_taps')
+          const { data: tapData } = await supabase
+            .from('tap_activity')
+            .select('place_id, signal_name')
             .in('place_id', placeIds);
-          signalAggregates = signalData || [];
+          if (tapData && tapData.length > 0) {
+            // Aggregate taps per place + signal
+            const counts = new Map<string, Map<string, number>>();
+            for (const tap of tapData) {
+              if (!counts.has(tap.place_id)) counts.set(tap.place_id, new Map());
+              const signalMap = counts.get(tap.place_id)!;
+              signalMap.set(tap.signal_name, (signalMap.get(tap.signal_name) || 0) + 1);
+            }
+            for (const [placeId, signalMap] of counts) {
+              for (const [label, total] of signalMap) {
+                signalAggregates.push({ place_id: placeId, signal_label: label, total_taps: total });
+              }
+            }
+          }
         } catch (e) {
-          console.log('No signal aggregates table or data');
+          console.log('Error fetching tap_activity:', e);
         }
 
         // Map PlaceCard[] to existing Place[] shape for UI compatibility
