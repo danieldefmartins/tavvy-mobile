@@ -172,6 +172,7 @@ import {
   ECardNewScreen,
   ECardEditScreen,
   ECardStatsScreen,
+  ECardAnalyticsDashboardScreen,
 } from './screens/ecard';
 import VerificationUploadScreen from './screens/VerificationUploadScreen';
 import ExperiencePathsScreen from './screens/ExperiencePathsScreen';
@@ -393,6 +394,7 @@ function AppsStack() {
       <MenuStackNav.Screen name="ECardNew" component={ECardNewScreen} />
       <MenuStackNav.Screen name="ECardEdit" component={ECardEditScreen} />
       <MenuStackNav.Screen name="ECardStats" component={ECardStatsScreen} />
+      <MenuStackNav.Screen name="ECardAnalyticsDashboard" component={ECardAnalyticsDashboardScreen} />
       <MenuStackNav.Screen name="VerificationUpload" component={VerificationUploadScreen} />
       
       {/* Admin Screens */}

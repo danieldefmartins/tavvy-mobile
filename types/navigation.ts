@@ -215,6 +215,7 @@ export type RootStackParamList = {
   ECardNew: undefined;
   ECardEdit: { cardId: string };
   ECardStats: { cardId: string };
+  ECardAnalyticsDashboard: undefined;
 };
 
 export type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;

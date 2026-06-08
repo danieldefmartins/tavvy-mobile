@@ -298,7 +298,12 @@ export default function ECardHubScreen() {
           <Ionicons name="arrow-back" size={22} color={isDark ? '#fff' : '#111'} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#111' }]}>My eCards</Text>
-        <View style={{ width: 38 }} />
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.navigate('ECardAnalyticsDashboard')}
+        >
+          <Ionicons name="analytics-outline" size={22} color={isDark ? '#fff' : '#111'} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
