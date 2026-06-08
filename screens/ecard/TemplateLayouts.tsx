@@ -219,6 +219,7 @@ export function renderTemplateLayout(props: LayoutProps) {
     case 'premium-static': return renderFullWidthLayout(props);
     case 'politician-generic': return renderCivicCardLayout(props);
     case 'mobile-business': return renderCoverCardLayout(props);
+    case 'church': return renderChurchLayout(props);
     default: return renderBasicLayout(props);
   }
 }
@@ -1396,6 +1397,152 @@ function renderCivicCardRallyLayout(p: LayoutProps) {
   );
 }
 
+// ═══════════════════════════════════════════════════════════
+// 19. CHURCH / FAITH PAGE — Dark overlay, logo, scripture, give CTA, social icons
+// ═══════════════════════════════════════════════════════════
+function renderChurchLayout(p: LayoutProps) {
+  const { color, data, isEditable, children } = p;
+  const accentCol = color.accent || '#c9a84c';
+  const gradientColors: [string, string] = [color.primary, color.secondary];
+  const borderCol = 'rgba(255,255,255,0.15)';
+
+  return (
+    <LinearGradient
+      colors={gradientColors}
+      start={{ x: 0.2, y: 0 }}
+      end={{ x: 0.8, y: 1 }}
+      style={[ls.cardBase, { paddingVertical: 32, paddingHorizontal: 24, alignItems: 'center' }]}
+    >
+      {/* Church logo / profile photo */}
+      <View style={{ marginBottom: 14 }}>
+        {data.profileImage ? (
+          <TouchableOpacity
+            onPress={isEditable ? p.onPickPhoto : undefined}
+            activeOpacity={isEditable ? 0.8 : 1}
+          >
+            <Image
+              source={{ uri: data.profileImage }}
+              style={{
+                width: 88,
+                height: 88,
+                borderRadius: 44,
+                borderWidth: 3,
+                borderColor: 'rgba(255,255,255,0.35)',
+              }}
+            />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={isEditable ? p.onPickPhoto : undefined}
+            activeOpacity={isEditable ? 0.8 : 1}
+            style={{
+              width: 88,
+              height: 88,
+              borderRadius: 44,
+              backgroundColor: 'rgba(255,255,255,0.12)',
+              borderWidth: 3,
+              borderColor: 'rgba(255,255,255,0.3)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 32 }}>{'\u26EA'}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Church name */}
+      <EditableText
+        value={data.name}
+        onChange={p.onChangeName}
+        placeholder="Church Name"
+        style={[ls.churchName]}
+        isEditable={isEditable}
+        isLightCard={false}
+      />
+
+      {/* Tagline (uses titleRole) */}
+      <EditableText
+        value={data.titleRole}
+        onChange={p.onChangeTitle}
+        placeholder="Welcome message or tagline"
+        style={[ls.churchTagline]}
+        isEditable={isEditable}
+        isLightCard={false}
+      />
+
+      {/* Location */}
+      {(data.address || isEditable) && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+          <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11 }}>{'\uD83D\uDCCD'}</Text>
+          <EditableText
+            value={data.address}
+            onChange={p.onChangeAddress}
+            placeholder="City, State"
+            style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, textAlign: 'center' }}
+            isEditable={isEditable}
+            isLightCard={false}
+          />
+        </View>
+      )}
+
+      {/* Scripture / bio */}
+      {(data.bio || isEditable) && (
+        <View style={ls.churchScriptureContainer}>
+          <EditableText
+            value={data.bio ? `\u201C${data.bio}\u201D` : data.bio}
+            onChange={p.onChangeBio}
+            placeholder="Scripture verse or message"
+            style={[ls.churchScripture]}
+            isEditable={isEditable}
+            isLightCard={false}
+            multiline
+            maxLength={300}
+          />
+        </View>
+      )}
+
+      {/* Give / Tithe CTA button */}
+      <View style={[ls.churchGiveBtn, { backgroundColor: accentCol, shadowColor: accentCol }]}>
+        <Text style={{ fontSize: 14 }}>{'\uD83D\uDE4F'}</Text>
+        <Text style={ls.churchGiveBtnText}>Give / Tithe</Text>
+      </View>
+
+      {/* Sample frosted glass link buttons */}
+      <View style={{ width: '100%', gap: 10, marginTop: 10 }}>
+        <View style={ls.churchLinkBtn}>
+          <Text style={ls.churchLinkBtnText}>Watch Sermons</Text>
+        </View>
+        <View style={ls.churchLinkBtn}>
+          <Text style={ls.churchLinkBtnText}>Service Times</Text>
+        </View>
+      </View>
+
+      {/* Social icons */}
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 14, marginTop: 20 }}>
+        {['logo-instagram', 'logo-youtube', 'logo-facebook'].map((icon, i) => (
+          <View key={i} style={ls.churchSocialCircle}>
+            <Ionicons name={icon as any} size={18} color="rgba(255,255,255,0.9)" />
+          </View>
+        ))}
+      </View>
+
+      {/* Contact info */}
+      <View style={ls.contactSection}>
+        <ContactRow icon="call" value={data.phone} onChange={p.onChangePhone} placeholder="Phone" keyboard="phone-pad" textColor="#FFFFFF" borderColor={borderCol} isEditable={isEditable} isLightCard={false} />
+        <ContactRow icon="mail" value={data.email} onChange={p.onChangeEmail} placeholder="Email" keyboard="email-address" textColor="#FFFFFF" borderColor={borderCol} isEditable={isEditable} isLightCard={false} />
+        <ContactRow icon="globe" value={data.website} onChange={p.onChangeWebsite} placeholder="Website" keyboard="url" textColor="#FFFFFF" borderColor={borderCol} isEditable={isEditable} isLightCard={false} />
+        <WebsiteLabelRow website={data.website} websiteLabel={data.websiteLabel} onChange={p.onChangeWebsiteLabel} textColor="#FFFFFF" borderColor={borderCol} isEditable={isEditable} isLightCard={false} />
+      </View>
+
+      {/* Footer */}
+      <Text style={ls.churchFooter}>TAVVY</Text>
+
+      {children}
+    </LinearGradient>
+  );
+}
+
 const ls = StyleSheet.create({  // Shared
   cardBase: { overflow: 'hidden' },
   fieldsCenter: { paddingHorizontal: 20, alignItems: 'center', width: '100%' },
@@ -1484,4 +1631,16 @@ const ls = StyleSheet.create({  // Shared
   proCardBottom: { padding: 24, paddingTop: 8 },
   proCardContactIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   proCardAddBtn: { width: '100%', height: 48, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 20 },
+
+  // Church / Faith Page
+  churchName: { fontSize: 22, fontWeight: '700', color: '#FFFFFF', textAlign: 'center', letterSpacing: 0.3, marginBottom: 6, width: '100%' },
+  churchTagline: { fontSize: 13, fontStyle: 'italic', color: 'rgba(255,255,255,0.75)', textAlign: 'center', marginBottom: 4, width: '100%' },
+  churchScriptureContainer: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 8, marginTop: 8, maxWidth: 280, alignSelf: 'center' },
+  churchScripture: { fontSize: 12, color: 'rgba(255,255,255,0.65)', textAlign: 'center', lineHeight: 19, width: '100%' },
+  churchGiveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 20, borderRadius: 50, marginTop: 20, width: '100%', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 6 },
+  churchGiveBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5 },
+  churchLinkBtn: { alignItems: 'center', justifyContent: 'center', paddingVertical: 13, paddingHorizontal: 20, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  churchLinkBtnText: { fontSize: 14, fontWeight: '500', color: '#FFFFFF', textAlign: 'center' },
+  churchSocialCircle: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  churchFooter: { color: 'rgba(255,255,255,0.25)', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', marginTop: 24 },
 });

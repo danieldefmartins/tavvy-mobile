@@ -39,7 +39,7 @@ const TEMPLATE_CATEGORIES: Record<string, string[]> = {
     'pro-card', 'pro-corporate', 'pro-creative', 'cover-card', 'mobile-business',
   ],
   personal: [
-    'basic', 'blogger', 'full-width', 'premium-static', 'pro-realtor',
+    'basic', 'blogger', 'full-width', 'premium-static', 'pro-realtor', 'church',
   ],
   politician: [
     'civic-card', 'civic-card-flag', 'civic-card-bold',
