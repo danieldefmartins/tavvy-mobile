@@ -337,8 +337,8 @@ async function searchWithGeoBounds(
     // Search places table with geo bounds
     supabase
       .from('places')
-      .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, street, phone')
-      .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
+      .select('id, name, city, region, tavvy_category, tavvy_subcategory, latitude, longitude, cover_image_url, street, phone')
+      .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%,tavvy_category.ilike.%${searchTerm}%,tavvy_subcategory.ilike.%${searchTerm}%`)
       .eq('status', 'active')
       .gte('latitude', minLat)
       .lte('latitude', maxLat)
@@ -371,8 +371,8 @@ async function searchWithoutLocation(
   const [placesResult, fsqResult] = await Promise.all([
     supabase
       .from('places')
-      .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, street, phone')
-      .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%`)
+      .select('id, name, city, region, tavvy_category, tavvy_subcategory, latitude, longitude, cover_image_url, street, phone')
+      .or(`name.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%,tavvy_category.ilike.%${searchTerm}%,tavvy_subcategory.ilike.%${searchTerm}%`)
       .eq('status', 'active')
       .limit(limit),
     supabase
@@ -414,6 +414,7 @@ function processSearchResults(
           city: s.city,
           region: s.region,
           category: s.tavvy_category,
+          subcategory: s.tavvy_subcategory,
           cover_image_url: s.cover_image_url,
           address: s.street,
           phone: s.phone,
@@ -651,7 +652,7 @@ export async function prefetchNearbyPlaces(
     // Use 'places' table (canonical) instead of 'places_search' which may not exist
     const { data, error } = await supabase
       .from('places')
-      .select('id, name, city, region, tavvy_category, latitude, longitude, cover_image_url, street, phone')
+      .select('id, name, city, region, tavvy_category, tavvy_subcategory, latitude, longitude, cover_image_url, street, phone')
       .gte('latitude', minLat)
       .lte('latitude', maxLat)
       .gte('longitude', minLng)
@@ -674,6 +675,7 @@ export async function prefetchNearbyPlaces(
       city: s.city,
       region: s.region,
       category: s.tavvy_category,
+      subcategory: s.tavvy_subcategory,
       cover_image_url: s.cover_image_url,
       address: s.street,
       phone: s.phone,
@@ -712,9 +714,11 @@ export function searchPrefetchedPlaces(
   
   // Filter and sort matching places
   const matches = prefetchedPlaces
-    .filter(p => 
+    .filter(p =>
       p.name.toLowerCase().includes(searchTerm) ||
-      (p.city && p.city.toLowerCase().includes(searchTerm))
+      (p.city && p.city.toLowerCase().includes(searchTerm)) ||
+      (p.category && p.category.toLowerCase().includes(searchTerm)) ||
+      (p.subcategory && p.subcategory.toLowerCase().includes(searchTerm))
     )
     .sort((a, b) => {
       // Prioritize prefix matches
