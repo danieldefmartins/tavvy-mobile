@@ -46,14 +46,27 @@ const { width, height } = Dimensions.get('window');
 
 // Featured carousel — rides + every Tavvy feature (broad appeal, not rides-only)
 const FEATURE_CARD_W = Math.round(width * 0.82);
+const FEATURE_IMG = 'https://scasgwrikoqdwlwlwcff.supabase.co/storage/v1/object/public/tavvy-assets/features';
 const FEATURE_SLIDES = [
-  { id: 'rides', tag: 'New', title: 'Rides', subtitle: 'Rate every ride — thrill, wait, theming', icon: '🎢', colors: ['#8A05BE', '#EC4899'] as [string, string] },
-  { id: 'restaurants', tag: 'Popular', title: 'Restaurants', subtitle: 'Real signals, not star ratings', icon: '🍽️', colors: ['#EF4444', '#F59E0B'] as [string, string] },
-  { id: 'universes', tag: 'Explore', title: 'Universes', subtitle: 'Theme parks, airports & themed worlds', icon: '🌌', colors: ['#6366F1', '#8A05BE'] as [string, string] },
-  { id: 'hotels', tag: 'Stay', title: 'Hotels', subtitle: 'Find where to stay by what matters', icon: '🏨', colors: ['#0EA5E9', '#6366F1'] as [string, string] },
-  { id: 'cities', tag: 'Discover', title: 'Cities', subtitle: 'Compare livability, food & culture', icon: '🌆', colors: ['#8A05BE', '#0EA5E9'] as [string, string] },
-  { id: 'rv-camping', tag: 'Outdoors', title: 'RV & Camping', subtitle: 'Campgrounds, sites & boondocking', icon: '🏕️', colors: ['#00C2CB', '#10B981'] as [string, string] },
-  { id: 'signals', tag: 'Unique', title: 'Signal Search', subtitle: 'Find places by the vibe you want', icon: '📡', colors: ['#8A05BE', '#C77DFF'] as [string, string] },
+  { id: 'rides', tag: 'New', title: 'Rides', subtitle: 'Rate every ride — thrill, wait, theming', icon: '🎢', image: `${FEATURE_IMG}/rides.png`, colors: ['#8A05BE', '#EC4899'] as [string, string] },
+  { id: 'restaurants', tag: 'Popular', title: 'Restaurants', subtitle: 'Real signals, not star ratings', icon: '🍽️', image: `${FEATURE_IMG}/restaurants.png`, colors: ['#EF4444', '#F59E0B'] as [string, string] },
+  { id: 'universes', tag: 'Explore', title: 'Universes', subtitle: 'Theme parks, airports & themed worlds', icon: '🌌', image: `${FEATURE_IMG}/universes.png`, colors: ['#6366F1', '#8A05BE'] as [string, string] },
+  { id: 'hotels', tag: 'Stay', title: 'Hotels', subtitle: 'Find where to stay by what matters', icon: '🏨', image: `${FEATURE_IMG}/hotels.png`, colors: ['#0EA5E9', '#6366F1'] as [string, string] },
+  { id: 'cities', tag: 'Discover', title: 'Cities', subtitle: 'Compare livability, food & culture', icon: '🌆', image: `${FEATURE_IMG}/cities.png`, colors: ['#8A05BE', '#0EA5E9'] as [string, string] },
+  { id: 'rv-camping', tag: 'Outdoors', title: 'RV & Camping', subtitle: 'Campgrounds, sites & boondocking', icon: '🏕️', image: `${FEATURE_IMG}/rv-camping.png`, colors: ['#00C2CB', '#10B981'] as [string, string] },
+  { id: 'signals', tag: 'Unique', title: 'Signal Search', subtitle: 'Find places by the vibe you want', icon: '📡', image: null as string | null, colors: ['#8A05BE', '#C77DFF'] as [string, string] },
+];
+
+const FEATURE_GRID = [
+  { id: 'restaurants', label: 'Restaurants', icon: 'restaurant' as const },
+  { id: 'hotels', label: 'Hotels', icon: 'bed' as const },
+  { id: 'rides', label: 'Rides', icon: 'rocket' as const },
+  { id: 'universes', label: 'Universes', icon: 'planet' as const },
+  { id: 'pros', label: 'Pros', icon: 'construct' as const },
+  { id: 'cities', label: 'Cities', icon: 'business' as const },
+  { id: 'atlas', label: 'Atlas', icon: 'earth' as const },
+  { id: 'rv-camping', label: 'RV & Camping', icon: 'bonfire' as const },
+  { id: 'signals', label: 'Signals', icon: 'radio' as const },
 ];
 
 // ============================================
@@ -584,6 +597,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       case 'cities': navigation.navigate('CitiesBrowse'); break;
       case 'rv-camping': navigation.navigate('RVCampingBrowse'); break;
       case 'signals': navigation.navigate('SignalSearch'); break;
+      case 'atlas': navigation.navigate('Explore'); break;
+      case 'pros': navigation.navigate('Apps'); break;
       default: break;
     }
   };
@@ -3033,31 +3048,62 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               <TouchableOpacity
                 key={s.id}
                 activeOpacity={0.9}
-                style={{ width: FEATURE_CARD_W, marginRight: 12 }}
+                style={[styles.featureSlide, { width: FEATURE_CARD_W, marginRight: 12 }]}
                 onPress={() => goToFeature(s.id)}
               >
-                <LinearGradient colors={s.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.featureSlide}>
-                  <View style={styles.featureSlideTag}>
-                    <Text style={styles.featureSlideTagText}>{s.tag}</Text>
+                {s.image ? (
+                  <Image source={{ uri: s.image }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+                ) : null}
+                <LinearGradient
+                  colors={s.image ? [`${s.colors[0]}CC`, `${s.colors[1]}CC`] : s.colors}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <LinearGradient
+                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.55)']}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <View style={styles.featureSlideTag}>
+                  <Text style={styles.featureSlideTagText}>{s.tag}</Text>
+                </View>
+                <View style={styles.featureSlideBody}>
+                  <Text style={styles.featureSlideIcon}>{s.icon}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.featureSlideTitle}>{s.title}</Text>
+                    <Text style={styles.featureSlideSubtitle}>{s.subtitle}</Text>
                   </View>
-                  <View style={styles.featureSlideBody}>
-                    <Text style={styles.featureSlideIcon}>{s.icon}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.featureSlideTitle}>{s.title}</Text>
-                      <Text style={styles.featureSlideSubtitle}>{s.subtitle}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.featureSlideCta}>
-                    <Text style={styles.featureSlideCtaText}>Explore</Text>
-                    <Ionicons name="chevron-forward" size={14} color="#fff" />
-                  </View>
-                </LinearGradient>
+                </View>
+                <View style={styles.featureSlideCta}>
+                  <Text style={styles.featureSlideCtaText}>Explore</Text>
+                  <Ionicons name="chevron-forward" size={14} color="#fff" />
+                </View>
               </TouchableOpacity>
             ))}
           </ScrollView>
           <View style={styles.featureDots}>
             {FEATURE_SLIDES.map((s, i) => (
               <View key={s.id} style={[styles.featureDot, i === activeSlide && styles.featureDotActive]} />
+            ))}
+          </View>
+        </View>
+
+        {/* ===== CATEGORY GRID (theme-adaptive icons) ===== */}
+        <View style={styles.featureGridSection}>
+          <Text style={[styles.featureGridLabel, { color: isDark ? '#555' : '#9CA3AF' }]}>Explore Tavvy</Text>
+          <View style={styles.featureGrid}>
+            {FEATURE_GRID.map((f) => (
+              <TouchableOpacity
+                key={f.id}
+                activeOpacity={0.85}
+                style={[styles.featureGridTile, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.07)' : '#EDEDED' }]}
+                onPress={() => goToFeature(f.id)}
+              >
+                <View style={[styles.featureGridIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(23,1,58,0.05)' }]}>
+                  <Ionicons name={f.icon as any} size={24} color={isDark ? '#fff' : '#17013A'} />
+                </View>
+                <Text style={[styles.featureGridTileLabel, { color: isDark ? 'rgba(255,255,255,0.85)' : '#17013A' }]}>{f.label}</Text>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
@@ -4658,6 +4704,45 @@ const styles = StyleSheet.create({
   featureDotActive: {
     width: 20,
     backgroundColor: '#8A05BE',
+  },
+  // Category grid
+  featureGridSection: {
+    marginTop: 18,
+    marginBottom: 8,
+  },
+  featureGridLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+    marginBottom: 12,
+  },
+  featureGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  featureGridTile: {
+    width: '31.5%',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 11,
+  },
+  featureGridIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  featureGridTileLabel: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   // Loading
   loadingContainer: {
