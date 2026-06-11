@@ -3055,7 +3055,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                   <Image source={{ uri: s.image }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
                 ) : null}
                 <LinearGradient
-                  colors={s.image ? [`${s.colors[0]}CC`, `${s.colors[1]}CC`] : s.colors}
+                  colors={s.image ? [`${s.colors[0]}26`, `${s.colors[1]}40`] : s.colors}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={StyleSheet.absoluteFillObject}
@@ -4634,7 +4634,7 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   featureSlide: {
-    minHeight: 150,
+    height: Math.round(FEATURE_CARD_W / 1.5),
     borderRadius: 22,
     padding: 18,
     justifyContent: 'space-between',
