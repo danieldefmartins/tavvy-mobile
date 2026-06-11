@@ -44,6 +44,18 @@ import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get('window');
 
+// Featured carousel — rides + every Tavvy feature (broad appeal, not rides-only)
+const FEATURE_CARD_W = Math.round(width * 0.82);
+const FEATURE_SLIDES = [
+  { id: 'rides', tag: 'New', title: 'Rides', subtitle: 'Rate every ride — thrill, wait, theming', icon: '🎢', colors: ['#8A05BE', '#EC4899'] as [string, string] },
+  { id: 'restaurants', tag: 'Popular', title: 'Restaurants', subtitle: 'Real signals, not star ratings', icon: '🍽️', colors: ['#EF4444', '#F59E0B'] as [string, string] },
+  { id: 'universes', tag: 'Explore', title: 'Universes', subtitle: 'Theme parks, airports & themed worlds', icon: '🌌', colors: ['#6366F1', '#8A05BE'] as [string, string] },
+  { id: 'hotels', tag: 'Stay', title: 'Hotels', subtitle: 'Find where to stay by what matters', icon: '🏨', colors: ['#0EA5E9', '#6366F1'] as [string, string] },
+  { id: 'cities', tag: 'Discover', title: 'Cities', subtitle: 'Compare livability, food & culture', icon: '🌆', colors: ['#8A05BE', '#0EA5E9'] as [string, string] },
+  { id: 'rv-camping', tag: 'Outdoors', title: 'RV & Camping', subtitle: 'Campgrounds, sites & boondocking', icon: '🏕️', colors: ['#00C2CB', '#10B981'] as [string, string] },
+  { id: 'signals', tag: 'Unique', title: 'Signal Search', subtitle: 'Find places by the vibe you want', icon: '📡', colors: ['#8A05BE', '#C77DFF'] as [string, string] },
+];
+
 // ============================================
 // CONSTANTS
 // ============================================
@@ -543,6 +555,36 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       setGreeting('Good evening');
     } else {
       setGreeting('Good night');
+    }
+  };
+
+  // Featured carousel (rides + all Tavvy features)
+  const [activeSlide, setActiveSlide] = useState(0);
+  const carouselRef = useRef<ScrollView>(null);
+  const carouselPausedRef = useRef(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (carouselPausedRef.current) return;
+      setActiveSlide((prev) => {
+        const next = (prev + 1) % FEATURE_SLIDES.length;
+        carouselRef.current?.scrollTo({ x: next * (FEATURE_CARD_W + 12), animated: true });
+        return next;
+      });
+    }, 4500);
+    return () => clearInterval(interval);
+  }, []);
+
+  const goToFeature = (id: string) => {
+    switch (id) {
+      case 'rides': navigation.navigate('RidesBrowse'); break;
+      case 'restaurants': navigation.navigate('Explore', { searchQuery: 'Restaurants' }); break;
+      case 'universes': navigation.navigate('Apps', { screen: 'UniverseDiscovery' }); break;
+      case 'hotels': navigation.navigate('Explore', { searchQuery: 'Hotels' }); break;
+      case 'cities': navigation.navigate('CitiesBrowse'); break;
+      case 'rv-camping': navigation.navigate('RVCampingBrowse'); break;
+      case 'signals': navigation.navigate('SignalSearch'); break;
+      default: break;
     }
   };
 
@@ -2971,6 +3013,55 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           )}
         </View>
 
+        {/* ===== FEATURED CAROUSEL (rides + all Tavvy features) ===== */}
+        <View style={styles.featureCarouselWrap}>
+          <ScrollView
+            ref={carouselRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={FEATURE_CARD_W + 12}
+            decelerationRate="fast"
+            contentContainerStyle={styles.featureCarouselContent}
+            onScrollBeginDrag={() => { carouselPausedRef.current = true; }}
+            onMomentumScrollEnd={(e) => {
+              const i = Math.round(e.nativeEvent.contentOffset.x / (FEATURE_CARD_W + 12));
+              setActiveSlide(i);
+              carouselPausedRef.current = false;
+            }}
+          >
+            {FEATURE_SLIDES.map((s) => (
+              <TouchableOpacity
+                key={s.id}
+                activeOpacity={0.9}
+                style={{ width: FEATURE_CARD_W, marginRight: 12 }}
+                onPress={() => goToFeature(s.id)}
+              >
+                <LinearGradient colors={s.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.featureSlide}>
+                  <View style={styles.featureSlideTag}>
+                    <Text style={styles.featureSlideTagText}>{s.tag}</Text>
+                  </View>
+                  <View style={styles.featureSlideBody}>
+                    <Text style={styles.featureSlideIcon}>{s.icon}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.featureSlideTitle}>{s.title}</Text>
+                      <Text style={styles.featureSlideSubtitle}>{s.subtitle}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.featureSlideCta}>
+                    <Text style={styles.featureSlideCtaText}>Explore</Text>
+                    <Ionicons name="chevron-forward" size={14} color="#fff" />
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <View style={styles.featureDots}>
+            {FEATURE_SLIDES.map((s, i) => (
+              <View key={s.id} style={[styles.featureDot, i === activeSlide && styles.featureDotActive]} />
+            ))}
+          </View>
+        </View>
+
         {/* ===== MOOD CARDS ===== */}
         <View style={styles.moodSection}>
           <Text style={[styles.moodSectionLabel, { color: isDark ? '#555' : '#9CA3AF' }]}>
@@ -4488,6 +4579,86 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 // ============================================
 
 const styles = StyleSheet.create({
+  // Featured carousel
+  featureCarouselWrap: {
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  featureCarouselContent: {
+    paddingRight: 4,
+  },
+  featureSlide: {
+    minHeight: 150,
+    borderRadius: 22,
+    padding: 18,
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+  },
+  featureSlideTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  featureSlideTagText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  featureSlideBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  featureSlideIcon: {
+    fontSize: 40,
+    marginRight: 14,
+  },
+  featureSlideTitle: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  featureSlideSubtitle: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  featureSlideCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  featureSlideCtaText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+    marginRight: 3,
+  },
+  featureDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  featureDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: 'rgba(150,150,150,0.4)',
+    marginHorizontal: 3,
+  },
+  featureDotActive: {
+    width: 20,
+    backgroundColor: '#8A05BE',
+  },
   // Loading
   loadingContainer: {
     flex: 1,
