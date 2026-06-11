@@ -2891,7 +2891,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         ]}>
           <View style={[
               styles.searchInputNew, 
-              { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6' },
+              { backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : '#F3F4F6', borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.20)' : 'transparent' },
               isSearchFocused && { borderColor: '#667EEA', borderWidth: 2 }
             ]}>
             <Ionicons name="search" size={20} color={isDark ? '#888' : '#6B7280'} />
