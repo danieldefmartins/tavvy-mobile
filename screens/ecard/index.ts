@@ -15,5 +15,6 @@ export { default as ECardFormBlockScreen } from './ECardFormBlockScreen';
 export { default as ECardCreateScreen } from './ECardCreateScreen';
 export { default as ECardNewScreen } from './ECardNewScreen';
 export { default as ECardEditScreen } from './ECardEditScreen';
+export { default as ECardStudioScreen } from './ECardStudioScreen';
 export { default as ECardStatsScreen } from './ECardStatsScreen';
 export { default as ECardAnalyticsDashboardScreen } from './ECardAnalyticsDashboardScreen';
