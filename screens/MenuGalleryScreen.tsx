@@ -100,6 +100,14 @@ const PERIOD_LABELS: Record<MealPeriod, string> = {
   all_day: 'All Day',
 };
 
+const ALLERGEN_FILTERS = [
+  { id: 'nut-free', label: 'Nut-Free', tag: 'nut_free' },
+  { id: 'gluten-free', label: 'Gluten-Free', tag: 'gluten_free' },
+  { id: 'dairy-free', label: 'Dairy-Free', tag: 'dairy_free' },
+  { id: 'vegan', label: 'Vegan', tag: 'vegan' },
+  { id: 'vegetarian', label: 'Vegetarian', tag: 'vegetarian' },
+];
+
 export default function MenuGalleryScreen() {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'MenuGallery'>>();
