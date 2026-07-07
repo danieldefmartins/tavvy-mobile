@@ -574,6 +574,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   // Featured carousel (rides + all Tavvy features)
   const [activeSlide, setActiveSlide] = useState(0);
+  // Banner images that failed to load — those slides fall back to the full gradient block
+  const [failedSlideImages, setFailedSlideImages] = useState<Record<string, boolean>>({});
   const carouselRef = useRef<ScrollView>(null);
   const carouselPausedRef = useRef(false);
 
@@ -3026,18 +3028,25 @@ function HomeScreen({ navigation }: { navigation: any }) {
               carouselPausedRef.current = false;
             }}
           >
-            {FEATURE_SLIDES.map((s) => (
+            {FEATURE_SLIDES.map((s) => {
+              const slideImage = s.image && !failedSlideImages[s.id] ? s.image : null;
+              return (
               <TouchableOpacity
                 key={s.id}
                 activeOpacity={0.9}
                 style={[styles.featureSlide, { width: FEATURE_CARD_W, marginRight: 12 }]}
                 onPress={() => goToFeature(s.id)}
               >
-                {s.image ? (
-                  <Image source={{ uri: s.image }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+                {slideImage ? (
+                  <Image
+                    source={{ uri: slideImage }}
+                    style={StyleSheet.absoluteFillObject}
+                    resizeMode="cover"
+                    onError={() => setFailedSlideImages(prev => ({ ...prev, [s.id]: true }))}
+                  />
                 ) : null}
                 <LinearGradient
-                  colors={s.image ? [`${s.colors[0]}26`, `${s.colors[1]}40`] : s.colors}
+                  colors={slideImage ? [`${s.colors[0]}26`, `${s.colors[1]}40`] : s.colors}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={StyleSheet.absoluteFillObject}
@@ -3061,7 +3070,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
                   <Ionicons name="chevron-forward" size={14} color="#fff" />
                 </View>
               </TouchableOpacity>
-            ))}
+              );
+            })}
           </ScrollView>
           <View style={styles.featureDots}>
             {FEATURE_SLIDES.map((s, i) => (
