@@ -20,8 +20,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
 
-export default function MenuScreen() {
+function MenuScreen() {
   const navigation = useNavigation();
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -281,3 +282,5 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 });
+
+export default withScreenErrorBoundary(MenuScreen, 'MenuScreen');

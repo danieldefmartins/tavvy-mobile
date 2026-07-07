@@ -17,6 +17,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useProfile } from '../hooks/useProfile';
 import { useTranslation } from 'react-i18next';
 import { Linking } from 'react-native';
+import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const TEAL_PRIMARY = '#0F8A8A';
@@ -31,7 +32,7 @@ const getUserLevel = (points: number) => {
   return { level: 'Newcomer', icon: '👋', color: '#94A3B8', nextLevel: 'Starter', progress: points / 100 };
 };
 
-export default function ProfileScreen({ navigation }: any) {
+function ProfileScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
   const { profile, stats: profileStats, loading: profileLoading, refresh } = useProfile();
@@ -782,3 +783,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 });
+
+export default withScreenErrorBoundary(ProfileScreen, 'ProfileScreen');

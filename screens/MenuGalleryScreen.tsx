@@ -32,6 +32,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabaseClient';
+import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -108,7 +109,7 @@ const ALLERGEN_FILTERS = [
   { id: 'vegetarian', label: 'Vegetarian', tag: 'vegetarian' },
 ];
 
-export default function MenuGalleryScreen() {
+function MenuGalleryScreen() {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'MenuGallery'>>();
   const { placeId, placeName: initialPlaceName } = route.params;
@@ -788,3 +789,5 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 });
+
+export default withScreenErrorBoundary(MenuGalleryScreen, 'MenuGalleryScreen');

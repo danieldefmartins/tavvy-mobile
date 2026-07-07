@@ -26,6 +26,7 @@ import PulseCard from '../components/PulseCard';
 import { Colors } from '../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
 
 const { width } = Dimensions.get('window');
 
@@ -114,7 +115,7 @@ const STEPS = [
 
 type StepId = typeof STEPS[number]['id'];
 
-export default function AddReviewScreen() {
+function AddReviewScreen() {
   const { t } = useTranslation();
   const route = useRoute<AddReviewRouteProp>();
   const navigation = useNavigation();
@@ -665,3 +666,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
+export default withScreenErrorBoundary(AddReviewScreen, 'AddReviewScreen');

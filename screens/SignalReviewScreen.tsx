@@ -28,7 +28,7 @@ export default function SignalReviewScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<any>();
-  const { leadId, proId, proName } = route.params;
+  const { leadId, proId, proName } = route?.params ?? {};
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -92,6 +92,28 @@ export default function SignalReviewScreen() {
       setSubmitting(false);
     }
   };
+
+  // Friendly error state when opened without the required params
+  // (deep link / stale navigation) instead of crashing.
+  if (!leadId || !proId) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centered}>
+          <Ionicons name="alert-circle-outline" size={56} color="#9CA3AF" />
+          <Text style={styles.errorTitle}>Review unavailable</Text>
+          <Text style={styles.errorMessage}>
+            We couldn't load this review. Please go back and try again.
+          </Text>
+          <TouchableOpacity
+            style={styles.errorBackButton}
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home' as any))}
+          >
+            <Text style={styles.errorBackButtonText}>Go back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (loading) {
     return (
@@ -180,7 +202,11 @@ export default function SignalReviewScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
+  errorTitle: { fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 16, textAlign: 'center' },
+  errorMessage: { fontSize: 15, color: '#6B7280', marginTop: 8, marginBottom: 24, textAlign: 'center', lineHeight: 22 },
+  errorBackButton: { backgroundColor: '#8A05BE', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 12, minWidth: 200, alignItems: 'center' },
+  errorBackButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

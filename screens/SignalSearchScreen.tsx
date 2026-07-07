@@ -24,6 +24,7 @@ import {
   preloadSignalCache,
 } from '../lib/signalService';
 import { spacing, borderRadius, typography, shadows } from '../constants/Colors';
+import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
 
 const { width } = Dimensions.get('window');
 
@@ -50,7 +51,7 @@ interface PlaceResult {
 // COMPONENT
 // ============================================
 
-export default function SignalSearchScreen() {
+function SignalSearchScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { theme, isDark } = useThemeContext();
@@ -822,3 +823,5 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 });
+
+export default withScreenErrorBoundary(SignalSearchScreen, 'SignalSearchScreen');

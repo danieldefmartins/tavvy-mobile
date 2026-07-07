@@ -41,6 +41,7 @@ import { HappeningNow } from '../components/HappeningNow';
 import { QuickFinds } from '../components/QuickFinds';
 import { CategoryIconRow } from '../components/CategoryIconRow';
 import { useTranslation } from 'react-i18next';
+import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
 
 const { width, height } = Dimensions.get('window');
 
@@ -366,7 +367,7 @@ interface GeocodingResult {
 // MAIN COMPONENT
 // ============================================
 
-export default function HomeScreen({ navigation }: { navigation: any }) {
+function HomeScreen({ navigation }: { navigation: any }) {
   const { t } = useTranslation();
   // Theme context for dark mode support
   const { theme, isDark } = useThemeContext();
@@ -6889,3 +6890,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+export default withScreenErrorBoundary(HomeScreen, 'HomeScreen');

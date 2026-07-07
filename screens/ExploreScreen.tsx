@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../constants/Colors';
 import { useTranslation } from 'react-i18next';
+import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
 
 const FILTERS = [
   { id: 'all', label: 'All' },
@@ -19,7 +20,7 @@ const MOCK_DATA = [
   { id: 'jfk', type: 'airport', name: 'JFK Airport', image: 'https://images.unsplash.com/photo-1587163539236-05b92770231d?w=500', subtitle: 'New York, NY • Busy' },
 ];
 
-export default function ExploreScreen() {
+function ExploreScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const [activeFilter, setActiveFilter] = useState('all');
@@ -195,3 +196,5 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 });
+
+export default withScreenErrorBoundary(ExploreScreen, 'ExploreScreen');

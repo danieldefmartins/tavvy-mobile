@@ -29,6 +29,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabaseClient';
 import { useTranslation } from 'react-i18next';
+import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
 
 const { width } = Dimensions.get('window');
 
@@ -59,7 +60,7 @@ interface City {
 // Placeholder image
 const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800';
 
-export default function CitiesBrowseScreen({ navigation }: { navigation: any }) {
+function CitiesBrowseScreen({ navigation }: { navigation: any }) {
   const { t } = useTranslation();
   const { theme, isDark } = useThemeContext();
   const [cities, setCities] = useState<City[]>([]);
@@ -439,3 +440,5 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 });
+
+export default withScreenErrorBoundary(CitiesBrowseScreen, 'CitiesBrowseScreen');

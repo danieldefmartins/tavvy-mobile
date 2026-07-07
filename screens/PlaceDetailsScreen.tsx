@@ -43,6 +43,7 @@ import { StoryViewer } from '../components/StoryViewer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import * as Location from 'expo-location';
+import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
 
 const { width } = Dimensions.get('window');
 
@@ -278,7 +279,7 @@ const getDriveTime = (distanceMiles: number): string => {
   return remainingMins > 0 ? `${hours}h ${remainingMins}m` : `${hours}h`;
 };
 
-export default function PlaceDetailScreen({ route, navigation }: any) {
+function PlaceDetailScreen({ route, navigation }: any) {
   const { t } = useTranslation();
   // ===== STATE DECLARATIONS =====
   const { placeId } = route?.params || {};
@@ -2478,3 +2479,5 @@ const styles = StyleSheet.create({
     padding: 4,
   },
 });
+
+export default withScreenErrorBoundary(PlaceDetailScreen, 'PlaceDetailScreen');
