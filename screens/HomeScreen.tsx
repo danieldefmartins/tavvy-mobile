@@ -3047,17 +3047,17 @@ function HomeScreen({ navigation }: { navigation: any }) {
                   style={StyleSheet.absoluteFillObject}
                 />
                 <View style={styles.featureSlideTag}>
-                  <Text style={styles.featureSlideTagText}>{s.tag}</Text>
+                  <Text style={styles.featureSlideTagText}>{t(`home.featureSlides.${s.id}.tag`, { defaultValue: s.tag })}</Text>
                 </View>
                 <View style={styles.featureSlideBody}>
                   <Text style={styles.featureSlideIcon}>{s.icon}</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.featureSlideTitle}>{s.title}</Text>
-                    <Text style={styles.featureSlideSubtitle}>{s.subtitle}</Text>
+                    <Text style={styles.featureSlideTitle}>{t(`home.featureSlides.${s.id}.title`, { defaultValue: s.title })}</Text>
+                    <Text style={styles.featureSlideSubtitle}>{t(`home.featureSlides.${s.id}.subtitle`, { defaultValue: s.subtitle })}</Text>
                   </View>
                 </View>
                 <View style={styles.featureSlideCta}>
-                  <Text style={styles.featureSlideCtaText}>Explore</Text>
+                  <Text style={styles.featureSlideCtaText}>{t('home.explore', { defaultValue: 'Explore' })}</Text>
                   <Ionicons name="chevron-forward" size={14} color="#fff" />
                 </View>
               </TouchableOpacity>
@@ -3072,7 +3072,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
         {/* ===== CATEGORY GRID (theme-adaptive icons) ===== */}
         <View style={styles.featureGridSection}>
-          <Text style={[styles.featureGridLabel, { color: isDark ? '#555' : '#9CA3AF' }]}>Explore Tavvy</Text>
+          <Text style={[styles.featureGridLabel, { color: isDark ? '#555' : '#9CA3AF' }]}>{t('home.exploreTavvy', { defaultValue: 'Explore Tavvy' })}</Text>
           <View style={styles.featureGrid}>
             {FEATURE_GRID.map((f) => (
               <TouchableOpacity
@@ -3084,7 +3084,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
                 <View style={[styles.featureGridIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(23,1,58,0.05)' }]}>
                   <Ionicons name={f.icon as any} size={24} color={isDark ? '#fff' : '#17013A'} />
                 </View>
-                <Text style={[styles.featureGridTileLabel, { color: isDark ? 'rgba(255,255,255,0.85)' : '#17013A' }]}>{f.label}</Text>
+                <Text style={[styles.featureGridTileLabel, { color: isDark ? 'rgba(255,255,255,0.85)' : '#17013A' }]}>{t(`home.featureGrid.${f.id}`, { defaultValue: f.label })}</Text>
               </TouchableOpacity>
             ))}
           </View>

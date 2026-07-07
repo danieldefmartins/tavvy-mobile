@@ -136,7 +136,7 @@ function CitiesBrowseScreen({ navigation }: { navigation: any }) {
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <ActivityIndicator size="large" color={COLORS.accent} />
         <Text style={[styles.loadingText, { color: secondaryTextColor }]}>
-          Loading cities...
+          {t('cities.loading', { defaultValue: 'Loading cities...' })}
         </Text>
       </View>
     );

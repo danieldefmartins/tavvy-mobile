@@ -146,7 +146,56 @@
     "recentlyViewed": "Recently Viewed",
     "savedPlaces": "Saved Places",
     "myPlaces": "My Places",
-    "favorites": "Favorites"
+    "favorites": "Favorites",
+    "exploreTavvy": "Explore Tavvy",
+    "featureSlides": {
+      "rides": {
+        "tag": "New",
+        "title": "Rides",
+        "subtitle": "Rate every ride — thrill, wait, theming"
+      },
+      "restaurants": {
+        "tag": "Popular",
+        "title": "Restaurants",
+        "subtitle": "Real signals, not star ratings"
+      },
+      "universes": {
+        "tag": "Explore",
+        "title": "Universes",
+        "subtitle": "Theme parks, airports & themed worlds"
+      },
+      "hotels": {
+        "tag": "Stay",
+        "title": "Hotels",
+        "subtitle": "Find where to stay by what matters"
+      },
+      "cities": {
+        "tag": "Discover",
+        "title": "Cities",
+        "subtitle": "Compare livability, food & culture"
+      },
+      "rv-camping": {
+        "tag": "Outdoors",
+        "title": "RV & Camping",
+        "subtitle": "Campgrounds, sites & boondocking"
+      },
+      "signals": {
+        "tag": "Unique",
+        "title": "Signal Search",
+        "subtitle": "Find places by the vibe you want"
+      }
+    },
+    "featureGrid": {
+      "restaurants": "Restaurants",
+      "hotels": "Hotels",
+      "rides": "Rides",
+      "universes": "Universes",
+      "pros": "Pros",
+      "cities": "Cities",
+      "atlas": "Atlas",
+      "rv-camping": "RV & Camping",
+      "signals": "Signals"
+    }
   },
   "places": {
     "placeDetails": "Place Details",
@@ -422,7 +471,8 @@
     "rateCity": "Rate this City",
     "cityDetails": "City Details",
     "cityNotFound": "City not found",
-    "cityInfoComingSoon": "City information coming soon..."
+    "cityInfoComingSoon": "City information coming soon...",
+    "loading": "Loading cities..."
   },
   "atlas": {
     "title": "Atlas",
@@ -1123,5 +1173,11 @@
     "faqA2": "Funds are held in escrow until the service is completed to your satisfaction. You can pay directly or have Tavvy pay on your behalf.",
     "faqQ3": "What if I'm not satisfied?",
     "faqA3": "Our dispute resolution team will work with both parties to find a fair solution. Escrow funds are released only when issues are resolved."
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "message": "This screen ran into a problem. You can try again or go back.",
+    "tryAgain": "Try again",
+    "goBack": "Go back"
   }
 }

@@ -146,7 +146,56 @@
     "onTheGo": "Onderweg",
     "locationRequired": "Locatietoegang vereist",
     "expandSearch": "Vergroot uw zoekgebied",
-    "adjustFilters": "Pas uw filters aan"
+    "adjustFilters": "Pas uw filters aan",
+    "exploreTavvy": "Ontdek Tavvy",
+    "featureSlides": {
+      "rides": {
+        "tag": "Nieuw",
+        "title": "Attracties",
+        "subtitle": "Beoordeel elke attractie — spanning, wachttijd, thema"
+      },
+      "restaurants": {
+        "tag": "Populair",
+        "title": "Restaurants",
+        "subtitle": "Echte signalen, geen sterren"
+      },
+      "universes": {
+        "tag": "Verkennen",
+        "title": "Universums",
+        "subtitle": "Pretparken, luchthavens en themawerelden"
+      },
+      "hotels": {
+        "tag": "Verblijf",
+        "title": "Hotels",
+        "subtitle": "Vind een verblijf op basis van wat telt"
+      },
+      "cities": {
+        "tag": "Ontdek",
+        "title": "Steden",
+        "subtitle": "Vergelijk leefbaarheid, eten en cultuur"
+      },
+      "rv-camping": {
+        "tag": "Buiten",
+        "title": "Camper & Camping",
+        "subtitle": "Campings, plekken en vrij kamperen"
+      },
+      "signals": {
+        "tag": "Uniek",
+        "title": "Signaalzoeken",
+        "subtitle": "Vind plekken op de sfeer die je zoekt"
+      }
+    },
+    "featureGrid": {
+      "restaurants": "Restaurants",
+      "hotels": "Hotels",
+      "rides": "Attracties",
+      "universes": "Universums",
+      "pros": "Pros",
+      "cities": "Steden",
+      "atlas": "Atlas",
+      "rv-camping": "Camper & Camping",
+      "signals": "Signalen"
+    }
   },
   "places": {
     "placeDetails": "Plaatsdetails",
@@ -422,7 +471,8 @@
     "rateCity": "Beoordeel deze stad",
     "cityDetails": "Stadsdetails",
     "cityNotFound": "Stad niet gevonden",
-    "cityInfoComingSoon": "Stadsinformatie binnenkort beschikbaar..."
+    "cityInfoComingSoon": "Stadsinformatie binnenkort beschikbaar...",
+    "loading": "Steden laden..."
   },
   "atlas": {
     "title": "Atlas",
@@ -1123,5 +1173,11 @@
     "faqA2": "Fondsen worden in escrow gehouden totdat de dienst naar uw tevredenheid is voltooid. U kunt direct betalen of Tavvy namens u laten betalen.",
     "faqQ3": "Wat als ik niet tevreden ben?",
     "faqA3": "Ons geschillenbeslechtingsteam werkt met beide partijen om een eerlijke oplossing te vinden. Escrow-fondsen worden alleen vrijgegeven wanneer problemen zijn opgelost."
+  },
+  "errorBoundary": {
+    "title": "Er is iets misgegaan",
+    "message": "Dit scherm heeft een probleem. Probeer het opnieuw of ga terug.",
+    "tryAgain": "Opnieuw proberen",
+    "goBack": "Ga terug"
   }
 }

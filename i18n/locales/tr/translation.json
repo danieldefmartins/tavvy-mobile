@@ -146,7 +146,56 @@
     "onTheGo": "Hareket Halinde",
     "locationRequired": "Konum erişimi gerekli",
     "expandSearch": "Arama alanınızı genişletin",
-    "adjustFilters": "Filtrelerinizi ayarlayın"
+    "adjustFilters": "Filtrelerinizi ayarlayın",
+    "exploreTavvy": "Tavvy'yi Keşfet",
+    "featureSlides": {
+      "rides": {
+        "tag": "Yeni",
+        "title": "Atraksiyonlar",
+        "subtitle": "Her atraksiyonu puanla — heyecan, bekleme, tema"
+      },
+      "restaurants": {
+        "tag": "Popüler",
+        "title": "Restoranlar",
+        "subtitle": "Yıldız değil, gerçek sinyaller"
+      },
+      "universes": {
+        "tag": "Keşfet",
+        "title": "Evrenler",
+        "subtitle": "Tema parkları, havalimanları ve temalı dünyalar"
+      },
+      "hotels": {
+        "tag": "Konaklama",
+        "title": "Oteller",
+        "subtitle": "Neyin önemli olduğuna göre kalacak yer bul"
+      },
+      "cities": {
+        "tag": "Keşfet",
+        "title": "Şehirler",
+        "subtitle": "Yaşanabilirlik, yemek ve kültürü karşılaştır"
+      },
+      "rv-camping": {
+        "tag": "Açık hava",
+        "title": "Karavan ve Kamp",
+        "subtitle": "Kamp alanları, alanlar ve serbest kamp"
+      },
+      "signals": {
+        "tag": "Benzersiz",
+        "title": "Sinyal Arama",
+        "subtitle": "İstediğin atmosfere göre mekân bul"
+      }
+    },
+    "featureGrid": {
+      "restaurants": "Restoranlar",
+      "hotels": "Oteller",
+      "rides": "Atraksiyonlar",
+      "universes": "Evrenler",
+      "pros": "Pros",
+      "cities": "Şehirler",
+      "atlas": "Atlas",
+      "rv-camping": "Karavan ve Kamp",
+      "signals": "Sinyaller"
+    }
   },
   "places": {
     "placeDetails": "Yer detayları",
@@ -422,7 +471,8 @@
     "rateCity": "Bu şehri puanla",
     "cityDetails": "Şehir detayları",
     "cityNotFound": "Şehir bulunamadı",
-    "cityInfoComingSoon": "Şehir bilgileri yakında..."
+    "cityInfoComingSoon": "Şehir bilgileri yakında...",
+    "loading": "Şehirler yükleniyor..."
   },
   "atlas": {
     "title": "Atlas",
@@ -1123,5 +1173,11 @@
     "faqA2": "Hizmet memnuniyetinize uygun şekilde tamamlanana kadar fonlar emanette tutulur. Doğrudan ödeme yapabilir veya Tavvy'nin sizin adınıza ödemesine izin verebilirsiniz.",
     "faqQ3": "Memnun kalmazsam ne olur?",
     "faqA3": "Anlaşmazlık çözüm ekibimiz adil bir çözüm bulmak için her iki tarafla da çalışacaktır. Emanet fonları yalnızca sorunlar çözüldüğünde serbest bırakılır."
+  },
+  "errorBoundary": {
+    "title": "Bir şeyler ters gitti",
+    "message": "Bu ekranda bir sorun oluştu. Tekrar deneyin veya geri dönün.",
+    "tryAgain": "Tekrar dene",
+    "goBack": "Geri dön"
   }
 }

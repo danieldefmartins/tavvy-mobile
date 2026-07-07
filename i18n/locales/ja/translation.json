@@ -146,7 +146,56 @@
     "refresh": "更新",
     "locationRequired": "位置情報へのアクセスが必要です",
     "expandSearch": "検索範囲を広げる",
-    "adjustFilters": "フィルターを調整"
+    "adjustFilters": "フィルターを調整",
+    "exploreTavvy": "Tavvyを探索",
+    "featureSlides": {
+      "rides": {
+        "tag": "新着",
+        "title": "ライド",
+        "subtitle": "スリル・待ち時間・テーマ性まで全ライドを評価"
+      },
+      "restaurants": {
+        "tag": "人気",
+        "title": "レストラン",
+        "subtitle": "星ではなくリアルなシグナルで評価"
+      },
+      "universes": {
+        "tag": "探索",
+        "title": "ユニバース",
+        "subtitle": "テーマパーク、空港、テーマの世界"
+      },
+      "hotels": {
+        "tag": "宿泊",
+        "title": "ホテル",
+        "subtitle": "大事なポイントで宿を探す"
+      },
+      "cities": {
+        "tag": "発見",
+        "title": "都市",
+        "subtitle": "住みやすさ・食・文化を比較"
+      },
+      "rv-camping": {
+        "tag": "アウトドア",
+        "title": "RV・キャンプ",
+        "subtitle": "キャンプ場・サイト・車中泊"
+      },
+      "signals": {
+        "tag": "ユニーク",
+        "title": "シグナル検索",
+        "subtitle": "求める雰囲気で場所を探す"
+      }
+    },
+    "featureGrid": {
+      "restaurants": "レストラン",
+      "hotels": "ホテル",
+      "rides": "ライド",
+      "universes": "ユニバース",
+      "pros": "プロ",
+      "cities": "都市",
+      "atlas": "アトラス",
+      "rv-camping": "RV・キャンプ",
+      "signals": "シグナル"
+    }
   },
   "places": {
     "placeDetails": "場所の詳細",
@@ -422,7 +471,8 @@
     "rateCity": "この都市を評価",
     "cityDetails": "都市の詳細",
     "cityNotFound": "都市が見つかりません",
-    "cityInfoComingSoon": "都市情報は近日公開..."
+    "cityInfoComingSoon": "都市情報は近日公開...",
+    "loading": "都市を読み込み中..."
   },
   "atlas": {
     "title": "アトラス",
@@ -1123,5 +1173,11 @@
     "faqA2": "サービスが満足のいく形で完了するまで、資金はエスクローで保持されます。直接支払うか、Tavvyに代理で支払わせることができます。",
     "faqQ3": "満足できない場合は？",
     "faqA3": "紛争解決チームが両者と協力して公正な解決策を見つけます。エスクロー資金は問題が解決された場合にのみ解放されます。"
+  },
+  "errorBoundary": {
+    "title": "問題が発生しました",
+    "message": "この画面でエラーが発生しました。もう一度試すか、前の画面に戻ってください。",
+    "tryAgain": "再試行",
+    "goBack": "戻る"
   }
 }

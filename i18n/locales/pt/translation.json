@@ -146,7 +146,56 @@
     "refresh": "Atualizar",
     "locationRequired": "Acesso à localização necessário",
     "expandSearch": "Amplie sua área de busca",
-    "adjustFilters": "Ajuste seus filtros"
+    "adjustFilters": "Ajuste seus filtros",
+    "exploreTavvy": "Explore o Tavvy",
+    "featureSlides": {
+      "rides": {
+        "tag": "Novo",
+        "title": "Atrações",
+        "subtitle": "Avalie cada atração — emoção, fila, tematização"
+      },
+      "restaurants": {
+        "tag": "Popular",
+        "title": "Restaurantes",
+        "subtitle": "Sinais reais, não estrelas"
+      },
+      "universes": {
+        "tag": "Explore",
+        "title": "Universos",
+        "subtitle": "Parques temáticos, aeroportos e mundos temáticos"
+      },
+      "hotels": {
+        "tag": "Hospede-se",
+        "title": "Hotéis",
+        "subtitle": "Encontre onde ficar pelo que importa"
+      },
+      "cities": {
+        "tag": "Descubra",
+        "title": "Cidades",
+        "subtitle": "Compare qualidade de vida, comida e cultura"
+      },
+      "rv-camping": {
+        "tag": "Ao ar livre",
+        "title": "Trailer e Camping",
+        "subtitle": "Campings, vagas e acampamento livre"
+      },
+      "signals": {
+        "tag": "Único",
+        "title": "Busca por sinais",
+        "subtitle": "Encontre lugares pela vibe que você quer"
+      }
+    },
+    "featureGrid": {
+      "restaurants": "Restaurantes",
+      "hotels": "Hotéis",
+      "rides": "Atrações",
+      "universes": "Universos",
+      "pros": "Pros",
+      "cities": "Cidades",
+      "atlas": "Atlas",
+      "rv-camping": "Trailer e Camping",
+      "signals": "Sinais"
+    }
   },
   "places": {
     "placeDetails": "Detalhes do lugar",
@@ -422,7 +471,8 @@
     "rateCity": "Avaliar esta cidade",
     "cityDetails": "Detalhes da cidade",
     "cityNotFound": "Cidade não encontrada",
-    "cityInfoComingSoon": "Informações da cidade em breve..."
+    "cityInfoComingSoon": "Informações da cidade em breve...",
+    "loading": "Carregando cidades..."
   },
   "atlas": {
     "title": "Atlas",
@@ -1123,5 +1173,11 @@
     "faqA2": "Os fundos são mantidos em custódia até que o serviço seja concluído satisfatoriamente. Você pode pagar diretamente ou fazer a Tavvy pagar em seu nome.",
     "faqQ3": "E se eu não estiver satisfeito?",
     "faqA3": "Nossa equipe de resolução de disputas trabalhará com ambas as partes para encontrar uma solução justa. Os fundos são liberados apenas quando os problemas são resolvidos."
+  },
+  "errorBoundary": {
+    "title": "Algo deu errado",
+    "message": "Esta tela encontrou um problema. Você pode tentar de novo ou voltar.",
+    "tryAgain": "Tentar novamente",
+    "goBack": "Voltar"
   }
 }

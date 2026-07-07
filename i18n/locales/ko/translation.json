@@ -146,7 +146,56 @@
     "refresh": "새로고침",
     "locationRequired": "위치 접근 권한이 필요합니다",
     "expandSearch": "검색 범위를 넓히세요",
-    "adjustFilters": "필터를 조정하세요"
+    "adjustFilters": "필터를 조정하세요",
+    "exploreTavvy": "Tavvy 둘러보기",
+    "featureSlides": {
+      "rides": {
+        "tag": "신규",
+        "title": "놀이기구",
+        "subtitle": "스릴·대기시간·테마까지 모든 놀이기구 평가"
+      },
+      "restaurants": {
+        "tag": "인기",
+        "title": "레스토랑",
+        "subtitle": "별점이 아닌 진짜 시그널"
+      },
+      "universes": {
+        "tag": "탐색",
+        "title": "유니버스",
+        "subtitle": "테마파크, 공항, 테마 세계"
+      },
+      "hotels": {
+        "tag": "숙박",
+        "title": "호텔",
+        "subtitle": "중요한 기준으로 숙소 찾기"
+      },
+      "cities": {
+        "tag": "발견",
+        "title": "도시",
+        "subtitle": "살기 좋은 정도, 음식, 문화 비교"
+      },
+      "rv-camping": {
+        "tag": "아웃도어",
+        "title": "RV·캠핑",
+        "subtitle": "캠핑장, 사이트, 차박"
+      },
+      "signals": {
+        "tag": "특별함",
+        "title": "시그널 검색",
+        "subtitle": "원하는 분위기로 장소 찾기"
+      }
+    },
+    "featureGrid": {
+      "restaurants": "레스토랑",
+      "hotels": "호텔",
+      "rides": "놀이기구",
+      "universes": "유니버스",
+      "pros": "프로",
+      "cities": "도시",
+      "atlas": "아틀라스",
+      "rv-camping": "RV·캠핑",
+      "signals": "시그널"
+    }
   },
   "places": {
     "placeDetails": "장소 상세",
@@ -422,7 +471,8 @@
     "rateCity": "이 도시 평가",
     "cityDetails": "도시 상세",
     "cityNotFound": "도시를 찾을 수 없음",
-    "cityInfoComingSoon": "도시 정보 출시 예정..."
+    "cityInfoComingSoon": "도시 정보 출시 예정...",
+    "loading": "도시 불러오는 중..."
   },
   "atlas": {
     "title": "아틀라스",
@@ -1123,5 +1173,11 @@
     "faqA2": "서비스가 만족스럽게 완료될 때까지 자금이 에스크로로 보관됩니다. 직접 결제하거나 Tavvy가 대신 결제하도록 할 수 있습니다.",
     "faqQ3": "만족하지 못하면 어떻게 되나요?",
     "faqA3": "분쟁 해결 팀이 양측과 협력하여 공정한 해결책을 찾습니다. 에스크로 자금은 문제가 해결된 경우에만 해제됩니다."
+  },
+  "errorBoundary": {
+    "title": "문제가 발생했습니다",
+    "message": "이 화면에서 문제가 발생했습니다. 다시 시도하거나 뒤로 돌아가세요.",
+    "tryAgain": "다시 시도",
+    "goBack": "뒤로 가기"
   }
 }

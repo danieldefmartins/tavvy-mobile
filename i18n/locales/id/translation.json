@@ -146,7 +146,56 @@
     "onTheGo": "Dalam Perjalanan",
     "locationRequired": "Akses lokasi diperlukan",
     "expandSearch": "Perluas area pencarian Anda",
-    "adjustFilters": "Sesuaikan filter Anda"
+    "adjustFilters": "Sesuaikan filter Anda",
+    "exploreTavvy": "Jelajahi Tavvy",
+    "featureSlides": {
+      "rides": {
+        "tag": "Baru",
+        "title": "Wahana",
+        "subtitle": "Nilai setiap wahana — sensasi, antrean, tema"
+      },
+      "restaurants": {
+        "tag": "Populer",
+        "title": "Restoran",
+        "subtitle": "Sinyal nyata, bukan bintang"
+      },
+      "universes": {
+        "tag": "Jelajahi",
+        "title": "Semesta",
+        "subtitle": "Taman hiburan, bandara & dunia bertema"
+      },
+      "hotels": {
+        "tag": "Menginap",
+        "title": "Hotel",
+        "subtitle": "Temukan tempat menginap berdasarkan yang penting"
+      },
+      "cities": {
+        "tag": "Temukan",
+        "title": "Kota",
+        "subtitle": "Bandingkan kenyamanan, kuliner & budaya"
+      },
+      "rv-camping": {
+        "tag": "Luar ruangan",
+        "title": "RV & Berkemah",
+        "subtitle": "Perkemahan, lokasi & berkemah bebas"
+      },
+      "signals": {
+        "tag": "Unik",
+        "title": "Pencarian Sinyal",
+        "subtitle": "Temukan tempat sesuai suasana yang kamu mau"
+      }
+    },
+    "featureGrid": {
+      "restaurants": "Restoran",
+      "hotels": "Hotel",
+      "rides": "Wahana",
+      "universes": "Semesta",
+      "pros": "Pros",
+      "cities": "Kota",
+      "atlas": "Atlas",
+      "rv-camping": "RV & Berkemah",
+      "signals": "Sinyal"
+    }
   },
   "places": {
     "placeDetails": "Detail tempat",
@@ -422,7 +471,8 @@
     "rateCity": "Nilai kota ini",
     "cityDetails": "Detail kota",
     "cityNotFound": "Kota tidak ditemukan",
-    "cityInfoComingSoon": "Info kota segera hadir..."
+    "cityInfoComingSoon": "Info kota segera hadir...",
+    "loading": "Memuat kota..."
   },
   "atlas": {
     "title": "Atlas",
@@ -1123,5 +1173,11 @@
     "faqA2": "Dana disimpan dalam escrow sampai layanan selesai sesuai kepuasan Anda. Anda dapat membayar langsung atau membiarkan Tavvy membayar atas nama Anda.",
     "faqQ3": "Bagaimana jika saya tidak puas?",
     "faqA3": "Tim penyelesaian sengketa kami akan bekerja dengan kedua belah pihak untuk menemukan solusi yang adil. Dana escrow hanya dilepaskan ketika masalah terselesaikan."
+  },
+  "errorBoundary": {
+    "title": "Terjadi kesalahan",
+    "message": "Layar ini mengalami masalah. Coba lagi atau kembali.",
+    "tryAgain": "Coba lagi",
+    "goBack": "Kembali"
   }
 }

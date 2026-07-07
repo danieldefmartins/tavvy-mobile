@@ -146,7 +146,56 @@
     "refresh": "刷新",
     "locationRequired": "需要位置访问权限",
     "expandSearch": "扩大搜索范围",
-    "adjustFilters": "调整您的筛选条件"
+    "adjustFilters": "调整您的筛选条件",
+    "exploreTavvy": "探索 Tavvy",
+    "featureSlides": {
+      "rides": {
+        "tag": "新",
+        "title": "游乐设施",
+        "subtitle": "为每个项目打分——刺激度、排队、主题氛围"
+      },
+      "restaurants": {
+        "tag": "热门",
+        "title": "餐厅",
+        "subtitle": "真实信号，而非星级评分"
+      },
+      "universes": {
+        "tag": "探索",
+        "title": "宇宙",
+        "subtitle": "主题公园、机场与主题世界"
+      },
+      "hotels": {
+        "tag": "住宿",
+        "title": "酒店",
+        "subtitle": "按你在意的因素找住处"
+      },
+      "cities": {
+        "tag": "发现",
+        "title": "城市",
+        "subtitle": "比较宜居度、美食与文化"
+      },
+      "rv-camping": {
+        "tag": "户外",
+        "title": "房车与露营",
+        "subtitle": "营地、营位与野营"
+      },
+      "signals": {
+        "tag": "独特",
+        "title": "信号搜索",
+        "subtitle": "按你想要的氛围找地方"
+      }
+    },
+    "featureGrid": {
+      "restaurants": "餐厅",
+      "hotels": "酒店",
+      "rides": "游乐设施",
+      "universes": "宇宙",
+      "pros": "专业人士",
+      "cities": "城市",
+      "atlas": "Atlas",
+      "rv-camping": "房车与露营",
+      "signals": "信号"
+    }
   },
   "places": {
     "placeDetails": "地点详情",
@@ -422,7 +471,8 @@
     "rateCity": "评价此城市",
     "cityDetails": "城市详情",
     "cityNotFound": "未找到城市",
-    "cityInfoComingSoon": "城市信息即将推出..."
+    "cityInfoComingSoon": "城市信息即将推出...",
+    "loading": "正在加载城市..."
   },
   "atlas": {
     "title": "地图集",
@@ -1123,5 +1173,11 @@
     "faqA2": "资金将托管直到服务令您满意完成。您可以直接支付或让Tavvy代为支付。",
     "faqQ3": "如果我不满意怎么办？",
     "faqA3": "我们的争议解决团队将与双方合作找到公平的解决方案。托管资金仅在问题解决后才会释放。"
+  },
+  "errorBoundary": {
+    "title": "出错了",
+    "message": "该页面遇到问题。你可以重试或返回。",
+    "tryAgain": "重试",
+    "goBack": "返回"
   }
 }

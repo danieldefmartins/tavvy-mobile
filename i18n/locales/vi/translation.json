@@ -146,7 +146,56 @@
     "onTheGo": "Trên Đường",
     "locationRequired": "Cần quyền truy cập vị trí",
     "expandSearch": "Mở rộng phạm vi tìm kiếm",
-    "adjustFilters": "Điều chỉnh bộ lọc"
+    "adjustFilters": "Điều chỉnh bộ lọc",
+    "exploreTavvy": "Khám phá Tavvy",
+    "featureSlides": {
+      "rides": {
+        "tag": "Mới",
+        "title": "Trò chơi",
+        "subtitle": "Đánh giá mọi trò chơi — cảm giác mạnh, thời gian chờ, chủ đề"
+      },
+      "restaurants": {
+        "tag": "Phổ biến",
+        "title": "Nhà hàng",
+        "subtitle": "Tín hiệu thật, không phải sao"
+      },
+      "universes": {
+        "tag": "Khám phá",
+        "title": "Vũ trụ",
+        "subtitle": "Công viên chủ đề, sân bay & thế giới theo chủ đề"
+      },
+      "hotels": {
+        "tag": "Lưu trú",
+        "title": "Khách sạn",
+        "subtitle": "Tìm nơi ở theo điều quan trọng với bạn"
+      },
+      "cities": {
+        "tag": "Khám phá",
+        "title": "Thành phố",
+        "subtitle": "So sánh mức sống, ẩm thực & văn hóa"
+      },
+      "rv-camping": {
+        "tag": "Ngoài trời",
+        "title": "RV & Cắm trại",
+        "subtitle": "Khu cắm trại, điểm dừng & cắm trại tự do"
+      },
+      "signals": {
+        "tag": "Độc đáo",
+        "title": "Tìm theo tín hiệu",
+        "subtitle": "Tìm địa điểm theo không khí bạn muốn"
+      }
+    },
+    "featureGrid": {
+      "restaurants": "Nhà hàng",
+      "hotels": "Khách sạn",
+      "rides": "Trò chơi",
+      "universes": "Vũ trụ",
+      "pros": "Pros",
+      "cities": "Thành phố",
+      "atlas": "Atlas",
+      "rv-camping": "RV & Cắm trại",
+      "signals": "Tín hiệu"
+    }
   },
   "places": {
     "placeDetails": "Chi tiết địa điểm",
@@ -422,7 +471,8 @@
     "rateCity": "Đánh giá thành phố này",
     "cityDetails": "Chi tiết thành phố",
     "cityNotFound": "Không tìm thấy thành phố",
-    "cityInfoComingSoon": "Thông tin thành phố sắp ra mắt..."
+    "cityInfoComingSoon": "Thông tin thành phố sắp ra mắt...",
+    "loading": "Đang tải thành phố..."
   },
   "atlas": {
     "title": "Bản Đồ",
@@ -1123,5 +1173,11 @@
     "faqA2": "Tiền được giữ trong ký quỹ cho đến khi dịch vụ hoàn thành theo sự hài lòng của bạn. Bạn có thể thanh toán trực tiếp hoặc để Tavvy thanh toán thay bạn.",
     "faqQ3": "Nếu tôi không hài lòng thì sao?",
     "faqA3": "Đội ngũ giải quyết tranh chấp của chúng tôi sẽ làm việc với cả hai bên để tìm giải pháp công bằng. Tiền ký quỹ chỉ được giải phóng khi các vấn đề được giải quyết."
+  },
+  "errorBoundary": {
+    "title": "Đã xảy ra lỗi",
+    "message": "Màn hình này gặp sự cố. Bạn có thể thử lại hoặc quay lại.",
+    "tryAgain": "Thử lại",
+    "goBack": "Quay lại"
   }
 }

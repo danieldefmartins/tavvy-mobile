@@ -125,7 +125,7 @@
     "recommended": "Empfohlen",
     "forYou": "Für dich",
     "discover": "Entdecken",
-    "explore": "Erkunden",
+    "explore": "Entdecken",
     "browse": "Durchsuchen",
     "seeAll": "Alle anzeigen",
     "viewAll": "Alle anzeigen",
@@ -146,7 +146,56 @@
     "refresh": "Aktualisieren",
     "locationRequired": "Standortzugriff erforderlich",
     "expandSearch": "Erweitern Sie Ihren Suchbereich",
-    "adjustFilters": "Passen Sie Ihre Filter an"
+    "adjustFilters": "Passen Sie Ihre Filter an",
+    "exploreTavvy": "Tavvy entdecken",
+    "featureSlides": {
+      "rides": {
+        "tag": "Neu",
+        "title": "Fahrgeschäfte",
+        "subtitle": "Bewerte jede Attraktion — Nervenkitzel, Wartezeit, Thematisierung"
+      },
+      "restaurants": {
+        "tag": "Beliebt",
+        "title": "Restaurants",
+        "subtitle": "Echte Signale statt Sternebewertungen"
+      },
+      "universes": {
+        "tag": "Entdecken",
+        "title": "Universen",
+        "subtitle": "Freizeitparks, Flughäfen und Themenwelten"
+      },
+      "hotels": {
+        "tag": "Übernachten",
+        "title": "Hotels",
+        "subtitle": "Finde eine Unterkunft nach dem, was zählt"
+      },
+      "cities": {
+        "tag": "Entdecken",
+        "title": "Städte",
+        "subtitle": "Vergleiche Lebensqualität, Essen und Kultur"
+      },
+      "rv-camping": {
+        "tag": "Draußen",
+        "title": "Wohnmobil & Camping",
+        "subtitle": "Campingplätze, Stellplätze und Freistehen"
+      },
+      "signals": {
+        "tag": "Einzigartig",
+        "title": "Signalsuche",
+        "subtitle": "Finde Orte nach der Stimmung, die du suchst"
+      }
+    },
+    "featureGrid": {
+      "restaurants": "Restaurants",
+      "hotels": "Hotels",
+      "rides": "Fahrgeschäfte",
+      "universes": "Universen",
+      "pros": "Pros",
+      "cities": "Städte",
+      "atlas": "Atlas",
+      "rv-camping": "Wohnmobil & Camping",
+      "signals": "Signale"
+    }
   },
   "places": {
     "placeDetails": "Ortsdetails",
@@ -422,7 +471,8 @@
     "rateCity": "Diese Stadt bewerten",
     "cityDetails": "Stadtdetails",
     "cityNotFound": "Stadt nicht gefunden",
-    "cityInfoComingSoon": "Stadtinformationen demnächst verfügbar..."
+    "cityInfoComingSoon": "Stadtinformationen demnächst verfügbar...",
+    "loading": "Städte werden geladen..."
   },
   "atlas": {
     "title": "Atlas",
@@ -1123,5 +1173,11 @@
     "faqA2": "Gelder werden treuhänderisch verwahrt, bis der Service zu Ihrer Zufriedenheit abgeschlossen ist. Sie können direkt zahlen oder Tavvy in Ihrem Namen zahlen lassen.",
     "faqQ3": "Was ist, wenn ich nicht zufrieden bin?",
     "faqA3": "Unser Streitbeilegungsteam arbeitet mit beiden Parteien zusammen, um eine faire Lösung zu finden. Treuhandgelder werden erst freigegeben, wenn Probleme gelöst sind."
+  },
+  "errorBoundary": {
+    "title": "Etwas ist schiefgelaufen",
+    "message": "Auf diesem Bildschirm ist ein Problem aufgetreten. Versuche es erneut oder gehe zurück.",
+    "tryAgain": "Erneut versuchen",
+    "goBack": "Zurück"
   }
 }
