@@ -167,7 +167,7 @@ interface Props {
 
 export default function ECardCreateScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
-  const { templateId: initialTemplateId, colorSchemeId: initialColorId } = route.params || {};
+  const { templateId: initialTemplateId, colorSchemeId: initialColorId, prefillName } = route.params || {};
   const { user } = useAuth();
 
   // ── Template & color state ──
@@ -203,7 +203,8 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
 
   // ── Card data ──
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [name, setName] = useState('');
+  // prefillName: place-context upsell ("Get a Free eCard for X") — parity with web /ecard?for=name
+  const [name, setName] = useState(prefillName || '');
   const [titleRole, setTitleRole] = useState('');
   const [bio, setBio] = useState('');
   const [email, setEmail] = useState('');

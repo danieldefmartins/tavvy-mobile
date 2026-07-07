@@ -26,7 +26,7 @@ import {
   QuickInfoPill,
 } from '../lib/categories';
 import { supabase } from '../lib/supabaseClient';
-import { fetchPlaceSignals, getPlaceReviewCount, SignalAggregate } from '../lib/reviews';
+import { fetchPlaceSignals, getPlaceReviewCount, fetchRecentReviews, RecentReview, SignalAggregate } from '../lib/reviews';
 import SignalMatrix from '../components/SignalMatrix';
 import { Colors } from '../constants/Colors';
 import AddYourTapCardEnhanced from '../components/AddYourTapCardEnhanced';
@@ -291,6 +291,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
     medals: string[];
   }>({ best_for: [], vibe: [], heads_up: [], medals: [] });
   const [photos, setPhotos] = useState<PlacePhoto[]>([]);
+  const [recentReviews, setRecentReviews] = useState<RecentReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -638,6 +639,14 @@ function PlaceDetailScreen({ route, navigation }: any) {
         // Fetch signals with Living Score Logic
         const signalData = await fetchPlaceSignals(placeId);
         setSignals(signalData);
+
+        // Recent reviewers + their tapped signals (parity with web)
+        try {
+          const recent = await fetchRecentReviews(placeId, 10);
+          setRecentReviews(recent);
+        } catch {
+          setRecentReviews([]);
+        }
 
         setLoading(false);
       } catch (err: any) {
@@ -1171,6 +1180,55 @@ function PlaceDetailScreen({ route, navigation }: any) {
           />
         </View>
 
+        {/* ===== RECENT REVIEWS (parity with web place page) ===== */}
+        {recentReviews.length > 0 && (
+          <View style={styles.sectionPadding}>
+            <Text style={styles.recentReviewsTitle}>Recent Reviews</Text>
+            {recentReviews.map((review) => (
+              <View key={review.reviewId} style={styles.recentReviewRow}>
+                <View style={styles.recentReviewAvatar}>
+                  <Text style={styles.recentReviewInitial}>{review.initial}</Text>
+                </View>
+                <View style={styles.recentReviewBody}>
+                  <View style={styles.recentReviewHeader}>
+                    <Text style={styles.recentReviewName} numberOfLines={1}>{review.name}</Text>
+                    <Text style={styles.recentReviewWhen}>{review.when}</Text>
+                  </View>
+                  <View style={styles.recentReviewSignals}>
+                    {review.signals.slice(0, 6).map((sig, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.recentReviewChip,
+                          sig.category === 'heads_up'
+                            ? styles.recentReviewChipHeadsUp
+                            : sig.category === 'vibe'
+                              ? styles.recentReviewChipVibe
+                              : styles.recentReviewChipGood,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.recentReviewChipText,
+                            sig.category === 'heads_up'
+                              ? styles.recentReviewChipTextHeadsUp
+                              : sig.category === 'vibe'
+                                ? styles.recentReviewChipTextVibe
+                                : styles.recentReviewChipTextGood,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {sig.label}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* ===== 4. MENU PREVIEW CARD ===== */}
         <View style={styles.sectionPadding}>
           <View style={styles.menuCard}>
@@ -1371,6 +1429,19 @@ function PlaceDetailScreen({ route, navigation }: any) {
                   onPress={() => navigation.navigate('ClaimBusiness', { placeId: place.id, placeName: place.name })}
                 >
                   <Text style={styles.claimText}>🏢 Claim This Business</Text>
+                </TouchableOpacity>
+
+                {/* Free eCard upsell with place context (parity with web /ecard?for=name) */}
+                <TouchableOpacity
+                  style={styles.claimButton}
+                  onPress={() =>
+                    navigation.navigate('Apps', {
+                      screen: 'ECardCreate',
+                      params: { prefillName: place.name },
+                    })
+                  }
+                >
+                  <Text style={styles.claimText}>💳 Get a Free eCard for {place.name}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -1938,6 +2009,89 @@ const styles = StyleSheet.create({
   sectionPadding: {
     paddingHorizontal: 20,
     paddingVertical: 8,
+  },
+  recentReviewsTitle: {
+    fontSize: 19,
+    fontWeight: '800',
+    color: '#1F2937',
+    marginBottom: 12,
+    letterSpacing: -0.2,
+  },
+  recentReviewRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  recentReviewAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#8A05BE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  recentReviewInitial: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  recentReviewBody: {
+    flex: 1,
+  },
+  recentReviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  recentReviewName: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginRight: 8,
+  },
+  recentReviewWhen: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '600',
+  },
+  recentReviewSignals: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  recentReviewChip: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  recentReviewChipGood: {
+    backgroundColor: 'rgba(0,194,203,0.1)',
+    borderColor: 'rgba(0,194,203,0.2)',
+  },
+  recentReviewChipVibe: {
+    backgroundColor: 'rgba(138,5,190,0.08)',
+    borderColor: 'rgba(138,5,190,0.2)',
+  },
+  recentReviewChipHeadsUp: {
+    backgroundColor: 'rgba(245,166,35,0.1)',
+    borderColor: 'rgba(245,166,35,0.2)',
+  },
+  recentReviewChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  recentReviewChipTextGood: {
+    color: '#0A8A8F',
+  },
+  recentReviewChipTextVibe: {
+    color: '#6B04A0',
+  },
+  recentReviewChipTextHeadsUp: {
+    color: '#9A6600',
   },
   menuCard: {
     backgroundColor: '#fff',

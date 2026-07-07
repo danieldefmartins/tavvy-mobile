@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 
 // ✅ correct file name (no "s")
@@ -22,6 +23,8 @@ export default function FavoriteButton({
   color = '#EF4444',
 }: FavoriteButtonProps) {
   const { user } = useAuth();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
 
   // ✅ auth handled internally by the hook, only pass placeId
   const { data: isFavorite = false, isLoading } = useIsFavorite(placeId);
@@ -31,7 +34,12 @@ export default function FavoriteButton({
 
   const handlePress = async () => {
     if (!user) {
-      Alert.alert('Sign in required', 'Please sign in to save favorites');
+      // Match web's heart -> login flow: send signed-out users to Login with
+      // a return route so they land back on this screen after signing in.
+      navigation.navigate('Login', {
+        returnTo: route?.name,
+        returnParams: route?.params,
+      });
       return;
     }
 

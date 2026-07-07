@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get('window');
 
-export default function LoginScreen({ navigation }: any) {
+export default function LoginScreen({ navigation, route }: any) {
   const { t } = useTranslation();
   const { signIn, signInWithGoogle, signInWithApple, resetPassword } = useAuth();
   const { theme, isDark } = useThemeContext();
@@ -39,8 +39,14 @@ export default function LoginScreen({ navigation }: any) {
     try {
       setLoading(true);
       await signIn(email.trim(), password);
-      // Navigate back after successful login
-      navigation.goBack();
+      // Return to where the user came from (e.g. heart/save on a place),
+      // matching web's heart -> login -> back flow.
+      const { returnTo, returnParams } = route?.params ?? {};
+      if (returnTo) {
+        navigation.navigate(returnTo, returnParams);
+      } else {
+        navigation.goBack();
+      }
     } catch (error: any) {
       console.warn('Login error:', error);
       Alert.alert('Login Failed', error.message || 'Invalid email or password');

@@ -282,10 +282,47 @@ export async function fetchPlacesInBounds(options: FetchPlacesOptions): Promise<
     
     // Sort by distance (closest first)
     deduplicatedPlaces.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
-    
+
     console.log(`[placeService] Sorted ${deduplicatedPlaces.length} places by distance from user`);
   }
-  
+
+  // ============================================
+  // STEP 6: Reviewed-first ordering (parity with web /api/places)
+  // Surface places that HAVE signal reviews at the top, sorted by review
+  // strength descending. Unreviewed places follow, preserving their existing
+  // relative (distance) order. Stable sort so ties don't reshuffle.
+  // ============================================
+  try {
+    const uuidIds = deduplicatedPlaces
+      .filter(p => p.source === 'places' && UUID_REGEX.test(p.id))
+      .map(p => p.id);
+
+    if (uuidIds.length > 0) {
+      const { data: countRows, error: countError } = await supabase
+        .rpc('get_places_signal_counts', { p_place_ids: uuidIds });
+
+      if (!countError && countRows && countRows.length > 0) {
+        const tapTotals = new Map<string, number>();
+        for (const row of countRows as any[]) {
+          tapTotals.set(row.place_id, (tapTotals.get(row.place_id) || 0) + (Number(row.tap_count) || 0));
+        }
+
+        deduplicatedPlaces = deduplicatedPlaces
+          .map((p, i) => ({ p, i, taps: tapTotals.get(p.id) || 0 }))
+          .sort((a, b) => {
+            const aReviewed = a.taps > 0;
+            const bReviewed = b.taps > 0;
+            if (aReviewed !== bReviewed) return aReviewed ? -1 : 1;
+            if (aReviewed && bReviewed && b.taps !== a.taps) return b.taps - a.taps;
+            return a.i - b.i; // stable tiebreak: keep existing (distance) order
+          })
+          .map(({ p }) => p);
+      }
+    }
+  } catch (rankError) {
+    console.warn('[placeService] Reviewed-first ranking skipped:', rankError);
+  }
+
   const endTime = Date.now();
 
   const result: FetchPlacesResult = {

@@ -441,6 +441,117 @@ export async function fetchPlaceSignals(placeId: string): Promise<{
   }
 }
 
+// ============================================
+// RECENT REVIEWS (parity with web place page)
+// Reconstructs each person's review from their signal taps.
+// Bounded queries only — no unbounded tap pulls.
+// ============================================
+
+export interface RecentReview {
+  reviewId: string;
+  initial: string;
+  name: string;
+  when: string; // relative time, e.g. "2w ago"
+  signals: Array<{ label: string; category: ReviewCategory }>;
+}
+
+function relativeTime(dateString: string): string {
+  const then = new Date(dateString).getTime();
+  const diffMs = Date.now() - then;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks}w ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(days / 365)}y ago`;
+}
+
+export async function fetchRecentReviews(placeId: string, limit: number = 10): Promise<RecentReview[]> {
+  try {
+    if (!isValidUUID(placeId)) return [];
+    await loadSignalCache();
+
+    // Recent taps only (bounded) — enough to reconstruct the last `limit` reviews
+    const { data: taps, error } = await supabase
+      .from('place_review_signal_taps')
+      .select('review_id, signal_id, created_at')
+      .eq('place_id', placeId)
+      .order('created_at', { ascending: false })
+      .limit(60);
+
+    if (error || !taps || taps.length === 0) return [];
+
+    // Group taps by review, newest review first
+    const order: string[] = [];
+    const byReview: Record<string, { created_at: string; signals: Array<{ label: string; category: ReviewCategory }>; seen: Set<string> }> = {};
+    for (const tap of taps as any[]) {
+      if (!tap.review_id) continue;
+      if (!byReview[tap.review_id]) {
+        byReview[tap.review_id] = { created_at: tap.created_at, signals: [], seen: new Set() };
+        order.push(tap.review_id);
+      }
+      const bucket = byReview[tap.review_id];
+      const sig = getSignalById(tap.signal_id);
+      if (sig && !bucket.seen.has(tap.signal_id)) {
+        bucket.seen.add(tap.signal_id);
+        bucket.signals.push({ label: sig.label, category: sig.signal_type });
+      }
+    }
+
+    const topReviewIds = order.slice(0, limit);
+    if (topReviewIds.length === 0) return [];
+
+    // Resolve reviewer names: place_reviews.user_id -> profiles.display_name/username
+    const nameByReview: Record<string, string> = {};
+    try {
+      const { data: revs } = await supabase
+        .from('place_reviews')
+        .select('id, user_id')
+        .in('id', topReviewIds);
+      const userByReview: Record<string, string> = {};
+      const userIds = new Set<string>();
+      (revs || []).forEach((r: any) => {
+        if (r.user_id) { userByReview[r.id] = r.user_id; userIds.add(r.user_id); }
+      });
+      if (userIds.size > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, username')
+          .in('user_id', [...userIds]);
+        const nameByUser: Record<string, string> = {};
+        (profs || []).forEach((p: any) => {
+          nameByUser[p.user_id] = p.display_name || p.username || '';
+        });
+        Object.entries(userByReview).forEach(([rid, uid]) => {
+          const dn = (nameByUser[uid] || '').trim();
+          if (dn && !/agent|system/i.test(dn)) nameByReview[rid] = dn;
+        });
+      }
+    } catch {
+      // names optional
+    }
+
+    return topReviewIds
+      .map((rid) => {
+        const r = byReview[rid];
+        if (!r || r.signals.length === 0) return null;
+        const name = nameByReview[rid] || 'Tavvy member';
+        const initial = (name.replace(/[^A-Za-z]/g, '')[0] || 'T').toUpperCase();
+        return { reviewId: rid, initial, name, when: relativeTime(r.created_at), signals: r.signals };
+      })
+      .filter(Boolean) as RecentReview[];
+  } catch (error) {
+    console.error('Error fetching recent reviews:', error);
+    return [];
+  }
+}
+
 // Fetch user's existing review for a place (if any)
 export async function fetchUserReview(placeId: string): Promise<{
   review: PlaceReview | null;

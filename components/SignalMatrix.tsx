@@ -24,8 +24,15 @@ interface SignalGroup {
   heads_up: SignalAggregate[];
 }
 
+export interface SimpleSignal {
+  bucket: string;
+  tap_total: number;
+}
+
 interface SignalMatrixProps {
-  signals: SignalGroup;
+  signals?: SignalGroup;
+  /** Simple flat signals (e.g. from tap_activity aggregates) — auto-categorized. Matches web's SignalMatrix. */
+  simpleSignals?: SimpleSignal[];
   compact?: boolean;
   onReview?: () => void;
 }
@@ -37,21 +44,51 @@ const CATEGORIES = [
   { key: 'heads_up', label: 'Heads Up', color: '#F5A623', bg: 'rgba(245,166,35,0.1)', border: 'rgba(245,166,35,0.2)', textColor: '#9A6600' },
 ];
 
-export default function SignalMatrix({ signals, compact = false, onReview }: SignalMatrixProps) {
+// Known heads_up / vibe signal labels for categorization (mirrors web SignalMatrix)
+const VIBE_KEYWORDS = ['vibe', 'cozy', 'romantic', 'lively', 'casual', 'upscale', 'old school', 'trendy', 'family', 'quiet', 'loud', 'intimate', 'modern', 'classic', 'chill', 'energetic'];
+const HEADS_UP_KEYWORDS = ['cash only', 'no reservation', 'wait', 'noisy', 'crowded', 'slow', 'expensive', 'limited', 'parking', 'small', 'closed'];
+
+function categorizeSimpleSignal(label: string): 'best_for' | 'vibe' | 'heads_up' {
+  const lower = label.toLowerCase();
+  if (HEADS_UP_KEYWORDS.some(kw => lower.includes(kw))) return 'heads_up';
+  if (VIBE_KEYWORDS.some(kw => lower.includes(kw))) return 'vibe';
+  return 'best_for';
+}
+
+function simpleToGrouped(simpleSignals: SimpleSignal[]): SignalGroup {
+  const grouped: SignalGroup = { best_for: [], vibe: [], heads_up: [] };
+  for (const s of simpleSignals) {
+    const cat = categorizeSimpleSignal(s.bucket);
+    grouped[cat].push({
+      signal_id: s.bucket,
+      tap_total: s.tap_total,
+      review_count: s.tap_total,
+      label: s.bucket,
+      icon: '',
+      category: cat,
+    });
+  }
+  return grouped;
+}
+
+export default function SignalMatrix({ signals, simpleSignals, compact = false, onReview }: SignalMatrixProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const hasSignals = signals.best_for?.length > 0 || signals.vibe?.length > 0 || signals.heads_up?.length > 0;
+  // Convert simple signals to grouped if needed
+  const grouped = signals || (simpleSignals ? simpleToGrouped(simpleSignals) : { best_for: [], vibe: [], heads_up: [] });
 
-  const good1 = signals.best_for?.[0] || null;
-  const good2 = signals.best_for?.[1] || null;
-  const vibe1 = signals.vibe?.[0] || null;
-  const headsUp1 = signals.heads_up?.[0] || null;
+  const hasSignals = grouped.best_for?.length > 0 || grouped.vibe?.length > 0 || grouped.heads_up?.length > 0;
+
+  const good1 = grouped.best_for?.[0] || null;
+  const good2 = grouped.best_for?.[1] || null;
+  const vibe1 = grouped.vibe?.[0] || null;
+  const headsUp1 = grouped.heads_up?.[0] || null;
 
   const boxes = [
-    { signal: good1, cat: CATEGORIES[0], expandKey: 'best_for', allSignals: signals.best_for || [] },
-    { signal: good2, cat: CATEGORIES[1], expandKey: 'best_for_2', allSignals: (signals.best_for || []).slice(1) },
-    { signal: vibe1, cat: CATEGORIES[2], expandKey: 'vibe', allSignals: signals.vibe || [] },
-    { signal: headsUp1, cat: CATEGORIES[3], expandKey: 'heads_up', allSignals: signals.heads_up || [] },
+    { signal: good1, cat: CATEGORIES[0], expandKey: 'best_for', allSignals: grouped.best_for || [] },
+    { signal: good2, cat: CATEGORIES[1], expandKey: 'best_for_2', allSignals: (grouped.best_for || []).slice(1) },
+    { signal: vibe1, cat: CATEGORIES[2], expandKey: 'vibe', allSignals: grouped.vibe || [] },
+    { signal: headsUp1, cat: CATEGORIES[3], expandKey: 'heads_up', allSignals: grouped.heads_up || [] },
   ];
 
   if (!hasSignals) {
