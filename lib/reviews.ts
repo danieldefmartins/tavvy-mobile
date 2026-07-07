@@ -1,5 +1,4 @@
 import { supabase } from './supabaseClient';
-import { calculateDecayedScore } from './signalService';
 
 // Types matching the database schema
 export interface ReviewSignalTap {
@@ -323,52 +322,36 @@ export async function fetchPlaceSignals(placeId: string): Promise<{
       return { best_for: [], vibe: [], heads_up: [], medals: [] };
     }
 
-    // Query the place_review_signal_taps table and JOIN with place_reviews to get created_at
-    const { data: taps, error } = await supabase
-      .from('place_review_signal_taps')
-      .select(`
-        signal_id,
-        intensity,
-        place_reviews (
-          created_at
-        )
-      `)
-      .eq('place_id', placeId);
+    // Aggregate server-side via RPC. Pulling raw tap rows is silently capped
+    // at 1000 rows by PostgREST, so popular places showed wrong Signal Matrix
+    // numbers when aggregated client-side.
+    const { data: countRows, error } = await supabase
+      .rpc('get_places_signal_counts', { p_place_ids: [placeId] });
 
     if (error) {
-      console.error('Error fetching signal taps:', error);
+      console.error('Error fetching signal counts:', error);
       return { best_for: [], vibe: [], heads_up: [], medals: [] };
     }
 
-    // Aggregate the taps by signal_id
-    const aggregated: Record<string, { 
-      tap_total: number; 
+    // Map RPC rows into the existing aggregate shape
+    const aggregated: Record<string, {
+      tap_total: number;
       current_score: number;
       review_count: number;
-      last_tap_at: string | null 
+      last_tap_at: string | null
     }> = {};
-    
-    (taps || []).forEach((tap: any) => {
-      if (!aggregated[tap.signal_id]) {
-        aggregated[tap.signal_id] = { 
-          tap_total: 0, 
-          current_score: 0,
-          review_count: 0,
-          last_tap_at: null 
-        };
-      }
 
-      const createdAt = tap.place_reviews?.created_at || new Date().toISOString();
-      const decayedValue = calculateDecayedScore(tap.intensity, createdAt);
-
-      aggregated[tap.signal_id].tap_total += tap.intensity;
-      aggregated[tap.signal_id].current_score += decayedValue;
-      aggregated[tap.signal_id].review_count += 1;
-      
-      // Track last tap time
-      if (!aggregated[tap.signal_id].last_tap_at || new Date(createdAt) > new Date(aggregated[tap.signal_id].last_tap_at!)) {
-        aggregated[tap.signal_id].last_tap_at = createdAt;
-      }
+    (countRows || []).forEach((row: any) => {
+      const tapCount = Number(row.tap_count) || 0;
+      if (tapCount <= 0) return;
+      aggregated[row.signal_id] = {
+        tap_total: tapCount,
+        // Per-tap intensity/decay data is not pulled anymore (it required raw
+        // rows); the accurate total tap count is the score.
+        current_score: tapCount,
+        review_count: tapCount,
+        last_tap_at: null,
+      };
     });
 
     // Organize by category
@@ -611,81 +594,26 @@ export function clearSignalCache(): void {
 }
 
 // ============================================
-// THERMOMETER BADGE - Recent Activity (Last 3 Months)
+// THERMOMETER BADGE - Signal Activity
 // ============================================
+// NOTE: Counts are aggregated server-side via the get_places_signal_counts
+// RPC. Pulling raw tap rows is silently capped at 1000 by PostgREST, which
+// made popular places under-count. The RPC returns all-time tap counts, so
+// the previous 3-month window / intensity weighting is traded for accuracy.
 
-// Helper: Check if a date is within the specified number of days
-function withinDays(dateString: string, days: number): boolean {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffTime = Math.abs(now.getTime() - date.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays <= days;
-}
-
-// Fetch thermometer data for a place (positive/negative taps in last 3 months)
+// Fetch thermometer data for a place (positive/negative signal taps)
 export async function fetchPlaceThermometer(placeId: string, months: number = 3): Promise<{
   positiveTaps: number;
   negativeTaps: number;
 }> {
-  try {
-    // Ensure signal cache is loaded
-    await loadSignalCache();
-
-    const daysInPeriod = months * 30; // Approximate days in the period
-
-    // Query the place_review_signal_taps table and JOIN with place_reviews to get created_at
-    const { data: taps, error } = await supabase
-      .from('place_review_signal_taps')
-      .select(`
-        signal_id,
-        intensity,
-        place_reviews (
-          created_at
-        )
-      `)
-      .eq('place_id', placeId);
-
-    if (error) {
-      console.error('Error fetching thermometer data:', error);
-      return { positiveTaps: 0, negativeTaps: 0 };
-    }
-
-    let positiveTaps = 0;
-    let negativeTaps = 0;
-
-    (taps || []).forEach((tap: any) => {
-      const createdAt = tap.place_reviews?.created_at;
-      
-      // Only count taps within the specified period
-      if (!createdAt || !withinDays(createdAt, daysInPeriod)) {
-        return;
-      }
-
-      const signal = getSignalById(tap.signal_id);
-      const category = signal?.signal_type;
-
-      if (category === 'best_for' || category === 'vibe') {
-        // Positive taps (intensity-weighted)
-        positiveTaps += tap.intensity;
-      } else if (category === 'heads_up') {
-        // Negative taps (intensity-weighted)
-        negativeTaps += tap.intensity;
-      }
-    });
-
-    return { positiveTaps, negativeTaps };
-
-  } catch (error) {
-    console.error('Error fetching thermometer data:', error);
-    return { positiveTaps: 0, negativeTaps: 0 };
-  }
+  const results = await fetchPlacesThermometer([placeId], months);
+  return results.get(placeId) || { positiveTaps: 0, negativeTaps: 0 };
 }
 
 // Batch fetch thermometer data for multiple places (more efficient)
-export async function fetchPlacesThermometer(placeIds: string[], months: number = 3): Promise<Map<string, { positiveTaps: number; negativeTaps: number }>> {
+export async function fetchPlacesThermometer(placeIds: string[], _months: number = 3): Promise<Map<string, { positiveTaps: number; negativeTaps: number }>> {
   const result = new Map<string, { positiveTaps: number; negativeTaps: number }>();
-  
+
   if (placeIds.length === 0) {
     return result;
   }
@@ -694,51 +622,38 @@ export async function fetchPlacesThermometer(placeIds: string[], months: number 
     // Ensure signal cache is loaded
     await loadSignalCache();
 
-    const daysInPeriod = months * 30;
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - daysInPeriod);
+    // Initialize all places with zero counts
+    placeIds.forEach(id => {
+      result.set(id, { positiveTaps: 0, negativeTaps: 0 });
+    });
 
-    // Query all taps for the given places
-    const { data: taps, error } = await supabase
-      .from('place_review_signal_taps')
-      .select(`
-        place_id,
-        signal_id,
-        intensity,
-        place_reviews (
-          created_at
-        )
-      `)
-      .in('place_id', placeIds);
+    // RPC takes uuid[]; fsq ids are not uuids and have no taps
+    const uuidIds = placeIds.filter(isValidUUID);
+    if (uuidIds.length === 0) {
+      return result;
+    }
+
+    const { data: countRows, error } = await supabase
+      .rpc('get_places_signal_counts', { p_place_ids: uuidIds });
 
     if (error) {
       console.error('Error fetching batch thermometer data:', error);
       return result;
     }
 
-    // Initialize all places with zero counts
-    placeIds.forEach(id => {
-      result.set(id, { positiveTaps: 0, negativeTaps: 0 });
-    });
+    (countRows || []).forEach((row: any) => {
+      const tapCount = Number(row.tap_count) || 0;
+      if (tapCount <= 0) return;
 
-    // Aggregate taps by place
-    (taps || []).forEach((tap: any) => {
-      const createdAt = tap.place_reviews?.created_at;
-      
-      // Only count taps within the specified period
-      if (!createdAt || !withinDays(createdAt, daysInPeriod)) {
-        return;
-      }
-
-      const signal = getSignalById(tap.signal_id);
+      const signal = getSignalById(row.signal_id);
       const category = signal?.signal_type;
-      const placeData = result.get(tap.place_id);
+      const placeData = result.get(row.place_id);
 
       if (placeData) {
         if (category === 'best_for' || category === 'vibe') {
-          placeData.positiveTaps += tap.intensity;
+          placeData.positiveTaps += tapCount;
         } else if (category === 'heads_up') {
-          placeData.negativeTaps += tap.intensity;
+          placeData.negativeTaps += tapCount;
         }
       }
     });

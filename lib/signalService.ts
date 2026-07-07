@@ -1,5 +1,8 @@
 import { supabase } from './supabaseClient';
 
+// Canonical place ids are uuids; fsq ids are not.
+export const SIGNAL_UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // ============================================
 // TYPES
 // ============================================
@@ -693,49 +696,40 @@ export async function fetchPlaceSignals(placeId: string): Promise<{
   try {
     await loadSignalCache();
 
-    const { data: taps, error } = await supabase
-      .from('place_review_signal_taps')
-      .select(`
-        signal_id,
-        intensity,
-        place_reviews (
-          created_at
-        )
-      `)
-      .eq('place_id', placeId);
-
-    if (error) {
-      console.error('Error fetching signal taps:', error);
+    // The RPC takes uuid[]; fsq ids are not uuids and have no taps.
+    if (!SIGNAL_UUID_REGEX.test(placeId)) {
       return { best_for: [], vibe: [], heads_up: [], medals: [] };
     }
 
-    const aggregated: Record<string, { 
-      tap_total: number; 
+    // Aggregate server-side via RPC. Pulling raw tap rows is silently capped
+    // at 1000 rows by PostgREST, so popular places showed wrong Signal Matrix
+    // numbers when aggregated client-side.
+    const { data: countRows, error } = await supabase
+      .rpc('get_places_signal_counts', { p_place_ids: [placeId] });
+
+    if (error) {
+      console.error('Error fetching signal counts:', error);
+      return { best_for: [], vibe: [], heads_up: [], medals: [] };
+    }
+
+    const aggregated: Record<string, {
+      tap_total: number;
       current_score: number;
       review_count: number;
-      last_tap_at: string | null 
+      last_tap_at: string | null
     }> = {};
-    
-    (taps || []).forEach((tap: any) => {
-      if (!aggregated[tap.signal_id]) {
-        aggregated[tap.signal_id] = { 
-          tap_total: 0, 
-          current_score: 0,
-          review_count: 0,
-          last_tap_at: null 
-        };
-      }
 
-      const createdAt = tap.place_reviews?.created_at || new Date().toISOString();
-      const decayedValue = calculateDecayedScore(tap.intensity, createdAt);
-
-      aggregated[tap.signal_id].tap_total += tap.intensity;
-      aggregated[tap.signal_id].current_score += decayedValue;
-      aggregated[tap.signal_id].review_count += 1;
-      
-      if (!aggregated[tap.signal_id].last_tap_at || new Date(createdAt) > new Date(aggregated[tap.signal_id].last_tap_at!)) {
-        aggregated[tap.signal_id].last_tap_at = createdAt;
-      }
+    (countRows || []).forEach((row: any) => {
+      const tapCount = Number(row.tap_count) || 0;
+      if (tapCount <= 0) return;
+      aggregated[row.signal_id] = {
+        tap_total: tapCount,
+        // Per-tap intensity/decay data is not pulled anymore (it required raw
+        // rows); the accurate total tap count is the score.
+        current_score: tapCount,
+        review_count: tapCount,
+        last_tap_at: null,
+      };
     });
 
     const result: {

@@ -1239,26 +1239,25 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         
         let signalAggregates: any[] = [];
         try {
-          const { data: tapData } = await supabase
-            .from('tap_activity')
-            .select('place_id, signal_name')
-            .in('place_id', placeIds);
-          if (tapData && tapData.length > 0) {
-            // Aggregate taps per place + signal
-            const counts = new Map<string, Map<string, number>>();
-            for (const tap of tapData) {
-              if (!counts.has(tap.place_id)) counts.set(tap.place_id, new Map());
-              const signalMap = counts.get(tap.place_id)!;
-              signalMap.set(tap.signal_name, (signalMap.get(tap.signal_name) || 0) + 1);
-            }
-            for (const [placeId, signalMap] of counts) {
-              for (const [label, total] of signalMap) {
-                signalAggregates.push({ place_id: placeId, signal_label: label, total_taps: total });
-              }
+          // Aggregate server-side via RPC — raw tap_activity pulls are silently
+          // capped at 1000 rows by PostgREST, under-counting popular places.
+          // The RPC takes uuid[]; fsq source_ids are not uuids and have no taps.
+          const uuidPlaceIds = placeIds.filter(id =>
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+          );
+          if (uuidPlaceIds.length > 0) {
+            const { data: tapCounts } = await supabase
+              .rpc('get_places_tap_activity_counts', { p_place_ids: uuidPlaceIds });
+            if (tapCounts && tapCounts.length > 0) {
+              signalAggregates = tapCounts.map((row: any) => ({
+                place_id: row.place_id,
+                signal_label: row.signal_name,
+                total_taps: Number(row.tap_count) || 0,
+              }));
             }
           }
         } catch (e) {
-          console.log('Error fetching tap_activity:', e);
+          console.log('Error fetching tap activity counts:', e);
         }
 
         // Map PlaceCard[] to existing Place[] shape for UI compatibility
@@ -1371,26 +1370,25 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         
         let signalAggregates: any[] = [];
         try {
-          const { data: tapData } = await supabase
-            .from('tap_activity')
-            .select('place_id, signal_name')
-            .in('place_id', placeIds);
-          if (tapData && tapData.length > 0) {
-            // Aggregate taps per place + signal
-            const counts = new Map<string, Map<string, number>>();
-            for (const tap of tapData) {
-              if (!counts.has(tap.place_id)) counts.set(tap.place_id, new Map());
-              const signalMap = counts.get(tap.place_id)!;
-              signalMap.set(tap.signal_name, (signalMap.get(tap.signal_name) || 0) + 1);
-            }
-            for (const [placeId, signalMap] of counts) {
-              for (const [label, total] of signalMap) {
-                signalAggregates.push({ place_id: placeId, signal_label: label, total_taps: total });
-              }
+          // Aggregate server-side via RPC — raw tap_activity pulls are silently
+          // capped at 1000 rows by PostgREST, under-counting popular places.
+          // The RPC takes uuid[]; fsq source_ids are not uuids and have no taps.
+          const uuidPlaceIds = placeIds.filter(id =>
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+          );
+          if (uuidPlaceIds.length > 0) {
+            const { data: tapCounts } = await supabase
+              .rpc('get_places_tap_activity_counts', { p_place_ids: uuidPlaceIds });
+            if (tapCounts && tapCounts.length > 0) {
+              signalAggregates = tapCounts.map((row: any) => ({
+                place_id: row.place_id,
+                signal_label: row.signal_name,
+                total_taps: Number(row.tap_count) || 0,
+              }));
             }
           }
         } catch (e) {
-          console.log('Error fetching tap_activity:', e);
+          console.log('Error fetching tap activity counts:', e);
         }
 
         // Map PlaceCard[] to existing Place[] shape for UI compatibility
