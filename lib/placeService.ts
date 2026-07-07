@@ -19,6 +19,19 @@ import { searchPlacesInBounds as typesenseSearchBounds } from './typesenseServic
 
 export type PlaceSource = 'places' | 'fsq_raw';
 
+// Matches canonical Postgres UUIDs (places.id). Non-UUID ids are fsq ids.
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// DB canonical tavvy_category values are singular; normalize legacy plural filters.
+const PLURAL_CATEGORY_MAP: Record<string, string> = {
+  restaurants: 'restaurant',
+  hotels: 'hotel',
+};
+
+export function normalizeCategoryFilter(category: string): string {
+  return PLURAL_CATEGORY_MAP[category.toLowerCase()] ?? category;
+}
+
 export interface PlaceCard {
   id: string;                    // Unique identifier for the UI
   source: PlaceSource;           // Where this place came from
@@ -120,7 +133,7 @@ export async function fetchPlacesInBounds(options: FetchPlacesOptions): Promise<
       .limit(limit);
 
     if (filters?.category) {
-      query = query.eq('tavvy_category', filters.category);
+      query = query.eq('tavvy_category', normalizeCategoryFilter(filters.category));
     }
 
     const { data: placesData, error: placesError } = await query;
@@ -405,12 +418,16 @@ export function getPlaceIdForNavigation(place: PlaceCard): string {
  * Fetch a single place by ID (for PlaceDetails screen)
  */
 export async function fetchPlaceById(placeId: string): Promise<PlaceCard | null> {
-  // First try canonical places table
-  const { data: canonicalRows, error: canonicalError } = await supabase
-    .from('places')
-    .select('*')
-    .or(`id.eq.${placeId},source_id.eq.${placeId}`)
-    .limit(1);
+  // First try canonical places table.
+  // IMPORTANT: `id` is a uuid column — using id.eq.<non-uuid> inside .or()
+  // errors the ENTIRE query. Only match on id when placeId is a valid uuid.
+  let canonicalQuery = supabase.from('places').select('*');
+  if (UUID_REGEX.test(placeId)) {
+    canonicalQuery = canonicalQuery.or(`id.eq.${placeId},source_id.eq.${placeId}`);
+  } else {
+    canonicalQuery = canonicalQuery.eq('source_id', placeId);
+  }
+  const { data: canonicalRows, error: canonicalError } = await canonicalQuery.limit(1);
 
   const canonicalData = canonicalRows?.[0] || null;
 

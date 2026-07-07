@@ -879,7 +879,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         .from('atlas_universes')
         .select('id, name, location, thumbnail_image_url, category_id')
         .eq('status', 'published')
-        .or('name.ilike.%airport%,name.ilike.%international%,category_id.eq.airports')
+        .or('name.ilike.%airport%,name.ilike.%international%')
         .limit(5);
       
       if (airports && airports.length > 0) {

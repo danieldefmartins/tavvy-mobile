@@ -54,7 +54,6 @@ interface City {
   population?: number;
   cover_image_url?: string;
   is_featured?: boolean;
-  total_signals?: number;
 }
 
 // Placeholder image
@@ -263,12 +262,6 @@ export default function CitiesBrowseScreen({ navigation }: { navigation: any }) 
                         <Text style={[styles.gridLocation, { color: secondaryTextColor }]} numberOfLines={1}>
                           {city.state_region}{city.country ? `, ${city.country}` : ''}
                         </Text>
-                        {city.total_signals && city.total_signals > 50 && (
-                          <View style={styles.trendingBadge}>
-                            <Ionicons name="flame" size={12} color={COLORS.trending} />
-                            <Text style={styles.trendingText}>Trending</Text>
-                          </View>
-                        )}
                       </View>
                     </TouchableOpacity>
                   ))}
@@ -444,15 +437,5 @@ const styles = StyleSheet.create({
   gridLocation: {
     fontSize: 12,
     marginBottom: 8,
-  },
-  trendingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  trendingText: {
-    color: COLORS.trending,
-    fontSize: 11,
-    fontWeight: '600',
   },
 });
