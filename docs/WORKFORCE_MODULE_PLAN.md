@@ -76,8 +76,21 @@ self-access to own employee row, read of employer jobs/pay-periods, read/write o
 
 ## Status
 - [x] Exploration of both repos + live DB schema
-- [x] Phase 1 migration written (NOT yet applied — awaiting review)
-- [ ] Apply migration + seed KIW as first pro_provider
-- [ ] Edge functions
-- [ ] Mobile screens
+- [x] Phase 1 migration written + APPLIED (+ integrity_hardening delta: composite
+      (employer_id,id) unique, cross-tenant FKs, tightened crew RLS, PIN-hash TODO)
+- [x] Seeded KIW as first pro_provider (owner daniel@360forbusiness.com) + 3 employees
+      mapped from kiw_shop_workers (PINs carried for kiosk mode)
+- [x] Edge functions: pros-timeclock-clock-in / clock-out DEPLOYED (self + kiosk/PIN,
+      GPS geofence via haversine, offline-replay timestamps). DB guards verified.
+- [x] Seed data: 1 job (Broadway Village, geofenced), 1 weekly pay period, 1 sample shift
+- [ ] Edge functions remaining: employees-invite/accept, jobs-create/list/update,
+      timesheets-list/approve (OT calc), payroll-export (CSV)
+- [x] Mobile TimeClockScreen BUILT + wired: hooks/useTimeClock.ts (offline queue via
+      AsyncStorage, GPS via expo-location, direct RLS reads + edge-fn writes),
+      screens/TimeClockScreen.tsx, registered in App.tsx ProsStack + navigation.ts,
+      launch button on ProsDashboard Quick Actions, i18n timeclock block EN+ES.
+      Typechecks clean. daniel@360forbusiness.com linked to KIW "Daniel Martins"
+      employee for live self clock-in test.
+- [ ] Mobile screens remaining: MyScheduleScreen, MyTimesheetScreen, owner CrewScreen
 - [ ] Web portal screens
+- [ ] PIN hashing before kiosk ships; RLS cleanup on 52 legacy tables (Task #5)

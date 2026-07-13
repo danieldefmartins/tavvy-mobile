@@ -1179,5 +1179,40 @@
     "message": "This screen ran into a problem. You can try again or go back.",
     "tryAgain": "Try again",
     "goBack": "Go back"
+  },
+  "timeclock": {
+    "title": "Time Clock",
+    "hi": "Hi, {{name}}",
+    "onTheClock": "On the clock",
+    "clockedOut": "You're clocked out",
+    "since": "Since {{time}}",
+    "selectJob": "Select job",
+    "noJobs": "No active jobs assigned",
+    "clockIn": "Clock In",
+    "clockOut": "Clock Out",
+    "gettingLocation": "Getting your location…",
+    "onSite": "On site",
+    "offSite": "Off site",
+    "offSiteWarn": "You clocked in away from the job site. Your supervisor will see this.",
+    "notCrew": "You're not set up as a crew member yet. Ask your employer to send an invite.",
+    "loginNeeded": "Please log in to use the time clock.",
+    "pendingSync": "Saved offline — will sync when you're back online"
+  },
+  "timesheet": {
+    "title": "My Hours",
+    "period": "Pay period",
+    "totalHours": "Total hours",
+    "regular": "Regular",
+    "overtime": "Overtime",
+    "gross": "Gross pay",
+    "approved": "Approved",
+    "pending": "Awaiting approval",
+    "notBuilt": "Not summarized yet — shows your live hours below.",
+    "shifts": "Shifts",
+    "noEntries": "No hours logged this period.",
+    "open": "Open",
+    "offSite": "Off site",
+    "loginNeeded": "Please log in to see your hours.",
+    "notCrew": "You're not set up as a crew member yet."
   }
 }

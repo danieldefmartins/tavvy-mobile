@@ -50,6 +50,8 @@ export type RootStackParamList = {
     slug: string;
   };
   ProsDashboard: undefined;
+  TimeClock: undefined;  // Workforce: crew clock in/out
+  MyTimesheet: undefined;  // Workforce: crew hours/pay
   ProsRegistration: undefined;
   ProsMessages: {
     conversationId?: number;

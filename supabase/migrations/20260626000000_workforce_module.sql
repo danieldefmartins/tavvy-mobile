@@ -1,5 +1,5 @@
 -- ============================================================================
--- Workforce Module — Phase 1 (spine)   [NOT YET APPLIED]
+-- Workforce Module — Phase 1 (spine)   [APPLIED — see also 20260707_*_integrity_hardening]
 -- ----------------------------------------------------------------------------
 -- Employee time tracking + payroll-prep for Tavvy Pros, anchored on
 -- pro_providers (the employer). Multi-tenant, RLS-enforced.

@@ -195,6 +195,20 @@ export default function ProsDashboardScreen() {
           <View style={styles.quickActions}>
             <TouchableOpacity
               style={styles.quickAction}
+              onPress={() => navigation.navigate('TimeClock')}
+            >
+              <Ionicons name="time-outline" size={22} color={ProsColors.primary} />
+              <Text style={styles.quickActionText}>Time Clock</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickAction}
+              onPress={() => navigation.navigate('MyTimesheet')}
+            >
+              <Ionicons name="receipt-outline" size={22} color={ProsColors.primary} />
+              <Text style={styles.quickActionText}>My Hours</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickAction}
               onPress={() => Alert.alert('Coming Soon', 'Edit Profile will be available in a future update.')}
             >
               <Ionicons name="person-outline" size={22} color={ProsColors.primary} />

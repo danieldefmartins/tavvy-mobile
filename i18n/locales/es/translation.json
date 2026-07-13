@@ -1179,5 +1179,40 @@
     "message": "Esta pantalla tuvo un problema. Puedes intentarlo de nuevo o volver.",
     "tryAgain": "Intentar de nuevo",
     "goBack": "Volver"
+  },
+  "timeclock": {
+    "title": "Reloj de Fichaje",
+    "hi": "Hola, {{name}}",
+    "onTheClock": "En turno",
+    "clockedOut": "Estás sin fichar",
+    "since": "Desde {{time}}",
+    "selectJob": "Selecciona el trabajo",
+    "noJobs": "No hay trabajos activos asignados",
+    "clockIn": "Fichar Entrada",
+    "clockOut": "Fichar Salida",
+    "gettingLocation": "Obteniendo tu ubicación…",
+    "onSite": "En el lugar",
+    "offSite": "Fuera del lugar",
+    "offSiteWarn": "Fichaste lejos del lugar de trabajo. Tu supervisor lo verá.",
+    "notCrew": "Aún no estás configurado como parte del equipo. Pide a tu empleador que te invite.",
+    "loginNeeded": "Inicia sesión para usar el reloj de fichaje.",
+    "pendingSync": "Guardado sin conexión — se sincronizará al reconectar"
+  },
+  "timesheet": {
+    "title": "Mis Horas",
+    "period": "Período de pago",
+    "totalHours": "Horas totales",
+    "regular": "Regular",
+    "overtime": "Horas extra",
+    "gross": "Pago bruto",
+    "approved": "Aprobado",
+    "pending": "Pendiente de aprobación",
+    "notBuilt": "Aún no resumido — abajo se muestran tus horas en vivo.",
+    "shifts": "Turnos",
+    "noEntries": "Sin horas registradas este período.",
+    "open": "Abierto",
+    "offSite": "Fuera del lugar",
+    "loginNeeded": "Inicia sesión para ver tus horas.",
+    "notCrew": "Aún no estás configurado como parte del equipo."
   }
 }

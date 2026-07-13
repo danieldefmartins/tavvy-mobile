@@ -69,6 +69,8 @@ import WelcomeOnboardingScreen from './screens/WelcomeOnboardingScreen';
 
 // ========== PROS SCREENS (NEW) ==========
 import ProsHomeScreen from './screens/ProsHomeScreen';
+import TimeClockScreen from './screens/TimeClockScreen'; // Workforce: crew clock in/out
+import MyTimesheetScreen from './screens/MyTimesheetScreen'; // Workforce: crew hours/pay
 import ProsBrowseScreen from './screens/ProsBrowseScreen';
 import ProsProfileScreen from './screens/ProsProfileScreen';
 import ProsDashboardScreen from './screens/ProsDashboardScreen';
@@ -442,6 +444,8 @@ function ProsStack() {
       <ProsStackNav.Screen name="ProsBrowse" component={ProsBrowseScreen} />
       <ProsStackNav.Screen name="ProsProfile" component={ProsProfileScreen} />
       <ProsStackNav.Screen name="ProsDashboard" component={ProsDashboardScreen} />
+      <ProsStackNav.Screen name="TimeClock" component={TimeClockScreen} />
+      <ProsStackNav.Screen name="MyTimesheet" component={MyTimesheetScreen} />
       <ProsStackNav.Screen name="ProsRegistration" component={ProsRegistrationScreen} />
       <ProsStackNav.Screen name="ProsMessages" component={ProsMessagesScreen} />
       <ProsStackNav.Screen 
