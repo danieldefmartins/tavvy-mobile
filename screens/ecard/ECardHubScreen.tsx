@@ -165,7 +165,7 @@ export default function ECardHubScreen() {
         { options, cancelButtonIndex: cancelIndex, destructiveButtonIndex: destructiveIndex },
         (buttonIndex) => {
           switch (buttonIndex) {
-            case 0: navigation.navigate('ECardEdit', { cardId: card.id }); break;
+            case 0: navigation.navigate('ECardStudio', { cardId: card.id }); break;
             case 1: navigation.navigate('ECardStats', { cardId: card.id }); break;
             case 2: Share.share({ message: `https://tavvy.com/${card.slug || 'preview'}`, url: `https://tavvy.com/${card.slug || 'preview'}` }); break;
             case 3: handleDuplicateCard(card); break;
@@ -178,7 +178,7 @@ export default function ECardHubScreen() {
         card.full_name || 'Card',
         undefined,
         [
-          { text: 'Edit Card', onPress: () => navigation.navigate('ECardEdit', { cardId: card.id }) },
+          { text: 'Edit Card', onPress: () => navigation.navigate('ECardStudio', { cardId: card.id }) },
           { text: 'View Stats', onPress: () => navigation.navigate('ECardStats', { cardId: card.id }) },
           { text: 'Copy Link', onPress: () => Share.share({ message: `https://tavvy.com/${card.slug || 'preview'}` }) },
           { text: 'Duplicate', onPress: () => handleDuplicateCard(card) },
@@ -190,7 +190,7 @@ export default function ECardHubScreen() {
   }, [navigation, handleDuplicateCard]);
 
   const handleEditCard = (card: CardData) => {
-    navigation.navigate('ECardEdit', { cardId: card.id });
+    navigation.navigate('ECardStudio', { cardId: card.id });
   };
 
   const openSheet = (step: SheetStep) => {
@@ -267,7 +267,7 @@ export default function ECardHubScreen() {
         }));
         await supabase.from('digital_card_links').insert(newLinks);
       }
-      navigation.navigate('ECardEdit', { cardId: newCard.id });
+      navigation.navigate('ECardStudio', { cardId: newCard.id });
     } catch (err) {
       console.error('Duplicate error:', err);
       Alert.alert('Error', 'Failed to duplicate card.');

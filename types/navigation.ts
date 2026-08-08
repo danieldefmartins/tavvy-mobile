@@ -216,6 +216,7 @@ export type RootStackParamList = {
   };
   ECardNew: undefined;
   ECardEdit: { cardId: string };
+  ECardStudio: { cardId: string };
   ECardStats: { cardId: string };
   ECardAnalyticsDashboard: undefined;
 };
