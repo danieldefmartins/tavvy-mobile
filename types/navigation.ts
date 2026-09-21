@@ -19,6 +19,7 @@ export type RootStackParamList = {
   UniverseLanding: { universeId: string };
   UniverseDetail: { universeId: string; universe?: any };
   UniverseDiscovery: undefined;
+  Cruises: undefined;
   CategoryBrowse: { category: string };
   AtlasHome: undefined;
   AtlasSearch: { query?: string };

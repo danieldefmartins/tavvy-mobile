@@ -1,3 +1,4 @@
+import { useReleaseCopy } from '../hooks/useReleaseCopy';
 import ToolHeader from '../components/ToolHeader';
 /**
  * ATLAS HOME SCREEN
@@ -61,6 +62,7 @@ interface Category {
 
 export default function AtlasHomeScreen() {
   const { t } = useTranslation();
+  const copy = useReleaseCopy();
   const navigation = useNavigation<any>();
   const { theme, isDark } = useThemeContext();
   const [loading, setLoading] = useState(true);
@@ -178,7 +180,7 @@ export default function AtlasHomeScreen() {
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <ActivityIndicator size="large" color={COLORS.accent} />
         <Text style={[styles.loadingText, { color: secondaryTextColor }]}>
-          Loading articles...
+          {copy("Loading articles...")}
         </Text>
         </View>
       </SafeAreaView>
@@ -213,7 +215,7 @@ export default function AtlasHomeScreen() {
             <Ionicons name="search" size={20} color={secondaryTextColor} />
             <TextInput
               style={[styles.searchInput, { color: textColor }]}
-              placeholder="Search articles..."
+              placeholder={copy("Search articles...")}
               placeholderTextColor={secondaryTextColor}
               value={searchQuery}
               onChangeText={handleSearch}
@@ -246,7 +248,7 @@ export default function AtlasHomeScreen() {
               styles.chipText,
               { color: selectedCategory === null ? '#FFFFFF' : (isDark ? '#E5E7EB' : '#374151') }
             ]}>
-              All
+              {copy('All')}
             </Text>
           </TouchableOpacity>
           
@@ -275,7 +277,7 @@ export default function AtlasHomeScreen() {
         {searchQuery.length > 0 && (
           <View style={styles.resultsCount}>
             <Text style={[styles.resultsText, { color: secondaryTextColor }]}>
-              {displayedArticles.length} result{displayedArticles.length !== 1 ? 's' : ''} for "{searchQuery}"
+              {copy('Search Results')} ({displayedArticles.length}) · “{searchQuery}”
             </Text>
           </View>
         )}
@@ -285,7 +287,7 @@ export default function AtlasHomeScreen() {
           <View style={styles.emptyState}>
             <Ionicons name="document-text-outline" size={48} color={secondaryTextColor} />
             <Text style={[styles.emptyText, { color: secondaryTextColor }]}>
-              No articles found{searchQuery ? ` matching "${searchQuery}"` : ' in this category'}.
+              {copy('No articles found.')} {searchQuery ? `“${searchQuery}”` : ''}
             </Text>
           </View>
         ) : (
@@ -306,7 +308,7 @@ export default function AtlasHomeScreen() {
                   style={styles.featuredGradient}
                 >
                   <View style={styles.featuredLabel}>
-                    <Text style={styles.featuredLabelText}>FEATURED STORY</Text>
+                    <Text style={styles.featuredLabelText}>{copy("FEATURED STORY")}</Text>
                   </View>
                   <Text style={styles.featuredTitle} numberOfLines={2}>
                     {featuredArticle.title}
@@ -317,14 +319,14 @@ export default function AtlasHomeScreen() {
                       style={styles.authorAvatar}
                     />
                     <Text style={styles.authorName}>
-                      By {featuredArticle.author_name || 'Tavvy Team'}
+                      {copy('By')} {featuredArticle.author_name || 'Tavvy Team'}
                     </Text>
                   </View>
                   <TouchableOpacity 
                     style={styles.readButton}
                     onPress={() => navigateToArticle(featuredArticle)}
                   >
-                    <Text style={styles.readButtonText}>Read Article</Text>
+                    <Text style={styles.readButtonText}>{copy("Read Article")}</Text>
                   </TouchableOpacity>
                 </LinearGradient>
               </TouchableOpacity>
@@ -334,7 +336,7 @@ export default function AtlasHomeScreen() {
             {gridArticles.length > 0 && (
               <View style={styles.articlesSection}>
                 <Text style={[styles.sectionTitle, { color: textColor }]}>
-                  {searchQuery ? 'Search Results' : 'All Articles'}
+                  {copy(searchQuery ? 'Search Results' : 'All Articles')}
                 </Text>
                 <View style={styles.articlesGrid}>
                   {gridArticles.map((article) => (

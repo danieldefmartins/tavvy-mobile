@@ -66,6 +66,7 @@ const FEATURED_APPS: AppTile[] = [
 
 // All Apps Grid
 const APP_TILES: AppTile[] = [
+  { id: 'cruises', name: 'Cruises', icon: 'boat', iconType: 'ionicons', gradientColors: ['#167C9C', '#115E78'], route: 'Cruises' },
   { id: 'experiences', name: 'Experiences', icon: 'compass', iconType: 'ionicons', gradientColors: ['#007F86', '#007F86'], route: 'ExperiencePaths' },
   {
     id: 'food-menu',

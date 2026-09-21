@@ -1727,7 +1727,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   };
   const renderSearchControls = () => <View style={{ paddingVertical: 8, gap: 8 }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><TextInput accessibilityLabel="Search location" value={searchLocation} onChangeText={setSearchLocation} placeholder={copy("City, state or any location")} placeholderTextColor={theme.textSecondary} style={{ flex: 1, minHeight: 44, paddingHorizontal: 10, borderWidth: 1, borderColor: theme.border, borderRadius: 10, color: theme.text }} returnKeyType={"search"} onSubmitEditing={() => void handleSearchSubmit(parseSearchQuery(searchQuery || "restaurants").placeName)} /><TouchableOpacity accessibilityRole="button" onPress={() => void handleSearchSubmit(parseSearchQuery(searchQuery || "restaurants").placeName)} style={{ padding: 10 }}><Text style={{ color: theme.text }}>{copy("Apply")}</Text></TouchableOpacity><TouchableOpacity accessibilityRole="button" onPress={useSearchLocation} style={{ padding: 10 }}><Text style={{ color: theme.primary }}>{copy("Near me")}</Text></TouchableOpacity></View>
-    <Text accessibilityLiveRegion="polite" style={{ color: theme.textSecondary }}>{searchScopeLabel}</Text>
+    <Text accessibilityLiveRegion="polite" style={{ color: theme.textSecondary }}>{searchScopeLabel === 'Any location' ? copy('Any location') : searchScopeLabel}</Text>
     {(searchDining || isDiningSearch(searchQuery)) && <ScrollView horizontal showsHorizontalScrollIndicator={false}>{DINING_NEEDS.map(need => <TouchableOpacity key={need.id} accessibilityRole="button" accessibilityState={{ selected: diningNeed === need.id }} onPress={() => { const next = diningNeed === need.id ? '' : need.id; setDiningNeed(next); void handleSearchSubmit(searchQuery || "restaurants", next); }} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginRight: 7, borderRadius: 22, backgroundColor: diningNeed === need.id ? theme.primary : theme.surface }}><Text style={{ color: diningNeed === need.id ? '#fff' : theme.text }}>{copy(need.label)}</Text></TouchableOpacity>)}</ScrollView>}
     {showDemoFallback && <TouchableOpacity accessibilityRole="button" accessibilityLabel={copy('View demo') + ' · Trattoria Tavvy'} onPress={() => navigation.navigate('DemoRestaurant' as never)} style={{ padding: 16, gap: 6, borderWidth: 1, borderColor: theme.border, borderRadius: 12, backgroundColor: theme.surface }}><Text style={{ color: theme.text, fontWeight: '700' }}>Trattoria Tavvy</Text><Text style={{ color: theme.textSecondary }}>{copy('Illustrative demo')}</Text><Text style={{ color: theme.primary }}>{copy('View demo')} →</Text></TouchableOpacity>}
     {!!searchError && <Text accessibilityRole="alert" style={{ color: theme.text }}>{copy(searchError)}</Text>}
@@ -2668,7 +2668,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
               ref={searchInputRef}
               value={searchQuery}
               onChangeText={handleSearchInputChange}
-              placeholder="What are you in the mood for?"
+              placeholder={copy("What are you in the mood for?")}
               placeholderTextColor={isDark ? '#BDB6CA' : '#56576B'}
               style={[styles.searchInputTextInput, { color: isDark ? '#fff' : '#111827' }]}
               returnKeyType={"search"}
@@ -3044,7 +3044,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
               ref={searchInputRef}
               value={searchQuery}
               onChangeText={handleSearchInputChange}
-              placeholder="What are you in the mood for?"
+              placeholder={copy("What are you in the mood for?")}
               placeholderTextColor={isDark ? '#BDB6CA' : '#56576B'}
               style={[styles.searchInput, { color: isDark ? theme.text : '#111' }]}
               returnKeyType={"search"}
@@ -3316,7 +3316,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
           )}
           <TextInput
             style={[styles.mapSearchInput, { color: isDark ? theme.text : '#000' }]}
-            placeholder="Search places or locations"
+            placeholder={copy("Search places or locations")}
             placeholderTextColor={isDark ? theme.textSecondary : '#999'}
             value={searchQuery}
             onChangeText={(text) => {

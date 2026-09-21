@@ -45,6 +45,7 @@ import ClaimBusinessScreen from './screens/ClaimBusinessScreen';
 import RestaurantWorkspaceScreen from './screens/RestaurantWorkspaceScreen';
 
 import UniverseDiscoveryScreen from './screens/UniverseDiscoveryScreen';
+import CruiseDirectoryScreen from './screens/CruiseDirectoryScreen';
 import UniverseLandingScreen from './screens/UniverseLandingScreen';
 
 import UniversalAddScreen from './screens/UniversalAddScreen';
@@ -309,6 +310,7 @@ function AppsStack({ route }: any) {
       <MenuStackNav.Screen name="RidesBrowse" component={RidesBrowseScreen} />
       <MenuStackNav.Screen name="RVCampingBrowse" component={RVCampingBrowseScreen} />
       <MenuStackNav.Screen name="UniverseDiscovery" component={UniverseDiscoveryScreen} />
+      <MenuStackNav.Screen name="Cruises" component={CruiseDirectoryScreen} />
       <MenuStackNav.Screen name="UniverseLanding" component={UniverseLandingScreen} />
       <MenuStackNav.Screen name="RideDetails" component={RideDetailsScreen} />
       <MenuStackNav.Screen name="CityDetails" component={CityDetailsScreen} />
@@ -442,6 +444,7 @@ function UniverseStack() {
   return (
     <UniverseStackNav.Navigator screenOptions={{ headerShown: false }}>
       <UniverseStackNav.Screen name="UniverseDiscovery" component={UniverseDiscoveryScreen} />
+      <UniverseStackNav.Screen name="Cruises" component={CruiseDirectoryScreen} />
       <UniverseStackNav.Screen name="UniverseLanding" component={UniverseLandingScreen} />
       <UniverseStackNav.Screen name="PlaceDetails" component={PlaceDetailsScreen} />
       <UniverseStackNav.Screen name="MenuGallery" component={MenuGalleryScreen} />

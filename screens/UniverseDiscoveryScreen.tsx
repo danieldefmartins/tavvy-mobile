@@ -1,4 +1,5 @@
 import ToolHeader from '../components/ToolHeader';
+import { useReleaseCopy } from '../hooks/useReleaseCopy';
 /**
  * UniverseDiscoveryScreen.tsx
  * Explore themed universes (theme parks, airports, campuses, etc.)
@@ -12,7 +13,6 @@ import ToolHeader from '../components/ToolHeader';
  * - Working search functionality
  */
 
-import CruiseDirectory from '../components/cruises/CruiseDirectory';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -49,6 +49,7 @@ const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1506905925346-21bda
 
 // Category configuration with custom icons
 const CATEGORY_CONFIG: Record<string, { iconType: 'ionicons' | 'material'; icon: string; label: string }> = {
+  'cruises': { iconType: 'ionicons', icon: 'boat', label: 'Cruises' },
   'theme-parks': { iconType: 'material', icon: 'ferris-wheel', label: 'Theme Parks' },
   'airports': { iconType: 'ionicons', icon: 'airplane', label: 'Airports' },
   'national-parks': { iconType: 'material', icon: 'tree', label: 'Parks' },
@@ -56,13 +57,13 @@ const CATEGORY_CONFIG: Record<string, { iconType: 'ionicons' | 'material'; icon:
 };
 
 export default function UniverseDiscoveryScreen() {
+  const copy = useReleaseCopy();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { theme, isDark } = useThemeContext();
   const readableAccent = isDark ? '#BFAAFF' : '#5843A8';
   const [activeCategory, setActiveCategory] = useState('All');
   const [loading, setLoading] = useState(true);
-  const [showCruiseShips, setShowCruiseShips] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
 
@@ -254,7 +255,6 @@ export default function UniverseDiscoveryScreen() {
   const isShowingSearchResults = searchQuery.trim().length > 0;
   const displayUniverses = isShowingSearchResults ? searchResults : popularUniverses;
 
-  if (showCruiseShips) return <CruiseDirectory onBack={() => setShowCruiseShips(false)}/>;
 
   if (loading) {
     return (
@@ -283,7 +283,6 @@ export default function UniverseDiscoveryScreen() {
       >
 
 
-        <TouchableOpacity accessibilityRole="button" onPress={() => setShowCruiseShips(true)} style={{marginHorizontal:20,marginBottom:18,padding:16,borderRadius:14,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface}}><Text style={{color:readableAccent,fontWeight:'600'}}>Explore cruise ships →</Text></TouchableOpacity>
         {/* Search Bar */}
         <View style={styles.searchSection}>
           <View style={[
@@ -430,7 +429,9 @@ export default function UniverseDiscoveryScreen() {
                         },
                         isActive && styles.filterButtonActive,
                       ]}
-                      onPress={() => setActiveCategory(isActive ? 'All' : config.label)}
+                      accessibilityRole="button"
+                      accessibilityLabel={copy(config.label)}
+                      onPress={() => slug === 'cruises' ? navigation.navigate('Cruises') : setActiveCategory(isActive ? 'All' : config.label)}
                       activeOpacity={0.7}
                     >
                       {renderCategoryIcon(config, 32, isActive ? readableAccent : (isDark ? '#9CA3AF' : '#6B7280'))}
@@ -438,7 +439,7 @@ export default function UniverseDiscoveryScreen() {
                         styles.filterLabel,
                         { color: isActive ? readableAccent : (isDark ? '#9CA3AF' : '#6B7280') }
                       ]}>
-                        {config.label.split(' ')[0]}
+                        {slug === 'cruises' ? copy('Cruises') : config.label.split(' ')[0]}
                       </Text>
                     </TouchableOpacity>
                   );

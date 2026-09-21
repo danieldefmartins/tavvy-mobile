@@ -1,3 +1,5 @@
+import { useReleaseCopy } from '../hooks/useReleaseCopy';
+import { reviewSummaryCopy, reviewMentionCopy } from '../lib/reviewSummaryCopy';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useThemeContext } from '../contexts/ThemeContext';
@@ -11,12 +13,13 @@ const COLORS: Record<ReviewTileKey, [string, string, string]> = {
 };
 export default function PlaceReviewGrid({ summary }: { summary: PlaceReviewSummary }) {
   const { isDark, theme } = useThemeContext();
-  return <View style={styles.grid} accessibilityLabel="Recent reviews">
+  const copy = useReleaseCopy();
+  return <View style={styles.grid} accessibilityLabel={copy("Recent reviews")}>
     {summary.tiles.map(tile => <View key={tile.key} testID={`review-tile-${tile.key}`} style={[styles.tile, { backgroundColor: COLORS[tile.key][2], borderColor: theme.border }]}>
-      <Text style={[styles.title, { color: COLORS[tile.key][isDark ? 1 : 0] }]}>{tile.title}</Text>
-      <Text style={[styles.detail, { color: theme.text }]}>{tile.detail}</Text>
-      {tile.count != null && tile.count > 0 && <Text style={[styles.note, { color: theme.textSecondary }]}>{tile.count} {tile.count === 1 ? 'person' : 'people'} mentioned this</Text>}
-      {!!tile.note && <Text style={[styles.note, { color: theme.textSecondary }]}>{tile.note}</Text>}
+      <Text style={[styles.title, { color: COLORS[tile.key][isDark ? 1 : 0] }]}>{reviewSummaryCopy(tile.title, copy)}</Text>
+      <Text style={[styles.detail, { color: theme.text }]}>{reviewSummaryCopy(tile.detail, copy)}</Text>
+      {tile.count != null && tile.count > 0 && <Text style={[styles.note, { color: theme.textSecondary }]}>{reviewMentionCopy(tile.count, copy)}</Text>}
+      {!!tile.note && <Text style={[styles.note, { color: theme.textSecondary }]}>{reviewSummaryCopy(tile.note, copy)}</Text>}
     </View>)}
   </View>;
 }
