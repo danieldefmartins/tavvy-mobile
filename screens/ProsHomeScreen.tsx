@@ -42,7 +42,6 @@ import {
   EARLY_ADOPTER_SAVINGS,
 } from '../constants/ProsConfig';
 import { useAuth } from '../contexts/AuthContext';
-import { useSearchPros } from '../hooks/usePros';
 import { useCategories } from '../hooks/useCategories';
 import { useProsPendingRequests } from '../hooks/useProsPendingRequests';
 import { Pro } from '../lib/ProsTypes';
@@ -125,13 +124,11 @@ export default function ProsHomeScreen() {
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
 
-  const { pros, loading, searchPros } = useSearchPros();
   const { categories, loading: categoriesLoading } = useCategories();
   const { getPendingRequest } = useProsPendingRequests();
   const [pendingRequest, setPendingRequest] = useState<any>(null);
 
   useEffect(() => {
-    searchPros({ limit: 6 });
     checkPendingRequest();
   }, []);
 
