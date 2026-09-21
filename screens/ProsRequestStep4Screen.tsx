@@ -22,9 +22,13 @@ export default function ProsRequestStep4Screen({ navigation, route }: any) {
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   const requestId = useRef(0);
   const [nearbyPosition, setNearbyPosition] = useState<{ lat: number; lon: number } | null>(null);
+  const [approximateState, setApproximateState] = useState<string | null>(null);
   const [locationPending, setLocationPending] = useState(true);
 
   useEffect(() => {
+    fetch('https://tavvy.com/api/pros/address-context').then(response => response.ok ? response.json() : null).then(data => {
+      if (typeof data?.state === 'string') setApproximateState(data.state);
+    }).catch(() => {});
     Location.requestForegroundPermissionsAsync().then(async permission => {
       if (permission.granted) {
         const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -32,15 +36,6 @@ export default function ProsRequestStep4Screen({ navigation, route }: any) {
       }
     }).catch(() => {}).finally(() => setLocationPending(false));
   }, []);
-
-  const useMyLocation = async () => {
-    try {
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (!permission.granted) return;
-      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setNearbyPosition({ lat: position.coords.latitude, lon: position.coords.longitude });
-    } catch { Alert.alert('Location unavailable', 'You can still enter your address manually.'); }
-  };
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -63,7 +58,8 @@ export default function ProsRequestStep4Screen({ navigation, route }: any) {
     setLoading(true);
     try {
       const currentRequest = ++requestId.current;
-      const params = new URLSearchParams({ q: text, limit: '8', lang: 'en' });
+      const query = nearbyPosition ? text : [text, state.trim() || approximateState].filter(Boolean).join(', ');
+      const params = new URLSearchParams({ q: query, limit: '8', lang: 'en' });
       if (nearbyPosition) {
         params.set('lat', String(nearbyPosition.lat));
         params.set('lon', String(nearbyPosition.lon));
@@ -84,7 +80,7 @@ export default function ProsRequestStep4Screen({ navigation, route }: any) {
 
   useEffect(() => {
     if (!locationPending && address.length >= 3) searchAddress(address);
-  }, [nearbyPosition, locationPending]);
+  }, [nearbyPosition, locationPending, approximateState]);
 
   const handleTextChange = (text: string) => {
     requestId.current++;
@@ -139,7 +135,6 @@ export default function ProsRequestStep4Screen({ navigation, route }: any) {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.title}>Where is the project located?</Text>
-        <TouchableOpacity onPress={useMyLocation} style={{ paddingVertical: 10 }}><Text style={{ color: '#2563eb' }}>{nearbyPosition ? 'Using your location for nearby addresses' : 'Use my location for nearby addresses'}</Text></TouchableOpacity>
         
         <Text style={styles.label}>Street Address</Text>
         <View style={styles.inputWrapper}>
