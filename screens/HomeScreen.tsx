@@ -1716,17 +1716,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
     } finally { if (requestId === submittedSearchRef.current) setLoading(false); }
   };
 
-  const useSearchLocation = async () => {
-    const permission = await Location.requestForegroundPermissionsAsync();
-    if (permission.status !== 'granted') { setSearchError("Location access was not available. Enter a city instead."); return; }
-    try {
-      const result = await Location.getCurrentPositionAsync({});
-      setUserLocation([result.coords.longitude, result.coords.latitude]); setSearchLocation('');
-      void handleSearchSubmit(parseSearchQuery(searchQuery || "restaurants").placeName, diningNeed, { mode: 'current', coordinates: result.coords });
-    } catch { setSearchError("Location is unavailable. Enter a city instead."); }
-  };
   const renderSearchControls = () => <View style={{ paddingVertical: 8, gap: 8 }}>
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><TextInput accessibilityLabel="Search location" value={searchLocation} onChangeText={setSearchLocation} placeholder={copy("City, state or any location")} placeholderTextColor={theme.textSecondary} style={{ flex: 1, minHeight: 44, paddingHorizontal: 10, borderWidth: 1, borderColor: theme.border, borderRadius: 10, color: theme.text }} returnKeyType={"search"} onSubmitEditing={() => void handleSearchSubmit(parseSearchQuery(searchQuery || "restaurants").placeName)} /><TouchableOpacity accessibilityRole="button" onPress={() => void handleSearchSubmit(parseSearchQuery(searchQuery || "restaurants").placeName)} style={{ padding: 10 }}><Text style={{ color: theme.text }}>{copy("Apply")}</Text></TouchableOpacity><TouchableOpacity accessibilityRole="button" onPress={useSearchLocation} style={{ padding: 10 }}><Text style={{ color: theme.primary }}>{copy("Near me")}</Text></TouchableOpacity></View>
     <Text accessibilityLiveRegion="polite" style={{ color: theme.textSecondary }}>{searchScopeLabel === 'Any location' ? copy('Any location') : searchScopeLabel}</Text>
     {(searchDining || isDiningSearch(searchQuery)) && <ScrollView horizontal showsHorizontalScrollIndicator={false}>{DINING_NEEDS.map(need => <TouchableOpacity key={need.id} accessibilityRole="button" accessibilityState={{ selected: diningNeed === need.id }} onPress={() => { const next = diningNeed === need.id ? '' : need.id; setDiningNeed(next); void handleSearchSubmit(searchQuery || "restaurants", next); }} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginRight: 7, borderRadius: 22, backgroundColor: diningNeed === need.id ? theme.primary : theme.surface }}><Text style={{ color: diningNeed === need.id ? '#fff' : theme.text }}>{copy(need.label)}</Text></TouchableOpacity>)}</ScrollView>}
     {showDemoFallback && <TouchableOpacity accessibilityRole="button" accessibilityLabel={copy('View demo') + ' · Trattoria Tavvy'} onPress={() => navigation.navigate('DemoRestaurant' as never)} style={{ padding: 16, gap: 6, borderWidth: 1, borderColor: theme.border, borderRadius: 12, backgroundColor: theme.surface }}><Text style={{ color: theme.text, fontWeight: '700' }}>Trattoria Tavvy</Text><Text style={{ color: theme.textSecondary }}>{copy('Illustrative demo')}</Text><Text style={{ color: theme.primary }}>{copy('View demo')} →</Text></TouchableOpacity>}
@@ -2745,13 +2735,6 @@ function HomeScreen({ navigation }: { navigation: any }) {
               <Text style={[styles.quickActionText, { color: isDark ? '#C77DFF' : '#8A05BE' }]}>{copy("Signals")}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.quickAction}
-              onPress={() => navigation.navigate("Apps", { screen: 'SavedMain' })}
-            >
-              <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(138, 5, 190, 0.12)' }]}><Ionicons name="heart-outline" size={20} color={isDark ? '#D4A0FF' : '#7905A8'} /></View>
-              <Text style={[styles.quickActionText, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{copy("Saved")}</Text>
-            </TouchableOpacity>
           </View>
           )}
         </View>
