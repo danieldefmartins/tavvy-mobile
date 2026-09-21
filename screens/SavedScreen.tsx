@@ -1,5 +1,5 @@
 import {useThemeContext} from '../contexts/ThemeContext';
-import React, { useState } from 'react';
+import React, { useState,useEffect,useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { useUserFavorites, FavoriteWithPlace } from '../hooks/useFavorite';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
+import {supabase} from '../lib/supabaseClient';
 
 // Get category-based fallback image URL when place has no photo
 const getCategoryFallbackImage = (category: string): string => {
@@ -51,11 +52,17 @@ function SavedScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { data: favorites, isLoading, refetch } = useUserFavorites();
+  const [externalFavorites,setExternalFavorites]=useState<FavoriteWithPlace[]>([]);
+  const [externalLoading,setExternalLoading]=useState(false);
+  const loadExternal=useCallback(async()=>{if(!user){setExternalFavorites([]);return;}setExternalLoading(true);try{const {data,error}=await supabase.from('saved_external_places').select('id,external_id,place_name,category,city,region,created_at').eq('user_id',user.id).order('created_at',{ascending:false});if(error)throw error;setExternalFavorites((data||[]).map(row=>({id:row.id,userId:user.id,placeId:row.external_id,listName:'Favorites',notes:null,createdAt:new Date(row.created_at),placeName:row.place_name,address:null,city:row.city,state:row.region,latitude:0,longitude:0,primaryCategory:row.category||'Place',coverImageUrl:null,phone:null,website:null})));}catch{setExternalFavorites([]);}finally{setExternalLoading(false);}},[user?.id]);
+  useEffect(()=>{void loadExternal();},[loadExternal]);
+  const allFavorites=[...(favorites||[]),...externalFavorites].sort((a,b)=>b.createdAt.getTime()-a.createdAt.getTime());
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await refetch();
+    await loadExternal();
     setRefreshing(false);
   };
 
@@ -126,13 +133,13 @@ function SavedScreen({ navigation }: any) {
         <Text style={styles.headerTitle}>Saved Places</Text>
       </View>
 
-      {isLoading ? (
+      {isLoading||externalLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#06B6D4" />
         </View>
-      ) : favorites && favorites.length > 0 ? (
+      ) : allFavorites.length > 0 ? (
         <FlatList
-          data={favorites}
+          data={allFavorites}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}

@@ -374,10 +374,15 @@ function PlaceDetailScreen({ route, navigation }: any) {
   const {theme,isDark}=useThemeContext();
   const styles=makeStyles(theme,isDark);
   const {user}=useAuth();
-  const {data:saved}=useIsFavorite(canonicalPlaceId||'');
+  const {data:canonicalSaved}=useIsFavorite(canonicalPlaceId||'');
+  const externalSaveId=/^fsq:[0-9a-f]{24}$/i.test(placeId)?placeId.toLowerCase():null;
+  const [externalSaved,setExternalSaved]=useState(false);
+  useEffect(()=>{if(!user||!externalSaveId){setExternalSaved(false);return;}let active=true;supabase.from('saved_external_places').select('id').eq('user_id',user.id).eq('external_id',externalSaveId).limit(1).maybeSingle().then(({data})=>{if(active)setExternalSaved(!!data)});return()=>{active=false};},[user?.id,externalSaveId]);
+  const saved=!!canonicalSaved||externalSaved;
   const addFavorite=useAddFavorite();
   const removeFavorite=useRemoveAllFavoritesForPlace();
-  const savePlace=async()=>{if(!user){navigation.navigate('Login',{returnTo:'PlaceDetails',returnParams:{placeId}});return;}try{const resolved=canonicalPlaceId||await resolvePhotoPlace(placeId);if(saved)await removeFavorite.mutateAsync(resolved);else await addFavorite.mutateAsync({placeId:resolved});if(resolved!==placeId)setPlace(current=>current?{...current,id:resolved}:current);}catch{Alert.alert('Could not save place','Please try again.')}};
+  const savePlace=async()=>{if(!user){navigation.navigate('Login',{returnTo:'PlaceDetails',returnParams:{placeId}});return;}try{if(externalSaveId&&!canonicalPlaceId){if(externalSaved){const {error}=await supabase.from('saved_external_places').delete().eq('user_id',user.id).eq('external_id',externalSaveId);if(error)throw error;setExternalSaved(false);}else{const {error}=await supabase.from('saved_external_places').insert({user_id:user.id,external_id:externalSaveId,place_name:String(place?.name||'Place').slice(0,200),category:String(place?.primaryCategory||'Place').slice(0,120),city:place?.city||null,region:place?.state||null});if(error&&error.code!=='23505')throw error;setExternalSaved(true);}return;}const resolved=canonicalPlaceId||await resolvePhotoPlace(placeId);if(saved){await removeFavorite.mutateAsync(resolved);if(externalSaveId){const {error}=await supabase.from('saved_external_places').delete().eq('user_id',user.id).eq('external_id',externalSaveId);if(error)throw error;setExternalSaved(false);}}else await addFavorite.mutateAsync({placeId:resolved});if(resolved!==placeId)setPlace(current=>current?{...current,id:resolved}:current);}catch{Alert.alert('Could not save place','Please try again.')}};
+  const goBackFromPlace=()=>{if(navigation.canGoBack())navigation.goBack();else navigation.getParent()?.navigate('Home');};
 
   // Creating a canonical provider record is reserved for an explicit signed-in action.
   const openCanonicalPlaceAction = async (screen: 'StoryUpload' | 'ClaimBusiness') => {
@@ -982,7 +987,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
         <TouchableOpacity accessibilityRole="button" style={styles.errorButton} onPress={()=>setPlaceRetry(value=>value+1)}><Text style={styles.errorButtonText}>{copy('Try again')}</Text></TouchableOpacity>
         <TouchableOpacity 
           style={styles.errorButton}
-          onPress={() => navigation.goBack()}
+          onPress={goBackFromPlace}
         >
           <Text style={styles.errorButtonText}>Go Back</Text>
         </TouchableOpacity>
@@ -1028,6 +1033,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
 
     { key: 'details', label: 'Details' },
   ] as const;
+  const quickAction=(key:string,label:string,icon:React.ComponentProps<typeof Ionicons>['name'],onPress:()=>void,selected=false)=><TouchableOpacity key={key} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{selected}} onPress={onPress} style={{width:68,alignItems:'center',gap:7}}><View style={{width:50,height:50,borderRadius:25,backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border,alignItems:'center',justifyContent:'center'}}><Ionicons name={icon} size={23} color={selected?'#E24A72':theme.text}/></View><Text style={{color:theme.textSecondary,fontSize:11,fontWeight:'600',textAlign:'center'}}>{label}</Text></TouchableOpacity>;
 
   return (
     <View style={styles.container}>
@@ -1046,20 +1052,10 @@ function PlaceDetailScreen({ route, navigation }: any) {
           {/* Back Button (top-left) */}
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={goBackFromPlace}
           >
             <Ionicons name="chevron-back" size={22} color="#1a1a1a" />
           </TouchableOpacity>
-
-          {/* Top Right: Share + Save */}
-          <View style={styles.topRightButtons}>
-            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Share place" style={styles.actionButton} onPress={handleShare}>
-              <Ionicons name="share-outline" size={20} color="#1a1a1a" />
-            </TouchableOpacity>
-            <TouchableOpacity accessibilityRole="button" accessibilityLabel={saved?'Remove saved place':'Save place'} disabled={addFavorite.isPending||removeFavorite.isPending} style={styles.actionButton} onPress={savePlace}>
-              <Ionicons name={saved?'heart':'heart-outline'} size={20} color="#1a1a1a" />
-            </TouchableOpacity>
-          </View>
 
           {/* Hero Text at bottom */}
           <View style={styles.heroTextContainer}>
@@ -1069,6 +1065,17 @@ function PlaceDetailScreen({ route, navigation }: any) {
             </Text>
           </View>
         </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{flexGrow:0,marginTop:16}} contentContainerStyle={{paddingHorizontal:20,paddingBottom:16,gap:12,borderBottomWidth:1,borderBottomColor:theme.border}} accessibilityLabel="Place actions">
+          {place.phone&&quickAction('phone','Phone','call-outline',()=>handleCall(place.phone!))}
+          {!cruiseVenue&&!!fullAddress&&quickAction('address','Address','location-outline',()=>setShowAddressModal(true))}
+          {place.website&&quickAction('website','Website','globe-outline',()=>handleWebsite(place.website!))}
+          {!cruiseVenue&&!!(fullAddress||(Number.isFinite(place.latitude)&&Number.isFinite(place.longitude)))&&quickAction('directions','Directions','navigate-outline',()=>{if(Number.isFinite(place.latitude)&&Number.isFinite(place.longitude))handleNavigate(place.latitude,place.longitude,place.name);else void Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`);})}
+          {hasMenuTab&&quickAction('menu','Menu','restaurant-outline',()=>navigation.navigate('MenuGallery',{placeId:place.id,placeName:place.name}))}
+          {ecardSlug&&quickAction('ecard','eCard','card-outline',()=>void Linking.openURL(`https://tavvy.com/${encodeURIComponent(ecardSlug)}`))}
+          {quickAction('share','Share','share-outline',()=>void handleShare())}
+          {quickAction('save',saved?'Saved':'Save',saved?'heart':'heart-outline',()=>void savePlace(),saved)}
+        </ScrollView>
 
         <View style={{ marginHorizontal: 20, marginTop: 18 }}>
           <Text style={{ color: theme.text, fontSize: 20, fontWeight: '800', marginBottom: 11 }}>What people experienced</Text>
