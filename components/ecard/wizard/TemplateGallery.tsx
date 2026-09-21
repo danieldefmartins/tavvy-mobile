@@ -9,13 +9,13 @@ import * as Haptics from 'expo-haptics';
 import { TEMPLATES, Template } from '../../../config/eCardTemplates';
 import { StudioPreviewFrame } from '../editor/StudioPreview';
 import { templatePreviewData } from '../../../lib/ecard/templatePreviewData';
-import { TEMPLATE_CATEGORIES, canUseTemplate } from '../../../lib/ecard/templateSelection';
+import { templatesForBrowse, BrowsePlan, isFreeDesign, canUseTemplate } from '../../../lib/ecard/templateSelection';
 import { useReleaseCopy } from '../../../hooks/useReleaseCopy';
 
 const ACCENT = '#6C2496', GAP = 16;
 interface TemplateGalleryProps {
   /** A gallery filter, never the persisted card_type. */
-  cardType: string;
+  cardType: string; planFilter?: BrowsePlan;
   countryTemplate?: string;
   selectedTemplateId: string | null;
   selectedColorSchemeId: string | null;
@@ -24,7 +24,7 @@ interface TemplateGalleryProps {
   isDark: boolean;
   onAvailabilityChange?: (available: boolean) => void;
 }
-export default function TemplateGallery({ cardType, countryTemplate, selectedTemplateId, selectedColorSchemeId, onSelect, isPro, isDark, onAvailabilityChange }: TemplateGalleryProps) {
+export default function TemplateGallery({ cardType, planFilter='all', countryTemplate, selectedTemplateId, selectedColorSchemeId, onSelect, isPro, isDark, onAvailabilityChange }: TemplateGalleryProps) {
   const copy = useReleaseCopy();
   const restoreStatusBar = useRestoreFocusedStatusBar(isDark ? 'light-content' : 'dark-content');
   const { width } = useWindowDimensions();
@@ -34,15 +34,14 @@ export default function TemplateGallery({ cardType, countryTemplate, selectedTem
   const [inlinePreviewActive, setInlinePreviewActive] = useState(true);
   const [stageHeight, setStageHeight] = useState(350), [fullPreview, setFullPreview] = useState(false);
   const filtered = useMemo(() => {
-    const ids = TEMPLATE_CATEGORIES[cardType];
-    const result = ids ? TEMPLATES.filter(item => ids.includes(item.id)) : TEMPLATES;
+    const result = templatesForBrowse(cardType,planFilter);
     return countryTemplate ? [...result.filter(item => item.id === countryTemplate), ...result.filter(item => item.id !== countryTemplate)] : result;
-  }, [cardType, countryTemplate]);
+  }, [cardType, planFilter, countryTemplate]);
   const [activeIndex, setActiveIndex] = useState(() => Math.max(0, filtered.findIndex(item => item.id === selectedTemplateId)));
   const [colors, setColors] = useState<Record<string, string>>(() => selectedTemplateId && selectedColorSchemeId ? { [selectedTemplateId]: selectedColorSchemeId } : {});
   const list = useRef<FlatList<Template>>(null);
   const active = filtered[activeIndex];
-  const schemeFor = useCallback((template: Template) => template.colorSchemes.find(item => item.id === colors[template.id]) || template.colorSchemes[0], [colors]);
+  const schemeFor = useCallback((template: Template) => template.colorSchemes.find(item => item.id === colors[template.id]) || template.colorSchemes.find(item=>canUseTemplate(template,item.id,isPro)) || template.colorSchemes[0], [colors,isPro]);
   const activeScheme = active ? schemeFor(active) : undefined;
   const activeAllowed = !!active && !!activeScheme && canUseTemplate(active, activeScheme.id, isPro);
   const primary = isDark ? '#F8FAFC' : '#202124', secondary = isDark ? '#CBD5E1' : '#596170';
@@ -107,11 +106,12 @@ export default function TemplateGallery({ cardType, countryTemplate, selectedTem
         }} />
       {active && <>
         <View style={styles.designLabel}>
-          <View style={{ flex: 1 }}><Text style={{ color: primary, fontWeight: '700', fontSize: 15 }}>{active.name}</Text><Text style={{ color: secondary, fontSize: 12 }}>{copy(activeAllowed ? (active.isPremium || !activeScheme?.isFree ? 'Pro' : 'Free') : 'Pro design or color')}</Text></View>
+          <View style={{ flex: 1 }}><Text style={{ color: primary, fontWeight: '700', fontSize: 15 }}>{copy(active.name)}</Text><Text style={{ color: secondary, fontSize: 12 }}>{copy(activeAllowed ? (active.isPremium || !activeScheme?.isFree ? 'Pro' : 'Free') : 'Pro design or color')}</Text></View>
           <TouchableOpacity accessibilityRole="button" style={styles.fullButton} onPress={openFullPreview}><Ionicons name="expand-outline" size={18} color={primary} /><Text style={{ color: primary, fontSize: 12 }}>{copy('Open full preview')}</Text></TouchableOpacity>
         </View>
+        {isFreeDesign(active)&&active.colorSchemes.some(color=>!color.isFree)&&<Text style={{color:secondary,fontSize:12,textAlign:'center'}}>{copy('Free design. Some colors require Pro.')}</Text>}
         <ScrollView horizontal style={{ flexGrow: 0, height: 56 }} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.swatches}>
-          {active.colorSchemes.map(scheme => {
+          {active.colorSchemes.filter(scheme=>planFilter!=='free'||scheme.isFree===true).map(scheme => {
             const locked = !canUseTemplate(active, scheme.id, isPro), chosen = activeScheme?.id === scheme.id;
             return <TouchableOpacity key={scheme.id} accessibilityRole="button" accessibilityLabel={`${scheme.name}${locked ? ' · Pro' : ''}`} accessibilityState={{ selected: chosen, disabled: locked }} disabled={locked} onPress={() => chooseColor(scheme.id)} style={[styles.swatch, { borderColor: chosen ? (isDark ? '#BB86E0' : ACCENT) : 'transparent' }]}>
               <LinearGradient colors={[scheme.primary, scheme.secondary]} style={styles.swatchFill} />
@@ -120,13 +120,13 @@ export default function TemplateGallery({ cardType, countryTemplate, selectedTem
           })}
         </ScrollView>
       </>}
-      {!active && <Text style={{ color: secondary, padding: 20 }}>{copy('No templates available for this category')}</Text>}
+      {!active && <Text style={{ color: secondary, padding: 20 }}>{copy('No designs match these filters. Choose All plans or another category.')}</Text>}
     </ScrollView>
     <Modal visible={fullPreview} animationType="slide" onRequestClose={closeFullPreview} presentationStyle="fullScreen" onShow={restoreStatusBar} onDismiss={dismissFullPreview}>
       <SafeAreaProvider>
       <FocusedStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={[styles.root, { backgroundColor: background }]} edges={['top', 'bottom', 'left', 'right']}>
-        <View style={styles.modalHeader}><Text accessibilityRole="header" style={{ color: primary, flex: 1, fontWeight: '700' }}>{active?.name}</Text><TouchableOpacity accessibilityRole="button" accessibilityLabel={copy('Close preview')} onPress={closeFullPreview} style={styles.control}><Ionicons name="close" size={24} color={primary} /></TouchableOpacity></View>
+        <View style={styles.modalHeader}><Text accessibilityRole="header" style={{ color: primary, flex: 1, fontWeight: '700' }}>{active?copy(active.name):''}</Text><TouchableOpacity accessibilityRole="button" accessibilityLabel={copy('Close preview')} onPress={closeFullPreview} style={styles.control}><Ionicons name="close" size={24} color={primary} /></TouchableOpacity></View>
         {currentExample && <StudioPreviewFrame isDark={isDark} card={currentExample.card} links={currentExample.links} />}
       </SafeAreaView>
       </SafeAreaProvider>

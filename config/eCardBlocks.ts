@@ -2,8 +2,8 @@
  * Tavvy eCard Block System Configuration
  * 
  * Block-based card builder with freemium model:
- * - Free: Profile, Contact, Social blocks
- * - Premium ($4.99/mo): Links, Products, Gallery, Video, About, Testimonials
+ * - Free: Profile, Contact, Social and Links blocks
+ * - Premium ($4.99/mo): Products, Gallery, Video, About, Testimonials
  * 
  * Flow:
  * 1. User selects template
@@ -203,7 +203,7 @@ export const BLOCK_CONFIGS: BlockConfig[] = [
     name: 'Links',
     description: 'Custom buttons linking anywhere',
     icon: 'link-outline',
-    isPremium: true,
+    isPremium: false,
     isRequired: false,
     maxInstances: 1,
     defaultData: {

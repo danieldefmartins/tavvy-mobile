@@ -1,5 +1,6 @@
+import { useReleaseCopy } from '../../../../hooks/useReleaseCopy';
 /**
- * LinksSection -- Manage link items with platform picker and free-tier limit notice.
+ * LinksSection -- Manage link items with a platform picker and no plan-based count limit.
  * Mobile port of the web LinksSection using React Native primitives.
  */
 
@@ -20,7 +21,6 @@ import { orderRequestKey } from '../../../../lib/orderService';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const FREE_LINK_LIMIT = 5;
 
 // ── Props ────────────────────────────────────────────────────────────────────
 
@@ -32,6 +32,7 @@ interface LinksSectionProps {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function LinksSection({ isDark, isPro }: LinksSectionProps) {
+  const copy = useReleaseCopy();
   const { state, dispatch } = useEditor();
   const links = state.links;
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -39,18 +40,14 @@ export default function LinksSection({ isDark, isPro }: LinksSectionProps) {
   const textPrimary = isDark ? '#FFFFFF' : '#111111';
   const textSecondary = isDark ? '#94A3B8' : '#6B7280';
   const borderColor = isDark ? '#334155' : '#E5E7EB';
-  const warningBg = isDark ? 'rgba(245,158,11,0.1)' : '#FFFBEB';
-  const warningBorder = isDark ? 'rgba(245,158,11,0.3)' : '#FDE68A';
 
   const activeLinkCount = links.filter(link => link.is_active === undefined || link.is_active === true).length;
   const hiddenLinkCount = links.length - activeLinkCount;
-  const isAtLimit = !isPro && activeLinkCount >= FREE_LINK_LIMIT;
 
   // -- Handlers ---------------------------------------------------------------
 
   const handleAddLink = useCallback(
     (platformId: string) => {
-      if (isAtLimit) return;
 
       const newLink = {
         id: orderRequestKey(),
@@ -64,7 +61,7 @@ export default function LinksSection({ isDark, isPro }: LinksSectionProps) {
       dispatch({ type: 'ADD_LINK', link: newLink });
       setPickerVisible(false);
     },
-    [isAtLimit, links.length, dispatch],
+    [links.length, dispatch],
   );
 
   const handleUpdateLink = useCallback(
@@ -132,36 +129,18 @@ export default function LinksSection({ isDark, isPro }: LinksSectionProps) {
         </Text>
       )}
 
-      {/* Free tier limit warning */}
-      {isAtLimit && (
-        <View
-          style={[
-            styles.warningBanner,
-            { backgroundColor: warningBg, borderColor: warningBorder },
-          ]}
-        >
-          <Ionicons name="lock-closed" size={16} color="#F59E0B" />
-          <View style={styles.warningTextContainer}>
-            <Text style={styles.warningTitle}>
-              Free plan limit reached ({FREE_LINK_LIMIT} links)
-            </Text>
-            <Text style={[styles.warningSubtitle, { color: textSecondary }]}>
-              Upgrade to Pro for unlimited links.
-            </Text>
-          </View>
-        </View>
-      )}
+      <Text style={{ fontSize: 12, color: textSecondary }}>{copy('No plan-based link limit')}</Text>
 
       {/* Link count */}
       <View style={styles.countContainer}>
         <Text style={[styles.countText, { color: textSecondary }]}>
           {activeLinkCount}
-          {!isPro ? ` / ${FREE_LINK_LIMIT}` : ''} active links{hiddenLinkCount ? ` · ${hiddenLinkCount} hidden links kept` : ''}
+           active links{hiddenLinkCount ? ` · ${hiddenLinkCount} hidden links kept` : ''}
         </Text>
       </View>
 
       {/* Add link button */}
-      {!isAtLimit && (
+      {(
         <TouchableOpacity
           style={[styles.addButton, { borderColor }]}
           onPress={() => setPickerVisible(true)}

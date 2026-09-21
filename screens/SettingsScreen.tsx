@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { useReleaseCopy } from '../hooks/useReleaseCopy';
-import { ACCOUNT_DELETION_NOTICE } from '../lib/accountDeletion';
+import { getAccountDeletionAvailability, createDeletionViewGuard } from '../lib/accountDeletion';
+import { accountDeletionCopy } from '../lib/accountDeletionCopy';
 // ============================================================================
 // SETTINGS SCREEN
 // ============================================================================
@@ -8,7 +9,7 @@ import { ACCOUNT_DELETION_NOTICE } from '../lib/accountDeletion';
 // Place this file in: screens/SettingsScreen.tsx
 // ============================================================================
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -32,12 +33,20 @@ import AppearanceSelector from '../components/AppearanceSelector';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const deletionCopy = accountDeletionCopy(i18n.resolvedLanguage || i18n.language);
   const copy = useReleaseCopy();
-  const { user, signOut, deleteAccount } = useAuth();
+  const { user, session, signOut } = useAuth();
   const { theme } = useThemeContext();
   const [autoTranslate, setAutoTranslate] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isCheckingDeletion, setIsCheckingDeletion] = useState(false);
+  const deletionGuard = useRef(createDeletionViewGuard()).current;
+  deletionGuard.setSession(user?.id ?? null, session?.access_token ?? null);
+  useEffect(() => {
+    deletionGuard.mount();
+    setIsCheckingDeletion(false);
+    return () => deletionGuard.dispose();
+  }, [deletionGuard, user?.id, session?.access_token]);
   
   // Notification preferences
   const [pushNotifications, setPushNotifications] = useState(true);
@@ -90,71 +99,21 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleDeleteAccount = () => {
-    // First confirmation
-    Alert.alert(
-      t('auth.deleteAccount'),
-      copy(ACCOUNT_DELETION_NOTICE),
-      [
-        {
-          text: t('common.cancel'),
-          style: 'cancel',
-        },
-        {
-          text: t('common.continue'),
-          style: 'destructive',
-          onPress: () => confirmDeleteAccount(),
-        },
-      ]
-    );
-  };
-
-  const confirmDeleteAccount = () => {
-    // Second confirmation for extra safety
-    Alert.alert(
-      t('auth.deleteAccountFinal'),
-      t('auth.deleteAccountFinalWarning'),
-      [
-        {
-          text: t('common.cancel'),
-          style: 'cancel',
-        },
-        {
-          text: t('auth.deleteAccountConfirm'),
-          style: 'destructive',
-          onPress: () => executeDeleteAccount(),
-        },
-      ]
-    );
-  };
-
-  const executeDeleteAccount = async () => {
-    setIsDeleting(true);
+  const handleDeleteAccount = async () => {
+    const ticket = deletionGuard.begin();
+    setIsCheckingDeletion(true);
     try {
-      await deleteAccount();
-      Alert.alert(
-        t('auth.accountDeleted'),
-        t('auth.accountDeletedMessage'),
-        [
-          {
-            text: t('common.ok'),
-            onPress: () => navigation.navigate('AppsMain' as never),
-          },
-        ]
-      );
-    } catch (error) {
-      console.error('Error deleting account:', error);
-      Alert.alert(
-        t('common.error'),
-        error instanceof Error ? error.message : t('auth.deleteAccountError'),
-        [
-          {
-            text: t('common.ok'),
-          },
-        ]
-      );
+      const availability = await getAccountDeletionAvailability();
+      if (!deletionGuard.current(ticket)) return;
+      if (availability.status === 'unavailable') {
+        Alert.alert(
+          t('auth.deleteAccount', { defaultValue: deletionCopy.title }),
+          deletionCopy.unavailable + '\n\n' + deletionCopy.unchanged,
+          [{ text: deletionCopy.close }],
+        );
+      }
     } finally {
-      setIsDeleting(false);
+      if (deletionGuard.current(ticket)) setIsCheckingDeletion(false);
     }
   };
 
@@ -441,10 +400,10 @@ export default function SettingsScreen() {
               <TouchableOpacity 
                 style={styles.settingRow}
                 onPress={handleDeleteAccount}
-                disabled={isDeleting}
+                disabled={isCheckingDeletion}
               >
                 <View style={styles.settingLeft}>
-                  {isDeleting ? (
+                  {isCheckingDeletion ? (
                     <ActivityIndicator size="small" color="#FF3B30" />
                   ) : (
                     <Ionicons name="trash" size={22} color="#FF3B30" />

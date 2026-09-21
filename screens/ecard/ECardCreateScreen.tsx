@@ -1,3 +1,6 @@
+import { replaceECardLinks } from '../../lib/ecard/linkPersistence';
+import { canUseTemplate } from '../../lib/ecard/templateSelection';
+import { useECardEntitlement } from '../../hooks/useECardEntitlement';
 /**
  * ECardCreateScreen.tsx
  * Unified real-time card builder — ONE card fills the screen.
@@ -169,6 +172,7 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const { templateId: initialTemplateId, colorSchemeId: initialColorId, prefillName } = route.params || {};
   const { user } = useAuth();
+  const plan = useECardEntitlement();
 
   // ── Template & color state ──
   const initialTplIdx = useMemo(() => {
@@ -569,6 +573,8 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
       return;
     }
     if (!name.trim()) { Alert.alert('Name Required', 'Please enter your name.'); return; }
+    if (plan.loading || plan.error) { Alert.alert('Verify your plan', plan.error || 'Your plan is still loading. Please try again shortly.'); return; }
+    if (!canUseTemplate(template, color?.id, plan.isPro)) { navigation.navigate('ECardPremiumUpsell'); return; }
     setIsCreating(true);
     try {
       // Upload profile photo (non-blocking — card saves even if upload fails)
@@ -649,33 +655,16 @@ export default function ECardCreateScreen({ navigation, route }: Props) {
         return;
       }
 
-      // Insert links (non-blocking — card already saved)
-      if (links.length > 0) {
-        try {
-          const cardLinks = links.filter(l => l.value.trim()).map((link, index) => ({
-            card_id: newCard.id,
-            platform: link.platform,
-            title: SOCIAL_PLATFORMS.find(p => p.id === link.platform)?.name || link.platform,
-            url: link.value,
-            value: link.value,
-            icon: link.platform,
-            sort_order: index,
-            is_active: true,
-          }));
-          if (cardLinks.length > 0) {
-            const { error: linkError } = await supabase.from('digital_card_links').insert(cardLinks);
-            if (linkError) console.warn('Links insert warning:', linkError.message);
-          }
-        } catch (linkErr) { console.warn('Links insert failed, card still saved:', linkErr); }
+      try {
+        await replaceECardLinks(supabase, newCard.id, links.filter(link => link.value.trim()).map(link => ({ ...link, title: SOCIAL_PLATFORMS.find(p => p.id === link.platform)?.name || link.platform, url: link.value, is_active: true })));
+      } catch (error) {
+        if (newCard.user_id === user.id && newCard.is_published === false) {
+          await supabase.from('digital_cards').delete().eq('id', newCard.id).eq('user_id', user.id).eq('is_published', false);
+        }
+        throw error;
       }
+      navigation.navigate('ECardEdit', { cardId: newCard.id });
 
-      // Navigate to upsell screen
-      const usesPremiumColor = !(color?.isFree);
-      navigation.navigate('ECardPremiumUpsell', {
-        cardId: newCard.id,
-        isPremiumTemplate: usesPremiumTemplate,
-        isPremiumColor: usesPremiumColor,
-      });
     } catch (error: any) {
       console.error('Error creating card:', error);
       Alert.alert('Error', `${error?.message || 'Unknown error'}\n\nPlease try again.`);

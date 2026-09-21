@@ -1,3 +1,4 @@
+import { readECardLinks } from '../../lib/ecard/linkPersistence';
 import { useReleaseCopy } from '../../hooks/useReleaseCopy';
 import FocusedStatusBar from '../../components/FocusedStatusBar';
 import React, { useState, useEffect, useCallback } from 'react';
@@ -118,8 +119,6 @@ interface Props {
 
 // CrownBadge is now imported from components/ecard/CrownBadge
 
-// Free tier limits
-const FREE_LINK_LIMIT = 5;
 
 export default function ECardPreviewScreen(props: Props) {
   return props.route.params?.studioPreview ? <StudioFullPreview {...props} /> : <LegacyECardPreview {...props} />;
@@ -390,7 +389,7 @@ function LegacyECardPreview({ navigation, route }: Props) {
         console.log('Checking passedLinks:', passedLinks, 'length:', passedLinks?.length);
         if (passedLinks && passedLinks.length > 0) {
           console.log('Using passed links');
-          const mappedLinks = passedLinks.map((l: any) => ({
+          const mappedLinks = passedLinks.filter((link: any) => link.is_active === undefined || link.is_active === true).map((l: any) => ({
             id: l.id || l.platform,
             title: l.title || l.platform?.charAt(0).toUpperCase() + l.platform?.slice(1) || 'Link',
             url: l.value || l.url || '',
@@ -402,12 +401,7 @@ function LegacyECardPreview({ navigation, route }: Props) {
         } else {
           console.log('No passed links, loading from database');
           // Load links from database
-          const { data: linksData } = await supabase
-            .from('digital_card_links')
-            .select('*')
-            .eq('card_id', passedCardData.id)
-            .eq('is_active', true)
-            .order('sort_order', { ascending: true });
+          const linksData = await readECardLinks(supabase, passedCardData.id);
           
           if (linksData) {
             setLinks(linksData.map(l => ({
@@ -471,12 +465,7 @@ function LegacyECardPreview({ navigation, route }: Props) {
         setCardData(data);
         
         // Load links
-        const { data: linksData } = await supabase
-          .from('digital_card_links')
-          .select('*')
-          .eq('card_id', data.id)
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true });
+        const linksData = await readECardLinks(supabase, data.id);
         
         if (linksData) {
           setLinks(linksData.map(l => ({

@@ -1,3 +1,4 @@
+import { atlasCategoryName } from '../lib/atlasCategoryCopy';
 import { useReleaseCopy } from '../hooks/useReleaseCopy';
 import ToolHeader from '../components/ToolHeader';
 /**
@@ -267,7 +268,7 @@ export default function AtlasHomeScreen() {
                 styles.chipText,
                 { color: selectedCategory === category.id ? '#FFFFFF' : (isDark ? '#E5E7EB' : '#374151') }
               ]}>
-                {category.name}
+                {atlasCategoryName(category, copy)}
               </Text>
             </TouchableOpacity>
           ))}

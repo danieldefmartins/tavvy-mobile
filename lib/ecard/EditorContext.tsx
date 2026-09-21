@@ -1,3 +1,4 @@
+import { readECardLinks } from './linkPersistence';
 /**
  * eCard Editor Context -- wraps the editor reducer and provides
  * typed dispatch + state to all editor section components.
@@ -43,11 +44,7 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
           .eq('id', cardId)
           .eq('user_id', userId)
           .single(),
-        supabase
-          .from('digital_card_links')
-          .select('*')
-          .eq('card_id', cardId)
-          .order('sort_order'),
+        readECardLinks(supabase, cardId, true),
       ]);
 
       if (cardResult.error || !cardResult.data) {
@@ -58,12 +55,8 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if (linksResult.error) {
-        dispatch({ type: 'SET_LOAD_ERROR', error: 'Your links could not be loaded. Retry before editing to keep existing links safe.' });
-        return;
-      }
       const card = cardResult.data;
-      const links = linksResult.data || [];
+      const links = linksResult;
 
       // Normalize featured_socials: handle both flat strings and objects
       const rawSocials = card.featured_socials || [];

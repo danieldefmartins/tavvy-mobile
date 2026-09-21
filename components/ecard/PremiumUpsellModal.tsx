@@ -1,3 +1,4 @@
+import { useReleaseCopy } from '../../hooks/useReleaseCopy';
 /**
  * PremiumUpsellModal.tsx
  * Beautiful premium upsell modal for block-based eCard system
@@ -34,7 +35,7 @@ interface PremiumUpsellModalProps {
 }
 
 const PREMIUM_FEATURES = [
-  { icon: 'link-outline', title: 'Unlimited Links', desc: 'Add as many links as you want' },
+  { icon: 'link-outline', title: 'Contact forms', desc: 'Let visitors send an inquiry from your card.' },
   { icon: 'images-outline', title: 'Photo Gallery', desc: 'Showcase your work beautifully' },
   { icon: 'videocam-outline', title: 'Video Embeds', desc: 'YouTube, TikTok, Vimeo' },
   { icon: 'pricetag-outline', title: 'Products Block', desc: 'Sell with images & prices' },
@@ -49,6 +50,7 @@ export default function PremiumUpsellModal({
   premiumBlockCount,
   mode,
 }: PremiumUpsellModalProps) {
+  const copy = useReleaseCopy();
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   
@@ -148,8 +150,8 @@ export default function PremiumUpsellModal({
                   <Ionicons name={feature.icon as any} size={18} color="#FFD700" />
                 </View>
                 <View style={styles.featureText}>
-                  <Text style={styles.featureTitle}>{feature.title}</Text>
-                  <Text style={styles.featureDesc}>{feature.desc}</Text>
+                  <Text style={styles.featureTitle}>{copy(feature.title)}</Text>
+                  <Text style={styles.featureDesc}>{copy(feature.desc)}</Text>
                 </View>
               </View>
             ))}

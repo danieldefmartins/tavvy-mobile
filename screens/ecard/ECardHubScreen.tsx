@@ -1,3 +1,4 @@
+import { readECardLinks, replaceECardLinks } from '../../lib/ecard/linkPersistence';
 import { useReleaseCopy } from '../../hooks/useReleaseCopy';
 import FocusedStatusBar from '../../components/FocusedStatusBar';
 /**
@@ -161,9 +162,9 @@ export default function ECardHubScreen() {
     if (!user || duplicating) return;
     setDuplicating(card.id);
     try {
-      const { data: fullCard } = await supabase.from('digital_cards').select('*').eq('id', card.id).single();
+      const { data: fullCard } = await supabase.from('digital_cards').select('*').eq('id', card.id).eq('user_id', user.id).single();
       if (!fullCard) { Alert.alert(copy('Error'), copy('Could not load card data.')); return; }
-      const { data: links } = await supabase.from('digital_card_links').select('*').eq('card_id', card.id).eq('is_active', true).order('sort_order', { ascending: true });
+      const links = await readECardLinks(supabase, card.id, true);
       const suffix = Math.random().toString(36).substring(2, 6);
       const { id, created_at, updated_at, slug, view_count, tap_count, review_count, review_rating, ...rest } = fullCard;
       const newSlug = (slug || 'card') + '-copy-' + suffix;
@@ -173,12 +174,14 @@ export default function ECardHubScreen() {
         is_published: false, view_count: 0, tap_count: 0, review_count: 0, review_rating: 0,
       }).select().single();
       if (error || !newCard) { Alert.alert(copy('Error'), copy('Failed to duplicate card.')); return; }
-      if (links && links.length > 0) {
-        const newLinks = links.map((l: any, i: number) => ({
-          card_id: newCard.id, platform: l.platform, title: l.title || l.platform,
-          url: l.url || l.value, icon: l.icon || l.platform, sort_order: i, is_active: true,
-        }));
-        await supabase.from('digital_card_links').insert(newLinks);
+      if (newCard.id === card.id || newCard.user_id !== user.id || newCard.is_published !== false) throw new Error('The new draft could not be verified.');
+      try {
+        // Fresh IDs for the copy; hidden links remain hidden. Never copy counters or ownership.
+        await replaceECardLinks(supabase, newCard.id, links.map((link, index) => ({ ...link, id: `copy-${index}` })));
+      } catch (error) {
+        // Only this newly created private draft is removed; shared source media stays intact.
+        await supabase.from('digital_cards').delete().eq('id', newCard.id).eq('user_id', user.id).eq('is_published', false);
+        throw error;
       }
       navigation.navigate('ECardEdit', { cardId: newCard.id });
     } catch (err) {

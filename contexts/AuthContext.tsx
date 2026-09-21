@@ -268,10 +268,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAccount = async () => {
     if (!user) throw new Error('No user logged in');
-    await deleteCurrentAccount();
-    setUser(null);
-    setSession(null);
-    setProfile(null);
+    // The current backend is unavailable. This rejects without clearing any session.
+    return deleteCurrentAccount();
   };
 
   return (

@@ -11,10 +11,10 @@
 import { useEffect, useRef, useCallback } from 'react';
 import * as FileSystem from 'expo-file-system';
 import { decode } from 'base64-arraybuffer';
-import { ecardLinkSavePayload } from './savePayload';
+import { replaceECardLinks } from './linkPersistence';
 import { useEditor } from './EditorContext';
 import { supabase } from '../../lib/supabaseClient';
-import { getTemplateById } from '../../config/eCardTemplates';
+import { ecardDesignChangeRequiresPro } from './designAccess';
 import { CardData, LinkItem, PendingUpload } from './editorReducer';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -95,6 +95,8 @@ export function useAutoSave({
   const latestState = useRef(state);
   latestState.current = state;
   const badgeFields = ['show_licensed_badge', 'show_insured_badge', 'show_bonded_badge', 'show_tavvy_verified_badge'] as const;
+  const savedDesign = useRef(state.card);
+  if (savedDesign.current?.id !== state.card?.id) savedDesign.current = state.card;
   const savedBadges = useRef<{ cardId: string; values: Record<string, boolean> } | null>(null);
   if (state.card?.id && savedBadges.current?.cardId !== state.card.id) {
     savedBadges.current = { cardId: state.card.id, values: Object.fromEntries(badgeFields.map(key => [key, !!state.card?.[key]])) };
@@ -116,9 +118,8 @@ export function useAutoSave({
     if (inFlightRef.current) return false;
     if (!card?.id || !userId) return false;
 
-    // Validate template access -- premium templates require pro subscription
-    const tpl = getTemplateById(card.template_id || 'basic');
-    if (tpl?.isPremium && !isPro) { dispatch({ type: 'MARK_SAVE_ERROR', error: 'This template requires an active Pro subscription.' }); return false; }
+    // Preserve unchanged saved designs when a subscription changes.
+    if (!isPro && ecardDesignChangeRequiresPro(card, savedDesign.current ?? undefined)) { dispatch({ type: 'MARK_SAVE_ERROR', error: 'This template requires an active Pro subscription.' }); return false; }
     inFlightRef.current = true;
 
     dispatch({ type: 'MARK_SAVING' });
@@ -242,10 +243,10 @@ export function useAutoSave({
       if (cardError) {
         throw new Error(`Card save failed: ${cardError.message}`);
       }
+      savedDesign.current = card;
       savedBadges.current = { cardId: card.id, values: Object.fromEntries(badgeFields.map(key => [key, !!updatePayload[key]])) };
 
-      const { error: linksError } = await supabase.rpc('replace_ecard_links', { p_card_id: card.id, p_links: ecardLinkSavePayload(links) });
-      if (linksError) throw new Error('Links could not be saved. Retry before publishing.');
+      await replaceECardLinks(supabase, card.id, links);
 
       // 5. Done ───────────────────────────────────────────────────────────
 

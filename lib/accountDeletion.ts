@@ -1,19 +1,26 @@
-import { supabase } from './supabaseClient';
+/** The durable deletion backend is not active in this release. No network or auth side effects. */
+export type AccountDeletionAvailability = { status: 'unavailable'; code: 'ACCOUNT_DELETION_UNAVAILABLE' };
+export const ACCOUNT_DELETION_NOTICE = 'Account deletion cannot be started in this version.';
+export async function getAccountDeletionAvailability(): Promise<AccountDeletionAvailability> {
+  return { status: 'unavailable', code: 'ACCOUNT_DELETION_UNAVAILABLE' };
+}
+export class AccountDeletionUnavailableError extends Error {
+  readonly code = 'ACCOUNT_DELETION_UNAVAILABLE';
+  constructor() { super(ACCOUNT_DELETION_NOTICE); this.name = 'AccountDeletionUnavailableError'; }
+}
+/** Kept for existing callers. Never invoke the old destructive Edge Function or sign out. */
+export async function deleteCurrentAccount(): Promise<never> { throw new AccountDeletionUnavailableError(); }
 
-export const ACCOUNT_DELETION_NOTICE = 'This permanently removes your sign-in, private profile, cards, reviews, saved activity, uploaded files, and live location sessions. Shared business and payroll history may remain without an account ownership link. Public place, event, and campground listings remain without your creator link. Stripe subscriptions linked to your account will be canceled; Apple or Google subscriptions must be managed in your store subscription settings.';
-
-/** Call only after an explicit destructive confirmation. Never send a user ID. */
-export async function deleteCurrentAccount(): Promise<void> {
-  const { data, error } = await supabase.functions.invoke('delete-account', { body: { confirmation: 'DELETE' } });
-  if (error) {
-    let detail: string | undefined;
-    try {
-      const body = await error.context?.json();
-      if (typeof body?.error === 'string') detail = body.error;
-    } catch { /* A network failure may have an unknown server outcome. */ }
-    throw new Error(detail || 'Account deletion could not be confirmed. Please retry; do not assume your account is deleted.');
-  }
-  if (data?.deleted !== true) throw new Error('Account deletion could not be confirmed. Please retry.');
-  // A local sign-out failure must not turn a confirmed server deletion into a false deletion failure.
-  await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+/** A late result from another account, session, press or unmounted screen is ignored. */
+export function createDeletionViewGuard() {
+  let generation = 0, subject: string | null = null, session: string | null = null, mounted = true;
+  return {
+    setSession(nextSubject: string | null, nextSession: string | null) {
+      if (nextSubject !== subject || nextSession !== session) { subject = nextSubject; session = nextSession; generation++; }
+    },
+    begin() { return ++generation; },
+    current(ticket: number) { return mounted && generation === ticket; },
+    mount() { mounted = true; },
+    dispose() { mounted = false; generation++; },
+  };
 }

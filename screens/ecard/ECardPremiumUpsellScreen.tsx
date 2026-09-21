@@ -1,3 +1,4 @@
+import { useReleaseCopy } from '../../hooks/useReleaseCopy';
 import { fetchMyECardEntitlement } from '../../lib/ecardEntitlement';
 import React, { useState } from 'react';
 import {
@@ -23,36 +24,11 @@ import { useTranslation } from 'react-i18next';
 const { width } = Dimensions.get('window');
 
 const FEATURES = [
-  {
-    icon: 'color-palette',
-    title: 'Premium Themes',
-    description: 'Access 20+ stunning premium themes',
-  },
-  {
-    icon: 'link',
-    title: 'Unlimited Links',
-    description: 'Add as many links as you want',
-  },
-  {
-    icon: 'bar-chart',
-    title: 'Advanced Analytics',
-    description: 'Track views, clicks, and engagement',
-  },
-  {
-    icon: 'videocam',
-    title: 'Video Backgrounds',
-    description: 'Make your card stand out with video',
-  },
-  {
-    icon: 'brush',
-    title: 'Custom Fonts',
-    description: 'Choose from 50+ premium fonts',
-  },
-  {
-    icon: 'shield-checkmark',
-    title: 'Priority Support',
-    description: 'Get help when you need it',
-  },
+  { icon: 'color-palette', title: "Premium designs", description: "Choose from premium layouts and color palettes." },
+  { icon: 'images', title: "Photo galleries", description: "Show multiple photos on your card." },
+  { icon: 'videocam', title: "Embedded videos", description: "Add playable videos to your card." },
+  { icon: 'document-text', title: "Contact forms", description: "Let visitors send an inquiry from your card." },
+  { icon: 'shield-checkmark', title: "Professional credentials", description: "Display your professional credentials." },
 ];
 
 interface Props {
@@ -62,6 +38,7 @@ interface Props {
 
 export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
+  const copy = useReleaseCopy();
   const { feature, themeName } = route.params || {};
   const { user } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
@@ -183,7 +160,7 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
                 : 'Unlock all premium features and take your card to the next level'}
             </Text>
             <Text style={[styles.subtitle, { marginTop: 12 }]}>
-              Pro includes gallery photos, embedded videos, contact forms, and professional credentials. Free includes up to 5 links.
+              {copy('Free includes a design in every category and no plan-based link limit. Pro adds premium designs, galleries, embedded videos, contact forms and professional credentials.')}
             </Text>
           </View>
 
@@ -195,8 +172,8 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
                   <Ionicons name={feat.icon as any} size={20} color="#FFD700" />
                 </View>
                 <View style={styles.featureText}>
-                  <Text style={styles.featureTitle}>{feat.title}</Text>
-                  <Text style={styles.featureDescription}>{feat.description}</Text>
+                  <Text style={styles.featureTitle}>{copy(feat.title)}</Text>
+                  <Text style={styles.featureDescription}>{copy(feat.description)}</Text>
                 </View>
               </View>
             ))}

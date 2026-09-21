@@ -1,4 +1,5 @@
 import React from 'react';
+import { accountDeletionCopy } from '../lib/accountDeletionCopy';
 import {
   View,
   Text,
@@ -21,7 +22,8 @@ interface HelpItem {
 }
 
 export default function HelpSupportScreen({ navigation }: any) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const deletionCopy = accountDeletionCopy(i18n.resolvedLanguage || i18n.language);
   const SUPPORT_EMAIL = 'support@tavvy.com';
   const PRIVACY_POLICY_URL = 'https://tavvy.com/privacy';
   const TERMS_URL = 'https://tavvy.com/terms';
@@ -106,8 +108,8 @@ export default function HelpSupportScreen({ navigation }: any) {
       answer: 'Yes! You can update your taps anytime by visiting the place again and adjusting your signals.',
     },
     {
-      question: 'How do I delete my account?',
-      answer: 'Contact our support team via email and we\'ll process your request within 48 hours.',
+      question: t('auth.deleteAccount', { defaultValue: deletionCopy.title }),
+      answer: deletionCopy.unavailable,
     },
   ];
 

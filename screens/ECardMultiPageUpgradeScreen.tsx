@@ -1,3 +1,4 @@
+import { useReleaseCopy } from '../hooks/useReleaseCopy';
 import { fetchMyECardEntitlement } from '../lib/ecardEntitlement';
 import React, { useState } from 'react';
 import {
@@ -28,6 +29,7 @@ interface RouteParams {
 
 const ECardMultiPageUpgradeScreen: React.FC = () => {
   const { t } = useTranslation();
+  const copy = useReleaseCopy();
   const navigation = useNavigation<any>();
   const route = useRoute();
   const params = route.params as RouteParams;
@@ -42,8 +44,8 @@ const ECardMultiPageUpgradeScreen: React.FC = () => {
     },
     {
       icon: 'link-outline',
-      title: 'Unlimited Links',
-      description: 'Add as many links as you need',
+      title: 'Contact forms',
+      description: 'Let visitors send an inquiry from your card.',
     },
     {
       icon: 'cart-outline',
@@ -193,8 +195,8 @@ const ECardMultiPageUpgradeScreen: React.FC = () => {
                 <Ionicons name={feature.icon as any} size={24} color="#d4af37" />
               </View>
               <View style={styles.featureText}>
-                <Text style={styles.featureTitle}>{feature.title}</Text>
-                <Text style={styles.featureDescription}>{feature.description}</Text>
+                <Text style={styles.featureTitle}>{copy(feature.title)}</Text>
+                <Text style={styles.featureDescription}>{copy(feature.description)}</Text>
               </View>
               <Ionicons name="checkmark-circle" size={24} color="#22c55e" />
             </View>

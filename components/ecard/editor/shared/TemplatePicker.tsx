@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { TEMPLATE_CATEGORIES } from '../../../../lib/ecard/templateSelection';
 import {
   View,
   Text,
@@ -37,19 +38,7 @@ const SAMPLE_DATA: CardData = {
 };
 
 // Group templates for filtering
-const TEMPLATE_CATEGORIES: Record<string, string[]> = {
-  business: [
-    'biz-traditional', 'biz-modern', 'biz-minimalist', 'business-card',
-    'pro-card', 'pro-corporate', 'pro-creative', 'cover-card', 'mobile-business',
-  ],
-  personal: [
-    'basic', 'blogger', 'full-width', 'premium-static', 'pro-realtor',
-  ],
-  politician: [
-    'civic-card', 'civic-card-flag', 'civic-card-bold',
-    'civic-card-clean', 'civic-card-rally', 'politician-generic',
-  ],
-};
+
 
 interface TemplatePickerProps {
   selectedTemplateId: string | null;

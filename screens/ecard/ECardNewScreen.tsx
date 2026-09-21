@@ -33,7 +33,8 @@ import { decode } from 'base64-arraybuffer';
 import { supabase } from '../../lib/supabaseClient';
 import TypePicker from '../../components/ecard/wizard/TypePicker';
 import TemplateGallery from '../../components/ecard/wizard/TemplateGallery';
-import { canUseTemplate, readTemplateSelection, templateCardType } from '../../lib/ecard/templateSelection';
+import TemplateBrowseFilters from '../../components/ecard/wizard/TemplateBrowseFilters';
+import { canUseTemplate, readTemplateSelection, templateCardType, browseCategoryForTemplate, browseCategoryForCardType, firstBrowseSelection, BrowsePlan } from '../../lib/ecard/templateSelection';
 import { applyDesignColor, createCardDraftPayload } from '../../lib/ecard/creationDraft';
 import { useReleaseCopy } from '../../hooks/useReleaseCopy';
 import QuickSetup, { QuickSetupValues } from '../../components/ecard/wizard/QuickSetup';
@@ -54,7 +55,8 @@ export default function ECardNewScreen() {
   // ── Wizard state ──────────────────────────────────────────
   const [step, setStep] = useState<WizardStep>('template');
   const [cardType, setCardType] = useState<string>(preset.cardType);
-  const [galleryFilter, setGalleryFilter] = useState('all');
+  const [galleryFilter, setGalleryFilter] = useState(browseCategoryForTemplate(preset.template.id));
+  const [planFilter,setPlanFilter]=useState<BrowsePlan>('all');
   const [setupValues, setSetupValues] = useState<QuickSetupValues>({ name: '', title: '', primaryColor: preset.scheme.primary });
   const [countryCode, setCountryCode] = useState<string | undefined>();
   const [countryTemplate, setCountryTemplate] = useState<string | undefined>();
@@ -80,30 +82,34 @@ export default function ECardNewScreen() {
   const handleTypeSelect = (type: string, country?: string, preferred?: string) => {
     if (!['business', 'personal', 'politician'].includes(type)) return;
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setCardType(type); setGalleryFilter(type); setCountryCode(country); setCountryTemplate(preferred);
-    const template = preferred ? getTemplateById(preferred) : TEMPLATES.find(item => templateCardType(item.id) === type && !item.isPremium);
-    if (template) {
-      const scheme = template.colorSchemes.find(item => isPro || item.isFree) || template.colorSchemes[0];
-      setSelectedTemplateId(template.id); setSelectedColorSchemeId(scheme.id);
-      setSetupValues(value => applyDesignColor(value, scheme.primary));
-    }
+    const category=browseCategoryForCardType(type),selection=firstBrowseSelection(category,isPro,preferred);
+    setCardType(type);setGalleryFilter(category);setPlanFilter('all');setCountryCode(country);setCountryTemplate(preferred);setTemplateAvailable(false);
+    const allowed=selection&&canUseTemplate(selection.template,selection.scheme.id,isPro);
+    setSelectedTemplateId(allowed?selection.template.id:null);setSelectedColorSchemeId(allowed?selection.scheme.id:null);
+    if(allowed)setSetupValues(value=>applyDesignColor(value,selection.scheme.primary));
     go('template');
   };
   const handleTemplateSelect = (templateId: string, schemeId: string) => {
     const selection = readTemplateSelection(templateId, schemeId);
-    if (!selection || !canUseTemplate(selection.template, schemeId, isPro)) return;
+    if (!selection) return;
     setSelectedTemplateId(selection.template.id); setSelectedColorSchemeId(selection.scheme.id);
-    if (galleryFilter === 'all') {
+    if (selectedTemplateId !== selection.template.id) {
       setCardType(selection.cardType);
       if (selection.cardType !== 'politician') { setCountryCode(undefined); setCountryTemplate(undefined); }
     }
     setSetupValues(value => applyDesignColor(value, selection.scheme.primary));
   };
+  const selectBrowse=(category:string,nextPlan:BrowsePlan)=>{if(category===galleryFilter&&nextPlan===planFilter)return;
+    setGalleryFilter(category);setPlanFilter(nextPlan);setTemplateAvailable(false);
+    const selection=firstBrowseSelection(category,isPro,selectedTemplateId||undefined,nextPlan);
+    if(selection&&canUseTemplate(selection.template,selection.scheme.id,isPro)){const scheme=nextPlan!=='free'&&selection.template.id===selectedTemplateId?selection.template.colorSchemes.find(item=>item.id===selectedColorSchemeId)||selection.scheme:selection.scheme;handleTemplateSelect(selection.template.id,scheme.id);}
+    else{setSelectedTemplateId(null);setSelectedColorSchemeId(null);}
+  };
   const quickStart = () => {
     const basic = getTemplateById('basic')!;
     const scheme = basic.colorSchemes.find(item => item.isFree) || basic.colorSchemes[0];
     setSelectedTemplateId(basic.id); setSelectedColorSchemeId(scheme.id);
-    setCardType('business'); setGalleryFilter('all'); setCountryCode(undefined); setCountryTemplate(undefined);
+    setCardType('business'); setGalleryFilter('personal-creators');setPlanFilter('all'); setCountryCode(undefined); setCountryTemplate(undefined);
     setSetupValues(value => applyDesignColor(value, scheme.primary)); go('setup');
   };
   const handleContinueToSetup = () => {
@@ -231,8 +237,9 @@ export default function ECardNewScreen() {
               <TouchableOpacity accessibilityRole="button" style={styles.pathButton} onPress={quickStart}><Text style={{ color: textPrimary }}>{copy('Quick setup')}</Text></TouchableOpacity>
               <TouchableOpacity accessibilityRole="button" style={styles.pathButton} onPress={() => go('type')}><Text style={{ color: textPrimary }}>{copy('Choose card type & template')}</Text></TouchableOpacity>
             </View>
-            <TemplateGallery key={`${galleryFilter}:${countryTemplate || ''}`}
-              cardType={galleryFilter}
+            <TemplateBrowseFilters category={galleryFilter} plan={planFilter} onChange={selectBrowse} isDark={isDark}/>
+            <TemplateGallery key={`${galleryFilter}:${planFilter}:${countryTemplate || ''}`}
+              cardType={galleryFilter} planFilter={planFilter}
               countryTemplate={countryTemplate}
               selectedTemplateId={selectedTemplateId}
               selectedColorSchemeId={selectedColorSchemeId}
@@ -285,7 +292,7 @@ export default function ECardNewScreen() {
               {['business', 'personal'].map(purpose => <TouchableOpacity key={purpose} accessibilityRole="radio" accessibilityState={{ selected: cardType === purpose }} disabled={creating} style={[styles.purposeButton, { borderColor: cardType === purpose ? ACCENT : border }]} onPress={() => {
                 if (cardType === 'politician') {
                   const basic = getTemplateById('basic')!, scheme = basic.colorSchemes.find(item => item.isFree) || basic.colorSchemes[0];
-                  setSelectedTemplateId(basic.id); setSelectedColorSchemeId(scheme.id); setGalleryFilter('all');
+                  setSelectedTemplateId(basic.id); setSelectedColorSchemeId(scheme.id); setGalleryFilter('personal-creators');setPlanFilter('all');
                   setSetupValues(value => applyDesignColor(value, scheme.primary));
                 }
                 setCardType(purpose); setCountryCode(undefined); setCountryTemplate(undefined);
