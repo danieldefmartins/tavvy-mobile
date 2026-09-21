@@ -195,3 +195,7 @@ Save requirement. Backend/admin023 implementation is isolated and not deployed y
 Deletion must clear the matching cover and remove the stored file, with explicit
 cleanup status if storage fails. Successful photo operations must preserve unrelated
 unsaved information/fact/source edits. No actual customer photos are deleted for tests.
+
+## Cruise discovery filters — September 21 afternoon
+
+Matching native source at `5bde784` adds ship-length, build-year, official family-activities and adults-only (18+) filters, matching the live web v3 reader. Audience choices describe operator programs/policy, not guest-rated quality. App TypeScript passes; a new EAS binary and final simulator/device QA are still pending. Web source `179597e` is deployed as Railway `1ae20a56-c55e-447d-8a76-9009d8ae282e` and passed live browser checks. Six curated verified ships lead unsearched Explore ships; unknown ship facts remain excluded from exact filters.
