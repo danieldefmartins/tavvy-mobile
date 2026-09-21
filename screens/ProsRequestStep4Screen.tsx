@@ -22,14 +22,15 @@ export default function ProsRequestStep4Screen({ navigation, route }: any) {
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   const requestId = useRef(0);
   const [nearbyPosition, setNearbyPosition] = useState<{ lat: number; lon: number } | null>(null);
+  const [locationPending, setLocationPending] = useState(true);
 
   useEffect(() => {
-    Location.getForegroundPermissionsAsync().then(async permission => {
+    Location.requestForegroundPermissionsAsync().then(async permission => {
       if (permission.granted) {
         const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         setNearbyPosition({ lat: position.coords.latitude, lon: position.coords.longitude });
       }
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => setLocationPending(false));
   }, []);
 
   const useMyLocation = async () => {
@@ -52,6 +53,7 @@ export default function ProsRequestStep4Screen({ navigation, route }: any) {
 
   // Photon provides search-as-you-type with nearby ranking.
   const searchAddress = async (text: string) => {
+    if (locationPending && !nearbyPosition) return;
     if (text.length < 3) {
       setSuggestions([]);
       setShowSuggestions(false);
@@ -79,6 +81,10 @@ export default function ProsRequestStep4Screen({ navigation, route }: any) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!locationPending && address.length >= 3) searchAddress(address);
+  }, [nearbyPosition, locationPending]);
 
   const handleTextChange = (text: string) => {
     requestId.current++;
