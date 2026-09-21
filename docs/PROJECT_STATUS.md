@@ -199,3 +199,7 @@ unsaved information/fact/source edits. No actual customer photos are deleted for
 ## Cruise discovery filters — September 21 afternoon
 
 Matching native source at `5bde784` adds ship-length, build-year, official family-activities and adults-only (18+) filters, matching the live web v3 reader. Audience choices describe operator programs/policy, not guest-rated quality. App TypeScript passes. Internal iOS EAS preview build `fa50ec07-8d30-4439-ace0-5974c36baf54` finished successfully on September 21; final simulator/device QA, distribution and App Store release remain pending. Web source `179597e` is deployed as Railway `1ae20a56-c55e-447d-8a76-9009d8ae282e` and passed live browser checks. Six curated verified ships lead unsearched Explore ships; unknown ship facts remain excluded from exact filters.
+
+## Home visual parity — September 21
+
+The native home quick actions now use colored vector icon badges in place of emoji, and the featured image carousel uses screen-width slides. Native app TypeScript passes. Local Xcode simulator compilation hit an existing `fmt` Pod/toolchain consteval error before app compilation; a reproducible EAS simulator preview profile was added for actual visual QA. The updated native binary and screenshot are pending at this checkpoint. The web homepage now exposes an explicit Where field and the live Boston route check passes without overriding it with current GPS.

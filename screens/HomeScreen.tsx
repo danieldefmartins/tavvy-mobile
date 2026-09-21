@@ -56,7 +56,7 @@ import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
 const { width, height } = Dimensions.get('window');
 
 // Featured carousel — rides + every Tavvy feature (broad appeal, not rides-only)
-const FEATURE_CARD_W = Math.round(width * 0.82);
+const FEATURE_CARD_W = width;
 const featureImages: Record<string, string> = {
   'rides': Image.resolveAssetSource(require('../assets/features-v2/rides.jpg')).uri,
   'restaurants': Image.resolveAssetSource(require('../assets/features-v2/restaurants.jpg')).uri,
@@ -610,7 +610,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       if (carouselPausedRef.current || reduceMotionRef.current) return;
       setActiveSlide((prev) => {
         const next = (prev + 1) % FEATURE_SLIDES.length;
-        carouselRef.current?.scrollTo({ x: next * (FEATURE_CARD_W + 12), animated: true });
+        carouselRef.current?.scrollTo({ x: next * FEATURE_CARD_W, animated: true });
         return next;
       });
     }, 4500);
@@ -2721,7 +2721,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
               ]}
               onPress={switchToMapMode}
             >
-              <Text style={styles.quickActionIcon}>📍</Text>
+              <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(0, 194, 203, 0.12)' }]}><Ionicons name="location" size={20} color={isDark ? '#5EEAEF' : '#007F86'} /></View>
               <Text style={[styles.quickActionText, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{copy("Near Me")}</Text>
             </TouchableOpacity>
             
@@ -2735,7 +2735,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
               ]}
               onPress={switchToMapMode}
             >
-              <Text style={styles.quickActionIcon}>🗺️</Text>
+              <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(138, 5, 190, 0.12)' }]}><Ionicons name="map-outline" size={20} color={isDark ? '#D4A0FF' : '#7905A8'} /></View>
               <Text style={[styles.quickActionText, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{copy("Map")}</Text>
             </TouchableOpacity>
             
@@ -2759,7 +2759,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
                 }
               }}
             >
-              <Text style={styles.quickActionIcon}>🎲</Text>
+              <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(0, 194, 203, 0.12)' }]}><Ionicons name="dice-outline" size={20} color={isDark ? '#5EEAEF' : '#007F86'} /></View>
               <Text style={[styles.quickActionText, { color: isDark ? '#fff' : '#111827' }]}>{copy("Surprise")}</Text>
               <Text style={[styles.quickActionSubtext, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{copy("Let Tavvy decide")}</Text>
             </TouchableOpacity>
@@ -2776,7 +2776,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
               ]}
               onPress={() => navigation.navigate('SignalSearch')}
             >
-              <Text style={styles.quickActionIcon}>📡</Text>
+              <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(0, 194, 203, 0.12)' }]}><Ionicons name="radio-outline" size={20} color={isDark ? '#5EEAEF' : '#007F86'} /></View>
               <Text style={[styles.quickActionText, { color: isDark ? '#C77DFF' : '#8A05BE' }]}>{copy("Signals")}</Text>
               <Text style={[styles.quickActionSubtext, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{copy("Search by vibe")}</Text>
             </TouchableOpacity>
@@ -2791,7 +2791,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
               ]}
               onPress={() => navigation.navigate("Apps", { screen: 'SavedMain' })}
             >
-              <Text style={styles.quickActionIcon}>⭐</Text>
+              <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(138, 5, 190, 0.12)' }]}><Ionicons name="heart-outline" size={20} color={isDark ? '#D4A0FF' : '#7905A8'} /></View>
               <Text style={[styles.quickActionText, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{copy("Saved")}</Text>
             </TouchableOpacity>
           </View>
@@ -2804,12 +2804,12 @@ function HomeScreen({ navigation }: { navigation: any }) {
             ref={carouselRef}
             horizontal
             showsHorizontalScrollIndicator={false}
-            snapToInterval={FEATURE_CARD_W + 12}
+            snapToInterval={FEATURE_CARD_W}
             decelerationRate="fast"
             contentContainerStyle={styles.featureCarouselContent}
             onScrollBeginDrag={() => { carouselPausedRef.current = true; }}
             onMomentumScrollEnd={(e) => {
-              const i = Math.round(e.nativeEvent.contentOffset.x / (FEATURE_CARD_W + 12));
+              const i = Math.round(e.nativeEvent.contentOffset.x / FEATURE_CARD_W);
               setActiveSlide(i);
               carouselPausedRef.current = false;
             }}
@@ -2820,7 +2820,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
               <TouchableOpacity
                 key={s.id}
                 activeOpacity={0.9}
-                style={[styles.featureSlide, { width: FEATURE_CARD_W, marginRight: 12, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border }]}
+                style={[styles.featureSlide, { width: FEATURE_CARD_W, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border }]}
                 onPress={() => goToFeature(s.id)}
               >
                 <View style={{ height: 190, backgroundColor: theme.surfaceElevated }}>
@@ -6436,7 +6436,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   quickActionIcon: {
-    fontSize: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 6,
   },
   quickActionText: {
