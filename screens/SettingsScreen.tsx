@@ -2,6 +2,13 @@ import Constants from 'expo-constants';
 import { useReleaseCopy } from '../hooks/useReleaseCopy';
 import { getAccountDeletionAvailability, createDeletionViewGuard } from '../lib/accountDeletion';
 import { accountDeletionCopy } from '../lib/accountDeletionCopy';
+import {
+  AppSettings,
+  getCachedAppSettings,
+  loadAppSettings,
+  setAppSetting,
+  subscribeAppSettings,
+} from '../lib/settingsPreferences';
 // ============================================================================
 // SETTINGS SCREEN
 // ============================================================================
@@ -48,18 +55,25 @@ export default function SettingsScreen() {
     return () => deletionGuard.dispose();
   }, [deletionGuard, user?.id, session?.access_token]);
   
-  // Notification preferences
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [liveBusinessAlerts, setLiveBusinessAlerts] = useState(true);
-  
-  // Privacy preferences
-  const [locationSharing, setLocationSharing] = useState(true);
-  const [dataSharing, setDataSharing] = useState(false);
-  
-  // App preferences
-  const [distanceUnit, setDistanceUnit] = useState('miles'); // 'miles' or 'km'
-  const [defaultMapLayer, setDefaultMapLayer] = useState('standard'); // 'standard', 'dark', 'satellite'
+  // Persisted app settings (notifications, privacy, display defaults) — see lib/settingsPreferences.ts
+  const [appSettings, setAppSettingsState] = useState<AppSettings>(getCachedAppSettings());
+  useEffect(() => {
+    loadAppSettings().then(setAppSettingsState);
+    return subscribeAppSettings(setAppSettingsState);
+  }, []);
+  const {
+    pushNotifications,
+    emailNotifications,
+    liveBusinessAlerts,
+    locationSharing,
+    dataSharing,
+    distanceUnit,
+    defaultMapLayer,
+  } = appSettings;
+  const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+    setAppSettingsState(prev => ({ ...prev, [key]: value }));
+    setAppSetting(key, value);
+  };
 
   // Dynamic styles based on theme
   const dynamicStyles = {
@@ -178,7 +192,7 @@ export default function SettingsScreen() {
               </View>
               <Switch
                 value={pushNotifications}
-                onValueChange={setPushNotifications}
+                onValueChange={(value) => updateSetting('pushNotifications', value)}
                 trackColor={{ false: '#E5E5EA', true: theme.primary }}
                 thumbColor="#FFFFFF"
               />
@@ -193,7 +207,7 @@ export default function SettingsScreen() {
               </View>
               <Switch
                 value={emailNotifications}
-                onValueChange={setEmailNotifications}
+                onValueChange={(value) => updateSetting('emailNotifications', value)}
                 trackColor={{ false: '#E5E5EA', true: theme.primary }}
                 thumbColor="#FFFFFF"
               />
@@ -208,7 +222,7 @@ export default function SettingsScreen() {
               </View>
               <Switch
                 value={liveBusinessAlerts}
-                onValueChange={setLiveBusinessAlerts}
+                onValueChange={(value) => updateSetting('liveBusinessAlerts', value)}
                 trackColor={{ false: '#E5E5EA', true: theme.primary }}
                 thumbColor="#FFFFFF"
               />
@@ -231,7 +245,7 @@ export default function SettingsScreen() {
               </View>
               <Switch
                 value={locationSharing}
-                onValueChange={setLocationSharing}
+                onValueChange={(value) => updateSetting('locationSharing', value)}
                 trackColor={{ false: '#E5E5EA', true: theme.primary }}
                 thumbColor="#FFFFFF"
               />
@@ -246,7 +260,7 @@ export default function SettingsScreen() {
               </View>
               <Switch
                 value={dataSharing}
-                onValueChange={setDataSharing}
+                onValueChange={(value) => updateSetting('dataSharing', value)}
                 trackColor={{ false: '#E5E5EA', true: theme.primary }}
                 thumbColor="#FFFFFF"
               />
@@ -269,11 +283,11 @@ export default function SettingsScreen() {
                   [
                     {
                       text: copy("Miles"),
-                      onPress: () => setDistanceUnit('miles'),
+                      onPress: () => updateSetting('distanceUnit', 'miles'),
                     },
                     {
                       text: copy("Kilometers"),
-                      onPress: () => setDistanceUnit('km'),
+                      onPress: () => updateSetting('distanceUnit', 'km'),
                     },
                     { text: copy("Cancel"), style: 'cancel' },
                   ]
@@ -303,15 +317,15 @@ export default function SettingsScreen() {
                   [
                     {
                       text: copy("Standard"),
-                      onPress: () => setDefaultMapLayer('standard'),
+                      onPress: () => updateSetting('defaultMapLayer', 'standard'),
                     },
                     {
                       text: copy("Dark"),
-                      onPress: () => setDefaultMapLayer('dark'),
+                      onPress: () => updateSetting('defaultMapLayer', 'dark'),
                     },
                     {
                       text: copy("Satellite"),
-                      onPress: () => setDefaultMapLayer('satellite'),
+                      onPress: () => updateSetting('defaultMapLayer', 'satellite'),
                     },
                     { text: copy("Cancel"), style: 'cancel' },
                   ]

@@ -12,6 +12,7 @@
 
 import { supabase } from './supabaseClient';
 import { searchPlacesInBounds as typesenseSearchBounds } from './typesenseService';
+import { formatDistanceMeters } from './settingsPreferences';
 
 // ============================================
 // TYPES
@@ -636,32 +637,10 @@ function deduplicateByNameAndProximity(places: PlaceCard[]): PlaceCard[] {
 /**
  * Format distance in meters to a human-readable string
  * @param meters Distance in meters
- * @returns Formatted string like "0.3 mi" or "2.5 mi"
+ * @returns Formatted string like "0.3 mi" or "2.5 mi", honoring the user's Settings > Distance Unit choice
  */
 export function formatDistance(meters: number | undefined): string {
-  if (meters === undefined || meters === null || typeof meters !== 'number') {
-    return '';
-  }
-  
-  // Convert meters to miles (1 mile = 1609.34 meters)
-  const miles = meters / 1609.34;
-  
-  // Validate miles calculation
-  if (!isFinite(miles) || isNaN(miles)) {
-    return '';
-  }
-  
-  if (miles < 0.1) {
-    // Less than 0.1 miles, show in feet
-    const feet = Math.round(meters * 3.28084);
-    return `${feet} ft`;
-  } else if (miles < 10) {
-    // Less than 10 miles, show 1 decimal
-    return `${miles.toFixed(1)} mi`;
-  } else {
-    // 10+ miles, show whole number
-    return `${Math.round(miles)} mi`;
-  }
+  return formatDistanceMeters(meters);
 }
 
 /**
