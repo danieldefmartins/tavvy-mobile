@@ -32,7 +32,7 @@ export default function MobileBusinessSection({ isDark }: MobileBusinessSectionP
       id="mobile-business"
       title="Mobile Business"
       icon="car"
-      defaultOpen={true}
+      defaultOpen={false}
       isDark={isDark}
     >
       {/* Info callout */}

@@ -1,3 +1,6 @@
+import Constants from 'expo-constants';
+import { useReleaseCopy } from '../hooks/useReleaseCopy';
+import { ACCOUNT_DELETION_NOTICE } from '../lib/accountDeletion';
 // ============================================================================
 // SETTINGS SCREEN
 // ============================================================================
@@ -24,12 +27,15 @@ import { useThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { InlineLanguageSelector } from '../components/LanguageSelector';
 import { AutoTranslateToggle } from '../components/ReviewTranslation';
+import BlockedAuthors from '../components/BlockedAuthors';
+import AppearanceSelector from '../components/AppearanceSelector';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const copy = useReleaseCopy();
   const { user, signOut, deleteAccount } = useAuth();
-  const { theme, isDark, toggleTheme } = useThemeContext();
+  const { theme } = useThemeContext();
   const [autoTranslate, setAutoTranslate] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
@@ -88,7 +94,7 @@ export default function SettingsScreen() {
     // First confirmation
     Alert.alert(
       t('auth.deleteAccount'),
-      t('auth.deleteAccountWarning'),
+      copy(ACCOUNT_DELETION_NOTICE),
       [
         {
           text: t('common.cancel'),
@@ -140,11 +146,10 @@ export default function SettingsScreen() {
       console.error('Error deleting account:', error);
       Alert.alert(
         t('common.error'),
-        t('auth.deleteAccountError'),
+        error instanceof Error ? error.message : t('auth.deleteAccountError'),
         [
           {
             text: t('common.ok'),
-            onPress: () => navigation.navigate('AppsMain' as never),
           },
         ]
       );
@@ -170,6 +175,7 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <BlockedAuthors />
         {/* ========== LANGUAGE SECTION ========== */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
@@ -181,30 +187,8 @@ export default function SettingsScreen() {
         </View>
 
         {/* ========== APPEARANCE SECTION ========== */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
-            {t('settings.theme').toUpperCase()}
-          </Text>
-          <View style={[styles.sectionContent, { backgroundColor: theme.surface }]}>
-            <View style={styles.settingRow}>
-              <View style={styles.settingLeft}>
-                <Ionicons 
-                  name={isDark ? 'moon' : 'sunny'} 
-                  size={22} 
-                  color={theme.primary} 
-                />
-                <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
-                  {t('settings.darkMode')}
-                </Text>
-              </View>
-              <Switch
-                value={isDark}
-                onValueChange={toggleTheme}
-                trackColor={{ false: '#E5E5EA', true: theme.primary }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-          </View>
+        <View style={[styles.section, { paddingHorizontal: 16 }]}>
+          <AppearanceSelector />
         </View>
 
         {/* ========== REVIEWS SECTION ========== */}
@@ -230,7 +214,7 @@ export default function SettingsScreen() {
               <View style={styles.settingLeft}>
                 <Ionicons name="notifications" size={22} color={theme.primary} />
                 <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
-                  Push Notifications
+                  {copy("Push Notifications")}
                 </Text>
               </View>
               <Switch
@@ -245,7 +229,7 @@ export default function SettingsScreen() {
               <View style={styles.settingLeft}>
                 <Ionicons name="mail" size={22} color={theme.primary} />
                 <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
-                  Email Notifications
+                  {copy("Email Notifications")}
                 </Text>
               </View>
               <Switch
@@ -260,7 +244,7 @@ export default function SettingsScreen() {
               <View style={styles.settingLeft}>
                 <Ionicons name="radio" size={22} color={theme.primary} />
                 <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
-                  Live Business Alerts
+                  {copy("Live Business Alerts")}
                 </Text>
               </View>
               <Switch
@@ -276,14 +260,14 @@ export default function SettingsScreen() {
         {/* ========== PRIVACY & SECURITY SECTION ========== */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
-            PRIVACY & SECURITY
+            {copy('Privacy & Security').toUpperCase()}
           </Text>
           <View style={[styles.sectionContent, { backgroundColor: theme.surface }]}>
             <View style={[styles.settingRow, styles.settingRowBorder]}>
               <View style={styles.settingLeft}>
                 <Ionicons name="location" size={22} color={theme.primary} />
                 <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
-                  Location Sharing
+                  {copy("Location Sharing")}
                 </Text>
               </View>
               <Switch
@@ -298,7 +282,7 @@ export default function SettingsScreen() {
               <View style={styles.settingLeft}>
                 <Ionicons name="analytics" size={22} color={theme.primary} />
                 <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
-                  Share Usage Data
+                  {copy("Share Usage Data")}
                 </Text>
               </View>
               <Switch
@@ -314,25 +298,25 @@ export default function SettingsScreen() {
         {/* ========== PREFERENCES SECTION ========== */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
-            PREFERENCES
+            {copy('Preferences').toUpperCase()}
           </Text>
           <View style={[styles.sectionContent, { backgroundColor: theme.surface }]}>
             <TouchableOpacity 
               style={[styles.settingRow, styles.settingRowBorder]}
               onPress={() => {
                 Alert.alert(
-                  'Distance Unit',
-                  'Choose your preferred distance unit',
+                  copy("Distance Unit"),
+                  copy("Choose your preferred distance unit"),
                   [
                     {
-                      text: 'Miles',
+                      text: copy("Miles"),
                       onPress: () => setDistanceUnit('miles'),
                     },
                     {
-                      text: 'Kilometers',
+                      text: copy("Kilometers"),
                       onPress: () => setDistanceUnit('km'),
                     },
-                    { text: 'Cancel', style: 'cancel' },
+                    { text: copy("Cancel"), style: 'cancel' },
                   ]
                 );
               }}
@@ -340,12 +324,12 @@ export default function SettingsScreen() {
               <View style={styles.settingLeft}>
                 <Ionicons name="speedometer" size={22} color={theme.primary} />
                 <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
-                  Distance Unit
+                  {copy("Distance Unit")}
                 </Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Text style={[styles.settingValue, dynamicStyles.settingValue]}>
-                  {distanceUnit === 'miles' ? 'Miles' : 'Kilometers'}
+                  {distanceUnit === 'miles' ? copy("Miles") : copy("Kilometers")}
                 </Text>
                 <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
               </View>
@@ -355,22 +339,22 @@ export default function SettingsScreen() {
               style={styles.settingRow}
               onPress={() => {
                 Alert.alert(
-                  'Default Map Layer',
-                  'Choose your default map style',
+                  copy("Default Map Layer"),
+                  copy("Choose your default map style"),
                   [
                     {
-                      text: 'Standard',
+                      text: copy("Standard"),
                       onPress: () => setDefaultMapLayer('standard'),
                     },
                     {
-                      text: 'Dark',
+                      text: copy("Dark"),
                       onPress: () => setDefaultMapLayer('dark'),
                     },
                     {
-                      text: 'Satellite',
+                      text: copy("Satellite"),
                       onPress: () => setDefaultMapLayer('satellite'),
                     },
-                    { text: 'Cancel', style: 'cancel' },
+                    { text: copy("Cancel"), style: 'cancel' },
                   ]
                 );
               }}
@@ -378,12 +362,12 @@ export default function SettingsScreen() {
               <View style={styles.settingLeft}>
                 <Ionicons name="map" size={22} color={theme.primary} />
                 <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
-                  Default Map Layer
+                  {copy("Default Map Layer")}
                 </Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Text style={[styles.settingValue, dynamicStyles.settingValue]}>
-                  {defaultMapLayer.charAt(0).toUpperCase() + defaultMapLayer.slice(1)}
+                  {copy(defaultMapLayer === 'standard' ? 'Standard' : defaultMapLayer === 'dark' ? 'Dark' : 'Satellite')}
                 </Text>
                 <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
               </View>
@@ -477,7 +461,7 @@ export default function SettingsScreen() {
         {/* App Version */}
         <View style={styles.appInfo}>
           <Text style={[styles.appInfoText, { color: theme.textTertiary }]}>
-            {t('common.version', { version: '1.0.0' })}
+            {t('common.version', { version: Constants.expoConfig?.version || '1.0.1' })}
           </Text>
           <Text style={[styles.appInfoText, { color: theme.textTertiary }]}>
             {t('common.tagline')}
@@ -529,6 +513,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
   },
+  settingValue: { fontSize: 14 },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',

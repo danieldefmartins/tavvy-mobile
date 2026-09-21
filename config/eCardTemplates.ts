@@ -188,17 +188,17 @@ export const TEMPLATES: Template[] = [
       // Dark
       { id: 'dark', name: 'Dark', primary: '#1a1a2e', secondary: '#16213e', accent: '#e94560', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.7)', background: '#1a1a2e', cardBg: '#1a1a2e', isFree: true },
       // Tavvy Green
-      { id: 'tavvy-green', name: 'Tavvy Green', primary: '#00C853', secondary: '#00E676', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(165deg, #00C853 0%, #00E676 50%, #004D40 100%)', cardBg: 'transparent', isFree: true },
+      { id: 'tavvy-green', name: 'Tavvy Green', primary: '#126b50', secondary: '#1d8262', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(165deg, #126b50 0%, #1d8262 50%, #123c32 100%)', cardBg: 'transparent', isFree: true },
       // Ocean Blue
-      { id: 'ocean', name: 'Ocean Blue', primary: '#1E90FF', secondary: '#00BFFF', accent: 'rgba(255,255,255,0.2)', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.8)', background: 'linear-gradient(165deg, #1E90FF 0%, #00BFFF 50%, #0a0f1e 100%)', cardBg: 'transparent' },
+      { id: 'ocean', name: 'Ocean Blue', primary: '#24567c', secondary: '#307d98', accent: 'rgba(255,255,255,0.2)', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.8)', background: 'linear-gradient(165deg, #24567c 0%, #307d98 50%, #142d40 100%)', cardBg: 'transparent' },
       // Sunset
-      { id: 'sunset', name: 'Sunset', primary: '#f97316', secondary: '#ec4899', accent: 'rgba(255,255,255,0.2)', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.8)', background: 'linear-gradient(165deg, #f97316 0%, #ec4899 50%, #1a1a2e 100%)', cardBg: 'transparent' },
+      { id: 'sunset', name: 'Sunset', primary: '#944e36', secondary: '#9e536b', accent: 'rgba(255,255,255,0.2)', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.8)', background: 'linear-gradient(165deg, #944e36 0%, #9e536b 50%, #302639 100%)', cardBg: 'transparent' },
       // Purple
-      { id: 'purple', name: 'Purple', primary: '#581c87', secondary: '#9333ea', accent: 'rgba(255,255,255,0.2)', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.8)', background: 'linear-gradient(165deg, #581c87 0%, #9333ea 50%, #0a0f1e 100%)', cardBg: 'transparent' },
+      { id: 'purple', name: 'Purple', primary: '#40315f', secondary: '#6b4f8a', accent: 'rgba(255,255,255,0.2)', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.8)', background: 'linear-gradient(165deg, #40315f 0%, #6b4f8a 50%, #211e32 100%)', cardBg: 'transparent' },
       // Emerald
-      { id: 'emerald', name: 'Emerald', primary: '#065f46', secondary: '#10b981', accent: 'rgba(255,255,255,0.2)', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.8)', background: 'linear-gradient(165deg, #065f46 0%, #10b981 50%, #0a0f1e 100%)', cardBg: 'transparent' },
+      { id: 'emerald', name: 'Emerald', primary: '#164e3c', secondary: '#28755c', accent: 'rgba(255,255,255,0.2)', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.8)', background: 'linear-gradient(165deg, #164e3c 0%, #28755c 50%, #122e28 100%)', cardBg: 'transparent' },
       // Coral
-      { id: 'coral', name: 'Coral', primary: '#fb7185', secondary: '#f43f5e', accent: 'rgba(255,255,255,0.2)', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.8)', background: 'linear-gradient(165deg, #fb7185 0%, #f43f5e 50%, #1a1a2e 100%)', cardBg: 'transparent' },
+      { id: 'coral', name: 'Coral', primary: '#91475b', secondary: '#b16470', accent: 'rgba(255,255,255,0.2)', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.8)', background: 'linear-gradient(165deg, #91475b 0%, #b16470 50%, #382534 100%)', cardBg: 'transparent' },
     ],
     layoutConfig: {
       photoPosition: 'center',
@@ -297,13 +297,13 @@ export const TEMPLATES: Template[] = [
     layout: 'pro-card',
     colorSchemes: [
       // Trust Blue
-      { id: 'trust-blue', name: 'Trust Blue', primary: '#1e40af', secondary: '#3b82f6', accent: '#fbbf24', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.9)', background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)', cardBg: '#FFFFFF', border: '#fbbf24', isFree: false },
+      { id: 'trust-blue', name: 'Trust Blue', primary: '#173b66', secondary: '#2f5c89', accent: '#dbc38d', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.9)', background: 'linear-gradient(135deg, #173b66 0%, #2f5c89 100%)', cardBg: '#FFFFFF', border: '#dbc38d', isFree: false },
       // Pro Green
-      { id: 'pro-green', name: 'Pro Green', primary: '#166534', secondary: '#22c55e', accent: '#fef08a', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.9)', background: 'linear-gradient(135deg, #166534 0%, #22c55e 100%)', cardBg: '#FFFFFF', border: '#fef08a' },
+      { id: 'pro-green', name: 'Pro Green', primary: '#164e3c', secondary: '#28755c', accent: '#e4d7a6', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.9)', background: 'linear-gradient(135deg, #164e3c 0%, #28755c 100%)', cardBg: '#FFFFFF', border: '#e4d7a6' },
       // Dark Pro
-      { id: 'dark-pro', name: 'Dark Pro', primary: '#0a0a0a', secondary: '#1a1a1a', accent: '#00C853', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.9)', background: '#0a0a0a', cardBg: '#1a1a1a', border: '#00C853' },
+      { id: 'dark-pro', name: 'Dark Pro', primary: '#0a0a0a', secondary: '#1a1a1a', accent: '#83cbaa', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.9)', background: '#0a0a0a', cardBg: '#1a1a1a', border: '#83cbaa' },
       // Orange Energy
-      { id: 'orange-energy', name: 'Energy Orange', primary: '#c2410c', secondary: '#f97316', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.9)', background: 'linear-gradient(135deg, #c2410c 0%, #f97316 100%)', cardBg: '#FFFFFF', border: '#FFFFFF' },
+      { id: 'orange-energy', name: 'Energy Orange', primary: '#833d24', secondary: '#a95935', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.9)', background: 'linear-gradient(135deg, #833d24 0%, #a95935 100%)', cardBg: '#FFFFFF', border: '#FFFFFF' },
       // Navy & Gold
       { id: 'navy-gold', name: 'Navy & Gold', primary: '#0f172a', secondary: '#1e293b', accent: '#d4af37', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.9)', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', cardBg: '#FFFFFF', border: '#d4af37' },
     ],
@@ -333,16 +333,19 @@ export const TEMPLATES: Template[] = [
     features: ['cover-photo', 'logo-overlay', 'contact-rows', 'wave-accent', 'clean-layout'],
     layout: 'cover-card',
     colorSchemes: [
-      // Purple & Orange (matches mockup)
-      { id: 'purple-orange', name: 'Purple & Orange', primary: '#7c3aed', secondary: '#6d28d9', accent: '#f97316', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF', border: '#f97316', isFree: false },
-      // Blue & Coral
-      { id: 'blue-coral', name: 'Blue & Coral', primary: '#1e40af', secondary: '#3b82f6', accent: '#f43f5e', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF', border: '#f43f5e' },
+      // Navy & Gold (professional default)
+      { id: 'navy-gold', name: 'Navy & Gold', primary: '#0f172a', secondary: '#1e293b', accent: '#d4af37', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF', border: '#d4af37', isFree: false },
+      // Blue & Slate
+      { id: 'blue-slate', name: 'Blue & Slate', primary: '#1e40af', secondary: '#3b82f6', accent: '#64748b', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF', border: '#64748b' },
       // Dark & Gold
       { id: 'dark-gold', name: 'Dark & Gold', primary: '#0f172a', secondary: '#1e293b', accent: '#d4af37', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF', border: '#d4af37' },
       // Teal & White
       { id: 'teal-white', name: 'Teal & White', primary: '#0d9488', secondary: '#14b8a6', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF', border: '#FFFFFF' },
       // Rose & Blush
       { id: 'rose-blush', name: 'Rose & Blush', primary: '#be185d', secondary: '#ec4899', accent: '#fce7f3', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF', border: '#fce7f3' },
+      // Retained legacy palette IDs: published cards keep their selected look.
+      { id: 'purple-orange', name: 'Purple & Orange', primary: '#7c3aed', secondary: '#6d28d9', accent: '#f97316', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF', border: '#f97316', isFree: false },
+      { id: 'blue-coral', name: 'Blue & Coral', primary: '#1e40af', secondary: '#3b82f6', accent: '#f43f5e', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF', border: '#f43f5e' },
     ],
     layoutConfig: {
       photoPosition: 'cover',
@@ -369,13 +372,13 @@ export const TEMPLATES: Template[] = [
       // Dark (B&W photo feel)
       { id: 'dark', name: 'Dark', primary: '#000000', secondary: '#1a1a1a', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.8)', background: '#0a0a0a', cardBg: '#1a1a1a', isFree: false },
       // Blue
-      { id: 'blue', name: 'Blue', primary: '#1e40af', secondary: '#3b82f6', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, transparent 0%, #1e40af 100%)', cardBg: '#0f172a' },
+      { id: 'blue', name: 'Blue', primary: '#1e40af', secondary: '#315777', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, transparent 0%, #1e40af 100%)', cardBg: '#0f172a' },
       // Purple
-      { id: 'purple', name: 'Purple', primary: '#581c87', secondary: '#9333ea', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, transparent 0%, #581c87 100%)', cardBg: '#1e1b4b' },
+      { id: 'purple', name: 'Purple', primary: '#38274e', secondary: '#654978', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, transparent 0%, #38274e 100%)', cardBg: '#1e1b4b' },
       // Warm
-      { id: 'warm', name: 'Warm', primary: '#7c2d12', secondary: '#c2410c', accent: '#fef3c7', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, transparent 0%, #7c2d12 100%)', cardBg: '#451a03' },
+      { id: 'warm', name: 'Warm', primary: '#7c2d12', secondary: '#815344', accent: '#fef3c7', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, transparent 0%, #7c2d12 100%)', cardBg: '#451a03' },
       // Emerald
-      { id: 'emerald', name: 'Emerald', primary: '#065f46', secondary: '#10b981', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, transparent 0%, #065f46 100%)', cardBg: '#022c22' },
+      { id: 'emerald', name: 'Emerald', primary: '#183f35', secondary: '#356b58', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, transparent 0%, #183f35 100%)', cardBg: '#022c22' },
       // Navy & Gold
       { id: 'navy-gold', name: 'Navy & Gold', primary: '#0f172a', secondary: '#1e293b', accent: '#d4af37', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, transparent 0%, #0f172a 100%)', cardBg: '#0f172a', border: '#d4af37' },
     ],
@@ -435,16 +438,18 @@ export const TEMPLATES: Template[] = [
     features: ['wave-divider', 'logo-badge', 'contact-rows', 'colored-icons', 'bold-colors'],
     layout: 'pro-creative',
     colorSchemes: [
-      // Purple & Orange
-      { id: 'purple-orange', name: 'Purple & Orange', primary: '#6b21a8', secondary: '#7c3aed', accent: '#f97316', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#6b21a8', cardBg: '#FFFFFF', border: '#f97316', isFree: false },
-      // Blue & Teal
-      { id: 'blue-teal', name: 'Blue & Teal', primary: '#1e40af', secondary: '#3b82f6', accent: '#14b8a6', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#1e40af', cardBg: '#FFFFFF', border: '#14b8a6' },
-      // Red & Gold
-      { id: 'red-gold', name: 'Red & Gold', primary: '#991b1b', secondary: '#dc2626', accent: '#d4af37', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#991b1b', cardBg: '#FFFFFF', border: '#d4af37' },
+      // Blue & Teal (default — clean, professional)
+      { id: 'blue-teal', name: 'Blue & Teal', primary: '#183b56', secondary: '#2c5b76', accent: '#74c1b7', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#183b56', cardBg: '#FFFFFF', border: '#74c1b7', isFree: false },
       // Dark & Neon
       { id: 'dark-neon', name: 'Dark & Neon', primary: '#0a0a0a', secondary: '#1a1a1a', accent: '#22d3ee', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#0a0a0a', cardBg: '#1a1a1a', border: '#22d3ee' },
+      // Red & Gold
+      { id: 'red-gold', name: 'Red & Gold', primary: '#703438', secondary: '#9c5157', accent: '#d4af37', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#703438', cardBg: '#FFFFFF', border: '#d4af37' },
+      // Navy & Silver
+      { id: 'navy-silver', name: 'Navy & Silver', primary: '#0f172a', secondary: '#1e293b', accent: '#94a3b8', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#0f172a', cardBg: '#FFFFFF', border: '#94a3b8' },
       // Green & White
       { id: 'green-white', name: 'Green & White', primary: '#166534', secondary: '#22c55e', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#166534', cardBg: '#FFFFFF', border: '#22c55e' },
+      // Retained legacy palette IDs: published cards keep their selected look.
+      { id: 'purple-orange', name: 'Purple & Orange', primary: '#6b21a8', secondary: '#7c3aed', accent: '#f97316', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#6b21a8', cardBg: '#FFFFFF', border: '#f97316', isFree: false },
     ],
     layoutConfig: {
       photoPosition: 'top',
@@ -503,13 +508,13 @@ export const TEMPLATES: Template[] = [
       // Dark (B&W photo feel)
       { id: 'dark', name: 'Dark', primary: '#000000', secondary: '#1a1a1a', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.8)', background: '#0a0a0a', cardBg: '#1a1a1a', isFree: false },
       // Blue
-      { id: 'blue', name: 'Blue', primary: '#1e40af', secondary: '#3b82f6', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, #1e40af 0%, #0f172a 100%)', cardBg: '#0f172a' },
+      { id: 'blue', name: 'Blue', primary: '#1e40af', secondary: '#315777', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, #1e40af 0%, #0f172a 100%)', cardBg: '#0f172a' },
       // Purple
-      { id: 'purple', name: 'Purple', primary: '#581c87', secondary: '#9333ea', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, #581c87 0%, #1e1b4b 100%)', cardBg: '#1e1b4b' },
+      { id: 'purple', name: 'Purple', primary: '#38274e', secondary: '#654978', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, #38274e 0%, #1e1b4b 100%)', cardBg: '#1e1b4b' },
       // Warm
-      { id: 'warm', name: 'Warm', primary: '#7c2d12', secondary: '#c2410c', accent: '#fef3c7', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, #7c2d12 0%, #451a03 100%)', cardBg: '#451a03' },
+      { id: 'warm', name: 'Warm', primary: '#7c2d12', secondary: '#815344', accent: '#fef3c7', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, #7c2d12 0%, #451a03 100%)', cardBg: '#451a03' },
       // Emerald
-      { id: 'emerald', name: 'Emerald', primary: '#065f46', secondary: '#10b981', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, #065f46 0%, #022c22 100%)', cardBg: '#022c22' },
+      { id: 'emerald', name: 'Emerald', primary: '#183f35', secondary: '#356b58', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, #183f35 0%, #022c22 100%)', cardBg: '#022c22' },
       // Navy & Gold
       { id: 'navy-gold', name: 'Navy & Gold', primary: '#0f172a', secondary: '#1e293b', accent: '#d4af37', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: 'linear-gradient(to bottom, #0f172a 0%, #020617 100%)', cardBg: '#0f172a', border: '#d4af37' },
     ],
@@ -536,13 +541,20 @@ export const TEMPLATES: Template[] = [
     features: ['candidate-photo', 'ballot-number', 'party-identity', 'proposals', 'community-feedback', 'qa', 'commitments', 'endorsements'],
     layout: 'civic-card',
     colorSchemes: [
-      { id: 'pt-red', name: 'Vermelho', primary: '#CC0000', secondary: '#990000', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f5f5f5', cardBg: '#FFFFFF' },
-      { id: 'psdb-blue', name: 'Azul', primary: '#003399', secondary: '#002266', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF' },
-      { id: 'mdb-green', name: 'Verde', primary: '#006633', secondary: '#004D26', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f5f0', cardBg: '#FFFFFF' },
+      // PL Blue & Yellow (default — matches Nikolas card)
       { id: 'pl-blue-yellow', name: 'Azul & Amarelo', primary: '#003366', secondary: '#002244', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF' },
-      { id: 'pdt-orange', name: 'Laranja', primary: '#E65100', secondary: '#BF360C', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#fff8f0', cardBg: '#FFFFFF' },
-      { id: 'psol-purple', name: 'Roxo', primary: '#6A1B9A', secondary: '#4A148C', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f5f0fa', cardBg: '#FFFFFF' },
+      // PSDB Blue
+      { id: 'psdb-blue', name: 'Azul', primary: '#003399', secondary: '#002266', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF' },
+      // Brasil (Green & Yellow)
       { id: 'brasil', name: 'Brasil', primary: '#009739', secondary: '#006B2B', accent: '#FEDD00', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f5f0', cardBg: '#FFFFFF' },
+      // MDB Green
+      { id: 'mdb-green', name: 'Verde', primary: '#006633', secondary: '#004D26', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f5f0', cardBg: '#FFFFFF' },
+      // PT Red
+      { id: 'pt-red', name: 'Vermelho', primary: '#CC0000', secondary: '#990000', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f5f5f5', cardBg: '#FFFFFF' },
+      // PDT Orange
+      { id: 'pdt-orange', name: 'Laranja', primary: '#E65100', secondary: '#BF360C', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#fff8f0', cardBg: '#FFFFFF' },
+      // PSOL Purple
+      { id: 'psol-purple', name: 'Roxo', primary: '#6A1B9A', secondary: '#4A148C', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f5f0fa', cardBg: '#FFFFFF' },
     ],
     layoutConfig: {
       photoPosition: 'center',
@@ -566,6 +578,11 @@ export const TEMPLATES: Template[] = [
     features: ['candidate-photo', 'ballot-number', 'party-identity', 'proposals', 'community-feedback', 'qa', 'commitments', 'endorsements'],
     layout: 'civic-card-flag',
     colorSchemes: [
+      { id: 'verde-amarelo', name: 'Verde & Amarelo', primary: '#009739', secondary: '#002776', accent: '#FEDD00', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.9)', background: '#f0f5f0', cardBg: '#FFFFFF' },
+      { id: 'azul-patria', name: 'Azul Pátria', primary: '#002776', secondary: '#001a4d', accent: '#FEDD00', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.9)', background: '#f0f2f5', cardBg: '#FFFFFF' },
+      { id: 'verde-escuro', name: 'Verde Escuro', primary: '#004D26', secondary: '#002E17', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.9)', background: '#f0f5f0', cardBg: '#FFFFFF' },
+      { id: 'ouro-brasil', name: 'Ouro', primary: '#1a1a1a', secondary: '#333333', accent: '#FEDD00', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.9)', background: '#f5f5f0', cardBg: '#FFFFFF' },
+      // Retained legacy palette IDs: published cards keep their selected look.
       { id: 'brasil', name: 'Brasil', primary: '#009739', secondary: '#002776', accent: '#FFDF00', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.9)', background: '#009739', cardBg: '#FFFFFF' },
       { id: 'pl-blue-yellow', name: 'Azul & Amarelo', primary: '#003366', secondary: '#002244', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF' },
     ],
@@ -591,6 +608,11 @@ export const TEMPLATES: Template[] = [
     features: ['candidate-photo', 'ballot-number', 'party-identity', 'proposals', 'community-feedback', 'qa', 'commitments', 'endorsements'],
     layout: 'civic-card-bold',
     colorSchemes: [
+      { id: 'bold-navy', name: 'Marinho', primary: '#0a1628', secondary: '#1a2d4d', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF' },
+      { id: 'bold-green', name: 'Verde Forte', primary: '#0d3b1e', secondary: '#1a5c35', accent: '#FEDD00', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f5f0', cardBg: '#FFFFFF' },
+      { id: 'bold-red', name: 'Vermelho Forte', primary: '#7a0000', secondary: '#a00000', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#faf0f0', cardBg: '#FFFFFF' },
+      { id: 'bold-black', name: 'Preto & Ouro', primary: '#111111', secondary: '#222222', accent: '#c9a84c', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f3f3f3', cardBg: '#FFFFFF' },
+      // Retained legacy palette IDs: published cards keep their selected look.
       { id: 'navy-gold', name: 'Navy & Gold', primary: '#1a2744', secondary: '#0f1a2e', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF' },
       { id: 'pt-red', name: 'Vermelho', primary: '#CC0000', secondary: '#990000', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f5f5f5', cardBg: '#FFFFFF' },
     ],
@@ -616,6 +638,11 @@ export const TEMPLATES: Template[] = [
     features: ['candidate-photo', 'ballot-number', 'party-identity', 'proposals', 'community-feedback', 'qa', 'commitments', 'endorsements'],
     layout: 'civic-card-clean',
     colorSchemes: [
+      { id: 'clean-blue', name: 'Azul Moderno', primary: '#1e40af', secondary: '#1e3a8a', accent: '#3b82f6', text: '#1e293b', textSecondary: '#64748b', background: '#eff6ff', cardBg: '#FFFFFF' },
+      { id: 'clean-green', name: 'Verde Moderno', primary: '#166534', secondary: '#14532d', accent: '#22c55e', text: '#1e293b', textSecondary: '#64748b', background: '#f0fdf4', cardBg: '#FFFFFF' },
+      { id: 'clean-slate', name: 'Cinza Elegante', primary: '#334155', secondary: '#1e293b', accent: '#0ea5e9', text: '#1e293b', textSecondary: '#64748b', background: '#f8fafc', cardBg: '#FFFFFF' },
+      { id: 'clean-amber', name: 'Âmbar', primary: '#92400e', secondary: '#78350f', accent: '#f59e0b', text: '#1e293b', textSecondary: '#64748b', background: '#fffbeb', cardBg: '#FFFFFF' },
+      // Retained legacy palette IDs: published cards keep their selected look.
       { id: 'blue-clean', name: 'Azul Moderno', primary: '#2563EB', secondary: '#1D4ED8', accent: '#DBEAFE', text: '#1a1a2e', textSecondary: '#555555', background: '#e8edf2', cardBg: '#FFFFFF' },
       { id: 'green-clean', name: 'Verde Moderno', primary: '#059669', secondary: '#047857', accent: '#D1FAE5', text: '#1a1a2e', textSecondary: '#555555', background: '#ecfdf5', cardBg: '#FFFFFF' },
     ],
@@ -641,6 +668,11 @@ export const TEMPLATES: Template[] = [
     features: ['candidate-photo', 'ballot-number', 'party-identity', 'proposals', 'community-feedback', 'qa', 'commitments', 'endorsements'],
     layout: 'civic-card-rally',
     colorSchemes: [
+      { id: 'rally-blue-gold', name: 'Azul & Ouro', primary: '#003366', secondary: '#001a33', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f2f5', cardBg: '#FFFFFF' },
+      { id: 'rally-green-white', name: 'Verde & Branco', primary: '#006B2B', secondary: '#004D1F', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f5f0', cardBg: '#FFFFFF' },
+      { id: 'rally-red-white', name: 'Vermelho & Branco', primary: '#B91C1C', secondary: '#7F1D1D', accent: '#FFFFFF', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#fef2f2', cardBg: '#FFFFFF' },
+      { id: 'rally-dark', name: 'Escuro', primary: '#18181b', secondary: '#27272a', accent: '#facc15', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f4f4f5', cardBg: '#FFFFFF' },
+      // Retained legacy palette IDs: published cards keep their selected look.
       { id: 'navy-yellow', name: 'Navy & Amarelo', primary: '#1a2744', secondary: '#0f1a2e', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#F5C518', cardBg: '#FFFFFF' },
       { id: 'green-gold', name: 'Verde & Ouro', primary: '#006B2B', secondary: '#004D1A', accent: '#FFD700', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#FFD700', cardBg: '#FFFFFF' },
     ],
@@ -695,10 +727,15 @@ export const TEMPLATES: Template[] = [
     features: ['cover-photo', 'menu-section', 'endorsements', 'location', 'social-icons', 'order-online', 'catering-info'],
     layout: 'mobile-business',
     colorSchemes: [
+      // Fire & Smoke — warm food truck vibes
       { id: 'fire-smoke', name: 'Fire & Smoke', primary: '#1a1a1a', secondary: '#2d2d2d', accent: '#e85d04', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#faf5f0', cardBg: '#FFFFFF', border: '#e85d04', isFree: true },
+      // Fresh & Green — healthy/organic
       { id: 'fresh-green', name: 'Fresh & Green', primary: '#1b4332', secondary: '#2d6a4f', accent: '#52b788', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0faf5', cardBg: '#FFFFFF', border: '#52b788', isFree: true },
+      // Street Gold — bold street food
       { id: 'street-gold', name: 'Street Gold', primary: '#292524', secondary: '#44403c', accent: '#f59e0b', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#fefce8', cardBg: '#FFFFFF', border: '#f59e0b', isFree: true },
+      // Ocean Blue — seafood/coastal
       { id: 'ocean-blue', name: 'Ocean Blue', primary: '#0c4a6e', secondary: '#075985', accent: '#38bdf8', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#f0f9ff', cardBg: '#FFFFFF', border: '#38bdf8' },
+      // Berry & Cream — desserts/sweet
       { id: 'berry-cream', name: 'Berry & Cream', primary: '#831843', secondary: '#9d174d', accent: '#f472b6', text: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.85)', background: '#fdf2f8', cardBg: '#FFFFFF', border: '#f472b6' },
     ],
     layoutConfig: {

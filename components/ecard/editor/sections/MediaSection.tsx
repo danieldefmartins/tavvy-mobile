@@ -1,3 +1,4 @@
+import { useReleaseCopy } from '../../../../hooks/useReleaseCopy';
 /**
  * MediaSection -- Gallery images and video management.
  * Mobile port of the web MediaSection using React Native primitives and expo-image-picker.
@@ -18,7 +19,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
+import { decode } from 'base64-arraybuffer';
 import { useEditor } from '../../../../lib/ecard/EditorContext';
 import { supabase } from '../../../../lib/supabaseClient';
 import EditorSection from '../shared/EditorSection';
@@ -81,7 +85,17 @@ interface MediaSectionProps {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
+  const copy = useReleaseCopy();
   const { state, dispatch } = useEditor();
+  const navigation = useNavigation<any>();
+  const requirePro = useCallback(() => {
+    if (isPro) return true;
+    Alert.alert(copy('Pro feature'), copy('Gallery photos, embedded videos, contact forms and professional credentials are Pro extras.') + ' ' + copy('Your existing content stays on your card.'), [
+      { text: copy('Keep editing'), style: "cancel" },
+      { text: copy('View Pro plan'), onPress: () => navigation.navigate('ECardPremiumUpsell') },
+    ]);
+    return false;
+  }, [isPro, navigation, copy]);
   const card = state.card;
   const galleryImages = card?.gallery_images || [];
   const videos = card?.videos || [];
@@ -113,6 +127,7 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
   // -- Gallery Handlers -------------------------------------------------------
 
   const handleGalleryAdd = useCallback(async () => {
+    if (!requirePro()) return;
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
@@ -142,7 +157,7 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
         },
       });
     });
-  }, [dispatch]);
+  }, [dispatch, requirePro]);
 
   const handleGalleryRemove = useCallback(
     (id: string) => {
@@ -150,9 +165,9 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
         'Remove Image',
         'Are you sure you want to remove this image?',
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: "Cancel", style: "cancel" },
           {
-            text: 'Remove',
+            text: "Remove",
             style: 'destructive',
             onPress: () => dispatch({ type: 'REMOVE_GALLERY_IMAGE', id }),
           },
@@ -165,6 +180,7 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
   // -- Video Handlers ---------------------------------------------------------
 
   const handleAddVideo = useCallback(() => {
+    if (!requirePro()) return;
     const trimmed = videoUrl.trim();
     if (!trimmed) return;
 
@@ -172,7 +188,7 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
     setVideoUrl('');
     setVideoType('youtube');
     setVideoModalOpen(false);
-  }, [videoUrl, videoType, dispatch]);
+  }, [videoUrl, videoType, dispatch, requirePro]);
 
   const handleRemoveVideo = useCallback(
     (index: number) => {
@@ -180,9 +196,9 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
         'Remove Video',
         'Are you sure you want to remove this video?',
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: "Cancel", style: "cancel" },
           {
-            text: 'Remove',
+            text: "Remove",
             style: 'destructive',
             onPress: () => dispatch({ type: 'REMOVE_VIDEO', index }),
           },
@@ -193,6 +209,7 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
   );
 
   const handleVideoFileUpload = useCallback(async () => {
+    if (!requirePro()) return;
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
@@ -203,7 +220,7 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['videos'],
+      mediaTypes: ["videos"],
       allowsEditing: false,
       quality: 0.8,
     });
@@ -217,28 +234,25 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
       if (!userId) {
-        Alert.alert('Error', 'Please sign in to upload videos.');
+        Alert.alert("Error", 'Please sign in to upload videos.');
         return;
       }
 
       const filename = asset.uri.split('/').pop() || `video_${Date.now()}.mp4`;
       const storagePath = `${userId}/videos/${Date.now()}_${filename}`;
       const mimeType = asset.mimeType || 'video/mp4';
+      const bytes = decode(await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 }));
 
       const { data, error } = await supabase.storage
         .from('ecard-assets')
-        .upload(storagePath, {
-          uri: asset.uri,
-          type: mimeType,
-          name: filename,
-        } as any, {
+        .upload(storagePath, bytes, {
           contentType: mimeType,
           upsert: true,
         });
 
       if (error) {
         console.error('Video upload error:', error);
-        Alert.alert('Upload Failed', 'Failed to upload video. Please try again.');
+        Alert.alert("Upload Failed", 'Failed to upload video. Please try again.');
         return;
       }
 
@@ -251,11 +265,11 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
       }
     } catch (err) {
       console.error('Video upload error:', err);
-      Alert.alert('Upload Failed', 'Failed to upload video. Please try again.');
+      Alert.alert("Upload Failed", 'Failed to upload video. Please try again.');
     } finally {
       setUploading(false);
     }
-  }, []);
+  }, [requirePro]);
 
   // -- Thumbnail Handlers -----------------------------------------------------
 
@@ -270,27 +284,24 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
       if (!userId) {
-        Alert.alert('Error', 'Please sign in to upload thumbnails.');
+        Alert.alert("Error", 'Please sign in to upload thumbnails.');
         return;
       }
 
       const filename = `thumb_${Date.now()}.jpg`;
       const storagePath = `${userId}/thumbnails/${filename}`;
+      const bytes = decode(await FileSystem.readAsStringAsync(imageUri, { encoding: FileSystem.EncodingType.Base64 }));
 
       const { data, error } = await supabase.storage
         .from('ecard-assets')
-        .upload(storagePath, {
-          uri: imageUri,
-          type: mimeType || 'image/jpeg',
-          name: filename,
-        } as any, {
+        .upload(storagePath, bytes, {
           contentType: mimeType || 'image/jpeg',
           upsert: true,
         });
 
       if (error) {
         console.error('Thumbnail upload error:', error);
-        Alert.alert('Upload Failed', 'Failed to upload thumbnail.');
+        Alert.alert("Upload Failed", 'Failed to upload thumbnail.');
         return;
       }
 
@@ -309,7 +320,7 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
       setThumbnailModalOpen(false);
     } catch (err) {
       console.error('Thumbnail upload error:', err);
-      Alert.alert('Upload Failed', 'Failed to upload thumbnail.');
+      Alert.alert("Upload Failed", 'Failed to upload thumbnail.');
     } finally {
       setUploadingThumbnail(false);
     }
@@ -347,7 +358,7 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
         }
 
         if (frames.length === 0) {
-          Alert.alert('Error', 'Could not generate frames from this video.');
+          Alert.alert("Error", 'Could not generate frames from this video.');
           setThumbnailModalOpen(false);
         } else {
           setThumbnailFrames(frames);
@@ -355,7 +366,7 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
         }
       } catch (err) {
         console.error('Thumbnail generation error:', err);
-        Alert.alert('Error', 'Failed to generate video frames.');
+        Alert.alert("Error", 'Failed to generate video frames.');
         setThumbnailModalOpen(false);
       } finally {
         setGeneratingThumbnails(false);
@@ -392,8 +403,8 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
 
   return (
     <EditorSection
-      id="media"
-      title="Media"
+      id={"media"}
+      title={copy("Media")}
       icon="images"
       defaultOpen={false}
       isDark={isDark}
@@ -402,10 +413,9 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
       <View style={styles.subsection}>
         <View style={styles.subsectionHeader}>
           <Text style={[styles.subsectionTitle, { color: textPrimary }]}>
-            Gallery
-          </Text>
+            {copy("Gallery · Pro")}</Text>
           <Text style={[styles.subsectionCount, { color: textSecondary }]}>
-            {galleryImages.length} image{galleryImages.length !== 1 ? 's' : ''}
+            {galleryImages.length} {copy('Photos')}
           </Text>
         </View>
 
@@ -415,7 +425,7 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
             {galleryImages.map((img) => (
               <View key={img.id} style={styles.galleryItemWrapper}>
                 <Image
-                  source={{ uri: img.url }}
+                  source={{ uri: img.url || (img as any).uri }}
                   style={[styles.galleryImage, { backgroundColor: cardBg }]}
                   resizeMode="cover"
                 />
@@ -438,8 +448,8 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
           onPress={handleGalleryAdd}
           activeOpacity={0.7}
         >
-          <Ionicons name="add" size={18} color="#00C853" />
-          <Text style={styles.addButtonText}>Add Images</Text>
+          <Ionicons name={"add"} size={18} color="#00C853" />
+          <Text style={styles.addButtonText}>Add images · Pro</Text>
         </TouchableOpacity>
       </View>
 
@@ -447,10 +457,9 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
       <View>
         <View style={styles.subsectionHeader}>
           <Text style={[styles.subsectionTitle, { color: textPrimary }]}>
-            Videos
-          </Text>
+            {copy("Videos · Pro")}</Text>
           <Text style={[styles.subsectionCount, { color: textSecondary }]}>
-            {videos.length} video{videos.length !== 1 ? 's' : ''}
+            {videos.length} {copy('Videos')}
           </Text>
         </View>
 
@@ -536,11 +545,11 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
         {/* Add video button */}
         <TouchableOpacity
           style={[styles.addButton, { borderColor }]}
-          onPress={() => setVideoModalOpen(true)}
+          onPress={() => { if (requirePro()) setVideoModalOpen(true); }}
           activeOpacity={0.7}
         >
           <Ionicons name="videocam" size={18} color="#00C853" />
-          <Text style={styles.addButtonText}>Add Video</Text>
+          <Text style={styles.addButtonText}>Add video · Pro</Text>
         </TouchableOpacity>
       </View>
 
@@ -566,14 +575,13 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
             {/* Header */}
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: textPrimary }]}>
-                Add Video
-              </Text>
+                {copy("Add Video")}</Text>
               <TouchableOpacity
                 onPress={() => setVideoModalOpen(false)}
                 activeOpacity={0.7}
               >
                 <Ionicons
-                  name="close"
+                  name={"close"}
                   size={20}
                   color={textSecondary}
                 />
@@ -695,8 +703,7 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
                 activeOpacity={0.7}
               >
                 <Text style={[styles.cancelButtonText, { color: textSecondary }]}>
-                  Cancel
-                </Text>
+                  {copy("Cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -721,8 +728,7 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
                     },
                   ]}
                 >
-                  Add Video
-                </Text>
+                  {copy("Add Video")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -754,7 +760,7 @@ export default function MediaSection({ isDark, isPro }: MediaSectionProps) {
                 onPress={() => !uploadingThumbnail && setThumbnailModalOpen(false)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="close" size={20} color={textSecondary} />
+                <Ionicons name={"close"} size={20} color={textSecondary} />
               </TouchableOpacity>
             </View>
 

@@ -120,6 +120,7 @@ export interface ChecklistBlock extends ContentBlock {
 }
 
 export interface ChecklistItem {
+  content?: string;
   id: string;
   text: string;
   checked?: boolean;
@@ -459,7 +460,7 @@ const ItineraryBlockComponent: React.FC<{ block: ItineraryBlock; settings: Readi
                 {item.place_id && (
                   <TouchableOpacity
                     style={styles.itineraryPlaceLink}
-                    onPress={() => navigation.navigate('PlaceDetails', { placeId: item.place_id })}
+                    onPress={() => navigation.navigate('PlaceDetails', { placeId: item.place_id! })}
                   >
                     <Ionicons name="location" size={14} color={TEAL_PRIMARY} />
                     <Text style={styles.itineraryPlaceLinkText}>View on Tavvy</Text>

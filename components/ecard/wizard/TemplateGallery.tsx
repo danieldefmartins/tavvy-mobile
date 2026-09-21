@@ -1,557 +1,144 @@
-/**
- * TemplateGallery -- Full-size horizontal carousel of template card previews.
- *
- * Replaces the old small-gradient-thumbnail grid with a paginated FlatList
- * that renders renderTemplateLayout() for each template using sample data,
- * wrapped in a phone-shaped card frame. Includes dot indicators and a
- * color-scheme picker row for the currently visible template.
- */
-
+import FocusedStatusBar, { useRestoreFocusedStatusBar } from '../../FocusedStatusBar';
+/** Catalog chooser using the actual public renderer; example content is display-only. */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  Dimensions,
-  StyleSheet,
-  ViewToken,
-  Platform,
-} from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ScrollView, Modal, Platform, useWindowDimensions, StyleSheet, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { TEMPLATES, Template, ColorScheme } from '../../../config/eCardTemplates';
-import { renderTemplateLayout } from '../../../screens/ecard/TemplateLayouts';
+import { TEMPLATES, Template } from '../../../config/eCardTemplates';
+import { StudioPreviewFrame } from '../editor/StudioPreview';
+import { templatePreviewData } from '../../../lib/ecard/templatePreviewData';
+import { TEMPLATE_CATEGORIES, canUseTemplate } from '../../../lib/ecard/templateSelection';
+import { useReleaseCopy } from '../../../hooks/useReleaseCopy';
 
-// ── Constants ──────────────────────────────────────────────
-const ACCENT = '#00C853';
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = Math.round(SCREEN_WIDTH * 0.85);
-const GAP = 16;
-const SNAP_INTERVAL = CARD_WIDTH + GAP;
-const SIDE_PADDING = (SCREEN_WIDTH - CARD_WIDTH) / 2;
-
-// ── Template category mapping (matches web) ────────────────
-const TEMPLATE_CATEGORIES: Record<string, string[]> = {
-  business: [
-    'biz-traditional', 'biz-modern', 'biz-minimalist', 'business-card',
-    'pro-card', 'pro-corporate', 'pro-creative', 'cover-card', 'mobile-business',
-  ],
-  personal: [
-    'basic', 'blogger', 'full-width', 'premium-static', 'pro-realtor', 'church',
-  ],
-  politician: [
-    'civic-card', 'civic-card-flag', 'civic-card-bold',
-    'civic-card-clean', 'civic-card-rally', 'politician-generic',
-  ],
-};
-
-// ── Sample data for preview rendering ──────────────────────
-const SAMPLE_DATA = {
-  profileImage: null,
-  name: 'Jane Smith',
-  titleRole: 'Content Creator & Designer',
-  bio: 'Helping brands tell their story through design.',
-  email: 'jane@example.com',
-  phone: '+1 (555) 123-4567',
-  website: 'www.janesmith.com',
-  websiteLabel: 'My Website',
-  address: 'Los Angeles, CA',
-};
-
-// ── Props ──────────────────────────────────────────────────
+const ACCENT = '#6C2496', GAP = 16;
 interface TemplateGalleryProps {
+  /** A gallery filter, never the persisted card_type. */
   cardType: string;
   countryTemplate?: string;
   selectedTemplateId: string | null;
   selectedColorSchemeId: string | null;
   onSelect: (templateId: string, colorSchemeId: string) => void;
-  onBack: () => void;
   isPro: boolean;
   isDark: boolean;
+  onAvailabilityChange?: (available: boolean) => void;
 }
+export default function TemplateGallery({ cardType, countryTemplate, selectedTemplateId, selectedColorSchemeId, onSelect, isPro, isDark, onAvailabilityChange }: TemplateGalleryProps) {
+  const copy = useReleaseCopy();
+  const restoreStatusBar = useRestoreFocusedStatusBar(isDark ? 'light-content' : 'dark-content');
+  const { width } = useWindowDimensions();
+  const [availableWidth, setAvailableWidth] = useState(width), [availableHeight, setAvailableHeight] = useState(500);
+  const cardWidth = Math.min(420, Math.max(1, availableWidth - 40));
+  const interval = cardWidth + GAP, sidePadding = (availableWidth - cardWidth) / 2;
+  const [inlinePreviewActive, setInlinePreviewActive] = useState(true);
+  const [stageHeight, setStageHeight] = useState(350), [fullPreview, setFullPreview] = useState(false);
+  const filtered = useMemo(() => {
+    const ids = TEMPLATE_CATEGORIES[cardType];
+    const result = ids ? TEMPLATES.filter(item => ids.includes(item.id)) : TEMPLATES;
+    return countryTemplate ? [...result.filter(item => item.id === countryTemplate), ...result.filter(item => item.id !== countryTemplate)] : result;
+  }, [cardType, countryTemplate]);
+  const [activeIndex, setActiveIndex] = useState(() => Math.max(0, filtered.findIndex(item => item.id === selectedTemplateId)));
+  const [colors, setColors] = useState<Record<string, string>>(() => selectedTemplateId && selectedColorSchemeId ? { [selectedTemplateId]: selectedColorSchemeId } : {});
+  const list = useRef<FlatList<Template>>(null);
+  const active = filtered[activeIndex];
+  const schemeFor = useCallback((template: Template) => template.colorSchemes.find(item => item.id === colors[template.id]) || template.colorSchemes[0], [colors]);
+  const activeScheme = active ? schemeFor(active) : undefined;
+  const activeAllowed = !!active && !!activeScheme && canUseTemplate(active, activeScheme.id, isPro);
+  const primary = isDark ? '#F8FAFC' : '#202124', secondary = isDark ? '#CBD5E1' : '#596170';
+  const background = isDark ? '#111018' : '#F7F7FA';
 
-// ── Internal state per template (tracks chosen color scheme index) ──
-interface TemplateItem {
-  template: Template;
-  colorIndex: number;
-}
-
-export default function TemplateGallery({
-  cardType,
-  countryTemplate,
-  selectedTemplateId,
-  selectedColorSchemeId,
-  onSelect,
-  onBack,
-  isPro,
-  isDark,
-}: TemplateGalleryProps) {
-  // ── Theme colors ──
-  const bg = isDark ? '#0D0D0D' : '#F5F5F5';
-  const textPrimary = isDark ? '#FFFFFF' : '#111111';
-  const textSecondary = isDark ? '#94A3B8' : '#6B7280';
-  const dotInactive = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)';
-
-  // ── Filter templates by cardType category ──
-  const filteredTemplates = useMemo(() => {
-    const categoryIds = TEMPLATE_CATEGORIES[cardType];
-    if (!categoryIds) return TEMPLATES;
-    return TEMPLATES.filter(t => categoryIds.includes(t.id));
-  }, [cardType]);
-
-  // ── Build items array with per-template color index ──
-  const [colorIndices, setColorIndices] = useState<Record<string, number>>(() => {
-    const map: Record<string, number> = {};
-    filteredTemplates.forEach(t => {
-      // If there is a pre-selected color scheme for this template, use it
-      if (selectedTemplateId === t.id && selectedColorSchemeId) {
-        const idx = t.colorSchemes.findIndex(cs => cs.id === selectedColorSchemeId);
-        map[t.id] = idx >= 0 ? idx : 0;
-      } else {
-        map[t.id] = 0;
-      }
-    });
-    return map;
-  });
-
-  const items: TemplateItem[] = useMemo(
-    () => filteredTemplates.map(t => ({ template: t, colorIndex: colorIndices[t.id] ?? 0 })),
-    [filteredTemplates, colorIndices],
-  );
-
-  // ── Current visible index ──
-  const [activeIndex, setActiveIndex] = useState(() => {
-    if (selectedTemplateId) {
-      const idx = filteredTemplates.findIndex(t => t.id === selectedTemplateId);
-      return idx >= 0 ? idx : 0;
-    }
-    return 0;
-  });
-
-  const flatListRef = useRef<FlatList<TemplateItem>>(null);
-
-  // ── Viewability tracking ──
-  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
-
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (viewableItems.length > 0 && viewableItems[0].index != null) {
-        const newIndex = viewableItems[0].index;
-        setActiveIndex(newIndex);
-      }
-    },
-  ).current;
-
-  // ── Auto-select template when carousel settles ──
-  const handleMomentumScrollEnd = useCallback(() => {
-    const item = items[activeIndex];
-    if (!item) return;
-    const { template } = item;
-    const ci = colorIndices[template.id] ?? 0;
-    const scheme = template.colorSchemes[ci];
-    if (scheme && !(template.isPremium && !isPro)) {
-      onSelect(template.id, scheme.id);
-    }
-  }, [activeIndex, items, colorIndices, isPro, onSelect]);
-
-  // ── Auto-select first template on mount (matches web behavior) ──
-  const hasAutoSelected = useRef(false);
   useEffect(() => {
-    if (hasAutoSelected.current) return;
-    if (items.length === 0) return;
-    // If a template is already selected (e.g. politician flow), keep it
-    if (selectedTemplateId) {
-      hasAutoSelected.current = true;
-      return;
-    }
-    const item = items[0];
-    const { template } = item;
-    if (template.isPremium && !isPro) return; // Skip locked
-    const scheme = template.colorSchemes[0];
-    if (scheme) {
-      hasAutoSelected.current = true;
-      onSelect(template.id, scheme.id);
-    }
-  }, [items, selectedTemplateId, isPro, onSelect]);
-
-  // ── Color scheme selection ──
-  const handleColorSelect = useCallback(
-    (templateId: string, schemeIndex: number) => {
-      Haptics.selectionAsync();
-      setColorIndices(prev => ({ ...prev, [templateId]: schemeIndex }));
-      const tmpl = filteredTemplates.find(t => t.id === templateId);
-      if (tmpl) {
-        const scheme = tmpl.colorSchemes[schemeIndex];
-        if (scheme && !(tmpl.isPremium && !isPro)) {
-          onSelect(templateId, scheme.id);
-        }
-      }
-    },
-    [filteredTemplates, isPro, onSelect],
-  );
-
-  // ── Current active template ──
-  const activeTemplate = items[activeIndex]?.template;
-  const activeColorIndex = activeTemplate ? (colorIndices[activeTemplate.id] ?? 0) : 0;
-
-  // ── Safe template renderer (prevents silent FlatList crash) ──
-  const safeRenderLayout = useCallback(
-    (template: Template, scheme: ColorScheme) => {
-      try {
-        return renderTemplateLayout({
-          layout: template.layout,
-          color: scheme,
-          data: SAMPLE_DATA,
-          isEditable: false,
-          textColor: scheme.text || '#fff',
-          textSecondary: scheme.textSecondary || 'rgba(255,255,255,0.7)',
-          isLightCard: scheme.text === '#2d2d2d',
-        });
-      } catch (err) {
-        console.error(`[TemplateGallery] render failed for ${template.id}:`, err);
-        return (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, minHeight: 300 }}>
-            <Ionicons name="image-outline" size={40} color="rgba(0,0,0,0.2)" />
-            <Text style={{ marginTop: 8, fontSize: 13, color: 'rgba(0,0,0,0.4)' }}>Preview unavailable</Text>
-          </View>
-        );
-      }
-    },
-    [],
-  );
-
-  // ── Render a single carousel card ──
-  const renderItem = useCallback(
-    ({ item }: { item: TemplateItem }) => {
-      const { template } = item;
-      const ci = colorIndices[template.id] ?? 0;
-      const scheme = template.colorSchemes[ci] || template.colorSchemes[0];
-      const isLocked = template.isPremium && !isPro;
-      const isSelected = selectedTemplateId === template.id;
-
-      return (
-        <View style={[styles.slideContainer, { width: CARD_WIDTH, marginRight: GAP }]}>
-          {/* Phone-shaped card frame */}
-          <TouchableOpacity
-            activeOpacity={isLocked ? 0.6 : 0.9}
-            onPress={() => {
-              if (!isLocked) {
-                onSelect(template.id, scheme.id);
-              }
-            }}
-            style={[
-              styles.cardFrame,
-              {
-                backgroundColor: scheme.cardBg || '#fff',
-                borderColor: isSelected ? ACCENT : 'transparent',
-                borderWidth: isSelected ? 2.5 : 0,
-              },
-            ]}
-          >
-            {/* Render actual template layout */}
-            <View style={styles.layoutWrapper} pointerEvents="none">
-              {safeRenderLayout(template, scheme)}
-            </View>
-
-            {/* Lock overlay for premium templates */}
-            {isLocked && (
-              <View style={styles.lockOverlay}>
-                <View style={styles.lockIconContainer}>
-                  <Ionicons name="lock-closed" size={28} color="#FFFFFF" />
-                  <Text style={styles.lockText}>Pro</Text>
-                </View>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          {/* Template name + badge */}
-          <View style={styles.labelRow}>
-            <Text style={[styles.templateName, { color: textPrimary }]} numberOfLines={1}>
-              {template.name}
-            </Text>
-            {template.isPremium ? (
-              <View style={styles.proBadge}>
-                <Ionicons name="star" size={10} color="#FFFFFF" />
-                <Text style={styles.proBadgeText}>Pro</Text>
-              </View>
-            ) : (
-              <Text style={[styles.freeBadge, { color: textSecondary }]}>Free</Text>
-            )}
-          </View>
-        </View>
-      );
-    },
-    [colorIndices, isPro, selectedTemplateId, onSelect, textPrimary, textSecondary, safeRenderLayout],
-  );
-
-  const keyExtractor = useCallback((item: TemplateItem) => item.template.id, []);
-
-  // ── Scroll to pre-selected template on mount ──
+    if (selectedTemplateId && selectedColorSchemeId) setColors(previous => previous[selectedTemplateId] === selectedColorSchemeId ? previous : { ...previous, [selectedTemplateId]: selectedColorSchemeId });
+  }, [selectedTemplateId, selectedColorSchemeId]);
   useEffect(() => {
-    if (activeIndex > 0 && flatListRef.current) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToOffset({
-          offset: SNAP_INTERVAL * activeIndex,
-          animated: false,
-        });
-      }, 100);
-    }
-  }, []); // Run once on mount
+    onAvailabilityChange?.(activeAllowed && active?.id === selectedTemplateId && activeScheme?.id === selectedColorSchemeId);
+  }, [activeAllowed, active?.id, activeScheme?.id, selectedTemplateId, selectedColorSchemeId, onAvailabilityChange]);
+  useEffect(() => {
+    const timer = setTimeout(() => list.current?.scrollToOffset({ offset: activeIndex * interval, animated: false }), 0);
+    return () => clearTimeout(timer);
+    // Preserve the currently viewed design when the device rotates, without choosing another design.
+  }, [interval]);
 
-  return (
-    <View style={[styles.container, { backgroundColor: bg }]}>
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Ionicons name="arrow-back" size={24} color={textPrimary} />
-        </TouchableOpacity>
-        <View style={styles.headerTextBlock}>
-          <Text style={[styles.headerTitle, { color: textPrimary }]}>Choose your look</Text>
-          <Text style={[styles.headerSubtitle, { color: textSecondary }]}>
-            Swipe to browse templates
-          </Text>
-        </View>
+  const selectAt = (index: number) => {
+    const template = filtered[index]; if (!template) return;
+    setActiveIndex(index);
+    const scheme = schemeFor(template);
+    if (canUseTemplate(template, scheme.id, isPro)) onSelect(template.id, scheme.id);
+  };
+  const moveTo = (index: number) => {
+    if (index < 0 || index >= filtered.length) return;
+    selectAt(index); list.current?.scrollToOffset({ offset: interval * index, animated: true });
+    void Haptics.selectionAsync();
+  };
+  const settle = (event: NativeSyntheticEvent<NativeScrollEvent>) => selectAt(Math.max(0, Math.min(filtered.length - 1, Math.round(event.nativeEvent.contentOffset.x / interval))));
+  const chooseColor = (schemeId: string) => {
+    if (!active || !canUseTemplate(active, schemeId, isPro)) return;
+    setColors(previous => ({ ...previous, [active.id]: schemeId })); onSelect(active.id, schemeId); void Haptics.selectionAsync();
+  };
+  // Keep one active native WebView. iOS can leave a covered WebView blank after a modal.
+  const openFullPreview = () => { setInlinePreviewActive(false); setFullPreview(true); };
+  const closeFullPreview = () => {
+    setFullPreview(false);
+    if (Platform.OS !== 'ios') setInlinePreviewActive(true);
+  };
+  const dismissFullPreview = () => { setInlinePreviewActive(true); restoreStatusBar(); };
+  const currentExample = useMemo(() => active ? templatePreviewData(active, activeScheme?.id) : null, [active, activeScheme?.id]);
+
+  return <View style={[styles.root, { backgroundColor: background }]} onLayout={event => { setAvailableWidth(event.nativeEvent.layout.width); setAvailableHeight(event.nativeEvent.layout.height); }}>
+    <ScrollView nestedScrollEnabled contentContainerStyle={{ height: Math.max(460, availableHeight) }}>
+      <View style={styles.navigation}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={copy('Previous template')} accessibilityState={{ disabled: activeIndex === 0 }} disabled={activeIndex === 0} onPress={() => moveTo(activeIndex - 1)} style={styles.control}><Ionicons name="chevron-back" size={24} color={activeIndex === 0 ? secondary : primary} /></TouchableOpacity>
+        <View style={styles.heading}><Text style={[styles.hint, { color: secondary }]}>{copy('Swipe to browse templates')}</Text><Text accessibilityLiveRegion="polite" style={{ color: primary, fontWeight: '600' }}>{filtered.length ? activeIndex + 1 : 0} / {filtered.length}</Text></View>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={copy('Next template')} accessibilityState={{ disabled: activeIndex >= filtered.length - 1 }} disabled={activeIndex >= filtered.length - 1} onPress={() => moveTo(activeIndex + 1)} style={styles.control}><Ionicons name="chevron-forward" size={24} color={primary} /></TouchableOpacity>
       </View>
-
-      {/* ── Carousel ── */}
-      <FlatList
-        ref={flatListRef}
-        data={items}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        horizontal
-        pagingEnabled={false}
-        showsHorizontalScrollIndicator={false}
-        snapToInterval={SNAP_INTERVAL}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        contentContainerStyle={{
-          paddingLeft: SIDE_PADDING,
-          paddingRight: SIDE_PADDING,
-          flexGrow: items.length === 0 ? 1 : undefined,
-        }}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        onMomentumScrollEnd={handleMomentumScrollEnd}
-        ListEmptyComponent={
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}>
-            <Ionicons name="albums-outline" size={48} color={textSecondary} />
-            <Text style={{ marginTop: 12, fontSize: 15, color: textSecondary, textAlign: 'center' }}>
-              No templates available for this category
-            </Text>
-          </View>
-        }
-      />
-
-      {/* ── Dot indicators ── */}
-      <View style={styles.dotsRow}>
-        {items.map((item, i) => (
-          <View
-            key={item.template.id}
-            style={[
-              styles.dot,
-              {
-                backgroundColor: i === activeIndex ? ACCENT : dotInactive,
-                width: i === activeIndex ? 20 : 8,
-              },
-            ]}
-          />
-        ))}
-      </View>
-
-      {/* ── Color scheme picker ── */}
-      {activeTemplate && activeTemplate.colorSchemes.length > 1 && (
-        <View style={styles.colorRow}>
-          <Text style={[styles.colorLabel, { color: textSecondary }]}>Color</Text>
-          <View style={styles.colorCircles}>
-            {activeTemplate.colorSchemes.map((scheme, idx) => {
-              const isActiveScheme = idx === activeColorIndex;
-              return (
-                <TouchableOpacity
-                  key={scheme.id}
-                  onPress={() => handleColorSelect(activeTemplate.id, idx)}
-                  style={[
-                    styles.colorCircleOuter,
-                    isActiveScheme && styles.colorCircleSelected,
-                  ]}
-                >
-                  <LinearGradient
-                    colors={[scheme.primary, scheme.secondary]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.colorCircleInner}
-                  />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+      <FlatList ref={list} horizontal style={styles.carousel} data={filtered} keyExtractor={item => item.id}
+        onLayout={event => setStageHeight(event.nativeEvent.layout.height)}
+        showsHorizontalScrollIndicator={false} snapToInterval={interval} snapToAlignment="start" decelerationRate="fast"
+        onMomentumScrollEnd={settle} onScrollEndDrag={settle} onScrollBeginDrag={() => onAvailabilityChange?.(false)}
+        contentContainerStyle={{ paddingLeft: sidePadding, paddingRight: Math.max(0, sidePadding - GAP) }}
+        getItemLayout={(_, index) => ({ length: interval, offset: interval * index, index })}
+        initialScrollIndex={activeIndex} extraData={`${activeIndex}:${JSON.stringify(colors)}:${isPro}:${isDark}:${stageHeight}:${inlinePreviewActive}`}
+        renderItem={({ item, index }) => {
+          const scheme = schemeFor(item), example = templatePreviewData(item, scheme.id);
+          return <View style={{ width: cardWidth, marginRight: GAP, height: stageHeight }}>
+            {index === activeIndex && inlinePreviewActive && <StudioPreviewFrame isDark={isDark} card={example.card} links={example.links} showCaption={false} />}
+          </View>;
+        }} />
+      {active && <>
+        <View style={styles.designLabel}>
+          <View style={{ flex: 1 }}><Text style={{ color: primary, fontWeight: '700', fontSize: 15 }}>{active.name}</Text><Text style={{ color: secondary, fontSize: 12 }}>{copy(activeAllowed ? (active.isPremium || !activeScheme?.isFree ? 'Pro' : 'Free') : 'Pro design or color')}</Text></View>
+          <TouchableOpacity accessibilityRole="button" style={styles.fullButton} onPress={openFullPreview}><Ionicons name="expand-outline" size={18} color={primary} /><Text style={{ color: primary, fontSize: 12 }}>{copy('Open full preview')}</Text></TouchableOpacity>
         </View>
-      )}
-    </View>
-  );
+        <ScrollView horizontal style={{ flexGrow: 0, height: 56 }} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.swatches}>
+          {active.colorSchemes.map(scheme => {
+            const locked = !canUseTemplate(active, scheme.id, isPro), chosen = activeScheme?.id === scheme.id;
+            return <TouchableOpacity key={scheme.id} accessibilityRole="button" accessibilityLabel={`${scheme.name}${locked ? ' · Pro' : ''}`} accessibilityState={{ selected: chosen, disabled: locked }} disabled={locked} onPress={() => chooseColor(scheme.id)} style={[styles.swatch, { borderColor: chosen ? (isDark ? '#BB86E0' : ACCENT) : 'transparent' }]}>
+              <LinearGradient colors={[scheme.primary, scheme.secondary]} style={styles.swatchFill} />
+              {locked && <View style={styles.lock}><Ionicons name="lock-closed" color="#FFFFFF" size={10} /></View>}
+            </TouchableOpacity>;
+          })}
+        </ScrollView>
+      </>}
+      {!active && <Text style={{ color: secondary, padding: 20 }}>{copy('No templates available for this category')}</Text>}
+    </ScrollView>
+    <Modal visible={fullPreview} animationType="slide" onRequestClose={closeFullPreview} presentationStyle="fullScreen" onShow={restoreStatusBar} onDismiss={dismissFullPreview}>
+      <SafeAreaProvider>
+      <FocusedStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <SafeAreaView style={[styles.root, { backgroundColor: background }]} edges={['top', 'bottom', 'left', 'right']}>
+        <View style={styles.modalHeader}><Text accessibilityRole="header" style={{ color: primary, flex: 1, fontWeight: '700' }}>{active?.name}</Text><TouchableOpacity accessibilityRole="button" accessibilityLabel={copy('Close preview')} onPress={closeFullPreview} style={styles.control}><Ionicons name="close" size={24} color={primary} /></TouchableOpacity></View>
+        {currentExample && <StudioPreviewFrame isDark={isDark} card={currentExample.card} links={currentExample.links} />}
+      </SafeAreaView>
+      </SafeAreaProvider>
+    </Modal>
+  </View>;
 }
-
-// ── Styles ─────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 8 : 12,
-    paddingBottom: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  headerTextBlock: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-
-  // Carousel item
-  slideContainer: {
-    alignItems: 'center',
-  },
-  cardFrame: {
-    width: CARD_WIDTH,
-    borderRadius: 20,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  layoutWrapper: {
-    width: '100%',
-    minHeight: 400,
-  },
-
-  // Lock overlay
-  lockOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lockIconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lockText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-    marginTop: 6,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-
-  // Labels
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    gap: 8,
-  },
-  templateName: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  proBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  proBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  freeBadge: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-
-  // Dots
-  dotsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-    gap: 6,
-  },
-  dot: {
-    height: 8,
-    borderRadius: 4,
-  },
-
-  // Color scheme picker
-  colorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    marginTop: 20,
-    marginBottom: 16,
-  },
-  colorLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginRight: 12,
-  },
-  colorCircles: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  colorCircleOuter: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    padding: 2,
-    borderWidth: 2.5,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  colorCircleSelected: {
-    borderColor: ACCENT,
-  },
-  colorCircleInner: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-  },
+  root: { flex: 1, minHeight: 0 }, navigation: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
+  control: { minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' }, heading: { alignItems: 'center', gap: 2 }, hint: { fontSize: 12 },
+  carousel: { flex: 1 }, designLabel: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, minHeight: 46 },
+  fullButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 5 },
+  swatches: { paddingHorizontal: 20, paddingVertical: 6, gap: 6 }, swatch: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  swatchFill: { width: 32, height: 32, borderRadius: 16 }, lock: { position: 'absolute', bottom: 3, right: 1, backgroundColor: '#334155', borderRadius: 8, padding: 3 },
+  modalHeader: { minHeight: 52, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center' },
 });

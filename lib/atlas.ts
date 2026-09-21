@@ -22,6 +22,9 @@ export interface AtlasCategory {
 }
 
 export interface AtlasUniverse {
+  universe_kind?: 'place_collection' | 'cruise_ship';
+  latitude?: number;
+  longitude?: number;
   id: string;
   name: string;
   slug: string;

@@ -1,3 +1,4 @@
+import { useReleaseCopy } from '../../../hooks/useReleaseCopy';
 /**
  * CardSearchBar -- Animated search input for filtering eCards in the hub.
  *
@@ -26,6 +27,7 @@ export default function CardSearchBar({
   onChangeText,
   isDark,
 }: CardSearchBarProps) {
+  const copy = useReleaseCopy();
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
@@ -62,7 +64,7 @@ export default function CardSearchBar({
         style={[styles.input, { color: textColor }]}
         value={value}
         onChangeText={onChangeText}
-        placeholder="Search cards..."
+        placeholder={copy('Search cards...')}
         placeholderTextColor={placeholderColor}
         autoCapitalize="none"
         autoCorrect={false}
@@ -73,7 +75,7 @@ export default function CardSearchBar({
 
       {value.length > 0 && (
         <TouchableOpacity
-          onPress={handleClear}
+          accessibilityRole="button" accessibilityLabel={copy('Clear search')} onPress={handleClear}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           activeOpacity={0.6}
           style={styles.clearButton}

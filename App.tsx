@@ -1,3 +1,4 @@
+import { useReleaseCopy } from './hooks/useReleaseCopy';
 import React, { useEffect, useState } from 'react';
 
 // ========== INTERNATIONALIZATION ==========
@@ -33,6 +34,7 @@ import { preloadSignalCache } from './lib/reviews';
 // Screens
 import HomeScreen from './screens/HomeScreen';
 import PlaceDetailsScreen from './screens/PlaceDetailsScreen';
+import DemoRestaurantScreen from './screens/DemoRestaurantScreen';
 import AddReviewScreen from './screens/AddReviewScreen';
 import AddPhotoScreen from './screens/AddPhotoScreen';
 import PlacePhotosScreen from './screens/PlacePhotosScreen';
@@ -40,6 +42,7 @@ import RequestUniverseScreen from './screens/RequestUniverseScreen';
 import CityDetailsScreen from './screens/CityDetailsScreen';
 import RateCityScreen from './screens/RateCityScreen';
 import ClaimBusinessScreen from './screens/ClaimBusinessScreen';
+import RestaurantWorkspaceScreen from './screens/RestaurantWorkspaceScreen';
 
 import UniverseDiscoveryScreen from './screens/UniverseDiscoveryScreen';
 import UniverseLandingScreen from './screens/UniverseLandingScreen';
@@ -124,9 +127,11 @@ import SettingsScreen from './screens/SettingsScreen';
 import HelpSupportScreen from './screens/HelpSupportScreen';
 import CommunityGuidelinesScreen from './screens/CommunityGuidelinesScreen';
 import ProsLeadDetailScreen from './screens/ProsLeadDetailScreen';
+import ProsBidScreen from './screens/ProsBidScreen';
 
 // ========== ON THE GO SCREEN ==========
 import OnTheGoScreen from './screens/OnTheGoScreen';
+import FoodMenuScreen from './screens/FoodMenuScreen';
 import PlaceScheduleScreen from './screens/PlaceScheduleScreen';
 
 // ========== STORY & DISCOVERY SCREENS ==========
@@ -207,8 +212,9 @@ const ProsStackNav = createNativeStackNavigator(); // NEW: Pros Stack
 function HomeStack() {
   return (
     <HomeStackNav.Navigator screenOptions={{ headerShown: false }}>
-      <HomeStackNav.Screen name="HomeMain" component={HomeScreen} />
+      <HomeStackNav.Screen name="HomeMain">{props => <HomeScreen {...props} />}</HomeStackNav.Screen>
       <HomeStackNav.Screen name="PlaceDetails" component={PlaceDetailsScreen} />
+      <HomeStackNav.Screen name="DemoRestaurant" component={DemoRestaurantScreen} />
       <HomeStackNav.Screen name="MenuGallery" component={MenuGalleryScreen} />
       <HomeStackNav.Screen name="Order" component={OrderScreen} />
       <HomeStackNav.Screen name="OrderDashboard" component={OrderDashboardScreen} />
@@ -219,11 +225,14 @@ function HomeStack() {
       <HomeStackNav.Screen name="CityDetails" component={CityDetailsScreen} />
       <HomeStackNav.Screen name="RateCity" component={RateCityScreen} />
       <HomeStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
+      <HomeStackNav.Screen name="RestaurantWorkspace" component={RestaurantWorkspaceScreen} />
+      <HomeStackNav.Screen name="Login" component={LoginScreen} />
+      <HomeStackNav.Screen name="SignUp" component={SignUpScreen} />
       {/* Browse Screens */}
       <HomeStackNav.Screen name="RidesBrowse" component={RidesBrowseScreen} />
       <HomeStackNav.Screen name="RideDetails" component={RideDetailsScreen} />
       <HomeStackNav.Screen name="RVCampingBrowse" component={RVCampingBrowseScreen} />
-      <HomeStackNav.Screen name="CitiesBrowse" component={CitiesBrowseScreen} />
+      <HomeStackNav.Screen name="CitiesBrowse">{props => <CitiesBrowseScreen {...props} />}</HomeStackNav.Screen>
       {/* Business Card Scanner - accessible from AddPlaceScreen */}
       <HomeStackNav.Screen 
         name="BusinessCardScanner" 
@@ -267,9 +276,9 @@ function AtlasStack() {
 // --------------------
 // Apps Stack
 // --------------------
-function AppsStack() {
+function AppsStack({ route }: any) {
   return (
-    <MenuStackNav.Navigator screenOptions={{ headerShown: false }}>
+    <MenuStackNav.Navigator initialRouteName={route?.name === 'Saved' ? 'SavedMain' : route?.name === 'Profile' ? 'ProfileMain' : 'AppsMain'} screenOptions={{ headerShown: false }}>
       <MenuStackNav.Screen name="AppsMain" component={AppsScreen} />
       <MenuStackNav.Screen name="ProfileMain" component={ProfileScreen} />
       <MenuStackNav.Screen name="EditProfile" component={EditProfileScreen} />
@@ -296,7 +305,7 @@ function AppsStack() {
       <MenuStackNav.Screen name="AtlasSearch" component={AtlasSearchScreen} />
       
       {/* Browse Screens accessible from Apps */}
-      <MenuStackNav.Screen name="CitiesBrowse" component={CitiesBrowseScreen} />
+      <MenuStackNav.Screen name="CitiesBrowse">{props => <CitiesBrowseScreen {...props} />}</MenuStackNav.Screen>
       <MenuStackNav.Screen name="RidesBrowse" component={RidesBrowseScreen} />
       <MenuStackNav.Screen name="RVCampingBrowse" component={RVCampingBrowseScreen} />
       <MenuStackNav.Screen name="UniverseDiscovery" component={UniverseDiscoveryScreen} />
@@ -305,6 +314,7 @@ function AppsStack() {
       <MenuStackNav.Screen name="CityDetails" component={CityDetailsScreen} />
       <MenuStackNav.Screen name="AddReview" component={AddReviewScreen} />
       <MenuStackNav.Screen name="ClaimBusiness" component={ClaimBusinessScreen} />
+      <MenuStackNav.Screen name="RestaurantWorkspace" component={RestaurantWorkspaceScreen} />
       
       {/* Order Screens accessible from Apps */}
       <MenuStackNav.Screen name="Order" component={OrderScreen} />
@@ -361,6 +371,10 @@ function AppsStack() {
       
       {/* On The Go - Live mobile businesses map */}
       <MenuStackNav.Screen name="OnTheGo" component={OnTheGoScreen} />
+      <MenuStackNav.Screen name="FoodMenu" component={FoodMenuScreen} />
+      <MenuStackNav.Screen name="MenuGallery" component={MenuGalleryScreen} />
+      <MenuStackNav.Screen name="PlaceDetails" component={PlaceDetailsScreen} />
+      <MenuStackNav.Screen name="DemoRestaurant" component={DemoRestaurantScreen} />
       <MenuStackNav.Screen name="PlaceSchedule" component={PlaceScheduleScreen} />
       
       {/* Wallet - Pro Cards collection */}
@@ -408,6 +422,7 @@ function AppsStack() {
       <MenuStackNav.Screen name="ProsManageProfile" component={ProsManageProfileScreen} />
       <MenuStackNav.Screen name="ProsPaywall" component={ProsPaywallScreen} />
       <MenuStackNav.Screen name="ProsLeadDetail" component={ProsLeadDetailScreen} />
+      <MenuStackNav.Screen name="ProsBid" component={ProsBidScreen} />
       <MenuStackNav.Screen 
         name="ProsRequestQuote" 
         component={ProsRequestQuoteScreen}
@@ -455,6 +470,7 @@ function ProsStack() {
       />
       <ProsStackNav.Screen name="ProsLeads" component={ProsLeadsScreen} />
       <ProsStackNav.Screen name="ProsLeadDetail" component={ProsLeadDetailScreen} />
+      <ProsStackNav.Screen name="ProsBid" component={ProsBidScreen} />
       <ProsStackNav.Screen name="ProsRequestStep0" component={ProsRequestStep0Screen} />
       <ProsStackNav.Screen name="ProsRequestStep1" component={ProsRequestStep1Screen} />
       <ProsStackNav.Screen name="ProsRequestStep1b" component={ProsRequestStep1bScreen} />
@@ -532,9 +548,9 @@ function AddButton({ onPress }: { onPress: () => void }) {
     <View style={addButtonStyles.container}>
       <View style={[
         addButtonStyles.button,
-        { backgroundColor: isDark ? '#FFFFFF' : '#111827' }
+        { backgroundColor: '#8A05BE' }
       ]}>
-        <Ionicons name="add" size={32} color={isDark ? '#111827' : '#FFFFFF'} />
+        <Ionicons name="add" size={32} color="#FFFFFF" />
       </View>
     </View>
   );
@@ -564,6 +580,7 @@ const addButtonStyles = StyleSheet.create({
 // Tabs
 // --------------------
 function TabNavigator() {
+  const copy = useReleaseCopy();
   const { theme, isDark } = useThemeContext();
   const { unreadCount } = useUnreadMessagesContext();
   
@@ -572,7 +589,7 @@ function TabNavigator() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: isDark ? '#FFFFFF' : '#111827',
-        tabBarInactiveTintColor: isDark ? '#6B7280' : '#9CA3AF',
+        tabBarInactiveTintColor: theme.textSecondary,
         tabBarStyle: {
           backgroundColor: isDark ? '#0F0F0F' : '#FAFAFA',
           borderTopColor: 'transparent',
@@ -588,6 +605,16 @@ function TabNavigator() {
             case 'Home':
               iconName = focused ? 'home' : 'home-outline';
               break;
+            case 'Tools':
+              return <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: size, height: size, justifyContent: 'space-between' }}>
+                {Array.from({ length: 3 }, (_, row) => <View key={row} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  {Array.from({ length: 3 }, (_, column) => <View key={column} style={{ width: (size - 6) / 3, height: (size - 6) / 3, borderRadius: size, backgroundColor: color }} />)}
+                </View>)}
+              </View>;
+            case 'Saved':
+              iconName = focused ? 'bookmark' : 'bookmark-outline'; break;
+            case 'Profile':
+              iconName = focused ? 'person-circle' : 'person-circle-outline'; break;
             case 'Explore':
               iconName = focused ? 'planet' : 'planet-outline';
               break;
@@ -614,28 +641,15 @@ function TabNavigator() {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeStack} options={{ tabBarLabel: 'Home' }} />
-      <Tab.Screen name="Explore" component={UniverseStack} options={{ tabBarLabel: 'Universes' }} />
-
-      {/* CENTER: Elevated Add/Create Button */}
-      <Tab.Screen
-        name="Add"
-        component={UniversalAddScreenV3}
-        options={{
-          tabBarLabel: '',
-          tabBarIcon: ({ focused }) => <AddButton onPress={() => {}} />,
-        }}
-      />
-
-      <Tab.Screen
-        name="Pros"
-        component={ProsStack}
-        options={{
-          tabBarLabel: 'Pros',
-        }}
-      />
-
-      <Tab.Screen name="Apps" component={AppsStack} options={{ tabBarLabel: 'Apps' }} />
+      <Tab.Screen name="Home" component={HomeStack} options={{ tabBarLabel: copy('Discover'), tabBarAccessibilityLabel: copy('Discover') }} />
+      <Tab.Screen name="Tools" component={AppsStack} options={{ tabBarLabel: copy('Tools'), tabBarAccessibilityLabel: copy('Tools') }} />
+      <Tab.Screen name="Saved" component={AppsStack} options={{ tabBarLabel: copy('Saved'), tabBarAccessibilityLabel: copy('Saved') }} />
+      <Tab.Screen name="Profile" component={AppsStack} options={{ tabBarLabel: copy('Profile'), tabBarAccessibilityLabel: copy('Profile') }} />
+      <Tab.Screen name="Explore" component={UniverseStack} options={{ tabBarButton: () => null, tabBarItemStyle: {display:'none'} }} />
+      <Tab.Screen name="Add" component={UniversalAddScreenV3} options={{ tabBarButton: () => null, tabBarItemStyle: {display:'none'} }} />
+      <Tab.Screen name="Pros" component={ProsStack} options={{ tabBarButton: () => null, tabBarItemStyle: {display:'none'} }} />
+      <Tab.Screen name="Apps" component={AppsStack} options={{ tabBarButton: () => null, tabBarItemStyle: {display:'none'} }} />
+      <Tab.Screen name="Menu" component={AppsStack} options={{ tabBarButton: () => null, tabBarItemStyle: {display:'none'} }} />
     </Tab.Navigator>
   );
 }

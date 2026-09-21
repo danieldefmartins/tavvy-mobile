@@ -1,3 +1,5 @@
+import { useReleaseCopy } from '../hooks/useReleaseCopy';
+import FocusedStatusBar from '../components/FocusedStatusBar';
 /**
  * MyDigitalCardScreen.tsx
  * View and share your digital card with all sharing methods
@@ -24,7 +26,6 @@ import {
   ScrollView,
   Dimensions,
   Platform,
-  StatusBar,
   Alert,
   Share,
   Linking,
@@ -101,6 +102,7 @@ const LINK_ICONS: { [key: string]: string } = {
 };
 
 export default function MyDigitalCardScreen() {
+  const copy = useReleaseCopy();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -352,10 +354,10 @@ export default function MyDigitalCardScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: V2_COLORS.background }]}>
-        <StatusBar barStyle="light-content" />
+        <FocusedStatusBar barStyle="light-content" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#8A05BE" />
-          <Text style={[styles.loadingText, { color: V2_COLORS.textSecondary }]}>Loading your card...</Text>
+          <Text style={[styles.loadingText, { color: V2_COLORS.textSecondary }]}>{copy("Loading your card...")}</Text>
         </View>
       </View>
     );
@@ -365,7 +367,7 @@ export default function MyDigitalCardScreen() {
   if (!hasCard && !route.params?.cardData) {
     return (
       <View style={[styles.container, { backgroundColor: V2_COLORS.background }]}>
-        <StatusBar barStyle="light-content" />
+        <FocusedStatusBar barStyle="light-content" />
         <View style={styles.noCardContainer}>
           <TouchableOpacity 
             onPress={() => navigation.goBack()} 
@@ -381,21 +383,21 @@ export default function MyDigitalCardScreen() {
             <Ionicons name="id-card" size={48} color="#fff" />
           </LinearGradient>
           
-          <Text style={[styles.noCardTitle, { color: V2_COLORS.text }]}>No Digital Card Yet</Text>
+          <Text style={[styles.noCardTitle, { color: V2_COLORS.text }]}>{copy("No Digital Card Yet")}</Text>
           <Text style={[styles.noCardSubtitle, { color: V2_COLORS.textSecondary }]}>
-            Create your digital business card to share your contact info instantly with anyone.
+            {copy("Create your digital business card to share your contact info instantly with anyone.")}
           </Text>
           
           <TouchableOpacity 
             style={styles.createCardButton}
-            onPress={() => navigation.navigate('ECardTemplateGallery', { mode: 'create' })}
+            onPress={() => navigation.navigate('ECardNew')}
           >
             <LinearGradient
               colors={['#8A05BE', '#4F46E5']}
               style={styles.createCardButtonGradient}
             >
               <Ionicons name="add" size={24} color="#fff" />
-              <Text style={styles.createCardButtonText}>Create My Card</Text>
+              <Text style={styles.createCardButtonText}>{copy("Create My Card")}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -405,7 +407,7 @@ export default function MyDigitalCardScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle="light-content" />
+      <FocusedStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
       <ScrollView 
         style={styles.scrollView}
@@ -466,7 +468,7 @@ export default function MyDigitalCardScreen() {
                 onPress={() => Linking.openURL(`tel:${cardData.phone}`)}
               >
                 <Ionicons name="call" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>Call</Text>
+                <Text style={styles.actionButtonText}>{copy("Call")}</Text>
               </TouchableOpacity>
             )}
             {cardData.phone && (
@@ -475,7 +477,7 @@ export default function MyDigitalCardScreen() {
                 onPress={() => Linking.openURL(`sms:${cardData.phone}`)}
               >
                 <Ionicons name="chatbubble" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>Text</Text>
+                <Text style={styles.actionButtonText}>{copy("Text")}</Text>
               </TouchableOpacity>
             )}
             {cardData.email && (
@@ -484,7 +486,7 @@ export default function MyDigitalCardScreen() {
                 onPress={() => Linking.openURL(`mailto:${cardData.email}`)}
               >
                 <Ionicons name="mail" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>Email</Text>
+                <Text style={styles.actionButtonText}>{copy("Email")}</Text>
               </TouchableOpacity>
             )}
             {cardData.website && (
@@ -493,7 +495,7 @@ export default function MyDigitalCardScreen() {
                 onPress={() => Linking.openURL(cardData.website.startsWith('http') ? cardData.website : `https://${cardData.website}`)}
               >
                 <Ionicons name="globe" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>Web</Text>
+                <Text style={styles.actionButtonText}>{copy("Web")}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -562,14 +564,14 @@ export default function MyDigitalCardScreen() {
               onPress={() => setActiveTab('card')}
             >
               <Ionicons name="id-card-outline" size={18} color={activeTab === 'card' ? '#fff' : theme.textSecondary} />
-              <Text style={[styles.toggleTabText, activeTab === 'card' && styles.toggleTabTextActive]}>Card</Text>
+              <Text style={[styles.toggleTabText, activeTab === 'card' && styles.toggleTabTextActive]}>{copy("Card")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.toggleTab, activeTab === 'links' && styles.toggleTabActive]}
               onPress={() => setActiveTab('links')}
             >
               <Ionicons name="link-outline" size={18} color={activeTab === 'links' ? '#fff' : theme.textSecondary} />
-              <Text style={[styles.toggleTabText, activeTab === 'links' && styles.toggleTabTextActive]}>Links</Text>
+              <Text style={[styles.toggleTabText, activeTab === 'links' && styles.toggleTabTextActive]}>{copy("Links")}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -577,7 +579,7 @@ export default function MyDigitalCardScreen() {
         {/* Links Section */}
         {activeTab === 'links' && cardData.links && cardData.links.length > 0 && (
           <View style={[styles.linksSection, { backgroundColor: V2_COLORS.cardBackground }]}>
-            <Text style={[styles.linksSectionTitle, { color: V2_COLORS.text }]}>My Links</Text>
+            <Text style={[styles.linksSectionTitle, { color: V2_COLORS.text }]}>{copy("My Links")}</Text>
             {cardData.links.map((link, index) => (
               <TouchableOpacity
                 key={link.id || index}
@@ -598,17 +600,17 @@ export default function MyDigitalCardScreen() {
 
         {/* Share Section */}
         <View style={[styles.shareSection, { backgroundColor: V2_COLORS.cardBackground }]}>
-          <Text style={[styles.shareSectionTitle, { color: V2_COLORS.text }]}>{cardData.is_published ? 'Share Your Card' : 'Card Not Published'}</Text>
+          <Text style={[styles.shareSectionTitle, { color: V2_COLORS.text }]}>{copy(cardData.is_published ? 'Share Your Card' : 'Card Not Published')}</Text>
           {!cardData.is_published && (
             <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
               <Text style={{ color: V2_COLORS.textSecondary, fontSize: 14, lineHeight: 20, marginBottom: 12 }}>
-                Your card is saved as a draft. Publish it first to share with others.
+                {copy("Your card is saved as a draft. Publish it first to share with others.")}
               </Text>
               <TouchableOpacity
                 style={{ backgroundColor: '#8A05BE', paddingVertical: 12, borderRadius: 12, alignItems: 'center' }}
                 onPress={() => navigation.navigate('ECardDashboard', { cardId: cardData.id })}
               >
-                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Go to Dashboard to Publish</Text>
+                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>{copy("Go to Dashboard to Publish")}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -623,8 +625,8 @@ export default function MyDigitalCardScreen() {
               <Ionicons name="qr-code" size={24} color="#fff" />
             </View>
             <View style={styles.shareOptionText}>
-              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>QR Code</Text>
-              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>Let others scan to view your card</Text>
+              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>{copy("QR Code")}</Text>
+              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>{copy("Let others scan to view your card")}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={V2_COLORS.textSecondary} />
           </TouchableOpacity>
@@ -638,8 +640,8 @@ export default function MyDigitalCardScreen() {
               <Ionicons name="share" size={24} color="#fff" />
             </View>
             <View style={styles.shareOptionText}>
-              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>Share via...</Text>
-              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>AirDrop, Messages, and more</Text>
+              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>{copy("Share via...")}</Text>
+              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>{copy("AirDrop, Messages, and more")}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={V2_COLORS.textSecondary} />
           </TouchableOpacity>
@@ -653,8 +655,8 @@ export default function MyDigitalCardScreen() {
               <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
             </View>
             <View style={styles.shareOptionText}>
-              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>SMS / Text</Text>
-              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>Send via text message</Text>
+              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>{copy("SMS / Text")}</Text>
+              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>{copy("Send via text message")}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={V2_COLORS.textSecondary} />
           </TouchableOpacity>
@@ -669,7 +671,7 @@ export default function MyDigitalCardScreen() {
             </View>
             <View style={styles.shareOptionText}>
               <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>WhatsApp</Text>
-              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>Share on WhatsApp</Text>
+              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>{copy("Share on WhatsApp")}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={V2_COLORS.textSecondary} />
           </TouchableOpacity>
@@ -683,8 +685,8 @@ export default function MyDigitalCardScreen() {
               <Ionicons name="mail" size={24} color="#fff" />
             </View>
             <View style={styles.shareOptionText}>
-              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>Email</Text>
-              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>Send via email</Text>
+              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>{copy("Email")}</Text>
+              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>{copy("Send via email")}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={V2_COLORS.textSecondary} />
           </TouchableOpacity>
@@ -698,8 +700,8 @@ export default function MyDigitalCardScreen() {
               <Ionicons name="link" size={24} color="#fff" />
             </View>
             <View style={styles.shareOptionText}>
-              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>Copy Link</Text>
-              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>Copy card URL to clipboard</Text>
+              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>{copy("Copy Link")}</Text>
+              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>{copy("Copy card URL to clipboard")}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={V2_COLORS.textSecondary} />
           </TouchableOpacity>
@@ -718,8 +720,8 @@ export default function MyDigitalCardScreen() {
               )}
             </View>
             <View style={styles.shareOptionText}>
-              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>Share Contact File</Text>
-              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>Send as .vcf contact card</Text>
+              <Text style={[styles.shareOptionTitle, { color: V2_COLORS.text }]}>{copy("Share Contact File")}</Text>
+              <Text style={[styles.shareOptionSubtitle, { color: V2_COLORS.textSecondary }]}>{copy("Send as .vcf contact card")}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={V2_COLORS.textSecondary} />
           </TouchableOpacity>
@@ -736,7 +738,7 @@ export default function MyDigitalCardScreen() {
             style={styles.saveContactGradient}
           >
             <Ionicons name="download" size={20} color="#fff" />
-            <Text style={styles.saveContactText}>Save to My Contacts</Text>
+            <Text style={styles.saveContactText}>{copy("Save to My Contacts")}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </ScrollView>
@@ -757,7 +759,7 @@ export default function MyDigitalCardScreen() {
               <Ionicons name="close-circle" size={32} color="#64748B" />
             </TouchableOpacity>
             
-            <Text style={styles.qrTitle}>Scan to View Card</Text>
+            <Text style={styles.qrTitle}>{copy("Scan to View Card")}</Text>
             <Text style={styles.qrSubtitle}>
               Point your camera at this QR code
             </Text>
@@ -780,14 +782,14 @@ export default function MyDigitalCardScreen() {
                 onPress={() => saveQRCodeToCameraRoll(qrRef.current)}
               >
                 <Ionicons name="download-outline" size={18} color="#fff" />
-                <Text style={styles.qrCopyText}>Save PNG</Text>
+                <Text style={styles.qrCopyText}>{copy("Save PNG")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.qrCopyButton}
                 onPress={handleCopyLink}
               >
                 <Ionicons name="copy" size={18} color="#fff" />
-                <Text style={styles.qrCopyText}>Copy Link</Text>
+                <Text style={styles.qrCopyText}>{copy("Copy Link")}</Text>
               </TouchableOpacity>
             </View>
           </View>

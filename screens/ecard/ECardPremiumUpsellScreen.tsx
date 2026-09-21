@@ -1,3 +1,4 @@
+import { fetchMyECardEntitlement } from '../../lib/ecardEntitlement';
 import React, { useState } from 'react';
 import {
   View,
@@ -62,7 +63,7 @@ interface Props {
 export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const { feature, themeName } = route.params || {};
-  const { user, refreshProfile } = useAuth();
+  const { user } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
   const [isLoading, setIsLoading] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -70,7 +71,7 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
   const handleSubscribe = async () => {
     // iOS requires purchases through Apple IAP — redirect to web
     if (Platform.OS === 'ios') {
-      Linking.openURL('https://tavvy.com/app/ecard');
+      Linking.openURL('https://tavvy.com/app/ecard/premium');
       return;
     }
 
@@ -130,44 +131,8 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
     setIsRestoring(true);
 
     try {
-      // Check if user has an active subscription in the database
-      const { data: subscription, error } = await supabase
-        .from('user_subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
-        .in('status', ['active', 'trialing'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      if (subscription) {
-        // User has an active subscription, update their profile
-        await supabase
-          .from('profiles')
-          .update({ is_pro: true })
-          .eq('id', user.id);
-
-        // Refresh the auth context
-        if (refreshProfile) {
-          await refreshProfile();
-        }
-
-        Alert.alert(
-          'Subscription Restored',
-          'Your Pro subscription has been restored successfully!',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
-      } else {
-        Alert.alert(
-          'No Active Subscription',
-          'We couldn\'t find an active subscription for your account. If you believe this is an error, please contact support.',
-          [{ text: 'OK' }]
-        );
-      }
+      const entitlement = await fetchMyECardEntitlement();
+      Alert.alert(entitlement.is_pro ? 'Pro access active' : 'Plan not active', entitlement.is_pro ? 'Your verified Pro access is available. Reopen your card to refresh its features.' : 'If you just checked out, wait a moment and try again.');
     } catch (error: any) {
       console.error('Restore error:', error);
       Alert.alert(
@@ -216,6 +181,9 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
               {feature === 'theme' && themeName 
                 ? `Unlock "${themeName}" and all premium features`
                 : 'Unlock all premium features and take your card to the next level'}
+            </Text>
+            <Text style={[styles.subtitle, { marginTop: 12 }]}>
+              Pro includes gallery photos, embedded videos, contact forms, and professional credentials. Free includes up to 5 links.
             </Text>
           </View>
 

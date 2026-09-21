@@ -29,6 +29,7 @@ function MenuScreen() {
   const { theme } = useThemeContext();
 
   const menuItems = [
+    { id: 'restaurantDemo', title: 'Tavvy for restaurants', subtitle: 'Explore the complete restaurant demo', icon: 'restaurant', screen: 'DemoRestaurant', color: theme.primary },
     {
       id: 'profile',
       title: t('navigation.profile'),

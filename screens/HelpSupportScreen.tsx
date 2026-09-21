@@ -25,7 +25,7 @@ export default function HelpSupportScreen({ navigation }: any) {
   const SUPPORT_EMAIL = 'support@tavvy.com';
   const PRIVACY_POLICY_URL = 'https://tavvy.com/privacy';
   const TERMS_URL = 'https://tavvy.com/terms';
-  const COMMUNITY_GUIDELINES_URL = 'https://tavvy.com/guidelines';
+  const COMMUNITY_GUIDELINES_URL = 'https://tavvy.com/app/guidelines';
 
   const handleEmailSupport = async () => {
     const subject = encodeURIComponent('Tavvy App Support Request');

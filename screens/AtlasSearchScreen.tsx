@@ -1,3 +1,5 @@
+import type { ParamListBase as DynamicStackParams } from '@react-navigation/native';
+import type { NativeStackNavigationProp as DynamicStackNavigation } from '@react-navigation/native-stack';
 // ============================================================================
 // ATLAS SEARCH SCREEN
 // ============================================================================
@@ -25,7 +27,7 @@ import {
 
 export default function AtlasSearchScreen() {
   const { t } = useTranslation();
-  const navigation = useNavigation();
+  const navigation = useNavigation<DynamicStackNavigation<DynamicStackParams>>();
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<AtlasArticle[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,9 +63,9 @@ export default function AtlasSearchScreen() {
 
   const navigateToArticle = (article: AtlasArticle) => {
     if (article.article_template_type === 'owner_spotlight') {
-      navigation.navigate('OwnerSpotlight' as never, { article } as never);
+      navigation.navigate('OwnerSpotlight', { article });
     } else {
-      navigation.navigate('ArticleDetail' as never, { article } as never);
+      navigation.navigate('ArticleDetail', { article });
     }
   };
 

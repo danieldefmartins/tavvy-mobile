@@ -5,6 +5,8 @@
  * Discover seasonal and live experiences nearby – events, holiday lights, concerts, games, and more.
  * Fetches real events from Ticketmaster, PredictHQ, and Tavvy community.
  */
+import { useThemeContext } from '../contexts/ThemeContext';
+import design from '../config/design.json';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -27,14 +29,15 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
+import { eventPrice } from '../lib/eventDiscovery';
 import { getHappeningNowEvents, TavvyEvent } from '../lib/eventsService';
-import { UnifiedHeader } from '../components/UnifiedHeader';
+import ToolHeader from '../components/ToolHeader';
 import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
 // Happening Now colors - Updated to match new black design system
-const HappeningColors = {
+const BASE_COLORS = {
   primary: '#667EEA', // Blue accent (matching other screens)
   secondary: '#818CF8',
   background: '#000000', // Pure black
@@ -105,17 +108,7 @@ function formatEventTime(dateStr: string): string {
 }
 
 // Format price for display
-function formatPrice(min?: number, max?: number, currency?: string): string {
-  if (!min && !max) return 'Free';
-  if (min === 0 && !max) return 'Free';
-  
-  const currencySymbol = currency === 'USD' ? '$' : currency || '$';
-  
-  if (min && max && min !== max) {
-    return `${currencySymbol}${min} - ${currencySymbol}${max}`;
-  }
-  return `From ${currencySymbol}${min || max}`;
-}
+function formatPrice(min?: number, max?: number, currency?: string): string { return eventPrice({price_min:min,price_max:max,currency}); }
 
 // Format distance for display
 function formatDistance(miles?: number): string {
@@ -128,6 +121,10 @@ function formatDistance(miles?: number): string {
 const DEFAULT_EVENT_IMAGE = 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600';
 
 export default function HappeningNowScreen() {
+  const { isDark } = useThemeContext();
+  const palette = isDark ? design.dark : design.light;
+  const HappeningColors = { ...BASE_COLORS, background: palette.background, cardBg: palette.surface, text: palette.text, textLight: palette.textSecondary, textMuted: palette.textTertiary, primary: design.primary };
+  const styles = makeStyles(HappeningColors);
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -136,6 +133,7 @@ export default function HappeningNowScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [locationFallback, setLocationFallback] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -145,6 +143,7 @@ export default function HappeningNowScreen() {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
+          setLocationFallback(true);
           // Default to Orlando, FL
           setUserLocation({ lat: 28.5383, lng: -81.3792 });
           return;
@@ -157,7 +156,8 @@ export default function HappeningNowScreen() {
         });
       } catch (err) {
         console.error('[HappeningNow] Location error:', err);
-        // Default to Orlando, FL
+        setLocationFallback(true);
+          // Default to Orlando, FL
         setUserLocation({ lat: 28.5383, lng: -81.3792 });
       }
     })();
@@ -207,7 +207,7 @@ export default function HappeningNowScreen() {
 
   const handleEventPress = (event: TavvyEvent) => {
     // Navigate to in-app EventDetail screen
-    navigation.navigate('EventDetail' as never, { event } as never);
+    navigation.navigate('EventDetail', { event });
   };
 
   const handleRefresh = () => {
@@ -225,7 +225,7 @@ export default function HappeningNowScreen() {
       activeOpacity={0.9}
     >
       <Image 
-        source={{ uri: item.image_url || DEFAULT_EVENT_IMAGE }} 
+        source={item.image_url ? { uri: item.image_url } : undefined} 
         style={styles.featuredImage} 
       />
       <LinearGradient
@@ -265,7 +265,7 @@ export default function HappeningNowScreen() {
       activeOpacity={0.7}
     >
       <Image 
-        source={{ uri: item.image_url || DEFAULT_EVENT_IMAGE }} 
+        source={item.image_url ? { uri: item.image_url } : undefined} 
         style={styles.eventImage} 
       />
       <View style={styles.eventInfo}>
@@ -324,19 +324,7 @@ export default function HappeningNowScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Custom Header - Matching Atlas/Cities/Rides Design */}
-      <View style={styles.customHeader}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
-          </TouchableOpacity>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Happening Now</Text>
-            <Text style={styles.headerTagline}>Time-sensitive experiences near you.</Text>
-          </View>
-          <View style={{ width: 40 }} />
-        </View>
-        
+      <ToolHeader title="Happening Now" subtitle="Time-sensitive experiences near you." safeAreaTop>
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <Ionicons name="search-outline" size={20} color={HappeningColors.textLight} style={styles.searchIcon} />
@@ -348,7 +336,7 @@ export default function HappeningNowScreen() {
             onChangeText={setSearchQuery}
           />
         </View>
-      </View>
+      </ToolHeader>
 
       {/* Filter Bar - Realtors-style design */}
       <View style={styles.filterBarContainer}>
@@ -428,6 +416,7 @@ export default function HappeningNowScreen() {
         )}
 
         {/* Error State */}
+        {locationFallback && <Text style={{paddingHorizontal:20,color:palette.textSecondary}}>Location unavailable. Showing events near Orlando, FL.</Text>}
         {error && !loading && (
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle-outline" size={48} color={HappeningColors.primary} />
@@ -484,7 +473,7 @@ export default function HappeningNowScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (HappeningColors: typeof BASE_COLORS) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: HappeningColors.background,
@@ -515,18 +504,18 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: HappeningColors.text,
     letterSpacing: -0.5,
   },
   headerTagline: {
     fontSize: 14,
-    color: '#667EEA', // Blue accent
+    color: HappeningColors.textLight,
     marginTop: 4,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1C1C1E', // Dark charcoal
+    backgroundColor: HappeningColors.cardBg, // Dark charcoal
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 48,
@@ -537,7 +526,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: HappeningColors.text,
   },
   // Legacy header styles (kept for compatibility)
   headerGradient: {
@@ -579,7 +568,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#2C2C2E', // Dark charcoal for inactive pills
+    backgroundColor: HappeningColors.cardBg, // Dark charcoal for inactive pills
     gap: 6,
   },
   filterPillActive: {
@@ -596,7 +585,7 @@ const styles = StyleSheet.create({
   filterSeparator: {
     width: 1,
     height: 24,
-    backgroundColor: '#3C3C3E', // Subtle separator for dark mode
+    backgroundColor: HappeningColors.cardBg, // Subtle separator for dark mode
     marginHorizontal: 4,
   },
   // Legacy filter styles (kept for compatibility)
@@ -611,7 +600,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: HappeningColors.cardBg,
     borderWidth: 1,
     borderColor: HappeningColors.textMuted,
     marginRight: 8,
@@ -641,7 +630,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: HappeningColors.cardBg,
     borderWidth: 1,
     borderColor: HappeningColors.primary,
     gap: 6,

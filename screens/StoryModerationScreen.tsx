@@ -64,7 +64,11 @@ interface ModerationStats {
   total: number;
 }
 
-export default function StoryModerationScreen() {
+export { default } from '../components/StoryModerationNotice';
+
+// Kept unmounted while the separate Tavvy moderation workflow is rebuilt.
+// This preserves existing local work; the registered route uses the notice above.
+function LegacyStoryModerationScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
 

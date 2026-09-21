@@ -22,7 +22,7 @@ import {
   TextInput, Dimensions, Image, FlatList, ActionSheetIOS,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { useDrafts, ContentType, ContentSubtype, ContentDraft } from '../hooks/useDrafts';
 import { useLocation, LocationData } from '../hooks/useLocation';
@@ -84,11 +84,14 @@ const STEPS_WITHOUT_SERVICE_LOCATION: Step[] = ['location', 'business_type', 'co
 export default function UniversalAddScreenV3() {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const route = useRoute<any>();
   const { 
-    currentDraft, pendingDraft, isLoading, isSaving, isOnline,
+    currentDraft, pendingDraft, isLoading, isSaving, saveError, isOnline,
     createDraft, updateDraft, deleteDraft, snoozeDraft, submitDraft,
     resumeDraft, dismissPendingDraft,
-  } = useDrafts();
+  } = useDrafts({ universe_id: route.params?.universeId, universe_place_type: route.params?.placeType });
+  useEffect(() => { if (saveError) Alert.alert('Draft not saved', saveError); }, [saveError]);
+
   const { location, isLoading: isLoadingLocation, requestLocation } = useLocation();
 
   const [currentStep, setCurrentStep] = useState<Step>('location');
@@ -162,8 +165,8 @@ export default function UniversalAddScreenV3() {
           zipCode: currentDraft.postal_code || '',
           country: currentDraft.country || 'USA',
           formattedAddress: currentDraft.formatted_address || '',
-          latitude: currentDraft.latitude || undefined,
-          longitude: currentDraft.longitude || undefined,
+          latitude: currentDraft.latitude ?? undefined,
+          longitude: currentDraft.longitude ?? undefined,
         });
       }
       
@@ -290,6 +293,16 @@ export default function UniversalAddScreenV3() {
     ].filter(Boolean);
     const formatted = formattedParts.join(', ');
     
+    if (!currentDraft) {
+      const draft = await createDraft({
+        latitude: manualAddressData.latitude ?? null, longitude: manualAddressData.longitude ?? null,
+        address_line1: manualAddressData.address1, address_line2: manualAddressData.address2,
+        city: manualAddressData.city, region: manualAddressData.state,
+        postal_code: manualAddressData.zipCode, country: manualAddressData.country,
+        formatted_address: formatted,
+      });
+      if (!draft) { Alert.alert('Draft not saved', 'Please sign in and try again.'); return; }
+    }
     // Use geocoded coordinates from the selected address, NOT user's current location
     // manualAddressData.latitude/longitude come from Nominatim when user selects from autocomplete
     await updateDraft({
@@ -300,8 +313,8 @@ export default function UniversalAddScreenV3() {
       postal_code: manualAddressData.zipCode || null,
       country: manualAddressData.country || 'USA',
       formatted_address: formatted,
-      latitude: manualAddressData.latitude || null,
-      longitude: manualAddressData.longitude || null,
+      latitude: manualAddressData.latitude ?? null,
+      longitude: manualAddressData.longitude ?? null,
       status: 'draft_type_selected',
       current_step: 2,
     }, true);
@@ -380,7 +393,7 @@ export default function UniversalAddScreenV3() {
     setSelectedContentType(type);
     if (subtype) setSelectedSubtype(subtype);
     await updateDraft({
-      content_type: type, content_subtype: subtype || selectedBusinessType,
+      content_type: type, content_subtype: subtype || selectedBusinessType || undefined,
       status: 'draft_details', current_step: 4,
     }, true);
     setCurrentStep('details');
@@ -548,8 +561,8 @@ export default function UniversalAddScreenV3() {
     setShowResumeModal(false); 
     setHasInitialized(true); // Mark as initialized since we're resuming
   };
-  const handleDiscardDraft = async () => { if (pendingDraft) await deleteDraft(pendingDraft.id); setShowResumeModal(false); handleRequestLocation(); };
-  const handleSnoozeDraft = async () => { if (pendingDraft) await snoozeDraft(24); setShowResumeModal(false); navigation.goBack(); };
+  const handleDiscardDraft = async () => { if (pendingDraft && !await deleteDraft(pendingDraft.id)) { Alert.alert('Error', 'Could not delete the draft. Please retry.'); return; } setShowResumeModal(false); handleRequestLocation(); };
+  const handleSnoozeDraft = async () => { if (pendingDraft && !await snoozeDraft(24)) return; setShowResumeModal(false); navigation.goBack(); };
 
   // Determine which steps array to use based on business type
   const getActiveSteps = useCallback(() => {

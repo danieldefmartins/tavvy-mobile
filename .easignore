@@ -8,3 +8,7 @@ android/app/build
 ios/build
 ios/Pods
 *.tgz
+
+# Install from package-lock.json on EAS; do not upload local build artifacts.
+node_modules/
+dist-audit/

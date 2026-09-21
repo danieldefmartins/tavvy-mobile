@@ -49,10 +49,6 @@ interface OwnerData {
   avatar_url?: string;
   bio?: string;
   business_name?: string;
-  is_verified?: boolean;
-  post_count?: number;
-  follower_count?: number;
-  love_count?: number;
 }
 
 interface OwnerPost {
@@ -86,7 +82,7 @@ export default function OwnerSpotlightScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('posts');
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [postCount, setPostCount] = useState<number | null>(null);
 
   // Data states
   const [owner, setOwner] = useState<OwnerData | null>(null);
@@ -107,17 +103,16 @@ export default function OwnerSpotlightScreen() {
         avatar_url: article.author_avatar_url,
         bio: article.excerpt || article.content,
         business_name: article.title?.replace('Meet the Owner: ', '') || 'Local Business',
-        is_verified: true,
-        post_count: 12,
-        follower_count: 2400,
-        love_count: 156,
       };
       setOwner(ownerData);
 
-      // Fetch owner's posts (other articles by same author)
-      const { data: authorPosts, error: postsError } = await supabase
+      setPostCount(null);
+      setPosts([]);
+      // Fetch actual published articles; no follower or verification data is inferred.
+      if (article.author_id) {
+      const { data: authorPosts, error: postsError, count: authorPostCount } = await supabase
         .from('atlas_articles')
-        .select('id, title, cover_image_url, view_count, love_count')
+        .select('id, title, cover_image_url, view_count, love_count', { count: 'exact' })
         .eq('author_id', article.author_id)
         .eq('status', 'published')
         .order('published_at', { ascending: false })
@@ -125,6 +120,8 @@ export default function OwnerSpotlightScreen() {
 
       if (!postsError && authorPosts) {
         setPosts(authorPosts);
+        setPostCount(authorPostCount);
+      }
       }
 
       // Fetch linked place data if available
@@ -136,7 +133,7 @@ export default function OwnerSpotlightScreen() {
           .single();
 
         if (!placeError && placeData) {
-          setPlace(placeData);
+          setPlace({ id: placeData.fsq_place_id, name: placeData.name, category: Array.isArray(placeData.fsq_category_labels) ? placeData.fsq_category_labels[0] || '' : placeData.fsq_category_labels || '', address: placeData.address, city: placeData.locality, state: placeData.region });
         }
       }
     } catch (error) {
@@ -157,18 +154,6 @@ export default function OwnerSpotlightScreen() {
       return `${(num / 1000).toFixed(1)}k`;
     }
     return num.toString();
-  };
-
-  const handleFollow = () => {
-    setIsFollowing(!isFollowing);
-    if (owner) {
-      setOwner({
-        ...owner,
-        follower_count: isFollowing 
-          ? (owner.follower_count || 0) - 1 
-          : (owner.follower_count || 0) + 1,
-      });
-    }
   };
 
   const navigateToPost = (post: OwnerPost) => {
@@ -350,12 +335,7 @@ export default function OwnerSpotlightScreen() {
             <Text style={styles.businessBadgeText}>
               Owner of {owner?.business_name}
             </Text>
-            {owner?.is_verified && (
-              <View style={styles.verifiedBadge}>
-                <Ionicons name="checkmark-circle" size={14} color={TEAL_PRIMARY} />
-                <Text style={styles.verifiedText}>Verified Business Owner</Text>
-              </View>
-            )}
+
           </View>
 
           {/* Bio */}
@@ -363,40 +343,14 @@ export default function OwnerSpotlightScreen() {
             {owner?.bio}
           </Text>
 
-          {/* Stats */}
-          <View style={styles.statsRow}>
+          {postCount !== null && <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <MaterialCommunityIcons name="image-multiple" size={18} color={TEAL_PRIMARY} />
-              <Text style={styles.statNumber}>{owner?.post_count || 0}</Text>
-              <Text style={styles.statLabel}>Posts</Text>
+              <Text style={styles.statNumber}>{postCount}</Text>
+              <Text style={styles.statLabel}>Published posts</Text>
             </View>
-            <View style={styles.statItem}>
-              <MaterialCommunityIcons name="account-group" size={18} color={TEAL_PRIMARY} />
-              <Text style={styles.statNumber}>{formatNumber(owner?.follower_count || 0)}</Text>
-              <Text style={styles.statLabel}>Followers</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Ionicons name="heart" size={18} color={TEAL_PRIMARY} />
-              <Text style={styles.statNumber}>{formatNumber(owner?.love_count || 0)}</Text>
-              <Text style={styles.statLabel}>Loves</Text>
-            </View>
-          </View>
+          </View>}
 
-          {/* Follow Button */}
-          <TouchableOpacity
-            style={[
-              styles.followButton,
-              isFollowing && styles.followingButton,
-            ]}
-            onPress={handleFollow}
-          >
-            <Text style={[
-              styles.followButtonText,
-              isFollowing && styles.followingButtonText,
-            ]}>
-              {isFollowing ? 'Following' : 'Follow'}
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {/* Tabs */}

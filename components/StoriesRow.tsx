@@ -1,3 +1,7 @@
+import { useReleaseCopy } from '../hooks/useReleaseCopy';
+import { useThemeContext } from '../contexts/ThemeContext';
+import type { ParamListBase as DynamicStackParams } from '@react-navigation/native';
+import type { NativeStackNavigationProp as DynamicStackNavigation } from '@react-navigation/native-stack';
 // =============================================
 // STORIES ROW COMPONENT
 // =============================================
@@ -5,6 +9,8 @@
 // Similar to Instagram/Facebook stories at the top
 // Shows nearby places even without active stories
 
+import {CONTENT_SAFETY_CHANGED} from './ContentSafetyActions';
+import {DeviceEventEmitter} from 'react-native';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -32,6 +38,7 @@ interface PlaceWithStories {
 }
 
 interface StoriesRowProps {
+  universeId?: string;
   currentUserId?: string;
   userLocation?: [number, number];
   maxDistance?: number; // in miles
@@ -40,11 +47,16 @@ interface StoriesRowProps {
 
 export const StoriesRow: React.FC<StoriesRowProps> = ({
   currentUserId,
+  universeId,
   userLocation,
   maxDistance = 20,
   onAddStoryPress,
 }) => {
-  const navigation = useNavigation();
+  const copy = useReleaseCopy();
+  const { theme, isDark } = useThemeContext();
+  const navigation = useNavigation<DynamicStackNavigation<DynamicStackParams>>();
+  const [safetyVersion,setSafetyVersion]=useState(0);
+  useEffect(()=>{const subscription=DeviceEventEmitter.addListener(CONTENT_SAFETY_CHANGED,()=>{setIsViewerVisible(false);setSelectedStories([]);setSafetyVersion(v=>v+1)});return()=>subscription.remove()},[]);
   const [places, setPlaces] = useState<PlaceWithStories[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPlace, setSelectedPlace] = useState<PlaceWithStories | null>(null);
@@ -53,7 +65,7 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
 
   useEffect(() => {
     loadNearbyPlaces();
-  }, [userLocation, currentUserId]);
+  }, [userLocation, currentUserId, universeId, safetyVersion]);
 
   const loadNearbyPlaces = async () => {
     setIsLoading(true);
@@ -83,6 +95,15 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
         .select('id, name, cover_image_url, tavvy_category, latitude, longitude')
         .eq('is_active', true)
         .limit(50);
+
+      // Universe pages must show stories for their linked places only.
+      if (universeId) {
+        const { data: links, error: linksError } = await supabase
+          .from('atlas_universe_places').select('place_id').eq('universe_id', universeId);
+        if (linksError) throw linksError;
+        if (!links?.length) { setPlaces([]); return; }
+        placesQuery = placesQuery.in('id', links.map(link => link.place_id));
+      }
 
       // Add geo-bounding box filter if user location is available
       if (userLocation) {
@@ -216,7 +237,7 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
     }
     
     // No stories - navigate to place details
-    navigation.navigate('PlaceDetails' as never, { placeId: place.place_id } as never);
+    navigation.navigate('PlaceDetails', { placeId: place.place_id });
   };
 
   const handleStoryViewed = (storyId: string) => {
@@ -252,9 +273,9 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
     return (
       <View style={styles.emptyContainer}>
         <Ionicons name="sparkles-outline" size={28} color="#06B6D4" style={{ marginBottom: 8 }} />
-        <Text style={styles.emptyTitle}>Stories are coming soon</Text>
-        <Text style={styles.emptyText}>
-          Great stories about your favorite places are about to go live. Stay tuned!
+        <Text style={[styles.emptyTitle, { color: theme.text }]}>{copy('Stories are coming soon')}</Text>
+        <Text style={[styles.emptyText, { color: isDark ? '#BDB6CA' : '#56576B' }]}>
+          {copy('Great stories about your favorite places are about to go live. Stay tuned!')}
         </Text>
       </View>
     );
@@ -273,7 +294,7 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
             <View style={styles.addStoryCircle}>
               <Ionicons name="add" size={28} color="#3B82F6" />
             </View>
-            <Text style={styles.addStoryLabel}>Your Story</Text>
+            <Text style={[styles.addStoryLabel, { color: isDark ? '#93C5FD' : '#1D4ED8' }]}>Your Story</Text>
           </TouchableOpacity>
         )}
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Button, Share, StyleSheet } from 'react-native';
-import Colors from '../../constants/Colors';
+import { Colors } from '../../constants/Colors';
 
 const OneClickShareButton = ({ cardUrl }: { cardUrl: string }) => {
   const onShare = async () => {
@@ -19,13 +19,13 @@ const OneClickShareButton = ({ cardUrl }: { cardUrl: string }) => {
         // Dismissed
       }
     } catch (error) {
-      alert('Error sharing the card: ' + error.message);
+      alert('Error sharing the card: ' + (error instanceof Error ? error.message : 'Unable to share this card'));
     }
   };
 
   return (
     <View style={styles.container}>
-      <Button onPress={onShare} title="Share My Card" color={Colors.purple} />
+      <Button onPress={onShare} title="Share My Card" color={Colors.primary} />
     </View>
   );
 };

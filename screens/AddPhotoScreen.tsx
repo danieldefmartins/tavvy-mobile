@@ -4,7 +4,7 @@ import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '../lib/supabaseClient';
+import { uploadPlacePhoto } from '../lib/placePhotoUpload';
 import { useAuth } from '../contexts/AuthContext';
 
 interface AddPhotoScreenProps {
@@ -15,80 +15,6 @@ interface AddPhotoScreenProps {
     };
   };
   navigation: any;
-}
-
-/**
- * Resolve a placeId to a UUID in the places table.
- * Handles UUIDs, FSQ IDs (fsq:xxx), and Google Place IDs.
- */
-async function resolvePlaceUUID(placeId: string): Promise<string | null> {
-  if (!placeId) return null;
-
-  // Strip fsq: prefix if present
-  const cleanId = placeId.startsWith('fsq:') ? placeId.slice(4) : placeId;
-
-  // Check if it's already a UUID (36 chars with dashes)
-  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
-
-  if (isUUID) {
-    // Verify it exists in places table
-    const { data } = await supabase
-      .from('places')
-      .select('id')
-      .eq('id', cleanId)
-      .maybeSingle();
-    if (data) return data.id;
-  }
-
-  // Try source_id lookup (FSQ IDs stored in places)
-  const { data: bySource } = await supabase
-    .from('places')
-    .select('id')
-    .eq('source_id', cleanId)
-    .maybeSingle();
-  if (bySource) return bySource.id;
-
-  // Try google_place_id lookup
-  const { data: byGoogle } = await supabase
-    .from('places')
-    .select('id')
-    .eq('google_place_id', cleanId)
-    .maybeSingle();
-  if (byGoogle) return byGoogle.id;
-
-  // Try FSQ raw table and auto-promote
-  const { data: fsqPlace } = await supabase
-    .from('fsq_places_raw')
-    .select('*')
-    .eq('fsq_place_id', cleanId)
-    .maybeSingle();
-
-  if (fsqPlace) {
-    const { data: newPlace, error } = await supabase
-      .from('places')
-      .insert({
-        name: fsqPlace.name,
-        source_type: 'fsq',
-        source_id: fsqPlace.fsq_place_id,
-        latitude: fsqPlace.latitude,
-        longitude: fsqPlace.longitude,
-        city: fsqPlace.locality,
-        region: fsqPlace.region,
-        country: fsqPlace.country,
-        postcode: fsqPlace.postcode,
-        phone: fsqPlace.tel,
-        website: fsqPlace.website,
-        email: fsqPlace.email,
-        status: 'active',
-      })
-      .select('id')
-      .single();
-
-    if (newPlace) return newPlace.id;
-    if (error) console.error('Error promoting FSQ place:', error);
-  }
-
-  return null;
 }
 
 export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProps) {
@@ -133,7 +59,7 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
   };
 
   const handleSave = async () => {
-    if (!capturedImage || !placeId) return;
+    if (!capturedImage || !placeId || isUploading) return;
 
     if (!user?.id) {
       Alert.alert('Sign In Required', 'Please sign in to add photos.');
@@ -143,67 +69,9 @@ export default function AddPhotoScreen({ route, navigation }: AddPhotoScreenProp
     setIsUploading(true);
 
     try {
-      // 1. Resolve the place UUID
-      const resolvedPlaceId = await resolvePlaceUUID(placeId);
-      if (!resolvedPlaceId) {
-        Alert.alert('Error', 'Could not resolve place. Please try again.');
-        setIsUploading(false);
-        return;
-      }
-
-      // 2. Upload image to Supabase Storage
-      const timestamp = Date.now();
-      const fileName = `${resolvedPlaceId}/${user.id}_${timestamp}.jpg`;
-
-      // Convert image URI to array buffer (React Native compatible)
       const response = await fetch(capturedImage);
       const arrayBuffer = await response.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('place-photos')
-        .upload(fileName, uint8Array, {
-          contentType: 'image/jpeg',
-          upsert: false,
-        });
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        Alert.alert('Upload Failed', uploadError.message || 'Failed to upload photo. Please try again.');
-        setIsUploading(false);
-        return;
-      }
-
-      // 3. Get the public URL
-      const { data: urlData } = supabase.storage
-        .from('place-photos')
-        .getPublicUrl(fileName);
-
-      const publicUrl = urlData.publicUrl;
-
-      // 4. Insert record into place_photos table
-      const { error: insertError } = await supabase
-        .from('place_photos')
-        .insert({
-          place_id: resolvedPlaceId,
-          uploaded_by: user.id,
-          user_id: user.id,
-          url: publicUrl,
-          caption: caption.trim() || null,
-          is_owner_photo: false,
-          status: 'live',
-        });
-
-      if (insertError) {
-        console.error('Insert error:', insertError);
-        // Photo is uploaded but DB insert failed - still show success
-        // since the photo is in storage
-        Alert.alert('Photo Uploaded', 'Photo was uploaded but there was an issue saving details. It may appear shortly.', [
-          { text: 'OK', onPress: () => navigation.goBack() }
-        ]);
-        setIsUploading(false);
-        return;
-      }
+      await uploadPlacePhoto(placeId, user.id, new Uint8Array(arrayBuffer), caption);
 
       // 5. Success!
       Alert.alert('Photo Added!', `Your photo of ${placeName || 'this place'} has been added.`, [

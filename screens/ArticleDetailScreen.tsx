@@ -1,3 +1,5 @@
+import type { ParamListBase as DynamicStackParams } from '@react-navigation/native';
+import type { NativeStackNavigationProp as DynamicStackNavigation } from '@react-navigation/native-stack';
 // ============================================================================
 // ARTICLE DETAIL SCREEN v2.3
 // ============================================================================
@@ -100,10 +102,11 @@ const PLACEHOLDER_ARTICLE = 'https://images.unsplash.com/photo-1506905925346-21b
 // Extended article type with new fields
 interface ExtendedAtlasArticle extends AtlasArticle {
   content_blocks?: ContentBlock[];
-  article_template_type?: string;
+  article_template_type?: AtlasArticle['article_template_type'];
   author_bio?: string;
   cover_image_caption?: string;
   audio_url?: string | null;
+  audio_url_male?: string | null;
   audio_duration?: number | null;
   audio_generated_at?: string | null;
 }
@@ -124,11 +127,10 @@ const getFontSizes = (bodySize: number) => {
 };
 
 // Supabase Edge Function URL for audio generation
-const AUDIO_FUNCTION_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/hyper-service`;
 
 export default function ArticleDetailScreen() {
   const { t } = useTranslation();
-  const navigation = useNavigation();
+  const navigation = useNavigation<DynamicStackNavigation<DynamicStackParams>>();
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useThemeContext();
@@ -144,7 +146,6 @@ export default function ArticleDetailScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   
   // Audio state
-  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   
   // Reading preferences - now with numeric font size (persisted in AsyncStorage)
   const [readingMode, setReadingMode] = useState<ReadingMode>(DEFAULT_READING_MODE);
@@ -311,64 +312,6 @@ export default function ArticleDetailScreen() {
         .eq('id', article.id);
     } catch (error) {
       console.error('Error incrementing view count:', error);
-    }
-  };
-
-  // Generate audio for the article
-  const handleGenerateAudio = async () => {
-    if (!article?.id) {
-      console.error('Cannot generate audio: article ID is missing');
-      return;
-    }
-
-    try {
-      setIsGeneratingAudio(true);
-      console.log('=== Starting Audio Generation ===');
-      console.log('Article ID:', article.id);
-      console.log('Article Title:', article.title);
-      console.log('Edge Function URL:', AUDIO_FUNCTION_URL);
-
-      const response = await fetch(AUDIO_FUNCTION_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ article_id: article.id }),
-      });
-
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-
-      const result = await response.json();
-      console.log('Response result:', JSON.stringify(result, null, 2));
-
-      if (result.success) {
-        console.log('Audio generated successfully:', result.audio_url);
-        setArticle({
-          ...article,
-          audio_url: result.audio_url,
-          audio_duration: result.audio_duration,
-          audio_generated_at: new Date().toISOString(),
-        });
-      } else {
-        // Log the specific error from the Edge Function
-        console.error('Edge Function error:', result.error);
-        throw new Error(result.error || 'Failed to generate audio');
-      }
-    } catch (error: any) {
-      console.error('=== Audio Generation Error ===');
-      console.error('Error message:', error?.message || error);
-      console.error('Error stack:', error?.stack);
-      
-      // Show more specific error message to user
-      const errorMessage = error?.message || 'Unknown error';
-      Alert.alert(
-        'Audio Generation Failed',
-        `Unable to generate audio: ${errorMessage}\n\nPlease try again later.`
-      );
-    } finally {
-      setIsGeneratingAudio(false);
     }
   };
 
@@ -781,11 +724,11 @@ export default function ArticleDetailScreen() {
 
           {/* Audio Player */}
           <AudioPlayer
+                key={article.id}
             articleId={article.id}
             audioUrl={article.audio_url}
             audioDuration={article.audio_duration}
-            onGenerateAudio={handleGenerateAudio}
-            isGenerating={isGeneratingAudio}
+            maleUrl={article.audio_url_male}
             backgroundColor={colors.audioBg}
             textColor={colors.text}
           />

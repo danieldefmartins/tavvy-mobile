@@ -1,7 +1,9 @@
+import { todayVisitDate, visitDateToIso } from '../lib/reviewPersistence';
 import { StatusBar } from 'expo-status-bar';
 import { 
   StyleSheet, 
-  Text, 
+  Text,
+  TextInput, 
   View, 
   ScrollView, 
   TouchableOpacity, 
@@ -22,11 +24,13 @@ import {
   SIGNAL_COLORS,
   SIGNAL_LABELS 
 } from '../lib/signalService';
+import { matchesSignalSearch } from '../lib/signalTapSelection';
 import PulseCard from '../components/PulseCard';
 import { Colors } from '../constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
+import { coreForCategory, isCoreSignal } from '../lib/placeEvidence';
 
 const { width } = Dimensions.get('window');
 
@@ -53,8 +57,8 @@ const darkTheme = {
   surface: '#1C1C1E',
   surfaceElevated: '#2C2C2E',
   text: '#FFFFFF',
-  textSecondary: '#8E8E93',
-  textTertiary: '#636366',
+  textSecondary: '#C2BDCD',
+  textTertiary: '#AAA3B7',
   border: '#38383A',
   // Step-specific backgrounds (dark mode)
   stepBackgrounds: {
@@ -69,8 +73,8 @@ const lightTheme = {
   surface: '#FFFFFF',
   surfaceElevated: '#F2F2F7',
   text: '#111827',
-  textSecondary: '#6B7280',
-  textTertiary: '#9CA3AF',
+  textSecondary: '#62546F',
+  textTertiary: '#62546F',
   border: '#E5E5EA',
   // Step-specific backgrounds (light mode)
   stepBackgrounds: {
@@ -138,9 +142,17 @@ function AddReviewScreen() {
 
   // State
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [signalSearch, setSignalSearch] = useState('');
+  const [publicNote, setPublicNote] = useState('');
   const [tapCounts, setTapCounts] = useState<{ [key: string]: number }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingPrevious, setEditingPrevious] = useState(false);
+  const [previousTaps, setPreviousTaps] = useState<Record<string, number>>({});
+  const [previousNote, setPreviousNote] = useState('');
+  const [previousPrivateNote, setPreviousPrivateNote] = useState('');
+  const [visitDate, setVisitDate] = useState(todayVisitDate);
   const [existingReviewId, setExistingReviewId] = useState<string | null>(null);
   
   // Dynamic signals from database
@@ -278,6 +290,7 @@ function AddReviewScreen() {
   }, [placeId, eventId, isEvent]);
 
   const loadData = async () => {
+    setIsLoading(true); setLoadError(null); setExistingReviewId(null); setEditingPrevious(false); setPreviousTaps({}); setPreviousNote(''); setPreviousPrivateNote(''); setPublicNote(''); setTapCounts({}); setVisitDate(todayVisitDate());
     if (!targetId) {
       setIsLoading(false);
       return;
@@ -311,15 +324,18 @@ function AddReviewScreen() {
         
         if (review) {
           setExistingReviewId(review.id);
+          setPreviousNote(review.public_note || '');
+          setPreviousPrivateNote(review.private_note_owner || '');
           const counts: { [key: string]: number } = {};
           existingSignals.forEach(signal => {
             counts[signal.signalId] = signal.intensity;
           });
-          setTapCounts(counts);
+          setPreviousTaps(counts);
         }
       }
     } catch (error) {
       console.error('Error loading data:', error);
+      setLoadError(error instanceof Error ? error.message : 'Unable to load your review.');
     } finally {
       setIsLoading(false);
     }
@@ -372,6 +388,7 @@ function AddReviewScreen() {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting || loadError) return;
     if (!targetId) return;
 
     const selectedCount = Object.keys(tapCounts).length;
@@ -380,6 +397,7 @@ function AddReviewScreen() {
       return;
     }
 
+    if (!isEvent && !editingPrevious) { try { visitDateToIso(visitDate); } catch (error) { Alert.alert('Visit date', error instanceof Error ? error.message : 'Choose a visit date.'); return; } }
     setIsSubmitting(true);
 
     const reviewSignals: ReviewSignalTap[] = Object.entries(tapCounts).map(([signalId, intensity]) => ({
@@ -399,10 +417,10 @@ function AddReviewScreen() {
       }
     } else {
       // Submit place review
-      if (existingReviewId) {
-        result = await updateReview(existingReviewId, targetId, reviewSignals, '', '');
+      if (editingPrevious && existingReviewId) {
+        result = await updateReview(existingReviewId, targetId, reviewSignals, publicNote.trim(), previousPrivateNote);
       } else {
-        result = await submitReview(targetId, targetName, reviewSignals, '', '');
+        result = await submitReview(targetId, targetName, reviewSignals, publicNote.trim(), '', { visitedAt: visitDateToIso(visitDate) });
       }
     }
 
@@ -415,7 +433,7 @@ function AddReviewScreen() {
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } else {
-      Alert.alert('Error', 'Failed to save review. Please try again.');
+      Alert.alert('Unable to save review', typeof result.error === 'string' ? result.error : 'Please try again.');
     }
   };
 
@@ -429,6 +447,8 @@ function AddReviewScreen() {
   // Total selections across all steps
   const totalSelections = Object.keys(tapCounts).filter(key => tapCounts[key] > 0).length;
 
+  if (loadError) return <View style={dynamicStyles.loadingContainer}><Text>{loadError}</Text><TouchableOpacity onPress={loadData}><Text>Retry</Text></TouchableOpacity><TouchableOpacity onPress={() => navigation.goBack()}><Text>Go back</Text></TouchableOpacity></View>;
+
   if (isLoading) {
     return (
       <View style={dynamicStyles.loadingContainer}>
@@ -438,7 +458,12 @@ function AddReviewScreen() {
     );
   }
 
-  const hasSignals = currentSignals.length > 0;
+  const reviewSubject = { category: primaryCategory, subcategory };
+  const core = coreForCategory(reviewSubject);
+  const visibleSignals = currentSignals.filter(signal => matchesSignalSearch(signal, signalSearch))
+    .sort((a, b) => currentStep.id === 'best_for'
+      ? Number(isCoreSignal(reviewSubject, b)) - Number(isCoreSignal(reviewSubject, a)) : 0);
+  const hasSignals = visibleSignals.length > 0;
 
   return (
     <View style={dynamicStyles.container}>
@@ -480,20 +505,28 @@ function AddReviewScreen() {
             </Text>
           </View>
 
+          {!isEvent && <View style={{ gap: 10, marginVertical: 14 }}>
+            <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+              <TouchableOpacity accessibilityRole="radio" accessibilityState={{ checked: !editingPrevious }} onPress={() => { setEditingPrevious(false); setTapCounts({}); setPublicNote(''); }} style={{ padding: 10, borderWidth: 1, borderColor: !editingPrevious ? '#00AEB8' : theme.border, borderRadius: 10 }}><Text style={{ color: theme.text }}>A new visit</Text></TouchableOpacity>
+              {existingReviewId && <TouchableOpacity accessibilityRole="radio" accessibilityState={{ checked: editingPrevious }} onPress={() => { setEditingPrevious(true); setTapCounts(previousTaps); setPublicNote(previousNote); }} style={{ padding: 10, borderWidth: 1, borderColor: editingPrevious ? '#00AEB8' : theme.border, borderRadius: 10 }}><Text style={{ color: theme.text }}>Edit previous review</Text></TouchableOpacity>}
+            </View>
+            {!editingPrevious ? <><Text style={{ color: theme.text }}>Visit date (YYYY-MM-DD)</Text><TextInput value={visitDate} onChangeText={setVisitDate} accessibilityLabel="Visit date, year month day" maxLength={10} placeholder="YYYY-MM-DD" style={{ color: theme.text, borderColor: theme.border, borderWidth: 1, borderRadius: 10, padding: 10 }} /></> : <Text style={{ color: theme.textSecondary }}>Your original visit date is kept. This edit is recorded in history.</Text>}
+          </View>}
+
           <View style={styles.titleContainer}>
             <View style={styles.titleRow}>
               <View style={[styles.stepIconContainer, { backgroundColor: currentStep.accent }]}>
-                <Ionicons name={currentStep.icon as any} size={20} color="#FFFFFF" />
+                <Ionicons name={currentStep.icon as any} size={20} color={currentStep.id === 'vibe' ? '#FFFFFF' : '#17013A'} />
               </View>
               <Text style={dynamicStyles.stepTitle}>
-                {currentStep.title}
+                {currentStep.id === 'vibe' ? core.vibeLabel || currentStep.title : currentStep.title}
               </Text>
             </View>
             <Text style={dynamicStyles.stepSubtitle}>{currentStep.subtitle}</Text>
             
             {/* Selection Counter */}
             <Text style={dynamicStyles.signalCount}>
-              {currentSelectionCount} of {currentStep.limit} selected
+              {currentSelectionCount} of {currentStep.limit} selected · Tap again for 2 or 3
             </Text>
           </View>
           
@@ -507,13 +540,16 @@ function AddReviewScreen() {
             </View>
           )}
 
+          <TextInput accessibilityLabel="Search signals" value={signalSearch} onChangeText={setSignalSearch} placeholder="Search signals by label or keyword" placeholderTextColor={theme.textSecondary} style={{ color: theme.text, backgroundColor: theme.surface, borderColor: theme.textSecondary, borderWidth: 1, borderRadius: 12, padding: 12, minHeight: 48, marginBottom: 16 }} />
+          {currentStep.id === 'best_for' && !isEvent && <Text style={{ color: theme.text, fontSize: 14, fontWeight: '700', marginBottom: 10 }}>Start with {core.label.toLowerCase()}. What was true about the main reason you came?</Text>}
           {/* White Card Surface */}
           <View style={dynamicStyles.cardSurface}>
             {hasSignals ? (
               <View style={styles.grid}>
-                {currentSignals.map(signal => (
+                {visibleSignals.map(signal => (
                   <PulseCard
                     key={signal.id}
+                    isDark={isDark}
                     label={signal.label}
                     icon={signal.icon_emoji}
                     intensity={tapCounts[signal.id] || 0}
@@ -527,14 +563,18 @@ function AddReviewScreen() {
               <View style={styles.emptyState}>
                 <Ionicons name="information-circle-outline" size={48} color={theme.textTertiary} />
                 <Text style={dynamicStyles.emptyStateText}>
-                  No signals available for this category yet.
+                  {signalSearch.trim() ? 'No matching signals in this category.' : 'No signals available for this category yet.'}
                 </Text>
                 <Text style={dynamicStyles.emptyStateSubtext}>
-                  Tap "Next" to continue.
+                  {signalSearch.trim() ? `Try another search. Your ${totalSelections} selected signals are kept.` : 'Tap "Next" to continue.'}
                 </Text>
               </View>
             )}
           </View>
+          {isLastStep && !isEvent && <View style={{ marginTop: 18 }}>
+            <Text style={{ color: theme.text, fontWeight: '700', marginBottom: 7 }}>Add context (optional)</Text>
+            <TextInput multiline value={publicNote} onChangeText={setPublicNote} maxLength={4000} placeholder="What did you order? What made this visit stand out? This note is public." placeholderTextColor={theme.textSecondary} style={{ color: theme.text, backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1, borderRadius: 12, padding: 12, minHeight: 90, textAlignVertical: 'top' }} />
+          </View>}
         </ScrollView>
 
         {/* Floating Footer */}
@@ -557,14 +597,14 @@ function AddReviewScreen() {
             disabled={isSubmitting}
           >
             {isSubmitting ? (
-              <ActivityIndicator color="white" />
+              <ActivityIndicator color={currentStep.id === 'vibe' ? '#FFFFFF' : '#17013A'} />
             ) : (
               <>
-                <Text style={styles.actionButtonText}>
+                <Text style={[styles.actionButtonText, { color: currentStep.id === 'vibe' ? '#FFFFFF' : '#17013A' }]}> 
                   {isLastStep ? 'Submit Review' : 'Next'}
                 </Text>
                 {!isLastStep && (
-                  <Ionicons name="arrow-forward" size={20} color="white" style={{ marginLeft: 8 }} />
+                  <Ionicons name="arrow-forward" size={20} color={currentStep.id === 'vibe' ? '#FFFFFF' : '#17013A'} style={{ marginLeft: 8 }} />
                 )}
               </>
             )}

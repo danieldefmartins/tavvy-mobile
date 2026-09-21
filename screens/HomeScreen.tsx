@@ -1,3 +1,12 @@
+import { matchesDemoRestaurantQuery, shouldOfferDemoRestaurant } from '../lib/demoPlace';
+import { useReleaseCopy } from '../hooks/useReleaseCopy';
+import { searchAcrossProviders } from '../lib/placeSearch';
+import { canonicalPlaceId, isDiningSearch, submittedSearchContext, SearchContext } from '../lib/searchIntent';
+import { fetchDiscoveryEvidence, DINING_NEEDS, matchNeed } from '../lib/discoveryEvidence';
+import { currentEvidenceSignals } from '../lib/placeEvidence';
+import featureCards from '../config/featureCards.json';
+import { AccessibilityInfo } from 'react-native';
+import discovery from '../config/discovery.json';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
@@ -30,7 +39,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchPlacesInBounds, PlaceCard, getPlaceIdForNavigation, formatDistance } from '../lib/placeService';
-import SignalMatrix from '../components/SignalMatrix';
+import PlaceReviewGrid from '../components/PlaceReviewGrid';
+import { buildPlaceReviewSummary } from '../lib/placeReviewSummary';
 import { searchSuggestions as searchPlaceSuggestions, searchAddresses, prefetchNearbyPlaces, searchPrefetchedPlaces, SearchResult } from '../lib/searchService';
 import { searchPlaces as typesenseSearchPlaces } from '../lib/typesenseService';
 import { parseSearchQuery } from '../lib/smartQueryParser';
@@ -47,16 +57,17 @@ const { width, height } = Dimensions.get('window');
 
 // Featured carousel — rides + every Tavvy feature (broad appeal, not rides-only)
 const FEATURE_CARD_W = Math.round(width * 0.82);
-const FEATURE_IMG = 'https://scasgwrikoqdwlwlwcff.supabase.co/storage/v1/object/public/tavvy-assets/features';
-const FEATURE_SLIDES = [
-  { id: 'rides', tag: 'New', title: 'Rides', subtitle: 'Rate every ride — thrill, wait, theming', icon: '🎢', image: `${FEATURE_IMG}/rides.png`, colors: ['#8A05BE', '#EC4899'] as [string, string] },
-  { id: 'restaurants', tag: 'Popular', title: 'Restaurants', subtitle: 'Real signals, not star ratings', icon: '🍽️', image: `${FEATURE_IMG}/restaurants.png`, colors: ['#EF4444', '#F59E0B'] as [string, string] },
-  { id: 'universes', tag: 'Explore', title: 'Universes', subtitle: 'Theme parks, airports & themed worlds', icon: '🌌', image: `${FEATURE_IMG}/universes.png`, colors: ['#6366F1', '#8A05BE'] as [string, string] },
-  { id: 'hotels', tag: 'Stay', title: 'Hotels', subtitle: 'Find where to stay by what matters', icon: '🏨', image: `${FEATURE_IMG}/hotels.png`, colors: ['#0EA5E9', '#6366F1'] as [string, string] },
-  { id: 'cities', tag: 'Discover', title: 'Cities', subtitle: 'Compare livability, food & culture', icon: '🌆', image: `${FEATURE_IMG}/cities.png`, colors: ['#8A05BE', '#0EA5E9'] as [string, string] },
-  { id: 'rv-camping', tag: 'Outdoors', title: 'RV & Camping', subtitle: 'Campgrounds, sites & boondocking', icon: '🏕️', image: `${FEATURE_IMG}/rv-camping.png`, colors: ['#00C2CB', '#10B981'] as [string, string] },
-  { id: 'signals', tag: 'Unique', title: 'Signal Search', subtitle: 'Find places by the vibe you want', icon: '📡', image: null as string | null, colors: ['#8A05BE', '#C77DFF'] as [string, string] },
-];
+const featureImages: Record<string, string> = {
+  'rides': Image.resolveAssetSource(require('../assets/features-v2/rides.jpg')).uri,
+  'restaurants': Image.resolveAssetSource(require('../assets/features-v2/restaurants.jpg')).uri,
+  'universes': Image.resolveAssetSource(require('../assets/features-v2/universes.jpg')).uri,
+  'hotels': Image.resolveAssetSource(require('../assets/features-v2/hotels.jpg')).uri,
+  'pros': Image.resolveAssetSource(require('../assets/features-v2/pros.jpg')).uri,
+  'cities': Image.resolveAssetSource(require('../assets/features-v2/cities.jpg')).uri,
+  'atlas': Image.resolveAssetSource(require('../assets/features-v2/atlas.jpg')).uri,
+  'rv-camping': Image.resolveAssetSource(require('../assets/features-v2/rv-camping.jpg')).uri
+};
+const FEATURE_SLIDES = featureCards.map(card => ({ ...card, image: featureImages[card.id] }));
 
 const FEATURE_GRID = [
   { id: 'restaurants', label: 'Restaurants', icon: 'restaurant' as const },
@@ -368,6 +379,7 @@ interface GeocodingResult {
 // ============================================
 
 function HomeScreen({ navigation }: { navigation: any }) {
+  const copy = useReleaseCopy();
   const { t } = useTranslation();
   // Theme context for dark mode support
   const { theme, isDark } = useThemeContext();
@@ -376,7 +388,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   const { user, profile } = useAuth();
   
   // View mode: 'standard' (default) or 'map' (search/swipe triggered)
-  const [viewMode, setViewMode] = useState<'standard' | 'map'>('standard');
+  const [viewMode, setViewMode] = useState<'standard' | 'map'>("standard");
   
   // Data states - start with empty arrays, will be populated from database
   const [places, setPlaces] = useState<Place[]>([]);
@@ -385,12 +397,20 @@ function HomeScreen({ navigation }: { navigation: any }) {
   
   // Search states
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchLocation, setSearchLocation] = useState('');
+  const [searchScopeLabel, setSearchScopeLabel] = useState('Any location');
+  const [searchError, setSearchError] = useState('');
+  const [showDemoFallback, setShowDemoFallback] = useState(false);
+  const [diningNeed, setDiningNeed] = useState('');
+  const [searchDining, setSearchDining] = useState(false);
+  const submittedSearchRef = useRef(0);
+  const activeSearchContext = useRef<SearchContext>({});
   const [prefetchedPlaces, setPrefetchedPlaces] = useState<SearchResult[]>([]); // Pre-fetched nearby places for instant search
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [targetLocation, setTargetLocation] = useState<[number, number] | null>(null);
   const [searchedAddressName, setSearchedAddressName] = useState<string>('');
@@ -413,12 +433,12 @@ function HomeScreen({ navigation }: { navigation: any }) {
     type: string; // Category-specific type (cuisine, fuel type, etc.)
     amenities: string[];
   }>({
-    sortBy: 'Distance',
-    distance: 'Any',
-    hours: 'Any',
-    tapQuality: 'Any',
-    price: 'Any',
-    type: 'Any',
+    sortBy: "Distance",
+    distance: "Any",
+    hours: "Any",
+    tapQuality: "Any",
+    price: "Any",
+    type: "Any",
     amenities: [],
   });
   
@@ -562,11 +582,11 @@ function HomeScreen({ navigation }: { navigation: any }) {
   const updateGreeting = () => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) {
-      setGreeting('Good morning');
+      setGreeting("Good morning");
     } else if (hour >= 12 && hour < 17) {
-      setGreeting('Good afternoon');
+      setGreeting("Good afternoon");
     } else if (hour >= 17 && hour < 21) {
-      setGreeting('Good evening');
+      setGreeting("Good evening");
     } else {
       setGreeting('Good night');
     }
@@ -578,10 +598,16 @@ function HomeScreen({ navigation }: { navigation: any }) {
   const [failedSlideImages, setFailedSlideImages] = useState<Record<string, boolean>>({});
   const carouselRef = useRef<ScrollView>(null);
   const carouselPausedRef = useRef(false);
+  const reduceMotionRef = useRef(false);
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(enabled => { reduceMotionRef.current = enabled; });
+    const listener = AccessibilityInfo.addEventListener('reduceMotionChanged', enabled => { reduceMotionRef.current = enabled; });
+    return () => listener.remove();
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (carouselPausedRef.current) return;
+      if (carouselPausedRef.current || reduceMotionRef.current) return;
       setActiveSlide((prev) => {
         const next = (prev + 1) % FEATURE_SLIDES.length;
         carouselRef.current?.scrollTo({ x: next * (FEATURE_CARD_W + 12), animated: true });
@@ -593,15 +619,15 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   const goToFeature = (id: string) => {
     switch (id) {
-      case 'rides': navigation.navigate('RidesBrowse'); break;
-      case 'restaurants': navigation.navigate('Explore', { searchQuery: 'Restaurants' }); break;
-      case 'universes': navigation.navigate('Apps', { screen: 'UniverseDiscovery' }); break;
-      case 'hotels': navigation.navigate('Explore', { searchQuery: 'Hotels' }); break;
-      case 'cities': navigation.navigate('CitiesBrowse'); break;
+      case "rides": navigation.navigate('RidesBrowse'); break;
+      case "restaurants": handleCategorySelect("Restaurants"); switchToMapMode(); break;
+      case "universes": navigation.navigate("Apps", { screen: 'UniverseDiscovery' }); break;
+      case "hotels": handleCategorySelect("Hotels"); switchToMapMode(); break;
+      case "cities": navigation.navigate('CitiesBrowse'); break;
       case 'rv-camping': navigation.navigate('RVCampingBrowse'); break;
-      case 'signals': navigation.navigate('SignalSearch'); break;
-      case 'atlas': navigation.navigate('Explore'); break;
-      case 'pros': navigation.navigate('Apps'); break;
+      case "signals": navigation.navigate('SignalSearch'); break;
+      case "atlas": navigation.navigate("Apps", { screen: 'AtlasMain' }); break;
+      case "pros": navigation.navigate("Pros"); break;
       default: break;
     }
   };
@@ -761,7 +787,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
             name: place.name,
             subtitle: place.locality ? `${place.locality}, ${place.region || ''}`.trim() : place.address,
             image: null, // fsq_places_raw doesn't have cover images
-            type: 'place',
+            type: "place",
             category: displayCategory,
             latitude: place.latitude,
             longitude: place.longitude,
@@ -779,10 +805,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
         .eq('status', 'active')
         .not('latitude', 'is', null)
         .not('longitude', 'is', null)
-        .not('address', 'is', null)
-        .neq('address', '')
-        .not('phone', 'is', null)
-        .neq('phone', '')
+        .not("address", 'is', null)
+        .neq("address", '')
+        .not("phone", 'is', null)
+        .neq("phone", '')
         .limit(50);
       
       if (pros && !prosError) {
@@ -803,7 +829,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
             subtitle: pro.service_category || (pro.city ? `${pro.city}, ${pro.state || ''}`.trim() : 'Service Provider'),
             image: pro.profile_image_url,
             type: 'pro',
-            category: 'Pros',
+            category: "Pros",
             latitude: pro.latitude,
             longitude: pro.longitude,
             distance: distance,
@@ -833,7 +859,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
             name: place.name,
             subtitle: place.locality ? `${place.locality}, ${place.region || ''}`.trim() : place.address,
             image: null,
-            type: 'place',
+            type: "place",
             category: displayCategory,
             latitude: place.latitude,
             longitude: place.longitude,
@@ -881,7 +907,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       const { data: airports } = await supabase
         .from('atlas_universes')
         .select('id, name, location, thumbnail_image_url, category_id')
-        .eq('status', 'published')
+        .eq('status', "published")
         .or('name.ilike.%airport%,name.ilike.%international%')
         .limit(5);
       
@@ -889,7 +915,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
         const randomAirport = airports[Math.floor(Math.random() * airports.length)];
         items.push({
           id: randomAirport.id,
-          type: 'universe',
+          type: "universe",
           universeType: 'airports',
           title: 'Airports',
           subtitle: randomAirport.location || 'Terminals, lounges & more',
@@ -904,7 +930,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
         // Placeholder with Coming Soon - per spec this is acceptable
         items.push({
           id: 'airports-placeholder',
-          type: 'universe',
+          type: "universe",
           universeType: 'airports',
           title: 'Airports',
           subtitle: 'Terminals, lounges & more',
@@ -926,9 +952,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
       if (themeParks && themeParks.length > 0) {
         items.push({
           id: 'theme-parks-universe',
-          type: 'universe',
+          type: "universe",
           universeType: 'theme-parks',
-          title: 'Theme Parks',
+          title: "Theme Parks",
           subtitle: `${themeParks.length}+ parks to explore`,
           image: null,
           icon: 'rocket-outline',
@@ -940,10 +966,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
       } else {
         items.push({
           id: 'theme-parks-placeholder',
-          type: 'universe',
+          type: "universe",
           universeType: 'theme-parks',
-          title: 'Theme Parks',
-          subtitle: 'Rides & attractions',
+          title: "Theme Parks",
+          subtitle: "Rides & attractions",
           image: null,
           icon: 'rocket-outline',
           color: '#8A05BE',
@@ -962,9 +988,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
       if (camping && camping.length > 0) {
         items.push({
           id: 'camping-universe',
-          type: 'universe',
+          type: "universe",
           universeType: 'camping',
-          title: 'RV & Camping',
+          title: "RV & Camping",
           subtitle: `${camping.length}+ campgrounds nearby`,
           image: null,
           icon: 'bonfire-outline',
@@ -976,9 +1002,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
       } else {
         items.push({
           id: 'camping-placeholder',
-          type: 'universe',
+          type: "universe",
           universeType: 'camping',
-          title: 'RV & Camping',
+          title: "RV & Camping",
           subtitle: 'Campgrounds & RV parks',
           image: null,
           icon: 'bonfire-outline',
@@ -1132,7 +1158,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       const updated = [...savedLocations, newLocation];
       setSavedLocations(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.SAVED_LOCATIONS, JSON.stringify(updated));
-      Alert.alert('Location Saved!', `"${name}" has been added to your saved locations.`);
+      Alert.alert("Location Saved!", `"${name}" has been added to your saved locations.`);
     } catch (error) {
       console.log('Error saving location:', error);
     }
@@ -1180,11 +1206,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
           setLocationName(`${address.city || ''}, ${address.region || ''}`);
         }
       } else {
-        fetchPlaces();
+        setSearchError('Location is off. Enter a city to find places.'); setLoading(false);
       }
     } catch (error) {
-      console.log('Error getting location:', error);
-      fetchPlaces();
+      setSearchError('Location is unavailable. Enter a city to find places.'); setLoading(false);
     }
   };
 
@@ -1281,7 +1306,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
             // Map PlaceCard to existing Place interface
             return {
-              id: place.source_id, // Use source_id for navigation (fsq_id or tavvy place id)
+              id: canonicalPlaceId(place.id, place.source), // Use source_id for navigation (fsq_id or tavvy place id)
               name: place.name,
               latitude: place.latitude,
               longitude: place.longitude,
@@ -1410,7 +1435,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
               }));
 
             return {
-              id: place.source_id,
+              id: canonicalPlaceId(place.id, place.source),
               name: place.name,
               latitude: place.latitude,
               longitude: place.longitude,
@@ -1480,16 +1505,21 @@ function HomeScreen({ navigation }: { navigation: any }) {
    * Handle "Search this Area" button press
    */
   const handleSearchThisArea = () => {
-    if (currentMapBounds) {
-      fetchPlacesForBounds(currentMapBounds);
-    }
+    if (!currentMapBounds) return;
+    const coordinates = { latitude: (currentMapBounds.minLat+currentMapBounds.maxLat)/2, longitude: (currentMapBounds.minLng+currentMapBounds.maxLng)/2 };
+    const radiusKm = Math.min(20000, Math.hypot(currentMapBounds.maxLat-currentMapBounds.minLat, (currentMapBounds.maxLng-currentMapBounds.minLng)*Math.cos(coordinates.latitude*Math.PI/180))*111.32/2);
+    setSearchLocation(''); setShowSearchThisArea(false);
+    void handleSearchSubmit(parseSearchQuery(searchQuery).placeName || '*', diningNeed, { mode: 'map', coordinates, bounds: currentMapBounds, radiusKm });
   };
 
   // ============================================
   // SEARCH FUNCTIONS
   // ============================================
 
+  const searchRequestId = useRef(0);
   const handleSearchInputChange = (text: string) => {
+    const requestId = ++searchRequestId.current;
+    setIsSearchingAddress(false);
     // Use functional update to prevent unnecessary re-renders
     setSearchQuery(text);
     
@@ -1504,17 +1534,17 @@ function HomeScreen({ navigation }: { navigation: any }) {
     }
 
     // INSTANT: Search pre-fetched places first (sub-millisecond)
-    if (prefetchedPlaces.length > 0) {
+    if (prefetchedPlaces.length > 0 && !parseSearchQuery(text).isParsed && !searchLocation && activeSearchContext.current.mode !== 'map') {
       const instantResults = searchPrefetchedPlaces(text, prefetchedPlaces, 5);
       if (instantResults.length > 0) {
         const instantSuggestions: SearchSuggestion[] = instantResults.map(place => ({
           id: `place-${place.source_id}`,
-          type: 'place' as const,
+          type: "place" as const,
           title: place.name,
-          subtitle: `${place.category || 'Other'} • ${place.city || 'Nearby'}`,
-          icon: 'location',
+          subtitle: `${place.subcategory || place.category || 'Other'} • ${place.city || 'Nearby'}`,
+          icon: "location",
           data: {
-            id: place.source_id,
+            id: canonicalPlaceId(place.id, place.source),
             name: place.name,
             latitude: place.latitude,
             longitude: place.longitude,
@@ -1543,7 +1573,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       matchingCategories.forEach(cat => {
         suggestions.push({
           id: `category-${cat.name}`,
-          type: 'category',
+          type: "category",
           title: cat.name,
           subtitle: 'Tap to see nearby on map',
           icon: cat.icon,
@@ -1551,93 +1581,14 @@ function HomeScreen({ navigation }: { navigation: any }) {
         });
       });
 
-      // SMART PARSING: Parse natural language query for location
-      const parsed = parseSearchQuery(text.trim());
-      console.log('[Autocomplete] Parsed query:', parsed);
-
-      // Search database for matching places using centralized searchService
       try {
-      // If location detected in query, use Typesense with location filters
-      if (parsed.isParsed && (parsed.city || parsed.region)) {
-        const typesenseResult = await typesenseSearchPlaces({
-          query: parsed.placeName,
-          locality: parsed.city,
-          region: parsed.region,
-          country: parsed.country,
-          limit: 8,
-        });
-        
-        if (typesenseResult.places && typesenseResult.places.length > 0) {
-          typesenseResult.places.forEach(place => {
-            suggestions.push({
-              id: `place-${place.id}`,
-              type: 'place',
-              title: place.name,
-              subtitle: place.address 
-                ? `${place.address}, ${place.locality || 'Nearby'}`
-                : `${place.category || 'Other'} • ${place.locality || 'Nearby'}`,
-              icon: 'location',
-              data: {
-                id: place.id,
-                name: place.name,
-                latitude: place.latitude,
-                longitude: place.longitude,
-                address_line1: place.address || '',
-                city: place.locality || '',
-                category: place.category || 'Other',
-                signals: [],
-                photos: [],
-              },
-            });
-          });
-        }
-      } else {
-        // No location in query, use regular search
-        const searchResults = await searchPlaceSuggestions(text, 8, userLocation || undefined);
-        
-        if (searchResults && searchResults.length > 0) {
-          searchResults.forEach(place => {
-            suggestions.push({
-              id: `place-${place.source_id}`,
-              type: 'place',
-              title: place.name,
-              subtitle: place.address 
-                ? `${place.address}, ${place.city || 'Nearby'}`
-                : `${place.category || 'Other'} • ${place.city || 'Nearby'}`,
-              icon: 'location',
-              data: {
-                id: place.source_id,
-                name: place.name,
-                latitude: place.latitude,
-                longitude: place.longitude,
-                address_line1: place.address || '',
-                city: place.city || '',
-                category: place.category || 'Other',
-                signals: [],
-                photos: [],
-              },
-            });
-          });
-        }
+        const searchResults = await searchPlaceSuggestions(text, 8, userLocation ? { latitude: userLocation[1], longitude: userLocation[0] } : undefined, submittedSearchContext(text, activeSearchContext.current, userLocation ? { latitude: userLocation[1], longitude: userLocation[0] } : undefined, searchLocation));
+        for (const place of searchResults) suggestions.push({ id: `place-${place.id}`, type: "place", title: place.name,
+          subtitle: [place.subcategory || place.category, place.city, place.region].filter(Boolean).join(' · '), icon: "location",
+          data: { ...place, id: canonicalPlaceId(place.id, place.source), address_line1: place.address || '', state_region: place.region || '', signals: [], photos: place.cover_image_url ? [place.cover_image_url] : [] } });
+      } catch (error) {
+        if (requestId === searchRequestId.current) setSearchError(error instanceof Error ? error.message : 'Search is temporarily unavailable.');
       }
-    } catch (e) {
-      console.log('Search error:', e);
-      // Fallback to local search
-      const matchingPlaces = places
-        .filter(p => p.name.toLowerCase().includes(query))
-        .slice(0, 3);
-      
-      matchingPlaces.forEach(place => {
-        suggestions.push({
-          id: `place-${place.id}`,
-          type: 'place',
-          title: place.name,
-          subtitle: place.category,
-          icon: 'location',
-          data: place,
-        });
-      });
-    }
 
     // NOTE: Categories are now added at the TOP of suggestions (see above)
     // This ensures users see category options first when searching
@@ -1650,10 +1601,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
     matchingRecent.forEach(search => {
       suggestions.push({
         id: `recent-${search}`,
-        type: 'recent',
+        type: "recent",
         title: search,
         subtitle: 'Recent search',
-        icon: 'time',
+        icon: "time",
       });
     });
 
@@ -1662,10 +1613,11 @@ function HomeScreen({ navigation }: { navigation: any }) {
       index === self.findIndex((s) => s.id === suggestion.id)
     );
     
+    if (requestId !== searchRequestId.current) return;
     setSearchSuggestions(uniqueSuggestions);
 
     // Always search for addresses when query is long enough (using optimized location-biased search)
-    if (text.length >= 3) {
+    if (text.length >= 3 && !parseSearchQuery(text).isParsed && !searchLocation) {
       setIsSearchingAddress(true);
       try {
         // Use optimized searchAddresses with location bias for faster, more relevant results
@@ -1679,10 +1631,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
         addressResults.forEach((result, index) => {
           suggestions.push({
             id: `address-${index}`,
-            type: 'address',
+            type: "address",
             title: result.shortName,
             subtitle: result.displayName,
-            icon: 'navigate',
+            icon: "navigate",
             data: {
               display_name: result.displayName,
               lat: String(result.latitude),
@@ -1695,11 +1647,11 @@ function HomeScreen({ navigation }: { navigation: any }) {
         const finalUniqueSuggestions = suggestions.filter((suggestion, index, self) =>
           index === self.findIndex((s) => s.id === suggestion.id)
         );
-        setSearchSuggestions(finalUniqueSuggestions);
+        if (requestId === searchRequestId.current) setSearchSuggestions(finalUniqueSuggestions);
       } catch (error) {
         console.log('Address search error:', error);
       } finally {
-        setIsSearchingAddress(false);
+        if (requestId === searchRequestId.current) setIsSearchingAddress(false);
       }
     }
     }, 200); // End of debounce setTimeout (optimized from 300ms)
@@ -1715,112 +1667,85 @@ function HomeScreen({ navigation }: { navigation: any }) {
     }, 200);
   };
 
-  const handleSearchSubmit = async () => {
-    if (searchQuery.trim()) {
-      const query = searchQuery.trim().toLowerCase();
-      saveRecentSearch(searchQuery.trim());
-      setLoading(true); // Show loading state
-      
-      // Keywords that indicate universe/atlas searches
-      const universeKeywords = ['universe', 'atlas', 'theme park', 'airport', 'stadium', 'mall', 'campus', 'resort', 'park', 'zoo', 'museum', 'disney', 'universal', 'seaworld'];
-      
-      // Check if query matches universe keywords
-      const isUniverseSearch = universeKeywords.some(keyword => query.includes(keyword));
-      
-      if (isUniverseSearch) {
-        // Navigate to universes with search query
-        Keyboard.dismiss();
-        navigation.navigate('Explore', { searchQuery: searchQuery.trim() });
-      } else {
-        // SMART PARSING: Parse natural language query
-        const parsed = parseSearchQuery(searchQuery.trim());
-        console.log('[SmartSearch] Parsed query:', parsed);
-        
-        if (parsed.isParsed && (parsed.city || parsed.region)) {
-          // Use Typesense for location-specific searches
-          try {
-            const result = await typesenseSearchPlaces({
-              query: parsed.placeName,
-              locality: parsed.city,
-              region: parsed.region,
-              country: parsed.country,
-              limit: 50,
-            });
-            
-            if (result.places.length > 0) {
-              const processedPlaces = result.places
-                .filter((place) => {
-                  return typeof place.longitude === 'number' && typeof place.latitude === 'number' && 
-                         !isNaN(place.longitude) && !isNaN(place.latitude) && 
-                         place.longitude !== 0 && place.latitude !== 0;
-                })
-                .map(place => ({
-                  id: place.fsq_place_id,
-                  name: place.name,
-                  latitude: place.latitude!,
-                  longitude: place.longitude!,
-                  address_line1: place.address || '',
-                  city: place.locality || '',
-                  state_region: place.region || '',
-                  country: place.country || '',
-                  category: place.category || 'Other',
-                  phone: place.tel || '',
-                  website: place.website || '',
-                  instagram_url: place.instagram || '',
-                  signals: [],
-                  photos: [],
-                  distance: place.distance,
-                }));
-              
-              setFilteredPlaces(processedPlaces as Place[]);
-              switchToMapMode();
-              
-              // Center map on first result
-              if (processedPlaces[0]) {
-                setTargetLocation([processedPlaces[0].longitude, processedPlaces[0].latitude]);
-              }
-            } else {
-              // No results found - just log and stay on current screen
-              console.log('[SmartSearch] No results found for smart search');
-              setFilteredPlaces([]);
-            }
-          } catch (error) {
-            console.error('[SmartSearch] Error:', error);
-            // On error, just clear results and stay on current screen
-            setFilteredPlaces([]);
-          } finally {
-            setLoading(false); // Hide loading state
-          }
-        } else {
-          // Default to map/places search
-          filterPlaces(searchQuery.trim());
-          switchToMapMode();
-          setLoading(false); // Hide loading state for non-smart searches
-        }
-      }
+  const handleSearchSubmit = async (query = searchQuery, need = diningNeed, context?: SearchContext) => {
+    // Submitted results own the screen; late autocomplete must not reopen it.
+    ++searchRequestId.current;
+    if (searchDebounceRef.current) { clearTimeout(searchDebounceRef.current); searchDebounceRef.current = null; }
+    setIsSearchingAddress(false);
+    setSearchSuggestions([]);
+    const requestId = ++submittedSearchRef.current; setShowDemoFallback(false);
+    if (matchesDemoRestaurantQuery(query)) {
+      Keyboard.dismiss(); setIsSearchFocused(false); setLoading(false); navigation.navigate('DemoRestaurant' as never); return;
     }
+    if (!query.trim()) { setLoading(false); return; }
+    Keyboard.dismiss(); setIsSearchFocused(false); setSearchSuggestions([]); setLoading(true); setSearchError('');
+    saveRecentSearch(query.trim()); setSearchQuery(query); setShowCategoryResults(false); switchToMapMode();
+    const searchContext: SearchContext = context || submittedSearchContext(query, activeSearchContext.current, userLocation ? { latitude: userLocation[1], longitude: userLocation[0] } : undefined, searchLocation);
+    try {
+      const response = await searchAcrossProviders(query, 50, searchContext);
+      const dining = isDiningSearch(response.intent.query) || response.places.some(place => isDiningSearch(`${place.category} ${place.subcategory}`));
+      if (requestId !== submittedSearchRef.current) return;
+      const demoFallback = shouldOfferDemoRestaurant(query, response.places, response.partial);
+      setShowDemoFallback(demoFallback);
+      const initialPlaces = response.places.filter(place => Number.isFinite(place.latitude) && Number.isFinite(place.longitude)).map(place => ({
+        ...place, address_line1: place.address || '', state_region: place.region || '', category: place.subcategory || place.category || "Place",
+        signals: [], currentSignals: [], reviewSummary: buildPlaceReviewSummary(null, { category: place.tavvy_category || place.category, subcategory: place.subcategory }, place.id.startsWith('fsq:') ? 'unavailable' : 'loading'), evidenceStatus: place.id.startsWith('fsq:') ? 'unavailable' : 'loading',
+        photos: place.cover_image_url ? [place.cover_image_url] : [],
+      }));
+      activeSearchContext.current = searchContext; setSearchDining(dining); setDiningNeed(dining ? need : ''); setSearchScopeLabel(response.intent.label);
+      setFilteredPlaces(initialPlaces as unknown as Place[]); setLoading(false);
+      if (initialPlaces[0] && response.intent.kind !== 'map') setTargetLocation([initialPlaces[0].longitude!, initialPlaces[0].latitude!]);
+      const evidence = await fetchDiscoveryEvidence(response.places.filter(place => !place.id.startsWith('fsq:')).map(place => ({ id: place.id, category: place.tavvy_category || place.category, subcategory: place.subcategory })));
+      const ranked = response.places.filter(place => Number.isFinite(place.latitude) && Number.isFinite(place.longitude)).map(place => {
+        const current = evidence.get(place.id); const matching = dining && need ? matchNeed(current, need) : undefined;
+        const currentSignals = current ? currentEvidenceSignals(current) : [];
+        return { ...place, address_line1: place.address || '', state_region: place.region || '', category: place.subcategory || place.category || "Place",
+          signals: currentSignals.map(signal => ({ bucket: signal.label, tap_total: signal.count, category: signal.category })), currentSignals,
+          reviewSummary: buildPlaceReviewSummary(current, { category: place.tavvy_category || place.category, subcategory: place.subcategory }),
+          evidenceStatus: current?.dataStatus || 'unavailable', matchScore: matching?.score, matchReason: matching?.reason,
+          photos: place.cover_image_url ? [place.cover_image_url] : [] };
+      });
+      if (dining && need) ranked.sort((a,b) => (b.matchScore ?? -1) - (a.matchScore ?? -1));
+      if (requestId !== submittedSearchRef.current) return;
+      activeSearchContext.current = searchContext; setSearchDining(dining); setDiningNeed(dining ? need : ''); setSearchScopeLabel(response.intent.label);
+      setFilteredPlaces(ranked as unknown as Place[]);
+
+      if (!ranked.length && !demoFallback) setSearchError(`No places found · ${response.intent.label}. Try another search or location.`);
+    } catch (error) {
+      if (requestId === submittedSearchRef.current) { setFilteredPlaces([]); setSearchError(error instanceof Error ? error.message : 'Search is temporarily unavailable.'); }
+    } finally { if (requestId === submittedSearchRef.current) setLoading(false); }
   };
+
+  const useSearchLocation = async () => {
+    const permission = await Location.requestForegroundPermissionsAsync();
+    if (permission.status !== 'granted') { setSearchError("Location access was not available. Enter a city instead."); return; }
+    try {
+      const result = await Location.getCurrentPositionAsync({});
+      setUserLocation([result.coords.longitude, result.coords.latitude]); setSearchLocation('');
+      void handleSearchSubmit(parseSearchQuery(searchQuery || "restaurants").placeName, diningNeed, { mode: 'current', coordinates: result.coords });
+    } catch { setSearchError("Location is unavailable. Enter a city instead."); }
+  };
+  const renderSearchControls = () => <View style={{ paddingVertical: 8, gap: 8 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><TextInput accessibilityLabel="Search location" value={searchLocation} onChangeText={setSearchLocation} placeholder={copy("City, state or any location")} placeholderTextColor={theme.textSecondary} style={{ flex: 1, minHeight: 44, paddingHorizontal: 10, borderWidth: 1, borderColor: theme.border, borderRadius: 10, color: theme.text }} returnKeyType={"search"} onSubmitEditing={() => void handleSearchSubmit(parseSearchQuery(searchQuery || "restaurants").placeName)} /><TouchableOpacity accessibilityRole="button" onPress={() => void handleSearchSubmit(parseSearchQuery(searchQuery || "restaurants").placeName)} style={{ padding: 10 }}><Text style={{ color: theme.text }}>{copy("Apply")}</Text></TouchableOpacity><TouchableOpacity accessibilityRole="button" onPress={useSearchLocation} style={{ padding: 10 }}><Text style={{ color: theme.primary }}>{copy("Near me")}</Text></TouchableOpacity></View>
+    <Text accessibilityLiveRegion="polite" style={{ color: theme.textSecondary }}>{searchScopeLabel}</Text>
+    {(searchDining || isDiningSearch(searchQuery)) && <ScrollView horizontal showsHorizontalScrollIndicator={false}>{DINING_NEEDS.map(need => <TouchableOpacity key={need.id} accessibilityRole="button" accessibilityState={{ selected: diningNeed === need.id }} onPress={() => { const next = diningNeed === need.id ? '' : need.id; setDiningNeed(next); void handleSearchSubmit(searchQuery || "restaurants", next); }} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginRight: 7, borderRadius: 22, backgroundColor: diningNeed === need.id ? theme.primary : theme.surface }}><Text style={{ color: diningNeed === need.id ? '#fff' : theme.text }}>{copy(need.label)}</Text></TouchableOpacity>)}</ScrollView>}
+    {showDemoFallback && <TouchableOpacity accessibilityRole="button" accessibilityLabel={copy('View demo') + ' · Trattoria Tavvy'} onPress={() => navigation.navigate('DemoRestaurant' as never)} style={{ padding: 16, gap: 6, borderWidth: 1, borderColor: theme.border, borderRadius: 12, backgroundColor: theme.surface }}><Text style={{ color: theme.text, fontWeight: '700' }}>Trattoria Tavvy</Text><Text style={{ color: theme.textSecondary }}>{copy('Illustrative demo')}</Text><Text style={{ color: theme.primary }}>{copy('View demo')} →</Text></TouchableOpacity>}
+    {!!searchError && <Text accessibilityRole="alert" style={{ color: theme.text }}>{copy(searchError)}</Text>}
+  </View>;
 
   const handleSuggestionSelect = (suggestion: SearchSuggestion) => {
     Keyboard.dismiss();
     setIsSearchFocused(false);
     
     switch (suggestion.type) {
-      case 'place':
+      case "place":
         // Navigate directly to place details screen
         const place = suggestion.data;
         handlePlacePress(place);
         break;
-      case 'category':
-        // Clear search state first
-        setSearchQuery('');
-        setSearchSuggestions([]);
-        // Switch to map mode so the category results bottom sheet can overlay
-        switchToMapMode();
-        // Then select the category to load results
-        handleCategorySelect(suggestion.data.name);
-        break;
-      case 'address':
+      case "category":
+        void handleSearchSubmit(suggestion.data.name); break;
+      case "address":
         const result = suggestion.data as GeocodingResult;
         const coords: [number, number] = [parseFloat(result.lon), parseFloat(result.lat)];
         setTargetLocation(coords);
@@ -1838,10 +1763,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
         setSearchQuery(suggestion.title);
         switchToMapMode();
         break;
-      case 'recent':
+      case "recent":
         setSearchQuery(suggestion.title);
-        filterPlaces(suggestion.title);
-        switchToMapMode();
+        void handleSearchSubmit(suggestion.title);
         break;
     }
   };
@@ -1852,6 +1776,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
     setTargetLocation(null);
     setSearchedAddress(null);
     setSearchedAddressName('');
+    setDiningNeed(''); setSearchDining(false); setSearchError(''); setShowDemoFallback(false); activeSearchContext.current = {};
     setFilteredPlaces(places);
   };
 
@@ -1862,7 +1787,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       place.category?.toLowerCase().includes(q) ||
       place.address_line1?.toLowerCase().includes(q)
     );
-    setFilteredPlaces(filtered.length > 0 ? filtered : places);
+    setFilteredPlaces(filtered);
   };
 
   // ============================================
@@ -1888,12 +1813,12 @@ function HomeScreen({ navigation }: { navigation: any }) {
       
       // Reset filters when changing category
       setActiveFilters({
-        sortBy: 'Distance',
-        distance: 'Any',
-        hours: 'Any',
-        tapQuality: 'Any',
-        price: 'Any',
-        type: 'Any',
+        sortBy: "Distance",
+        distance: "Any",
+        hours: "Any",
+        tapQuality: "Any",
+        price: "Any",
+        type: "Any",
         amenities: [],
       });
       
@@ -1903,125 +1828,18 @@ function HomeScreen({ navigation }: { navigation: any }) {
   };
 
   const fetchCategoryPlaces = async (category: string, filters?: typeof activeFilters) => {
-    // Use default San Francisco location if userLocation is not available (for simulator)
-    const defaultLocation: [number, number] = [-122.4194, 37.7749]; // San Francisco
-    const locationToUse = userLocation || defaultLocation;
-
+    setIsLoadingCategoryResults(true);
     try {
-      const [centerLng, centerLat] = locationToUse;
-
-      // Map user-friendly category names to search queries for Typesense
-      const categoryMappings: { [key: string]: string } = {
-        'Restaurants': 'restaurant',
-        'Cafes': 'coffee cafe',
-        'Coffee Shops': 'coffee cafe',
-        'Bars': 'bar pub',
-        'Contractors': 'contractor',
-        'Hotels': 'hotel',
-        'Shopping': 'shop store',
-        'Entertainment': 'entertainment',
-        'Health': 'health medical',
-        'Beauty': 'beauty salon',
-        'Fitness': 'gym fitness',
-        'Gas': 'gas station fuel',
-        'Gas Stations': 'gas station',
-        'RV & Camping': 'campground rv',
-        'Campgrounds': 'campground',
-        'RV Parks': 'rv park',
-        'Dump Stations': 'dump station',
-        'Propane': 'propane',
-        'Theme Parks': 'theme park',
-        'Rides': 'ride',
-        'Live Music': 'live music',
-        'Events': 'event',
-        'Nightlife': 'nightclub',
-        'Fast Food': 'fast food',
-        'Outdoor': 'park outdoor',
-        'Pros': 'contractor service',
-        'Healthcare': 'hospital clinic',
-        'Restrooms': 'restroom',
-        'Showers': 'shower',
-        'Laundromat': 'laundromat',
-        'Border Crossings': 'border crossing',
-      };
-
-      // Get search query for this category
-      const searchQuery = categoryMappings[category] || category.toLowerCase();
-
-      console.log(`[Typesense] Fetching ${category} near [${centerLng}, ${centerLat}] with query: "${searchQuery}"`);
-
-      // Use Typesense for lightning-fast category search
-      const startTime = Date.now();
-      const result = await typesenseSearchPlaces({
-        query: searchQuery,
-        latitude: centerLat,
-        longitude: centerLng,
-        radiusKm: 25, // 25km radius (~15 miles)
-        limit: 200, // Get more results from Typesense
-      });
-
-      const searchTime = Date.now() - startTime;
-      console.log(`[Typesense] Found ${result.places.length} places in ${searchTime}ms (Typesense: ${result.searchTimeMs}ms)`);
-
-      if (result.places.length > 0) {
-        // Transform Typesense results to app format
-        const transformedPlaces = result.places
-          .filter((place) => {
-            return typeof place.longitude === 'number' && typeof place.latitude === 'number' && 
-                   !isNaN(place.longitude) && !isNaN(place.latitude) && 
-                   place.longitude !== 0 && place.latitude !== 0;
-          })
-          .map(place => ({
-            id: place.fsq_place_id,
-            name: place.name,
-            latitude: place.latitude!,
-            longitude: place.longitude!,
-            address_line1: place.address || '',
-            city: place.locality || '',
-            state_region: place.region || '',
-            country: place.country || '',
-            category: place.category || 'Other',
-            phone: place.tel || '',
-            website: place.website || '',
-            instagram_url: place.instagram || '',
-            signals: [],
-            photos: [],
-            distance: place.distance,
-          }));
-        
-        // Deduplicate by fsq_place_id (keep first occurrence)
-        const seenIds = new Set<string>();
-        const processedPlaces = transformedPlaces.filter(place => {
-          if (seenIds.has(place.id)) {
-            console.log(`[Dedup] Removing duplicate place: ${place.name} (${place.id})`);
-            return false;
-          }
-          seenIds.add(place.id);
-          return true;
-        }).slice(0, 100); // Limit to 100 results for UI
-
-        console.log(`[Typesense] Final processed places: ${processedPlaces.length}`);
-        setCategoryResultsPlaces(processedPlaces as Place[]);
-      } else {
-        console.log(`[Typesense] No ${category} found nearby`);
-        setCategoryResultsPlaces([]);
-      }
-    } catch (error) {
-      console.error('[Typesense] Error fetching category places:', error);
-      
-      // Fallback to local filtering from already loaded places
-      const filtered = places.filter(place => 
-        place.category?.toLowerCase().includes(category.toLowerCase())
-      );
-      setCategoryResultsPlaces(filtered);
-    } finally {
-      setIsLoadingCategoryResults(false);
-    }
+      const response = await searchAcrossProviders(category, 50, { coordinates: userLocation ? { latitude: userLocation[1], longitude: userLocation[0] } : undefined, location: searchLocation || undefined });
+      setSearchScopeLabel(response.intent.label);
+      setCategoryResultsPlaces(response.places.filter(p => Number.isFinite(p.latitude) && Number.isFinite(p.longitude)).map(p => ({ ...p, address_line1: p.address || '', state_region: p.region || '', category: p.subcategory || p.category || "Place", signals: [], photos: p.cover_image_url ? [p.cover_image_url] : [] })) as unknown as Place[]);
+    } catch (error) { setCategoryResultsPlaces([]); setSearchError(error instanceof Error ? error.message : 'Search is temporarily unavailable.'); }
+    finally { setIsLoadingCategoryResults(false); }
   };
 
   const closeCategoryResults = () => {
     setShowCategoryResults(false);
-    setSelectedCategory('All');
+    setSelectedCategory("All");
     setCategoryResultsPlaces([]);
   };
 
@@ -2033,12 +1851,12 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   const clearFilters = () => {
     setActiveFilters({
-      sortBy: 'Distance',
-      distance: 'Any',
-      hours: 'Any',
-      tapQuality: 'Any',
-      price: 'Any',
-      type: 'Any',
+      sortBy: "Distance",
+      distance: "Any",
+      hours: "Any",
+      tapQuality: "Any",
+      price: "Any",
+      type: "Any",
       amenities: [],
     });
   };
@@ -2063,7 +1881,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   };
 
   const switchToStandardMode = () => {
-    setViewMode('standard');
+    setViewMode("standard");
     setSearchedAddress(null);
     setTargetLocation(null);
   };
@@ -2161,13 +1979,13 @@ function HomeScreen({ navigation }: { navigation: any }) {
     const bucketLower = bucket.toLowerCase();
     
     // Check for exact category names first
-    if (bucketLower === 'the good' || bucketLower.includes('the good')) {
+    if (bucketLower === 'the good' || bucketLower.includes("the good")) {
       return 'positive';
     }
-    if (bucketLower === 'the vibe' || bucketLower.includes('the vibe')) {
+    if (bucketLower === 'the vibe' || bucketLower.includes("the vibe")) {
       return 'neutral';
     }
-    if (bucketLower === 'heads up' || bucketLower.includes('heads up')) {
+    if (bucketLower === 'heads up' || bucketLower.includes("heads up")) {
       return 'negative';
     }
     
@@ -2211,43 +2029,6 @@ function HomeScreen({ navigation }: { navigation: any }) {
     return 'trending-up';
   };
 
-  // Get category-based fallback image URL when place has no photo
-  const getCategoryFallbackImage = (category: string | undefined): string => {
-    const lowerCategory = (category || '').toLowerCase();
-    
-    const imageMap: Record<string, string> = {
-      'restaurant': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
-      'italian': 'https://images.unsplash.com/photo-1498579150354-977475b7ea0b?w=800',
-      'mexican': 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800',
-      'asian': 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800',
-      'coffee': 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800',
-      'cafe': 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800',
-      'rv park': 'https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?w=800',
-      'campground': 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
-      'camping': 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800',
-      'hotel': 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
-      'resort': 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800',
-      'bar': 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800',
-      'nightclub': 'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=800',
-      'shopping': 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800',
-      'mall': 'https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?w=800',
-      'gym': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800',
-      'spa': 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800',
-      'bakery': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800',
-      'pizza': 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800',
-      'sushi': 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800',
-      'burger': 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800',
-      'taco': 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800',
-      'default': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
-    };
-    
-    for (const [key, url] of Object.entries(imageMap)) {
-      if (lowerCategory.includes(key)) return url;
-    }
-    
-    return imageMap.default;
-  };
-
   // Generate display signals with fallbacks for missing categories
   // Always returns exactly 4 signals: 2 "The Good" (top row), 1 "The Vibe" + 1 "Heads Up" (bottom row)
   const getDisplaySignals = (signals: Signal[] | undefined): { bucket: string; tap_total: number; isEmpty: boolean }[] => {
@@ -2263,23 +2044,23 @@ function HomeScreen({ navigation }: { navigation: any }) {
       result.push({ ...positive[1], isEmpty: false });
     } else if (positive.length === 1) {
       result.push({ ...positive[0], isEmpty: false });
-      result.push({ bucket: 'The Good', tap_total: 0, isEmpty: true });
+      result.push({ bucket: "The Good", tap_total: 0, isEmpty: true });
     } else {
-      result.push({ bucket: 'The Good', tap_total: 0, isEmpty: true });
-      result.push({ bucket: 'The Good', tap_total: 0, isEmpty: true });
+      result.push({ bucket: "The Good", tap_total: 0, isEmpty: true });
+      result.push({ bucket: "The Good", tap_total: 0, isEmpty: true });
     }
 
     // BOTTOM ROW: 1 "The Vibe" (neutral) + 1 "Heads Up" (negative)
     if (neutral.length > 0) {
       result.push({ ...neutral[0], isEmpty: false });
     } else {
-      result.push({ bucket: 'The Vibe', tap_total: 0, isEmpty: true });
+      result.push({ bucket: "The Vibe", tap_total: 0, isEmpty: true });
     }
 
     if (negative.length > 0) {
       result.push({ ...negative[0], isEmpty: false });
     } else {
-      result.push({ bucket: 'Heads Up', tap_total: 0, isEmpty: true });
+      result.push({ bucket: "Heads Up", tap_total: 0, isEmpty: true });
     }
 
     return result; // Always exactly 4 items
@@ -2288,7 +2069,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   // Get the placeholder text for empty signal categories
   const getEmptySignalText = (bucket: string): string => {
     // All empty states now use the same encouraging call-to-action
-    return 'Be the first to tap!';
+    return "Be the first to tap!";
   };
 
   const sortSignalsForDisplay = (signals: Signal[]): Signal[] => {
@@ -2367,7 +2148,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   // Get icon name based on category
   const getMarkerIcon = (category?: string): string => {
-    if (!category) return 'location';
+    if (!category) return "location";
     const icons: Record<string, string> = {
       // Food & Drink
       restaurants: 'restaurant',
@@ -2405,7 +2186,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       // Entertainment
       'entertainment': 'game-controller',
       'arts': 'color-palette',
-      'museum': 'business',
+      'museum': "business",
       'theater': 'film',
       'cinema': 'film',
       // Services
@@ -2423,7 +2204,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       'theme park': 'happy',
       'landmark': 'flag',
     };
-    return icons[category.toLowerCase()] || 'location';
+    return icons[category.toLowerCase()] || "location";
   };
 
   // ============================================
@@ -2498,11 +2279,11 @@ function HomeScreen({ navigation }: { navigation: any }) {
             onPress={() => handleSearchSubmit()}
           >
             <View style={[styles.suggestionIconContainer, styles.suggestionIconSearch]}>
-              <Ionicons name="search" size={18} color="#00C2CB" />
+              <Ionicons name={"search"} size={18} color={isDark ? '#5EEAEF' : '#007F86'} />
             </View>
             <View style={styles.suggestionTextContainer}>
               <Text style={[styles.suggestionTitle, { color: isDark ? theme.text : '#000' }]}>Search for "{searchQuery}"</Text>
-              <Text style={[styles.suggestionSubtitle, { color: isDark ? theme.textSecondary : '#8E8E93' }]}>See all results on map</Text>
+              <Text style={[styles.suggestionSubtitle, { color: isDark ? theme.textSecondary : '#8E8E93' }]}>{copy("See all results on map")}</Text>
             </View>
             <Ionicons name="arrow-forward" size={16} color="#C7C7CC" />
           </TouchableOpacity>
@@ -2527,7 +2308,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
         
         await Share.share({
           message,
-          title: 'Share Location',
+          title: "Share Location",
         });
       } catch (error) {
         console.log('Error sharing:', error);
@@ -2550,9 +2331,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
     const handleCopyAddress = () => {
       Alert.alert(
-        'Address',
+        "Address",
         searchedAddress.displayName,
-        [{ text: 'OK', style: 'default' }]
+        [{ text: "OK", style: 'default' }]
       );
     };
 
@@ -2562,12 +2343,12 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
     const handleSaveLocation = () => {
       Alert.prompt(
-        'Save Location',
+        "Save Location",
         'Give this location a name (e.g., Home, Work, Gym)',
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: "Cancel", style: "cancel" },
           {
-            text: 'Save',
+            text: "Save",
             onPress: (name) => {
               if (name && name.trim()) {
                 saveLocation(name.trim(), searchedAddress.coordinates, searchedAddress.displayName);
@@ -2622,7 +2403,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       <View style={styles.addressCardContainer}>
         <View style={styles.addressCardHeader}>
           <View style={styles.addressIconContainer}>
-            <Ionicons name="location" size={28} color="#AF52DE" />
+            <Ionicons name={"location"} size={28} color="#AF52DE" />
           </View>
           <View style={styles.addressTextContainer}>
             <Text style={[styles.addressCardTitle, { color: isDark ? theme.text : '#000' }]} numberOfLines={2}>
@@ -2640,18 +2421,18 @@ function HomeScreen({ navigation }: { navigation: any }) {
         </View>
 
         <View style={styles.addressActionsRow}>
-          <TouchableOpacity style={styles.addressActionButton} onPress={handleAddressDirections} accessibilityLabel="Get directions" accessibilityRole="button">
+          <TouchableOpacity style={styles.addressActionButton} onPress={handleAddressDirections} accessibilityLabel={"Get directions"} accessibilityRole="button">
             <View style={[styles.addressActionIcon, { backgroundColor: '#007AFF' }]}>
-              <Ionicons name="navigate" size={20} color="#fff" />
+              <Ionicons name={"navigate"} size={20} color="#fff" />
             </View>
-            <Text style={[styles.addressActionText, { color: isDark ? theme.textSecondary : '#666' }]}>Directions</Text>
+            <Text style={[styles.addressActionText, { color: isDark ? theme.textSecondary : '#666' }]}>{copy("Directions")}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.addressActionButton} onPress={handleShare} accessibilityLabel="Share location" accessibilityRole="button">
+          <TouchableOpacity style={styles.addressActionButton} onPress={handleShare} accessibilityLabel={"Share location"} accessibilityRole="button">
             <View style={[styles.addressActionIcon, { backgroundColor: '#34C759' }]}>
               <Ionicons name="share-outline" size={20} color="#fff" />
             </View>
-            <Text style={[styles.addressActionText, { color: isDark ? theme.textSecondary : '#666' }]}>Share</Text>
+            <Text style={[styles.addressActionText, { color: isDark ? theme.textSecondary : '#666' }]}>{copy("Share")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.addressActionButton} onPress={handleSaveParking} accessibilityLabel="Save parking location" accessibilityRole="button">
@@ -2669,9 +2450,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={[styles.saveLocationButton, { backgroundColor: isDark ? theme.surface : '#F2F2F7' }]} onPress={handleSaveLocation} accessibilityLabel="Save to my places" accessibilityRole="button">
+        <TouchableOpacity style={[styles.saveLocationButton, { backgroundColor: isDark ? theme.surface : '#F2F2F7' }]} onPress={handleSaveLocation} accessibilityLabel={"Save to my places"} accessibilityRole="button">
           <Ionicons name="bookmark-outline" size={20} color="#007AFF" />
-          <Text style={styles.saveLocationText}>Save to My Places</Text>
+          <Text style={styles.saveLocationText}>{copy("Save to My Places")}</Text>
         </TouchableOpacity>
 
         {nearbyPlaces.length > 0 && (
@@ -2718,12 +2499,11 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   const PhotoCarousel = ({ photos, placeName, placeAddress, placeCategory }: { photos?: string[], placeName: string, placeAddress: string, placeCategory?: string }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
-    // Use category fallback image if no photos exist
-    const fallbackImage = getCategoryFallbackImage(placeCategory || '');
-    const displayPhotos = photos && photos.length > 0 ? photos : [fallbackImage];
+    const displayPhotos = (photos || []).filter(Boolean);
 
     return (
       <View style={styles.carouselContainer}>
+        {!displayPhotos.length && <View style={[styles.photo, { width: '100%', height: '100%', backgroundColor: isDark ? '#302938' : '#e9e2ef', justifyContent: 'center', alignItems: 'center' }]}><Ionicons name="image-outline" size={48} color={isDark ? '#b8acc4' : '#766580'} /></View>}
         <ScrollView
           horizontal
           pagingEnabled
@@ -2781,7 +2561,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
         activeOpacity={0.95}
       >
         <PhotoCarousel
-          photos={place.photos}
+          photos={place.photos?.length ? place.photos : place.cover_image_url ? [place.cover_image_url] : []}
           placeName={place.name}
           placeAddress={fullAddress}
           placeCategory={place.category || place.primary_category}
@@ -2789,26 +2569,27 @@ function HomeScreen({ navigation }: { navigation: any }) {
         
         {/* Signal Matrix — compact 2x2 grid */}
         <View style={styles.signalsContainer}>
-          <SignalMatrix simpleSignals={place.signals || []} compact={true} />
+          <PlaceReviewGrid summary={(place as any).reviewSummary || buildPlaceReviewSummary(null, { category: (place as any).tavvy_category || place.primary_category || place.category, subcategory: (place as any).subcategory }, (place as any).evidenceStatus || 'unavailable')} />
+          {!!(place as any).matchReason && <Text style={{ color: theme.textSecondary, paddingTop: 8 }}>{(place as any).matchReason}</Text>}
         </View>
         
         {/* Quick Actions */}
         <View style={[styles.quickActions, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
           <TouchableOpacity style={styles.actionButton} onPress={() => handleCall(place.phone)} accessibilityLabel="Call business" accessibilityRole="button">
             <Ionicons name="call-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
-            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Call</Text>
+            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>{copy("Call")}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleDirections(place)} accessibilityLabel="Get directions" accessibilityRole="button">
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleDirections(place)} accessibilityLabel={"Get directions"} accessibilityRole="button">
             <Ionicons name="navigate-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
-            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Directions</Text>
+            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>{copy("Directions")}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={() => handleSocial(place.instagram_url)} accessibilityLabel="View Instagram" accessibilityRole="button">
             <Ionicons name="chatbubble-ellipses-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
-            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Social</Text>
+            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>{copy("Social")}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleWebsite(place.website)} accessibilityLabel="Visit website" accessibilityRole="button">
+          <TouchableOpacity style={styles.actionButton} onPress={() => handleWebsite(place.website)} accessibilityLabel={"Visit website"} accessibilityRole="button">
             <Ionicons name="globe-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
-            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>Website</Text>
+            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>{copy("Website")}</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -2827,7 +2608,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   const firstName = profile?.display_name?.split(' ')[0] || 'there';
   
   const renderStandardMode = () => (
-    <SafeAreaView style={[styles.safe, { backgroundColor: isDark ? '#0F0F0F' : '#FAFAFA' }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: isDark ? discovery.darkBackground : discovery.background }]}>
       <ScrollView 
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}
@@ -2836,23 +2617,25 @@ function HomeScreen({ navigation }: { navigation: any }) {
         {/* ===== GREETING SECTION ===== */}
         <View style={styles.greetingSection}>
           <View style={styles.greetingRow}>
-            <View>
-              <Text style={[styles.greetingText, { color: isDark ? '#888' : '#6B7280' }]}>
-                {greeting}
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={[styles.greetingText, { color: isDark ? '#BDB6CA' : '#56576B' }]}>
+                {copy(greeting)}
               </Text>
               <Text style={[styles.userName, { color: isDark ? '#fff' : '#111827' }]}>
-                {firstName} 👋
+                {copy(discovery.title)}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
                 <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#22D3EE', marginRight: 6 }} />
-                <Text style={{ fontSize: 12, fontWeight: '500', color: '#22D3EE' }}>
-                  Find your perfect spot in seconds. Not hours.
+                <Text style={{ fontSize: 12, fontWeight: '500', color: isDark ? '#BDB1CD' : '#6C5D7B', flexShrink: 1, lineHeight: 20 }}>
+                  {copy(discovery.subtitle)}
                 </Text>
               </View>
             </View>
             <TouchableOpacity 
-              style={[styles.avatarButton, { backgroundColor: isDark ? '#2D2D2D' : '#667EEA' }]}
-              onPress={() => navigation.navigate('Login')}
+              accessibilityRole="button"
+              accessibilityLabel="Open your account"
+              style={[styles.avatarButton, { backgroundColor: '#8A05BE' }]}
+              onPress={() => user ? navigation.navigate("Apps", { screen: 'ProfileMain' }) : navigation.navigate('Login')}
             >
               <Ionicons name="person-circle-outline" size={32} color="#fff" />
             </TouchableOpacity>
@@ -2875,21 +2658,23 @@ function HomeScreen({ navigation }: { navigation: any }) {
         ]}>
           <View style={[
               styles.searchInputNew, 
-              { backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : '#F3F4F6', borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.20)' : 'transparent' },
-              isSearchFocused && { borderColor: '#667EEA', borderWidth: 2 }
+              { backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : '#FFFFFF', borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.20)' : '#998DA5' },
+              !isDark && styles.lightSearchDepth,
+              isSearchFocused && { borderColor: isDark ? '#667EEA' : '#8A05BE', borderWidth: 2 },
+              isSearchFocused && !isDark && styles.lightSearchFocus
             ]}>
-            <Ionicons name="search" size={20} color={isDark ? '#888' : '#6B7280'} />
+            <Ionicons name={"search"} size={20} color={isDark ? '#BDB6CA' : '#56576B'} />
             <TextInput
               ref={searchInputRef}
               value={searchQuery}
               onChangeText={handleSearchInputChange}
               placeholder="What are you in the mood for?"
-              placeholderTextColor={isDark ? '#888' : '#9CA3AF'}
+              placeholderTextColor={isDark ? '#BDB6CA' : '#56576B'}
               style={[styles.searchInputTextInput, { color: isDark ? '#fff' : '#111827' }]}
-              returnKeyType="search"
+              returnKeyType={"search"}
               onFocus={handleSearchFocus}
               onBlur={handleSearchBlur}
-              onSubmitEditing={handleSearchSubmit}
+              onSubmitEditing={() => void handleSearchSubmit()}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={clearSearch} style={{ padding: 4 }}>
@@ -2898,6 +2683,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
             )}
           </View>
           
+          {renderSearchControls()}
           {/* Search Suggestions Dropdown */}
           {isSearchFocused && searchSuggestions.length > 0 && (
             <View style={[styles.searchSuggestionsCard, { backgroundColor: isDark ? '#1E1E1E' : '#fff' }]}>
@@ -2908,14 +2694,14 @@ function HomeScreen({ navigation }: { navigation: any }) {
                   onPress={() => handleSuggestionSelect(suggestion)}
                 >
                   <Ionicons 
-                    name={suggestion.type === 'place' ? 'location' : suggestion.type === 'category' ? 'grid' : suggestion.type === 'address' ? 'map' : 'time'} 
+                    name={suggestion.type === 'place' ? "location" : suggestion.type === 'category' ? 'grid' : suggestion.type === 'address' ? 'map' : "time"} 
                     size={18} 
-                    color={isDark ? '#888' : '#6B7280'} 
+                    color={isDark ? '#BDB6CA' : '#56576B'}
                   />
                   <View style={{ marginLeft: 12, flex: 1 }}>
                     <Text style={[styles.suggestionTitle, { color: isDark ? '#fff' : '#111' }]}>{suggestion.title}</Text>
                     {suggestion.subtitle && (
-                      <Text style={[styles.suggestionSubtitle, { color: isDark ? '#888' : '#6B7280' }]}>{suggestion.subtitle}</Text>
+                      <Text style={[styles.suggestionSubtitle, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{suggestion.subtitle}</Text>
                     )}
                   </View>
                 </TouchableOpacity>
@@ -2936,7 +2722,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
               onPress={switchToMapMode}
             >
               <Text style={styles.quickActionIcon}>📍</Text>
-              <Text style={[styles.quickActionText, { color: isDark ? '#888' : '#6B7280' }]}>Near Me</Text>
+              <Text style={[styles.quickActionText, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{copy("Near Me")}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -2950,7 +2736,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
               onPress={switchToMapMode}
             >
               <Text style={styles.quickActionIcon}>🗺️</Text>
-              <Text style={[styles.quickActionText, { color: isDark ? '#888' : '#6B7280' }]}>Map</Text>
+              <Text style={[styles.quickActionText, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{copy("Map")}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -2974,8 +2760,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
               }}
             >
               <Text style={styles.quickActionIcon}>🎲</Text>
-              <Text style={[styles.quickActionText, { color: isDark ? '#fff' : '#111827' }]}>Surprise</Text>
-              <Text style={[styles.quickActionSubtext, { color: isDark ? 'rgba(255,255,255,0.5)' : '#9CA3AF' }]}>Let Tavvy decide</Text>
+              <Text style={[styles.quickActionText, { color: isDark ? '#fff' : '#111827' }]}>{copy("Surprise")}</Text>
+              <Text style={[styles.quickActionSubtext, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{copy("Let Tavvy decide")}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity
@@ -2991,8 +2777,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
               onPress={() => navigation.navigate('SignalSearch')}
             >
               <Text style={styles.quickActionIcon}>📡</Text>
-              <Text style={[styles.quickActionText, { color: isDark ? '#C77DFF' : '#8A05BE' }]}>Signals</Text>
-              <Text style={[styles.quickActionSubtext, { color: isDark ? 'rgba(255,255,255,0.5)' : '#9CA3AF' }]}>Search by vibe</Text>
+              <Text style={[styles.quickActionText, { color: isDark ? '#C77DFF' : '#8A05BE' }]}>{copy("Signals")}</Text>
+              <Text style={[styles.quickActionSubtext, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{copy("Search by vibe")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -3003,10 +2789,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
                   borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB',
                 }
               ]}
-              onPress={() => navigation.navigate('Apps', { screen: 'SavedMain' })}
+              onPress={() => navigation.navigate("Apps", { screen: 'SavedMain' })}
             >
               <Text style={styles.quickActionIcon}>⭐</Text>
-              <Text style={[styles.quickActionText, { color: isDark ? '#888' : '#6B7280' }]}>Saved</Text>
+              <Text style={[styles.quickActionText, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{copy("Saved")}</Text>
             </TouchableOpacity>
           </View>
           )}
@@ -3034,40 +2820,20 @@ function HomeScreen({ navigation }: { navigation: any }) {
               <TouchableOpacity
                 key={s.id}
                 activeOpacity={0.9}
-                style={[styles.featureSlide, { width: FEATURE_CARD_W, marginRight: 12 }]}
+                style={[styles.featureSlide, { width: FEATURE_CARD_W, marginRight: 12, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border }]}
                 onPress={() => goToFeature(s.id)}
               >
-                {slideImage ? (
-                  <Image
-                    source={{ uri: slideImage }}
-                    style={StyleSheet.absoluteFillObject}
-                    resizeMode="cover"
-                    onError={() => setFailedSlideImages(prev => ({ ...prev, [s.id]: true }))}
-                  />
-                ) : null}
-                <LinearGradient
-                  colors={slideImage ? [`${s.colors[0]}26`, `${s.colors[1]}40`] : s.colors}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFillObject}
-                />
-                <LinearGradient
-                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.55)']}
-                  style={StyleSheet.absoluteFillObject}
-                />
-                <View style={styles.featureSlideTag}>
-                  <Text style={styles.featureSlideTagText}>{t(`home.featureSlides.${s.id}.tag`, { defaultValue: s.tag })}</Text>
+                <View style={{ height: 190, backgroundColor: theme.surfaceElevated }}>
+                  {slideImage ? <Image source={{ uri: slideImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" onError={() => setFailedSlideImages(prev => ({ ...prev, [s.id]: true }))} /> : null}
                 </View>
-                <View style={styles.featureSlideBody}>
-                  <Text style={styles.featureSlideIcon}>{s.icon}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.featureSlideTitle}>{t(`home.featureSlides.${s.id}.title`, { defaultValue: s.title })}</Text>
-                    <Text style={styles.featureSlideSubtitle}>{t(`home.featureSlides.${s.id}.subtitle`, { defaultValue: s.subtitle })}</Text>
+                <View style={{ padding: 20 }}>
+                  <Text style={{ color: isDark ? '#D4A0FF' : '#7905A8', fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>{copy(s.tag)}</Text>
+                  <Text style={[styles.featureSlideTitle, { color: theme.text }]}>{t(`home.featureSlides.${s.id}.title`, { defaultValue: s.title })}</Text>
+                  <Text style={[styles.featureSlideSubtitle, { color: theme.textSecondary, fontSize: 14, lineHeight: 21, marginTop: 6 }]}>{copy(s.subtitle)}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
+                    <Text style={{ color: isDark ? '#D4A0FF' : '#7905A8', fontSize: 14, fontWeight: '700', marginRight: 6 }}>{t('home.explore', { defaultValue: "Explore" })}</Text>
+                    <Ionicons name="chevron-forward" size={14} color={isDark ? '#D4A0FF' : '#7905A8'} />
                   </View>
-                </View>
-                <View style={styles.featureSlideCta}>
-                  <Text style={styles.featureSlideCtaText}>{t('home.explore', { defaultValue: 'Explore' })}</Text>
-                  <Ionicons name="chevron-forward" size={14} color="#fff" />
                 </View>
               </TouchableOpacity>
               );
@@ -3082,9 +2848,12 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
         {/* ===== CATEGORY GRID (theme-adaptive icons) ===== */}
         <View style={styles.featureGridSection}>
-          <Text style={[styles.featureGridLabel, { color: isDark ? '#555' : '#9CA3AF' }]}>{t('home.exploreTavvy', { defaultValue: 'Explore Tavvy' })}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={[styles.featureGridLabel, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{t('home.exploreTavvy', { defaultValue: "Explore Tavvy" })}</Text>
+            <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate("Apps")} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }}><Text style={{ color: isDark ? '#D4A0FF' : '#7905A8', fontWeight: '600' }}>{copy('All tools')} →</Text></TouchableOpacity>
+          </View>
           <View style={styles.featureGrid}>
-            {FEATURE_GRID.map((f) => (
+            {FEATURE_GRID.slice(0, 6).map((f) => (
               <TouchableOpacity
                 key={f.id}
                 activeOpacity={0.85}
@@ -3102,60 +2871,54 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
         {/* ===== MOOD CARDS ===== */}
         <View style={styles.moodSection}>
-          <Text style={[styles.moodSectionLabel, { color: isDark ? '#555' : '#9CA3AF' }]}>
-            What's your mood?
+          <Text style={[styles.moodSectionLabel, { color: isDark ? '#BDB6CA' : '#56576B' }]}>
+            {copy("What's your mood?")}
           </Text>
           <View style={styles.moodGrid}>
             {/* Hungry Card */}
             <TouchableOpacity 
               style={[styles.moodCard, styles.moodCardSmall]}
               onPress={() => {
-                handleCategorySelect('Restaurants');
+                handleCategorySelect("Restaurants");
                 switchToMapMode();
               }}
               activeOpacity={0.9}
             >
               <LinearGradient
-                colors={['#E85D5D', '#E07A47']}
+                colors={['#A93232', '#99401D']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFillObject}
               />
-              <View style={styles.moodPopular}>
-                <Text style={styles.moodPopularText}>🔥 Popular</Text>
-              </View>
               <Text style={styles.moodEmoji}>🍕</Text>
-              <Text style={styles.moodTitle}>Hungry</Text>
-              <Text style={styles.moodSubtitle}>Restaurants & Food</Text>
+              <Text style={styles.moodTitle}>{copy("Hungry")}</Text>
+              <Text style={styles.moodSubtitle}>{copy("Restaurants & Food")}</Text>
             </TouchableOpacity>
             
             {/* Thirsty Card */}
             <TouchableOpacity 
               style={[styles.moodCard, styles.moodCardSmall]}
               onPress={() => {
-                handleCategorySelect('Bars');
+                handleCategorySelect("Bars");
                 switchToMapMode();
               }}
               activeOpacity={0.9}
             >
               <LinearGradient
-                colors={['#5A6FD6', '#6A4292']}
+                colors={['#4253AA', '#603582']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFillObject}
               />
-              <View style={styles.moodPopular}>
-                <Text style={styles.moodPopularText}>📈 Trending</Text>
-              </View>
               <Text style={styles.moodEmoji}>🍸</Text>
-              <Text style={styles.moodTitle}>Thirsty</Text>
-              <Text style={styles.moodSubtitle}>Bars & Cafes</Text>
+              <Text style={styles.moodTitle}>{copy("Thirsty")}</Text>
+              <Text style={styles.moodSubtitle}>{copy("Bars & Cafes")}</Text>
             </TouchableOpacity>
             
             {/* Explore Card */}
             <TouchableOpacity 
               style={[styles.moodCard, styles.moodCardLarge]}
-              onPress={() => navigation.getParent()?.navigate('Apps')}
+              onPress={() => navigation.getParent()?.navigate("Apps")}
               activeOpacity={0.9}
             >
               <LinearGradient
@@ -3166,12 +2929,12 @@ function HomeScreen({ navigation }: { navigation: any }) {
               />
               <View style={[styles.moodPopular, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(67, 56, 202, 0.15)' }]}>
                 <Text style={[styles.moodPopularText, { color: isDark ? 'rgba(255,255,255,0.9)' : '#4338CA' }]}>
-                  ✨ {exploreItems.length || 89} experiences nearby
+                  ✨ {copy('Experiences')}
                 </Text>
               </View>
               <Text style={styles.moodEmoji}>🌟</Text>
-              <Text style={[styles.moodTitle, { color: isDark ? '#fff' : '#4338CA' }]}>Explore Something New</Text>
-              <Text style={[styles.moodSubtitle, { color: isDark ? 'rgba(255,255,255,0.7)' : '#6366F1' }]}>
+              <Text style={[styles.moodTitle, { color: isDark ? '#FFFFFF' : '#312E81' }]}>Explore Something New</Text>
+              <Text style={[styles.moodSubtitle, { color: isDark ? '#F1F5F9' : '#373078' }]}>
                 Events, activities & hidden gems
               </Text>
             </TouchableOpacity>
@@ -3185,14 +2948,14 @@ function HomeScreen({ navigation }: { navigation: any }) {
               <View style={styles.liveDot} />
               <Text style={[styles.liveLabel, { color: isDark ? '#fff' : '#111827' }]}>Live Now</Text>
             </View>
-            <TouchableOpacity onPress={() => navigation.getParent()?.navigate('Apps')}>
-              <Text style={styles.liveSeeAll}>See All</Text>
+            <TouchableOpacity onPress={() => navigation.getParent()?.navigate("Apps")}>
+              <Text style={[styles.liveSeeAll, { color: isDark ? '#D4A0FF' : '#74129B' }]}>{copy("See All")}</Text>
             </TouchableOpacity>
           </View>
           
           {/* Use existing HappeningNow component */}
           <HappeningNow
-            onPlacePress={(placeId) => navigation.navigate("PlaceDetails" as never, { placeId } as never)}
+            onEventPress={(event) => navigation.navigate("EventDetail", { event })}
           />
         </View>
 
@@ -3205,15 +2968,15 @@ function HomeScreen({ navigation }: { navigation: any }) {
           </View>
           <StoriesRow
             currentUserId={user?.id}
-            userLocation={userLocation}
+            userLocation={userLocation || undefined}
             maxDistance={20}
           />
         </View>
 
         {/* ===== TOP PICKS NEARBY ===== */}
         <View style={styles.nearbySection}>
-          <Text style={[styles.moodSectionLabel, { color: isDark ? '#555' : '#9CA3AF' }]}>
-            Top Picks Nearby
+          <Text style={[styles.moodSectionLabel, { color: isDark ? '#BDB6CA' : '#56576B' }]}>
+            {copy("Places to explore")}
           </Text>
           <View style={styles.nearbyList}>
             {isLoadingTrending ? (
@@ -3241,13 +3004,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
                 }}
                 activeOpacity={0.8}
               >
-                <View style={[styles.nearbyRank, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6' }]}>
-                  <Text style={[styles.nearbyRankText, { color: isDark ? '#888' : '#6B7280' }]}>{index + 1}</Text>
-                </View>
                 <View style={[
                   styles.nearbyImage, 
                   { 
-                    backgroundColor: index === 0 ? '#FF6B6B' : index === 1 ? '#667EEA' : '#00C2CB',
+                    backgroundColor: theme.surfaceElevated,
                   }
                 ]}>
                   {item.image && (
@@ -3258,13 +3018,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
                   <Text style={[styles.nearbyName, { color: isDark ? '#fff' : '#111827' }]} numberOfLines={1}>
                     {item.name}
                   </Text>
-                  <Text style={[styles.nearbyCategory, { color: isDark ? '#666' : '#6B7280' }]}>
-                    {item.category} • {item.subtitle || '0.4 mi'}
+                  <Text style={[styles.nearbyCategory, { color: isDark ? '#BDB6CA' : '#56576B' }]}>
+                    {[item.category, item.subtitle].filter(Boolean).join(' • ')}
                   </Text>
-                </View>
-                <View style={[styles.nearbySignal, { backgroundColor: 'rgba(0, 194, 203, 0.15)' }]}>
-                  <Text style={styles.nearbySignalIcon}>📶</Text>
-                  <Text style={[styles.nearbySignalText, { color: '#00C2CB' }]}>Strong</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -3276,23 +3032,25 @@ function HomeScreen({ navigation }: { navigation: any }) {
           <View style={[
             styles.searchWrap, 
             { 
-              borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(23,1,58,0.14)', 
+              borderColor: isDark ? 'rgba(255,255,255,0.14)' : '#998DA5', 
               backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#fff' 
             },
-            isSearchFocused && styles.searchWrapFocused
+            !isDark && styles.lightSearchDepth,
+            isSearchFocused && styles.searchWrapFocused,
+            isSearchFocused && !isDark && styles.lightSearchFocus
           ]}>
-            <Ionicons name="search" size={18} color={isDark ? theme.textSecondary : '#8A8A8A'} style={{ marginRight: 10 }} />
+            <Ionicons name={"search"} size={18} color={isDark ? theme.textSecondary : '#8A8A8A'} style={{ marginRight: 10 }} />
             <TextInput
               ref={searchInputRef}
               value={searchQuery}
               onChangeText={handleSearchInputChange}
               placeholder="What are you in the mood for?"
-              placeholderTextColor={isDark ? 'rgba(255,255,255,0.35)' : '#A0A0A0'}
+              placeholderTextColor={isDark ? '#BDB6CA' : '#56576B'}
               style={[styles.searchInput, { color: isDark ? theme.text : '#111' }]}
-              returnKeyType="search"
+              returnKeyType={"search"}
               onFocus={handleSearchFocus}
               onBlur={handleSearchBlur}
-              onSubmitEditing={handleSearchSubmit}
+              onSubmitEditing={() => void handleSearchSubmit()}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={clearSearch}>
@@ -3301,6 +3059,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
             )}
           </View>
           
+          {renderSearchControls()}
           {/* Search Suggestions Dropdown */}
           {renderSearchSuggestions()}
         </View>
@@ -3320,43 +3079,6 @@ function HomeScreen({ navigation }: { navigation: any }) {
                     Tavvy uses tap-based signals instead of star ratings to give you honest, structured insights about places.
                   </Text>
                 </View>
-              </View>
-            </View>
-
-            {/* ===== TOP CONTRIBUTORS SECTION ===== */}
-            <View style={styles.sectionContainer}>
-              <View style={styles.featureSectionHeader}>
-                <Text style={[styles.featureSectionTitle, { color: isDark ? theme.text : '#000' }]}>🏆 Top Contributors</Text>
-                {/* See All button removed - LeaderboardScreen not yet implemented */}
-              </View>
-              <Text style={[styles.sectionSubtitle, { color: isDark ? theme.textSecondary : '#666' }]}>
-                Community members making a difference
-              </Text>
-              <View style={[styles.leaderboardCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-                {[
-                  { rank: 1, name: 'Sarah M.', taps: 1247, badge: '🥇', streak: 45 },
-                  { rank: 2, name: 'Mike R.', taps: 1089, badge: '🥈', streak: 32 },
-                  { rank: 3, name: 'Jenny W.', taps: 956, badge: '🥉', streak: 28 },
-                  { rank: 4, name: 'Tom C.', taps: 823, badge: '⭐', streak: 21 },
-                  { rank: 5, name: 'Lisa K.', taps: 712, badge: '⭐', streak: 18 },
-                ].map((user, index) => (
-                  <View key={user.rank} style={[styles.leaderboardRow, index < 4 && styles.leaderboardRowBorder]}>
-                    <View style={styles.leaderboardLeft}>
-                      <Text style={styles.leaderboardBadge}>{user.badge}</Text>
-                      <View style={styles.leaderboardAvatar}>
-                        <Text style={styles.leaderboardAvatarText}>{user.name.charAt(0)}</Text>
-                      </View>
-                      <View>
-                        <Text style={[styles.leaderboardName, { color: isDark ? theme.text : '#000' }]}>{user.name}</Text>
-                        <Text style={[styles.leaderboardStreak, { color: isDark ? theme.textSecondary : '#888' }]}>🔥 {user.streak} day streak</Text>
-                      </View>
-                    </View>
-                    <View style={styles.leaderboardRight}>
-                      <Text style={[styles.leaderboardTaps, { color: isDark ? theme.text : '#000' }]}>{user.taps.toLocaleString()}</Text>
-                      <Text style={[styles.leaderboardTapsLabel, { color: isDark ? theme.textSecondary : '#888' }]}>taps</Text>
-                    </View>
-                  </View>
-                ))}
               </View>
             </View>
 
@@ -3407,8 +3129,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
                     style={styles.learnMoreButton}
                     onPress={() => Linking.openURL('https://tavvy.com/about-us')}
                   >
-                    <Text style={styles.learnMoreText}>Learn More About Tavvy</Text>
-                    <Ionicons name="arrow-forward" size={16} color="#00C2CB" />
+                    <Text style={[styles.learnMoreText, { color: isDark ? '#5EEAEF' : '#006B71' }]}>Learn More About Tavvy</Text>
+                    <Ionicons name="arrow-forward" size={16} color={isDark ? '#5EEAEF' : '#007F86'} />
                   </TouchableOpacity>
                 </>
               )}
@@ -3462,7 +3184,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
             coordinate={targetLocation}
           >
             <View style={styles.targetLocationMarker}>
-              <Ionicons name="location" size={32} color="#AF52DE" />
+              <Ionicons name={"location"} size={32} color="#AF52DE" />
             </View>
           </MapLibreGL.PointAnnotation>
         )}
@@ -3474,12 +3196,12 @@ function HomeScreen({ navigation }: { navigation: any }) {
             coordinate={parkingLocation.coordinates}
             onSelected={() => {
               Alert.alert(
-                'Your Parked Car',
+                "Your Parked Car",
                 `Parked ${getParkingDuration()}\n${parkingLocation.address || 'Current Location'}`,
                 [
-                  { text: 'Navigate', onPress: navigateToParking },
-                  { text: 'Clear', onPress: clearParkingLocation, style: 'destructive' },
-                  { text: 'OK', style: 'cancel' },
+                  { text: "Navigate", onPress: navigateToParking },
+                  { text: "Clear", onPress: clearParkingLocation, style: 'destructive' },
+                  { text: "OK", style: "cancel" },
                 ]
               );
             }}
@@ -3588,9 +3310,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
           {/* Search Bar */}
           <View style={[styles.mapSearchBar, targetLocation && styles.mapSearchBarWithAddress, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
           {targetLocation ? (
-            <Ionicons name="location" size={20} color="#AF52DE" />
+            <Ionicons name={"location"} size={20} color="#AF52DE" />
           ) : (
-            <Ionicons name="search" size={20} color="#999" />
+            <Ionicons name={"search"} size={20} color="#999" />
           )}
           <TextInput
             style={[styles.mapSearchInput, { color: isDark ? theme.text : '#000' }]}
@@ -3648,7 +3370,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       </View>
       
       {/* Full-Screen Search Suggestions Overlay - Google Maps Style */}
-      {searchQuery.trim().length > 0 && (searchSuggestions.length > 0 || isSearchingAddress) && (
+      {isSearchFocused && searchQuery.trim().length > 0 && (searchSuggestions.length > 0 || isSearchingAddress) && (
         <View style={[styles.fullScreenSearchOverlay, { backgroundColor: isDark ? theme.background : '#fff' }]}>
           {/* Search Header */}
           <SafeAreaView style={styles.fullScreenSearchHeader}>
@@ -3666,8 +3388,11 @@ function HomeScreen({ navigation }: { navigation: any }) {
                 style={[styles.fullScreenSearchInput, { color: isDark ? theme.text : '#000' }]}
                 value={searchQuery}
                 onChangeText={handleSearchInputChange}
-                placeholder="Search places or locations"
+                placeholder={copy("Search places or locations")}
                 placeholderTextColor={isDark ? theme.textSecondary : '#999'}
+                returnKeyType="search"
+                onFocus={handleSearchFocus}
+                onSubmitEditing={() => void handleSearchSubmit()}
                 autoFocus
               />
               {searchQuery.length > 0 && (
@@ -3743,7 +3468,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
-              <Ionicons name="refresh" size={18} color="#fff" style={{ marginRight: 6 }} />
+              <Ionicons name={"refresh"} size={18} color="#fff" style={{ marginRight: 6 }} />
               <Text style={styles.searchThisAreaText}>Search this area</Text>
             </>
           )}
@@ -3800,12 +3525,12 @@ function HomeScreen({ navigation }: { navigation: any }) {
             <Text style={[styles.popupTitle, { color: isDark ? theme.text : '#111827' }]}>Map Legend</Text>
             
             {[
-              { color: '#EF4444', name: 'Restaurants' },
-              { color: '#F59E0B', name: 'Cafes' },
-              { color: '#8A05BE', name: 'Bars' },
-              { color: '#8A05BE', name: 'Shopping' },
-              { color: '#22C55E', name: 'RV & Camping' },
-              { color: '#EC4899', name: 'Hotels' },
+              { color: '#EF4444', name: "Restaurants" },
+              { color: '#F59E0B', name: "Cafes" },
+              { color: '#8A05BE', name: "Bars" },
+              { color: '#8A05BE', name: "Shopping" },
+              { color: '#22C55E', name: "RV & Camping" },
+              { color: '#EC4899', name: "Hotels" },
             ].map((item, index) => (
               <View key={index} style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: item.color }]} />
@@ -3817,7 +3542,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
               style={styles.popupCloseButton}
               onPress={() => setShowLegendPopup(false)}
             >
-              <Text style={styles.popupCloseText}>Close</Text>
+              <Text style={styles.popupCloseText}>{copy("Close")}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -3877,7 +3602,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
               style={styles.popupCloseButton}
               onPress={() => setShowWeatherPopup(false)}
             >
-              <Text style={styles.popupCloseText}>Close</Text>
+              <Text style={styles.popupCloseText}>{copy("Close")}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -3931,7 +3656,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
               style={styles.popupCloseButton}
               onPress={() => setShowMapLayerPopup(false)}
             >
-              <Text style={styles.popupCloseText}>Close</Text>
+              <Text style={styles.popupCloseText}>{copy("Close")}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -3989,9 +3714,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
                 }, 100);
               }}
               ListHeaderComponent={
-                <Text style={[styles.bottomSheetResultsCount, { color: isDark ? theme.textSecondary : '#666' }]}>
-                  {filteredPlaces.length} places nearby
-                </Text>
+                <View>{renderSearchControls()}<Text style={[styles.bottomSheetResultsCount, { color: isDark ? theme.textSecondary : '#666' }]}>
+                  {filteredPlaces.length} places · {searchScopeLabel}
+                </Text></View>
               }
             />
           )}
@@ -4019,7 +3744,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
                 onPress={closeCategoryResults} 
                 style={[styles.categoryResultsCloseBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}
               >
-                <Ionicons name="close" size={20} color={isDark ? theme.text : '#000'} />
+                <Ionicons name={"close"} size={20} color={isDark ? theme.text : '#000'} />
               </TouchableOpacity>
             </View>
             
@@ -4050,8 +3775,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
                   styles.filterPillText, 
                   activeFilters.sortBy !== 'Distance' && styles.filterPillTextActive
                 ]}>
-                  Sort by
-                </Text>
+                  {copy("Sort by")}</Text>
                 <Ionicons 
                   name="chevron-down" 
                   size={14} 
@@ -4067,18 +3791,17 @@ function HomeScreen({ navigation }: { navigation: any }) {
                   { borderColor: 'transparent' },
                   activeFilters.hours === 'Open now' && styles.filterPillActive
                 ]}
-                onPress={() => setActiveFilters(prev => ({ ...prev, hours: prev.hours === 'Open now' ? 'Any' : 'Open now' }))}
+                onPress={() => setActiveFilters(prev => ({ ...prev, hours: prev.hours === 'Open now' ? "Any" : "Open now" }))}
               >
                 <Text style={[
                   styles.filterPillText, 
                   activeFilters.hours === 'Open now' && styles.filterPillTextActive
                 ]}>
-                  Open now
-                </Text>
+                  {"Open now"}</Text>
               </TouchableOpacity>
               
               {/* Cuisine/Type Dropdown (for Restaurants/Cafes/Bars) */}
-              {['Restaurants', 'Cafes', 'Bars', 'Fast Food'].includes(selectedCategory) && (
+              {["Restaurants", "Cafes", "Bars", 'Fast Food'].includes(selectedCategory) && (
                 <TouchableOpacity 
                   style={[
                     styles.filterPill, 
@@ -4091,7 +3814,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
                     styles.filterPillText, 
                     activeFilters.type !== 'Any' && styles.filterPillTextActive
                   ]}>
-                    {selectedCategory === 'Restaurants' ? 'Cuisine' : 'Type'}
+                    {selectedCategory === 'Restaurants' ? copy("Cuisine") : 'Type'}
                   </Text>
                   <Ionicons 
                     name="chevron-down" 
@@ -4115,8 +3838,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
                   styles.filterPillText, 
                   activeFilters.price !== 'Any' && styles.filterPillTextActive
                 ]}>
-                  Price
-                </Text>
+                  {copy("Price")}</Text>
                 <Ionicons 
                   name="chevron-down" 
                   size={14} 
@@ -4138,8 +3860,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
                   styles.filterPillText, 
                   activeFilters.distance !== 'Any' && styles.filterPillTextActive
                 ]}>
-                  Distance
-                </Text>
+                  {copy("Distance")}</Text>
                 <Ionicons 
                   name="chevron-down" 
                   size={14} 
@@ -4153,7 +3874,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
           {/* Results List */}
           {isLoadingCategoryResults ? (
             <View style={styles.categoryResultsLoading}>
-              <ActivityIndicator size="large" color="#00C2CB" />
+              <ActivityIndicator size="large" color={isDark ? '#5EEAEF' : '#007F86'} />
               <Text style={[styles.loadingText, { color: isDark ? theme.textSecondary : '#666' }]}>Finding {selectedCategory.toLowerCase()}...</Text>
             </View>
           ) : (
@@ -4161,8 +3882,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
               {categoryResultsPlaces.length === 0 ? (
                 <View style={styles.noResultsContainer}>
                   <Ionicons name="search-outline" size={48} color={isDark ? theme.textSecondary : '#999'} />
-                  <Text style={[styles.noResultsText, { color: isDark ? theme.textSecondary : '#666' }]}>No {selectedCategory.toLowerCase()} found nearby</Text>
-                  <Text style={[styles.noResultsSubtext, { color: isDark ? theme.textSecondary : '#999' }]}>Try adjusting your filters or search in a different area</Text>
+                  <Text style={[styles.noResultsText, { color: isDark ? theme.textSecondary : '#666' }]}>{"No "}{selectedCategory.toLowerCase()} found nearby</Text>
+                  <Text style={[styles.noResultsSubtext, { color: isDark ? theme.textSecondary : '#999' }]}>{copy("Try adjusting your filters or search in a different area")}</Text>
                 </View>
               ) : (
                 categoryResultsPlaces.map((place, catIndex) => (
@@ -4174,11 +3895,11 @@ function HomeScreen({ navigation }: { navigation: any }) {
                   >
                     {/* Photo */}
                     <View style={styles.categoryResultPhotoContainer}>
-                      <Image
-                        source={{ uri: place.photo || getCategoryFallbackImage(place.category) }}
+                      {place.cover_image_url || place.photos?.[0] ? <Image
+                        source={{ uri: place.cover_image_url || place.photos?.[0] }}
                         style={styles.categoryResultPhoto}
                         resizeMode="cover"
-                      />
+                      /> : <View style={[styles.categoryResultPhoto, { backgroundColor: isDark ? '#302938' : '#e9e2ef', justifyContent: 'center', alignItems: 'center' }]}><Ionicons name="image-outline" size={42} color={isDark ? '#b8acc4' : '#766580'} /></View>}
                       <LinearGradient
                         colors={['transparent', 'rgba(0,0,0,0.85)']}
                         style={styles.categoryResultPhotoGradient}
@@ -4228,20 +3949,19 @@ function HomeScreen({ navigation }: { navigation: any }) {
         <SafeAreaView style={[styles.filterModalContainer, { backgroundColor: isDark ? theme.background : '#fff' }]}>
           <View style={[styles.filterModalHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee' }]}>
             <Text style={[styles.filterModalTitle, { color: isDark ? theme.text : '#000' }]}>
-              {selectedCategory} Filters
-            </Text>
+              {selectedCategory} {copy("Filters")}</Text>
             <TouchableOpacity onPress={() => setShowFilterModal(false)} style={styles.filterModalClose}>
               <View style={[styles.filterModalCloseCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}>
-                <Ionicons name="close" size={20} color={isDark ? theme.text : '#000'} />
+                <Ionicons name={"close"} size={20} color={isDark ? theme.text : '#000'} />
               </View>
             </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={styles.filterModalContent}>
             {/* Hours - Quick access to Open Now */}
             <View style={styles.filterSection}>
-              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Hours</Text>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>{copy("Hours")}</Text>
               <View style={styles.filterOptionsRow}>
-                {['Any', 'Open Now', 'Open 24h'].map((hours) => (
+                {["Any", "Open Now", 'Open 24h'].map((hours) => (
                   <TouchableOpacity
                     key={hours}
                     style={[
@@ -4262,9 +3982,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
             
             {/* Sort By */}
             <View style={styles.filterSection}>
-              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Sort By</Text>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>{copy("Sort By")}</Text>
               <View style={styles.filterOptionsRow}>
-                {['Distance', 'Most Taps', 'Trending'].map((sort) => (
+                {["Distance", 'Most Taps', "Trending"].map((sort) => (
                   <TouchableOpacity
                     key={sort}
                     style={[
@@ -4286,9 +4006,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
             {/* Price Range - for relevant categories */}
             {(selectedCategory === 'Restaurants' || selectedCategory === 'Cafes' || selectedCategory === 'Bars' || selectedCategory === 'Shopping' || selectedCategory === 'Hotels') && (
               <View style={styles.filterSection}>
-                <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Price Range</Text>
+                <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>{copy("Price Range")}</Text>
                 <View style={styles.filterOptionsRow}>
-                  {['$', '$$', '$$$', '$$$$', 'Any'].map((price) => (
+                  {['$', '$$', '$$$', '$$$$', "Any"].map((price) => (
                     <TouchableOpacity
                       key={price}
                       style={[
@@ -4310,10 +4030,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
           </ScrollView>
           <View style={[styles.filterModalButtons, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee', backgroundColor: isDark ? theme.background : '#fff' }]}>
             <TouchableOpacity style={[styles.filterClearBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e8f4f8' }]} onPress={clearFilters}>
-              <Text style={[styles.filterClearBtnText, { color: '#00C2CB' }]}>Clear</Text>
+              <Text style={[styles.filterClearBtnText, { color: '#00C2CB' }]}>{copy("Clear")}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.filterApplyBtn} onPress={applyFilters}>
-              <Text style={styles.filterApplyBtnText}>Apply</Text>
+              <Text style={styles.filterApplyBtnText}>{copy("Apply")}</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -4329,20 +4049,20 @@ function HomeScreen({ navigation }: { navigation: any }) {
         <SafeAreaView style={[styles.filterModalContainer, { backgroundColor: isDark ? theme.background : '#fff' }]}>
           <View style={[styles.filterModalHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#eee' }]}>
             <Text style={[styles.filterModalTitle, { color: isDark ? theme.text : '#000' }]}>
-              {selectedCategory !== 'All' && selectedCategory !== 'Filter' ? `${selectedCategory} Filters` : 'Filters'}
+              {selectedCategory !== 'All' && selectedCategory !== 'Filter' ? `${selectedCategory} Filters` : copy("Filters")}
             </Text>
             <TouchableOpacity onPress={() => setShowAdvancedFilterModal(false)} style={styles.filterModalClose}>
               <View style={[styles.filterModalCloseCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}>
-                <Ionicons name="close" size={20} color={isDark ? theme.text : '#000'} />
+                <Ionicons name={"close"} size={20} color={isDark ? theme.text : '#000'} />
               </View>
             </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={styles.filterModalContent}>
             {/* Sort By - Universal */}
             <View style={styles.filterSection}>
-              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Sort By</Text>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>{copy("Sort By")}</Text>
               <View style={styles.filterOptionsRow}>
-                {['Distance', 'Most Taps', 'Trending', 'Newest'].map((sort) => (
+                {["Distance", 'Most Taps', "Trending", "Newest"].map((sort) => (
                   <TouchableOpacity
                     key={sort}
                     style={[
@@ -4363,9 +4083,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
             {/* Hours - Universal with Open Now priority */}
             <View style={styles.filterSection}>
-              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Hours</Text>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>{copy("Hours")}</Text>
               <View style={styles.filterOptionsRow}>
-                {['Any', 'Open Now', 'Open 24h'].map((hours) => (
+                {["Any", "Open Now", 'Open 24h'].map((hours) => (
                   <TouchableOpacity
                     key={hours}
                     style={[
@@ -4386,9 +4106,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
             {/* Distance - Universal */}
             <View style={styles.filterSection}>
-              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Distance</Text>
+              <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>{copy("Distance")}</Text>
               <View style={styles.filterOptionsRow}>
-                {['1 mi', '5 mi', '10 mi', '25 mi', 'Any'].map((dist) => (
+                {['1 mi', '5 mi', '10 mi', '25 mi', "Any"].map((dist) => (
                   <TouchableOpacity
                     key={dist}
                     style={[
@@ -4414,7 +4134,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
                 Based on Tavvy's community taps
               </Text>
               <View style={[styles.filterOptionsRow, { flexWrap: 'wrap' }]}>
-                {['Any', 'Mostly Positive', 'Highly Rated', 'Trending', 'No Heads Up'].map((quality) => (
+                {["Any", 'Mostly Positive', 'Highly Rated', "Trending", 'No Heads Up'].map((quality) => (
                   <TouchableOpacity
                     key={quality}
                     style={[
@@ -4440,9 +4160,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
             {/* Price Range - Show for relevant categories */}
             {(selectedCategory === 'All' || selectedCategory === 'Restaurants' || selectedCategory === 'Cafes' || selectedCategory === 'Bars' || selectedCategory === 'Shopping' || selectedCategory === 'Hotels') && (
               <View style={styles.filterSection}>
-                <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>Price Range</Text>
+                <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>{copy("Price Range")}</Text>
                 <View style={styles.filterOptionsRow}>
-                  {['$', '$$', '$$$', '$$$$', 'Any'].map((price) => (
+                  {['$', '$$', '$$$', '$$$$', "Any"].map((price) => (
                     <TouchableOpacity
                       key={price}
                       style={[
@@ -4510,7 +4230,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
               <Text style={[styles.filterSectionTitle, { color: isDark ? theme.text : '#000' }]}>
                 {selectedCategory === 'Gas' ? 'Amenities & Services' : 
                  selectedCategory === 'RV & Camping' ? 'Amenities & Hookups' : 
-                 selectedCategory === 'Hotels' ? 'Hotel Amenities' : 'Amenities'}
+                 selectedCategory === 'Hotels' ? 'Hotel Amenities' : copy("Amenities")}
               </Text>
               <View style={styles.moreFiltersWrap}>
                 {(CATEGORY_FILTERS[selectedCategory]?.amenities || CATEGORY_FILTERS.default.amenities).map((amenity) => (
@@ -4554,7 +4274,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
             return filterCount > 0 ? (
               <View style={[styles.filterCountBadge, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}>
                 <Text style={[styles.filterCountText, { color: isDark ? theme.text : '#666' }]}>
-                  {filterCount} filter{filterCount !== 1 ? 's' : ''} selected
+                  {filterCount} {"filter"}{filterCount !== 1 ? 's' : ''} selected
                 </Text>
               </View>
             ) : null;
@@ -4565,12 +4285,12 @@ function HomeScreen({ navigation }: { navigation: any }) {
               style={[styles.filterClearBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#e8f4f8' }]} 
               onPress={() => {
                 setActiveFilters({
-                  sortBy: 'Distance',
-                  distance: 'Any',
-                  hours: 'Any',
-                  tapQuality: 'Any',
-                  price: 'Any',
-                  type: 'Any',
+                  sortBy: "Distance",
+                  distance: "Any",
+                  hours: "Any",
+                  tapQuality: "Any",
+                  price: "Any",
+                  type: "Any",
                   amenities: [],
                 });
               }}
@@ -4599,7 +4319,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: isDark ? theme.background : '#fff' }]}>
-        <ActivityIndicator size="large" color="#00C2CB" />
+        <ActivityIndicator size="large" color={isDark ? '#5EEAEF' : '#007F86'} />
         <Text style={[styles.loadingText, { color: isDark ? theme.textSecondary : '#666' }]}>Loading places...</Text>
       </View>
     );
@@ -4626,15 +4346,15 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   featureSlide: {
-    height: Math.round(FEATURE_CARD_W / 1.5),
+    minHeight: 350,
     borderRadius: 22,
-    padding: 18,
+    padding: 0,
     justifyContent: 'space-between',
     overflow: 'hidden',
   },
   featureSlideTag: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
@@ -5791,9 +5511,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
   },
-  nearbySection: {
-    marginBottom: 20,
-  },
+
   nearbySectionTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -6684,6 +6402,8 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 20,
   },
+  lightSearchDepth: { shadowColor: '#655174', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3 },
+  lightSearchFocus: { borderColor: '#8A05BE', shadowColor: '#8A05BE', shadowOpacity: 0.18, shadowRadius: 3, elevation: 4 },
   searchInputNew: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -6710,7 +6430,8 @@ const styles = StyleSheet.create({
   quickAction: {
     flex: 1,
     borderRadius: 12,
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     alignItems: 'center',
     borderWidth: 1,
   },
@@ -6790,7 +6511,7 @@ const styles = StyleSheet.create({
   },
   moodSubtitle: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
+    color: '#FFFFFF',
   },
 
   // Live Now Section

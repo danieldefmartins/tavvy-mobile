@@ -111,7 +111,7 @@ export default function MyCardsScreen() {
     }
 
     // Navigate to template gallery first so user can choose a template
-    navigation.navigate('ECardTemplateGallery', { mode: 'create' });
+    navigation.navigate('ECardNew');
   };
 
   const handleEditCard = (card: DigitalCard) => {

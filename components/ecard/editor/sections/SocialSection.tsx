@@ -71,9 +71,9 @@ export default function SocialSection({ isDark, isPro }: SocialSectionProps) {
   return (
     <EditorSection
       id="social"
-      title="Featured Socials"
+      title="Social icons"
       icon="share-social"
-      defaultOpen={true}
+      defaultOpen={false}
       isDark={isDark}
     >
       {/* Show Social Icons Toggle */}

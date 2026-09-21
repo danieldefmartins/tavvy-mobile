@@ -24,7 +24,9 @@ import {
 import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { PlaceStory, markStoryViewed, reportStoryWithReason, StoryReport } from '../lib/storyService';
+import {notifyContentSafetyChanged} from './ContentSafetyActions';
+import {blockContentAuthor,reportContent,CONTENT_BLOCK_SCOPE} from '../lib/contentSafety';
+import { PlaceStory, markStoryViewed, StoryReport } from '../lib/storyService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const STORY_DURATION = 5000; // 5 seconds for images
@@ -223,7 +225,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                   {placeName || 'Place'}
                 </Text>
                 <Text style={styles.timestamp}>
-                  {formatTime(currentStory.created_at)}
+                  {currentStory.story_kind==='owner_highlight'?'From the restaurant':'Guest story'} · {formatTime(currentStory.created_at)}
                 </Text>
               </View>
             </View>
@@ -330,6 +332,15 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                   <Ionicons name="flag-outline" size={24} color="#EF4444" />
                   <Text style={styles.optionTextDanger}>Report Story</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={styles.optionItem} disabled={isReporting} onPress={()=>{
+                  if(!currentUserId){Alert.alert('Sign in required','Open Profile and choose Log In to block an author.');return;}
+                  Alert.alert('Block author',CONTENT_BLOCK_SCOPE,[{text:'Cancel',style:'cancel'},{text:'Block',style:'destructive',onPress:async()=>{
+                    setIsReporting(true);
+                    try{await blockContentAuthor('story',currentStory.id);setShowOptionsMenu(false);notifyContentSafetyChanged();onClose();}
+                    catch(error){Alert.alert('Author not blocked',error instanceof Error?error.message:'Please try again.');}
+                    finally{setIsReporting(false);}
+                  }}]);
+                }}><Ionicons name="person-remove-outline" size={24} color="#374151"/><Text style={styles.optionText}>{isReporting?'Saving…':'Block author'}</Text></TouchableOpacity>
                 <View style={styles.optionDivider} />
                 <TouchableOpacity
                   style={styles.optionItem}
@@ -392,12 +403,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                       }
                       setIsReporting(true);
                       try {
-                        const result = await reportStoryWithReason(
-                          currentStory.id,
-                          currentUserId,
-                          item.reason
-                        );
-                        if (result.success) {
+                        await reportContent('story',currentStory.id,item.reason==='explicit'?'offensive':item.reason);
                           Alert.alert(
                             'Report Submitted',
                             'Thank you for your report. Our team will review this story.',
@@ -407,9 +413,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                               goToNext();
                             }}]
                           );
-                        } else {
-                          Alert.alert('Error', result.error || 'Failed to submit report');
-                        }
+
                       } catch (error) {
                         Alert.alert('Error', 'Failed to submit report. Please try again.');
                       } finally {
@@ -424,7 +428,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
                 ))}
               </ScrollView>
               <Text style={styles.reportDisclaimer}>
-                Reports are reviewed by the business owner. False reports may result in account restrictions.
+                Reports are reviewed by Tavvy. Reporting does not automatically remove content.
               </Text>
             </View>
           </View>

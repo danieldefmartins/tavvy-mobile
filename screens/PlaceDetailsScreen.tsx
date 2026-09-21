@@ -1,3 +1,7 @@
+import { placeShareUrl, normalizePlaceShareId } from '../lib/placeShare';
+import { lookupPlaceDetails, isCanonicalPlaceId } from '../lib/placeDetailsLookup';
+import { getPlaceById } from '../lib/typesenseService';
+import { resolvePhotoPlace } from '../lib/placePhotoUpload';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -14,7 +18,8 @@ import {
   NativeScrollEvent,
   Share,
   Modal,
-  useColorScheme,
+  SafeAreaView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MapLibreGL from '@maplibre/maplibre-react-native';
@@ -26,12 +31,18 @@ import {
   QuickInfoPill,
 } from '../lib/categories';
 import { supabase } from '../lib/supabaseClient';
-import { fetchPlaceSignals, getPlaceReviewCount, fetchRecentReviews, RecentReview, SignalAggregate } from '../lib/reviews';
+import { fetchPlaceSignals, getPlaceReviewCount, fetchRecentReviews, fetchReviewHistory, RecentReview, SignalAggregate } from '../lib/reviews';
 import SignalMatrix from '../components/SignalMatrix';
+import {useThemeContext} from '../contexts/ThemeContext';
+import {useAuth} from '../contexts/AuthContext';
+import {useIsFavorite,useAddFavorite,useRemoveAllFavoritesForPlace} from '../hooks/useFavorite';
+import {parseHours} from '../lib/placeHours';
+import {reviewDateLabel} from '../lib/placePresentation';
 import { Colors } from '../constants/Colors';
 import AddYourTapCardEnhanced from '../components/AddYourTapCardEnhanced';
 import MomentumThermometer from '../components/MomentumThermometer';
-import ReviewReportModal from '../components/ReviewReportModal';
+import ContentSafetyActions,{CONTENT_SAFETY_CHANGED} from '../components/ContentSafetyActions';
+import {DeviceEventEmitter} from 'react-native';
 import {
   // usePlaceTapStats,
   useUserGamification,
@@ -44,6 +55,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import * as Location from 'expo-location';
 import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
+import { fetchPlaceEvidence } from '../lib/placeEvidenceService';
+import { PlaceEvidence, buildPlaceEvidence, coreForCategory, secondaryGoodSignals } from '../lib/placeEvidence';
+import { buildPlaceReviewSummary } from '../lib/placeReviewSummary';
+import OnTheGoStatus from '../components/OnTheGoStatus';
 
 const { width } = Dimensions.get('window');
 
@@ -88,8 +103,9 @@ interface Place {
   name: string;
   latitude: number;
   longitude: number;
-  priceLevel: '$' | '$$' | '$$$';
+  priceLevel: '' | '$' | '$$' | '$$$';
   primaryCategory: string;
+  subcategory?: string;
   features: string[];
   openYearRound: boolean;
   coverImageUrl: string | null;
@@ -282,8 +298,12 @@ const getDriveTime = (distanceMiles: number): string => {
 function PlaceDetailScreen({ route, navigation }: any) {
   const { t } = useTranslation();
   // ===== STATE DECLARATIONS =====
-  const { placeId } = route?.params || {};
+  const requestedPlaceId = route?.params?.placeId;
   const [place, setPlace] = useState<Place | null>(null);
+  const placeId = place?.id || normalizePlaceShareId(requestedPlaceId) || '';
+  const canonicalPlaceId = isCanonicalPlaceId(place?.id) ? place.id : null;
+  const showMobileStatus = isCanonicalPlaceId(route?.params?.mobileBusinessId)
+    || /\b(on the go|food trucks?|mobile)\b/i.test((place?.primaryCategory || '').replace(/[_-]/g, ' '));
   const [signals, setSignals] = useState<{
     best_for: SignalAggregate[];
     vibe: SignalAggregate[];
@@ -291,7 +311,24 @@ function PlaceDetailScreen({ route, navigation }: any) {
     medals: string[];
   }>({ best_for: [], vibe: [], heads_up: [], medals: [] });
   const [photos, setPhotos] = useState<PlacePhoto[]>([]);
+  const [photosUnavailable,setPhotosUnavailable]=useState(false);
+  const [hasActiveMenu, setHasActiveMenu] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+  const [activePlaceTab, setActivePlaceTab] = useState<'overview' | 'media' | 'menu' | 'details'>('overview');
+  const [selectedSummary, setSelectedSummary] = useState<'main' | 'good' | 'vibe' | 'headsup' | null>(null);
+  const [reviewsUnavailable,setReviewsUnavailable]=useState(false);
+  const [confirmedLinks,setConfirmedLinks]=useState<{label:string;url:string}[]>([]);
+  const [ecardSlug,setEcardSlug]=useState<string|null>(null);
+  const [historyLoading,setHistoryLoading]=useState(false);
+  const [safetyVersion,setSafetyVersion]=useState(0);
+  useEffect(()=>{const sub=DeviceEventEmitter.addListener(CONTENT_SAFETY_CHANGED,()=>{setHistoryPage(0);setSafetyVersion(v=>v+1)});return()=>sub.remove()},[]);
   const [recentReviews, setRecentReviews] = useState<RecentReview[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyRows, setHistoryRows] = useState<(RecentReview & { date: string; note: string | null; dateSource?:string; recordedAt?:string; isEdit?:boolean })[]>([]);
+  const [historyError, setHistoryError] = useState('');
+  const [evidence, setEvidence] = useState<PlaceEvidence | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -309,14 +346,42 @@ function PlaceDetailScreen({ route, navigation }: any) {
   const [stories, setStories] = useState<PlaceStory[]>([]);
   const [storyRingState, setStoryRingState] = useState<StoryRingState>('none');
   const [showStoryViewer, setShowStoryViewer] = useState(false);
+  useEffect(() => {
+    if (!canonicalPlaceId) { setHasActiveMenu(false); return; }
+    let cancelled = false;
+    supabase.from('menus').select('id').eq('place_id', canonicalPlaceId).eq('is_active', true).limit(1).maybeSingle()
+      .then(({ data: menu }) => { if (!cancelled) setHasActiveMenu(!!menu); });
+    return () => { cancelled = true; };
+  }, [canonicalPlaceId]);
   
+  useEffect(()=>{let active=true;setConfirmedLinks([]);setEcardSlug(null);if(!canonicalPlaceId)return;const placeId=canonicalPlaceId;
+    supabase.from('places').select('hours,phone,website').eq('id',placeId).maybeSingle().then(({data})=>{if(active&&data)setPlace(current=>current?{...current,opening_hours:data.hours,phone:data.phone,website:data.website}:current)});
+    supabase.from('place_external_profiles').select('provider,external_url').eq('place_id',placeId).then(({data})=>{if(!active)return;const providers:Record<string,{label:string;hosts:string[]}>= {instagram:{label:'Instagram',hosts:['instagram.com']},facebook:{label:'Facebook',hosts:['facebook.com']},tiktok:{label:'TikTok',hosts:['tiktok.com']},youtube:{label:'YouTube',hosts:['youtube.com','youtu.be']},doordash:{label:'DoorDash',hosts:['doordash.com']},ubereats:{label:'Uber Eats',hosts:['ubereats.com']},grubhub:{label:'Grubhub',hosts:['grubhub.com']},opentable:{label:'Reservations · OpenTable',hosts:['opentable.com']},resy:{label:'Reservations · Resy',hosts:['resy.com']}};setConfirmedLinks((data||[]).flatMap(row=>{const spec=providers[String(row.provider).replace(/_/g,'')];if(!spec)return[];try{const url=new URL(row.external_url);return url.protocol==='https:'&&!url.username&&!url.password&&spec.hosts.some(h=>url.hostname===h||url.hostname.endsWith('.'+h))?[{label:spec.label,url:url.toString()}]:[]}catch{return[]}}))});
+    supabase.from('digital_cards').select('slug').eq('place_id',placeId).eq('is_published',true).limit(1).maybeSingle().then(({data})=>{if(active)setEcardSlug(data?.slug||null)});
+    return()=>{active=false};
+  },[canonicalPlaceId]);
+
   // Review Report Modal state (Apple compliance)
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [reportingSignalId, setReportingSignalId] = useState<string | null>(null);
 
   // Dark mode support
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const {theme,isDark}=useThemeContext();
+  const styles=makeStyles(theme,isDark);
+  const {user}=useAuth();
+  const {data:saved}=useIsFavorite(canonicalPlaceId||'');
+  const addFavorite=useAddFavorite();
+  const removeFavorite=useRemoveAllFavoritesForPlace();
+  const savePlace=async()=>{if(!user){navigation.navigate('Login',{returnTo:'PlaceDetails',returnParams:{placeId}});return;}try{const resolved=canonicalPlaceId||await resolvePhotoPlace(placeId);if(saved)await removeFavorite.mutateAsync(resolved);else await addFavorite.mutateAsync({placeId:resolved});if(resolved!==placeId)setPlace(current=>current?{...current,id:resolved}:current);}catch{Alert.alert('Could not save place','Please try again.')}};
+
+  // Creating a canonical provider record is reserved for an explicit signed-in action.
+  const openCanonicalPlaceAction = async (screen: 'StoryUpload' | 'ClaimBusiness') => {
+    if (!place) return;
+    if (!user) { navigation.navigate('Login', { returnTo: 'PlaceDetails', returnParams: { placeId } }); return; }
+    try {
+      const resolved = canonicalPlaceId || await resolvePhotoPlace(placeId);
+      if (resolved !== placeId) setPlace(current => current ? { ...current, id: resolved } : current);
+      navigation.navigate(screen, { placeId: resolved, placeName: place.name });
+    } catch { Alert.alert('Could not open this place', 'Please try again.'); }
+  };
 
   // Determine business type from place data
   const businessType = place ? mapGoogleCategoryToBusinessType(place.primaryCategory || 'default') : 'default';
@@ -385,7 +450,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
   // These hooks must be called AFTER place state is declared but they handle null/undefined gracefully
    // const stats = usePlaceTapStats(place?.id);d || '');
   const { gamification } = useUserGamification();
-  const { hasTapped, userSignals } = useHasUserTapped(place?.id || '');
+  const { hasTapped, userSignals } = useHasUserTapped(canonicalPlaceId || '');
   const { quickTap } = useTap();
 
   // Fetch user location on mount
@@ -409,168 +474,30 @@ function PlaceDetailScreen({ route, navigation }: any) {
     getUserLocation();
   }, []);
 
-  // Fetch place data
+  // Resolve canonical and provider IDs without creating records or fabricating data.
   useEffect(() => {
-    if (!placeId) {
-      setError('No place ID provided');
-      setLoading(false);
-      return;
-    }
-
+    let active = true;
+    setPlace(null); setError(null); setLoading(true); setPhotos([]);
+    setSignals({ best_for: [], vibe: [], heads_up: [], medals: [] });
+    setRecentReviews([]); setEvidence(null); setStories([]); setReviewsUnavailable(false);
     const fetchPlaceData = async () => {
       try {
-        setLoading(true);
-        
-        // Check if placeId is a valid UUID or Foursquare ID (real data) or mock ID
-        const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(placeId);
-        // Foursquare IDs are 24-character hex strings (may start with $ in some cases)
-        const isFoursquareId = /^\$?[0-9a-f]{24}$/i.test(placeId);
-        const isRealPlaceId = isValidUUID || isFoursquareId;
-
-        if (!isRealPlaceId) {
-          // Mock data fallback for non-UUID IDs (e.g., "1", "2", "3")
-          const mockPlace: Place = {
-            id: placeId,
-            name: "Tony's Town Square Restaurant",
-            latitude: 28.4175,
-            longitude: -81.5814,
-            priceLevel: '$$',
-            primaryCategory: 'Italian Restaurant',
-            features: ['Family Friendly', 'Reservations', 'Outdoor Seating'],
-            openYearRound: true,
-            coverImageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
-            currentStatus: 'Open & Accessible',
-            is24_7: false,
-            addressLine1: '123 Main Street',
-            city: 'Orlando',
-            state: 'FL',
-            zipCode: '32830',
-            phone: '(407) 555-1234',
-            website: 'tonystownsquare.com',
-            distance: 2.3,
-            avgMealCost: '$30-50',
-            closingTime: '10 PM',
-            entrance_1_name: 'Main Entrance',
-            entrance_1_latitude: 28.4175,
-            entrance_1_longitude: -81.5814,
-            entrance_1_is_primary: true,
-            entrance_2_name: 'Patio Entrance',
-            entrance_2_latitude: 28.4176,
-            entrance_2_longitude: -81.5813,
-            entrance_2_is_primary: false,
-            // NEW: Mock Data for Trust & Socials
-            is_insured: true,
-            is_licensed: true,
-            established_date: '1989-05-01',
-            logo_url: 'https://ui-avatars.com/api/?name=Tonys+Town&background=random&size=200',
-            socials: {
-              Instagram: 'https://instagram.com/tonystownsquare',
-              Facebook: 'https://facebook.com/tonystownsquare',
-              WhatsApp: 'https://wa.me/14075551234'
-            }
-          };
-          setPlace(mockPlace);
-          
-          // Mock photos
-          setPhotos([
-            { id: '1', url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800', is_cover: true },
-            { id: '2', url: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800' },
-            { id: '3', url: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800' },
-          ]);
-          
-          // Mock signals (Updated structure)
-          setSignals({
-            best_for: [
-              { place_id: '1', signal_id: '1', tap_total: 89, current_score: 85.5, review_count: 80, last_tap_at: null, is_ghost: false, label: 'Great Food', icon: '🍽️', category: 'best_for' },
-              { place_id: '1', signal_id: '2', tap_total: 67, current_score: 60.2, review_count: 60, last_tap_at: null, is_ghost: false, label: 'Fast Service', icon: '⚡', category: 'best_for' }
-            ],
-            vibe: [
-              { place_id: '1', signal_id: '3', tap_total: 87, current_score: 82.1, review_count: 80, last_tap_at: null, is_ghost: false, label: 'Cozy', icon: '🛋️', category: 'vibe' }
-            ],
-            heads_up: [
-              { place_id: '1', signal_id: '5', tap_total: 12, current_score: 0.8, review_count: 10, last_tap_at: null, is_ghost: true, label: 'Pricey', icon: '💰', category: 'heads_up' }
-            ],
-            medals: ['vibe_check', 'speed_demon']
-          });
-          
-          setLoading(false);
-          return;
-        }
-
-        // Fetch real place data from Supabase
-        // Try places_unified first (handles both Tavvy places and FSQ places)
-        // The placeId could be either:
-        // - A UUID (Tavvy place id)
-        // - An FSQ ID (from fsq_places_raw)
-        let placeData = null;
-        let placeError = null;
-        
-        // First try: Query by id (for Tavvy places)
-        const { data: unifiedData, error: unifiedError } = await supabase
-          .from('places_unified')
-          .select('*')
-          .eq('id', placeId)
-          .limit(1)
-          .maybeSingle();
-        
-        if (unifiedData) {
-          placeData = unifiedData;
-        } else if (unifiedError && unifiedError.code !== 'PGRST116') {
-          // PGRST116 is "not found" error, which is expected
-          placeError = unifiedError;
-        } else {
-          // Second try: Query fsq_places_raw by fsq_place_id (for FSQ places)
-          const { data: fsqData, error: fsqError } = await supabase
-            .from('fsq_places_raw')
-            .select('*')
-            .eq('fsq_place_id', placeId)
-            .limit(1)
-            .maybeSingle();
-          
-          if (fsqData) {
-            // Map FSQ data to unified format
-            placeData = {
-              id: fsqData.fsq_place_id,
-              name: fsqData.name,
-              latitude: fsqData.latitude,
-              longitude: fsqData.longitude,
-              primary_category: fsqData.category,
-              address_line1: fsqData.address,
-              city: fsqData.locality,
-              state: fsqData.region,
-              country: fsqData.country,
-              zip_code: fsqData.postcode,
-              phone: fsqData.tel,
-              website: fsqData.website,
-              email: fsqData.email,
-              // Add other fields as needed
-            };
-          } else {
-            placeError = fsqError;
-          }
-        }
-
-        if (placeError) throw placeError;
-        
-        // Handle case where place is not found
-        if (!placeData) {
-          setError('Place not found');
-          setLoading(false);
-          return;
-        }
-
+        const placeData = await lookupPlaceDetails(requestedPlaceId, supabase, getPlaceById);
+        if (!active) return;
+        if (!placeData) { setError('Place not found'); setLoading(false); return; }
           // Map database fields to Place interface
         const mappedPlace: Place = {
           id: placeData.id,
           name: placeData.name,
           latitude: placeData.latitude,
           longitude: placeData.longitude,
-          priceLevel: placeData.price_level || '$$',
-          primaryCategory: placeData.primary_category || 'Restaurant',
+          priceLevel: placeData.price_level || '',
+          primaryCategory: placeData.tavvy_category || placeData.primary_category || 'Place',
+          subcategory: placeData.tavvy_subcategory || placeData.subcategory || undefined,
           features: placeData.features || [],
-          openYearRound: placeData.open_year_round ?? true,
+          openYearRound: placeData.open_year_round ?? false,
           coverImageUrl: placeData.cover_image_url,
-          currentStatus: placeData.current_status || 'open_accessible',
+          currentStatus: placeData.current_status || '',
           is24_7: placeData.is_24_7 ?? false,
           addressLine1: placeData.address_line_1,
           city: placeData.city,
@@ -592,7 +519,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
           totalSites: placeData.total_sites,
           starRating: placeData.star_rating,
           closingTime: placeData.closing_time,
-          opening_hours: placeData.opening_hours,
+          opening_hours: placeData.hours || placeData.opening_hours,
           is_insured: placeData.is_insured,
           is_licensed: placeData.is_licensed,
           established_date: placeData.established_date,
@@ -617,67 +544,64 @@ function PlaceDetailScreen({ route, navigation }: any) {
 
         setPlace(mappedPlace);
 
-        // Fetch photos
-        const { data: photosData } = await supabase
-          .from('place_photos')
-          .select('*')
-          .eq('place_id', placeId)
-          .order('is_cover', { ascending: false });
-
-        if (photosData) {
-          setPhotos(photosData.map(p => ({
-            id: p.id,
-            url: p.url,
-            user_id: p.user_id,
-            user_name: p.user_name,
-            caption: p.caption,
-            created_at: p.created_at,
-            is_cover: p.is_cover,
-          })));
+        if (!isCanonicalPlaceId(placeData.id)) setEvidence(buildPlaceEvidence([], { category: mappedPlace.primaryCategory, subcategory: mappedPlace.subcategory }));
+        if (isCanonicalPlaceId(placeData.id)) {
+          const resolvedId = placeData.id;
+          const { data: media, error: mediaError } = await supabase.rpc('get_place_photo_safety_v1',{p_place_id:resolvedId});
+          if (!active) return;
+          setPhotos(!mediaError && Array.isArray(media?.photos) ? media.photos : []);
+          setPhotosUnavailable(!!mediaError || !Array.isArray(media?.photos));
+          setPlace(current=>current?{...current,coverImageUrl:!mediaError ? media?.cover || null : null}:current);
+          const signalData = await fetchPlaceSignals(resolvedId);
+          if (!active) return;
+          setSignals(signalData);
+          try {
+            const recent = await fetchRecentReviews(resolvedId, 10);
+            if (!active) return;
+            setRecentReviews(recent); setReviewsUnavailable(false);
+          } catch { if (active) { setRecentReviews([]); setReviewsUnavailable(true); } }
         }
-
-        // Fetch signals with Living Score Logic
-        const signalData = await fetchPlaceSignals(placeId);
-        setSignals(signalData);
-
-        // Recent reviewers + their tapped signals (parity with web)
-        try {
-          const recent = await fetchRecentReviews(placeId, 10);
-          setRecentReviews(recent);
-        } catch {
-          setRecentReviews([]);
-        }
-
-        setLoading(false);
+        if (active) setLoading(false);
       } catch (err: any) {
-        console.error('Error fetching place:', err);
+        if (!active) return;
         setError(err.message || 'Failed to load place');
         setLoading(false);
       }
     };
 
     fetchPlaceData();
-  }, [placeId, userLocation]);
+    return () => { active = false; };
+  }, [requestedPlaceId, userLocation, safetyVersion, user?.id]);
 
-  // Fetch stories for this place
   useEffect(() => {
-    if (!placeId) return;
-    
-    const fetchStories = async () => {
-      try {
-        const placeStories = await getPlaceStories(placeId);
-        setStories(placeStories);
-        
-        // Get story ring state
-        const ringState = await getStoryRingState(placeId);
-        setStoryRingState(ringState);
-      } catch (err) {
-        console.error('[PlaceDetails] Error fetching stories:', err);
-      }
-    };
-    
-    fetchStories();
-  }, [placeId]);
+    if (!canonicalPlaceId || !place?.primaryCategory) return;
+    let active = true;
+    fetchPlaceEvidence(canonicalPlaceId, { category: place.primaryCategory, subcategory: place.subcategory })
+      .then(value => { if (active) setEvidence(value); })
+      .catch(() => { if (active) setEvidence(null); });
+    return () => { active = false; };
+  }, [canonicalPlaceId, place?.primaryCategory, place?.subcategory]);
+
+  useEffect(() => {
+    if (!historyOpen || !canonicalPlaceId) return;
+    let active = true;
+    setHistoryError('');setHistoryRows([]);setHistoryLoading(true);
+    fetchReviewHistory(canonicalPlaceId, historyPage).then(result => {
+      if (active) { setHistoryRows(result.reviews); setHistoryTotal(result.total); }
+    }).catch(() => { if (active) setHistoryError('Could not load reviews.'); }).finally(()=>{if(active)setHistoryLoading(false)});
+    return () => { active = false; };
+  }, [historyOpen, historyPage, canonicalPlaceId, safetyVersion, user?.id]);
+
+  // UUID-backed content exists only once a provider place has a canonical record.
+  useEffect(() => {
+    let active = true;
+    setStories([]); setStoryRingState('none');
+    if (!canonicalPlaceId) return;
+    Promise.all([getPlaceStories(canonicalPlaceId), getStoryRingState(canonicalPlaceId)])
+      .then(([rows, ring]) => { if (active) { setStories(rows); setStoryRingState(ring); } })
+      .catch(() => { /* Keep the empty public state on unavailable optional media. */ });
+    return () => { active = false; };
+  }, [canonicalPlaceId, safetyVersion, user?.id]);
 
   // Extract entrances from place data
   const extractEntrances = (place: Place): EntranceData[] => {
@@ -826,8 +750,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
   const handleShare = async () => {
     if (!place) return;
     try {
-      const slug = (place as any).slug || place.id;
-      const shareUrl = `https://tavvy.com/${slug}`;
+      const shareUrl = placeShareUrl(place.id);
       const shareText = `${place.name} on Tavvy — see what people are really saying`;
       await Share.share({
         message: `${shareText}\n${shareUrl}`,
@@ -933,25 +856,14 @@ function PlaceDetailScreen({ route, navigation }: any) {
             />
           )}
           
-          {/* Report Button (Apple Compliance) */}
-          <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
-              setReportingSignalId(signal.signal_id);
-              setShowReportModal(true);
-            }}
-            style={{ marginLeft: 8, padding: 4 }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="ellipsis-horizontal" size={18} color="rgba(255,255,255,0.7)" />
-          </TouchableOpacity>
+
         </TouchableOpacity>
       );
     };
 
     return (
       <View style={{
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.background,
         borderRadius: 16,
         marginBottom: 16,
         padding: 16,
@@ -965,7 +877,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
         <Text style={{ 
           fontSize: 18, 
           fontWeight: '700', 
-          color: '#1F2937',
+          color: theme.text,
           marginBottom: 12,
         }}>
           {categoryTitle}
@@ -1075,24 +987,31 @@ function PlaceDetailScreen({ route, navigation }: any) {
   const totalSignals = (signals.best_for?.length || 0) + 
                        (signals.vibe?.length || 0) + 
                        (signals.heads_up?.length || 0);
+  const reviewSubject = { category: place.primaryCategory, subcategory: place.subcategory };
+  const reviewSummary = buildPlaceReviewSummary(evidence, reviewSubject);
+  const reviewIcons = { main: /hotel/i.test(place.primaryCategory) ? '🛏️' : /restaurant|cafe|bar/i.test(place.primaryCategory) ? '🍽️' : '⭐', good: '✨', vibe: '🕯️', headsup: '⚠️' };
+  const otherGood = evidence ? secondaryGoodSignals(evidence, reviewSubject) : [];
+  const currentWarnings = evidence?.warnings.filter(w => w.status === 'current' || w.status === 'unconfirmed') || [];
+  const supportLabels=new Set((selectedSummary==='main'?[...(evidence?.coreSignals||[]),...(evidence?.coreConcerns||[])]:selectedSummary==='good'?otherGood:selectedSummary==='vibe'?evidence?.vibeSignals||[]:currentWarnings).map(s=>s.label));
+  const supportingReviews=recentReviews.filter(r=>r.signals.some(sig=>supportLabels.has(sig.label))).slice(0,2);
   const priceDisplay = getPriceDisplay(place);
   const driveTime = getDriveTime(place.distance);
   const categoryEmoji = getCategoryEmoji(place.primaryCategory);
 
-  // State for info section collapse
-  const [showInfo, setShowInfo] = useState(false);
-  const [showFullSignals, setShowFullSignals] = useState(false);
+  const hasMenuTab = hasActiveMenu;
+  const placeTabs = [
+    { key: 'overview', label: 'Overview' },
+    { key: 'media', label: 'Photos & Stories' },
+
+    { key: 'details', label: 'Details' },
+  ] as const;
 
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* ===== 1. HERO (40% screen) ===== */}
         <View style={styles.heroContainer}>
-          <Image
-            source={{ uri: photos.length > 0 ? photos[0].url : getCategoryFallbackImage(place.primaryCategory) }}
-            style={styles.carouselImage}
-            resizeMode="cover"
-          />
+          {photos[0]?.url||place.coverImageUrl?<Image source={{uri:photos[0]?.url||place.coverImageUrl!}} style={styles.carouselImage} resizeMode="cover"/>:<View style={[styles.carouselImage,{alignItems:'center',justifyContent:'center',backgroundColor:theme.surface}]}><Text style={{fontSize:60}}>{categoryEmoji}</Text></View>}
 
           {/* Gradient Overlay */}
           <LinearGradient
@@ -1111,11 +1030,11 @@ function PlaceDetailScreen({ route, navigation }: any) {
 
           {/* Top Right: Share + Save */}
           <View style={styles.topRightButtons}>
-            <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Share place" style={styles.actionButton} onPress={handleShare}>
               <Ionicons name="share-outline" size={20} color="#1a1a1a" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="heart-outline" size={20} color="#1a1a1a" />
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={saved?'Remove saved place':'Save place'} disabled={addFavorite.isPending||removeFavorite.isPending} style={styles.actionButton} onPress={savePlace}>
+              <Ionicons name={saved?'heart':'heart-outline'} size={20} color="#1a1a1a" />
             </TouchableOpacity>
           </View>
 
@@ -1128,63 +1047,47 @@ function PlaceDetailScreen({ route, navigation }: any) {
           </View>
         </View>
 
-        {/* ===== 2. STICKY ACTION BAR ===== */}
-        <View style={styles.actionBar}>
-          {/* Menu - Primary CTA (purple, larger) */}
-          <TouchableOpacity
-            style={styles.actionBarPrimary}
-            onPress={() => navigation.navigate('MenuGallery' as any, { placeId: place.id, placeName: place.name })}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.actionBarPrimaryIcon}>📖</Text>
-            <Text style={styles.actionBarPrimaryLabel}>Menu</Text>
-          </TouchableOpacity>
-
-          {/* Call */}
-          <TouchableOpacity
-            style={styles.actionBarBtn}
-            onPress={() => handleCall(place.phone || '')}
-          >
-            <Text style={styles.actionBarIcon}>📞</Text>
-          </TouchableOpacity>
-
-          {/* Directions */}
-          <TouchableOpacity
-            style={styles.actionBarBtn}
-            onPress={() => handleNavigate(place.latitude, place.longitude, place.name)}
-          >
-            <Text style={styles.actionBarIcon}>📍</Text>
-          </TouchableOpacity>
-
-          {/* Share */}
-          <TouchableOpacity
-            style={styles.actionBarBtn}
-            onPress={handleShare}
-          >
-            <Text style={styles.actionBarIcon}>↗️</Text>
-          </TouchableOpacity>
+        <View style={{ marginHorizontal: 20, marginTop: 18 }}>
+          <Text style={{ color: theme.text, fontSize: 20, fontWeight: '800', marginBottom: 11 }}>What people experienced</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 }}>
+            {reviewSummary.tiles.map(tile => <TouchableOpacity key={tile.key} accessibilityRole="button" accessibilityState={{ expanded: selectedSummary === tile.key }} onPress={() => setSelectedSummary(selectedSummary === tile.key ? null : tile.key)} style={{ width: '48.5%', minHeight: 122, padding: 13, borderRadius: 16, borderWidth: selectedSummary === tile.key ? 2 : 1, borderColor: tile.key === 'main' ? '#70D4D8' : tile.key === 'headsup' ? '#E8BB70' : '#E7E4EE', backgroundColor: theme.surface }}>
+              <Text style={{ color: theme.textSecondary, fontSize: 12, fontWeight: '800' }}>{reviewIcons[tile.key]} {tile.title}</Text>
+              <Text style={{ color: theme.text, fontSize: 15, fontWeight: '700', marginTop: 7 }}>{tile.detail}</Text>
+              {tile.count != null && tile.count > 0 && <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 6 }}>{tile.count} {tile.count === 1 ? 'person' : 'people'} mentioned this</Text>}
+              {!!tile.note && <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 6 }}>{tile.note}</Text>}
+            </TouchableOpacity>)}
+          </View>
+          {selectedSummary && evidence && evidence.dataStatus!=='unavailable' && <View style={{ marginTop: 10, padding: 15, backgroundColor: theme.background, borderColor: theme.border, borderWidth: 1, borderRadius: 14 }}>
+            {selectedSummary === 'main' && <Text style={{ color: theme.text }}>{evidence?.coreSignals.length ? evidence.coreSignals.map(s => `${s.label} (${s.reports})`).join(' · ') : 'Not enough recent firsthand reports yet.'}{evidence?.coreConcerns.length ? `\nCore concerns: ${evidence.coreConcerns.map(s => s.label).join(' · ')}` : ''}</Text>}
+            {selectedSummary === 'good' && <Text style={{ color: theme.text }}>{otherGood.length ? otherGood.slice(0, 4).map(s => `${s.label} (${s.reports})`).join(' · ') : 'More reports are needed about other strengths.'}</Text>}
+            {selectedSummary === 'vibe' && <Text style={{ color: theme.text }}>{evidence?.vibeSignals.length ? evidence.vibeSignals.map(s => `${s.label} (${s.reports})`).join(' · ') : 'More atmosphere reports are needed.'}</Text>}
+            {selectedSummary === 'headsup' && <Text style={{ color: theme.text }}>{currentWarnings.length ? currentWarnings.map(w => `${w.label} (${w.status === 'current' ? 'repeated' : 'one report'})`).join(' · ') : 'No current Heads Up reports in Tavvy.'}{evidence?.warnings.filter(w => w.status === 'faded' || w.status === 'improved').length ? `\nOlder concerns: ${evidence.warnings.filter(w => w.status === 'faded' || w.status === 'improved').map(w => `${w.label} · ${w.laterVisits} later visits without a repeat`).join(' · ')}` : ''}</Text>}
+            <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 8 }}>{evidence?.recentReviewers || 0} recent reviewers · {evidence?.confidence || 'limited'} evidence</Text>{supportingReviews.map(review=><View key={review.reviewId} style={{marginTop:14,paddingTop:12,borderTopWidth:1,borderTopColor:theme.border}}><Text style={{color:theme.text,fontWeight:'700'}}>{review.name} · {reviewDateLabel(review.createdAt,review.dateSource)}</Text><ContentSafetyActions kind="place_review" contentId={review.reviewId} />
+                  {review.text&&<Text style={{color:theme.text,lineHeight:22,marginTop:5}}>{review.text}</Text>}<Text style={{color:theme.textSecondary,marginTop:5}}>{review.signals.filter(sig=>supportLabels.has(sig.label)).map(sig=>sig.label).join(' · ')}</Text></View>)}
+          </View>}
         </View>
 
-        {/* ===== 3. SIGNAL SUMMARY (immediately visible, NO tabs) ===== */}
-        <View style={styles.signalSummarySection}>
-          {/* Medals first */}
-          {signals.medals && signals.medals.length > 0 && (
-            <View style={styles.medalsRow}>
-              {signals.medals.map((medalId) => renderMedal(medalId))}
-            </View>
-          )}
+        {activePlaceTab === 'overview' && canonicalPlaceId && showMobileStatus && <View style={{ marginHorizontal: 20 }}><OnTheGoStatus canonicalPlaceId={canonicalPlaceId} /></View>}
 
-          <SignalMatrix
-            signals={signals}
-            onReview={() => navigation.navigate('AddReview', { placeId: place.id, placeName: place.name, placeCategory: place.primaryCategory })}
-          />
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginTop: 16, borderBottomWidth: 1, borderBottomColor: theme.border }} contentContainerStyle={{ paddingHorizontal: 20, gap: 20 }}>
+          {placeTabs.map(tab => <TouchableOpacity key={tab.key} accessibilityRole="tab" accessibilityState={{ selected: activePlaceTab === tab.key }} onPress={() => setActivePlaceTab(tab.key)} style={{ paddingVertical: 13, borderBottomWidth: 3, borderBottomColor: activePlaceTab === tab.key ? '#8A05BE' : 'transparent' }}><Text style={{ fontSize: 14, fontWeight: '700', color: activePlaceTab === tab.key ? theme.text : theme.textSecondary }}>{tab.label}</Text></TouchableOpacity>)}
+        </ScrollView>
+
+        {activePlaceTab === 'media' && <View style={{ paddingHorizontal: 20, paddingTop: 22 }}>
+          <Text style={{ color: theme.text, fontSize: 20, fontWeight: '800', marginBottom: 10 }}>Stories</Text>{stories.length===0&&<Text style={{color:theme.textSecondary}}>No stories yet. Share a look at the food or atmosphere.</Text>}<TouchableOpacity accessibilityRole="button" onPress={()=>void openCanonicalPlaceAction('StoryUpload')} style={{paddingVertical:14}}><Text style={{color:theme.primary,fontWeight:'700'}}>{stories.length?'Add a story':'Add the first story'}</Text></TouchableOpacity>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {stories.slice(0, 8).map((story, i) => <TouchableOpacity key={story.id || i} onPress={() => setShowStoryViewer(true)} style={{ marginRight: 10, width: 138 }}>
+              <Image source={{ uri: story.thumbnail_url || story.media_url }} style={{ width: 138, height: 112, borderRadius: 12 }} />
+              <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 5 }}>{story.story_kind==='owner_highlight'?'From the restaurant':'Guest story'} · {reviewDateLabel(story.created_at)}</Text>
+            </TouchableOpacity>)}
+          </ScrollView>
+        </View>}
 
         {/* ===== RECENT REVIEWS (parity with web place page) ===== */}
-        {recentReviews.length > 0 && (
+        {activePlaceTab === 'overview' && recentReviews.length > 0 && (
           <View style={styles.sectionPadding}>
             <Text style={styles.recentReviewsTitle}>Recent Reviews</Text>
-            {recentReviews.map((review) => (
+            {recentReviews.slice(0, 2).map((review) => (
               <View key={review.reviewId} style={styles.recentReviewRow}>
                 <View style={styles.recentReviewAvatar}>
                   <Text style={styles.recentReviewInitial}>{review.initial}</Text>
@@ -1192,8 +1095,10 @@ function PlaceDetailScreen({ route, navigation }: any) {
                 <View style={styles.recentReviewBody}>
                   <View style={styles.recentReviewHeader}>
                     <Text style={styles.recentReviewName} numberOfLines={1}>{review.name}</Text>
-                    <Text style={styles.recentReviewWhen}>{review.when}</Text>
+                    <Text style={styles.recentReviewWhen}>{reviewDateLabel(review.createdAt,review.dateSource)}</Text>
                   </View>
+                  <ContentSafetyActions kind="place_review" contentId={review.reviewId} />
+                  {review.text&&<Text style={{color:theme.text,lineHeight:22,marginTop:7}}>{review.text}</Text>}
                   <View style={styles.recentReviewSignals}>
                     {review.signals.slice(0, 6).map((sig, i) => (
                       <View
@@ -1228,106 +1133,13 @@ function PlaceDetailScreen({ route, navigation }: any) {
             ))}
           </View>
         )}
-
-        {/* ===== 4. MENU PREVIEW CARD ===== */}
-        <View style={styles.sectionPadding}>
-          <View style={styles.menuCard}>
-            <View style={styles.menuCardHeader}>
-              <Text style={styles.menuCardTitle}>Menu</Text>
-              {photos.length > 0 && (
-                <Text style={styles.menuCardCount}>{photos.length} items</Text>
-              )}
-            </View>
-            {photos.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.menuThumbnailScroll}>
-                {photos.slice(0, 4).map((photo, idx) => (
-                  <View key={photo.id || idx} style={styles.menuThumb}>
-                    <Image source={{ uri: photo.url }} style={styles.menuThumbImg} />
-                  </View>
-                ))}
-              </ScrollView>
-            )}
-            <TouchableOpacity
-              style={styles.menuCTA}
-              onPress={() => navigation.navigate('MenuGallery' as any, { placeId: place.id, placeName: place.name })}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.menuCTAText}>View Full Menu →</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* ===== 5. FULL SIGNAL BREAKDOWN ===== */}
-        {showFullSignals && (
-          <View style={styles.sectionPadding}>
-            <View style={styles.breakdownCard}>
-              {/* The Good */}
-              <View style={styles.breakdownGroup}>
-                <View style={styles.breakdownHeader}>
-                  <View style={[styles.breakdownDot, { backgroundColor: '#00C2CB' }]} />
-                  <Text style={styles.breakdownTitle}>The Good</Text>
-                </View>
-                {signals.best_for?.length > 0 ? (
-                  signals.best_for.map((signal) => renderSignalBar(signal, '#00C2CB'))
-                ) : (
-                  <Text style={styles.emptySignalText}>Be the first to tap!</Text>
-                )}
-              </View>
-
-              <View style={styles.breakdownDivider} />
-
-              {/* The Vibe */}
-              <View style={styles.breakdownGroup}>
-                <View style={styles.breakdownHeader}>
-                  <View style={[styles.breakdownDot, { backgroundColor: '#8A05BE' }]} />
-                  <Text style={styles.breakdownTitle}>The Vibe</Text>
-                </View>
-                {signals.vibe?.length > 0 ? (
-                  signals.vibe.map((signal) => renderSignalBar(signal, '#8A05BE'))
-                ) : (
-                  <Text style={styles.emptySignalText}>Be the first to tap!</Text>
-                )}
-              </View>
-
-              <View style={styles.breakdownDivider} />
-
-              {/* Heads Up */}
-              <View style={styles.breakdownGroup}>
-                <View style={styles.breakdownHeader}>
-                  <View style={[styles.breakdownDot, { backgroundColor: '#F5A623' }]} />
-                  <Text style={styles.breakdownTitle}>Heads Up</Text>
-                </View>
-                {signals.heads_up?.length > 0 ? (
-                  signals.heads_up.map((signal) => renderSignalBar(signal, '#F5A623'))
-                ) : (
-                  <Text style={styles.emptySignalText}>Be the first to tap!</Text>
-                )}
-              </View>
-
-              {/* Add Signal CTA */}
-              <TouchableOpacity
-                style={[styles.addSignalBtn, { marginTop: 20 }]}
-                onPress={() => navigation.navigate('AddReview', { placeId: place.id, placeName: place.name, placeCategory: place.primaryCategory })}
-              >
-                <Text style={styles.addSignalBtnText}>✏️ Add Your Signal</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {!showFullSignals && (signals.best_for?.length > 0 || signals.vibe?.length > 0 || signals.heads_up?.length > 0) && (
-          <View style={styles.sectionPadding}>
-            <TouchableOpacity
-              style={styles.expandBtn}
-              onPress={() => setShowFullSignals(true)}
-            >
-              <Text style={styles.expandBtnText}>Show Full Signal Breakdown</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        {activePlaceTab === 'overview' && recentReviews.length === 0 && <Text style={{ marginHorizontal: 20, marginTop: 16, color: theme.textSecondary }}>{reviewsUnavailable?'Reviews could not be loaded. Please try again later.':'No reviews yet. Be the first to share what you experienced.'}</Text>}
+        {activePlaceTab === 'overview' && <TouchableOpacity onPress={() => { setHistoryPage(0); setHistoryOpen(true); }} style={{ marginHorizontal: 20, marginBottom: 12, padding: 13, borderRadius: 12, backgroundColor: theme.surface }}>
+          <Text style={{ color: '#067A80', textAlign: 'center', fontWeight: '700' }}>See all reviews →</Text>
+        </TouchableOpacity>}
 
         {/* ===== 6. PHOTOS GRID (2x2 with +X more) ===== */}
-        <View style={styles.sectionPadding}>
+        {activePlaceTab === 'media' && <View style={styles.sectionPadding}>
           <View style={styles.cardContainer}>
             <Text style={styles.cardTitle}>Photos</Text>
             {photos.length > 0 ? (
@@ -1348,31 +1160,19 @@ function PlaceDetailScreen({ route, navigation }: any) {
                 ))}
               </View>
             ) : (
-              <Text style={styles.noPhotosText}>No photos yet</Text>
+              <Text style={styles.noPhotosText}>{photosUnavailable ? 'Photos could not be loaded. Please try again later.' : 'No photos to show'}</Text>
             )}
             <TouchableOpacity style={styles.addPhotoButton} onPress={handleAddPhoto}>
               <Ionicons name="camera-outline" size={20} color="#8A05BE" />
               <Text style={[styles.addPhotoText, { color: '#8A05BE' }]}>Add a Photo</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </View>}
 
         {/* ===== 7. INFO SECTION (collapsed/expandable) ===== */}
-        <View style={styles.sectionPadding}>
+        {activePlaceTab === 'details' && <View style={styles.sectionPadding}>
           <View style={styles.cardContainer}>
-            <TouchableOpacity
-              style={styles.infoToggle}
-              onPress={() => setShowInfo(!showInfo)}
-            >
-              <Text style={styles.cardTitle}>Info & Contact</Text>
-              <Ionicons
-                name={showInfo ? 'chevron-up' : 'chevron-down'}
-                size={20}
-                color="#9CA3AF"
-              />
-            </TouchableOpacity>
-
-            {showInfo && (
+            <Text style={styles.cardTitle}>Visit & contact</Text>
               <View style={styles.infoContent}>
                 {fullAddress ? (
                   <TouchableOpacity
@@ -1404,54 +1204,36 @@ function PlaceDetailScreen({ route, navigation }: any) {
                   </TouchableOpacity>
                 ) : null}
 
-                {place.instagramUrl ? (
-                  <TouchableOpacity
-                    style={styles.contactItem}
-                    onPress={() => Linking.openURL(place.instagramUrl!)}
-                  >
-                    <Text style={styles.infoIcon}>📸</Text>
-                    <Text style={styles.infoLink}>Instagram</Text>
-                  </TouchableOpacity>
-                ) : null}
-
+                {confirmedLinks.map(link=><TouchableOpacity key={link.label} accessibilityRole="link" style={styles.contactItem} onPress={()=>Linking.openURL(link.url)}><Text style={styles.infoLink}>{link.label} ↗</Text></TouchableOpacity>)}
+                {ecardSlug&&<TouchableOpacity accessibilityRole="link" style={styles.contactItem} onPress={()=>Linking.openURL(`https://tavvy.com/${encodeURIComponent(ecardSlug)}`)}><Text style={styles.infoLink}>Restaurant eCard ↗</Text></TouchableOpacity>}
+                <Text style={[styles.cardTitle,{marginTop:20}]}>Hours</Text>
+                {parseHours(place.opening_hours).hoursList.map(row=><View key={row.day} style={{flexDirection:'row',justifyContent:'space-between',gap:12,paddingVertical:7}}><Text style={{color:theme.text}}>{row.day}</Text><Text style={{color:theme.textSecondary,flexShrink:1}}>{row.range}</Text></View>)}
                 <TouchableOpacity
                   style={styles.directionsBtn}
                   onPress={() => handleNavigate(place.latitude, place.longitude, place.name)}
                 >
                   <Text style={styles.directionsBtnText}>
-                    🚗 Get Directions{driveTime !== '< 1 min' ? ` (${driveTime})` : ''}
+                    Get directions
                   </Text>
                 </TouchableOpacity>
 
                 <View style={styles.claimDivider} />
                 <TouchableOpacity
                   style={styles.claimButton}
-                  onPress={() => navigation.navigate('ClaimBusiness', { placeId: place.id, placeName: place.name })}
+                  onPress={() => void openCanonicalPlaceAction('ClaimBusiness')}
                 >
-                  <Text style={styles.claimText}>🏢 Claim This Business</Text>
+                  <Text style={styles.claimText}>Manage or claim this place</Text>
                 </TouchableOpacity>
 
-                {/* Free eCard upsell with place context (parity with web /ecard?for=name) */}
-                <TouchableOpacity
-                  style={styles.claimButton}
-                  onPress={() =>
-                    navigation.navigate('Apps', {
-                      screen: 'ECardCreate',
-                      params: { prefillName: place.name },
-                    })
-                  }
-                >
-                  <Text style={styles.claimText}>💳 Get a Free eCard for {place.name}</Text>
-                </TouchableOpacity>
               </View>
-            )}
           </View>
-        </View>
+        </View>}
 
         {/* Bottom spacing */}
         <View style={{ height: 40 }} />
       </ScrollView>
 
+      <View style={{flexDirection:'row',gap:12,padding:14,borderTopWidth:1,borderColor:theme.border,backgroundColor:theme.background}}>{hasMenuTab&&<TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('MenuGallery',{placeId:place.id,placeName:place.name})} style={{flex:1,padding:14,borderRadius:14,borderWidth:1,borderColor:theme.border,alignItems:'center'}}><Text style={{color:theme.text,fontWeight:'700'}}>Tavvy Menu</Text></TouchableOpacity>}<TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('AddReview',{placeId:place.id,placeName:place.name,primaryCategory:place.primaryCategory,subcategory:place.subcategory})} style={{flex:1,padding:14,borderRadius:14,backgroundColor:'#00C2CB',alignItems:'center'}}><Text style={{color:'#07383A',fontWeight:'700'}}>Add a review</Text></TouchableOpacity></View>
       {/* Hours Modal */}
       <Modal
         visible={showHoursModal}
@@ -1467,47 +1249,25 @@ function PlaceDetailScreen({ route, navigation }: any) {
           <View style={[styles.modalContent, { padding: 0, overflow: 'hidden' }]}>
             {/* Header */}
             <View style={{ 
-              backgroundColor: '#f8f9fa', 
+              backgroundColor: theme.background, 
               padding: 20, 
               borderBottomWidth: 1, 
-              borderBottomColor: '#eee',
+              borderBottomColor: theme.border,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
               <Ionicons name="time-outline" size={24} color="#333" style={{ marginRight: 8 }} />
-              <Text style={{ fontSize: 20, fontWeight: '700', color: '#333' }}>Business Hours</Text>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: theme.text }}>Business Hours</Text>
             </View>
 
             {/* Content */}
             <View style={{ padding: 24 }}>
-              {place?.opening_hours ? (
-                Array.isArray(place.opening_hours) ? (
-                  place.opening_hours.map((item: any, index: number) => (
-                    <View key={index} style={styles.hoursBlock}>
-                      <Text style={styles.dayText}>{item.days || item.day}</Text>
-                      <Text style={styles.timeText}>{item.hours || item.time}</Text>
-                    </View>
-                  ))
-                ) : (
-                  // Fallback for object format or other structures
-                  Object.entries(place.opening_hours).map(([day, hours]: [string, any], index) => (
-                    <View key={index} style={styles.hoursBlock}>
-                      <Text style={[styles.dayText, { textTransform: 'capitalize' }]}>{day.replace(/_/g, ' ')}</Text>
-                      <Text style={styles.timeText}>{String(hours)}</Text>
-                    </View>
-                  ))
-                )
-              ) : (
-                <View style={styles.hoursBlock}>
-                  <Text style={styles.dayText}>Hours not available</Text>
-                  <Text style={styles.timeText}>Check with business</Text>
-                </View>
-              )}
+              {parseHours(place.opening_hours).hoursList.map(row=><View key={row.day} style={styles.hoursBlock}><Text style={styles.dayText}>{row.day}</Text><Text style={styles.timeText}>{row.range}</Text></View>)}
             </View>
 
             {/* Footer */}
-            <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: '#eee' }}>
+            <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: theme.border }}>
               <TouchableOpacity 
                 style={{
                   backgroundColor: '#007AFF',
@@ -1672,15 +1432,29 @@ function PlaceDetailScreen({ route, navigation }: any) {
       </Modal>
 
       {/* Review Report Modal (Apple Compliance) */}
-      <ReviewReportModal
-        visible={showReportModal}
-        onClose={() => {
-          setShowReportModal(false);
-          setReportingSignalId(null);
-        }}
-        reviewId={reportingSignalId || ''}
-        placeId={placeId || ''}
-      />
+      <Modal visible={historyOpen} animationType="slide" onRequestClose={() => setHistoryOpen(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+          <TouchableOpacity onPress={() => setHistoryOpen(false)} style={{ padding: 20 }}><Text style={{ color: theme.primary, fontSize: 16 }}>← Back to place</Text></TouchableOpacity>
+          <ScrollView contentContainerStyle={{ padding: 20 }}>
+            <Text style={{ color: theme.text, fontSize: 25, fontWeight: '800' }}>Review history</Text>
+            <Text style={{ color: theme.textSecondary, marginTop: 8, marginBottom: 16 }}>Older experiences stay dated here. Edits are labeled and do not count as additional guests.</Text>
+            {historyError ? <Text style={{ color: '#F5A623' }}>{historyError}</Text> : null}
+            {historyLoading&&<Text style={{color:theme.textSecondary}}>Loading reviews…</Text>}{!historyLoading&&!historyError&&historyRows.length===0&&<Text style={{color:theme.textSecondary}}>No reviews yet.</Text>}
+            {historyRows.map(review => <View key={review.historyEntryId||review.reviewId} style={{ paddingVertical: 16, borderTopWidth: 1, borderTopColor: theme.border }}>
+              <Text style={{ color: theme.text, fontWeight: '700' }}>{review.name} · {reviewDateLabel(review.createdAt,review.dateSource)}</Text>
+              <ContentSafetyActions kind="place_review" contentId={review.reviewId} onSignIn={()=>{setHistoryOpen(false);navigation.navigate('Login' as never)}}/>
+              {review.note ? <Text style={{ color: theme.text, marginTop: 7 }}>{review.note}</Text> : null}
+              <Text style={{ color: theme.textSecondary, marginTop: 7 }}>{review.signals.map(s => s.label).join(' · ')}</Text>
+            </View>)}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }}>
+              <TouchableOpacity disabled={historyPage === 0} onPress={() => setHistoryPage(historyPage - 1)}><Text style={{ color: historyPage === 0 ? '#666' : '#00C2CB' }}>Previous</Text></TouchableOpacity>
+              <Text style={{ color: theme.text }}>{historyPage + 1} · {historyTotal} entries</Text>
+              <TouchableOpacity disabled={(historyPage + 1) * 20 >= historyTotal} onPress={() => setHistoryPage(historyPage + 1)}><Text style={{ color: (historyPage + 1) * 20 >= historyTotal ? '#666' : '#00C2CB' }}>Next</Text></TouchableOpacity>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
 
       {/* Story Viewer Modal */}
       <StoryViewer
@@ -1698,17 +1472,17 @@ function PlaceDetailScreen({ route, navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: ReturnType<typeof useThemeContext>['theme'],isDark:boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.background,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.background,
   },
   scrollView: {
     flex: 1,
@@ -1716,12 +1490,12 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#666',
+    color: theme.textSecondary,
   },
   errorText: {
     marginTop: 16,
     fontSize: 18,
-    color: '#333',
+    color: theme.text,
     textAlign: 'center',
   },
   errorButton: {
@@ -1859,8 +1633,8 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#fff',
+    borderColor: theme.border,
+    backgroundColor: theme.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1872,7 +1646,7 @@ const styles = StyleSheet.create({
   signalSummarySection: {
     padding: 24,
     paddingHorizontal: 20,
-    backgroundColor: '#fff',
+    backgroundColor: theme.background,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.04)',
   },
@@ -1988,7 +1762,7 @@ const styles = StyleSheet.create({
   },
   noSignalsText: {
     fontSize: 15,
-    color: '#9CA3AF',
+    color: theme.textSecondary,
     marginBottom: 16,
   },
   addSignalBtn: {
@@ -2013,7 +1787,7 @@ const styles = StyleSheet.create({
   recentReviewsTitle: {
     fontSize: 19,
     fontWeight: '800',
-    color: '#1F2937',
+    color: theme.text,
     marginBottom: 12,
     letterSpacing: -0.2,
   },
@@ -2049,12 +1823,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '700',
-    color: '#1F2937',
+    color: theme.text,
     marginRight: 8,
   },
   recentReviewWhen: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: theme.textSecondary,
     fontWeight: '600',
   },
   recentReviewSignals: {
@@ -2094,7 +1868,7 @@ const styles = StyleSheet.create({
     color: '#9A6600',
   },
   menuCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.background,
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',
@@ -2112,11 +1886,11 @@ const styles = StyleSheet.create({
   menuCardTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1F2937',
+    color: theme.text,
   },
   menuCardCount: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: theme.textSecondary,
     fontWeight: '500',
   },
   menuThumbnailScroll: {
@@ -2148,7 +1922,7 @@ const styles = StyleSheet.create({
 
   // ===== 5. FULL SIGNAL BREAKDOWN =====
   breakdownCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.background,
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',
@@ -2174,7 +1948,7 @@ const styles = StyleSheet.create({
   breakdownTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1F2937',
+    color: theme.text,
   },
   breakdownDivider: {
     height: 1,
@@ -2185,7 +1959,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: 'italic',
     opacity: 0.5,
-    color: '#6B7280',
+    color: theme.textSecondary,
     paddingLeft: 16,
     marginBottom: 14,
   },
@@ -2194,19 +1968,19 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#fff',
+    borderColor: theme.border,
+    backgroundColor: theme.background,
     alignItems: 'center',
   },
   expandBtnText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1F2937',
+    color: theme.text,
   },
 
   // ===== 6. PHOTOS GRID =====
   cardContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.background,
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',
@@ -2218,7 +1992,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1F2937',
+    color: theme.text,
     marginBottom: 16,
   },
   photoGrid: {
@@ -2251,7 +2025,7 @@ const styles = StyleSheet.create({
   },
   noPhotosText: {
     fontSize: 15,
-    color: '#9CA3AF',
+    color: theme.textSecondary,
     fontStyle: 'italic',
     marginBottom: 16,
   },
@@ -2300,7 +2074,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: theme.border,
     backgroundColor: '#F9FAFB',
     alignItems: 'center',
     marginTop: 8,
@@ -2308,7 +2082,7 @@ const styles = StyleSheet.create({
   directionsBtnText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1F2937',
+    color: theme.text,
   },
   claimDivider: {
     height: 1,
@@ -2321,7 +2095,7 @@ const styles = StyleSheet.create({
   claimText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: theme.textSecondary,
   },
 
   // ===== SIGNALS & MEDALS (renderSignalBar helper) =====
@@ -2348,10 +2122,10 @@ const styles = StyleSheet.create({
   signalLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#374151',
+    color: theme.text,
   },
   ghostText: {
-    color: '#9CA3AF',
+    color: theme.textSecondary,
     fontStyle: 'italic',
   },
   signalScore: {
@@ -2360,7 +2134,7 @@ const styles = StyleSheet.create({
   },
   progressBarBg: {
     height: 6,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: theme.surface,
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -2370,7 +2144,7 @@ const styles = StyleSheet.create({
   },
   ghostNote: {
     fontSize: 10,
-    color: '#9CA3AF',
+    color: theme.textSecondary,
     marginTop: 2,
     fontStyle: 'italic',
   },
@@ -2383,7 +2157,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: theme.background,
     padding: 12,
     borderRadius: 12,
   },
@@ -2394,7 +2168,7 @@ const styles = StyleSheet.create({
   entranceName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#333',
+    color: theme.text,
     marginBottom: 4,
   },
   entranceNamePrimary: {
@@ -2402,7 +2176,7 @@ const styles = StyleSheet.create({
   },
   entranceDetail: {
     fontSize: 13,
-    color: '#666',
+    color: theme.textSecondary,
     marginBottom: 2,
   },
   warningBadge: {
@@ -2460,7 +2234,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '80%',
-    backgroundColor: '#fff',
+    backgroundColor: theme.background,
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
@@ -2476,13 +2250,13 @@ const styles = StyleSheet.create({
   },
   dayText: {
     fontSize: 18,
-    color: '#333',
+    color: theme.text,
     fontWeight: '700',
     marginBottom: 4,
   },
   timeText: {
     fontSize: 16,
-    color: '#666',
+    color: theme.textSecondary,
     fontWeight: '500',
   },
   closeButton: {
@@ -2508,7 +2282,7 @@ const styles = StyleSheet.create({
   },
   navOptionText: {
     fontSize: 18,
-    color: '#333',
+    color: theme.text,
     marginLeft: 16,
     fontWeight: '500',
   },
@@ -2518,7 +2292,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   fullScreenModalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.background,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: '80%',
@@ -2541,18 +2315,18 @@ const styles = StyleSheet.create({
   },
   addressPopupContent: {
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: theme.background,
   },
   addressPopupText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: theme.text,
     marginBottom: 20,
     textAlign: 'center',
   },
   navigateLabel: {
     fontSize: 14,
-    color: '#666',
+    color: theme.textSecondary,
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -2579,7 +2353,7 @@ const styles = StyleSheet.create({
   },
   navCircleText: {
     fontSize: 12,
-    color: '#333',
+    color: theme.text,
     fontWeight: '500',
   },
 

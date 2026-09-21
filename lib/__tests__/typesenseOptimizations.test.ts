@@ -5,7 +5,7 @@
  */
 
 import { searchPlaces } from '../typesenseService';
-import { configureSynonyms } from '../typesenseSynonyms';
+import { configureSynonyms, clearSynonyms } from '../typesenseSynonyms';
 
 describe('Typesense Optimizations', () => {
 
@@ -65,10 +65,9 @@ describe('Typesense Optimizations', () => {
   });
 
   describe('Optimization #5: Synonyms', () => {
-    it('should configure synonyms successfully', async () => {
-      // This test uploads synonyms to Typesense
-      // Run this once to configure synonyms
-      await expect(configureSynonyms()).resolves.not.toThrow();
+    it('rejects administrative operations from the mobile app', async () => {
+      await expect(configureSynonyms()).rejects.toThrow('unavailable in the mobile app');
+      await expect(clearSynonyms()).rejects.toThrow('unavailable in the mobile app');
     });
     
     it('should find results using synonyms', async () => {
@@ -154,13 +153,7 @@ describe('Typesense Optimizations', () => {
     });
   });
 
-  describe('Optimization #10: Environment Variables', () => {
-    it('should load configuration from environment', () => {
-      // Verify environment variables are being used
-      expect(process.env.EXPO_PUBLIC_TYPESENSE_HOST || 'tavvy-typesense-production.up.railway.app').toBeTruthy();
-      expect(process.env.EXPO_PUBLIC_TYPESENSE_API_KEY || '231eb42383d0a3a2832f47ec44b817e33692211d9cf2d158f49e5c3e608e6277').toBeTruthy();
-    });
-  });
+
 });
 
 /**

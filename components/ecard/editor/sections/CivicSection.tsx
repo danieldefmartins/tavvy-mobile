@@ -30,7 +30,7 @@ export default function CivicSection({ isDark }: CivicSectionProps) {
       id="civic"
       title="Civic & Campaign"
       icon="flag"
-      defaultOpen={true}
+      defaultOpen={false}
       isDark={isDark}
     >
       <EditorField

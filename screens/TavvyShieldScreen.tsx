@@ -25,8 +25,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { useTheme } from '../contexts/ThemeContext';
-import { ProsColors } from '../constants/Colors';
+import { useThemeContext as useTheme } from '../contexts/ThemeContext';
+import { ProsColors } from '../constants/ProsConfig';
 import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');

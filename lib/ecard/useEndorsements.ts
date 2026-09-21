@@ -1,21 +1,3 @@
-import { useState, useEffect } from 'react';
-
-export const useEndorsements = () => {
-  const [endorsements, setEndorsements] = useState([]);
-
-  useEffect(() => {
-    // Simulate fetching endorsements from an API or service
-    const fetchEndorsements = async () => {
-      // Replace with actual API call
-      const mockEndorsements = [
-        { message: 'Great service!', endorserName: 'Alice' },
-        { message: 'Highly recommend!', endorserName: 'Bob' },
-      ];
-      setEndorsements(mockEndorsements);
-    };
-
-    fetchEndorsements();
-  }, []);
-
-  return endorsements;
-};
+export interface Endorsement { message: string; endorserName: string }
+// No sample testimonials: show an empty state until a card-scoped data source is connected.
+export const useEndorsements = (): Endorsement[] => [];

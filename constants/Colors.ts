@@ -3,6 +3,7 @@
 // Updated May 2026 — New brand identity (#8A05BE purple + #00C2CB teal)
 
 import { useColorScheme } from 'react-native';
+import design from '../config/design.json';
 
 // ===== BRAND PALETTE =====
 const brand = {
@@ -16,9 +17,9 @@ const brand = {
   lavender: '#F4F0FF',          // Light mode backgrounds, card surfaces
 
   // Text on dark backgrounds
-  textPrimary: '#F1F5F9',       // Soft white (not pure white)
-  textSecondary: '#9394A1',     // Muted gray
-  textMuted: '#6B6B80',         // Tertiary text
+  textPrimary: design.dark.text,       // Soft white (not pure white)
+  textSecondary: design.dark.textSecondary,     // Muted gray
+  textMuted: design.dark.textTertiary,         // Tertiary text
 };
 
 // ===== CORE PALETTE =====
@@ -82,9 +83,9 @@ const palette = {
   gray900: '#17013A',              // Brand dark
 
   // Dark Mode Specific (TavvY Purple-Dark scale)
-  darkBackground: '#000000',       // Pure black (iOS standard)
-  darkSurface: '#1E0A3C',         // Elevated surface (purple-tinted)
-  darkSurfaceElevated: '#250E45', // More elevated
+  darkBackground: design.dark.background,       // Pure black (iOS standard)
+  darkSurface: design.dark.surface,         // Elevated surface (purple-tinted)
+  darkSurfaceElevated: design.dark.surfaceElevated, // More elevated
   darkSeparator: 'rgba(255, 255, 255, 0.08)',
 };
 
@@ -112,7 +113,7 @@ export const darkTheme = {
   secondaryLight: 'rgba(0, 194, 203, 0.2)',
 
   // Tab Bar
-  tabBarBackground: 'rgba(0, 0, 0, 0.95)',
+  tabBarBackground: design.dark.surface,
   tabBarActive: palette.white,
   tabBarInactive: brand.textSecondary,
 
@@ -179,14 +180,14 @@ export const darkTheme = {
 // ===== LIGHT THEME =====
 export const lightTheme = {
   // Backgrounds
-  background: palette.white,
-  surface: palette.gray50,
-  surfaceElevated: palette.white,
+  background: design.light.background,
+  surface: design.light.surface,
+  surfaceElevated: design.light.surfaceElevated,
 
   // Text
-  text: palette.gray900,
-  textSecondary: palette.gray500,
-  textTertiary: palette.gray400,
+  text: design.light.text,
+  textSecondary: design.light.textSecondary,
+  textTertiary: design.light.textTertiary,
   textInverse: palette.white,
 
   // Borders & Separators

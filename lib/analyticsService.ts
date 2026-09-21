@@ -587,7 +587,7 @@ export async function getTopHappeningPlaces(
 
     return (data || []).map(d => ({
       placeId: d.place_id,
-      placeName: d.place?.name || 'Unknown',
+      placeName: (Array.isArray(d.place) ? d.place[0]?.name : (d.place as { name?: string } | null)?.name) || 'Unknown',
       score: d.score,
     }));
   } catch (error) {

@@ -4,6 +4,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { ProsColors } from '../constants/ProsConfig';
+import { supabase } from '../lib/supabaseClient';
 import { useTranslation } from 'react-i18next';
 
 type RouteParams = { leadId: string; customerName: string; service: string; timeline: string; budget: string; description: string };
@@ -12,7 +13,7 @@ export default function ProsBidScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
-  const { leadId, customerName, service, timeline, budget, description } = route.params || { leadId: '1', customerName: 'Customer', service: 'Service', timeline: 'Flexible', budget: 'Not specified', description: '' };
+  const { leadId, customerName, service, timeline, budget, description } = route.params || { leadId: '', customerName: 'Customer', service: 'Service', timeline: 'Flexible', budget: 'Not specified', description: '' };
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [message, setMessage] = useState('');
@@ -21,13 +22,26 @@ export default function ProsBidScreen() {
   const handleBack = () => navigation.goBack();
 
   const handleSubmit = async () => {
-    if (!minPrice || !maxPrice) { Alert.alert('Missing Information', 'Please enter your price range.'); return; }
+    if (isSubmitting) return;
+    const minimum = Number(minPrice), maximum = Number(maxPrice);
+    if (!leadId || !minPrice.trim() || !maxPrice.trim() || !Number.isFinite(minimum) || !Number.isFinite(maximum) || minimum <= 0 || maximum < minimum || Math.round(maximum * 100) > 2147483647 || !message.trim()) { Alert.alert('Check your bid', 'Enter a positive price range and a message. The maximum must be at least the minimum.'); return; }
     setIsSubmitting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      Alert.alert('Success!', 'Your bid has been submitted. The customer will be notified.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!auth.user) throw new Error('Sign in to submit a quote.');
+      const { data: provider, error: providerError } = await supabase.from('pro_providers').select('id').eq('user_id', auth.user.id).single();
+      if (providerError) throw providerError;
+      const { error } = await supabase.from('pro_request_matches').update({
+        pro_status: 'quoted', quote_amount_cents: Math.round(maximum * 100),
+        quote_description: `Estimate: $${minimum.toFixed(2)}–$${maximum.toFixed(2)}\n${message.trim()}`,
+        pro_responded_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+        quote_valid_until: new Date(Date.now() + 7 * 86400000).toISOString(),
+      }).eq('request_id', leadId).eq('pro_id', provider.id).select('id').single();
+      if (error) throw error;
+      Alert.alert('Quote saved', 'Your quote has been saved to this project request.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
     } catch (error) {
-      Alert.alert('Error', 'Failed to submit bid. Please try again.');
+      Alert.alert('Unable to save quote', error instanceof Error ? error.message : 'Please try again.');
     } finally {
       setIsSubmitting(false);
     }

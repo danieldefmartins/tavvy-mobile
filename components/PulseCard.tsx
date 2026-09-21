@@ -5,13 +5,11 @@ import Animated, {
   useAnimatedStyle, 
   withSpring, 
   withSequence,
-  withTiming,
-  interpolateColor,
-  useDerivedValue
+  useReducedMotion
 } from 'react-native-reanimated';
 // Haptics removed temporarily to prevent crash
 // import * as Haptics from 'expo-haptics';
-import { Colors } from '../constants/Colors';
+
 
 interface PulseCardProps {
   label: string;
@@ -20,6 +18,7 @@ interface PulseCardProps {
   onTap: () => void;
   theme: 'positive' | 'vibe' | 'negative';
   disabled?: boolean;
+  isDark?: boolean;
 }
 
 export default function PulseCard({ 
@@ -28,37 +27,33 @@ export default function PulseCard({
   intensity, 
   onTap, 
   theme,
-  disabled = false 
+  disabled = false,
+  isDark = false 
 }: PulseCardProps) {
   
+  const reduceMotion = useReducedMotion();
   // Animation Values
   const scale = useSharedValue(1);
-  const progress = useDerivedValue(() => {
-    return withTiming(intensity > 0 ? 1 : 0, { duration: 300 });
-  }, [intensity]);
+
 
   // Theme Colors
-  const themeColors = Colors[theme];
+  const palette = {
+    positive: { primary: '#00C2CB', selectedText: '#17013A', title: 'The Good' },
+    vibe: { primary: '#8A05BE', selectedText: '#FFFFFF', title: 'The Vibe' },
+    negative: { primary: '#F5A623', selectedText: '#17013A', title: 'Heads Up' },
+  };
+  const themeColors = palette[theme];
+  const baseColor = isDark ? '#252532' : '#F2F0F7';
+  const baseText = isDark ? '#FFFFFF' : '#17013A';
   
   // Dynamic Styles
   const animatedStyle = useAnimatedStyle(() => {
-    const backgroundColor = interpolateColor(
-      progress.value,
-      [0, 1],
-      ['#F3F4F6', themeColors.light]
-    );
-
-    const borderColor = interpolateColor(
-      progress.value,
-      [0, 1],
-      ['transparent', themeColors.primary]
-    );
 
     return {
       transform: [{ scale: scale.value }],
-      backgroundColor,
-      borderColor,
-      borderWidth: intensity > 0 ? 2 : 0,
+      backgroundColor: intensity > 0 ? themeColors.primary : baseColor,
+      borderColor: intensity > 0 ? themeColors.primary : isDark ? '#777184' : '#82788F',
+      borderWidth: 2,
     };
   });
 
@@ -66,7 +61,7 @@ export default function PulseCard({
     if (disabled && intensity === 0) return;
 
     // Animation: Bounce Effect
-    scale.value = withSequence(
+    if (!reduceMotion) scale.value = withSequence(
       withSpring(0.95),
       withSpring(1.05),
       withSpring(1)
@@ -78,14 +73,9 @@ export default function PulseCard({
   const getIndicator = () => {
     if (intensity === 0) return null;
     
-    const symbol = theme === 'negative' ? '😢' : '🔥';
-    const count = intensity; // 1, 2, or 3
-    
     return (
-      <View style={styles.indicatorContainer}>
-        <Text style={styles.indicatorText}>
-          {Array(count).fill(symbol).join('')}
-        </Text>
+      <View style={styles.indicatorContainer} accessible={false}>
+        <Text style={[styles.indicatorText, { color: themeColors.selectedText }]}>{intensity} / 3 taps</Text>
       </View>
     );
   };
@@ -94,13 +84,17 @@ export default function PulseCard({
     <Animated.View style={[styles.container, animatedStyle]}>
       <TouchableOpacity
         style={styles.touchable}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}, ${themeColors.title}, ${intensity} of 3 taps`}
+        accessibilityState={{ selected: intensity > 0, disabled: disabled && intensity === 0 }}
+        accessibilityHint={intensity === 3 ? 'Tap to remove this signal.' : 'Tap to increase the intensity.'}
         onPress={handlePress}
         activeOpacity={0.9}
         disabled={disabled && intensity === 0}
       >
         {intensity > 0 && (
-          <View style={[styles.checkmark, { backgroundColor: themeColors.primary }]}>
-            <Text style={styles.checkmarkText}>✓</Text>
+          <View style={[styles.checkmark, { backgroundColor: themeColors.selectedText }]}>
+            <Text style={[styles.checkmarkText, { color: themeColors.primary }]}>✓</Text>
           </View>
         )}
 
@@ -108,7 +102,7 @@ export default function PulseCard({
         
         <Text style={[
           styles.label, 
-          intensity > 0 && { color: themeColors.text, fontWeight: '700' }
+          { color: intensity > 0 ? themeColors.selectedText : baseText, fontWeight: intensity > 0 ? '700' : '600' }
         ]}>
           {label}
         </Text>
@@ -122,7 +116,7 @@ export default function PulseCard({
 const styles = StyleSheet.create({
   container: {
     width: '48%',
-    aspectRatio: 1,
+    minHeight: 170,
     borderRadius: 20,
     marginBottom: 16,
     overflow: 'hidden',
@@ -141,10 +135,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 12,
+    paddingTop: 32,
+    paddingBottom: 36,
   },
   icon: {
-    fontSize: 40,
-    marginBottom: 12,
+    fontSize: 32,
+    marginBottom: 8,
   },
   label: {
     fontSize: 15,
@@ -173,7 +169,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   indicatorText: {
-    fontSize: 16,
-    letterSpacing: 2,
+    fontSize: 12,
+    fontWeight: '700',
   }
 });

@@ -3,12 +3,15 @@
  * debounces for 2 seconds, then uploads pending files and saves card + links.
  *
  * React Native port:
- * - Uploads via supabase.storage with { uri, type, name } (FormData-compatible on RN)
+ * - Uploads native file bytes to supabase.storage as ArrayBuffer
  * - Filters out file:// URIs before saving to DB
  * - Queries digital_cards / digital_card_links directly
  */
 
 import { useEffect, useRef, useCallback } from 'react';
+import * as FileSystem from 'expo-file-system';
+import { decode } from 'base64-arraybuffer';
+import { ecardLinkSavePayload } from './savePayload';
 import { useEditor } from './EditorContext';
 import { supabase } from '../../lib/supabaseClient';
 import { getTemplateById } from '../../config/eCardTemplates';
@@ -26,7 +29,8 @@ interface UseAutoSaveReturn {
   isSaving: boolean;
   isDirty: boolean;
   lastSaved: Date | null;
-  saveNow: () => void;
+  saveError: string | null;
+  saveNow: () => Promise<boolean>;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -34,7 +38,7 @@ interface UseAutoSaveReturn {
 /** Returns true if the URL is a local file path (not yet uploaded). */
 function isLocalUri(url: string | undefined | null): boolean {
   if (!url) return false;
-  return url.startsWith('file://') || url.startsWith('content://');
+  return url.startsWith('file://') || url.startsWith('content://') || url.startsWith('blob:');
 }
 
 /** Strip local URIs -- never persist file:// or content:// paths to DB. */
@@ -51,8 +55,7 @@ function filenameFromUri(uri: string): string {
 }
 
 /**
- * Upload a file to Supabase Storage using the React Native-compatible
- * FormData approach (supabase-js accepts { uri, type, name } on RN).
+ * Read native file bytes; URI objects and Blob bodies are not reliable in React Native.
  */
 async function uploadFile(
   userId: string,
@@ -63,16 +66,8 @@ async function uploadFile(
   const storagePath = `${userId}/${folder}/${Date.now()}_${filename}`;
   const mimeType = upload.type || 'image/jpeg';
 
-  const { data, error } = await supabase.storage
-    .from('ecard-assets')
-    .upload(storagePath, {
-      uri: upload.uri,
-      type: mimeType,
-      name: filename,
-    } as any, {
-      contentType: mimeType,
-      upsert: true,
-    });
+  const bytes = decode(await FileSystem.readAsStringAsync(upload.uri, { encoding: FileSystem.EncodingType.Base64 }));
+  const { data, error } = await supabase.storage.from('ecard-assets').upload(storagePath, bytes, { contentType: mimeType, upsert: false });
 
   if (error) {
     console.error(`[useAutoSave] Upload failed (${folder}):`, error.message);
@@ -96,6 +91,14 @@ export function useAutoSave({
   const { state, dispatch } = useEditor();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
+  const inFlightRef = useRef(false);
+  const latestState = useRef(state);
+  latestState.current = state;
+  const badgeFields = ['show_licensed_badge', 'show_insured_badge', 'show_bonded_badge', 'show_tavvy_verified_badge'] as const;
+  const savedBadges = useRef<{ cardId: string; values: Record<string, boolean> } | null>(null);
+  if (state.card?.id && savedBadges.current?.cardId !== state.card.id) {
+    savedBadges.current = { cardId: state.card.id, values: Object.fromEntries(badgeFields.map(key => [key, !!state.card?.[key]])) };
+  }
 
   // Cleanup on unmount
   useEffect(() => {
@@ -110,11 +113,13 @@ export function useAutoSave({
 
   const performSave = useCallback(async () => {
     const { card, links, pendingUploads } = state;
-    if (!card?.id || !userId) return;
+    if (inFlightRef.current) return false;
+    if (!card?.id || !userId) return false;
 
     // Validate template access -- premium templates require pro subscription
     const tpl = getTemplateById(card.template_id || 'basic');
-    if (tpl?.isPremium && !isPro) return;
+    if (tpl?.isPremium && !isPro) { dispatch({ type: 'MARK_SAVE_ERROR', error: 'This template requires an active Pro subscription.' }); return false; }
+    inFlightRef.current = true;
 
     dispatch({ type: 'MARK_SAVING' });
 
@@ -125,35 +130,43 @@ export function useAutoSave({
       const profileUpload = pendingUploads.get('profile_photo');
       if (profileUpload) {
         const uploaded = await uploadFile(userId, profileUpload, 'profile');
-        if (uploaded) photoUrl = uploaded;
+        if (!uploaded) throw new Error('Image upload failed. Your changes remain unsaved.');
+        photoUrl = uploaded;
       }
 
       let bannerUrl = card.banner_image_url;
       const bannerUpload = pendingUploads.get('banner_image');
       if (bannerUpload) {
         const uploaded = await uploadFile(userId, bannerUpload, 'banner');
-        if (uploaded) bannerUrl = uploaded;
+        if (!uploaded) throw new Error('Image upload failed. Your changes remain unsaved.');
+        bannerUrl = uploaded;
       }
 
       let logoUrl = card.company_logo_url;
       const logoUpload = pendingUploads.get('logo');
       if (logoUpload) {
         const uploaded = await uploadFile(userId, logoUpload, 'logo');
-        if (uploaded) logoUrl = uploaded;
+        if (!uploaded) throw new Error('Image upload failed. Your changes remain unsaved.');
+        logoUrl = uploaded;
       }
 
       // Upload gallery images
-      const galleryImages: { id: string; url: string; caption: string }[] = [];
+      const galleryImages: Record<string, any>[] = [];
       for (const img of card.gallery_images || []) {
         const pendingKey = `gallery_${img.id}`;
         const galleryUpload = pendingUploads.get(pendingKey);
         if (galleryUpload) {
           const url = await uploadFile(userId, galleryUpload, 'gallery');
-          if (url) galleryImages.push({ id: img.id, url, caption: img.caption || '' });
-        } else if (img.url && !isLocalUri(img.url)) {
-          galleryImages.push({ id: img.id, url: img.url, caption: img.caption || '' });
+          if (!url) throw new Error('Gallery upload failed. Your changes remain unsaved.');
+          const persisted = { ...img, url, caption: img.caption || '' } as Record<string, any>;
+          if (isLocalUri(persisted.uri)) delete persisted.uri;
+          galleryImages.push(persisted);
+        } else {
+          if (isLocalUri(img.url) || isLocalUri((img as any).uri)) throw new Error('A gallery photo is not uploaded. Add it again before saving; your changes are still here.');
+          galleryImages.push({ ...img });
         }
       }
+      if ([photoUrl, bannerUrl, logoUrl, card.background_image_url].some(isLocalUri)) throw new Error('A photo is not uploaded. Add it again before saving; your changes are still here.');
 
       // 2. Build update payload -- never save local URIs ──────────────────
 
@@ -162,6 +175,10 @@ export function useAutoSave({
         title: card.title || null,
         company: card.company || null,
         bio: card.bio || null,
+        pronouns: card.pronouns || null,
+        business_type: card.business_type || null,
+        description: card.description || null,
+        background_type: card.background_type || 'gradient',
         email: card.email || null,
         phone: card.phone || null,
         website: card.website || null,
@@ -210,14 +227,8 @@ export function useAutoSave({
         region: card.region || null,
       };
 
-      // Auto-set badge approval status to pending when any badge is toggled on
-      const anyBadgeOn = !!(
-        updatePayload.show_licensed_badge ||
-        updatePayload.show_insured_badge ||
-        updatePayload.show_bonded_badge ||
-        updatePayload.show_tavvy_verified_badge
-      );
-      if (anyBadgeOn) {
+      // Unrelated edits must not reset an already approved badge request.
+      if (badgeFields.some(key => updatePayload[key] && !savedBadges.current?.values[key])) {
         updatePayload.badge_approval_status = 'pending';
       }
 
@@ -226,62 +237,35 @@ export function useAutoSave({
       const { error: cardError } = await supabase
         .from('digital_cards')
         .update(updatePayload)
-        .eq('id', card.id);
+        .eq('id', card.id).eq('user_id', userId).select('id').single();
 
       if (cardError) {
         throw new Error(`Card save failed: ${cardError.message}`);
       }
+      savedBadges.current = { cardId: card.id, values: Object.fromEntries(badgeFields.map(key => [key, !!updatePayload[key]])) };
 
-      // 4. Save links (delete + re-insert) ────────────────────────────────
-
-      const { error: deleteError } = await supabase
-        .from('digital_card_links')
-        .delete()
-        .eq('card_id', card.id);
-
-      if (deleteError) {
-        console.warn('[useAutoSave] Links delete warning:', deleteError.message);
-      }
-
-      if (links.length > 0) {
-        const linkRows = links.map((link, idx) => ({
-          card_id: card.id,
-          platform: link.platform || 'other',
-          title: link.title || null,
-          url: link.url,
-          icon: link.icon || link.platform || 'other',
-          sort_order: idx,
-          is_active: link.is_active !== false,
-          clicks: link.clicks || 0,
-        }));
-
-        const { error: insertError } = await supabase
-          .from('digital_card_links')
-          .insert(linkRows);
-
-        if (insertError) {
-          throw new Error(`Links save failed: ${insertError.message}`);
-        }
-      }
+      const { error: linksError } = await supabase.rpc('replace_ecard_links', { p_card_id: card.id, p_links: ecardLinkSavePayload(links) });
+      if (linksError) throw new Error('Links could not be saved. Retry before publishing.');
 
       // 5. Done ───────────────────────────────────────────────────────────
 
       if (isMountedRef.current) {
-        dispatch({ type: 'CLEAR_ALL_PENDING_UPLOADS' });
-        dispatch({ type: 'MARK_SAVED' });
+        dispatch({ type: 'SAVE_COMPLETED', snapshot: { card, links, pendingUploads }, persisted: updatePayload });
       }
+      return latestState.current.card === card && latestState.current.links === links && latestState.current.pendingUploads === pendingUploads;
     } catch (err) {
       console.error('[useAutoSave] Save failed:', err);
       if (isMountedRef.current) {
-        dispatch({ type: 'MARK_SAVE_ERROR' });
+        dispatch({ type: 'MARK_SAVE_ERROR', error: err instanceof Error ? err.message : 'Save failed. Retry to save your changes.' });
       }
-    }
+      return false;
+    } finally { inFlightRef.current = false; }
   }, [state, userId, isPro, dispatch]);
 
   // ── Auto-save on dirty state changes ───────────────────────────────────
 
   useEffect(() => {
-    if (!state.isDirty || state.isSaving || !state.card?.id) return;
+    if (!state.isDirty || state.isSaving || state.saveError || !state.card?.id) return;
 
     if (timerRef.current) clearTimeout(timerRef.current);
 
@@ -298,13 +282,14 @@ export function useAutoSave({
 
   const saveNow = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    performSave();
+    return performSave();
   }, [performSave]);
 
   return {
     isSaving: state.isSaving,
     isDirty: state.isDirty,
     lastSaved: state.lastSaved,
+    saveError: state.saveError,
     saveNow,
   };
 }

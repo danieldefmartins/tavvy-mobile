@@ -20,7 +20,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Category definitions with icons
 // Comprehensive set covering food, entertainment, services, and lifestyle
-const CATEGORY_ICONS = [
+const CATEGORY_ICONS: { id: string; name: string; icon: keyof typeof Ionicons.glyphMap; activeIcon: keyof typeof Ionicons.glyphMap }[] = [
   { id: 'all', name: 'All', icon: 'apps-outline', activeIcon: 'apps' },
   // Food & Drink
   { id: 'restaurants', name: 'Restaurants', icon: 'restaurant-outline', activeIcon: 'restaurant' },

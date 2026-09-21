@@ -16,6 +16,7 @@ import { useEditor } from '../../../../lib/ecard/EditorContext';
 import EditorSection from '../shared/EditorSection';
 import LinkEditor from '../shared/LinkEditor';
 import PlatformPicker from '../shared/PlatformPicker';
+import { orderRequestKey } from '../../../../lib/orderService';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -41,7 +42,9 @@ export default function LinksSection({ isDark, isPro }: LinksSectionProps) {
   const warningBg = isDark ? 'rgba(245,158,11,0.1)' : '#FFFBEB';
   const warningBorder = isDark ? 'rgba(245,158,11,0.3)' : '#FDE68A';
 
-  const isAtLimit = !isPro && links.length >= FREE_LINK_LIMIT;
+  const activeLinkCount = links.filter(link => link.is_active === undefined || link.is_active === true).length;
+  const hiddenLinkCount = links.length - activeLinkCount;
+  const isAtLimit = !isPro && activeLinkCount >= FREE_LINK_LIMIT;
 
   // -- Handlers ---------------------------------------------------------------
 
@@ -50,7 +53,7 @@ export default function LinksSection({ isDark, isPro }: LinksSectionProps) {
       if (isAtLimit) return;
 
       const newLink = {
-        id: `link_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        id: orderRequestKey(),
         platform: platformId,
         title: '',
         url: '',
@@ -99,7 +102,7 @@ export default function LinksSection({ isDark, isPro }: LinksSectionProps) {
   return (
     <EditorSection
       id="links"
-      title="Links"
+      title="Links & actions"
       icon="link"
       defaultOpen={true}
       isDark={isDark}
@@ -114,6 +117,8 @@ export default function LinksSection({ isDark, isPro }: LinksSectionProps) {
               index={index}
               onChange={handleUpdateLink}
               onRemove={handleRemoveLink}
+              onMove={(fromIndex, toIndex) => dispatch({ type: 'REORDER_LINKS', fromIndex, toIndex })}
+              total={links.length}
               isDark={isDark}
             />
           ))}
@@ -150,8 +155,8 @@ export default function LinksSection({ isDark, isPro }: LinksSectionProps) {
       {/* Link count */}
       <View style={styles.countContainer}>
         <Text style={[styles.countText, { color: textSecondary }]}>
-          {links.length}
-          {!isPro ? ` / ${FREE_LINK_LIMIT}` : ''} links
+          {activeLinkCount}
+          {!isPro ? ` / ${FREE_LINK_LIMIT}` : ''} active links{hiddenLinkCount ? ` · ${hiddenLinkCount} hidden links kept` : ''}
         </Text>
       </View>
 

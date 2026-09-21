@@ -1,3 +1,5 @@
+import type { ParamListBase as DynamicStackParams } from '@react-navigation/native';
+import type { NativeStackNavigationProp as DynamicStackNavigation } from '@react-navigation/native-stack';
 /**
  * ECardStatsScreen -- Analytics + Inbox with tab toggle.
  * Ported from web: pages/app/ecard/[cardId]/stats.tsx
@@ -55,7 +57,7 @@ interface LinkItem {
 }
 
 export default function ECardStatsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<DynamicStackNavigation<DynamicStackParams>>();
   const route = useRoute<RouteProp<RootStackParamList, 'ECardStats'>>();
   const { cardId } = route.params;
 
@@ -85,7 +87,7 @@ export default function ECardStatsScreen() {
     if (authLoading) return;
 
     if (!user) {
-      navigation.reset({ index: 0, routes: [{ name: 'Login' as never }] });
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
       return;
     }
 
@@ -157,7 +159,7 @@ export default function ECardStatsScreen() {
             if (navigation.canGoBack()) {
               navigation.goBack();
             } else {
-              navigation.navigate('ECardHome' as never);
+              navigation.navigate('ECardHome');
             }
           }}
         >
@@ -171,7 +173,7 @@ export default function ECardStatsScreen() {
         <TouchableOpacity
           style={styles.headerButton}
           onPress={() =>
-            navigation.navigate('ECardEdit' as never, { cardId } as never)
+            navigation.navigate('ECardEdit', { cardId })
           }
         >
           <Ionicons name="create-outline" size={20} color={textSecondary} />

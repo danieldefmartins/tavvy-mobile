@@ -33,7 +33,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const WALLET_STORAGE_KEY = '@tavvy_wallet_cards';
+
 
 interface ProCardData {
   id: string;
@@ -59,13 +59,22 @@ interface ProCardData {
   about_text: string | null;
 }
 
+import { useAuth } from '../contexts/AuthContext';
+import { readWallet, saveWalletCard, walletCard } from '../lib/wallet';
+
 export default function ProCardDetailScreen() {
+  const { user, loading } = useAuth();
+  const route = useRoute<any>();
+  if (loading) return <ActivityIndicator accessibilityLabel="Loading account" />;
+  return <AccountProCard key={`${user?.id || 'guest'}:${route.params?.cardId || route.params?.slug}`} userId={user?.id || null} />;
+}
+function AccountProCard({ userId }: { userId: string | null }) {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { theme, isDark } = useThemeContext();
   
-  const { cardId, slug, card: passedCard } = route.params || {};
+  const { cardId, slug } = route.params || {};
   
   const [cardData, setCardData] = useState<ProCardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -73,6 +82,11 @@ export default function ProCardDetailScreen() {
   const [showQR, setShowQR] = useState(false);
   const qrRef = useRef<any>(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const active = useRef(true);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
+  const openURL = (url: string) => Linking.openURL(url).catch(() => Alert.alert('Unable to open link', 'Please try another contact method.'));
 
   // Load card data
   useEffect(() => {
@@ -81,35 +95,9 @@ export default function ProCardDetailScreen() {
   }, [cardId, slug]);
 
   const loadCardData = async () => {
+    setLoadError('');
+    setIsLoading(true);
     try {
-      // If we have a passed card with basic info, use it initially
-      if (passedCard) {
-        setCardData({
-          id: passedCard.id,
-          slug: passedCard.slug || passedCard.id,
-          company_name: passedCard.companyName,
-          tagline: passedCard.tagline || '',
-          phone: passedCard.phone,
-          email: passedCard.email,
-          city: passedCard.city,
-          state: passedCard.state,
-          category: passedCard.category,
-          gradient_color_1: passedCard.gradientColors?.[0] || '#8A05BE',
-          gradient_color_2: passedCard.gradientColors?.[1] || '#6366F1',
-          profile_photo_url: passedCard.profilePhoto || null,
-          logo_url: null,
-          verified: passedCard.verified || false,
-          enabled_tabs: ['contact', 'services'],
-          services: passedCard.services || [],
-          social_instagram: null,
-          social_facebook: null,
-          social_website: null,
-          social_tiktok: null,
-          about_text: null,
-        });
-        setIsLoading(false);
-      }
-
       // Fetch full data from database
       let query;
       if (slug) {
@@ -123,81 +111,39 @@ export default function ProCardDetailScreen() {
 
       const { data, error } = await query;
 
-      if (!error && data) {
+      if (!active.current) return;
+      if (error) throw error;
+      if (data) {
         setCardData(data);
         if (data.enabled_tabs && data.enabled_tabs.length > 0) {
-          setActiveTab(data.enabled_tabs[0]);
+          setActiveTab(['contact', 'services', 'about'].includes(data.enabled_tabs[0]) ? data.enabled_tabs[0] : 'contact');
         }
       }
     } catch (error) {
-      console.error('Error loading card:', error);
+      if (active.current) setLoadError('Unable to load this card. Please retry.');
     } finally {
-      setIsLoading(false);
+      if (active.current) setIsLoading(false);
     }
   };
 
   const checkIfSaved = async () => {
     try {
-      const localCards = await AsyncStorage.getItem(WALLET_STORAGE_KEY);
-      if (localCards) {
-        const cards = JSON.parse(localCards);
-        const found = cards.find((c: any) => c.id === cardId || c.slug === slug);
-        setIsSaved(!!found);
-      }
-    } catch (error) {
-      console.error('Error checking saved status:', error);
-    }
+      const cards = await readWallet(supabase, userId, AsyncStorage);
+      if (active.current) setIsSaved(cards.some(c => c.id === cardId || (!!slug && c.slug === slug)));
+    } catch { /* Saving rechecks membership and reports persistence failures. */ }
   };
 
-  // Save to wallet
   const saveToWallet = async () => {
-    if (!cardData) return;
-
+    if (!cardData || saving) return;
+    setSaving(true);
     try {
-      // Get existing cards
-      const localCards = await AsyncStorage.getItem(WALLET_STORAGE_KEY);
-      const cards = localCards ? JSON.parse(localCards) : [];
-
-      // Check if already saved
-      if (cards.find((c: any) => c.id === cardData.id)) {
-        Alert.alert('Already Saved', 'This card is already in your wallet.');
-        return;
-      }
-
-      // Add new card
-      const newCard = {
-        id: cardData.id,
-        slug: cardData.slug,
-        companyName: cardData.company_name,
-        category: cardData.category,
-        city: cardData.city,
-        state: cardData.state,
-        phone: cardData.phone,
-        email: cardData.email,
-        gradientColors: [cardData.gradient_color_1, cardData.gradient_color_2],
-        profilePhoto: cardData.profile_photo_url,
-        verified: cardData.verified,
-        savedAt: new Date().toISOString(),
-      };
-
-      cards.unshift(newCard);
-      await AsyncStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(cards));
-
-      // Also save to database if user is logged in
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from('user_wallet').insert({
-          user_id: user.id,
-          card_id: cardData.id,
-        });
-      }
-
+      await saveWalletCard(supabase, userId, walletCard(cardData), AsyncStorage);
+      if (!active.current) return;
       setIsSaved(true);
-      Alert.alert('Saved!', `${cardData.company_name} has been added to your wallet.`);
-    } catch (error) {
-      console.error('Error saving to wallet:', error);
-      Alert.alert('Error', 'Failed to save card. Please try again.');
-    }
+      Alert.alert('Saved!', `${cardData.company_name} has been added to ${userId ? 'your wallet' : 'this device wallet'}.`);
+    } catch {
+      if (active.current) Alert.alert('Unable to save', 'The card was not saved. Please try again.');
+    } finally { if (active.current) setSaving(false); }
   };
 
   // Save contact to phone
@@ -212,6 +158,8 @@ export default function ProCardDetailScreen() {
       }
 
       const contact: Contacts.Contact = {
+        contactType: Contacts.ContactTypes.Company,
+        name: cardData.company_name,
         [Contacts.Fields.FirstName]: cardData.company_name,
         [Contacts.Fields.Company]: cardData.company_name,
         [Contacts.Fields.JobTitle]: cardData.category,
@@ -242,7 +190,7 @@ export default function ProCardDetailScreen() {
   const shareCard = async () => {
     if (!cardData) return;
 
-    const cardUrl = `https://pros.tavvy.com/pro/${cardData.slug}`;
+    const cardUrl = `https://tavvy.com/app/wallet?card=${encodeURIComponent(cardData.id)}`;
     try {
       await Share.share({
         message: `Check out ${cardData.company_name}${cardData.tagline ? ' - ' + cardData.tagline : ''}\n${cardUrl}`,
@@ -272,7 +220,7 @@ export default function ProCardDetailScreen() {
         url = value.startsWith('http') ? value : `https://tiktok.com/@${value.replace('@', '')}`;
         break;
     }
-    if (url) Linking.openURL(url);
+    if (/^https?:\/\//i.test(url)) void openURL(url);
   };
 
   // Dynamic styles
@@ -291,6 +239,11 @@ export default function ProCardDetailScreen() {
     },
   };
 
+  if (!isLoading && !cardData) return <View style={[styles.container, styles.loadingContainer]}>
+    <Text>{loadError || 'Card not found.'}</Text>
+    <TouchableOpacity onPress={loadCardData}><Text>Retry</Text></TouchableOpacity>
+    <TouchableOpacity onPress={() => navigation.goBack()}><Text>Back</Text></TouchableOpacity>
+  </View>;
   if (isLoading || !cardData) {
     return (
       <View style={[styles.container, dynamicStyles.container, styles.loadingContainer]}>
@@ -300,7 +253,7 @@ export default function ProCardDetailScreen() {
   }
 
   const gradient: [string, string] = [cardData.gradient_color_1, cardData.gradient_color_2];
-  const cardUrl = `https://pros.tavvy.com/pro/${cardData.slug}`;
+  const cardUrl = `https://tavvy.com/app/wallet?card=${encodeURIComponent(cardData.id)}`;
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
@@ -364,10 +317,11 @@ export default function ProCardDetailScreen() {
 
         {/* Card Body */}
         <View style={[styles.body, dynamicStyles.cardBg]}>
+          {!!loadError && <TouchableOpacity onPress={loadCardData}><Text style={{ color: '#DC2626' }}>{loadError} Tap to retry.</Text></TouchableOpacity>}
           {/* Tabs */}
           {cardData.enabled_tabs && cardData.enabled_tabs.length > 0 && (
             <View style={styles.tabs}>
-              {cardData.enabled_tabs.map((tabId) => (
+              {Array.from(new Set(['contact', ...cardData.enabled_tabs.filter(tab => ['services', 'about'].includes(tab))])).map((tabId) => (
                 <TouchableOpacity
                   key={tabId}
                   style={[
@@ -394,7 +348,7 @@ export default function ProCardDetailScreen() {
                 {cardData.phone && (
                   <TouchableOpacity
                     style={styles.actionButton}
-                    onPress={() => Linking.openURL(`tel:${cardData.phone}`)}
+                    onPress={() => openURL(`tel:${cardData.phone}`)}
                   >
                     <Ionicons name="call" size={20} color="#fff" />
                     <Text style={styles.actionButtonText}>Call Now</Text>
@@ -403,7 +357,7 @@ export default function ProCardDetailScreen() {
                 {cardData.phone && (
                   <TouchableOpacity
                     style={styles.actionButton}
-                    onPress={() => Linking.openURL(`sms:${cardData.phone}`)}
+                    onPress={() => openURL(`sms:${cardData.phone}`)}
                   >
                     <Ionicons name="chatbubble" size={20} color="#fff" />
                     <Text style={styles.actionButtonText}>Send Text</Text>
@@ -412,13 +366,15 @@ export default function ProCardDetailScreen() {
                 {cardData.email && (
                   <TouchableOpacity
                     style={styles.actionButton}
-                    onPress={() => Linking.openURL(`mailto:${cardData.email}`)}
+                    onPress={() => openURL(`mailto:${cardData.email}`)}
                   >
                     <Ionicons name="mail" size={20} color="#fff" />
                     <Text style={styles.actionButtonText}>Email</Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity style={styles.actionButton}>
+                <TouchableOpacity style={styles.actionButton}
+                  disabled={!cardData.email && !cardData.phone}
+                  onPress={() => openURL(cardData.email ? `mailto:${cardData.email}?subject=${encodeURIComponent('Quote request')}` : `sms:${cardData.phone}`)}>
                   <Ionicons name="document-text" size={20} color="#fff" />
                   <Text style={styles.actionButtonText}>Request Quote</Text>
                 </TouchableOpacity>
@@ -450,11 +406,6 @@ export default function ProCardDetailScreen() {
               </View>
             )}
 
-            {activeTab === 'reviews' && (
-              <View style={styles.reviewsSection}>
-                <Text style={[styles.emptyText, dynamicStyles.textSecondary]}>Reviews coming soon</Text>
-              </View>
-            )}
           </View>
 
           {/* Social Links */}
@@ -491,9 +442,7 @@ export default function ProCardDetailScreen() {
                 <Text style={styles.tiktokText}>TT</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.socialButton}>
-              <Text style={styles.tavvyText}>T</Text>
-            </TouchableOpacity>
+
           </View>
 
           {/* Bottom Actions */}
@@ -524,6 +473,7 @@ export default function ProCardDetailScreen() {
             <TouchableOpacity
               style={styles.walletBanner}
               onPress={saveToWallet}
+              disabled={saving}
             >
               <LinearGradient
                 colors={['#00C2CB', '#EA580C']}
@@ -536,7 +486,7 @@ export default function ProCardDetailScreen() {
                     <Ionicons name="wallet" size={20} color="#fff" />
                   </View>
                   <View style={styles.walletBannerText}>
-                    <Text style={styles.walletBannerTitle}>Save to Tavvy Wallet</Text>
+                    <Text style={styles.walletBannerTitle}>{saving ? 'Saving…' : 'Save to Tavvy Wallet'}</Text>
                     <Text style={styles.walletBannerSubtitle}>Keep all your contractors in one place</Text>
                   </View>
                 </View>

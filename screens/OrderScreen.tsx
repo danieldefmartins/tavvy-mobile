@@ -1,3 +1,5 @@
+import { getOrderingContext, getOrder, submitOrder, orderEstimate, orderRequestKey, parseTableQR, OrderingContext } from '../lib/orderService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 /**
  * Order Screen - Customer Ordering
  * Path: screens/OrderScreen.tsx
@@ -6,7 +8,7 @@
  * - Shows menu items with "+" add buttons
  * - Floating cart button with count badge
  * - Bottom sheet cart with quantity controls, item notes, special requests
- * - "Place Order" triggers camera for QR scan verification
+ * - Table QR fills the table number; authenticated order submission is explicit
  * - After order: real-time status tracker (Pending > Confirmed > Preparing > Ready > Served)
  * - Uses Supabase realtime subscription for status updates
  */
@@ -31,7 +33,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { CameraView } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { supabase } from '../lib/supabaseClient';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -73,6 +75,7 @@ interface Order {
   status: string;
   created_at: string;
   total: number;
+  cancel_reason?: string | null;
 }
 
 type MealPeriod = 'all' | 'breakfast' | 'lunch' | 'dinner' | 'all_day';
@@ -114,7 +117,13 @@ const PERIOD_LABELS: Record<MealPeriod, string> = {
 export default function OrderScreen() {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'Order'>>();
-  const { placeId, placeName: initialPlaceName, tableNumber } = route.params;
+  const { placeId, placeName: initialPlaceName, tableNumber: routeTableNumber } = route.params;
+  const [tableNumber,setTableNumber]=useState(routeTableNumber || '');
+  const [orderingContext,setOrderingContext]=useState<OrderingContext|null>(null);
+  const [orderError,setOrderError]=useState('');
+  const [signedIn,setSignedIn]=useState(false);
+  const requestRef=useRef<{fingerprint:string;key:string}|null>(null);
+  const postingRef=useRef(false);
 
   // Menu state
   const [placeName, setPlaceName] = useState(initialPlaceName || '');
@@ -126,6 +135,7 @@ export default function OrderScreen() {
 
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartHydrated,setCartHydrated]=useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [specialRequests, setSpecialRequests] = useState('');
 
@@ -134,6 +144,8 @@ export default function OrderScreen() {
   const [order, setOrder] = useState<Order | null>(null);
   const [orderView, setOrderView] = useState(false);
   const [showQrScan, setShowQrScan] = useState(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const openTableScanner = async () => { const permission = cameraPermission?.granted ? cameraPermission : await requestCameraPermission(); if(permission.granted)setShowQrScan(true);else setOrderError('Camera access is unavailable. Enter your table number instead.'); };
 
   // Realtime subscription ref
   const subscriptionRef = useRef<any>(null);
@@ -150,8 +162,13 @@ export default function OrderScreen() {
   }, [placeId]);
 
   const loadMenu = async (pid: string) => {
-    setLoading(true);
+    setLoading(true);setCartHydrated(false);setCart([]);setOrderError('');
     try {
+      if (pid==='demo-trattoria') { navigation.navigate('DemoRestaurant' as never); return; }
+      const {data:{user}}=await supabase.auth.getUser();setSignedIn(!!user);
+      // Tracking an existing order does not depend on an available menu.
+      try{const activeId=await AsyncStorage.getItem(`tavvy:active-order:${pid}`);if(activeId&&user){const restored=await getOrder(activeId);setOrder(restored);setOrderView(true);subscribeToOrder(restored.id)}}catch{}
+      const context=await getOrderingContext(pid,tableNumber);setOrderingContext(context);if(!context.ready)setOrderError('Ordering is unavailable. Please ask the restaurant.');
       const { data: placeData } = await supabase
         .from('places')
         .select('name')
@@ -163,6 +180,7 @@ export default function OrderScreen() {
         .from('menus')
         .select('id')
         .eq('place_id', pid)
+        .eq('is_active',true).order('created_at',{ascending:false}).limit(1)
         .maybeSingle();
 
       if (!menuData) {
@@ -184,6 +202,7 @@ export default function OrderScreen() {
           .from('menu_items')
           .select('*')
           .in('category_id', categoryIds)
+          .eq('is_available',true).not('price','is',null)
           .order('sort_order', { ascending: true });
 
         if (itemsData) {
@@ -196,10 +215,13 @@ export default function OrderScreen() {
             meal_period: catMap[item.category_id]?.meal_period || null,
           }));
           setAllItems(enrichedItems);
+          try { const saved=JSON.parse(await AsyncStorage.getItem(`tavvy:order-cart:${pid}`)||'null');if(Array.isArray(saved?.cart))setCart(saved.cart.flatMap((line:any)=>{const item=enrichedItems.find(row=>row.id===line.menuItem?.id);return item?[{menuItem:item,quantity:Math.min(20,Math.max(1,Number(line.quantity)||1)),notes:String(line.notes||'').slice(0,500)}]:[]}));if(saved?.notes)setSpecialRequests(String(saved.notes).slice(0,1000));if(saved?.tableNumber&&!routeTableNumber)setTableNumber(String(saved.tableNumber).slice(0,32));}catch{}
+          setCartHydrated(true);
+
         }
       }
     } catch (error) {
-      console.error('[OrderScreen] Error loading menu:', error);
+      setOrderError(error instanceof Error ? error.message : 'Menu unavailable. Please retry.');
     } finally {
       setLoading(false);
     }
@@ -213,7 +235,7 @@ export default function OrderScreen() {
       if (existing) {
         return prev.map(ci =>
           ci.menuItem.id === item.id
-            ? { ...ci, quantity: ci.quantity + 1 }
+            ? { ...ci, quantity: Math.min(20,ci.quantity + 1) }
             : ci
         );
       }
@@ -225,7 +247,7 @@ export default function OrderScreen() {
     setCart(prev => {
       return prev.map(ci => {
         if (ci.menuItem.id === itemId) {
-          const newQty = ci.quantity + delta;
+          const newQty = Math.min(20,ci.quantity + delta);
           return newQty <= 0 ? null : { ...ci, quantity: newQty };
         }
         return ci;
@@ -241,81 +263,37 @@ export default function OrderScreen() {
     );
   }, []);
 
-  const cartTotal = cart.reduce((sum, ci) => sum + (ci.menuItem.price || 0) * ci.quantity, 0);
-  const cartCount = cart.reduce((sum, ci) => sum + ci.quantity, 0);
-  const taxRate = 0.0875;
-  const taxAmount = cartTotal * taxRate;
-  const orderTotal = cartTotal + taxAmount;
+  const estimate=orderEstimate(cart.map(ci=>({price:ci.menuItem.price,quantity:ci.quantity})),orderingContext?.taxBasisPoints??null);
+  const cartTotal=estimate.subtotal,cartCount=cart.reduce((sum,ci)=>sum+ci.quantity,0),taxAmount=estimate.tax??0,orderTotal=estimate.total??cartTotal;
+  useEffect(()=>{if(cartHydrated&&!loading&&placeId!=='demo-trattoria')void AsyncStorage.setItem(`tavvy:order-cart:${placeId}`,JSON.stringify({cart,notes:specialRequests,tableNumber})).catch(()=>{});},[cart,specialRequests,tableNumber,cartHydrated,loading,placeId]);
+  useEffect(()=>{const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>setSignedIn(!!session?.user));return()=>subscription.unsubscribe()},[]);
+  useEffect(()=>{if(!order?.id)return;const timer=setInterval(()=>{getOrder(order.id).then(setOrder).catch(()=>setOrderError('Order status is temporarily unavailable. We will keep trying.'))},15000);return()=>clearInterval(timer)},[order?.id]);
 
   // ─── Place Order ────────────────────────────────────────────────────────────
 
-  const handlePlaceOrder = () => {
-    if (cart.length === 0) return;
-    // If table number is already known (from QR deep link), skip scan
-    if (tableNumber) {
-      placeOrder();
-    } else {
-      setShowQrScan(true);
-    }
-  };
-
-  const placeOrder = async () => {
-    if (cart.length === 0 || !placeId) return;
-    setPlacingOrder(true);
-    setCartOpen(false);
-
+  const handlePlaceOrder = () => { void placeOrder(); };
+  const placeOrder = async (tableOverride?: string) => {
+    if (!cart.length || !placeId || postingRef.current || placeId==='demo-trattoria') return;
+    postingRef.current=true;setPlacingOrder(true);setOrderError('');
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const orderNumber = `${Date.now().toString(36).toUpperCase()}`;
-
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          place_id: placeId,
-          table_number: tableNumber || null,
-          customer_id: user?.id || null,
-          order_number: orderNumber,
-          status: 'pending',
-          subtotal: cartTotal,
-          tax: taxAmount,
-          total: orderTotal,
-          special_requests: specialRequests || null,
-        })
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Insert order items
-      const orderItems = cart.map(ci => ({
-        order_id: orderData.id,
-        menu_item_id: ci.menuItem.id,
-        name: ci.menuItem.name,
-        quantity: ci.quantity,
-        price: ci.menuItem.price || 0,
-        notes: ci.notes || null,
-      }));
-
-      await supabase.from('order_items').insert(orderItems);
-
-      setOrder(orderData);
-      setOrderView(true);
-      setCart([]);
-      setSpecialRequests('');
-
-      // Subscribe to order updates
-      subscribeToOrder(orderData.id);
-    } catch (error) {
-      console.error('[OrderScreen] Error placing order:', error);
-      Alert.alert('Error', 'Failed to place order. Please try again.');
-    } finally {
-      setPlacingOrder(false);
-    }
+      const {data:{user}}=await supabase.auth.getUser();
+      if(!user){Alert.alert('Sign in to order','Your cart will be kept.',[{text:'Cancel',style:'cancel'},{text:'Sign in',onPress:()=>navigation.navigate('Login' as never)}]);return}
+      const selectedTable=tableOverride||tableNumber,context=await getOrderingContext(placeId,selectedTable);setOrderingContext(context);
+      if(!context.ready||!context.tableValid)throw new Error(context.ready?'Confirm your active table number with the restaurant.':'Ordering is unavailable. Please ask the restaurant.');
+      const draft={placeId,tableNumber:selectedTable,items:cart.map(ci=>({menu_item_id:ci.menuItem.id,quantity:ci.quantity,notes:ci.notes})),notes:specialRequests,customerName:'',expectedTotal:orderTotal};
+      const fingerprint=JSON.stringify(draft);
+      if(requestRef.current?.fingerprint!==fingerprint){let saved:any=null;try{saved=JSON.parse(await AsyncStorage.getItem(`tavvy:order-request:${placeId}`)||'null')}catch{}requestRef.current=saved?.fingerprint===fingerprint?saved:{fingerprint,key:orderRequestKey()};await AsyncStorage.setItem(`tavvy:order-request:${placeId}`,JSON.stringify(requestRef.current))}
+      const orderData=await submitOrder(draft,requestRef.current!.key);
+      try { await AsyncStorage.setItem(`tavvy:active-order:${placeId}`,orderData.id);await AsyncStorage.removeItem(`tavvy:order-request:${placeId}`); } catch {} requestRef.current=null;
+      setOrder(orderData);setOrderView(true);setCartOpen(false);setCart([]);setSpecialRequests('');subscribeToOrder(orderData.id);
+    }catch(error){setOrderError(error instanceof Error?error.message:'Order could not be sent. Retry with the same cart.')}
+    finally{setPlacingOrder(false);postingRef.current=false}
   };
 
   // ─── Realtime Subscription ──────────────────────────────────────────────────
 
   const subscribeToOrder = (orderId: string) => {
+    if(subscriptionRef.current)void supabase.removeChannel(subscriptionRef.current);
     const channel = supabase
       .channel(`order-${orderId}`)
       .on(
@@ -339,14 +317,9 @@ export default function OrderScreen() {
   // ─── QR Scan Handler ────────────────────────────────────────────────────────
 
   const handleBarCodeScanned = (result: { data: string }) => {
-    const url = result.data;
-    // Verify QR contains our place ID or a table route
-    if (url.includes(placeId) || url.includes('/table/')) {
-      setShowQrScan(false);
-      placeOrder();
-    } else {
-      Alert.alert('Invalid QR', 'Please scan the QR code at your table.');
-    }
+    const scannedTable=parseTableQR(result.data,placeId);
+    if(!scannedTable){Alert.alert('Invalid table QR','Scan the Tavvy ordering QR code for this restaurant.');return}
+    setTableNumber(scannedTable);setShowQrScan(false);setOrderError('');
   };
 
   // ─── Filtered Items ─────────────────────────────────────────────────────────
@@ -419,7 +392,8 @@ export default function OrderScreen() {
       <View style={styles.statusContainer}>
         <SafeAreaView edges={['top']}>
           <View style={styles.statusHeader}>
-            <Text style={styles.statusTitle}>Order #{order.order_number}</Text>
+            <Text style={styles.statusTitle}>{order.status==='cancelled'?'Order cancelled':`Order #${order.order_number}`}</Text>
+            <Text style={styles.statusSubtitle}>{order.status==='cancelled'?order.cancel_reason:order.status==='pending'?'Wait for restaurant confirmation. Pay the restaurant directly.':'Payment is handled by the restaurant.'}</Text>
             <Text style={styles.statusSubtitle}>
               {tableNumber ? `Table ${tableNumber}` : ''}
             </Text>
@@ -462,6 +436,7 @@ export default function OrderScreen() {
                 style={styles.newOrderButton}
                 onPress={() => {
                   setOrder(null);
+                  void AsyncStorage.removeItem(`tavvy:active-order:${placeId}`).catch(()=>{});
                   setOrderView(false);
                 }}
               >
@@ -527,9 +502,9 @@ export default function OrderScreen() {
           {/* Manual bypass if needed */}
           <TouchableOpacity
             style={styles.qrSkipButton}
-            onPress={() => { setShowQrScan(false); placeOrder(); }}
+            onPress={() => setShowQrScan(false)}
           >
-            <Text style={styles.qrSkipText}>Skip verification</Text>
+            <Text style={styles.qrSkipText}>Enter table number instead</Text>
           </TouchableOpacity>
         </SafeAreaView>
       </View>
@@ -580,12 +555,21 @@ export default function OrderScreen() {
                   style={styles.itemNoteInput}
                   placeholder="Add a note..."
                   placeholderTextColor="#666"
-                  value={ci.notes}
+                  maxLength={500}
+                    value={ci.notes}
                   onChangeText={(text) => updateItemNotes(ci.menuItem.id, text)}
                 />
               </View>
             ))}
 
+            <View style={styles.specialRequestsSection}>
+              <Text style={styles.specialRequestsLabel}>Table number</Text>
+              <TextInput style={styles.itemNoteInput} value={tableNumber} onChangeText={setTableNumber} maxLength={32} placeholder="Ask your server for your table number" placeholderTextColor="#888" />
+              <TouchableOpacity onPress={() => void openTableScanner()}><Text style={{color:'#CDA1FF',paddingVertical:12}}>Scan table QR code</Text></TouchableOpacity>
+              {orderError ? <Text accessibilityRole="alert" style={{color:'#FCA5A5'}}>{orderError}</Text> : null}
+              {orderError && <TouchableOpacity onPress={()=>void loadMenu(placeId)}><Text style={{color:'#CDA1FF',paddingVertical:12}}>Refresh menu and total</Text></TouchableOpacity>}
+              <Text style={{color:'#aaa'}}>Orders require restaurant confirmation. Payment is handled by the restaurant.</Text>
+            </View>
             {/* Special Requests */}
             <View style={styles.specialRequestsSection}>
               <Text style={styles.specialRequestsLabel}>Special Requests</Text>
@@ -594,6 +578,7 @@ export default function OrderScreen() {
                 placeholder="Allergies, preferences, etc."
                 placeholderTextColor="#666"
                 multiline
+                maxLength={1000}
                 value={specialRequests}
                 onChangeText={setSpecialRequests}
               />
@@ -608,22 +593,22 @@ export default function OrderScreen() {
             </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tax</Text>
-              <Text style={styles.totalValue}>${taxAmount.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>{estimate.tax===null?'Not configured':`$${taxAmount.toFixed(2)}`}</Text>
             </View>
             <View style={[styles.totalRow, styles.totalRowFinal]}>
               <Text style={styles.totalLabelFinal}>Total</Text>
-              <Text style={styles.totalValueFinal}>${orderTotal.toFixed(2)}</Text>
+              <Text style={styles.totalValueFinal}>{estimate.total===null?'Unavailable':`$${orderTotal.toFixed(2)}`}</Text>
             </View>
 
             <TouchableOpacity
               style={[styles.placeOrderButton, placingOrder && styles.placeOrderButtonDisabled]}
               onPress={handlePlaceOrder}
-              disabled={placingOrder}
+              disabled={placingOrder || !orderingContext?.ready || !cart.length}
             >
               {placingOrder ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.placeOrderText}>Place Order</Text>
+                <Text style={styles.placeOrderText}>{signedIn?'Place Order':'Sign in to place order'}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -656,6 +641,7 @@ export default function OrderScreen() {
         </View>
       </SafeAreaView>
 
+      {orderError ? <Text accessibilityRole="alert" style={{color:'#FCA5A5',padding:16}}>{orderError}</Text> : null}
       {/* Period & Category Filters */}
       <View style={styles.filters}>
         {availablePeriods.length > 2 && (

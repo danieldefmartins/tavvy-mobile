@@ -1,3 +1,4 @@
+import {useThemeContext} from '../contexts/ThemeContext';
 import React, { useState } from 'react';
 import {
   View,
@@ -45,6 +46,8 @@ const getCategoryFallbackImage = (category: string): string => {
 };
 
 function SavedScreen({ navigation }: any) {
+  const {theme,isDark}=useThemeContext();
+  const styles=makeStyles(theme,isDark);
   const { t } = useTranslation();
   const { user } = useAuth();
   const { data: favorites, isLoading, refetch } = useUserFavorites();
@@ -160,22 +163,22 @@ function SavedScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles=(theme:ReturnType<typeof useThemeContext>['theme'],isDark:boolean)=>StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.background,
   },
   header: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#fff',
+    backgroundColor: theme.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: theme.border,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
+    color: theme.text,
   },
   loadingContainer: {
     flex: 1,
@@ -187,7 +190,7 @@ const styles = StyleSheet.create({
   },
   card: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: theme.background,
     borderRadius: 12,
     marginBottom: 12,
     shadowColor: '#000',
@@ -216,13 +219,13 @@ const styles = StyleSheet.create({
   placeName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: theme.text,
     flex: 1,
     marginRight: 8,
   },
   category: {
     fontSize: 13,
-    color: '#6B7280',
+    color: theme.textSecondary,
     marginBottom: 6,
   },
   locationRow: {
@@ -232,7 +235,7 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: theme.textSecondary,
     marginLeft: 4,
   },
   noteContainer: {
@@ -261,13 +264,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#374151',
+    color: theme.text,
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 15,
-    color: '#6B7280',
+    color: theme.textSecondary,
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 22,
@@ -284,7 +287,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   exploreButton: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.background,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -292,7 +295,7 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
   },
   exploreButtonText: {
-    color: '#374151',
+    color: theme.text,
     fontWeight: '600',
     fontSize: 16,
   },

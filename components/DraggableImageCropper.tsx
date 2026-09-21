@@ -1,10 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View,
   Image,
   StyleSheet,
   PanResponder,
-  Animated,
   Text,
   TouchableOpacity,
   Dimensions,
@@ -42,9 +41,8 @@ export default function DraggableImageCropper({
 }: DraggableImageCropperProps) {
   const [position, setPosition] = useState(initialPosition);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   
-  const panRef = useRef(new Animated.ValueXY()).current;
+  const currentPosition = useRef(initialPosition);
   const lastPosition = useRef(initialPosition);
 
   // Calculate container dimensions based on aspect ratio
@@ -53,38 +51,34 @@ export default function DraggableImageCropper({
   const previewWidth = screenWidth;
   const previewHeight = previewWidth / ratio;
 
-  const panResponder = useRef(
-    PanResponder.create({
+  const scale = imageSize.width && imageSize.height ? Math.max(previewWidth / imageSize.width, previewHeight / imageSize.height) : 1;
+  const renderedWidth = imageSize.width ? imageSize.width * scale : previewWidth;
+  const renderedHeight = imageSize.height ? imageSize.height * scale : previewHeight;
+  const panResponder = useMemo(() => PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        panRef.setOffset({
-          x: panRef.x._value,
-          y: panRef.y._value,
-        });
-        panRef.setValue({ x: 0, y: 0 });
-      },
+      onPanResponderGrant: () => { lastPosition.current = currentPosition.current; },
       onPanResponderMove: (_, gestureState) => {
         // Calculate new position based on drag
-        const deltaXPercent = (gestureState.dx / previewWidth) * -100;
-        const deltaYPercent = (gestureState.dy / previewHeight) * -100;
+        const deltaXPercent = (gestureState.dx / Math.max(1, renderedWidth - previewWidth)) * -100;
+        const deltaYPercent = (gestureState.dy / Math.max(1, renderedHeight - previewHeight)) * -100;
         
         const newX = Math.max(0, Math.min(100, lastPosition.current.x + deltaXPercent));
         const newY = Math.max(0, Math.min(100, lastPosition.current.y + deltaYPercent));
         
-        setPosition({ x: newX, y: newY });
+        currentPosition.current = { x: newX, y: newY };
+        setPosition(currentPosition.current);
         onPositionChange?.({ x: newX, y: newY });
       },
       onPanResponderRelease: () => {
-        panRef.flattenOffset();
-        lastPosition.current = position;
+        lastPosition.current = currentPosition.current;
       },
-    })
-  ).current;
+    }), [renderedWidth, renderedHeight, previewWidth, previewHeight, onPositionChange]);
 
   const handleQuickPosition = (x: number, y: number) => {
     setPosition({ x, y });
     lastPosition.current = { x, y };
+    currentPosition.current = { x, y };
     onPositionChange?.({ x, y });
   };
 
@@ -127,7 +121,11 @@ export default function DraggableImageCropper({
           style={[
             styles.previewImage,
             {
-              objectPosition: `${position.x}% ${position.y}%`,
+              width: renderedWidth,
+              height: renderedHeight,
+              position: 'absolute',
+              left: -(renderedWidth - previewWidth) * position.x / 100,
+              top: -(renderedHeight - previewHeight) * position.y / 100,
             },
           ]}
           resizeMode="cover"

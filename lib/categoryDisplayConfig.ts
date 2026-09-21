@@ -510,7 +510,7 @@ export function getCategoryDisplayFields(categorySlug: string): DisplayField[] {
  */
 export function shouldShowEntrancesTab(
   categorySlug: string,
-  contentType: ContentType = 'place'
+  contentType: ContentType = 'place_or_business'
 ): boolean {
   // Parse the category slug to extract primary and subcategory
   const parts = categorySlug.toLowerCase().split('/');

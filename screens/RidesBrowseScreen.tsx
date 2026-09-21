@@ -1,3 +1,4 @@
+import ToolHeader from '../components/ToolHeader';
 /**
  * RidesBrowseScreen.tsx
  * Browse theme park rides and attractions
@@ -350,10 +351,10 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
   const filteredRides = rides.filter(r => {
     if (filterBy === 'all') return true;
     const sub = (r.subcategory || '').toLowerCase();
-    if (filterBy === 'roller_coaster') return sub.includes('coaster');
-    if (filterBy === 'water') return sub.includes('water') || sub.includes('boat') || sub.includes('flume');
-    if (filterBy === 'family') return sub.includes('carousel') || sub.includes('train') || sub.includes('spinner') || sub.includes('show');
-    if (filterBy === 'dark') return sub.includes('dark');
+    if (filterBy === 'thrill_rides') return sub.includes('coaster');
+    if (filterBy === 'water_rides') return sub.includes('water') || sub.includes('boat') || sub.includes('flume');
+    if (filterBy === 'family_rides') return sub.includes('carousel') || sub.includes('train') || sub.includes('spinner') || sub.includes('show');
+    if (filterBy === 'dark_rides') return sub.includes('dark');
     return true;
   });
 
@@ -375,6 +376,9 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <ToolHeader title="Rides" subtitle="Theme park thrills await.">
+        <View style={{ alignItems: 'flex-end' }}><TouchableOpacity accessibilityRole="button" disabled={refreshing} onPress={onRefresh} style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }}><Ionicons name="refresh" size={20} color={textColor} /><Text style={{ color: textColor }}>{refreshing ? 'Refreshing…' : 'Refresh rides'}</Text></TouchableOpacity></View>
+      </ToolHeader>
       
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -383,28 +387,6 @@ export default function RidesBrowseScreen({ navigation }: { navigation: any }) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="chevron-back" size={24} color={textColor} />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={[styles.title, { color: textColor }]}>Rides</Text>
-            <Text style={[styles.tagline, { color: COLORS.accent }]}>
-              Theme park thrills await.
-            </Text>
-          </View>
-          <TouchableOpacity 
-            style={styles.refreshButton}
-            onPress={onRefresh}
-          >
-            <Ionicons name="refresh" size={20} color={secondaryTextColor} />
-          </TouchableOpacity>
-        </View>
-
         {/* Search Bar */}
         <View style={styles.searchSection}>
           <View style={[

@@ -46,7 +46,7 @@ export default function ProfileSection({ isDark, isPro }: ProfileSectionProps) {
       id="profile"
       title="Profile"
       icon="person-circle"
-      defaultOpen={true}
+      defaultOpen={false}
       isDark={isDark}
     >
       {/* Profile Photo */}
@@ -77,8 +77,8 @@ export default function ProfileSection({ isDark, isPro }: ProfileSectionProps) {
       {/* Title / Role */}
       <EditorField
         label="Title / Role"
-        value={card.title_role || card.title || ''}
-        onChange={(v) => handleFieldChange('title_role', v)}
+        value={card.title || ''}
+        onChange={(v) => handleFieldChange('title', v)}
         placeholder="e.g. Marketing Director"
         isDark={isDark}
         maxLength={100}

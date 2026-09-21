@@ -27,16 +27,13 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Video, ResizeMode } from 'expo-av';
 import { supabase } from '../lib/supabaseClient';
+import { getStoryPublishAccess, hasStoryOwnerAccess, publishUploadedStory, StoryKind, StoryPublishError, storyMediaDetails } from '../lib/storyPublishing';
 import { useTranslation } from 'react-i18next';
 import { 
-  uploadStory, 
   getQuickFindPresets, 
   QuickFindPreset,
-  createStoryWithLocation,
   getCurrentLocation,
-  isWithinRadius,
   canUserCreateStory,
-  canUserCreateStoryForPlace,
   DEFAULT_RADIUS_METERS,
   STORY_EXPIRY_HOURS,
 } from '../lib/storyService';
@@ -53,6 +50,7 @@ const SUGGESTED_TAGS = [
 ];
 
 interface RouteParams {
+  storyKind?: StoryKind;
   placeId?: string;
   placeName?: string;
   placeLatitude?: number;
@@ -74,7 +72,7 @@ export default function StoryUploadScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
-  const { placeId: initialPlaceId, placeName: initialPlaceName, placeLatitude, placeLongitude, universeId, universeName } = (route.params as RouteParams) || {};
+  const { storyKind: initialStoryKind, placeId: initialPlaceId, placeName: initialPlaceName, placeLatitude, placeLongitude, universeId, universeName } = (route.params as RouteParams) || {};
 
   // Place selection state (for universe-level story uploads)
   const [places, setPlaces] = useState<Place[]>([]);
@@ -115,6 +113,22 @@ export default function StoryUploadScreen() {
   const [customTag, setCustomTag] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [storyKind, setStoryKind] = useState<StoryKind>('customer');
+  const [canPublishHighlight, setCanPublishHighlight] = useState(false);
+  const [mediaMime, setMediaMime] = useState('');
+  const pendingUpload = useRef<{ uri: string; placeId: string; path: string } | null>(null);
+
+  useEffect(() => {
+    let current = true;
+    setCanPublishHighlight(false);
+    setStoryKind('customer');
+    if (placeId) hasStoryOwnerAccess(supabase, placeId).then(allowed => {
+      if (!current) return;
+      setCanPublishHighlight(allowed);
+      if (allowed && initialStoryKind === 'owner_highlight') setStoryKind('owner_highlight');
+    });
+    return () => { current = false; };
+  }, [placeId, initialStoryKind]);
 
   // Screen mode
   const [mode, setMode] = useState<'camera' | 'preview' | 'details'>('camera');
@@ -170,68 +184,20 @@ export default function StoryUploadScreen() {
   // Check location gating and user permissions
   const checkLocationAndPermissions = async () => {
     setCheckingPermissions(true);
+    setCanPostError(null);
+    setLocationError(null);
     try {
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setCanPost(false);
-        setCanPostError('You must be logged in to post stories');
-        setCheckingPermissions(false);
-        return;
-      }
-
-      // Check if user can create stories (not suspended, within limits)
-      const canCreateResult = await canUserCreateStory(user.id);
-      if (!canCreateResult.allowed) {
-        setCanPost(false);
-        setCanPostError(canCreateResult.reason || 'You cannot post stories at this time');
-        setCheckingPermissions(false);
-        return;
-      }
-
-      // Check place-specific rate limit
-      if (placeId) {
-        const canCreateForPlaceResult = await canUserCreateStoryForPlace(user.id, placeId);
-        if (!canCreateForPlaceResult.allowed) {
-          setCanPost(false);
-          setCanPostError(canCreateForPlaceResult.reason || 'Rate limit reached for this place');
-          setCheckingPermissions(false);
-          return;
-        }
-      }
-
-      // Get user's current location
-      const location = await getCurrentLocation();
-      if (!location) {
-        setLocationError('Could not get your location. Please enable location services.');
-        setCheckingPermissions(false);
-        return;
-      }
-      setUserLocation(location);
-
-      // Check if within range of place (if place coordinates provided)
-      if (placeLatitude && placeLongitude) {
-        const rangeCheck = isWithinRadius(
-          location.latitude,
-          location.longitude,
-          placeLatitude,
-          placeLongitude,
-          DEFAULT_RADIUS_METERS
-        );
-        setIsWithinRange(rangeCheck.withinRadius);
-        setDistanceToPlace(rangeCheck.distance);
-
-        if (!rangeCheck.withinRadius) {
-          setCanPost(false);
-          setCanPostError(`You must be within ${DEFAULT_RADIUS_METERS}m of ${placeName} to post a story. You are ${rangeCheck.distance}m away.`);
-        }
-      }
-    } catch (error) {
-      console.error('Error checking permissions:', error);
-      setLocationError('Error checking your location');
-    } finally {
-      setCheckingPermissions(false);
-    }
+      if (!user) throw new Error('Sign in to post a story.');
+      const access = await canUserCreateStory(user.id);
+      if (!access.allowed) throw new Error(access.reason);
+      setCanPost(true);
+      // Request GPS only when a customer chooses Post. A verified owner can
+      // choose a restaurant highlight without granting location access.
+    } catch (error: any) {
+      setCanPost(false);
+      setCanPostError(error.message || 'Story publishing is temporarily unavailable.');
+    } finally { setCheckingPermissions(false); }
   };
 
   const loadPresets = async () => {
@@ -287,6 +253,7 @@ export default function StoryUploadScreen() {
       
       if (video?.uri) {
         setMediaUri(video.uri);
+        setMediaMime('');
         setMediaType('video');
         setMode('preview');
       }
@@ -319,6 +286,7 @@ export default function StoryUploadScreen() {
       
       if (photo?.uri) {
         setMediaUri(photo.uri);
+        setMediaMime('image/jpeg');
         setMediaType('image');
         setMode('preview');
       }
@@ -340,7 +308,12 @@ export default function StoryUploadScreen() {
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
+        if (asset.type === 'video' && asset.duration && asset.duration > MAX_VIDEO_DURATION * 1000) {
+          Alert.alert('Choose a shorter video', 'Stories can be up to 15 seconds long.');
+          return;
+        }
         setMediaUri(asset.uri);
+        setMediaMime(asset.mimeType || '');
         setMediaType(asset.type === 'video' ? 'video' : 'image');
         setMode('preview');
       }
@@ -381,123 +354,49 @@ export default function StoryUploadScreen() {
   };
 
   const uploadStory = async () => {
-    if (!mediaUri || !placeId) {
-      Alert.alert('Error', 'Missing required information');
-      return;
-    }
-
-    // Check if user can post (location gating, suspension, rate limits)
-    if (!canPost) {
-      Alert.alert('Cannot Post', canPostError || 'You cannot post stories at this time');
-      return;
-    }
-
-    // Verify location one more time before upload
-    if (!userLocation) {
-      Alert.alert('Location Required', 'Please enable location services to post stories');
-      return;
-    }
-
+    if (!mediaUri || !placeId) { Alert.alert('Choose a place and media', 'A story needs a place and a photo or video.'); return; }
     setIsUploading(true);
     setUploadProgress(0);
-
     try {
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        Alert.alert('Error', 'You must be logged in to upload stories');
-        setIsUploading(false);
-        return;
-      }
-
-      // Upload media to Supabase Storage
-      setUploadProgress(10);
-      const fileName = `${user.id}/${placeId}/${Date.now()}.${mediaType === 'video' ? 'mp4' : 'jpg'}`;
-      
-      // Read file as base64
-      const base64 = await FileSystem.readAsStringAsync(mediaUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      setUploadProgress(30);
-
-      // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('place-stories')
-        .upload(fileName, decode(base64), {
-          contentType: mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
-          upsert: false,
+      if (!user) throw new Error('Sign in to post a story.');
+      const media = storyMediaDetails(mediaUri, mediaMime);
+      if (!media) throw new Error('Choose a JPEG, PNG, WebP, HEIC, MP4, MOV or WebM file.');
+      const location = storyKind === 'customer' ? await getCurrentLocation() : null;
+      if (storyKind === 'customer' && !location) throw new Error('Allow location access to share a customer story from this place.');
+      const pending = pendingUpload.current;
+      let path = pending?.uri === mediaUri && pending.placeId === placeId ? pending.path : '';
+      if (!path) {
+        const access = await getStoryPublishAccess(supabase, placeId, storyKind, location);
+        const fileInfo = await FileSystem.getInfoAsync(mediaUri);
+        if (!fileInfo.exists) throw new Error('This media is no longer available. Choose it again.');
+        if (fileInfo.size > access.max_media_bytes) throw new Error('Choose a photo or video smaller than 50 MB.');
+        path = `${user.id}/${placeId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${media.extension}`;
+        setUploadProgress(10);
+        const base64 = await FileSystem.readAsStringAsync(mediaUri, { encoding: FileSystem.EncodingType.Base64 });
+        setUploadProgress(30);
+        const { error: uploadError } = await supabase.storage.from('place-stories').upload(path, decode(base64), {
+          contentType: media.mime, upsert: false,
         });
-
-      if (uploadError) {
-        throw uploadError;
+        if (uploadError) {
+          try { await supabase.storage.from('place-stories').remove([path]); } catch {}
+          throw new Error('The media upload did not finish. Check your connection and try again.');
+        }
+        pendingUpload.current = { uri: mediaUri, placeId, path };
       }
-
-      setUploadProgress(60);
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('place-stories')
-        .getPublicUrl(fileName);
-
-      setUploadProgress(80);
-
-      // Create story record with location validation
-      let storyResult;
-      
-      // Use location-gated creation if place coordinates are available
-      if (placeLatitude && placeLongitude && userLocation) {
-        storyResult = await createStoryWithLocation({
-          place_id: placeId,
-          user_id: user.id,
-          media_url: publicUrl,
-          media_type: mediaType,
-          thumbnail_url: mediaType === 'video' ? thumbnailUri || undefined : publicUrl,
-          caption: caption.trim() || undefined,
-          tags: selectedTags.length > 0 ? selectedTags : undefined,
-          userLocation: userLocation,
-          placeLocation: {
-            latitude: placeLatitude,
-            longitude: placeLongitude,
-          },
-        });
-      } else {
-        // Fallback to regular creation (for places without coordinates)
-        const story = await uploadStory({
-          place_id: placeId,
-          user_id: user.id,
-          media_url: publicUrl,
-          media_type: mediaType,
-          thumbnail_url: mediaType === 'video' ? thumbnailUri : publicUrl,
-          caption: caption.trim() || undefined,
-          tags: selectedTags.length > 0 ? selectedTags : undefined,
-        });
-        storyResult = story ? { success: true, story } : { success: false, error: 'Failed to create story' };
-      }
-
+      setUploadProgress(75);
+      await publishUploadedStory(supabase, { placeId, mediaPath: path, mediaType: media.type,
+        kind: storyKind, caption, tags: selectedTags, location, universeId });
+      pendingUpload.current = null;
       setUploadProgress(100);
-
-      if (storyResult.success) {
-        Alert.alert(
-          'Success!',
-          `Your story has been uploaded! It will be visible for ${STORY_EXPIRY_HOURS / 24} days.`,
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.goBack(),
-            },
-          ]
-        );
-      } else {
-        throw new Error(storyResult.error || 'Failed to create story record');
-      }
-    } catch (error) {
-      console.error('Error uploading story:', error);
-      Alert.alert('Error', 'Failed to upload story. Please try again.');
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-    }
+      Alert.alert('Story published', storyKind === 'owner_highlight'
+        ? 'Your restaurant highlight stays available until you remove it.'
+        : `Your customer story will be visible for ${STORY_EXPIRY_HOURS} hours.`,
+        [{ text: 'OK', onPress: () => navigation.goBack() }]);
+    } catch (error: any) {
+      if (error instanceof StoryPublishError && !error.keepUpload) pendingUpload.current = null;
+      Alert.alert('Story not confirmed', error.message || 'The story could not be published. Please try again.');
+    } finally { setIsUploading(false); setUploadProgress(0); }
   };
 
   // Helper function to decode base64
@@ -571,6 +470,9 @@ export default function StoryUploadScreen() {
             }}
           >
             <Text style={styles.permissionButtonText}>Grant Permissions</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.permissionButton, { marginTop: 12 }]} onPress={pickFromGallery}>
+            <Text style={styles.permissionButtonText}>Choose from Photos</Text>
           </TouchableOpacity>
         </View>
       );
@@ -800,6 +702,25 @@ export default function StoryUploadScreen() {
           </View>
         </View>
 
+        <View style={styles.inputSection}>
+          <Text style={styles.inputLabel}>Share as</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity accessibilityRole="button" accessibilityState={{ selected: storyKind === 'customer' }}
+              disabled={isUploading} onPress={() => setStoryKind('customer')}
+              style={[styles.suggestedTag, storyKind === 'customer' && styles.selectedTag]}>
+              <Text style={{ color: storyKind === 'customer' ? '#8A05BE' : '#374151' }}>Customer story</Text>
+            </TouchableOpacity>
+            {canPublishHighlight && <TouchableOpacity accessibilityRole="button" accessibilityState={{ selected: storyKind === 'owner_highlight' }}
+              disabled={isUploading} onPress={() => setStoryKind('owner_highlight')}
+              style={[styles.suggestedTag, storyKind === 'owner_highlight' && styles.selectedTag]}>
+              <Text style={{ color: storyKind === 'owner_highlight' ? '#8A05BE' : '#374151' }}>Restaurant highlight</Text>
+            </TouchableOpacity>}
+          </View>
+          <Text style={{ color: '#6B7280', marginTop: 10, lineHeight: 20 }}>
+            {storyKind === 'customer' ? 'Share what you see here. Location access is required; customer stories last 72 hours.' : 'Show your food, team or space. Restaurant highlights stay available until you remove them.'}
+          </Text>
+        </View>
+
         {/* Caption Input */}
         <View style={styles.inputSection}>
           <Text style={styles.inputLabel}>Caption (optional)</Text>
@@ -810,9 +731,9 @@ export default function StoryUploadScreen() {
             value={caption}
             onChangeText={setCaption}
             multiline
-            maxLength={200}
+            maxLength={500}
           />
-          <Text style={styles.charCount}>{caption.length}/200</Text>
+          <Text style={styles.charCount}>{caption.length}/500</Text>
         </View>
 
         {/* Tags Section */}

@@ -131,6 +131,7 @@ export interface EditorState {
   isDirty: boolean;
   isSaving: boolean;
   lastSaved: Date | null;
+  saveError: string | null;
   loadError: string | null;
 }
 
@@ -158,9 +159,11 @@ export type EditorAction =
   | { type: 'SET_PENDING_UPLOAD'; key: string; upload: PendingUpload }
   | { type: 'CLEAR_PENDING_UPLOAD'; key: string }
   | { type: 'CLEAR_ALL_PENDING_UPLOADS' }
+  | { type: 'PUBLICATION_UPDATED'; published: boolean }
   | { type: 'MARK_SAVING' }
   | { type: 'MARK_SAVED' }
-  | { type: 'MARK_SAVE_ERROR' }
+  | { type: 'MARK_SAVE_ERROR'; error?: string }
+  | { type: 'SAVE_COMPLETED'; snapshot: Pick<EditorState, 'card' | 'links' | 'pendingUploads'>; persisted: Partial<CardData> }
   | { type: 'MARK_CLEAN' }
   | { type: 'SET_LOAD_ERROR'; error: string }
   | { type: 'RESET_CARD' };
@@ -174,6 +177,7 @@ export const initialEditorState: EditorState = {
   isDirty: false,
   isSaving: false,
   lastSaved: null,
+  saveError: null,
   loadError: null,
 };
 
@@ -197,7 +201,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return {
         ...state,
         card: { ...state.card, [action.field]: action.value },
-        isDirty: true,
+        saveError: null, isDirty: true,
       };
 
     case 'SET_FIELDS':
@@ -205,14 +209,14 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return {
         ...state,
         card: { ...state.card, ...action.fields },
-        isDirty: true,
+        saveError: null, isDirty: true,
       };
 
     case 'SET_LINKS':
-      return { ...state, links: action.links, isDirty: true };
+      return { ...state, links: action.links, saveError: null, isDirty: true };
 
     case 'ADD_LINK':
-      return { ...state, links: [...state.links, action.link], isDirty: true };
+      return { ...state, links: [...state.links, action.link], saveError: null, isDirty: true };
 
     case 'UPDATE_LINK':
       return {
@@ -220,21 +224,22 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         links: state.links.map(l =>
           l.id === action.id ? { ...l, ...action.updates } : l
         ),
-        isDirty: true,
+        saveError: null, isDirty: true,
       };
 
     case 'REMOVE_LINK':
       return {
         ...state,
         links: state.links.filter(l => l.id !== action.id),
-        isDirty: true,
+        saveError: null, isDirty: true,
       };
 
     case 'REORDER_LINKS': {
+      if (!Number.isInteger(action.fromIndex) || !Number.isInteger(action.toIndex) || action.fromIndex < 0 || action.toIndex < 0 || action.fromIndex >= state.links.length || action.toIndex >= state.links.length || action.fromIndex === action.toIndex) return state;
       const newLinks = [...state.links];
       const [moved] = newLinks.splice(action.fromIndex, 1);
       newLinks.splice(action.toIndex, 0, moved);
-      return { ...state, links: newLinks, isDirty: true };
+      return { ...state, links: newLinks.map((link, index) => ({ ...link, sort_order: index })), saveError: null, isDirty: true };
     }
 
     case 'SET_TEMPLATE':
@@ -246,7 +251,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
           template_id: action.templateId,
           ...(action.colorSchemeId ? { color_scheme_id: action.colorSchemeId } : {}),
         },
-        isDirty: true,
+        saveError: null, isDirty: true,
       };
 
     case 'ADD_GALLERY_IMAGE': {
@@ -266,7 +271,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         ...state,
         card: { ...state.card, gallery_images: gallery },
         pendingUploads: uploads,
-        isDirty: true,
+        saveError: null, isDirty: true,
       };
     }
 
@@ -283,7 +288,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
           ),
         },
         pendingUploads: newUploads,
-        isDirty: true,
+        saveError: null, isDirty: true,
       };
     }
 
@@ -295,7 +300,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return {
         ...state,
         card: { ...state.card, gallery_images: newGallery },
-        isDirty: true,
+        saveError: null, isDirty: true,
       };
     }
 
@@ -307,7 +312,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
           ...state.card,
           videos: [...(state.card.videos || []), action.video],
         },
-        isDirty: true,
+        saveError: null, isDirty: true,
       };
 
     case 'REMOVE_VIDEO': {
@@ -317,7 +322,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return {
         ...state,
         card: { ...state.card, videos: newVideos },
-        isDirty: true,
+        saveError: null, isDirty: true,
       };
     }
 
@@ -333,7 +338,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return {
         ...state,
         card: { ...state.card, videos: updatedVideos },
-        isDirty: true,
+        saveError: null, isDirty: true,
       };
     }
 
@@ -348,7 +353,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
           ...state.card,
           featured_socials: [...existing, action.social],
         },
-        isDirty: true,
+        saveError: null, isDirty: true,
       };
     }
 
@@ -362,7 +367,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
             s.platform === action.platform ? { ...s, url: action.url } : s
           ),
         },
-        isDirty: true,
+        saveError: null, isDirty: true,
       };
 
     case 'REMOVE_FEATURED_SOCIAL':
@@ -375,13 +380,13 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
             s => s.platform !== action.platform
           ),
         },
-        isDirty: true,
+        saveError: null, isDirty: true,
       };
 
     case 'SET_PENDING_UPLOAD': {
       const uploads = new Map(state.pendingUploads);
       uploads.set(action.key, action.upload);
-      return { ...state, pendingUploads: uploads, isDirty: true };
+      return { ...state, pendingUploads: uploads, saveError: null, isDirty: true };
     }
 
     case 'CLEAR_PENDING_UPLOAD': {
@@ -393,14 +398,23 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     case 'CLEAR_ALL_PENDING_UPLOADS':
       return { ...state, pendingUploads: new Map() };
 
+    case 'SAVE_COMPLETED': {
+      const unchanged = state.card === action.snapshot.card && state.links === action.snapshot.links && state.pendingUploads === action.snapshot.pendingUploads;
+      if (!unchanged || !state.card) return { ...state, isSaving: false, saveError: null };
+      return { ...state, isSaving: false, saveError: null, card: { ...state.card, ...action.persisted }, pendingUploads: new Map(), isDirty: false, lastSaved: new Date() };
+    }
+
+    case 'PUBLICATION_UPDATED':
+      return state.card ? { ...state, card: { ...state.card, is_published: action.published } } : state;
+
     case 'MARK_SAVING':
-      return { ...state, isSaving: true };
+      return { ...state, isSaving: true, saveError: null };
 
     case 'MARK_SAVED':
       return { ...state, isSaving: false, isDirty: false, lastSaved: new Date() };
 
     case 'MARK_SAVE_ERROR':
-      return { ...state, isSaving: false };
+      return { ...state, isSaving: false, saveError: action.error || 'Changes could not be saved. Retry to save your changes.' };
 
     case 'MARK_CLEAN':
       return { ...state, isDirty: false };
@@ -439,7 +453,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         },
         links: [],
         pendingUploads: new Map(),
-        isDirty: true,
+        saveError: null, isDirty: true,
       };
     }
 

@@ -5,12 +5,15 @@
  *
  * Features:
  * - Working tabs: Places, Map, Reviews, Info
- * - Add Place button for verified users
+ * - Add Place button for signed-in users
  * - Reviews section matching Place Details style
  * - Suggest Changes functionality
  */
 
-import React, { useState, useEffect } from 'react';
+import CruiseUniverse from '../components/cruises/CruiseUniverse';
+import ContentSafetyActions,{CONTENT_SAFETY_CHANGED} from '../components/ContentSafetyActions';
+import {DeviceEventEmitter} from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -26,9 +29,11 @@ import {
   Alert,
   TextInput,
   Modal,
+  Share,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import MapLibreGL from '@maplibre/maplibre-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabaseClient';
 import { type AtlasUniverse } from '../lib/atlas';
@@ -36,6 +41,10 @@ import { useTranslation } from 'react-i18next';
 import { StoriesRow } from '../components/StoriesRow';
 
 const { width } = Dimensions.get('window');
+
+import { useAuth } from '../contexts/AuthContext';
+import { loadUniversePlaces, hasUniverseCoordinates } from '../lib/universePlaces';
+import { searchFoodMenus } from '../lib/foodMenu';
 
 // Default placeholder images
 const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800';
@@ -62,6 +71,7 @@ const getCategoryFallbackImage = (category: string): string => {
 };
 
 interface Place {
+  universe_ids?: string[];
   id: string;
   name: string;
   tavvy_category?: string;
@@ -103,6 +113,10 @@ export default function UniverseLandingScreen() {
   const [subUniverses, setSubUniverses] = useState<AtlasUniverse[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewType, setReviewType] = useState<'good' | 'vibe' | 'heads_up' | null>(null);
+  const [reviewText, setReviewText] = useState('');
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const [reviewSubmitError, setReviewSubmitError] = useState('');
   const [activeTab, setActiveTab] = useState('Places');
   const [activeZone, setActiveZone] = useState('All Zones');
   const [searchQuery, setSearchQuery] = useState('');
@@ -119,18 +133,25 @@ export default function UniverseLandingScreen() {
   const [foodSearchQuery, setFoodSearchQuery] = useState('');
   const [foodSearchResults, setFoodSearchResults] = useState<MenuItem[]>([]);
   const [foodSearchLoading, setFoodSearchLoading] = useState(false);
+  const [foodSearchError, setFoodSearchError] = useState('');
+  const foodRequest = useRef(0);
 
-  // Check if user is verified (simplified - you'd check from auth context)
-  const [isVerified, setIsVerified] = useState(true); // TODO: Get from auth context
+  const { user } = useAuth();
+  const canContribute = !!user;
+  const [loadError, setLoadError] = useState('');
+  const [reviewsError, setReviewsError] = useState('');
 
   useEffect(() => {
     if (universeId) {
       loadUniverseData();
     }
-  }, [universeId]);
+    const subscription=DeviceEventEmitter.addListener(CONTENT_SAFETY_CHANGED,()=>loadUniverseData());return()=>subscription.remove();
+  }, [universeId,user?.id]);
 
   const loadUniverseData = async () => {
     setLoading(true);
+    setUniverse(null); setPlaces([]); setSubUniverses([]); setReviews([]);
+    setLoadError(''); setReviewsError(''); setActiveZone('All Zones');
     try {
       console.log('[UniverseLanding] Loading universe with ID:', universeId);
       
@@ -154,6 +175,7 @@ export default function UniverseLandingScreen() {
       
       console.log('[UniverseLanding] Universe loaded:', universeData.name);
       setUniverse(universeData);
+      if (universeData.universe_kind === 'cruise_ship') return;
 
       // Fetch sub-universes (planets) for this universe
       const { data: subUniversesData, error: subError } = await supabase
@@ -163,42 +185,29 @@ export default function UniverseLandingScreen() {
         .eq('status', 'published')
         .order('name', { ascending: true });
 
-      if (!subError && subUniversesData) {
+      if (subError) throw subError;
+      if (subUniversesData) {
         setSubUniverses(subUniversesData);
       }
 
-      // Fetch places linked to this universe - two-step approach for reliability
-      const { data: placeLinks, error: linksError } = await supabase
-        .from('atlas_universe_places')
-        .select('place_id')
-        .eq('universe_id', universeId)
-        .limit(100);
-
-      if (!linksError && placeLinks && placeLinks.length > 0) {
-        const placeIds = placeLinks.map((link: any) => link.place_id);
-        const { data: placesData, error: placesError } = await supabase
-          .from('places')
-          .select('id, name, tavvy_category, tavvy_subcategory, cover_image_url, latitude, longitude')
-          .in('id', placeIds);
-        
-        if (!placesError && placesData) {
-          setPlaces(placesData);
-        }
-      }
+      setPlaces(await loadUniversePlaces([universeId, ...(subUniversesData || []).map(s => s.id)]));
 
       // Fetch reviews for this universe
-      const { data: reviewsData, error: reviewsError } = await supabase
+      const { data: reviewsData, error: reviewReadError } = await supabase
         .from('universe_reviews')
         .select('*')
         .eq('universe_id', universeId)
         .order('created_at', { ascending: false })
         .limit(20);
 
-      if (!reviewsError && reviewsData) {
+      if (reviewReadError) setReviewsError('Reviews are unavailable. Please try again later.');
+      if (!reviewReadError && reviewsData) {
         setReviews(reviewsData);
       }
 
     } catch (error) {
+      setUniverse(null);
+      setLoadError('Unable to load this universe. Please try again.');
       console.error('Error loading universe data:', error);
     } finally {
       setLoading(false);
@@ -213,11 +222,7 @@ export default function UniverseLandingScreen() {
     { val: "Info", label: "Info", icon: "information-circle" }
   ];
 
-  // Build zones from sub-universes
-  const zones = [
-    "All Zones",
-    ...subUniverses.map(su => su.name)
-  ];
+  const zones = [{ id: 'All Zones', name: 'All Zones' }, ...subUniverses.map(s => ({ id: s.id, name: s.name }))];
 
   // Category filter definitions
   const RIDE_SUBCATEGORIES = ['water_rides', 'thrill_rides', 'dark_rides', 'family_rides', 'simulators'];
@@ -229,7 +234,7 @@ export default function UniverseLandingScreen() {
       place.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (place.tavvy_category || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (place.tavvy_subcategory || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesZone = activeZone === 'All Zones' || true; // TODO: Filter by zone
+    const matchesZone = activeZone === 'All Zones' || !!place.universe_ids?.includes(activeZone);
     
     // Category filter
     let matchesFilter = true;
@@ -310,75 +315,19 @@ export default function UniverseLandingScreen() {
     setShowAddPlaceModal(false);
   };
 
-  // Handle food search
+  // Query the same menu data used by the restaurant's online menu.
   const handleFoodSearch = async (query: string) => {
-    setFoodSearchQuery(query);
-    if (!query.trim() || !universeId) {
-      setFoodSearchResults([]);
-      return;
-    }
-
+    const current = ++foodRequest.current;
+    setFoodSearchQuery(query); setFoodSearchError(''); setFoodSearchResults([]);
+    if (!query.trim() || !universeId) { setFoodSearchLoading(false); return; }
     setFoodSearchLoading(true);
     try {
-      // Get all dining places in this universe
-      const { data: placeLinks } = await supabase
-        .from('atlas_universe_places')
-        .select('place_id')
-        .eq('universe_id', universeId);
-
-      if (!placeLinks || placeLinks.length === 0) {
-        setFoodSearchResults([]);
-        setFoodSearchLoading(false);
-        return;
-      }
-
-      const placeIds = placeLinks.map((link: any) => link.place_id);
-
-      // Search menu items in those places
-      const { data: menuItems, error } = await supabase
-        .from('restaurant_menu_items')
-        .select(`
-          id,
-          place_id,
-          item_name,
-          description,
-          price,
-          category,
-          dietary_tags,
-          image_url
-        `)
-        .in('place_id', placeIds)
-        .ilike('item_name', `%${query}%`)
-        .eq('is_available', true)
-        .limit(20);
-
-      if (error) throw error;
-
-      // Get place names for the results
-      if (menuItems && menuItems.length > 0) {
-        const uniquePlaceIds = [...new Set(menuItems.map((item: any) => item.place_id))];
-        const { data: placesData } = await supabase
-          .from('places')
-          .select('id, name, cover_image_url')
-          .in('id', uniquePlaceIds);
-
-        const placeMap = new Map(placesData?.map((p: any) => [p.id, p]) || []);
-        
-        const resultsWithPlaces = menuItems.map((item: any) => ({
-          ...item,
-          place_name: placeMap.get(item.place_id)?.name || 'Unknown Restaurant',
-          place_thumbnail: placeMap.get(item.place_id)?.cover_image_url
-        }));
-
-        setFoodSearchResults(resultsWithPlaces);
-      } else {
-        setFoodSearchResults([]);
-      }
+      const results = await searchFoodMenus({ query, universeId: universeId });
+      if (current === foodRequest.current) setFoodSearchResults(results as MenuItem[]);
     } catch (error) {
-      console.error('Error searching food:', error);
-      setFoodSearchResults([]);
+      if (current === foodRequest.current) setFoodSearchError((error as Error).message);
     } finally {
-      setFoodSearchLoading(false);
+      if (current === foodRequest.current) setFoodSearchLoading(false);
     }
   };
 
@@ -393,12 +342,13 @@ export default function UniverseLandingScreen() {
       // Get current user for the suggestion
       const { data: { user } } = await supabase.auth.getUser();
 
+      if (!user) throw new Error('Sign in to submit a suggestion.');
       // Insert suggestion into database
       const { error } = await supabase
         .from('universe_suggestions')
         .insert({
           universe_id: universeId,
-          user_id: user?.id || null,
+          user_id: user!.id,
           suggestion_text: suggestionText,
           status: 'pending'
         });
@@ -412,6 +362,17 @@ export default function UniverseLandingScreen() {
       console.error('Error submitting suggestion:', error);
       Alert.alert('Error', 'Failed to submit suggestion. Please try again.');
     }
+  };
+
+  const submitReview = async () => {
+    if (!user || !universe || !reviewType || !reviewText.trim() || reviewSaving) return;
+    setReviewSaving(true); setReviewSubmitError('');
+    try {
+      const { error } = await supabase.from('universe_reviews').insert({ universe_id: universe.id, user_id: user.id, type: reviewType, text: reviewText.trim() });
+      if (error) throw error;
+      setReviewType(null); setReviewText(''); await loadUniverseData(); setActiveTab('Reviews');
+    } catch { setReviewSubmitError('Unable to post your review. Please try again.'); }
+    finally { setReviewSaving(false); }
   };
 
   // Group reviews by type
@@ -432,13 +393,15 @@ export default function UniverseLandingScreen() {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
         <Ionicons name="planet-outline" size={48} color="#9CA3AF" />
-        <Text style={styles.loadingText}>Universe not found</Text>
+        <Text style={styles.loadingText}>{loadError || 'Universe not found'}</Text>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonStyle}>
           <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
   }
+
+  if (universe.universe_kind === 'cruise_ship') return <CruiseUniverse universeId={universe.id}/>;
 
   // Render tab content based on active tab
   const renderTabContent = () => {
@@ -481,11 +444,11 @@ export default function UniverseLandingScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.zonesContainer}>
             {zones.map((zone) => (
               <TouchableOpacity 
-                key={zone}
-                style={[styles.zoneChip, activeZone === zone && styles.zoneChipActive]}
-                onPress={() => setActiveZone(zone)}
+                key={zone.id}
+                style={[styles.zoneChip, activeZone === zone.id && styles.zoneChipActive]}
+                onPress={() => setActiveZone(zone.id)}
               >
-                <Text style={[styles.zoneText, activeZone === zone && styles.zoneTextActive]}>{zone}</Text>
+                <Text style={[styles.zoneText, activeZone === zone.id && styles.zoneTextActive]}>{zone.name}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -610,7 +573,7 @@ export default function UniverseLandingScreen() {
           <View style={styles.emptyState}>
             <Ionicons name="location-outline" size={48} color="#9CA3AF" />
             <Text style={styles.emptyStateText}>No places found</Text>
-            {isVerified && (
+            {canContribute && (
               <TouchableOpacity 
                 style={styles.addFirstPlaceButton}
                 onPress={() => setShowAddPlaceModal(true)}
@@ -626,44 +589,30 @@ export default function UniverseLandingScreen() {
 
   // Map Tab
   const renderMapTab = () => {
-    const hasCoordinates = universe?.latitude && universe?.longitude;
-
-    return (
-      <View style={styles.mapTabContainer}>
-        <View style={styles.mapPlaceholder}>
-          <Ionicons name="map-outline" size={64} color="#9CA3AF" />
-          <Text style={styles.mapPlaceholderText}>Map coming soon</Text>
-          <Text style={styles.mapPlaceholderSubtext}>
-            {hasCoordinates 
-              ? `${universe?.location || 'Location available'}` 
-              : 'Location data not available yet'}
-          </Text>
-          {hasCoordinates && (
-            <TouchableOpacity 
-              style={styles.openMapsButton}
-              onPress={() => {
-                // Open in external maps app
-                const url = Platform.select({
-                  ios: `maps:?q=${universe?.name}&ll=${universe?.latitude},${universe?.longitude}`,
-                  android: `geo:${universe?.latitude},${universe?.longitude}?q=${universe?.name}`,
-                });
-                if (url) {
-                  import('react-native').then(({ Linking }) => Linking.openURL(url));
-                }
-              }}
-            >
-              <Ionicons name="navigate-outline" size={20} color="#FFFFFF" />
-              <Text style={styles.openMapsButtonText}>Open in Maps</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-    );
+    const markers = filteredPlaces.filter(hasUniverseCoordinates);
+    const points = markers.length ? markers : hasUniverseCoordinates(universe) ? [universe!] : [];
+    if (!points.length) return <View style={styles.emptyState}><Text>No location data is available for these places.</Text></View>;
+    const latitudes = points.map(p => p.latitude!);
+    const longitudes = points.map(p => p.longitude!);
+    return <View style={styles.mapTabContainer}>
+      <Text style={{ padding: 16 }}>{markers.length} of {filteredPlaces.length} matching places have map locations. Filters from Places apply here.</Text>
+      <MapLibreGL.MapView style={styles.fullMap} mapStyle={{ version: 8, sources: {}, layers: [] }} attributionEnabled>
+        <MapLibreGL.RasterSource id="universe-tiles" tileUrlTemplates={['https://tile.openstreetmap.org/{z}/{x}/{y}.png']} tileSize={256} attribution="© OpenStreetMap contributors">
+          <MapLibreGL.RasterLayer id="universe-layer" sourceID="universe-tiles" />
+        </MapLibreGL.RasterSource>
+        <MapLibreGL.Camera maxZoomLevel={18} defaultSettings={points.length === 1 ? { centerCoordinate: [longitudes[0], latitudes[0]], zoomLevel: 15 } : { bounds: { ne: [Math.max(...longitudes), Math.max(...latitudes)], sw: [Math.min(...longitudes), Math.min(...latitudes)], paddingTop: 40, paddingBottom: 40, paddingLeft: 40, paddingRight: 40 } }} />
+        {points.map(point => <MapLibreGL.PointAnnotation key={point.id} id={point.id} coordinate={[point.longitude!, point.latitude!]} onSelected={() => { if (point.id !== universe!.id) handlePlacePress(point as Place); }}>
+          <View style={{ backgroundColor: '#06B6D4', borderRadius: 14, borderWidth: 2, borderColor: '#fff', padding: 6 }}><Ionicons name="location" color="#fff" size={18} /></View>
+          <MapLibreGL.Callout title={point.name} />
+        </MapLibreGL.PointAnnotation>)}
+      </MapLibreGL.MapView>
+    </View>;
   };
 
   // Reviews Tab (matching Place Details style)
   const renderReviewsTab = () => (
     <View style={styles.reviewsTabContainer}>
+      {!!reviewsError && <Text accessibilityRole="alert">{reviewsError}</Text>}
       {/* Community Signals Card */}
       <View style={styles.signalsCard}>
         <Text style={styles.signalsTitle}>Community Reviews</Text>
@@ -671,11 +620,7 @@ export default function UniverseLandingScreen() {
         {/* The Good - Blue */}
         <TouchableOpacity 
           style={[styles.signalBar, { backgroundColor: '#00C2CB' }]}
-          onPress={() => navigation.navigate('AddUniverseReview', { 
-            universeId: universeId, 
-            universeName: universe?.name,
-            reviewType: 'good'
-          })}
+          onPress={() => { setReviewSubmitError(''); setReviewType('good'); }}
           activeOpacity={0.8}
         >
           <Ionicons name="thumbs-up" size={18} color="#FFFFFF" style={{ marginRight: 10 }} />
@@ -689,11 +634,7 @@ export default function UniverseLandingScreen() {
         {/* The Vibe - Purple */}
         <TouchableOpacity 
           style={[styles.signalBar, { backgroundColor: '#8A05BE' }]}
-          onPress={() => navigation.navigate('AddUniverseReview', { 
-            universeId: universeId, 
-            universeName: universe?.name,
-            reviewType: 'vibe'
-          })}
+          onPress={() => { setReviewSubmitError(''); setReviewType('vibe'); }}
           activeOpacity={0.8}
         >
           <Ionicons name="sparkles" size={18} color="#FFFFFF" style={{ marginRight: 10 }} />
@@ -707,11 +648,7 @@ export default function UniverseLandingScreen() {
         {/* Heads Up - Orange */}
         <TouchableOpacity 
           style={[styles.signalBar, { backgroundColor: '#F5A623', marginBottom: 0 }]}
-          onPress={() => navigation.navigate('AddUniverseReview', { 
-            universeId: universeId, 
-            universeName: universe?.name,
-            reviewType: 'heads_up'
-          })}
+          onPress={() => { setReviewSubmitError(''); setReviewType('heads_up'); }}
           activeOpacity={0.8}
         >
           <Ionicons name="alert-circle" size={18} color="#FFFFFF" style={{ marginRight: 10 }} />
@@ -743,6 +680,7 @@ export default function UniverseLandingScreen() {
               </View>
               <View style={styles.reviewContent}>
                 <Text style={styles.reviewText}>{review.text}</Text>
+                <ContentSafetyActions kind="universe_review" contentId={review.id}/>
                 <Text style={styles.reviewMeta}>{review.user_name} · {new Date(review.created_at).toLocaleDateString()}</Text>
               </View>
             </View>
@@ -756,10 +694,7 @@ export default function UniverseLandingScreen() {
         <Text style={styles.beenHereSubtext}>Share your experience with the community</Text>
         <TouchableOpacity 
           style={styles.writeReviewButton}
-          onPress={() => navigation.navigate('AddUniverseReview', { 
-            universeId: universeId, 
-            universeName: universe?.name 
-          })}
+          onPress={() => { setReviewSubmitError(''); setReviewType('good'); }}
         >
           <Ionicons name="create-outline" size={20} color="#FFFFFF" />
           <Text style={styles.writeReviewButtonText}>Write a Review</Text>
@@ -852,10 +787,7 @@ export default function UniverseLandingScreen() {
               <Ionicons name="arrow-back" size={24} color="#1F2937" />
             </TouchableOpacity>
             <View style={styles.navActions}>
-              <TouchableOpacity style={styles.navButton}>
-                <Ionicons name="heart-outline" size={24} color="#1F2937" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.navButton}>
+              <TouchableOpacity accessibilityLabel="Share universe" style={styles.navButton} onPress={() => Share.share({ message: `${universe.name} https://tavvy.com/app/universe/${universe.slug || universe.id}` }).catch(() => Alert.alert('Unable to share', 'Please try again.'))}>
                 <Ionicons name="share-outline" size={24} color="#1F2937" />
               </TouchableOpacity>
             </View>
@@ -916,7 +848,7 @@ export default function UniverseLandingScreen() {
       </ScrollView>
 
       {/* Floating Add Place Button - Only for verified users */}
-      {isVerified && (
+      {canContribute && (
         <TouchableOpacity 
           style={styles.floatingAddButton}
           onPress={() => setShowAddPlaceModal(true)}
@@ -926,6 +858,18 @@ export default function UniverseLandingScreen() {
       )}
 
       {/* Add Place Modal */}
+      <Modal visible={!!reviewType} transparent animationType="slide" onRequestClose={() => { if (!reviewSaving) setReviewType(null); }}>
+        <View style={styles.modalOverlay}><View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Write a review</Text>
+          {!user ? <Text>Sign in to post a review.</Text> : <>
+            <View style={{ flexDirection: 'row', gap: 12, marginVertical: 16 }}>{(['good', 'vibe', 'heads_up'] as const).map(type => <TouchableOpacity key={type} onPress={() => setReviewType(type)}><Text style={{ color: reviewType === type ? '#0891B2' : '#374151' }}>{type === 'good' ? 'The Good' : type === 'vibe' ? 'The Vibe' : 'Heads Up'}</Text></TouchableOpacity>)}</View>
+            <TextInput accessibilityLabel="Your review" value={reviewText} onChangeText={setReviewText} multiline maxLength={4000} style={styles.suggestionInput} />
+            <TouchableOpacity disabled={reviewSaving || !reviewText.trim()} onPress={submitReview} style={styles.submitButton}><Text style={styles.submitButtonText}>{reviewSaving ? 'Posting…' : 'Post review'}</Text></TouchableOpacity>
+          </>}
+          {!!reviewSubmitError && <Text accessibilityRole="alert">{reviewSubmitError}</Text>}
+          <TouchableOpacity disabled={reviewSaving} onPress={() => setReviewType(null)} style={{ padding: 16 }}><Text>Close</Text></TouchableOpacity>
+        </View></View>
+      </Modal>
       <Modal
         visible={showAddPlaceModal}
         animationType="slide"
@@ -1067,7 +1011,7 @@ export default function UniverseLandingScreen() {
 
             {/* Results */}
             <ScrollView style={styles.foodResultsContainer}>
-              {foodSearchLoading ? (
+              {foodSearchError ? <Text accessibilityRole="alert">{foodSearchError}</Text> : foodSearchLoading ? (
                 <View style={styles.foodEmptyState}>
                   <Text style={{ fontSize: 24, marginBottom: 8 }}>🔍</Text>
                   <Text style={styles.foodEmptyText}>Searching menus...</Text>
@@ -1089,7 +1033,7 @@ export default function UniverseLandingScreen() {
                       style={styles.foodResultCard}
                       onPress={() => {
                         setShowFoodSearchModal(false);
-                        navigation.navigate('PlaceDetails', { placeId: item.place_id });
+                        navigation.navigate('MenuGallery', { placeId: item.place_id, placeName: item.place_name, dishId: item.id });
                       }}
                     >
                       {item.image_url || item.place_thumbnail ? (

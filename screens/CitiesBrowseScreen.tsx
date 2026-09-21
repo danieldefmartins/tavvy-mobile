@@ -1,3 +1,4 @@
+import ToolHeader from '../components/ToolHeader';
 /**
  * CitiesBrowseScreen.tsx
  * Browse cities with Tavvy signals
@@ -28,6 +29,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabaseClient';
+import { loadActiveCities, matchesCity, CityRecord } from '../lib/cities';
 import { useTranslation } from 'react-i18next';
 import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
 
@@ -47,23 +49,13 @@ const COLORS = {
   trending: '#EF4444',
 };
 
-interface City {
-  id: string;
-  name: string;
-  state_region?: string;
-  country?: string;
-  population?: number;
-  cover_image_url?: string;
-  is_featured?: boolean;
-}
-
-// Placeholder image
-const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800';
+type City = CityRecord;
 
 function CitiesBrowseScreen({ navigation }: { navigation: any }) {
   const { t } = useTranslation();
   const { theme, isDark } = useThemeContext();
   const [cities, setCities] = useState<City[]>([]);
+  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,21 +67,11 @@ function CitiesBrowseScreen({ navigation }: { navigation: any }) {
   const loadCities = async () => {
     setLoading(true);
     try {
-      // Fetch cities from tavvy_cities table
-      const { data, error } = await supabase
-        .from('tavvy_cities')
-        .select('*')
-        .order('population', { ascending: false })
-        .limit(20);
-
-      if (error) {
-        console.error('Error loading cities:', error);
-        setCities([]);
-      } else {
-        setCities(data || []);
-      }
+      setLoadError('');
+      setCities(await loadActiveCities(supabase));
     } catch (error) {
       console.error('Error loading cities:', error);
+      setLoadError('Cities could not be loaded. Pull down to retry.');
       setCities([]);
     } finally {
       setLoading(false);
@@ -123,28 +105,29 @@ function CitiesBrowseScreen({ navigation }: { navigation: any }) {
   const secondaryTextColor = theme.textSecondary;
 
   // Filter by search query
-  const filteredCities = searchQuery
-    ? cities.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : cities;
-
-  const featuredCity = filteredCities.find(c => c.is_featured) || filteredCities[0];
-  const popularCities = filteredCities.filter(c => c.id !== featuredCity?.id).slice(0, 4);
+  const filteredCities = cities.filter(city => matchesCity(city, searchQuery));
+  const featuredCity = filteredCities.find(c => c.is_featured);
+  const popularCities = filteredCities.filter(c => c.id !== featuredCity?.id);
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.loadingContainer, { backgroundColor }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
+        <ToolHeader title="Cities" subtitle="Discover urban adventures." />
+        <View style={[styles.container, styles.loadingContainer]}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <ActivityIndicator size="large" color={COLORS.accent} />
         <Text style={[styles.loadingText, { color: secondaryTextColor }]}>
           {t('cities.loading', { defaultValue: 'Loading cities...' })}
         </Text>
-      </View>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <ToolHeader title="Cities" subtitle="Discover urban adventures." />
       
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -153,13 +136,7 @@ function CitiesBrowseScreen({ navigation }: { navigation: any }) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: textColor }]}>Cities</Text>
-          <Text style={[styles.tagline, { color: COLORS.accent }]}>
-            Discover urban adventures.
-          </Text>
-        </View>
+
 
         {/* Search Bar */}
         <View style={styles.searchSection}>
@@ -193,9 +170,9 @@ function CitiesBrowseScreen({ navigation }: { navigation: any }) {
             <View style={[styles.emptyIcon, { backgroundColor: glassyColor }]}>
               <Ionicons name="business-outline" size={48} color={secondaryTextColor} />
             </View>
-            <Text style={[styles.emptyTitle, { color: textColor }]}>No cities yet</Text>
+            <Text style={[styles.emptyTitle, { color: textColor }]}>{loadError ? 'Unable to load cities' : searchQuery.trim() ? 'No matching cities' : 'No cities yet'}</Text>
             <Text style={[styles.emptySubtitle, { color: secondaryTextColor }]}>
-              Cities will appear here once added to the platform.
+              {loadError || (searchQuery.trim() ? 'Try a different city, state, or country.' : 'Cities will appear here once published.')}
             </Text>
           </View>
         ) : (
@@ -210,7 +187,7 @@ function CitiesBrowseScreen({ navigation }: { navigation: any }) {
                   activeOpacity={0.9}
                 >
                   <Image
-                    source={{ uri: featuredCity.cover_image_url || PLACEHOLDER_IMAGE }}
+                    source={{ uri: featuredCity.cover_image_url }}
                     style={styles.featuredImage}
                   />
                   <LinearGradient
@@ -222,7 +199,7 @@ function CitiesBrowseScreen({ navigation }: { navigation: any }) {
                     </View>
                     <Text style={styles.featuredName}>{featuredCity.name}</Text>
                     <Text style={styles.featuredMeta}>
-                      {featuredCity.state_region}{featuredCity.country ? `, ${featuredCity.country}` : ''}
+                      {featuredCity.state}{featuredCity.country ? `, ${featuredCity.country}` : ''}
                       {featuredCity.population ? ` • ${formatPopulation(featuredCity.population)}` : ''}
                     </Text>
                   </LinearGradient>
@@ -233,7 +210,7 @@ function CitiesBrowseScreen({ navigation }: { navigation: any }) {
             {/* Popular Cities Grid */}
             {popularCities.length > 0 && (
               <View style={styles.popularSection}>
-                <Text style={[styles.sectionTitle, { color: textColor }]}>Popular Cities</Text>
+                <Text style={[styles.sectionTitle, { color: textColor }]}>Cities</Text>
                 <View style={styles.gridContainer}>
                   {popularCities.map((city) => (
                     <TouchableOpacity
@@ -253,7 +230,7 @@ function CitiesBrowseScreen({ navigation }: { navigation: any }) {
                       activeOpacity={0.9}
                     >
                       <Image
-                        source={{ uri: city.cover_image_url || PLACEHOLDER_IMAGE }}
+                        source={{ uri: city.cover_image_url }}
                         style={styles.gridImage}
                       />
                       <View style={styles.gridInfo}>
@@ -261,7 +238,7 @@ function CitiesBrowseScreen({ navigation }: { navigation: any }) {
                           {city.name}
                         </Text>
                         <Text style={[styles.gridLocation, { color: secondaryTextColor }]} numberOfLines={1}>
-                          {city.state_region}{city.country ? `, ${city.country}` : ''}
+                          {city.state}{city.country ? `, ${city.country}` : ''}
                         </Text>
                       </View>
                     </TouchableOpacity>

@@ -1,3 +1,4 @@
+import { useReleaseCopy } from '../../../../hooks/useReleaseCopy';
 /**
  * EditorField -- reusable labeled input/textarea for the card editor.
  * Supports single-line and multiline input with optional character count.
@@ -34,6 +35,7 @@ export default function EditorField({
   isDark,
   maxLength,
 }: EditorFieldProps) {
+  const copy = useReleaseCopy();
   const inputBg = isDark ? '#1E293B' : '#FFFFFF';
   const inputColor = isDark ? '#FFFFFF' : '#333333';
   const labelColor = isDark ? '#94A3B8' : '#6B7280';
@@ -43,7 +45,7 @@ export default function EditorField({
   return (
     <View style={styles.container}>
       <Text style={[styles.label, { color: labelColor }]}>
-        {label}
+        {copy(label)}
         {required && ' *'}
       </Text>
       <TextInput
@@ -62,7 +64,7 @@ export default function EditorField({
         ]}
         value={value}
         onChangeText={onChange}
-        placeholder={placeholder}
+        placeholder={placeholder ? copy(placeholder) : placeholder}
         placeholderTextColor={placeholderColor}
         multiline={multiline}
         numberOfLines={multiline ? rows : 1}

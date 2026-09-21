@@ -38,6 +38,7 @@ interface DynamicFormFieldsProps {
   errors?: Record<string, string>;
   disabled?: boolean;
   excludeUniversalFields?: boolean;
+  hideAddressFields?: boolean;
 }
 
 interface FieldRendererProps {
@@ -678,6 +679,7 @@ export const DynamicFormFields: React.FC<DynamicFormFieldsProps> = ({
   errors = {},
   disabled = false,
   excludeUniversalFields = false,
+  hideAddressFields = false,
 }) => {
   // Get fields organized by section
   const fieldsBySection = useMemo(() => {
@@ -687,16 +689,16 @@ export const DynamicFormFields: React.FC<DynamicFormFieldsProps> = ({
 
   // Filter out universal fields if requested
   const filteredSections = useMemo(() => {
-    if (!excludeUniversalFields) return fieldsBySection;
+    if (!excludeUniversalFields && !hideAddressFields) return fieldsBySection;
     
     const filtered: Record<string, CategoryField[]> = {};
     for (const [section, fields] of Object.entries(fieldsBySection)) {
-      if (section !== 'basic' && section !== 'location' && section !== 'contact') {
+      if ((!excludeUniversalFields || !['basic', 'location', 'contact'].includes(section)) && (!hideAddressFields || section !== 'location')) {
         filtered[section] = fields;
       }
     }
     return filtered;
-  }, [fieldsBySection, excludeUniversalFields]);
+  }, [fieldsBySection, excludeUniversalFields, hideAddressFields]);
 
   // Sort sections by defined order
   const sortedSections = useMemo(() => {

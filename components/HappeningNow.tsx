@@ -1,3 +1,5 @@
+import { eventPrice } from '../lib/eventDiscovery';
+import { useThemeContext } from '../contexts/ThemeContext';
 // =============================================
 // HAPPENING NOW COMPONENT
 // =============================================
@@ -36,8 +38,11 @@ interface HappeningNowProps {
 export const HappeningNow: React.FC<HappeningNowProps> = ({
   onEventPress,
 }) => {
+  const { theme, isDark } = useThemeContext();
   const [events, setEvents] = useState<TavvyEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [locationFallback, setLocationFallback] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const navigation = useNavigation();
 
@@ -47,6 +52,7 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
+          setLocationFallback(true);
           // Default to Orlando, FL
           setUserLocation({ lat: 28.5383, lng: -81.3792 });
           return;
@@ -59,7 +65,8 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
         });
       } catch (err) {
         console.error('[HappeningNow] Location error:', err);
-        // Default to Orlando, FL
+        setLocationFallback(true);
+          // Default to Orlando, FL
         setUserLocation({ lat: 28.5383, lng: -81.3792 });
       }
     })();
@@ -75,7 +82,7 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
   const loadEvents = async () => {
     if (!userLocation) return;
     
-    setIsLoading(true);
+    setIsLoading(true); setLoadError(false);
     try {
       const fetchedEvents = await getHappeningNowEvents({
         lat: userLocation.lat,
@@ -87,7 +94,7 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
 
       setEvents(fetchedEvents);
     } catch (error) {
-      console.error('[HappeningNow] Error loading events:', error);
+      setLoadError(true);
       setEvents([]);
     } finally {
       setIsLoading(false);
@@ -128,11 +135,11 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
     const now = new Date();
     const hoursUntil = (date.getTime() - now.getTime()) / (1000 * 60 * 60);
     
-    if (hoursUntil < 0) return '#EF4444'; // Already started - red
-    if (hoursUntil < 6) return '#8B5CF6'; // Tonight - purple
-    if (hoursUntil < 24) return '#F59E0B'; // Tomorrow - amber
-    if (hoursUntil < 72) return '#10B981'; // This weekend - green
-    return '#3B82F6'; // Later - blue
+    if (hoursUntil < 0) return '#B91C1C'; // Already started - red
+    if (hoursUntil < 6) return '#6D28D9'; // Tonight - purple
+    if (hoursUntil < 24) return '#925400'; // Tomorrow - amber
+    if (hoursUntil < 72) return '#047857'; // This weekend - green
+    return '#1D4ED8'; // Later - blue
   };
 
   // Format distance
@@ -142,32 +149,9 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
     return `${miles.toFixed(1)} mi`;
   };
 
-  const handleEventPress = async (event: TavvyEvent) => {
-    if (onEventPress) {
-      onEventPress(event);
-    } else {
-      // Open event URL in browser if available
-      if (event.url) {
-        try {
-          const canOpen = await Linking.canOpenURL(event.url);
-          if (canOpen) {
-            await Linking.openURL(event.url);
-          } else {
-            Alert.alert('Cannot Open', 'Unable to open this event link.');
-          }
-        } catch (error) {
-          console.error('Error opening event URL:', error);
-          Alert.alert('Error', 'Failed to open event link.');
-        }
-      } else {
-        // If no URL, show event details in an alert
-        Alert.alert(
-          event.title,
-          `${event.venue_name ? event.venue_name + '\n' : ''}${event.address || ''}\n\nStarts: ${new Date(event.start_time).toLocaleString()}`,
-          [{ text: 'OK' }]
-        );
-      }
-    }
+  const handleEventPress = (event: TavvyEvent) => {
+    if (onEventPress) onEventPress(event);
+    else (navigation as any).navigate('EventDetail', { event });
   };
 
   if (isLoading) {
@@ -178,18 +162,17 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
     );
   }
 
-  // Show placeholder cards if no events found
-  const showPlaceholder = events.length === 0;
+  if (loadError || events.length === 0) return <View style={{padding:20}}><Text style={{color:theme.textSecondary}}>{loadError ? 'Events could not be loaded.' : 'No upcoming events found.'}{locationFallback ? ' Showing the Orlando, FL area.' : ''}</Text><TouchableOpacity onPress={loadEvents}><Text style={{color:isDark?'#D4A0FF':'#7905A8',paddingVertical:12}}>Retry</Text></TouchableOpacity></View>;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.title}>Happening Now</Text>
-          <Text style={styles.subtitle}>Time-sensitive experiences near you</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Happening Now</Text>
+          <Text style={[styles.subtitle, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{locationFallback ? 'Upcoming events near Orlando, FL' : 'Upcoming experiences near you'}</Text>
         </View>
         <TouchableOpacity style={styles.seeAllButton} onPress={() => (navigation as any).navigate('HappeningNow')}>
-          <Text style={styles.seeAllText}>See All</Text>
+          <Text style={[styles.seeAllText, { color: isDark ? '#D4A0FF' : '#74129B' }]}>See All</Text>
         </TouchableOpacity>
       </View>
 
@@ -200,50 +183,7 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
         snapToInterval={CARD_WIDTH + 12}
         decelerationRate="fast"
       >
-        {showPlaceholder ? (
-          // Placeholder cards when no events available
-          [
-            { 
-              id: 'tonight', 
-              title: 'Tonight', 
-              description: 'Events coming soon', 
-              examples: 'Live music • Pop-ups',
-              icon: 'moon-outline', 
-              color: '#8B5CF6' 
-            },
-            { 
-              id: 'this-weekend', 
-              title: 'This Weekend', 
-              description: 'Local events', 
-              examples: 'Festivals • Special hours',
-              icon: 'calendar-outline', 
-              color: '#F59E0B' 
-            },
-          ].map((item) => (
-            <TouchableOpacity 
-              key={item.id} 
-              style={styles.card}
-              onPress={() => (navigation as any).navigate('HappeningNow', { filter: item.id })}
-              activeOpacity={0.9}
-            >
-              <View style={[styles.placeholderImage, { backgroundColor: item.color + '15' }]}>
-                <Ionicons name={item.icon as any} size={48} color={item.color} />
-              </View>
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.85)']}
-                style={styles.gradient}
-              />
-              <View style={[styles.activityBadge, { backgroundColor: item.color }]}>
-                <Text style={styles.activityText}>{item.title}</Text>
-              </View>
-              <View style={styles.content}>
-                <Text style={styles.placeName}>{item.description}</Text>
-                <Text style={styles.placeholderSubtext}>{item.examples}</Text>
-                <Text style={styles.checkBackText}>Check back for updates</Text>
-              </View>
-            </TouchableOpacity>
-          ))
-        ) : (
+        {
           events.map((event) => {
             const badgeColor = getTimeBadgeColor(event.start_time);
             
@@ -257,7 +197,7 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
                 {/* Background Image */}
                 <View style={styles.imageContainer}>
                   <Image
-                    source={{ uri: event.image_url || DEFAULT_EVENT_IMAGE }}
+                    source={event.image_url ? { uri: event.image_url } : undefined}
                     style={styles.backgroundImage}
                   />
                   <LinearGradient
@@ -300,14 +240,14 @@ export const HappeningNow: React.FC<HappeningNowProps> = ({
                   </View>
                   {event.price_min !== undefined && (
                     <Text style={styles.lastActivity}>
-                      {event.price_min === 0 ? 'Free' : `From $${event.price_min}`}
+                      {eventPrice(event)}
                     </Text>
                   )}
                 </View>
               </TouchableOpacity>
             );
           })
-        )}
+        }
       </ScrollView>
     </View>
   );
@@ -433,7 +373,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dot: {
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#F1F5F9',
     marginHorizontal: 6,
   },
   city: {
@@ -441,7 +381,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   lastActivity: {
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#F1F5F9',
     fontSize: 11,
   },
   placeholderSubtext: {
@@ -450,7 +390,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   checkBackText: {
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#F1F5F9',
     fontSize: 11,
     marginTop: 6,
     fontStyle: 'italic',

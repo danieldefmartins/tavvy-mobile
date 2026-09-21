@@ -5,15 +5,11 @@
  */
 
 import { supabase } from './supabaseClient';
+import { loadCommunityEvents, eventDateRange } from './eventDiscovery';
 
-// API Keys from environment variables
-// Set these in your .env file (see .env.example)
+// API Keys
 const TICKETMASTER_API_KEY = process.env.EXPO_PUBLIC_TICKETMASTER_API_KEY || '';
 const PREDICTHQ_API_KEY = process.env.EXPO_PUBLIC_PREDICTHQ_API_KEY || '';
-
-// Circuit breaker for PredictHQ - disable after payment/auth errors
-let predictHQDisabled = false;
-let predictHQDisabledUntil = 0;
 
 // Canonical Event Type
 export interface TavvyEvent {
@@ -98,6 +94,7 @@ export async function fetchTicketmasterEvents(
   startDate?: string,
   endDate?: string
 ): Promise<TavvyEvent[]> {
+  if (!TICKETMASTER_API_KEY) return [];
   try {
     const params = new URLSearchParams({
       apikey: TICKETMASTER_API_KEY,
@@ -109,10 +106,10 @@ export async function fetchTicketmasterEvents(
     });
 
     if (startDate) {
-      params.append('startDateTime', `${startDate}T00:00:00Z`);
+      params.append('startDateTime', new Date(startDate).toISOString().replace('.000Z', 'Z'));
     }
     if (endDate) {
-      params.append('endDateTime', `${endDate}T23:59:59Z`);
+      params.append('endDateTime', new Date(endDate).toISOString().replace('.000Z', 'Z'));
     }
 
     const response = await fetch(
@@ -120,8 +117,7 @@ export async function fetchTicketmasterEvents(
     );
 
     if (!response.ok) {
-      console.warn(`[Events] Ticketmaster API error: ${response.status}`);
-      return [];
+      throw new Error('Ticketmaster events could not be loaded.');
     }
 
     const data = await response.json();
@@ -156,12 +152,11 @@ export async function fetchTicketmasterEvents(
         price_max: priceRange?.max,
         currency: priceRange?.currency || 'USD',
         popularity: 100, // Ticketmaster gets highest priority
-        verified: true,
+        verified: false,
       };
     });
   } catch (error) {
-    console.error('[Events] Error fetching Ticketmaster events:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -205,21 +200,7 @@ export async function fetchPredictHQEvents(
   startDate?: string,
   endDate?: string
 ): Promise<TavvyEvent[]> {
-  // Circuit breaker: skip if disabled due to previous errors
-  if (predictHQDisabled) {
-    if (Date.now() < predictHQDisabledUntil) {
-      return []; // Silently skip - no error shown to user
-    }
-    // Re-enable after cooldown period
-    predictHQDisabled = false;
-    console.log('[Events] PredictHQ re-enabled after cooldown');
-  }
-
-  // Skip if no API key configured
-  if (!PREDICTHQ_API_KEY) {
-    return [];
-  }
-
+  if (!PREDICTHQ_API_KEY) return [];
   try {
     const radiusKm = Math.round(radiusMiles * 1.60934);
     
@@ -248,27 +229,7 @@ export async function fetchPredictHQEvents(
     );
 
     if (!response.ok) {
-      // Handle specific error codes gracefully
-      if (response.status === 402) {
-        console.warn('[Events] PredictHQ API: Payment required (402) - disabling for 1 hour. Check your PredictHQ subscription.');
-        predictHQDisabled = true;
-        predictHQDisabledUntil = Date.now() + 60 * 60 * 1000; // Disable for 1 hour
-        return [];
-      }
-      if (response.status === 401 || response.status === 403) {
-        console.warn(`[Events] PredictHQ API: Auth error (${response.status}) - disabling for 1 hour. Check your API key.`);
-        predictHQDisabled = true;
-        predictHQDisabledUntil = Date.now() + 60 * 60 * 1000;
-        return [];
-      }
-      if (response.status === 429) {
-        console.warn('[Events] PredictHQ API: Rate limited (429) - disabling for 5 minutes.');
-        predictHQDisabled = true;
-        predictHQDisabledUntil = Date.now() + 5 * 60 * 1000;
-        return [];
-      }
-      console.warn(`[Events] PredictHQ API error: ${response.status}`);
-      return [];
+      throw new Error('PredictHQ events could not be loaded.');
     }
 
     const data = await response.json();
@@ -300,12 +261,11 @@ export async function fetchPredictHQEvents(
         price_max: undefined,
         currency: 'USD',
         popularity: event.local_rank || event.rank || 70,
-        verified: true,
+        verified: false,
       };
     });
   } catch (error) {
-    console.error('[Events] Error fetching PredictHQ events:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -313,74 +273,8 @@ export async function fetchPredictHQEvents(
 // TAVVY COMMUNITY EVENTS
 // ============================================================================
 
-export async function fetchTavvyEvents(
-  lat: number,
-  lng: number,
-  radiusMiles: number = 50,
-  startDate?: string,
-  endDate?: string
-): Promise<TavvyEvent[]> {
-  try {
-    // Calculate bounding box
-    const DEGREES_PER_MILE = 0.0145;
-    const boxSize = radiusMiles * DEGREES_PER_MILE;
-
-    let query = supabase
-      .from('tavvy_events')
-      .select('*')
-      .eq('source', 'tavvy')
-      .gte('lat', lat - boxSize)
-      .lte('lat', lat + boxSize)
-      .gte('lng', lng - boxSize)
-      .lte('lng', lng + boxSize)
-      .gte('start_time', startDate || new Date().toISOString())
-      .order('start_time', { ascending: true })
-      .limit(50);
-
-    if (endDate) {
-      query = query.lte('start_time', endDate);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      // Silently handle missing table - this is expected if tavvy_events hasn't been created yet
-      if (error.code === 'PGRST205' || error.message?.includes('does not exist')) {
-        console.log('[Events] tavvy_events table not found, skipping community events');
-      } else {
-        console.error('[Events] Error fetching Tavvy events:', error);
-      }
-      return [];
-    }
-
-    return (data || []).map((event): TavvyEvent => ({
-      id: event.id,
-      source: 'tavvy',
-      source_id: event.source_id,
-      title: event.title,
-      description: event.description,
-      start_time: event.start_time,
-      end_time: event.end_time,
-      venue_name: event.venue_name,
-      address: event.address,
-      city: event.city,
-      state: event.state,
-      country: event.country,
-      lat: event.lat,
-      lng: event.lng,
-      category: event.category,
-      image_url: event.image_url,
-      url: event.url,
-      price_min: event.price_min,
-      price_max: event.price_max,
-      currency: event.currency || 'USD',
-      popularity: event.verified ? 80 : 40,
-      verified: event.verified,
-    }));
-  } catch (error) {
-    console.error('[Events] Error fetching Tavvy events:', error);
-    return [];
-  }
+export async function fetchTavvyEvents(lat: number, lng: number, radiusMiles = 50, startDate?: string, endDate?: string): Promise<TavvyEvent[]> {
+  return loadCommunityEvents(supabase, { lat, lng, radiusMiles, startDate, endDate });
 }
 
 // ============================================================================
@@ -405,7 +299,7 @@ function getTimeBucket(dateStr: string): string {
 
 function getGeoBucket(lat?: number, lng?: number): string {
   // Validate coordinates
-  if (!lat || !lng || typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
+  if (lat == null || lng == null || typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
     return 'unknown';
   }
   // Round to 3 decimal places (~100m precision)
@@ -431,8 +325,8 @@ function stringSimilarity(str1: string, str2: string): number {
   
   const words1 = new Set(s1.split(' '));
   const words2 = new Set(s2.split(' '));
-  const intersection = new Set([...words1].filter(x => words2.has(x)));
-  const union = new Set([...words1, ...words2]);
+  const intersection = new Set(Array.from(words1).filter(x => words2.has(x)));
+  const union = new Set(Array.from(words1).concat(Array.from(words2)));
   
   return intersection.size / union.size;
 }
@@ -442,6 +336,7 @@ export function deduplicateEvents(events: TavvyEvent[]): TavvyEvent[] {
   const result: TavvyEvent[] = [];
 
   for (const event of events) {
+    if (!Number.isFinite(Date.parse(event.start_time))) continue;
     // Generate canonical key for hard match
     const canonicalKey = `${normalizeTitle(event.title)}_${getTimeBucket(event.start_time)}_${getGeoBucket(event.lat, event.lng)}`;
     
@@ -466,7 +361,7 @@ export function deduplicateEvents(events: TavvyEvent[]): TavvyEvent[] {
 
     // Check for fuzzy match
     let isDuplicate = false;
-    for (const [key, existing] of seen.entries()) {
+    for (const [key, existing] of Array.from(seen.entries())) {
       // Time within 30 minutes
       const timeDiff = Math.abs(
         new Date(event.start_time).getTime() - new Date(existing.start_time).getTime()
@@ -474,7 +369,7 @@ export function deduplicateEvents(events: TavvyEvent[]): TavvyEvent[] {
       if (timeDiff > 30 * 60 * 1000) continue;
 
       // Location within 150 meters (~0.001 degrees)
-      if (event.lat && event.lng && existing.lat && existing.lng) {
+      if (event.lat != null && event.lng != null && existing.lat != null && existing.lng != null) {
         const distance = calculateDistance(event.lat, event.lng, existing.lat, existing.lng);
         if (distance > 0.1) continue; // More than 0.1 miles apart
       }
@@ -535,7 +430,7 @@ export function rankEvents(events: TavvyEvent[], userLat?: number, userLng?: num
       }
       
       // Distance (closer = higher score)
-      if (userLat && userLng && event.lat && event.lng) {
+      if (userLat != null && userLng != null && event.lat != null && event.lng != null) {
         const distance = calculateDistance(userLat, userLng, event.lat, event.lng);
         event.distance = distance;
         if (distance < 5) score += 30;
@@ -572,34 +467,7 @@ export async function getHappeningNowEvents(options: GetHappeningNowOptions): Pr
     limit = 50,
   } = options;
 
-  // Calculate date range based on time filter
-  const now = new Date();
-  let startDate = now.toISOString().split('T')[0];
-  let endDate: string | undefined;
-
-  switch (timeFilter) {
-    case 'tonight':
-      endDate = startDate;
-      break;
-    case 'weekend':
-      const daysUntilSunday = 7 - now.getDay();
-      const sunday = new Date(now);
-      sunday.setDate(sunday.getDate() + daysUntilSunday);
-      endDate = sunday.toISOString().split('T')[0];
-      break;
-    case 'week':
-      const nextWeek = new Date(now);
-      nextWeek.setDate(nextWeek.getDate() + 7);
-      endDate = nextWeek.toISOString().split('T')[0];
-      break;
-    default:
-      // 'all' - next 30 days
-      const nextMonth = new Date(now);
-      nextMonth.setDate(nextMonth.getDate() + 30);
-      endDate = nextMonth.toISOString().split('T')[0];
-  }
-
-  console.log(`[Events] Fetching events: lat=${lat}, lng=${lng}, radius=${radiusMiles}mi, filter=${timeFilter}`);
+  const { startDate, endDate } = eventDateRange(timeFilter);
 
   // Fetch from all providers in parallel
   const [ticketmasterEvents, predictHQEvents, tavvyEvents] = await Promise.all([
@@ -611,7 +479,7 @@ export async function getHappeningNowEvents(options: GetHappeningNowOptions): Pr
   console.log(`[Events] Fetched: TM=${ticketmasterEvents.length}, PHQ=${predictHQEvents.length}, Tavvy=${tavvyEvents.length}`);
 
   // Combine all events
-  let allEvents = [...ticketmasterEvents, ...predictHQEvents, ...tavvyEvents];
+  let allEvents = [...ticketmasterEvents, ...predictHQEvents, ...tavvyEvents].filter(event => event.lat != null && event.lng != null && calculateDistance(lat, lng, event.lat, event.lng) <= radiusMiles && Number.isFinite(Date.parse(event.start_time)) && Date.parse(event.start_time) >= Date.parse(startDate) && Date.parse(event.start_time) < Date.parse(endDate));
 
   // Filter by category if specified
   if (category && category !== 'all') {
@@ -639,46 +507,7 @@ export async function getHappeningNowEvents(options: GetHappeningNowOptions): Pr
 // CACHING (Optional - for production)
 // ============================================================================
 
+// Client memory/provider fetch only: no writes to a nonexistent database cache.
 export async function getCachedOrFetchEvents(options: GetHappeningNowOptions): Promise<TavvyEvent[]> {
-  const cacheKey = `${Math.round(options.lat * 100)}_${Math.round(options.lng * 100)}_${options.radiusMiles}_${options.timeFilter}_${options.category || 'all'}`;
-  
-  // Check cache first
-  const { data: cached } = await supabase
-    .from('happening_now_cache')
-    .select('events, expires_at')
-    .eq('cache_key', cacheKey)
-    .single();
-
-  if (cached && new Date(cached.expires_at) > new Date()) {
-    console.log('[Events] Returning cached events');
-    return cached.events as TavvyEvent[];
-  }
-
-  // Fetch fresh data
-  const events = await getHappeningNowEvents(options);
-
-  // Cache the results
-  const cacheTTL = options.timeFilter === 'tonight' ? 5 : 30; // minutes
-  const expiresAt = new Date(Date.now() + cacheTTL * 60 * 1000);
-
-  await supabase
-    .from('happening_now_cache')
-    .upsert({
-      cache_key: cacheKey,
-      geo_lat: options.lat,
-      geo_lng: options.lng,
-      radius_miles: options.radiusMiles || 50,
-      time_filter: options.timeFilter || 'all',
-      category_filter: options.category,
-      events: events,
-      ticketmaster_count: events.filter(e => e.source === 'ticketmaster').length,
-      predicthq_count: events.filter(e => e.source === 'predicthq').length,
-      tavvy_count: events.filter(e => e.source === 'tavvy').length,
-      total_count: events.length,
-      expires_at: expiresAt.toISOString(),
-    }, {
-      onConflict: 'cache_key',
-    });
-
-  return events;
+  return getHappeningNowEvents(options);
 }

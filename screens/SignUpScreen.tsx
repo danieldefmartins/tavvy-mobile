@@ -16,8 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useTranslation } from 'react-i18next';
+import { supabase } from '../lib/supabaseClient';
 
-export default function SignUpScreen({ navigation }: any) {
+export default function SignUpScreen({ navigation, route }: any) {
   const { t } = useTranslation();
   const { signUp } = useAuth();
   const { theme } = useThemeContext();
@@ -28,6 +29,7 @@ export default function SignUpScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const ownerContext = route?.params?.context === 'restaurant' || route?.params?.returnTo === 'ClaimBusiness' || route?.params?.returnTo === 'RestaurantWorkspace';
 
   const handleSignUp = async () => {
     // Validation
@@ -50,8 +52,14 @@ export default function SignUpScreen({ navigation }: any) {
       setLoading(true);
       await signUp(email.trim(), password, displayName.trim());
       
-      // Navigate to welcome onboarding flow
-      navigation.replace('WelcomeOnboarding');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        Alert.alert('Check your email', 'Confirm your email address, then sign in to continue.', [{ text: 'Go to sign in', onPress: () => navigation.replace('Login', route?.params) }]);
+      } else if (ownerContext) {
+        navigation.replace(route?.params?.returnTo || 'ClaimBusiness', route?.params?.returnParams);
+      } else {
+        navigation.replace('WelcomeOnboarding');
+      }
     } catch (error: any) {
       console.warn('Sign up error:', error);
       Alert.alert('Sign Up Failed', error.message || 'Could not create account');
@@ -97,7 +105,7 @@ export default function SignUpScreen({ navigation }: any) {
             style={styles.fullLogoImage}
             resizeMode="contain"
           />
-          <Text style={[styles.subtitle, dynamicStyles.subtitle]}>Create your account</Text>
+          <Text style={[styles.subtitle, dynamicStyles.subtitle]}>{ownerContext ? 'Create your restaurant account to continue ownership verification' : 'Create your account'}</Text>
         </View>
 
         {/* Form */}
@@ -198,7 +206,7 @@ export default function SignUpScreen({ navigation }: any) {
         {/* Login Link */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, dynamicStyles.footerText]}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+          <TouchableOpacity onPress={() => navigation.navigate('Login', route?.params)}>
             <Text style={[styles.loginLink, dynamicStyles.loginLink]}>Log In</Text>
           </TouchableOpacity>
         </View>

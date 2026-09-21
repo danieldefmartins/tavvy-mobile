@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import Colors from '../../constants/Colors';
+import { Colors } from '../../constants/Colors';
 
-const LinkCustomizer = ({ onCustomize }) => {
-  const [selectedColor, setSelectedColor] = useState(Colors.purple);
-  const [selectedIcon, setSelectedIcon] = useState('link');
+const LinkCustomizer = ({ onCustomize }: { onCustomize: (value: { color: string; icon: keyof typeof FontAwesome.glyphMap }) => void }) => {
+  const [selectedColor, setSelectedColor] = useState(Colors.primary);
+  const [selectedIcon, setSelectedIcon] = useState<keyof typeof FontAwesome.glyphMap>('link');
 
-  const colors = [Colors.purple, Colors.teal, Colors.amber, Colors.dark];
-  const icons = ['link', 'star', 'heart', 'user'];
+  const colors = [Colors.primary, Colors.secondary, Colors.warning, Colors.background];
+  const icons = ['link', 'star', 'heart', 'user'] as const;
 
-  const handleColorSelect = (color) => {
+  const handleColorSelect = (color: string) => {
     setSelectedColor(color);
     onCustomize({ color, icon: selectedIcon });
   };
 
-  const handleIconSelect = (icon) => {
+  const handleIconSelect = (icon: keyof typeof FontAwesome.glyphMap) => {
     setSelectedIcon(icon);
     onCustomize({ color: selectedColor, icon });
   };
@@ -26,7 +26,7 @@ const LinkCustomizer = ({ onCustomize }) => {
       <View style={styles.optionsContainer}>
         <Text style={styles.optionTitle}>Colors</Text>
         <View style={styles.optionsRow}>
-          {colors.map((color) => (
+          {colors.map((color: string) => (
             <TouchableOpacity
               key={color}
               style={[styles.colorOption, { backgroundColor: color }]}
@@ -36,7 +36,7 @@ const LinkCustomizer = ({ onCustomize }) => {
         </View>
         <Text style={styles.optionTitle}>Icons</Text>
         <View style={styles.optionsRow}>
-          {icons.map((icon) => (
+          {icons.map((icon: keyof typeof FontAwesome.glyphMap) => (
             <TouchableOpacity key={icon} onPress={() => handleIconSelect(icon)}>
               <FontAwesome name={icon} size={24} color={selectedColor} style={styles.iconOption} />
             </TouchableOpacity>

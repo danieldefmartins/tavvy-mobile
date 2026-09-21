@@ -1,3 +1,5 @@
+import { useReleaseCopy } from '../../hooks/useReleaseCopy';
+import FocusedStatusBar from '../../components/FocusedStatusBar';
 /**
  * ECardHubScreen.tsx
  * Clean, simple entry point — shows existing cards or prompts to create one.
@@ -58,6 +60,7 @@ interface CardData {
 type SheetStep = 'closed' | 'card-limit';
 
 export default function ECardHubScreen() {
+  const copy = useReleaseCopy();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { user } = useAuth();
@@ -85,9 +88,9 @@ export default function ECardHubScreen() {
       (c) =>
         (c.full_name || '').toLowerCase().includes(q) ||
         (c.title || '').toLowerCase().includes(q) ||
-        (c.is_published ? 'live' : 'draft').includes(q)
+        (c.is_published ? `live ${copy('Live').toLowerCase()}` : `draft ${copy('Draft').toLowerCase()}`).includes(q)
     );
-  }, [cards, searchQuery]);
+  }, [cards, searchQuery, copy]);
 
   const fetchCards = async () => {
     if (!user) {
@@ -154,9 +157,41 @@ export default function ECardHubScreen() {
   };
 
   // Context menu (long press) — uses ActionSheetIOS on iOS, Alert on Android
+  const handleDuplicateCard = async (card: CardData) => {
+    if (!user || duplicating) return;
+    setDuplicating(card.id);
+    try {
+      const { data: fullCard } = await supabase.from('digital_cards').select('*').eq('id', card.id).single();
+      if (!fullCard) { Alert.alert(copy('Error'), copy('Could not load card data.')); return; }
+      const { data: links } = await supabase.from('digital_card_links').select('*').eq('card_id', card.id).eq('is_active', true).order('sort_order', { ascending: true });
+      const suffix = Math.random().toString(36).substring(2, 6);
+      const { id, created_at, updated_at, slug, view_count, tap_count, review_count, review_rating, ...rest } = fullCard;
+      const newSlug = (slug || 'card') + '-copy-' + suffix;
+      const { data: newCard, error } = await supabase.from('digital_cards').insert({
+        ...rest, user_id: user.id, slug: newSlug,
+        full_name: (fullCard.full_name || 'Card') + ' (Copy)',
+        is_published: false, view_count: 0, tap_count: 0, review_count: 0, review_rating: 0,
+      }).select().single();
+      if (error || !newCard) { Alert.alert(copy('Error'), copy('Failed to duplicate card.')); return; }
+      if (links && links.length > 0) {
+        const newLinks = links.map((l: any, i: number) => ({
+          card_id: newCard.id, platform: l.platform, title: l.title || l.platform,
+          url: l.url || l.value, icon: l.icon || l.platform, sort_order: i, is_active: true,
+        }));
+        await supabase.from('digital_card_links').insert(newLinks);
+      }
+      navigation.navigate('ECardEdit', { cardId: newCard.id });
+    } catch (err) {
+      console.error('Duplicate error:', err);
+      Alert.alert(copy('Error'), copy('Failed to duplicate card.'));
+    } finally {
+      setDuplicating(null);
+    }
+  };
+
   const handleLongPress = useCallback((card: CardData) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const options = ['Edit Card', 'View Stats', 'Copy Link', 'Duplicate', 'Delete', 'Cancel'];
+    const options = ['Edit Card', 'View Stats', 'Copy Link', 'Duplicate', 'Delete', 'Cancel'].map(copy);
     const destructiveIndex = 4;
     const cancelIndex = 5;
 
@@ -178,16 +213,16 @@ export default function ECardHubScreen() {
         card.full_name || 'Card',
         undefined,
         [
-          { text: 'Edit Card', onPress: () => navigation.navigate('ECardEdit', { cardId: card.id }) },
-          { text: 'View Stats', onPress: () => navigation.navigate('ECardStats', { cardId: card.id }) },
-          { text: 'Copy Link', onPress: () => Share.share({ message: `https://tavvy.com/${card.slug || 'preview'}` }) },
-          { text: 'Duplicate', onPress: () => handleDuplicateCard(card) },
-          { text: 'Delete', style: 'destructive', onPress: () => setDeleteModalCard(card) },
-          { text: 'Cancel', style: 'cancel' },
+          { text: copy('Edit Card'), onPress: () => navigation.navigate('ECardEdit', { cardId: card.id }) },
+          { text: copy('View Stats'), onPress: () => navigation.navigate('ECardStats', { cardId: card.id }) },
+          { text: copy('Copy Link'), onPress: () => Share.share({ message: `https://tavvy.com/${card.slug || 'preview'}` }) },
+          { text: copy('Duplicate'), onPress: () => handleDuplicateCard(card) },
+          { text: copy('Delete'), style: 'destructive', onPress: () => setDeleteModalCard(card) },
+          { text: copy('Cancel'), style: 'cancel' },
         ]
       );
     }
-  }, [navigation, handleDuplicateCard]);
+  }, [navigation, handleDuplicateCard, copy]);
 
   const handleEditCard = (card: CardData) => {
     navigation.navigate('ECardEdit', { cardId: card.id });
@@ -238,43 +273,13 @@ export default function ECardHubScreen() {
       setDeleteModalCard(null);
     } catch (err) {
       console.error('Error deleting card:', err);
-      Alert.alert('Error', 'Failed to delete card. Please try again.');
+      Alert.alert(copy('Error'), copy('Failed to delete card. Please try again.'));
     } finally {
       setDeleting(false);
     }
   };
 
-  const handleDuplicateCard = async (card: CardData) => {
-    if (!user || duplicating) return;
-    setDuplicating(card.id);
-    try {
-      const { data: fullCard } = await supabase.from('digital_cards').select('*').eq('id', card.id).single();
-      if (!fullCard) { Alert.alert('Error', 'Could not load card data.'); return; }
-      const { data: links } = await supabase.from('digital_card_links').select('*').eq('card_id', card.id).eq('is_active', true).order('sort_order', { ascending: true });
-      const suffix = Math.random().toString(36).substring(2, 6);
-      const { id, created_at, updated_at, slug, view_count, tap_count, review_count, review_rating, ...rest } = fullCard;
-      const newSlug = (slug || 'card') + '-copy-' + suffix;
-      const { data: newCard, error } = await supabase.from('digital_cards').insert({
-        ...rest, user_id: user.id, slug: newSlug,
-        full_name: (fullCard.full_name || 'Card') + ' (Copy)',
-        is_published: false, view_count: 0, tap_count: 0, review_count: 0, review_rating: 0,
-      }).select().single();
-      if (error || !newCard) { Alert.alert('Error', 'Failed to duplicate card.'); return; }
-      if (links && links.length > 0) {
-        const newLinks = links.map((l: any, i: number) => ({
-          card_id: newCard.id, platform: l.platform, title: l.title || l.platform,
-          url: l.url || l.value, icon: l.icon || l.platform, sort_order: i, is_active: true,
-        }));
-        await supabase.from('digital_card_links').insert(newLinks);
-      }
-      navigation.navigate('ECardEdit', { cardId: newCard.id });
-    } catch (err) {
-      console.error('Duplicate error:', err);
-      Alert.alert('Error', 'Failed to duplicate card.');
-    } finally {
-      setDuplicating(null);
-    }
-  };
+
 
   // ── Loading ──
   if (loading) {
@@ -292,14 +297,16 @@ export default function ECardHubScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+      <FocusedStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={copy('Back')} style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color={isDark ? '#fff' : '#111'} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#111' }]}>My eCards</Text>
+        <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#111' }]}>{copy("My eCards")}</Text>
         <TouchableOpacity
           style={styles.backBtn}
+          accessibilityRole="button" accessibilityLabel={copy('View Stats')}
           onPress={() => navigation.navigate('ECardAnalyticsDashboard')}
         >
           <Ionicons name="analytics-outline" size={22} color={isDark ? '#fff' : '#111'} />
@@ -322,7 +329,7 @@ export default function ECardHubScreen() {
               <View style={{ alignItems: 'center', paddingTop: 40 }}>
                 <Ionicons name="search-outline" size={36} color={isDark ? '#64748B' : '#9CA3AF'} />
                 <Text style={{ fontSize: 15, color: isDark ? '#94A3B8' : '#888', marginTop: 12 }}>
-                  No cards match "{searchQuery}"
+                  {copy('No cards match')} "{searchQuery}"
                 </Text>
               </View>
             ) : (
@@ -362,11 +369,11 @@ export default function ECardHubScreen() {
                     <View style={{ flex: 1, marginLeft: 14 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Text style={[styles.cardName, { color: isDark ? '#fff' : '#111' }]} numberOfLines={1}>
-                          {card.full_name || 'Untitled Card'}
+                          {card.full_name || copy('Untitled Card')}
                         </Text>
                         <View style={[styles.badge, { backgroundColor: card.is_published ? 'rgba(0,200,83,0.12)' : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)') }]}>
                           <Text style={[styles.badgeText, { color: card.is_published ? ACCENT : (isDark ? '#94A3B8' : '#888') }]}>
-                            {card.is_published ? 'Live' : 'Draft'}
+                            {copy(card.is_published ? 'Live' : 'Draft')}
                           </Text>
                         </View>
                       </View>
@@ -400,9 +407,9 @@ export default function ECardHubScreen() {
             <View style={[styles.emptyIcon, { backgroundColor: 'rgba(0,200,83,0.12)' }]}>
               <Ionicons name="id-card-outline" size={40} color={ACCENT} />
             </View>
-            <Text style={[styles.emptyTitle, { color: isDark ? '#fff' : '#111' }]}>Create your first eCard</Text>
+            <Text style={[styles.emptyTitle, { color: isDark ? '#fff' : '#111' }]}>{copy("Create your first eCard")}</Text>
             <Text style={[styles.emptySubtitle, { color: isDark ? 'rgba(255,255,255,0.5)' : '#888' }]}>
-              Share your professional identity with a beautiful digital business card
+              {copy("Share your professional identity with a beautiful digital business card")}
             </Text>
           </TouchableOpacity>
         )}
@@ -410,6 +417,7 @@ export default function ECardHubScreen() {
 
       {/* ── FAB ── */}
       <TouchableOpacity
+        accessibilityRole="button" accessibilityLabel={copy('Create eCard')}
         style={styles.fab}
         onPress={handleFabClick}
         activeOpacity={0.85}
@@ -511,9 +519,9 @@ export default function ECardHubScreen() {
             <View style={styles.modalIcon}>
               <Ionicons name="trash" size={28} color="#EF4444" />
             </View>
-            <Text style={[styles.modalTitle, { color: isDark ? '#fff' : '#111' }]}>Delete Card?</Text>
+            <Text style={[styles.modalTitle, { color: isDark ? '#fff' : '#111' }]}>{copy("Delete Card?")}</Text>
             <Text style={[styles.modalDesc, { color: isDark ? '#94A3B8' : '#666' }]}>
-              This will permanently remove "{deleteModalCard?.full_name || 'Untitled Card'}" and all its data. This cannot be undone.
+              {copy('This will permanently remove')} "{deleteModalCard?.full_name || copy('Untitled Card')}" {copy('and all its data. This cannot be undone.')}
             </Text>
             <View style={styles.modalActions}>
               <TouchableOpacity
@@ -521,7 +529,7 @@ export default function ECardHubScreen() {
                 onPress={() => setDeleteModalCard(null)}
                 disabled={deleting}
               >
-                <Text style={[styles.modalBtnText, { color: isDark ? '#fff' : '#333' }]}>Cancel</Text>
+                <Text style={[styles.modalBtnText, { color: isDark ? '#fff' : '#333' }]}>{copy("Cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalBtn, { backgroundColor: '#EF4444' }, deleting && { opacity: 0.6 }]}
@@ -531,7 +539,7 @@ export default function ECardHubScreen() {
                 {deleting ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={[styles.modalBtnText, { color: '#fff' }]}>Delete</Text>
+                  <Text style={[styles.modalBtnText, { color: '#fff' }]}>{copy("Delete")}</Text>
                 )}
               </TouchableOpacity>
             </View>

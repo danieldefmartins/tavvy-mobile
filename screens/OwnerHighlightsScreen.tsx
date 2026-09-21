@@ -24,6 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabaseClient';
+import { deleteOwnerHighlight, hasStoryOwnerAccess, saveOwnerHighlight } from '../lib/storyPublishing';
 import { Video, ResizeMode } from 'expo-av';
 import { useTranslation } from 'react-i18next';
 
@@ -73,6 +74,8 @@ export default function OwnerHighlightsScreen() {
   const [availableStories, setAvailableStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [canManageHighlights, setCanManageHighlights] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -91,8 +94,13 @@ export default function OwnerHighlightsScreen() {
   const loadData = async () => {
     setIsLoading(true);
     try {
+      setLoadError(null);
+      const allowed = await hasStoryOwnerAccess(supabase, placeId);
+      setCanManageHighlights(allowed);
+      if (!allowed) throw new Error('A verified restaurant owner account is required to manage highlights.');
       await Promise.all([loadHighlights(), loadAvailableStories()]);
-    } catch (error) {
+    } catch (error: any) {
+      setLoadError(error.message || 'Highlights could not be loaded. Try again.');
       console.error('Error loading data:', error);
     } finally {
       setIsLoading(false);
@@ -110,14 +118,16 @@ export default function OwnerHighlightsScreen() {
         )
       `)
       .eq('place_id', placeId)
-      .order('display_order', { ascending: true });
+      .order('position', { ascending: true });
 
     if (error) {
-      console.error('Error loading highlights:', error);
-      return;
+      throw new Error('Highlights could not be loaded. Try again.');
     }
 
-    setHighlights(data || []);
+    setHighlights((data || []).map(highlight => ({ ...highlight, display_order: highlight.position,
+      cover_image_url: highlight.items?.find((item: any) => item.story_id === highlight.cover_story_id)?.story?.thumbnail_url
+        || highlight.items?.find((item: any) => item.story_id === highlight.cover_story_id)?.story?.media_url || null,
+    })));
   };
 
   const loadAvailableStories = async () => {
@@ -125,12 +135,12 @@ export default function OwnerHighlightsScreen() {
       .from('place_stories')
       .select('*')
       .eq('place_id', placeId)
-      .eq('moderation_status', 'active')
+      .eq('status', 'active')
+      .eq('story_kind', 'owner_highlight')
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error loading stories:', error);
-      return;
+      throw new Error('Restaurant stories could not be loaded. Try again.');
     }
 
     setAvailableStories(data || []);
@@ -150,23 +160,7 @@ export default function OwnerHighlightsScreen() {
         return;
       }
 
-      // Get the next display order
-      const nextOrder = highlights.length > 0 
-        ? Math.max(...highlights.map(h => h.display_order)) + 1 
-        : 0;
-
-      const { data, error } = await supabase
-        .from('place_story_highlights')
-        .insert({
-          place_id: placeId,
-          title: newHighlightTitle.trim(),
-          display_order: nextOrder,
-          is_active: true,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await saveOwnerHighlight(supabase, placeId, newHighlightTitle.trim(), []);
 
       setHighlights(prev => [...prev, data]);
       setNewHighlightTitle('');
@@ -189,12 +183,7 @@ export default function OwnerHighlightsScreen() {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('place_story_highlights')
-        .update({ title: newHighlightTitle.trim() })
-        .eq('id', selectedHighlight.id);
-
-      if (error) throw error;
+      await saveOwnerHighlight(supabase, placeId, newHighlightTitle.trim(), undefined, selectedHighlight.id, selectedHighlight.is_active);
 
       setHighlights(prev => 
         prev.map(h => h.id === selectedHighlight.id 
@@ -224,19 +213,7 @@ export default function OwnerHighlightsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Delete highlight items first
-              await supabase
-                .from('place_story_highlight_items')
-                .delete()
-                .eq('highlight_id', highlight.id);
-
-              // Delete highlight
-              const { error } = await supabase
-                .from('place_story_highlights')
-                .delete()
-                .eq('id', highlight.id);
-
-              if (error) throw error;
+              await deleteOwnerHighlight(supabase, highlight.id);
 
               setHighlights(prev => prev.filter(h => h.id !== highlight.id));
             } catch (error) {
@@ -262,35 +239,7 @@ export default function OwnerHighlightsScreen() {
 
     setIsSaving(true);
     try {
-      // Delete existing items
-      await supabase
-        .from('place_story_highlight_items')
-        .delete()
-        .eq('highlight_id', selectedHighlight.id);
-
-      // Insert new items
-      if (selectedStories.length > 0) {
-        const items = selectedStories.map((storyId, index) => ({
-          highlight_id: selectedHighlight.id,
-          story_id: storyId,
-          display_order: index,
-        }));
-
-        const { error } = await supabase
-          .from('place_story_highlight_items')
-          .insert(items);
-
-        if (error) throw error;
-
-        // Update cover image to first story's thumbnail
-        const firstStory = availableStories.find(s => s.id === selectedStories[0]);
-        if (firstStory) {
-          await supabase
-            .from('place_story_highlights')
-            .update({ cover_image_url: firstStory.thumbnail_url || firstStory.media_url })
-            .eq('id', selectedHighlight.id);
-        }
-      }
+      await saveOwnerHighlight(supabase, placeId, selectedHighlight.title, selectedStories, selectedHighlight.id, selectedHighlight.is_active);
 
       await loadHighlights();
       setShowStoryPicker(false);
@@ -318,18 +267,13 @@ export default function OwnerHighlightsScreen() {
 
   const toggleHighlightActive = async (highlight: Highlight) => {
     try {
-      const { error } = await supabase
-        .from('place_story_highlights')
-        .update({ is_active: !highlight.is_active })
-        .eq('id', highlight.id);
-
-      if (error) throw error;
+      await saveOwnerHighlight(supabase, placeId, highlight.title, undefined, highlight.id, !highlight.is_active);
 
       setHighlights(prev =>
         prev.map(h => h.id === highlight.id ? { ...h, is_active: !h.is_active } : h)
       );
-    } catch (error) {
-      console.error('Error toggling highlight:', error);
+    } catch (error: any) {
+      Alert.alert('Highlight unchanged', error.message || 'Try again.');
     }
   };
 
@@ -388,7 +332,8 @@ export default function OwnerHighlightsScreen() {
 
   const renderStoryItem = ({ item }: { item: Story }) => {
     const isSelected = selectedStories.includes(item.id);
-    return (
+
+  return (
       <TouchableOpacity
         style={[styles.storyItem, isSelected && styles.storyItemSelected]}
         onPress={() => toggleStorySelection(item.id)}
@@ -420,6 +365,15 @@ export default function OwnerHighlightsScreen() {
       </TouchableOpacity>
     );
   };
+
+  if (loadError && !isLoading) return (
+    <SafeAreaView style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
+      <Text style={{ fontSize: 18, lineHeight: 26, marginBottom: 20 }}>{loadError}</Text>
+      <TouchableOpacity onPress={loadData}><Text style={{ color: '#8A05BE', marginBottom: 20 }}>Try again</Text></TouchableOpacity>
+      <TouchableOpacity onPress={() => navigation.goBack()}><Text>Go back</Text></TouchableOpacity>
+    </SafeAreaView>
+  );
+
 
   if (isLoading) {
     return (
@@ -459,7 +413,12 @@ export default function OwnerHighlightsScreen() {
       </View>
 
       {/* Highlights Grid */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      {canManageHighlights && <TouchableOpacity
+          style={{ margin: 16, padding: 14, borderRadius: 12, backgroundColor: '#8A05BE' }}
+          onPress={() => (navigation as any).navigate('StoryUpload', { placeId, placeName, storyKind: 'owner_highlight' })}>
+          <Text style={{ color: '#FFFFFF', textAlign: 'center', fontWeight: '600' }}>Publish restaurant story</Text>
+        </TouchableOpacity>}
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {highlights.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="albums-outline" size={64} color="#D1D5DB" />

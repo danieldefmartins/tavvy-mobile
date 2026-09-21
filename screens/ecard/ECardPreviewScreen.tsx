@@ -1,3 +1,5 @@
+import { useReleaseCopy } from '../../hooks/useReleaseCopy';
+import FocusedStatusBar from '../../components/FocusedStatusBar';
 import React, { useState, useEffect, useCallback } from 'react';
 import { getTemplateById, getColorSchemeById } from '../../config/eCardTemplates';
 import {
@@ -7,7 +9,6 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
-  StatusBar,
   Image,
   Dimensions,
   Share,
@@ -27,6 +28,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import CrownBadge from '../../components/ecard/CrownBadge';
 import { WebView } from 'react-native-webview';
 import { useTranslation } from 'react-i18next';
+import { StudioPreviewFrame } from '../../components/ecard/editor/StudioPreview';
+import { useThemeContext } from '../../contexts/ThemeContext';
+import { useECardEntitlement } from '../../hooks/useECardEntitlement';
+import { nativeECardRequiresPro } from '../../lib/ecard/editorActions';
 
 const { width } = Dimensions.get('window');
 
@@ -103,6 +108,7 @@ interface LinkData {
   url: string;
   icon: string;
   platform?: string;
+  is_active?: boolean | null;
 }
 
 interface Props {
@@ -115,9 +121,25 @@ interface Props {
 // Free tier limits
 const FREE_LINK_LIMIT = 5;
 
-export default function ECardPreviewScreen({ navigation, route }: Props) {
+export default function ECardPreviewScreen(props: Props) {
+  return props.route.params?.studioPreview ? <StudioFullPreview {...props} /> : <LegacyECardPreview {...props} />;
+}
+function StudioFullPreview({ navigation, route }: Props) {
+  const copy = useReleaseCopy();
+  const { isDark } = useThemeContext();
+  const { cardData, links = [], pendingUploads = 0 } = route.params;
+  const color = isDark ? '#FFFFFF' : '#111827';
+  return <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#111827' : '#F4F6F8' }}>
+    <FocusedStatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+    <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 }}><TouchableOpacity accessibilityRole="button" accessibilityLabel={copy('Return to editor')} onPress={() => navigation.goBack()} style={{ padding: 12 }}><Ionicons name="chevron-back" size={24} color={color} /></TouchableOpacity><Text style={{ color, fontWeight: '700', fontSize: 18 }}>{copy("Preview")}</Text><Text style={{ color, fontSize: 12 }}>{copy("Current edits · No actions sent")}</Text></View>
+    <StudioPreviewFrame isDark={isDark} card={cardData} links={links} pendingUploads={pendingUploads} />
+  </SafeAreaView>;
+}
+function LegacyECardPreview({ navigation, route }: Props) {
+  const copy = useReleaseCopy();
   const { t } = useTranslation();
-  const { user, isPro } = useAuth();
+  const { user } = useAuth();
+  const { isPro, loading: planLoading, error: planError, refresh: retryPlan } = useECardEntitlement();
   const { cardId, cardData: passedCardData, profile, links: passedLinks, featuredSocials: passedFeaturedSocials, templateId, colorSchemeId, reviews } = route.params || {};
   
   // Get the selected template and color scheme for proper colors
@@ -483,64 +505,24 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
   const cardUrl = `https://tavvy.com/${cardData?.slug || 'preview'}`;
   const isPublished = !!(cardData as any)?.is_published;
 
-  // Check if card has premium features that require payment
   const hasPremiumFeatures = (): boolean => {
-    // Check if template is premium
-    if (selectedTemplate?.isPremium) return true;
-    
-    // Check link limit exceeded
-    if (links.length > FREE_LINK_LIMIT) return true;
-    
-    // Check for premium blocks in passedCardData
-    // Premium blocks: gallery, video, youtube, testimonials, form, credentials
-    const premiumBlockTypes = ['gallery', 'video', 'youtube', 'testimonials', 'form', 'credentials'];
-    if (passedCardData?.blocks) {
-      const hasPremiumBlock = passedCardData.blocks.some((block: any) => 
-        premiumBlockTypes.includes(block.type)
-      );
-      if (hasPremiumBlock) return true;
-    }
-    
-    return false;
+    const current = { ...passedCardData, ...cardData };
+    const template = getTemplateById(current.template_id || templateId || 'basic');
+    return nativeECardRequiresPro(current, links, !!template?.isPremium);
   };
 
   // Handle publish/share with payment gating
   const handlePublishShare = () => {
-    // Check for premium features first
-    if (!isPro && hasPremiumFeatures()) {
-      Alert.alert(
-        'Premium Features Detected',
-        'Your card includes premium features. To share this card, you need to upgrade to Tavvy Pro.\n\nYou can also save your card and come back later.',
-        [
-          { 
-            text: 'Save for Later', 
-            style: 'cancel', 
-            onPress: () => {
-              // Card is already saved as draft, just go back to dashboard
-              Alert.alert(
-                'Card Saved!',
-                'Your card has been saved. You can access it anytime from the Apps tab.',
-                [{ text: 'OK', onPress: () => navigation.navigate('ECardDashboard') }]
-              );
-            }
-          },
-          { 
-            text: 'Use Free Version', 
-            style: 'destructive', 
-            onPress: () => {
-              // Navigate back to dashboard to remove premium features
-              navigation.navigate('ECardDashboard', {
-                showRemovePremiumPrompt: true,
-                cardData: passedCardData,
-              });
-            }
-          },
-          { 
-            text: 'Upgrade to Pro', 
-            onPress: () => navigation.navigate('ECardPremiumUpsell') 
-          },
-        ]
-      );
+    // Existing published cards stay shareable when a plan changes.
+    if (!isPublished && (planLoading || planError)) {
+      Alert.alert('Verify your plan', planError || 'Your plan is still loading. Please try again shortly.', [{ text: 'Keep editing', style: 'cancel' }, { text: 'Retry', onPress: () => { void retryPlan(); } }]);
+      return;
+    }
+    if (!isPublished && !isPro && hasPremiumFeatures()) {
+      Alert.alert('Pro features', 'Publishing this card requires Pro. Your content stays available in the editor.', [
+        { text: 'Keep editing', style: 'cancel' },
+        { text: 'View Pro plan', onPress: () => navigation.navigate('ECardPremiumUpsell') },
+      ]);
       return;
     }
     
@@ -623,10 +605,10 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" />
+        <FocusedStatusBar barStyle="light-content" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.loadingText}>Loading your card...</Text>
+          <Text style={styles.loadingText}>{copy("Loading your card...")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -639,7 +621,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <FocusedStatusBar barStyle="light-content" />
       
       {/* Header */}
       <View style={styles.header}>
@@ -649,7 +631,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
         >
           <Ionicons name="close" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Preview</Text>
+        <Text style={styles.headerTitle}>{copy("Preview")}</Text>
         {isPublished ? (
           <TouchableOpacity 
             style={styles.shareButton}
@@ -709,7 +691,7 @@ export default function ECardPreviewScreen({ navigation, route }: Props) {
           onPress={() => navigation.navigate('ECardEdit', { cardId: cardData?.id })}
         >
           <Ionicons name="pencil" size={20} color="#00C853" />
-          <Text style={styles.editButtonText}>Edit Card</Text>
+          <Text style={styles.editButtonText}>{copy("Edit Card")}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.publishButton}

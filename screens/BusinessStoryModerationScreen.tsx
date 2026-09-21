@@ -42,7 +42,11 @@ interface AdminPlace {
   pending_reports: number;
 }
 
-export default function BusinessStoryModerationScreen() {
+export { default } from '../components/StoryModerationNotice';
+
+// Kept unmounted while the separate Tavvy moderation workflow is rebuilt.
+// This preserves existing local work; the registered route uses the notice above.
+function LegacyBusinessStoryModerationScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
 
@@ -365,7 +369,7 @@ export default function BusinessStoryModerationScreen() {
                 )}
                 <View style={styles.reportCountBadge}>
                   <Ionicons name="flag" size={12} color="#fff" />
-                  <Text style={styles.reportCountText}>{item.report_count}</Text>
+                  <Text style={styles.reportCountText}>{item.reports?.length || 0}</Text>
                 </View>
               </View>
 

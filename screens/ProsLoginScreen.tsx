@@ -84,7 +84,7 @@ export default function ProsLoginScreen({ navigation }: any) {
   };
 
   // Generate decorative logo pattern positions (green-themed)
-  const logoPatterns = [
+  const logoPatterns: { top?: `${number}%`; bottom?: `${number}%`; left?: `${number}%`; right?: `${number}%`; opacity: number; size: number; rotation: `${number}deg` }[] = [
     { top: '3%', left: '5%', opacity: 0.06, size: 55, rotation: '-15deg' },
     { top: '6%', right: '8%', opacity: 0.05, size: 40, rotation: '10deg' },
     { top: '12%', left: '20%', opacity: 0.04, size: 30, rotation: '25deg' },

@@ -336,7 +336,7 @@ export default function VerificationUploadScreen({ navigation }: { navigation: a
     }
   };
 
-  const removeDocument = (type: 'license' | 'insurance' | 'bonding', index?: number) => {
+  const removeDocument = (type: 'license' | 'insurance' | 'bonding' | 'additional', index?: number) => {
     switch (type) {
       case 'license':
         setLicenseDoc(null);

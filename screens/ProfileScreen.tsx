@@ -1,3 +1,7 @@
+import Constants from 'expo-constants';
+import { useReleaseCopy } from '../hooks/useReleaseCopy';
+import AppearanceSelector from '../components/AppearanceSelector';
+import {useThemeContext} from '../contexts/ThemeContext';
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -33,7 +37,10 @@ const getUserLevel = (points: number) => {
 };
 
 function ProfileScreen({ navigation }: any) {
-  const { t } = useTranslation();
+  const copy = useReleaseCopy();
+  const {theme,isDark}=useThemeContext();
+  const styles=makeStyles(theme,isDark);
+  const { t, i18n } = useTranslation();
   const { user, signOut } = useAuth();
   const { profile, stats: profileStats, loading: profileLoading, refresh } = useProfile();
   const [loading, setLoading] = useState(false);
@@ -50,10 +57,10 @@ function ProfileScreen({ navigation }: any) {
       // Format member since date
       if (user.created_at) {
         const date = new Date(user.created_at);
-        setMemberSince(date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+        setMemberSince(date.toLocaleDateString(i18n.resolvedLanguage || i18n.language || 'en', { month: 'long', year: 'numeric' }));
       }
     }
-  }, [user]);
+  }, [user, i18n.resolvedLanguage, i18n.language]);
 
   // Refresh profile when screen comes into focus
   useEffect(() => {
@@ -86,19 +93,19 @@ function ProfileScreen({ navigation }: any) {
 
   const handleSignOut = async () => {
     Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
+      copy('Sign Out'),
+      copy('Are you sure you want to sign out?'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: copy('Cancel'), style: 'cancel' },
         {
-          text: 'Sign Out',
+          text: copy('Sign Out'),
           style: 'destructive',
           onPress: async () => {
             try {
               setLoading(true);
               await signOut();
             } catch (error) {
-              Alert.alert('Error', 'Failed to sign out');
+              Alert.alert(copy('Error'), copy('Failed to sign out'));
             } finally {
               setLoading(false);
             }
@@ -116,7 +123,7 @@ function ProfileScreen({ navigation }: any) {
   const userLevel = getUserLevel(gamificationStats.points);
 
   // Get display name from profile or auth metadata
-  const displayName = profile?.display_name || user?.user_metadata?.display_name || user?.user_metadata?.full_name || 'Tavvy Explorer';
+  const displayName = profile?.display_name || user?.user_metadata?.display_name || user?.user_metadata?.full_name || copy('Tavvy Explorer');
   const username = profile?.username;
   const avatarUrl = profile?.avatar_url;
 
@@ -135,27 +142,28 @@ function ProfileScreen({ navigation }: any) {
                 style={styles.guestLogo}
                 resizeMode="contain"
               />
-              <Text style={styles.guestTitle}>Welcome to Tavvy</Text>
+              <Text style={styles.guestTitle}>{copy("Welcome to Tavvy")}</Text>
               <Text style={styles.guestSubtitle}>
-                A savvy way of tapping. Discover and share the vibe of places around you.
+                {copy("A savvy way of tapping. Discover and share the vibe of places around you.")}
               </Text>
             </View>
 
-            <View style={styles.guestButtons}>
+            <View style={styles.guestButtons}><TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('AppsMain' as any)} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>{copy("Explore more Tavvy")}</Text></TouchableOpacity>
               <TouchableOpacity
                 style={styles.primaryButton}
                 onPress={() => navigation.navigate('Login')}
               >
-                <Text style={styles.primaryButtonText}>Log In</Text>
+                <Text style={styles.primaryButtonText}>{copy("Log In")}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.secondaryButton}
                 onPress={() => navigation.navigate('SignUp')}
               >
-                <Text style={styles.secondaryButtonText}>Create Account</Text>
+                <Text style={styles.secondaryButtonText}>{copy("Create Account")}</Text>
               </TouchableOpacity>
             </View>
+            <View style={{alignSelf:'stretch',marginTop:20,padding:16,borderRadius:16,backgroundColor:theme.surface}}><AppearanceSelector /></View>
           </View>
         </LinearGradient>
       </View>
@@ -211,7 +219,7 @@ function ProfileScreen({ navigation }: any) {
         {/* Social Media Links */}
         {(profile?.instagram_url || profile?.tiktok_url || profile?.youtube_url || profile?.twitter_url) && (
           <View style={styles.socialLinksContainer}>
-            <Text style={styles.socialLabel}>Follow me on</Text>
+            <Text style={styles.socialLabel}>{copy("Follow me on")}</Text>
             <View style={styles.socialIcons}>
               {profile?.instagram_url && (
                 <TouchableOpacity
@@ -252,7 +260,7 @@ function ProfileScreen({ navigation }: any) {
         {/* Level Info */}
         <View style={styles.levelContainer}>
           <Text style={[styles.levelText, { color: userLevel.color }]}>
-            {userLevel.level}
+            {copy(userLevel.level)}
           </Text>
           {userLevel.nextLevel && (
             <View style={styles.progressContainer}>
@@ -265,7 +273,7 @@ function ProfileScreen({ navigation }: any) {
                 />
               </View>
               <Text style={styles.progressText}>
-                {Math.round(userLevel.progress * 100)}% to {userLevel.nextLevel}
+                {Math.round(userLevel.progress * 100)}% {copy('to')} {copy(userLevel.nextLevel)}
               </Text>
             </View>
           )}
@@ -277,82 +285,85 @@ function ProfileScreen({ navigation }: any) {
           onPress={() => navigation.navigate('EditProfile')}
         >
           <Ionicons name="pencil" size={14} color="#FFFFFF" />
-          <Text style={styles.editProfileText}>Edit Profile</Text>
+          <Text style={styles.editProfileText}>{copy("Edit Profile")}</Text>
         </TouchableOpacity>
       </LinearGradient>
+
+      <View style={{marginHorizontal:20,marginVertical:18,padding:16,borderRadius:16,backgroundColor:theme.surface}}><AppearanceSelector /></View>
 
       {/* Stats Cards - 5 stats in 2 rows */}
       <View style={styles.statsContainer}>
         <View style={styles.statsRow}>
-          <TouchableOpacity style={styles.statCard}>
+          <View accessible accessibilityRole="text" style={styles.statCard}>
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
               <Ionicons name="star" size={24} color="#00C2CB" />
             </View>
             <Text style={styles.statValue}>{profileStats.reviews}</Text>
-            <Text style={styles.statLabel}>Reviews</Text>
-          </TouchableOpacity>
+            <Text style={styles.statLabel}>{copy("Reviews")}</Text>
+          </View>
 
-          <TouchableOpacity style={styles.statCard}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={copy("Saved")} style={styles.statCard} onPress={() => navigation.navigate('SavedMain')}>
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(249, 115, 22, 0.15)' }]}>
               <Ionicons name="bookmark" size={24} color="#00C2CB" />
             </View>
             <Text style={styles.statValue}>{profileStats.savedPlaces}</Text>
-            <Text style={styles.statLabel}>Saved</Text>
+            <Text style={styles.statLabel}>{copy("Saved")}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.statCard}>
+          <View accessible accessibilityRole="text" style={styles.statCard}>
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
               <Ionicons name="trophy" size={24} color="#9333EA" />
             </View>
             <Text style={styles.statValue}>{gamificationStats.points}</Text>
-            <Text style={styles.statLabel}>Points</Text>
-          </TouchableOpacity>
+            <Text style={styles.statLabel}>{copy("Points")}</Text>
+          </View>
         </View>
 
         <View style={styles.statsRowCentered}>
-          <TouchableOpacity style={styles.statCard}>
+          <View accessible accessibilityRole="text" style={styles.statCard}>
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
               <Ionicons name="ribbon" size={24} color="#EC4899" />
             </View>
             <Text style={styles.statValue}>{gamificationStats.badges}</Text>
-            <Text style={styles.statLabel}>Badges</Text>
-          </TouchableOpacity>
+            <Text style={styles.statLabel}>{copy("Badges")}</Text>
+          </View>
 
-          <TouchableOpacity style={styles.statCard}>
+          <View accessible accessibilityRole="text" style={styles.statCard}>
             <View style={[styles.statIconContainer, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
               <Ionicons name="flame" size={24} color="#F59E0B" />
             </View>
             <Text style={styles.statValue}>{gamificationStats.streak}</Text>
-            <Text style={styles.statLabel}>Day Streak</Text>
-          </TouchableOpacity>
+            <Text style={styles.statLabel}>{copy("Day Streak")}</Text>
+          </View>
         </View>
       </View>
 
       {/* Account Info Card */}
       <View style={styles.infoCard}>
-        <Text style={styles.infoCardTitle}>Account Information</Text>
+        <Text style={styles.infoCardTitle}>{copy("Account Information")}</Text>
         
         <View style={styles.infoRow}>
           <Ionicons name="calendar-outline" size={20} color="#64748B" />
-          <Text style={styles.infoLabel}>Member Since</Text>
+          <Text style={styles.infoLabel}>{copy("Member Since")}</Text>
           <Text style={styles.infoValue}>{memberSince || 'N/A'}</Text>
         </View>
 
         <View style={styles.infoRow}>
           <Ionicons name="shield-checkmark-outline" size={20} color="#64748B" />
-          <Text style={styles.infoLabel}>Account Type</Text>
-          <Text style={styles.infoValue}>{profile?.is_pro ? 'Pro' : 'Free'}</Text>
+          <Text style={styles.infoLabel}>{copy("Account Type")}</Text>
+          <Text style={styles.infoValue}>{copy(profile?.is_pro ? 'Pro' : 'Free')}</Text>
         </View>
 
         {profile?.trusted_contributor && (
           <View style={styles.infoRow}>
             <Ionicons name="checkmark-circle-outline" size={20} color="#00C2CB" />
-            <Text style={styles.infoLabel}>Status</Text>
-            <Text style={[styles.infoValue, { color: '#00C2CB' }]}>Trusted Contributor</Text>
+            <Text style={styles.infoLabel}>{copy("Status")}</Text>
+            <Text style={[styles.infoValue, { color: '#00C2CB' }]}>{copy("Trusted Contributor")}</Text>
           </View>
         )}
       </View>
 
+      <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('AppsMain' as any)} style={{padding:20}}><Text style={{fontSize:16,color:'#087A78'}}>{copy('Explore more Tavvy')} →</Text></TouchableOpacity>
       {/* Menu Options */}
       <View style={styles.menuContainer}>
         <TouchableOpacity 
@@ -362,7 +373,7 @@ function ProfileScreen({ navigation }: any) {
           <View style={[styles.menuIconContainer, { backgroundColor: 'rgba(138, 5, 190, 0.1)' }]}>
             <Ionicons name="settings-outline" size={22} color="#8A05BE" />
           </View>
-          <Text style={styles.menuText}>Settings</Text>
+          <Text style={styles.menuText}>{copy("Settings")}</Text>
           <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
         </TouchableOpacity>
 
@@ -373,7 +384,7 @@ function ProfileScreen({ navigation }: any) {
           <View style={[styles.menuIconContainer, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
             <Ionicons name="card-outline" size={22} color="#00C2CB" />
           </View>
-          <Text style={styles.menuText}>My Digital Card</Text>
+          <Text style={styles.menuText}>{copy("My Digital Card")}</Text>
           <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
         </TouchableOpacity>
 
@@ -384,7 +395,7 @@ function ProfileScreen({ navigation }: any) {
           <View style={[styles.menuIconContainer, { backgroundColor: 'rgba(147, 51, 234, 0.1)' }]}>
             <Ionicons name="help-circle-outline" size={22} color="#9333EA" />
           </View>
-          <Text style={styles.menuText}>Help & Support</Text>
+          <Text style={styles.menuText}>{copy("Help & Support")}</Text>
           <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
         </TouchableOpacity>
       </View>
@@ -400,17 +411,17 @@ function ProfileScreen({ navigation }: any) {
         ) : (
           <>
             <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-            <Text style={styles.signOutText}>Sign Out</Text>
+            <Text style={styles.signOutText}>{copy("Sign Out")}</Text>
           </>
         )}
       </TouchableOpacity>
 
-      <Text style={styles.versionText}>Version 2.0.0</Text>
+      <Text style={styles.versionText}>{copy('Version')} {Constants.expoConfig?.version || '1.0.1'}</Text>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles=(theme:ReturnType<typeof useThemeContext>['theme'],isDark:boolean)=>StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
@@ -447,7 +458,7 @@ const styles = StyleSheet.create({
   },
   guestSubtitle: {
     fontSize: 16,
-    color: '#94A3B8',
+    color: theme.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
   },
@@ -561,7 +572,7 @@ const styles = StyleSheet.create({
   },
   userEmail: {
     fontSize: 14,
-    color: '#94A3B8',
+    color: theme.textSecondary,
     marginBottom: 8,
   },
   bioText: {
@@ -598,7 +609,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 12,
-    color: '#64748B',
+    color: theme.textSecondary,
     marginTop: 6,
   },
   socialLinksContainer: {
@@ -608,7 +619,7 @@ const styles = StyleSheet.create({
   socialLabel: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#94A3B8',
+    color: theme.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 10,
@@ -657,7 +668,7 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     maxWidth: (SCREEN_WIDTH - 56) / 3,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.background,
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
@@ -678,18 +689,18 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#0F172A',
+    color: theme.text,
     marginBottom: 2,
   },
   statLabel: {
     fontSize: 12,
-    color: '#64748B',
+    color: theme.textSecondary,
     fontWeight: '500',
   },
 
   // Info Card
   infoCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.background,
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 16,
@@ -703,7 +714,7 @@ const styles = StyleSheet.create({
   infoCardTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0F172A',
+    color: theme.text,
     marginBottom: 16,
   },
   infoRow: {
@@ -716,18 +727,18 @@ const styles = StyleSheet.create({
   infoLabel: {
     flex: 1,
     fontSize: 14,
-    color: '#64748B',
+    color: theme.textSecondary,
     marginLeft: 12,
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#0F172A',
+    color: theme.text,
   },
 
   // Menu Container
   menuContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.background,
     marginHorizontal: 16,
     borderRadius: 16,
     overflow: 'hidden',
@@ -755,7 +766,7 @@ const styles = StyleSheet.create({
   menuText: {
     flex: 1,
     fontSize: 16,
-    color: '#0F172A',
+    color: theme.text,
     fontWeight: '500',
   },
 
@@ -779,7 +790,7 @@ const styles = StyleSheet.create({
   versionText: {
     textAlign: 'center',
     marginTop: 16,
-    color: '#94A3B8',
+    color: theme.textSecondary,
     fontSize: 12,
   },
 });

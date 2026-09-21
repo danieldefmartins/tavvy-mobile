@@ -1,3 +1,5 @@
+import { submitReview, updateReview, fetchUserReview } from './reviewPersistence';
+export { submitReview, updateReview, fetchUserReview };
 import { supabase } from './supabaseClient';
 
 // Types matching the database schema
@@ -125,178 +127,7 @@ export const CATEGORY_COLORS = {
 } as const;
 
 // Helper: Resolve a place identifier (UUID, FSQ ID, or Google Place ID) to a valid UUID
-async function resolvePlaceId(placeIdentifier: string, placeName: string): Promise<string | null> {
-  try {
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(placeIdentifier);
-    
-    // If it's already a UUID, verify it exists in the places table
-    if (isUUID) {
-      const { data } = await supabase
-        .from('places')
-        .select('id')
-        .eq('id', placeIdentifier)
-        .maybeSingle();
-      if (data) return data.id;
-    }
 
-    // 1. Check canonical places table by source_id (handles FSQ IDs stored there)
-    const { data: bySourceId } = await supabase
-      .from('places')
-      .select('id')
-      .eq('source_id', placeIdentifier)
-      .maybeSingle();
-    if (bySourceId) return bySourceId.id;
-
-    // 2. Check by google_place_id (handles Google Place IDs)
-    const { data: byGoogleId } = await supabase
-      .from('places')
-      .select('id')
-      .eq('google_place_id', placeIdentifier)
-      .maybeSingle();
-    if (byGoogleId) return byGoogleId.id;
-
-    // 3. Check fsq_places_raw table and auto-promote to canonical places
-    const { data: fsqPlace } = await supabase
-      .from('fsq_places_raw')
-      .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, postcode, tel, website, email')
-      .eq('fsq_place_id', placeIdentifier)
-      .maybeSingle();
-
-    if (fsqPlace) {
-      // Promote FSQ place to canonical places table
-      console.log('Promoting FSQ place to canonical:', placeIdentifier);
-      const { data: newPlace, error: createError } = await supabase
-        .from('places')
-        .insert({
-          name: fsqPlace.name || placeName,
-          source_type: 'fsq',
-          source_id: fsqPlace.fsq_place_id,
-          latitude: fsqPlace.latitude,
-          longitude: fsqPlace.longitude,
-          address: fsqPlace.address,
-          city: fsqPlace.locality,
-          region: fsqPlace.region,
-          country: fsqPlace.country,
-          postcode: fsqPlace.postcode,
-          phone: fsqPlace.tel,
-          website: fsqPlace.website,
-          email: fsqPlace.email,
-        })
-        .select('id')
-        .single();
-
-      if (createError) {
-        console.error('Error promoting FSQ place:', createError);
-        return null;
-      }
-      return newPlace.id;
-    }
-
-    // 4. Last resort: create a minimal place entry
-    console.log('Place not found anywhere, creating new place for:', placeIdentifier);
-    const { data: newPlace, error: createError } = await supabase
-      .from('places')
-      .insert({
-        google_place_id: placeIdentifier,
-        name: placeName,
-      })
-      .select('id')
-      .single();
-
-    if (createError) {
-      console.error('Error creating place:', createError);
-      return null;
-    }
-
-    return newPlace.id;
-  } catch (error) {
-    console.error('Error in resolvePlaceId:', error);
-    return null;
-  }
-}
-
-// Submit a new review with signal taps
-export async function submitReview(
-  googlePlaceId: string, // This might be a Google ID or a UUID
-  placeName: string,
-  signals: ReviewSignalTap[],
-  publicNote?: string,
-  privateNote?: string
-): Promise<{ success: boolean; error?: any; reviewId?: string }> {
-  try {
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return { success: false, error: 'Must be logged in to submit a review' };
-    }
-
-    const userId = user.id;
-
-    // RESOLVE PLACE ID — handles UUIDs, FSQ IDs, and Google Place IDs
-    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(googlePlaceId);
-    let targetPlaceId = googlePlaceId;
-    
-    if (!isValidUUID) {
-      const resolvedId = await resolvePlaceId(googlePlaceId, placeName);
-      if (!resolvedId) {
-        return { success: false, error: 'Failed to resolve Place UUID' };
-      }
-      targetPlaceId = resolvedId;
-    } else {
-      // Even if it looks like a UUID, verify it exists
-      const resolvedId = await resolvePlaceId(googlePlaceId, placeName);
-      if (resolvedId) {
-        targetPlaceId = resolvedId;
-      }
-    }
-
-    // Step 1: Create the review in place_reviews table
-    const { data: review, error: reviewError } = await supabase
-      .from('place_reviews')
-      .insert({
-        place_id: targetPlaceId,
-        user_id: userId,
-        public_note: publicNote || null,
-        private_note_owner: privateNote || null,
-        source: 'mobile_app',
-        status: 'live',
-      })
-      .select()
-      .single();
-
-    if (reviewError) {
-      console.error('Error creating review:', reviewError);
-      return { success: false, error: reviewError };
-    }
-
-    // Step 2: Insert signal taps into place_review_signal_taps table
-    if (signals.length > 0) {
-      const signalTaps = signals.map(signal => ({
-        review_id: review.id,
-        place_id: targetPlaceId,
-        signal_id: signal.signalId,
-        intensity: signal.intensity,
-      }));
-
-      const { error: tapsError } = await supabase
-        .from('place_review_signal_taps')
-        .insert(signalTaps);
-
-      if (tapsError) {
-        console.error('Error saving signal taps:', tapsError);
-        return { success: false, error: tapsError };
-      }
-    }
-
-    console.log('✅ Review submitted successfully!', review.id);
-    return { success: true, reviewId: review.id };
-
-  } catch (error) {
-    console.error('Error submitting review:', error);
-    return { success: false, error };
-  }
-}
 
 
 // Helper: Check if string is a valid UUID
@@ -448,7 +279,12 @@ export async function fetchPlaceSignals(placeId: string): Promise<{
 // ============================================
 
 export interface RecentReview {
+  text?:string;
+  createdAt?:string;
+  dateSource?:string;
+  isEdit?:boolean;
   reviewId: string;
+  historyEntryId?: string;
   initial: string;
   name: string;
   when: string; // relative time, e.g. "2w ago"
@@ -473,199 +309,66 @@ function relativeTime(dateString: string): string {
 }
 
 export async function fetchRecentReviews(placeId: string, limit: number = 10): Promise<RecentReview[]> {
-  try {
-    if (!isValidUUID(placeId)) return [];
-    await loadSignalCache();
+  if (!isValidUUID(placeId)) return [];
+  const {data:recentRows,error}=await supabase.rpc('get_place_recent_reviews',{p_place_id:placeId,p_limit:Math.min(20,Math.max(1,limit)),p_offset:0});
+  const rows=recentRows as Array<{id:string;user_id:string|null;created_at:string;public_note:string|null}>|null;
+  if(error||!Array.isArray(rows))throw new Error('Reviews are temporarily unavailable.');if(!rows.length)return [];
+  const ids=rows.map(r=>r.id);const userIds=[...new Set(rows.map(r=>r.user_id).filter(Boolean))];
+  const {data:taps,error:tapError}=await supabase.from('place_review_signal_taps').select('review_id,signal_id').eq('place_id',placeId).in('review_id',ids);if(tapError)throw new Error('Review details are temporarily unavailable.');
+  const signalIds=[...new Set((taps||[]).map(t=>t.signal_id))];
+  const {data:definitions,error:catalogError}=signalIds.length?await supabase.from('review_items').select('id,label,signal_type').in('id',signalIds):{data:[],error:null};if(catalogError)throw new Error('Review details are temporarily unavailable.');
+  const {data:profiles}=userIds.length?await supabase.from('profiles').select('user_id,display_name,username').in('user_id',userIds):{data:[]};const names=new Map((profiles||[]).map(p=>[p.user_id,p.display_name||p.username]));const catalog=new Map((definitions||[]).map(d=>[d.id,d]));
+  return rows.map(row=>{const name=String(names.get(row.user_id)||'Tavvy member');return {reviewId:row.id,name,initial:name.charAt(0).toUpperCase(),when:relativeTime(row.created_at),createdAt:row.created_at,text:row.public_note||undefined,signals:(taps||[]).filter(t=>t.review_id===row.id).flatMap(t=>{const d=catalog.get(t.signal_id);return d&&['best_for','vibe','heads_up'].includes(d.signal_type)?[{label:d.label,category:d.signal_type as ReviewCategory}]:[]})}});
+}
 
-    // Recent taps only (bounded) — enough to reconstruct the last `limit` reviews
-    const { data: taps, error } = await supabase
-      .from('place_review_signal_taps')
-      .select('review_id, signal_id, created_at')
-      .eq('place_id', placeId)
-      .order('created_at', { ascending: false })
-      .limit(60);
-
-    if (error || !taps || taps.length === 0) return [];
-
-    // Group taps by review, newest review first
-    const order: string[] = [];
-    const byReview: Record<string, { created_at: string; signals: Array<{ label: string; category: ReviewCategory }>; seen: Set<string> }> = {};
-    for (const tap of taps as any[]) {
-      if (!tap.review_id) continue;
-      if (!byReview[tap.review_id]) {
-        byReview[tap.review_id] = { created_at: tap.created_at, signals: [], seen: new Set() };
-        order.push(tap.review_id);
-      }
-      const bucket = byReview[tap.review_id];
-      const sig = getSignalById(tap.signal_id);
-      if (sig && !bucket.seen.has(tap.signal_id)) {
-        bucket.seen.add(tap.signal_id);
-        bucket.signals.push({ label: sig.label, category: sig.signal_type });
-      }
-    }
-
-    const topReviewIds = order.slice(0, limit);
-    if (topReviewIds.length === 0) return [];
-
-    // Resolve reviewer names: place_reviews.user_id -> profiles.display_name/username
-    const nameByReview: Record<string, string> = {};
-    try {
-      const { data: revs } = await supabase
-        .from('place_reviews')
-        .select('id, user_id')
-        .in('id', topReviewIds);
-      const userByReview: Record<string, string> = {};
-      const userIds = new Set<string>();
-      (revs || []).forEach((r: any) => {
-        if (r.user_id) { userByReview[r.id] = r.user_id; userIds.add(r.user_id); }
-      });
-      if (userIds.size > 0) {
-        const { data: profs } = await supabase
-          .from('profiles')
-          .select('user_id, display_name, username')
-          .in('user_id', [...userIds]);
-        const nameByUser: Record<string, string> = {};
-        (profs || []).forEach((p: any) => {
-          nameByUser[p.user_id] = p.display_name || p.username || '';
-        });
-        Object.entries(userByReview).forEach(([rid, uid]) => {
-          const dn = (nameByUser[uid] || '').trim();
-          if (dn && !/agent|system/i.test(dn)) nameByReview[rid] = dn;
-        });
-      }
-    } catch {
-      // names optional
-    }
-
-    return topReviewIds
-      .map((rid) => {
-        const r = byReview[rid];
-        if (!r || r.signals.length === 0) return null;
-        const name = nameByReview[rid] || 'Tavvy member';
-        const initial = (name.replace(/[^A-Za-z]/g, '')[0] || 'T').toUpperCase();
-        return { reviewId: rid, initial, name, when: relativeTime(r.created_at), signals: r.signals };
-      })
-      .filter(Boolean) as RecentReview[];
-  } catch (error) {
-    console.error('Error fetching recent reviews:', error);
-    return [];
+export async function fetchReviewHistory(placeId: string, page = 0): Promise<{ total: number; reviews: (RecentReview & { date: string; note: string | null; dateSource?: string; recordedAt?: string; isEdit?: boolean })[] }> {
+  if (!isValidUUID(placeId)) return { total: 0, reviews: [] };
+  const { data: history, error: historyError } = await supabase.rpc('get_place_review_history', { p_place_id: placeId, p_offset: Math.max(0, page) * 20, p_limit: 20 });
+  if (!historyError) {
+    if (!history || !Array.isArray(history.reviews) || typeof history.total !== 'number') throw new Error('Review history could not be loaded completely.');
+    const userIds = [...new Set(history.reviews.map((row: any) => row.user_id).filter(Boolean))];
+    const { data: profiles } = userIds.length ? await supabase.from('profiles').select('user_id,display_name,username').in('user_id', userIds) : { data: [] as any[] };
+    const names = new Map((profiles || []).map((profile: any) => [profile.user_id, profile.display_name || profile.username || 'Tavvy member']));
+    const category: Record<string, ReviewCategory> = { good: 'best_for', vibe: 'vibe', headsup: 'heads_up' };
+    return { total: history.total, reviews: history.reviews.map((row: any) => {
+      const name = String(names.get(row.user_id) || 'Tavvy member');
+      return { reviewId: row.review_id, historyEntryId: row.id, createdAt: row.visited_at, name, initial: name.charAt(0).toUpperCase(), date: row.visited_at, dateSource: row.date_source,
+        recordedAt: row.recorded_at, isEdit: row.is_edit, note: row.public_note || null,
+        when: row.date_source === 'reported' ? row.visited_at.slice(0, 10) : new Date(row.visited_at).toLocaleDateString(),
+        signals: (row.signals || []).filter((signal: any) => category[signal.category]).map((signal: any) => ({ label: signal.label, category: category[signal.category] })),
+      };
+    }) };
   }
+  if (!['PGRST202', '42883'].includes(historyError.code)) throw new Error('Review history is temporarily unavailable.');
+  await loadSignalCache();
+  const { data: rows, count, error } = await supabase.from('place_reviews')
+    .select('id,user_id,created_at,public_note', { count: 'exact' }).eq('place_id', placeId).eq('status', 'live')
+    .order('created_at', { ascending: false }).range(page * 20, page * 20 + 19);
+  if (error) throw error;
+  const ids = (rows || []).map(r => r.id);
+  const { data: taps, error: tapsError } = ids.length ? await supabase.from('place_review_signal_taps')
+    .select('review_id,signal_id').in('review_id', ids) : { data: [], error: null };
+  if (tapsError) throw tapsError;
+  const userIds = [...new Set((rows || []).map(r => r.user_id).filter(Boolean))];
+  const { data: profiles } = userIds.length ? await supabase.from('profiles')
+    .select('user_id,display_name,username').in('user_id', userIds) : { data: [] as any[] };
+  const names = new Map((profiles || []).map(p => [p.user_id, p.display_name || p.username || 'Tavvy member']));
+  return { total: count || 0, reviews: (rows || []).map(row => {
+    const name = names.get(row.user_id) || 'Tavvy member';
+    return { reviewId: row.id, name, initial: name.charAt(0).toUpperCase(), date: row.created_at, note: row.public_note || null,
+      when: new Date(row.created_at).toLocaleDateString(),
+      signals: (taps || []).filter(t => t.review_id === row.id).map(t => {
+        const signal = getSignalById(t.signal_id);
+        return signal ? { label: signal.label, category: signal.signal_type } : null;
+      }).filter(Boolean) as RecentReview['signals'],
+    };
+  }) };
 }
 
 // Fetch user's existing review for a place (if any)
-export async function fetchUserReview(placeId: string): Promise<{
-  review: PlaceReview | null;
-  signals: ReviewSignalTap[];
-}> {
-  try {
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !authData?.user) {
-      // Not logged in or auth error - just return null, don't throw
-      return { review: null, signals: [] };
-    }
-
-    const user = authData.user;
-
-    // Get the user's review
-    const { data: review, error: reviewError } = await supabase
-      .from('place_reviews')
-      .select('*')
-      .eq('place_id', placeId)
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (reviewError) {
-      console.error('Error fetching user review:', reviewError);
-      return { review: null, signals: [] };
-    }
-
-    if (!review) {
-      return { review: null, signals: [] };
-    }
-
-    // Get the signal taps for this review
-    const { data: taps, error: tapsError } = await supabase
-      .from('place_review_signal_taps')
-      .select('signal_id, intensity')
-      .eq('review_id', review.id);
-
-    if (tapsError) {
-      return { review: review as PlaceReview, signals: [] };
-    }
-
-    const signals: ReviewSignalTap[] = (taps || []).map(tap => ({
-      signalId: tap.signal_id,
-      intensity: tap.intensity,
-    }));
-
-    return { review: review as PlaceReview, signals };
-
-  } catch (error) {
-    console.error('Error fetching user review:', error);
-    return { review: null, signals: [] };
-  }
-}
 
 // Update an existing review
-export async function updateReview(
-  reviewId: string,
-  placeId: string,
-  signals: ReviewSignalTap[],
-  publicNote?: string,
-  privateNote?: string
-): Promise<{ success: boolean; error?: any }> {
-  try {
-    // Update the review
-    const { error: reviewError } = await supabase
-      .from('place_reviews')
-      .update({
-        public_note: publicNote || null,
-        private_note_owner: privateNote || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', reviewId);
 
-    if (reviewError) {
-      return { success: false, error: reviewError };
-    }
-
-    // Delete existing signal taps
-    const { error: deleteError } = await supabase
-      .from('place_review_signal_taps')
-      .delete()
-      .eq('review_id', reviewId);
-
-    if (deleteError) {
-      console.error('Error deleting old signal taps:', deleteError);
-    }
-
-    // Insert new signal taps
-    if (signals.length > 0) {
-      const signalTaps = signals.map(signal => ({
-        review_id: reviewId,
-        place_id: placeId,
-        signal_id: signal.signalId,
-        intensity: signal.intensity,
-      }));
-
-      const { error: tapsError } = await supabase
-        .from('place_review_signal_taps')
-        .insert(signalTaps);
-
-      if (tapsError) {
-        return { success: false, error: tapsError };
-      }
-    }
-
-    console.log('✅ Review updated successfully!');
-    return { success: true };
-
-  } catch (error) {
-    console.error('Error updating review:', error);
-    return { success: false, error };
-  }
-}
 
 // Get review count for a place
 export async function getPlaceReviewCount(placeId: string): Promise<number> {
@@ -675,11 +378,7 @@ export async function getPlaceReviewCount(placeId: string): Promise<number> {
       return 0; // No reviews for non-UUID places yet
     }
 
-    const { count, error } = await supabase
-      .from('place_reviews')
-      .select('*', { count: 'exact', head: true })
-      .eq('place_id', placeId)
-      .eq('status', 'live');
+    const { data: count, error } = await supabase.rpc('get_place_public_review_count',{p_place_id:placeId});
 
     if (error) {
       console.error('Error getting review count:', error);

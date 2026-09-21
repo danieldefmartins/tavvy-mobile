@@ -10,6 +10,7 @@ interface ThemeContextType {
   themeMode: ThemeMode;
   isDark: boolean;
   setThemeMode: (mode: ThemeMode) => void;
+  toggleTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -22,7 +23,7 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const systemColorScheme = useColorScheme();
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('light');
+  const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load saved theme preference on mount
@@ -64,7 +65,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, themeMode, isDark, setThemeMode }}>
+    <ThemeContext.Provider value={{ theme, themeMode, isDark, setThemeMode, toggleTheme: () => setThemeMode(isDark ? 'light' : 'dark') }}>
       {children}
     </ThemeContext.Provider>
   );

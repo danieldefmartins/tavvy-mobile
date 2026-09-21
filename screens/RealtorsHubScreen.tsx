@@ -1,3 +1,5 @@
+import ToolHeader from '../components/ToolHeader';
+import { useThemeContext } from '../contexts/ThemeContext';
 /**
  * RealtorsHubScreen.tsx
  * Install path: screens/RealtorsHubScreen.tsx
@@ -31,7 +33,7 @@ import { useTranslation } from 'react-i18next';
 const { width } = Dimensions.get('window');
 
 // New Dark Theme Colors (matching new Tavvy design)
-const Colors = {
+const BASE_COLORS = {
   background: '#0A0A0F',       // Deep black
   surface: '#1A1A24',          // Dark card background
   surfaceLight: '#252532',     // Lighter surface for inputs
@@ -82,6 +84,9 @@ type NavigationProp = NativeStackNavigationProp<any>;
 
 export default function RealtorsHubScreen() {
   const { t } = useTranslation();
+  const { theme, isDark } = useThemeContext();
+  const Colors = { ...BASE_COLORS, background: theme.background, surface: theme.surface, surfaceLight: theme.surface, text: theme.text, textSecondary: theme.textSecondary, textMuted: theme.textSecondary, border: theme.border };
+  const styles = makeStyles(Colors);
   const navigation = useNavigation<NavigationProp>();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('all');
@@ -111,18 +116,18 @@ export default function RealtorsHubScreen() {
       } else if (data && data.length > 0) {
         const mappedRealtors: Realtor[] = data.map((r: any) => ({
           id: r.id,
-          name: r.display_name || r.business_name || 'Unknown',
+          name: [r.first_name, r.last_name].filter(Boolean).join(' ') || r.business_name || 'Real estate professional',
           title: r.title || 'Real Estate Agent',
-          company: r.company_name || r.brokerage || '',
-          photo: r.profile_image_url || r.photo_url || PLACEHOLDER_PHOTO,
+          company: r.brokerage_name || r.business_name || '',
+          photo: r.profile_photo_url || r.logo_url || PLACEHOLDER_PHOTO,
           coverPhoto: r.cover_image_url || PLACEHOLDER_COVER,
           yearsExperience: r.years_experience || 0,
           transactionsClosed: r.transactions_closed || r.total_transactions || 0,
           specialties: r.specialties || [],
           areas: r.service_areas || r.areas_served || [],
           verified: r.is_verified || false,
-          rating: r.average_rating || 4.5,
-          reviewCount: r.review_count || 0,
+          rating: r.average_rating ?? 0,
+          reviewCount: r.total_reviews ?? r.review_count ?? 0,
           isFeatured: r.is_featured || false,
         }));
 
@@ -180,13 +185,13 @@ export default function RealtorsHubScreen() {
           style={styles.featuredImage}
         />
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.8)']}
+          colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.9)']}
           style={styles.featuredGradient}
         />
         
         {/* Featured Badge */}
         <View style={styles.featuredBadge}>
-          <Text style={styles.featuredBadgeText}>TOP RATED</Text>
+          <Text style={styles.featuredBadgeText}>FEATURED</Text>
         </View>
         
         {/* Realtor Info */}
@@ -201,7 +206,7 @@ export default function RealtorsHubScreen() {
                 )}
               </View>
               <Text style={styles.featuredSubtitle}>
-                {featuredRealtor.areas[0] || 'Your Area'} • {featuredRealtor.yearsExperience} years exp.
+                {featuredRealtor.areas[0] || 'Location not listed'}{featuredRealtor.yearsExperience > 0 ? ` • ${featuredRealtor.yearsExperience} years exp.` : ''}
               </Text>
             </View>
           </View>
@@ -209,7 +214,7 @@ export default function RealtorsHubScreen() {
           {/* Rating */}
           <View style={styles.ratingRow}>
             <Ionicons name="star" size={14} color="#FBBF24" />
-            <Text style={styles.ratingText}>{featuredRealtor.rating.toFixed(1)}</Text>
+            <Text style={styles.ratingText}>{featuredRealtor.reviewCount > 0 ? featuredRealtor.rating.toFixed(1) : 'No reviews yet'}</Text>
             <Text style={styles.reviewCount}>({featuredRealtor.reviewCount} reviews)</Text>
           </View>
         </View>
@@ -228,9 +233,9 @@ export default function RealtorsHubScreen() {
       <Image source={{ uri: realtor.photo }} style={styles.realtorImage} />
       
       {/* Trending Badge */}
-      {index < 2 && (
+      {realtor.isFeatured && (
         <View style={styles.trendingBadge}>
-          <Text style={styles.trendingText}>🔥 Trending</Text>
+          <Text style={styles.trendingText}>Featured</Text>
         </View>
       )}
       
@@ -242,11 +247,11 @@ export default function RealtorsHubScreen() {
           )}
         </View>
         <Text style={styles.realtorLocation} numberOfLines={1}>
-          {realtor.areas[0] || 'Your Area'}
+          {realtor.areas[0] || 'Location not listed'}
         </Text>
         <View style={styles.realtorRating}>
           <Ionicons name="star" size={12} color="#FBBF24" />
-          <Text style={styles.realtorRatingText}>{realtor.rating.toFixed(1)}</Text>
+          <Text style={styles.realtorRatingText}>{realtor.reviewCount > 0 ? realtor.rating.toFixed(1) : 'No reviews yet'}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -254,18 +259,9 @@ export default function RealtorsHubScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="chevron-back" size={24} color={Colors.text} />
-          </TouchableOpacity>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Realtors</Text>
-            <Text style={styles.headerSubtitle}>Find your perfect agent.</Text>
-          </View>
-        </View>
+        <ToolHeader title="Realtors" subtitle="Find a real estate professional." />
 
         <ScrollView 
           style={styles.scrollView}
@@ -319,10 +315,10 @@ export default function RealtorsHubScreen() {
                 <View style={styles.smartMatchText}>
                   <Text style={styles.smartMatchTitle}>Smart Match</Text>
                   <Text style={styles.smartMatchSubtitle}>
-                    Answer a few questions and get matched with the perfect realtor for your needs.
+                    Answer a few questions and explore realtors for your needs.
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={24} color={Colors.text} />
+                <Ionicons name="chevron-forward" size={24} color="#FFFFFF" />
               </View>
             </LinearGradient>
           </TouchableOpacity>
@@ -380,7 +376,7 @@ export default function RealtorsHubScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (Colors: typeof BASE_COLORS) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -415,7 +411,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 14,
-    color: Colors.primary,
+    color: Colors.textSecondary,
     marginTop: 2,
   },
   
@@ -503,12 +499,12 @@ const styles = StyleSheet.create({
   smartMatchTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: Colors.text,
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   smartMatchSubtitle: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: '#FFFFFF',
     lineHeight: 18,
   },
   
@@ -546,13 +542,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '70%',
+    height: '100%',
   },
   featuredBadge: {
     position: 'absolute',
     top: 12,
     left: 12,
-    backgroundColor: Colors.badge,
+    backgroundColor: '#8A05BE',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
@@ -560,7 +556,7 @@ const styles = StyleSheet.create({
   featuredBadgeText: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: Colors.text,
+    color: '#FFFFFF',
   },
   featuredInfo: {
     position: 'absolute',
@@ -593,11 +589,11 @@ const styles = StyleSheet.create({
   featuredName: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: Colors.text,
+    color: '#FFFFFF',
   },
   featuredSubtitle: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: '#FFFFFF',
     marginTop: 2,
   },
   ratingRow: {
@@ -607,12 +603,12 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.text,
+    color: '#FFFFFF',
     marginLeft: 4,
   },
   reviewCount: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: '#FFFFFF',
     marginLeft: 4,
   },
   
@@ -644,7 +640,7 @@ const styles = StyleSheet.create({
   },
   trendingText: {
     fontSize: 11,
-    color: Colors.text,
+    color: '#FFFFFF',
     fontWeight: '500',
   },
   realtorInfo: {

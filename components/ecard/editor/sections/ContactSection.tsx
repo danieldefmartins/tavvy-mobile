@@ -62,9 +62,9 @@ export default function ContactSection({ isDark, isPro }: ContactSectionProps) {
   return (
     <EditorSection
       id="contact"
-      title="Contact Info"
+      title="Contact info"
       icon="call"
-      defaultOpen={true}
+      defaultOpen={false}
       isDark={isDark}
     >
       {/* Show Contact Info Toggle */}

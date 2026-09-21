@@ -1,3 +1,4 @@
+import guidelineContent from '../config/communityGuidelines.json';
 import React from 'react';
 import {
   View,
@@ -17,43 +18,7 @@ interface GuidelineSection {
   description: string;
 }
 
-const guidelines: GuidelineSection[] = [
-  {
-    icon: 'checkmark-circle',
-    title: 'Be Honest',
-    description: 'Share your genuine experiences. Your taps help others make informed decisions about places.',
-  },
-  {
-    icon: 'people',
-    title: 'Be Respectful',
-    description: 'Treat other community members and business owners with respect. Avoid personal attacks or harassment.',
-  },
-  {
-    icon: 'camera',
-    title: 'Share Relevant Photos',
-    description: 'Only upload photos that are relevant to the place. No inappropriate, offensive, or copyrighted content.',
-  },
-  {
-    icon: 'location',
-    title: 'Review Real Visits',
-    description: 'Only tap on places you have actually visited. Authentic experiences make Tavvy valuable for everyone.',
-  },
-  {
-    icon: 'shield-checkmark',
-    title: 'Protect Privacy',
-    description: 'Do not share personal information about yourself or others. Respect the privacy of everyone.',
-  },
-  {
-    icon: 'ban',
-    title: 'No Spam or Fake Content',
-    description: 'Do not post spam, promotional content, or fake reviews. This includes incentivized reviews.',
-  },
-  {
-    icon: 'flag',
-    title: 'Report Violations',
-    description: 'If you see content that violates these guidelines, please report it. We review all reports promptly.',
-  },
-];
+const guidelines = guidelineContent as GuidelineSection[];
 
 export default function CommunityGuidelinesScreen({ navigation }: any) {
   const { t } = useTranslation();

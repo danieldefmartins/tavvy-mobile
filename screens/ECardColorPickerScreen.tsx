@@ -199,7 +199,7 @@ const ECardColorPickerScreen: React.FC = () => {
                     styles.previewButton,
                     {
                       backgroundColor: selectedColor.accent,
-                      borderRadius: template.layout.buttonStyle === 'pill' ? 20 : 12,
+                      borderRadius: template.layoutConfig.buttonStyle === 'pill' ? 20 : 12,
                     }
                   ]}
                 >
@@ -209,7 +209,7 @@ const ECardColorPickerScreen: React.FC = () => {
             </View>
 
             {/* Border for luxury templates */}
-            {template.layout.showBorder && template.layout.borderStyle === 'ornate' && (
+            {template.layoutConfig.showBorder && template.layoutConfig.borderStyle === 'ornate' && (
               <View style={[styles.previewBorder, { borderColor: selectedColor.border }]} />
             )}
           </LinearGradient>

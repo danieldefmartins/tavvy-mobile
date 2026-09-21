@@ -4,13 +4,17 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 export type RootStackParamList = {
   // Tab screens
   Home: undefined;
+  Saved: undefined;
+  Profile: undefined;
+  Apps: undefined;
   Explore: undefined;
   Pros: undefined;  // NEW: Replaces Add tab
   Atlas: undefined;
   Menu: undefined;
   
   // Stack screens
-  PlaceDetails: { placeId: string };
+  PlaceDetails: { placeId: string; mobileBusinessId?: string };
+  DemoRestaurant: undefined;
   CityDetails: { cityId: string };
   UniverseLanding: { universeId: string };
   UniverseDetail: { universeId: string; universe?: any };
@@ -19,18 +23,23 @@ export type RootStackParamList = {
   AtlasHome: undefined;
   AtlasSearch: { query?: string };
   AddPhoto: { placeId: string; placeName: string };
-  AddReview: { placeId: string; placeName: string };
+  AddReview: { placeId?: string; placeName?: string; eventId?: string; eventName?: string; isEvent?: boolean };
   BusinessCardScanner: { onScanComplete: (data: any) => void };
   AddPlace: undefined;
-  ClaimBusiness: { placeId: string };
+  ClaimBusiness: { placeId?: string; placeName?: string; createRestaurant?: boolean; restaurantName?: string } | undefined;
+  RestaurantWorkspace: { placeId: string };
   RateCity: { cityId: string };
   RequestUniverse: undefined;
   PlacePhotos: { placeId: string; placeName: string };
   ArticleDetail: { article: any; articleId?: string };
   
+  Settings: undefined;
+  ProsLogin: undefined;
+  ProsRequestStep0: undefined;
+
   // Auth screens
-  Login: undefined;
-  SignUp: undefined;
+  Login: { returnTo?: string; returnParams?: Record<string, unknown>; context?: 'restaurant' } | undefined;
+  SignUp: { returnTo?: string; returnParams?: Record<string, unknown>; context?: 'restaurant' } | undefined;
   ProfileMain: undefined;
   SavedMain: undefined;
   MenuMain: undefined;
@@ -76,6 +85,7 @@ export type RootStackParamList = {
   
   // Multi-step request form screens
   ProsRequestStep1: {
+    customerInfo?: { fullName: string; email: string; phone: string; privacyPreference: 'share' | 'app_only' };
     categoryId?: string;
     categoryName?: string;
   };
@@ -205,6 +215,8 @@ export type RootStackParamList = {
     themeName?: string;
   };
   ECardPreview: {
+    studioPreview?: boolean;
+    pendingUploads?: number;
     cardId?: string;
     cardData?: any;
     profile?: any;
@@ -214,7 +226,7 @@ export type RootStackParamList = {
     colorSchemeId?: string;
     reviews?: any;
   };
-  ECardNew: undefined;
+  ECardNew: { template?: string; scheme?: string } | undefined;
   ECardEdit: { cardId: string };
   ECardStats: { cardId: string };
   ECardAnalyticsDashboard: undefined;

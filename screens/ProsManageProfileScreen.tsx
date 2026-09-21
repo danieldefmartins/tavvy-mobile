@@ -28,6 +28,7 @@ export default function ProsManageProfileScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [availableSpecialties, setAvailableSpecialties] = useState<string[]>([]);
@@ -38,9 +39,10 @@ export default function ProsManageProfileScreen() {
 
   const fetchProfile = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) throw new Error('Sign in to manage your business.');
 
       const { data, error } = await supabase
         .from('pro_providers')
@@ -78,7 +80,7 @@ export default function ProsManageProfileScreen() {
         }
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      setLoadError(error instanceof Error ? error.message : 'Unable to load your business.');
     } finally {
       setLoading(false);
     }
@@ -94,6 +96,8 @@ export default function ProsManageProfileScreen() {
   };
 
   const handleSave = async () => {
+    if (!profile || saving) return;
+    if (!profile.business_name?.trim()) { Alert.alert('Business name required', 'Enter your business name.'); return; }
     setSaving(true);
     try {
       const { error } = await supabase
@@ -103,14 +107,14 @@ export default function ProsManageProfileScreen() {
           description: profile.description,
           phone: profile.phone,
           email: profile.email,
-          location: profile.location,
+          city: profile.city,
           specialties: profile.specialties,
           service_radius: profile.service_radius_miles,
           years_in_business: profile.years_in_business || null,
           trade_category: profile.trade_category || null,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', profile.id);
+        .eq('id', profile.id).select('id').single();
 
       if (error) throw error;
       Alert.alert('Success', 'Profile updated successfully!');
@@ -128,6 +132,8 @@ export default function ProsManageProfileScreen() {
       </View>
     );
   }
+
+  if (!profile || loadError) return <SafeAreaView style={styles.centered}><Text>{loadError || 'No business profile found.'}</Text><TouchableOpacity onPress={fetchProfile}><Text>Retry</Text></TouchableOpacity><TouchableOpacity onPress={() => navigation.goBack()}><Text>Go back</Text></TouchableOpacity></SafeAreaView>;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -182,9 +188,9 @@ export default function ProsManageProfileScreen() {
           />
           <TextInput
             style={[styles.input, { marginTop: 12 }]}
-            value={profile.location || ''}
-            onChangeText={(text) => setProfile({ ...profile, location: text })}
-            placeholder="City, State"
+            value={profile.city || ''}
+            onChangeText={(text) => setProfile({ ...profile, city: text })}
+            placeholder="City"
           />
           <TextInput
             style={[styles.input, { marginTop: 12 }]}

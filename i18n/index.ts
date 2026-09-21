@@ -103,15 +103,6 @@ const getDeviceLanguage = (): string => {
       }
     }
 
-    // Fallback: try the single locale string
-    const deviceLocale = Localization.locale;
-    if (deviceLocale && typeof deviceLocale === 'string') {
-      const languageCode = deviceLocale.split('-')[0].toLowerCase();
-      if (SUPPORTED_LANGUAGES.some(lang => lang.code === languageCode)) {
-        return languageCode;
-      }
-    }
-
     return 'en';
   } catch (error) {
     console.warn('[i18n] Error getting device language, defaulting to English:', error);
@@ -126,7 +117,7 @@ i18n
     resources,
     lng: getDeviceLanguage(),
     fallbackLng: 'en',
-    compatibilityJSON: 'v3',
+    compatibilityJSON: 'v4',
     interpolation: {
       escapeValue: false, // React already escapes values
     },

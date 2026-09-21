@@ -31,10 +31,11 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useTranslation } from 'react-i18next';
 
-const SUPABASE_URL = 'https://scasgwrikoqdwlwlwcff.supabase.co';
+import { supabase } from '../lib/supabaseClient';
+import { validCoordinates } from '../lib/onthego';
 
 // Category colors
-const CATEGORY_COLORS: Record<string, string[]> = {
+const CATEGORY_COLORS: Record<string, [string, string]> = {
   'Food Trucks': ['#EF4444', '#DC2626'],
   'Mobile Services': ['#8A05BE', '#2563EB'],
   'Pop-ups': ['#8A05BE', '#7C3AED'],
@@ -104,14 +105,14 @@ export default function PlaceScheduleScreen() {
     if (showRefresh) setIsRefreshing(true);
     
     try {
-      const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/get-place-schedule?tavvy_place_id=${tavvyPlaceId}&include_place=true`
+      const { data, error: requestError } = await supabase.functions.invoke<ScheduleResponse>(
+        `get-place-schedule?tavvy_place_id=${encodeURIComponent(tavvyPlaceId)}&include_place=true`, { method: 'GET' }
       );
-      const data: ScheduleResponse = await response.json();
+      if (requestError || !data || !Array.isArray(data.events)) throw requestError || new Error('Invalid schedule response');
       
       if (data.success) {
         setPlace(data.place);
-        setEvents(data.events);
+        setEvents(data.events.filter(event => Date.parse(event.scheduled_end) > Date.now()));
         setIsLiveNow(data.is_live_now);
         setError(null);
       } else {
@@ -131,6 +132,7 @@ export default function PlaceScheduleScreen() {
   }, [tavvyPlaceId]);
 
   const getDirections = (event: ScheduledEvent) => {
+    if (!validCoordinates(event.latitude, event.longitude)) return;
     const url = Platform.select({
       ios: `maps://app?daddr=${event.latitude},${event.longitude}`,
       android: `google.navigation:q=${event.latitude},${event.longitude}`,
@@ -144,7 +146,7 @@ export default function PlaceScheduleScreen() {
     }
   };
 
-  const getCategoryColors = (category?: string) => {
+  const getCategoryColors = (category?: string): [string, string] => {
     if (!category) return CATEGORY_COLORS.default;
     return CATEGORY_COLORS[category] || CATEGORY_COLORS.default;
   };

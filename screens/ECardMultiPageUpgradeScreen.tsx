@@ -1,3 +1,4 @@
+import { fetchMyECardEntitlement } from '../lib/ecardEntitlement';
 import React, { useState } from 'react';
 import {
   View,
@@ -17,9 +18,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../lib/supabaseClient';
 import { useTranslation } from 'react-i18next';
-
-// Stripe Price ID for Multi-Page subscription - UPDATE THIS with your actual Stripe Price ID
-const MULTI_PAGE_PRICE_ID = 'price_XXXXXX'; // Replace with actual Stripe price ID
 
 interface RouteParams {
   templateId: string;
@@ -72,7 +70,7 @@ const ECardMultiPageUpgradeScreen: React.FC = () => {
   const handleSubscribe = async () => {
     // iOS requires purchases through Apple IAP — redirect to web
     if (Platform.OS === 'ios') {
-      Linking.openURL('https://tavvy.com/app/ecard');
+      Linking.openURL('https://tavvy.com/app/ecard/premium');
       return;
     }
 
@@ -90,17 +88,7 @@ const ECardMultiPageUpgradeScreen: React.FC = () => {
 
       // Create Stripe checkout session via edge function
       const { data, error } = await supabase.functions.invoke('ecard-stripe-create-checkout', {
-        body: {
-          priceId: MULTI_PAGE_PRICE_ID,
-          userId: user.id,
-          successUrl: 'tavvy://subscription-success',
-          cancelUrl: 'tavvy://subscription-cancel',
-          metadata: {
-            feature: 'multi_page_ecard',
-            templateId: params.templateId,
-            colorSchemeId: params.colorSchemeId,
-          },
-        },
+        body: { plan_type: 'monthly' },
       });
 
       if (error) {
@@ -137,32 +125,8 @@ const ECardMultiPageUpgradeScreen: React.FC = () => {
         return;
       }
 
-      // Check if user has active subscription
-      const { data: subscription, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .single();
-
-      if (subscription) {
-        Alert.alert(
-          'Subscription Found!',
-          'Your Multi-Page subscription is active.',
-          [
-            {
-              text: 'Continue',
-              onPress: () => navigation.goBack(),
-            },
-          ]
-        );
-      } else {
-        Alert.alert(
-          'No Active Subscription',
-          'We couldn\'t find an active subscription for your account.',
-          [{ text: 'OK' }]
-        );
-      }
+      const entitlement = await fetchMyECardEntitlement();
+      Alert.alert(entitlement.is_pro ? 'Pro access active' : 'Plan not active', entitlement.is_pro ? 'Your verified Pro access is available. Reopen your card to refresh its features.' : 'If you just checked out, wait a moment and try again.');
     } catch (error) {
       console.error('Restore error:', error);
       Alert.alert('Error', 'Unable to restore purchases. Please try again.');

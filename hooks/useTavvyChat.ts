@@ -1,166 +1,89 @@
-/**
- * useTavvyChat - Updated Real-Time Messaging Hook
- * Handles messaging between users and pros, linked to project requests.
- */
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
-
+import { Conversation, Message, listConversations, loadMessages, insertMessage, mergeMessages, MESSAGE_TABLE, MESSAGE_SCOPE_COLUMN } from '../lib/tavvyChat';
 export function useTavvyChat(conversationId?: string) {
-  const [messages, setMessages] = useState<any[]>([]);
-  const [conversations, setConversations] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Fetch all conversations for the current user
-  const fetchConversations = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Fetch conversations where user is either customer or pro
-      const { data, error } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          project_request:project_requests(id, description, customer_name),
-          pro:auth.users!pro_id(id, email),
-          customer:auth.users!customer_id(id, email)
-        `)
-        .or(`customer_id.eq.${user.id},pro_id.eq.${user.id}`)
-        .order('updated_at', { ascending: false });
-
-      if (error) throw error;
-      setConversations(data || []);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Fetch messages for a specific conversation
-  const fetchMessages = useCallback(async (id: string) => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', id)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setMessages(data || []);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Send a new message
-  const sendMessage = async (id: string, content: string, senderType: 'customer' | 'pro') => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { data, error } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: id,
-          sender_id: user.id,
-          sender_type: senderType,
-          content: content.trim()
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      // Update conversation timestamp
-      await supabase
-        .from('conversations')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', id);
-
-      return data;
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  // Start a new conversation linked to a project request
-  const startConversation = async (proId: string, customerId: string, leadId?: string, bidId?: string) => {
-    try {
-      // Check if conversation already exists for this lead and pro
-      let query = supabase
-        .from('conversations')
-        .select('id')
-        .eq('pro_id', proId)
-        .eq('customer_id', customerId);
-      
-      if (leadId) {
-        query = query.eq('project_request_id', leadId);
-      }
-
-      const { data: existing } = await query.maybeSingle();
-
-      if (existing) return existing.id;
-
-      const { data, error } = await supabase
-        .from('conversations')
-        .insert({
-          pro_id: proId,
-          customer_id: customerId,
-          project_request_id: leadId,
-          project_bid_id: bidId
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data.id;
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  // Subscribe to real-time updates for messages
+  const scope = useRef({ uid: currentUserId, id: conversationId });
+  scope.current = { uid: currentUserId, id: conversationId };
+  const sendLock = useRef(false);
+  const listVersion = useRef(0);
+  const messageVersion = useRef(0);
   useEffect(() => {
-    if (!conversationId) return;
-
-    const channel = supabase
-      .channel(`messages:conversation_id=eq.${conversationId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `conversation_id=eq.${conversationId}`
-      }, (payload) => {
-        setMessages((prev) => {
-          // Avoid duplicates
-          if (prev.find(m => m.id === payload.new.id)) return prev;
-          return [...prev, payload.new];
-        });
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [conversationId]);
-
-  return {
-    messages,
-    conversations,
-    loading,
-    error,
-    fetchConversations,
-    fetchMessages,
-    sendMessage,
-    startConversation
+    let alive = true;
+    let authEventSeen = false;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!alive) return;
+      authEventSeen = true;
+      const uid = session?.user.id || null;
+      if (scope.current.uid !== uid) { setMessages([]); setConversations([]); setError(null); }
+      scope.current.uid = uid;
+      setCurrentUserId(uid); setAuthLoading(false);
+    });
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!alive || authEventSeen) return;
+      if (error) setError('Could not restore your session. Please sign in again.');
+      setCurrentUserId(data.session?.user.id || null); setAuthLoading(false);
+    });
+    return () => { alive = false; scope.current.uid = null; subscription.unsubscribe(); };
+  }, []);
+  const fetchConversations = useCallback(async () => {
+    const uid = currentUserId;
+    const version = ++listVersion.current;
+    if (!uid) { setConversations([]); return; }
+    setLoading(true); setError(null);
+    try { const rows = await listConversations(uid); if (scope.current.uid === uid && version === listVersion.current) setConversations(rows); }
+    catch { if (scope.current.uid === uid) setError('Could not load conversations. Please retry.'); }
+    finally { if (scope.current.uid === uid && version === listVersion.current) setLoading(false); }
+  }, [currentUserId]);
+  const fetchMessages = useCallback(async (id: string) => {
+    const uid = currentUserId;
+    const version = ++messageVersion.current;
+    if (!uid || scope.current.id !== id) return;
+    setLoading(true); setError(null);
+    try { const rows = await loadMessages(id, uid); if (scope.current.uid === uid && scope.current.id === id && version === messageVersion.current) setMessages(prev => mergeMessages(rows, prev)); }
+    catch { if (scope.current.uid === uid && scope.current.id === id) { setMessages([]); setError('Could not load this conversation. Please retry.'); } }
+    finally { if (scope.current.uid === uid && scope.current.id === id && version === messageVersion.current) setLoading(false); }
+  }, [currentUserId]);
+  useEffect(() => {
+    void fetchConversations();
+    if (!currentUserId) return;
+    const uid = currentUserId;
+    // Match IDs refer to providers, not auth users; refresh using the scoped joins.
+    const timer = setInterval(() => { void fetchConversations(); }, 30000);
+    return () => { clearInterval(timer); };
+  }, [fetchConversations, currentUserId]);
+  useEffect(() => {
+    setMessages([]);
+    if (!conversationId || !currentUserId) return;
+    const id = conversationId; const uid = currentUserId;
+    void fetchMessages(id);
+    const channel = supabase.channel(`chat:${uid}:${id}`).on('postgres_changes', { event: '*', schema: 'public', table: MESSAGE_TABLE, filter: `${MESSAGE_SCOPE_COLUMN}=eq.${id}` }, () => {
+      // Recheck membership before displaying any realtime data.
+      if (scope.current.uid === uid && scope.current.id === id) void fetchMessages(id);
+    }).subscribe(status => {
+      if (scope.current.uid !== uid || scope.current.id !== id) return;
+      if (status === 'SUBSCRIBED') void fetchMessages(id);
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setError('Live updates disconnected. Refresh to check for new messages.');
+    });
+    return () => { void supabase.removeChannel(channel); };
+  }, [conversationId, currentUserId, fetchMessages]);
+  const sendMessage = async (id: string, content: string) => {
+    if (sendLock.current) throw new Error('A message is already being sent.');
+    const uid = currentUserId;
+    if (!uid) throw new Error('Sign in to send messages.');
+    sendLock.current = true; setSending(true); setError(null);
+    try {
+      const row = await insertMessage(id, uid, content);
+      if (scope.current.uid === uid && scope.current.id === id) setMessages(prev => mergeMessages(prev, [row]));
+      return row;
+    } catch (err) { if (scope.current.uid === uid) setError('Message not confirmed. Your draft is saved; refresh before retrying.'); throw err; }
+    finally { sendLock.current = false; setSending(false); }
   };
+  return { messages, conversations, loading, authLoading, sending, error, currentUserId, fetchConversations, fetchMessages, sendMessage };
 }

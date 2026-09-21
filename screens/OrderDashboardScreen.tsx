@@ -26,38 +26,20 @@ import {
   Modal,
   Dimensions,
   Vibration,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { getKitchenOrders, transitionOrder, RestaurantOrder, OrderStatus } from '../lib/orderService';
 import { supabase } from '../lib/supabaseClient';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface OrderItem {
-  id: string;
-  name: string;
-  quantity: number;
-  price: number;
-  notes?: string;
-}
-
-interface Order {
-  id: string;
-  place_id: string;
-  table_number: string | null;
-  order_number: string;
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'served' | 'cancelled';
-  items: OrderItem[];
-  special_requests: string | null;
-  total: number;
-  created_at: string;
-  confirmed_at: string | null;
-  prepared_at: string | null;
-  served_at: string | null;
-}
+type Order = RestaurantOrder;
+type OrderItem = RestaurantOrder['items'][number];
 
 type RouteParams = {
   OrderDashboard: {
@@ -91,6 +73,8 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string
   confirmed: { label: 'Confirmed', color: '#F59E0B', icon: 'checkmark-circle' },
   preparing: { label: 'Preparing', color: '#3B82F6', icon: 'flame' },
   ready: { label: 'Ready', color: '#10B981', icon: 'checkmark-done-circle' },
+  served: { label: 'Served', color: '#64748B', icon: 'restaurant' },
+  cancelled: { label: 'Cancelled', color: '#EF4444', icon: 'close-circle' },
 };
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -105,6 +89,11 @@ export default function OrderDashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('all');
   const [ticketOrder, setTicketOrder] = useState<Order | null>(null);
+
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [cancelOrderId, setCancelOrderId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
 
   // Refresh timer
   const [, setTick] = useState(0);
@@ -121,24 +110,14 @@ export default function OrderDashboardScreen() {
   const loadOrders = useCallback(async () => {
     if (!placeId) return;
 
-    const { data: activeData } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('place_id', placeId)
-      .in('status', ['pending', 'confirmed', 'preparing', 'ready'])
-      .order('created_at', { ascending: true });
-
-    if (activeData) {
-      const pendingCount = activeData.filter(o => o.status === 'pending').length;
-      // Vibrate on new orders
-      if (pendingCount > prevPendingCount.current && prevPendingCount.current > 0) {
-        Vibration.vibrate([0, 200, 100, 200]);
-      }
+    try {
+      const data = await getKitchenOrders(placeId);
+      const pendingCount = data.filter(o => o.status === 'pending').length;
+      if (pendingCount > prevPendingCount.current && prevPendingCount.current > 0) Vibration.vibrate([0, 200, 100, 200]);
       prevPendingCount.current = pendingCount;
-      setOrders(activeData as Order[]);
-    }
-
-    setLoading(false);
+      setOrders(data);setError('');
+    } catch (err) { setOrders([]);setError(err instanceof Error ? err.message : 'Orders could not be loaded.'); }
+    finally { setLoading(false); }
   }, [placeId]);
 
   // ─── Initial Load + Realtime ────────────────────────────────────────────────
@@ -171,34 +150,12 @@ export default function OrderDashboardScreen() {
           table: 'orders',
           filter: `place_id=eq.${placeId}`,
         },
-        (payload: any) => {
-          const newOrder = payload.new as Order;
-          const eventType = payload.eventType;
-
-          if (eventType === 'INSERT') {
-            if (['pending', 'confirmed', 'preparing', 'ready'].includes(newOrder.status)) {
-              setOrders(prev => [...prev, newOrder]);
-              if (newOrder.status === 'pending') {
-                Vibration.vibrate([0, 200, 100, 200]);
-              }
-            }
-          } else if (eventType === 'UPDATE') {
-            if (['served', 'cancelled'].includes(newOrder.status)) {
-              setOrders(prev => prev.filter(o => o.id !== newOrder.id));
-            } else {
-              setOrders(prev =>
-                prev.map(o => (o.id === newOrder.id ? newOrder : o))
-              );
-            }
-          } else if (eventType === 'DELETE') {
-            setOrders(prev => prev.filter(o => o.id !== payload.old.id));
-          }
-        }
+        () => { void loadOrders(); }
       )
       .subscribe();
 
     // Auto-refresh fallback every 30s
-    const interval = setInterval(loadOrders, 30000);
+    const interval = setInterval(loadOrders, 15000);
 
     return () => {
       supabase.removeChannel(channel);
@@ -208,69 +165,27 @@ export default function OrderDashboardScreen() {
 
   // ─── Order Actions ──────────────────────────────────────────────────────────
 
-  const updateOrderStatus = async (
-    orderId: string,
-    newStatus: string,
-    extraFields: Record<string, any> = {}
-  ) => {
-    const updates: Record<string, any> = { status: newStatus, ...extraFields };
-
-    if (newStatus === 'confirmed') {
-      updates.confirmed_at = new Date().toISOString();
-    } else if (newStatus === 'ready') {
-      updates.prepared_at = new Date().toISOString();
-    } else if (newStatus === 'served') {
-      updates.served_at = new Date().toISOString();
-    }
-
-    const { error } = await supabase
-      .from('orders')
-      .update(updates)
-      .eq('id', orderId);
-
-    if (error) {
-      console.error('[Dashboard] Error updating order:', error);
-      Alert.alert('Error', 'Failed to update order. Please try again.');
-    }
+  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus, reason?: string) => {
+    const current = orders.find(row => row.id === orderId);
+    if (!current || busy) return;
+    setBusy(orderId);
+    try {
+      const updated = await transitionOrder(current, newStatus, reason);
+      setOrders(rows => rows.map(row => row.id === updated.id ? updated : row));
+      setError('');return updated;
+    } catch (err) { const message=err instanceof Error ? err.message : 'Order could not be updated.';setError(message);Alert.alert('Order not updated',message); }
+    finally { setBusy(null); }
   };
-
-  const handleConfirm = (order: Order) => {
-    updateOrderStatus(order.id, 'confirmed');
-    // Show printable ticket
-    setTicketOrder(order);
-  };
-
-  const handleStartPreparing = (orderId: string) => {
-    updateOrderStatus(orderId, 'preparing');
-  };
-
-  const handleMarkReady = (orderId: string) => {
-    updateOrderStatus(orderId, 'ready');
-  };
-
-  const handleMarkServed = (orderId: string) => {
-    updateOrderStatus(orderId, 'served');
-  };
-
-  const handleCancel = (orderId: string) => {
-    Alert.alert(
-      'Cancel Order',
-      'Are you sure you want to cancel this order?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: () => updateOrderStatus(orderId, 'cancelled', {
-            cancelled_at: new Date().toISOString(),
-          }),
-        },
-      ]
-    );
-  };
+  const handleConfirm = async (order: Order) => { const updated=await updateOrderStatus(order.id,'confirmed');if(updated)setTicketOrder(updated); };
+  const handleStartPreparing = (id:string) => { void updateOrderStatus(id,'preparing'); };
+  const handleMarkReady = (id:string) => { void updateOrderStatus(id,'ready'); };
+  const handleMarkServed = (id:string) => { void updateOrderStatus(id,'served'); };
+  const handleCancel = (id:string) => { setCancelReason('');setCancelOrderId(id); };
 
   // ─── Computed ───────────────────────────────────────────────────────────────
 
+  const activeOrders = orders.filter(o => !['served','cancelled'].includes(o.status));
+  const historyOrders = orders.filter(o => ['served','cancelled'].includes(o.status));
   const pendingOrders = orders.filter(o => o.status === 'pending');
   const confirmedOrders = orders.filter(o => o.status === 'confirmed');
   const preparingOrders = orders.filter(o => o.status === 'preparing');
@@ -282,7 +197,8 @@ export default function OrderDashboardScreen() {
       case 'confirmed': return confirmedOrders;
       case 'preparing': return preparingOrders;
       case 'ready': return readyOrders;
-      default: return orders;
+      case 'history': return historyOrders;
+      default: return activeOrders;
     }
   };
 
@@ -317,36 +233,36 @@ export default function OrderDashboardScreen() {
 
         {/* Items */}
         <View style={styles.cardItems}>
-          {orderItems.slice(0, 5).map((item, idx) => (
+          {orderItems.map((item, idx) => (
             <View key={item.id || idx} style={styles.itemRow}>
               <Text style={styles.itemQty}>{item.quantity}x</Text>
               <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
               {item.notes && (
-                <Text style={styles.itemNote} numberOfLines={1}>{item.notes}</Text>
+                <Text style={styles.itemNote}>{item.notes}</Text>
               )}
             </View>
           ))}
-          {orderItems.length > 5 && (
-            <Text style={styles.moreItems}>+{orderItems.length - 5} more items</Text>
-          )}
+
         </View>
 
         {/* Special requests */}
-        {order.special_requests && (
+        {order.notes && (
           <View style={styles.specialRequests}>
             <Ionicons name="chatbubble-outline" size={12} color="#F59E0B" />
-            <Text style={styles.specialRequestsText} numberOfLines={2}>
-              {order.special_requests}
+            <Text style={styles.specialRequestsText}>
+              {order.notes}
             </Text>
           </View>
         )}
 
+        {order.cancel_reason ? <Text style={{color:'#FCA5A5',padding:12}}>Cancelled: {order.cancel_reason}</Text> : null}
         {/* Footer */}
         <View style={styles.cardFooter}>
           <Text style={styles.totalText}>${(order.total || 0).toFixed(2)}</Text>
 
           {/* Action Buttons */}
-          <View style={styles.actionButtons}>
+          <View style={styles.actionButtons} pointerEvents={busy ? 'none' : 'auto'}>
+            {!['served','cancelled','pending'].includes(order.status) && <TouchableOpacity style={styles.actionBtn} onPress={() => handleCancel(order.id)}><Text style={{color:'#FCA5A5'}}>Cancel</Text></TouchableOpacity>}
             {order.status === 'pending' && (
               <>
                 <TouchableOpacity
@@ -434,11 +350,11 @@ export default function OrderDashboardScreen() {
               </View>
             ))}
 
-            {ticketOrder.special_requests && (
+            {ticketOrder.notes && (
               <>
                 <View style={styles.ticketDivider} />
                 <Text style={styles.ticketNotes}>
-                  NOTES: {ticketOrder.special_requests}
+                  NOTES: {ticketOrder.notes}
                 </Text>
               </>
             )}
@@ -488,10 +404,11 @@ export default function OrderDashboardScreen() {
           </TouchableOpacity>
         </View>
 
+        {error ? <View style={{padding:16}}><Text accessibilityRole="alert" style={{color:'#FCA5A5'}}>{error}</Text><TouchableOpacity onPress={()=>navigation.navigate('Login' as never)}><Text style={{color:'#CDA1FF',paddingTop:8}}>Sign in with your restaurant account</Text></TouchableOpacity></View> : null}
         {/* Stats Bar */}
         <View style={styles.statsBar}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{orders.length}</Text>
+            <Text style={styles.statValue}>{activeOrders.length}</Text>
             <Text style={styles.statLabel}>Active</Text>
           </View>
           <View style={styles.statItem}>
@@ -516,11 +433,12 @@ export default function OrderDashboardScreen() {
           contentContainerStyle={styles.tabRowContent}
         >
           {[
-            { key: 'all', label: `All (${orders.length})` },
+            { key: 'all', label: `Active (${activeOrders.length})` },
             { key: 'pending', label: `New (${pendingOrders.length})` },
             { key: 'confirmed', label: `Confirmed (${confirmedOrders.length})` },
             { key: 'preparing', label: `Preparing (${preparingOrders.length})` },
             { key: 'ready', label: `Ready (${readyOrders.length})` },
+            { key: 'history', label: `History (${historyOrders.length})` },
           ].map(tab => (
             <TouchableOpacity
               key={tab.key}
@@ -551,6 +469,15 @@ export default function OrderDashboardScreen() {
       </SafeAreaView>
 
       {renderTicketModal()}
+      <Modal visible={!!cancelOrderId} transparent animationType="fade" onRequestClose={()=>setCancelOrderId(null)}>
+        <View style={styles.ticketOverlay}><View style={styles.ticketCard}>
+          <Text style={styles.ticketTitle}>Cancel order</Text>
+          <Text style={{color:'#333',marginVertical:12}}>Explain why. The customer will see this reason.</Text>
+          <TextInput value={cancelReason} onChangeText={setCancelReason} multiline maxLength={500} placeholder="Reason for cancellation" style={{borderWidth:1,borderColor:'#aaa',borderRadius:8,padding:12,minHeight:90,color:'#111'}} />
+          <TouchableOpacity disabled={!cancelReason.trim()||!!busy} style={styles.ticketCloseBtn} onPress={async()=>{if(cancelOrderId){const result=await updateOrderStatus(cancelOrderId,'cancelled',cancelReason);if(result)setCancelOrderId(null)}}}><Text style={styles.ticketCloseBtnText}>Cancel order</Text></TouchableOpacity>
+          <TouchableOpacity onPress={()=>setCancelOrderId(null)}><Text style={{color:'#333',padding:12,textAlign:'center'}}>Keep order</Text></TouchableOpacity>
+        </View></View>
+      </Modal>
     </View>
   );
 }

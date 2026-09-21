@@ -1,3 +1,4 @@
+import { useReleaseCopy } from '../../../hooks/useReleaseCopy';
 /**
  * QuickSetup -- Step 3 of creation wizard: name, photo, primary color, create.
  *
@@ -33,7 +34,10 @@ const QUICK_COLORS = [
 ];
 
 // ── Props ───────────────────────────────────────────────────
+export interface QuickSetupValues { name: string; title: string; photoUri?: string; primaryColor?: string }
 interface QuickSetupProps {
+  value: QuickSetupValues;
+  onChange: (value: QuickSetupValues) => void;
   templateId: string;
   colorSchemeId?: string | null;
   onBack: () => void;
@@ -44,21 +48,28 @@ interface QuickSetupProps {
     primaryColor?: string;
   }) => void;
   creating: boolean;
+  disabled?: boolean;
   isDark: boolean;
 }
 
 export default function QuickSetup({
   templateId,
   colorSchemeId,
+  value,
+  onChange,
   onBack,
   onCreateCard,
   creating,
+  disabled = false,
   isDark,
 }: QuickSetupProps) {
-  const [fullName, setFullName] = useState('');
-  const [title, setTitle] = useState('');
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [primaryColor, setPrimaryColor] = useState(QUICK_COLORS[0]);
+  const copy = useReleaseCopy();
+  const fullName = value.name, title = value.title, photoUri = value.photoUri || null, primaryColor = value.primaryColor || QUICK_COLORS[0];
+  const [moreOptions, setMoreOptions] = useState(false);
+  const setFullName = (name: string) => onChange({ ...value, name });
+  const setTitle = (title: string) => onChange({ ...value, title });
+  const setPhotoUri = (photoUri: string) => onChange({ ...value, photoUri });
+  const setPrimaryColor = (primaryColor: string) => onChange({ ...value, primaryColor });
 
   const textPrimary = isDark ? '#FFFFFF' : '#111111';
   const textSecondary = isDark ? '#94A3B8' : '#6B7280';
@@ -66,7 +77,7 @@ export default function QuickSetup({
   const inputColor = isDark ? '#FFFFFF' : '#333333';
   const borderColor = isDark ? '#334155' : '#E5E7EB';
 
-  const canCreate = fullName.trim().length >= 2;
+  const canCreate = fullName.trim().length >= 2 && !disabled;
 
   // ── Image picker ──────────────────────────────────────────
   const pickPhoto = async () => {
@@ -75,7 +86,7 @@ export default function QuickSetup({
         if (useCamera) {
           const { status } = await ImagePicker.requestCameraPermissionsAsync();
           if (status !== 'granted') {
-            Alert.alert('Permission needed', 'Camera permission is required to take a photo.');
+            Alert.alert(copy("Permission needed"), copy("Camera permission is required to take a photo."));
             return;
           }
           const result = await ImagePicker.launchCameraAsync({
@@ -98,14 +109,14 @@ export default function QuickSetup({
           }
         }
       } catch (error) {
-        Alert.alert('Error', 'Failed to pick image. Please try again.');
+        Alert.alert(copy("Error"), copy("Failed to pick image. Please try again."));
       }
     };
 
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Take Photo', 'Choose from Library'],
+          options: [copy("Cancel"), copy("Take Photo"), copy("Choose from Library")],
           cancelButtonIndex: 0,
         },
         (buttonIndex) => {
@@ -121,7 +132,6 @@ export default function QuickSetup({
   // ── Submit handler ────────────────────────────────────────
   const handleCreate = () => {
     if (!canCreate || creating) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onCreateCard({
       name: fullName.trim(),
       title: title.trim(),
@@ -145,22 +155,23 @@ export default function QuickSetup({
         <View style={styles.header}>
           <TouchableOpacity
             onPress={onBack}
+            accessibilityRole="button" accessibilityLabel={copy("Back")}
             style={styles.backBtn}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
             <Ionicons name="arrow-back" size={22} color={textPrimary} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.headerTitle, { color: textPrimary }]}>Quick Setup</Text>
+            <Text style={[styles.headerTitle, { color: textPrimary }]}>{copy("Quick setup")}</Text>
             <Text style={[styles.headerSubtitle, { color: textSecondary }]}>
-              You can edit everything later
+              {copy("Start with your name. Everything else can be added in the editor.")}
             </Text>
           </View>
         </View>
 
         {/* Profile photo */}
         <View style={styles.photoSection}>
-          <TouchableOpacity onPress={pickPhoto} activeOpacity={0.8}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={copy("Photo")} onPress={pickPhoto} activeOpacity={0.8}>
             <View
               style={[
                 styles.photoCircle,
@@ -196,17 +207,16 @@ export default function QuickSetup({
                       { color: textSecondary },
                     ]}
                   >
-                    Photo
-                  </Text>
+                    {copy("Photo")}</Text>
                 </View>
               )}
             </View>
           </TouchableOpacity>
         </View>
 
-        {/* Full Name */}
+        {/* Name */}
         <View style={styles.fieldContainer}>
-          <Text style={[styles.fieldLabel, { color: textSecondary }]}>Full Name *</Text>
+          <Text style={[styles.fieldLabel, { color: textSecondary }]}>{copy("Name *")}</Text>
           <TextInput
             style={[
               styles.textInput,
@@ -218,17 +228,19 @@ export default function QuickSetup({
             ]}
             value={fullName}
             onChangeText={setFullName}
-            placeholder="Your full name"
+            placeholder={copy("Your name or business name")}
             placeholderTextColor={isDark ? '#64748B' : '#9CA3AF'}
             autoFocus
             autoCapitalize="words"
-            returnKeyType="next"
+            returnKeyType={"next"}
           />
         </View>
 
+        <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: moreOptions }} style={{ minHeight: 44, justifyContent: 'center' }} onPress={() => setMoreOptions(open => !open)}><Text style={{ color: textPrimary, fontWeight: '600' }}>{moreOptions ? copy("Hide optional setup") : copy("Add title or choose a starting color")}</Text></TouchableOpacity>
+        {moreOptions && <>
         {/* Title / Role */}
         <View style={styles.fieldContainer}>
-          <Text style={[styles.fieldLabel, { color: textSecondary }]}>Title / Role</Text>
+          <Text style={[styles.fieldLabel, { color: textSecondary }]}>{copy("Title / Role")}</Text>
           <TextInput
             style={[
               styles.textInput,
@@ -240,16 +252,16 @@ export default function QuickSetup({
             ]}
             value={title}
             onChangeText={setTitle}
-            placeholder="e.g. CEO, Designer, Agent"
+            placeholder={copy("e.g. CEO, Designer, Agent")}
             placeholderTextColor={isDark ? '#64748B' : '#9CA3AF'}
             autoCapitalize="words"
-            returnKeyType="done"
+            returnKeyType={"done"}
           />
         </View>
 
         {/* Primary Color */}
         <View style={styles.colorSection}>
-          <Text style={[styles.fieldLabel, { color: textSecondary }]}>Primary Color</Text>
+          <Text style={[styles.fieldLabel, { color: textSecondary }]}>{copy("Primary Color")}</Text>
           <View style={styles.colorGrid}>
             {QUICK_COLORS.map((color) => {
               const isSelected = primaryColor === color;
@@ -275,6 +287,7 @@ export default function QuickSetup({
           </View>
         </View>
 
+        </>}
         {/* Create button */}
         <TouchableOpacity
           onPress={handleCreate}
@@ -306,7 +319,7 @@ export default function QuickSetup({
                   { color: canCreate ? '#FFFFFF' : textSecondary },
                 ]}
               >
-                Create Card
+                {copy("Create card")}
               </Text>
             )}
           </LinearGradient>

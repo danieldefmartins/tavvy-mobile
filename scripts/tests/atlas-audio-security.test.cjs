@@ -1,0 +1,30 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs'); const path=require('node:path'); const vm=require('node:vm'); const {test}=require('node:test'); const ts=require('typescript'); const {webcrypto}=require('node:crypto');
+const root=path.resolve(__dirname,'../../supabase/functions');
+const service='test-only-service-token';
+const compile=file=>ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+function setup(options={}){
+ const calls={clients:0,provider:0,uploads:0,updates:0}; const common={Request,Response,Headers,TextEncoder,crypto:webcrypto,console:{log(){},error(){},warn(){}}};
+ const policy={exports:{}};vm.runInNewContext(compile(path.join(root,'_shared/atlas-audio-policy.ts')),{...common,module:policy,exports:policy.exports});
+ const env={SUPABASE_URL:'https://database.test',SUPABASE_SERVICE_ROLE_KEY:service,AWS_ACCESS_KEY_ID:'test-access',AWS_SECRET_ACCESS_KEY:'test-secret',...options.env};
+ const article={id:'0465d8e6-0990-472c-9826-8c0d3dc55067',title:'Family article',content:'The full article contains all the details a family needs for their day.',content_blocks:[],audio_url:null,updated_at:'2026-09-20T00:00:00Z',...options.article};
+ const db={from(){let updating=false;const chain={select(){return updating?Promise.resolve({data:options.conflict?[]:[{id:article.id}],error:null}):chain;},eq(){return chain;},is(){return chain;},single:async()=>({data:article,error:null}),update(value){updating=true;calls.updates++;calls.patch=value;return chain;}};return chain;},storage:{from(){return {upload:async()=>{calls.uploads++;return {error:null};},getPublicUrl:()=>({data:{publicUrl:'https://storage.test/new-immutable.mp3'}})};}}};
+ let handler;const module={exports:{}};
+ vm.runInNewContext(compile(path.join(root,'hyper-service/index.ts')),{...common,module,exports:module.exports,Deno:{env:{get:key=>env[key]},serve:value=>handler=value},require:name=>{if(name.endsWith('atlas-audio-policy.ts'))return policy.exports;if(name.includes('supabase-js'))return {createClient:()=>{calls.clients++;return db;}};if(name.startsWith('jsr:'))return {};throw Error('Unexpected module');},fetch:async()=>{calls.provider++;return new Response(new Uint8Array([1,2,3,4]));}});
+ return {handler,calls,article,policy:policy.exports};
+}
+function req(headers={},body={article_id:'0465d8e6-0990-472c-9826-8c0d3dc55067',force_regenerate:true}){return new Request('https://function.test?Authorization='+service,{method:'POST',headers,body:JSON.stringify(body)});}
+test('public, user, forged and query credentials cannot force paid generation or writes',async()=>{
+ for(const headers of [{},{Authorization:'Bearer anon'},{Authorization:'Bearer signed-user'},{Authorization:'Bearer eyJhbGciOiJub25lIn0.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.'},{Authorization:'Bearer '+service+'suffix'},{apikey:service},{Authorization:'Bearer undefined'}]){
+  const {handler,calls}=setup();const response=await handler(req(headers));assert.equal(response.status,401);assert.deepEqual(calls,{clients:0,provider:0,uploads:0,updates:0});
+ }
+});
+test('missing internal key fails closed',async()=>{for(const key of [undefined,'','  ']){const {handler,calls}=setup({env:{SUPABASE_SERVICE_ROLE_KEY:key}});assert.equal((await handler(req({Authorization:'Bearer '+service}))).status,503);assert.equal(calls.provider,0);assert.equal(calls.clients,0);}});
+test('preflight performs no privileged work',async()=>{const {handler,calls}=setup();assert.equal((await handler(new Request('https://function.test',{method:'OPTIONS'}))).status,200);assert.equal(calls.clients,0);});
+test('authorized long article fails before paid provider instead of truncating',async()=>{const {handler,calls}=setup({article:{content:'Full article sentence. '.repeat(300)}});assert.equal((await handler(req({Authorization:'Bearer '+service}))).status,422);assert.equal(calls.provider,0);assert.equal(calls.uploads,0);assert.equal(calls.updates,0);});
+test('title-only article cannot create a short misleading recording',async()=>{const {handler,calls}=setup({article:{content:'',content_blocks:[]}});assert.equal((await handler(req({Authorization:'Bearer '+service}))).status,422);assert.equal(calls.provider,0);});
+test('cached recording is returned without regeneration',async()=>{const {handler,calls}=setup({article:{audio_url:'https://storage.test/current.mp3'}});const response=await handler(req({Authorization:'Bearer '+service},{article_id:'0465d8e6-0990-472c-9826-8c0d3dc55067'}));assert.equal(response.status,200);assert.equal(calls.provider,0);assert.equal(calls.updates,0);});
+test('internal short-article workflow preserves complete text and reports no fabricated duration',async()=>{const {handler,calls}=setup();const response=await handler(req({Authorization:'Bearer '+service}));assert.equal(response.status,200);assert.equal(calls.provider,1);assert.equal(calls.uploads,1);assert.equal(calls.patch.audio_duration,null);assert.ok(!('audio_url_male' in calls.patch));});
+test('conditional update conflict is not reported as publication success',async()=>{const {handler,calls}=setup({conflict:true});const response=await handler(req({Authorization:'Bearer '+service}));assert.equal(response.status,409);assert.equal((await response.json()).success,false);});
+test('list text is included and blocks take priority over placeholder HTML',()=>{const {policy}=setup();const text=policy.completePollyText({title:'Family',content:'placeholder',content_blocks:[{type:'paragraph',content:'A complete introduction to the activities in this family guide.'},{type:'list',items:['First stop','Last stop']}]});assert.ok(text.includes('First stop. Last stop'));assert.ok(!text.includes('placeholder'));});
+test('mobile consumer has no generation endpoint or invocation',()=>{const screen=fs.readFileSync(path.resolve(__dirname,'../../screens/ArticleDetailScreen.tsx'),'utf8');assert.ok(!screen.includes('hyper-service'));assert.ok(!screen.includes('handleGenerateAudio'));assert.ok(screen.includes('maleUrl={article.audio_url_male}'));});

@@ -469,7 +469,6 @@ const styles = StyleSheet.create({
   },
   suggestionsList: {
     maxHeight: 250,
-    scrollEnabled: false,
   },
   suggestionItem: {
     flexDirection: 'row',

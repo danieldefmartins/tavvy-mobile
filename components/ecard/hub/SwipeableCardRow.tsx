@@ -1,3 +1,4 @@
+import { useReleaseCopy } from '../../../hooks/useReleaseCopy';
 /**
  * SwipeableCardRow -- iOS-style swipe actions for eCard hub rows.
  *
@@ -39,6 +40,7 @@ export default function SwipeableCardRow({
   isDark,
   duplicating = false,
 }: SwipeableCardRowProps) {
+  const copy = useReleaseCopy();
   const swipeableRef = useRef<Swipeable>(null);
 
   const fireAction = useCallback(
@@ -103,7 +105,7 @@ export default function SwipeableCardRow({
             activeOpacity={0.7}
           >
             <Ionicons name="bar-chart" size={22} color="#FFFFFF" />
-            <Text style={styles.actionLabel}>Stats</Text>
+            <Text style={styles.actionLabel}>{copy("Stats")}</Text>
           </TouchableOpacity>
         </Animated.View>
 
@@ -124,7 +126,7 @@ export default function SwipeableCardRow({
             activeOpacity={0.7}
           >
             <Ionicons name="trash" size={22} color="#FFFFFF" />
-            <Text style={styles.actionLabel}>Delete</Text>
+            <Text style={styles.actionLabel}>{copy("Delete")}</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -174,7 +176,7 @@ export default function SwipeableCardRow({
             <Ionicons name="copy" size={22} color={iconColor} />
           )}
           <Text style={[styles.actionLabel, { color: iconColor }]}>
-            {duplicating ? 'Copying' : 'Duplicate'}
+            {copy(duplicating ? 'Copying' : 'Duplicate')}
           </Text>
         </TouchableOpacity>
       </Animated.View>

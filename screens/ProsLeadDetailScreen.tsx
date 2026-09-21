@@ -31,7 +31,7 @@ type RouteParams = {
 export default function ProsLeadDetailScreen() {
   const { t } = useTranslation();
   const route = useRoute<RouteProp<RouteParams, 'ProsLeadDetail'>>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { leadId } = route.params;
   
   const [lead, setLead] = useState<any>(null);
@@ -46,11 +46,8 @@ export default function ProsLeadDetailScreen() {
     try {
       // Fetch lead with complexity and matching data
       const { data, error } = await supabase
-        .from('leads')
-        .select(`
-          *,
-          category:service_categories(name)
-        `)
+        .from('project_requests')
+        .select('*')
         .eq('id', leadId)
         .single();
 
@@ -72,7 +69,7 @@ export default function ProsLeadDetailScreen() {
     );
   }
 
-  if (!lead) return null;
+  if (!lead) return <SafeAreaView style={styles.centered}><Text>Unable to load this lead.</Text><TouchableOpacity onPress={fetchLeadDetails}><Text>Retry</Text></TouchableOpacity><TouchableOpacity onPress={() => navigation.goBack()}><Text>Go back</Text></TouchableOpacity></SafeAreaView>;
 
   const complexity = lead.complexity_data || { score: 0, level: 'Standard', factors: [] };
 
@@ -89,7 +86,7 @@ export default function ProsLeadDetailScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Match & Complexity Badges */}
         <View style={styles.badgeRow}>
-          <View style={[styles.complexityBadge, styles[`complexity${complexity.level}`]]}>
+          <View style={[styles.complexityBadge, complexity.level === 'High' ? styles.complexityHigh : complexity.level === 'Medium' ? styles.complexityMedium : undefined]}>
             <Ionicons name="speedometer-outline" size={14} color="#FFF" />
             <Text style={styles.badgeText}>{complexity.level} Complexity</Text>
           </View>
@@ -101,7 +98,7 @@ export default function ProsLeadDetailScreen() {
           )}
         </View>
 
-        <Text style={styles.categoryTitle}>{lead.category?.name}</Text>
+        <Text style={styles.categoryTitle}>{lead.category_id || 'Project request'}</Text>
         <Text style={styles.locationText}>
           <Ionicons name="location-outline" size={16} /> {lead.city}, {lead.state}
         </Text>
@@ -157,7 +154,10 @@ export default function ProsLeadDetailScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.bidButton}>
+        <TouchableOpacity style={styles.bidButton} onPress={() => navigation.navigate('ProsBid', {
+          leadId: String(lead.id), customerName: lead.customer_name || 'Customer', service: lead.category_id || 'Service',
+          timeline: 'Not specified', budget: 'Not specified', description: lead.description || '',
+        })}>
           <Text style={styles.bidButtonText}>Send a Bid</Text>
           <Ionicons name="send" size={18} color="#FFF" />
         </TouchableOpacity>

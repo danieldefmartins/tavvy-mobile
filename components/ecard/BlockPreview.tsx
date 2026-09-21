@@ -5,7 +5,6 @@
  */
 
 import React, { useContext } from 'react';
-import { EditorContext } from '../../lib/ecard/EditorContext';
 import {
   View,
   Text,

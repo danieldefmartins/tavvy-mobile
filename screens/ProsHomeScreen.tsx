@@ -1,3 +1,4 @@
+import ToolHeader from '../components/ToolHeader';
 /**
  * Pros Home Screen - V2 "The Tavvy Way"
  * Install path: screens/ProsHomeScreen.tsx
@@ -54,7 +55,7 @@ const COLORS = {
   background: '#121212',
   surface: '#1E1E1E',
   surfaceAlt: '#250E45',
-  primaryBlue: '#6B7FFF',
+  primaryBlue: '#8A05BE',
   accentTeal: '#00CED1',
   successGreen: '#00C2CB',
   warningAmber: '#F59E0B',
@@ -165,8 +166,8 @@ export default function ProsHomeScreen() {
     }
   };
 
-  const backgroundColor = isDark ? COLORS.background : '#FAFAFA';
-  const surfaceColor = isDark ? COLORS.surface : '#FFFFFF';
+  const backgroundColor = theme.background;
+  const surfaceColor = theme.surface;
   const surfaceAltColor = isDark ? COLORS.surfaceAlt : '#F3F4F6';
   const cardShadow = isDark ? {} : {
     shadowColor: '#000',
@@ -175,24 +176,17 @@ export default function ProsHomeScreen() {
     shadowRadius: 8,
     elevation: 3,
   };
-  const textColor = isDark ? COLORS.textPrimary : '#111827';
-  const secondaryTextColor = isDark ? COLORS.textSecondary : '#6B7280';
-  const borderColor = isDark ? COLORS.border : '#E5E7EB';
+  const textColor = theme.text;
+  const secondaryTextColor = theme.textSecondary;
+  const borderColor = theme.border;
 
   // User Mode (Find a Pro) - V2 THE TAVVY WAY
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <ToolHeader title="Pros" subtitle="Find professional services. Tell us about your next project." />
       
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: textColor }]}>Pros</Text>
-          <Text style={[styles.heroTagline, { color: COLORS.accentTeal }]}>
-            Connect with any professional.{'\n'}Any job. Any service. We'll match you.
-          </Text>
-        </View>
-
         {/* Segmented Control */}
         <View style={styles.segmentedControlContainer}>
           <View style={[styles.segmentedControl, { backgroundColor: surfaceColor }]}>
@@ -221,7 +215,7 @@ export default function ProsHomeScreen() {
           activeOpacity={0.9}
         >
           <LinearGradient
-            colors={['#6B7FFF', '#5563E8']}
+            colors={['#8A05BE', '#653D91']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.startProjectGradient}
@@ -259,19 +253,6 @@ export default function ProsHomeScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Social Proof - No star rating */}
-        <View style={[styles.socialProof, { borderColor }]}>
-          <View style={styles.proofItem}>
-            <Text style={[styles.proofNumber, { color: COLORS.successGreen }]}>12,450+</Text>
-            <Text style={[styles.proofLabel, { color: secondaryTextColor }]}>PROJECTS</Text>
-          </View>
-          <View style={styles.proofDivider} />
-          <View style={styles.proofItem}>
-            <Text style={[styles.proofNumber, { color: COLORS.successGreen }]}>$340</Text>
-            <Text style={[styles.proofLabel, { color: secondaryTextColor }]}>AVG SAVINGS</Text>
-          </View>
-        </View>
-
         {/* How It Works */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: textColor }]}>✨ How It Works</Text>
@@ -291,7 +272,7 @@ export default function ProsHomeScreen() {
               </View>
               <View style={styles.stepContent}>
                 <Text style={[styles.stepTitle, { color: textColor }]}>We match you with pros</Text>
-                <Text style={[styles.stepDesc, { color: secondaryTextColor }]}>Get quotes from vetted professionals in your area</Text>
+                <Text style={[styles.stepDesc, { color: secondaryTextColor }]}>Request quotes from professionals in your area</Text>
               </View>
             </View>
             <View style={[styles.stepCard, { backgroundColor: surfaceColor, borderColor, borderWidth: 1 }]}>
@@ -299,8 +280,8 @@ export default function ProsHomeScreen() {
                 <Text style={styles.stepNumberText}>3</Text>
               </View>
               <View style={styles.stepContent}>
-                <Text style={[styles.stepTitle, { color: textColor }]}>Chat & hire securely</Text>
-                <Text style={[styles.stepDesc, { color: secondaryTextColor }]}>Your contact info stays private until you're ready</Text>
+                <Text style={[styles.stepTitle, { color: textColor }]}>Discuss your project</Text>
+                <Text style={[styles.stepDesc, { color: secondaryTextColor }]}>Ask questions and compare responses before deciding.</Text>
               </View>
             </View>
           </View>
@@ -324,7 +305,7 @@ export default function ProsHomeScreen() {
             <View style={styles.shieldContent}>
               <Text style={[styles.shieldTitle, { color: textColor }]}>Tavvy Shield</Text>
               <Text style={[styles.shieldDesc, { color: secondaryTextColor }]}>
-                Want payment protection? Get covered with Tavvy Shield.
+                Learn about Tavvy Shield and its terms.
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={COLORS.accentTeal} />
@@ -417,14 +398,14 @@ export default function ProsHomeScreen() {
               end={{ x: 1, y: 1 }}
               style={[styles.promiseGradient, { borderColor: 'rgba(107, 127, 255, 0.2)', borderWidth: 1 }]}
             >
-              <Text style={[styles.promiseTitle, { color: textColor }]}>🛡️ The Tavvy Promise</Text>
+              <Text style={[styles.promiseTitle, { color: textColor }]}>🛡️ Plan your next project</Text>
               <View style={styles.promiseList}>
                 <View style={styles.promiseItem}>
                   <View style={styles.promiseCheck}>
                     <Ionicons name="checkmark" size={14} color="#FFFFFF" />
                   </View>
                   <Text style={[styles.promiseText, { color: COLORS.textSecondary }]}>
-                    <Text style={{ color: textColor, fontWeight: '600' }}>Privacy protected</Text> - Contact info stays private until you hire
+                    <Text style={{ color: textColor, fontWeight: '600' }}>Message professionals</Text> - Discuss your project and what you need
                   </Text>
                 </View>
                 <View style={styles.promiseItem}>
@@ -432,7 +413,7 @@ export default function ProsHomeScreen() {
                     <Ionicons name="checkmark" size={14} color="#FFFFFF" />
                   </View>
                   <Text style={[styles.promiseText, { color: COLORS.textSecondary }]}>
-                    <Text style={{ color: textColor, fontWeight: '600' }}>Vetted pros</Text> - We verify licenses and reviews
+                    <Text style={{ color: textColor, fontWeight: '600' }}>Review credentials</Text> - Ask about licensing, insurance and experience
                   </Text>
                 </View>
                 <View style={styles.promiseItem}>
@@ -440,7 +421,7 @@ export default function ProsHomeScreen() {
                     <Ionicons name="checkmark" size={14} color="#FFFFFF" />
                   </View>
                   <Text style={[styles.promiseText, { color: COLORS.textSecondary }]}>
-                    <Text style={{ color: textColor, fontWeight: '600' }}>Match guarantee</Text> - We'll find the right pro for you
+                    <Text style={{ color: textColor, fontWeight: '600' }}>Compare options</Text> - Review services and choose who to contact
                   </Text>
                 </View>
               </View>

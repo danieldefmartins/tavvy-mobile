@@ -58,7 +58,11 @@ export default function LoginScreen({ navigation, route }: any) {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      await signInWithGoogle();
+      if (await signInWithGoogle()) {
+        const { returnTo, returnParams } = route?.params ?? {};
+        if (returnTo) navigation.navigate(returnTo, returnParams);
+        else if (navigation.canGoBack()) navigation.goBack();
+      }
     } catch (error: any) {
       console.warn('Google sign-in error:', error);
       Alert.alert('Sign-in Failed', error.message || 'Could not sign in with Google');
@@ -70,7 +74,11 @@ export default function LoginScreen({ navigation, route }: any) {
   const handleAppleSignIn = async () => {
     try {
       setLoading(true);
-      await signInWithApple();
+      if (await signInWithApple()) {
+        const { returnTo, returnParams } = route?.params ?? {};
+        if (returnTo) navigation.navigate(returnTo, returnParams);
+        else if (navigation.canGoBack()) navigation.goBack();
+      }
     } catch (error: any) {
       console.warn('Apple sign-in error:', error);
       Alert.alert('Sign-in Failed', error.message || 'Could not sign in with Apple');
@@ -105,7 +113,7 @@ export default function LoginScreen({ navigation, route }: any) {
   };
 
   // Generate decorative logo pattern positions
-  const logoPatterns = [
+  const logoPatterns: { top?: `${number}%`; bottom?: `${number}%`; left?: `${number}%`; right?: `${number}%`; opacity: number; size: number; rotation: `${number}deg` }[] = [
     { top: '5%', left: '5%', opacity: 0.08, size: 60, rotation: '-15deg' },
     { top: '8%', right: '10%', opacity: 0.06, size: 45, rotation: '10deg' },
     { top: '15%', left: '15%', opacity: 0.05, size: 35, rotation: '25deg' },
@@ -285,7 +293,7 @@ export default function LoginScreen({ navigation, route }: any) {
           {/* Sign Up Link */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+            <TouchableOpacity onPress={() => navigation.navigate('SignUp', route?.params)}>
               <Text style={styles.signUpLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>

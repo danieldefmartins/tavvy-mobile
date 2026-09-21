@@ -1,3 +1,4 @@
+import { useReleaseCopy } from '../../../../hooks/useReleaseCopy';
 /**
  * AdvancedSection -- professional badges, category, and contact form toggle.
  * Only shown for pro templates. Collapsed by default.
@@ -11,10 +12,13 @@ import {
   Text,
   Switch,
   StyleSheet,
+  Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useEditor } from '../../../../lib/ecard/EditorContext';
 import EditorSection from '../shared/EditorSection';
 import EditorField from '../shared/EditorField';
+import { visibleFormBlock, setFormBlockEnabled } from '../../../../lib/ecard/formBlock';
 
 interface AdvancedSectionProps {
   isDark: boolean;
@@ -22,7 +26,9 @@ interface AdvancedSectionProps {
 }
 
 export default function AdvancedSection({ isDark, isPro }: AdvancedSectionProps) {
+  const copy = useReleaseCopy();
   const { state, dispatch } = useEditor();
+  const navigation = useNavigation<any>();
   const card = state.card;
 
   if (!card) return null;
@@ -39,8 +45,8 @@ export default function AdvancedSection({ isDark, isPro }: AdvancedSectionProps)
   return (
     <EditorSection
       id="advanced"
-      title="Advanced"
-      icon="settings"
+      title={copy("Professional details & contact form")}
+      icon={"settings"}
       defaultOpen={false}
       isDark={isDark}
     >
@@ -102,7 +108,7 @@ export default function AdvancedSection({ isDark, isPro }: AdvancedSectionProps)
                 : (isDark ? '#FCA5A5' : '#DC2626'),
             }}>
               {(card as any).badge_approval_status === 'pending' && 'Pending Review'}
-              {(card as any).badge_approval_status === 'approved' && 'Approved'}
+              {(card as any).badge_approval_status === 'approved' && "Approved"}
               {(card as any).badge_approval_status === 'rejected' && 'Rejected'}
             </Text>
           </View>
@@ -127,13 +133,22 @@ export default function AdvancedSection({ isDark, isPro }: AdvancedSectionProps)
       {/* ===== Contact Form Toggle ===== */}
       <View style={styles.formBlock}>
         <Text style={[styles.subHeading, { color: rowText }]}>
-          Contact Form
-        </Text>
+          {"Contact form · Pro"}</Text>
 
         <ToggleRow
-          label="Show contact form on card"
-          checked={!!card.form_block}
-          onToggle={() => toggleBadge('form_block')}
+          label={copy("Show contact form on card")}
+          checked={!!visibleFormBlock(card.form_block)}
+          onToggle={() => {
+            const enabled = !!visibleFormBlock(card.form_block);
+            if (!enabled && !isPro) {
+              Alert.alert(copy('Pro feature'), copy('Contact forms are included with Pro. Existing form settings are preserved when you turn the form off.'), [
+                { text: copy('Keep editing'), style: "cancel" },
+                { text: copy('View Pro plan'), onPress: () => navigation.navigate('ECardPremiumUpsell') },
+              ]);
+              return;
+            }
+            dispatch({ type: 'SET_FIELD', field: 'form_block', value: setFormBlockEnabled(card.form_block, !enabled) });
+          }}
           isDark={isDark}
           borderColor={borderColor}
           textColor={rowText}

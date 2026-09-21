@@ -16,7 +16,7 @@ export type ContentSubtype =
 
 export type DraftStatus = 
   | 'draft_location' | 'draft_type_selected' | 'draft_subtype_selected'
-  | 'draft_details' | 'draft_review' | 'submitted' | 'failed';
+  | 'draft_details' | 'draft_photos' | 'draft_review' | 'submitted' | 'failed';
 
 export interface ContentDraft {
   id: string;
@@ -46,8 +46,9 @@ export interface ContentDraft {
 }
 
 interface CreateDraftInput {
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
+  data?: Record<string, any>;
   address_line1?: string;
   address_line2?: string;
   city?: string;
@@ -64,7 +65,7 @@ interface UpdateDraftInput {
   content_subtype?: ContentSubtype;
   data?: Record<string, any>;
   photos?: string[];
-  cover_photo?: string;
+  cover_photo?: string | null;
   [key: string]: any;
 }
 
@@ -79,8 +80,17 @@ interface SubmitResult {
 const OFFLINE_DRAFTS_KEY = '@tavvy_offline_drafts';
 const AUTO_SAVE_DELAY = 2000;
 
-export function useDrafts() {
-  const [currentDraft, setCurrentDraft] = useState<ContentDraft | null>(null);
+export function useDrafts(context: Record<string, any> = {}) {
+  const [currentDraft, setDraftState] = useState<ContentDraft | null>(null);
+  const draftRef = useRef<ContentDraft | null>(null);
+  const setCurrentDraft = (value: ContentDraft | null | ((prev: ContentDraft | null) => ContentDraft | null)) => {
+    draftRef.current = typeof value === 'function' ? value(draftRef.current) : value;
+    setDraftState(draftRef.current);
+  };
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const saveInFlight = useRef<Promise<boolean> | null>(null);
+  const submitInFlight = useRef(false);
+  const submittedResult = useRef<SubmitResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
@@ -110,19 +120,23 @@ export function useDrafts() {
   }, [checkOnlineStatus]);
 
   useEffect(() => {
-    checkForPendingDraft();
-  }, []);
+    if (!draftRef.current) checkForPendingDraft();
+  }, [isOnline]);
 
   const checkForPendingDraft = async () => {
     setIsLoading(true); // Start loading while checking for drafts
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await (!isOnline ? supabase.auth.getSession().then(({ data, error }) => ({ data: { user: data.session?.user || null }, error })) : supabase.auth.getUser());
       if (!user) {
         setIsLoading(false);
         return;
       }
 
-      const { data: draft } = await supabase
+      const localDrafts = await readOfflineDrafts();
+      const local = localDrafts.filter(d => d.user_id === user.id && d.status !== 'submitted' && (!d.remind_later_until || Date.parse(d.remind_later_until) <= Date.now())).sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
+      if (local) setPendingDraft(local);
+
+      const { data: draft, error: draftError } = await supabase
         .from('content_drafts')
         .select('*')
         .eq('user_id', user.id)
@@ -132,7 +146,8 @@ export function useDrafts() {
         .limit(1)
         .maybeSingle();
 
-      if (draft) {
+      if (draftError) throw draftError;
+      if (draft && (!local || draft.updated_at > local.updated_at)) {
         setPendingDraft(draft as ContentDraft);
       }
     } catch (error) {
@@ -143,9 +158,10 @@ export function useDrafts() {
   };
 
   const createDraft = async (input: CreateDraftInput): Promise<ContentDraft | null> => {
+    input = { ...input, data: { ...context, ...input.data } };
     setIsLoading(true);
     try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const { data: { user }, error: authError } = await (!isOnline ? supabase.auth.getSession().then(({ data, error }) => ({ data: { user: data.session?.user || null }, error })) : supabase.auth.getUser());
       if (authError || !user) {
         console.warn('[useDrafts] User not authenticated, cannot create draft');
         return null;
@@ -169,7 +185,7 @@ export function useDrafts() {
           formatted_address: input.formatted_address || null,
           content_type: null,
           content_subtype: null,
-          data: {},
+          data: input.data || {},
           photos: [],
           cover_photo: null,
           created_at: new Date().toISOString(),
@@ -192,7 +208,7 @@ export function useDrafts() {
           status: 'draft_location',
           current_step: 1,
           ...input,
-          data: {},
+          data: input.data || {},
           photos: [],
           sync_status: 'synced',
         })
@@ -212,7 +228,7 @@ export function useDrafts() {
   };
 
   const updateDraft = useCallback(async (updates: UpdateDraftInput, immediate = false) => {
-    if (!currentDraft) return;
+    if (!draftRef.current) return;
 
     pendingUpdates.current = {
       ...pendingUpdates.current,
@@ -230,55 +246,48 @@ export function useDrafts() {
     } : null);
 
     if (immediate) {
-      await flushPendingUpdates();
+      return await flushPendingUpdates();
     } else {
       if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
       autoSaveTimer.current = setTimeout(flushPendingUpdates, AUTO_SAVE_DELAY);
     }
   }, [currentDraft]);
 
-  const flushPendingUpdates = async () => {
-    if (!currentDraft || Object.keys(pendingUpdates.current).length === 0) return;
-
-    setIsSaving(true);
-    try {
-      const updates = { ...pendingUpdates.current };
-      pendingUpdates.current = {};
-
-      if (currentDraft.is_offline || !isOnline) {
-        const updatedDraft = {
-          ...currentDraft,
-          ...updates,
-          data: updates.data ? { ...currentDraft.data, ...updates.data } : currentDraft.data,
-          updated_at: new Date().toISOString(),
-          sync_status: 'pending' as const,
-        };
-        await saveOfflineDraft(updatedDraft);
-        setCurrentDraft(updatedDraft);
-      } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
-
-        if (updates.data) {
-          updates.data = { ...currentDraft.data, ...updates.data };
+  const flushPendingUpdates = async (): Promise<boolean> => {
+    if (saveInFlight.current) await saveInFlight.current;
+    const draft = draftRef.current;
+    if (!draft || Object.keys(pendingUpdates.current).length === 0) return true;
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    const updates = pendingUpdates.current;
+    pendingUpdates.current = {};
+    const operation = (async () => {
+      setIsSaving(true);
+      setSaveError(null);
+      try {
+        if (draft.is_offline || !isOnline) {
+          const offlineCopy = { ...draft, is_offline: true, sync_status: 'pending' as const };
+          await saveOfflineDraft(offlineCopy);
+          setCurrentDraft(prev => prev?.id === draft.id ? { ...prev, is_offline: true, sync_status: 'pending' } : prev);
+        } else {
+          const { data: { user }, error: authError } = await supabase.auth.getUser();
+          if (authError || !user || user.id !== draft.user_id) throw new Error('Please sign in to save this draft');
+          const { error } = await supabase.from('content_drafts')
+            .update({ ...updates, ...(updates.data ? { data: draft.data } : {}) })
+            .eq('id', draft.id).eq('user_id', user.id).select('id').single();
+          if (error) throw error;
         }
-
-        const { data, error } = await supabase
-          .from('content_drafts')
-          .update(updates)
-          .eq('id', currentDraft.id)
-          .eq('user_id', user.id)
-          .select()
-          .single();
-
-        if (error) throw error;
-        setCurrentDraft(data as ContentDraft);
-      }
-    } catch (error) {
-      console.error('[useDrafts] Error saving draft:', error);
-    } finally {
-      setIsSaving(false);
-    }
+        return true;
+      } catch (error: any) {
+        pendingUpdates.current = { ...updates, ...pendingUpdates.current,
+          data: { ...updates.data, ...pendingUpdates.current.data } };
+        setSaveError(error.message || 'Failed to save draft');
+        return false;
+      } finally { setIsSaving(false); }
+    })();
+    saveInFlight.current = operation;
+    const result = await operation;
+    if (saveInFlight.current === operation) saveInFlight.current = null;
+    return result;
   };
 
   const deleteDraft = async (draftId?: string): Promise<boolean> => {
@@ -292,7 +301,8 @@ export function useDrafts() {
       if (id.startsWith('offline_')) {
         await removeOfflineDraft(id);
       } else {
-        await supabase.from('content_drafts').delete().eq('id', id).eq('user_id', user.id);
+        const { error } = await supabase.from('content_drafts').delete().eq('id', id).eq('user_id', user.id);
+        if (error) throw error;
       }
 
       if (id === currentDraft?.id) setCurrentDraft(null);
@@ -305,33 +315,92 @@ export function useDrafts() {
   };
 
   const snoozeDraft = async (hours: number = 24): Promise<boolean> => {
-    if (!currentDraft) return false;
+    const draft = draftRef.current || pendingDraft;
+    if (!draft) return false;
+    setCurrentDraft(draft);
     const remindAt = new Date();
     remindAt.setHours(remindAt.getHours() + hours);
-    await updateDraft({ remind_later_until: remindAt.toISOString() } as any, true);
+    if (!await updateDraft({ remind_later_until: remindAt.toISOString() }, true)) return false;
     setCurrentDraft(null);
     setPendingDraft(null);
     return true;
   };
 
   const submitDraft = async (): Promise<SubmitResult> => {
+    if (submitInFlight.current) return { success: false, error: 'Submission already in progress' };
+    if (!await flushPendingUpdates()) return { success: false, error: 'Could not save your draft. Please retry.' };
+    let currentDraft = draftRef.current;
+    if (submitInFlight.current) return { success: false, error: 'Submission already in progress' };
     if (!currentDraft) return { success: false, error: 'No draft to submit' };
-    await flushPendingUpdates();
+    if (!isOnline) return { success: false, error: 'Reconnect before publishing. Your draft is saved on this device.' };
+    submitInFlight.current = true;
 
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      if (!user || user.id !== currentDraft.user_id) throw new Error('Please sign in as the draft owner');
 
-      if (!currentDraft.latitude || !currentDraft.longitude) {
+      if (currentDraft.is_offline || currentDraft.id.startsWith('offline_')) {
+        const offlineId = currentDraft.id;
+        // Persist the server ID locally BEFORE making a request. A lost response or
+        // app restart can safely retry the same primary key instead of duplicating.
+        const serverId = currentDraft.data._offline_sync_id || (!currentDraft.id.startsWith('offline_') ? currentDraft.id : null) || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+          const r = Math.floor(Math.random() * 16);
+          return (c === 'x' ? r : (r & 3) | 8).toString(16);
+        });
+        const local = { ...currentDraft, data: { ...currentDraft.data, _offline_sync_id: serverId } };
+        await saveOfflineDraft(local);
+        setCurrentDraft(local);
+        const { data: existing, error: lookupError } = await supabase.from('content_drafts')
+          .select('*').eq('id', serverId).eq('user_id', user.id).maybeSingle();
+        if (lookupError) throw lookupError;
+        if (existing?.status === 'submitted') {
+          await removeOfflineDraft(offlineId);
+          setCurrentDraft(null);
+          return { success: true };
+        }
+        const onlineDraft = { ...local, id: serverId, is_offline: false, sync_status: 'synced' as const };
+        const { data: migrated, error: migrateError } = await supabase.from('content_drafts')
+          .upsert(onlineDraft, { onConflict: 'id' }).select('*').single();
+        if (migrateError || !migrated) throw migrateError || new Error('Could not sync the draft');
+        // If removing local storage fails, keep the marked offline draft and retry
+        // the same server row. Never lose the only saved copy on network failure.
+        await removeOfflineDraft(offlineId);
+        currentDraft = migrated as ContentDraft;
+        setCurrentDraft(currentDraft);
+      }
+
+      const serviceWithoutLocation = currentDraft.content_type === 'business' && currentDraft.content_subtype === 'service' && currentDraft.data?.has_physical_location === false && currentDraft.latitude === null && currentDraft.longitude === null;
+      if (!serviceWithoutLocation && (typeof currentDraft.latitude !== 'number' || !Number.isFinite(currentDraft.latitude) || Math.abs(currentDraft.latitude) > 90 || typeof currentDraft.longitude !== 'number' || !Number.isFinite(currentDraft.longitude) || Math.abs(currentDraft.longitude) > 180)) {
         return { success: false, error: 'Location is required' };
       }
       if (!currentDraft.content_type) {
         return { success: false, error: 'Content type is required' };
       }
 
+      const durablePhotos: string[] = [];
+      for (const uri of currentDraft.photos || []) {
+        if (/^https?:\/\//i.test(uri)) { durablePhotos.push(uri); continue; }
+        const response = await fetch(uri);
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        if (bytes.byteLength > 10 * 1024 * 1024) throw new Error('Choose images smaller than 10 MB');
+        const extension = uri.split('?')[0].split('.').pop()?.toLowerCase() || 'jpg';
+        const mime = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : extension === 'heic' ? 'image/heic' : 'image/jpeg';
+        const path = `${user.id}/drafts/${currentDraft.id}-${Date.now()}-${durablePhotos.length}.${extension}`;
+        const { error: uploadError } = await supabase.storage.from('place-photos').upload(path, bytes, { contentType: mime });
+        if (uploadError) throw uploadError;
+        const { data: url } = supabase.storage.from('place-photos').getPublicUrl(path);
+        durablePhotos.push(url.publicUrl);
+        const nextPhotos = [...durablePhotos, ...currentDraft.photos.slice(durablePhotos.length)];
+        const cover = currentDraft.cover_photo === uri ? url.publicUrl : currentDraft.cover_photo;
+        await updateDraft({ photos: nextPhotos, cover_photo: cover }, true);
+        currentDraft.photos = nextPhotos;
+        currentDraft.cover_photo = cover;
+      }
+      if (!await flushPendingUpdates()) throw new Error('Could not save uploaded photos. Please retry.');
       let result: SubmitResult;
-      switch (currentDraft.content_type) {
+      if (submittedResult.current) result = submittedResult.current;
+      else switch (currentDraft.content_type) {
         case 'business':
         case 'quick_add':
           result = await submitToTavvyPlaces(currentDraft, user.id);
@@ -347,27 +416,39 @@ export function useDrafts() {
       }
 
       if (result.success) {
+        submittedResult.current = result;
         if (!currentDraft.id.startsWith('offline_')) {
-          await supabase.from('content_drafts').update({ status: 'submitted' }).eq('id', currentDraft.id);
+          const { error } = await supabase.from('content_drafts').update({ status: 'submitted' }).eq('id', currentDraft.id).eq('user_id', user.id).select('id').single();
+          if (error) throw new Error('Published, but could not finish saving the draft. Retry to finish without publishing again.');
         } else {
           await removeOfflineDraft(currentDraft.id);
         }
         setCurrentDraft(null);
+        submittedResult.current = null;
       }
       return result;
     } catch (error: any) {
       return { success: false, error: error.message || 'Failed to submit' };
     } finally {
+      submitInFlight.current = false;
       setIsLoading(false);
     }
   };
 
   const resumeDraft = (draft: ContentDraft) => {
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    pendingUpdates.current = {};
+    submittedResult.current = null;
     setCurrentDraft(draft);
     setPendingDraft(null);
   };
 
   const dismissPendingDraft = () => setPendingDraft(null);
+
+  const readOfflineDrafts = async (): Promise<ContentDraft[]> => {
+    const raw = await AsyncStorage.getItem(OFFLINE_DRAFTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  };
 
   const saveOfflineDraft = async (draft: ContentDraft) => {
     const existing = await AsyncStorage.getItem(OFFLINE_DRAFTS_KEY);
@@ -386,7 +467,7 @@ export function useDrafts() {
   };
 
   return {
-    currentDraft, pendingDraft, isLoading, isSaving, isOnline,
+    currentDraft, pendingDraft, isLoading, isSaving, isOnline, saveError,
     createDraft, updateDraft, deleteDraft, snoozeDraft, submitDraft,
     resumeDraft, dismissPendingDraft, flushPendingUpdates,
   };
@@ -408,12 +489,16 @@ function getPlaceType(contentSubtype: string | null | undefined, hasPhysicalLoca
   return 'fixed';
 }
 
-async function submitToTavvyPlaces(draft: ContentDraft, userId: string): Promise<SubmitResult> {
-  const { data, error } = await supabase.from('tavvy_places').insert({
+export async function submitToTavvyPlaces(draft: ContentDraft, userId: string): Promise<SubmitResult> {
+  // A previous publish may have succeeded before membership/finalization failed.
+  const { data: existing, error: lookupError } = await supabase.from('tavvy_places')
+    .select('id').eq('draft_id', draft.id).eq('created_by', userId).limit(1).maybeSingle();
+  if (lookupError) return { success: false, error: lookupError.message };
+  const { data, error } = existing ? { data: existing, error: null } : await supabase.from('tavvy_places').insert({
     // Basic info
     name: draft.data?.name || draft.content_subtype || 'Place',
     description: draft.data?.description,
-    tavvy_category: draft.data?.tavvy_category || draft.content_subtype || 'other',
+    tavvy_category: draft.data?.tavvy_category || draft.data?.universe_place_type || draft.content_subtype || 'other',
     tavvy_subcategory: draft.data?.tavvy_subcategory,
     
     // Location - GPS coordinates
@@ -445,7 +530,8 @@ async function submitToTavvyPlaces(draft: ContentDraft, userId: string): Promise
     // Place type - database only allows 'fixed' or 'on_the_go'
     // physical → fixed, on_the_go → on_the_go, service → fixed (if has location) or on_the_go (if no physical location)
     place_type: getPlaceType(draft.content_subtype, draft.data?.has_physical_location),
-    place_subtype: draft.content_subtype,
+    universe_id: draft.data?.universe_id || null,
+    place_subtype: draft.data?.universe_place_type || draft.content_subtype,
     service_area: draft.data?.service_area,
     
     // Quick add fields
@@ -460,6 +546,17 @@ async function submitToTavvyPlaces(draft: ContentDraft, userId: string): Promise
   }).select('id').single();
   
   if (error) return { success: false, error: error.message };
+  if (draft.data?.universe_id) {
+    // The deployed sync trigger creates places, but does not create universe membership.
+    const { data: canonical, error: canonicalError } = await supabase.from('places')
+      .select('id').eq('source_type', 'user').eq('source_id', data.id).single();
+    if (canonicalError || !canonical) return { success: false, error: canonicalError?.message || 'Published place is not yet available. Retry to finish adding it to the universe.' };
+    const { error: membershipError } = await supabase.from('atlas_universe_places').upsert(
+      { universe_id: draft.data.universe_id, place_id: canonical.id },
+      { onConflict: 'universe_id,place_id', ignoreDuplicates: true }
+    );
+    if (membershipError) return { success: false, error: membershipError.message };
+  }
   return { success: true, final_id: data.id, final_table: 'tavvy_places', taps_earned: 50 };
 }
 

@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
 import { fetchLatestActivities } from '../lib/activityService'; // Hypothetical service to fetch activities
 
 const ActivityFeed = () => {
-  const [activities, setActivities] = useState([]);
-  const fadeAnim = new Animated.Value(0);
+  const [activities, setActivities] = useState<Awaited<ReturnType<typeof fetchLatestActivities>>>([]);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const getActivities = async () => {
@@ -24,7 +24,7 @@ const ActivityFeed = () => {
     }).start();
   };
 
-  const getBackgroundColor = (type) => {
+  const getBackgroundColor = (type: string) => {
     switch (type) {
       case 'The Good':
         return styles.theGood;

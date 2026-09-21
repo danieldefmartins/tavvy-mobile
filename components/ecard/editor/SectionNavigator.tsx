@@ -34,7 +34,7 @@ interface SectionDef {
 
 interface SectionNavigatorProps {
   sections: SectionDef[];
-  scrollViewRef: React.RefObject<ScrollView>;
+  scrollViewRef: React.RefObject<ScrollView | null>;
   isDark: boolean;
 }
 

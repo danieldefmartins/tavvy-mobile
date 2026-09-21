@@ -1,3 +1,5 @@
+import { useReleaseCopy } from '../hooks/useReleaseCopy';
+import { searchAcrossProviders } from '../lib/placeSearch';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
@@ -9,6 +11,7 @@ import {
   Dimensions,
   ScrollView,
   Platform,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +28,7 @@ import {
 } from '../lib/signalService';
 import { spacing, borderRadius, typography, shadows } from '../constants/Colors';
 import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
+import { DINING_NEEDS, fetchDiscoveryEvidence, matchNeed } from '../lib/discoveryEvidence';
 
 const { width } = Dimensions.get('window');
 
@@ -38,6 +42,7 @@ interface PlaceResult {
   address: string;
   city: string | null;
   total_taps: number;
+  match_reason?: string;
   matching_signals: {
     signal_id: string;
     label: string;
@@ -52,6 +57,7 @@ interface PlaceResult {
 // ============================================
 
 function SignalSearchScreen() {
+  const copy = useReleaseCopy();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { theme, isDark } = useThemeContext();
@@ -63,6 +69,9 @@ function SignalSearchScreen() {
   const [isLoadingSignals, setIsLoadingSignals] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [cityQuery, setCityQuery] = useState('');
+  const [diningNeed, setDiningNeed] = useState('');
+  const [diningError, setDiningError] = useState('');
 
   // ============================================
   // LOAD SIGNALS
@@ -81,7 +90,7 @@ function SignalSearchScreen() {
         .from('review_items')
         .select('id, slug, label, icon_emoji, signal_type, color')
         .eq('is_active', true)
-        .in('signal_type', ['best_for', 'vibe', 'heads_up'])
+        .in('signal_type', ['best_for', "vibe", 'heads_up'])
         .order('label');
 
       if (error) {
@@ -131,6 +140,7 @@ function SignalSearchScreen() {
   // ============================================
 
   const toggleSignal = useCallback((signalId: string) => {
+    setDiningNeed('');
     setSelectedSignalIds((prev) => {
       const next = new Set(prev);
       if (next.has(signalId)) {
@@ -144,9 +154,33 @@ function SignalSearchScreen() {
 
   const clearSelection = useCallback(() => {
     setSelectedSignalIds(new Set());
+    setDiningNeed('');
     setResults([]);
     setHasSearched(false);
   }, []);
+
+  const findDiningMatches = async (needId: string) => {
+    setDiningNeed(needId);
+    setDiningError('');
+    if (!cityQuery.trim()) { setDiningError('Enter a city to find restaurants.'); return; }
+    setSelectedSignalIds(new Set());
+    setIsSearching(true);
+    setHasSearched(true);
+    try {
+      const response = await searchAcrossProviders("restaurants", 50, { location: cityQuery.trim() });
+      const places = response.places;
+      const evidence = await fetchDiscoveryEvidence((places || []).map(p => ({ id: p.id, category: p.tavvy_category || p.category })));
+      const ranked: PlaceResult[] = (places || []).map(p => {
+        const match = matchNeed(evidence.get(p.id), needId);
+        return { place_id: p.id, name: p.name, address: p.address || '', city: p.city || null,
+          total_taps: match.score, match_reason: match.reason, matching_signals: [] };
+      }).sort((a, b) => b.total_taps - a.total_taps);
+      setResults(ranked);
+    } catch {
+      setDiningError('Could not load dining matches. Please try again.');
+      setResults([]);
+    } finally { setIsSearching(false); }
+  };
 
   // ============================================
   // SEARCH PLACES BY SIGNALS
@@ -155,11 +189,11 @@ function SignalSearchScreen() {
   useEffect(() => {
     if (selectedSignalIds.size > 0) {
       searchPlaces();
-    } else {
+    } else if (!diningNeed) {
       setResults([]);
       setHasSearched(false);
     }
-  }, [selectedSignalIds]);
+  }, [selectedSignalIds, diningNeed]);
 
   const searchPlaces = async () => {
     if (selectedSignalIds.size === 0) return;
@@ -229,7 +263,7 @@ function SignalSearchScreen() {
 
       // Step 3: Fetch place details
       const { data: places, error: placesError } = await supabase
-        .from('places')
+        .from("places")
         .select('id, name, address, city')
         .in('id', qualifyingPlaceIds.slice(0, 50));
 
@@ -284,7 +318,7 @@ function SignalSearchScreen() {
   const getCategoryPillType = (category: ReviewCategory): 'good' | 'vibe' | 'headsup' => {
     switch (category) {
       case 'best_for': return 'good';
-      case 'vibe': return 'vibe';
+      case "vibe": return "vibe";
       case 'heads_up': return 'headsup';
       default: return 'good';
     }
@@ -297,13 +331,13 @@ function SignalSearchScreen() {
     if (isDark) {
       switch (category) {
         case 'best_for': return theme.signalGoodBg;
-        case 'vibe': return theme.signalVibeBg;
+        case "vibe": return theme.signalVibeBg;
         case 'heads_up': return theme.signalHeadsUpBg;
       }
     }
     switch (category) {
       case 'best_for': return 'rgba(0, 194, 203, 0.10)';
-      case 'vibe': return 'rgba(138, 5, 190, 0.08)';
+      case "vibe": return 'rgba(138, 5, 190, 0.08)';
       case 'heads_up': return 'rgba(245, 166, 35, 0.10)';
     }
   };
@@ -315,13 +349,13 @@ function SignalSearchScreen() {
     if (isDark) {
       switch (category) {
         case 'best_for': return theme.signalGoodBorder;
-        case 'vibe': return theme.signalVibeBorder;
+        case "vibe": return theme.signalVibeBorder;
         case 'heads_up': return theme.signalHeadsUpBorder;
       }
     }
     switch (category) {
       case 'best_for': return 'rgba(0, 194, 203, 0.25)';
-      case 'vibe': return 'rgba(138, 5, 190, 0.18)';
+      case "vibe": return 'rgba(138, 5, 190, 0.18)';
       case 'heads_up': return 'rgba(245, 166, 35, 0.22)';
     }
   };
@@ -333,7 +367,7 @@ function SignalSearchScreen() {
     if (isDark) {
       switch (category) {
         case 'best_for': return theme.signalGoodText;
-        case 'vibe': return theme.signalVibeText;
+        case "vibe": return theme.signalVibeText;
         case 'heads_up': return theme.signalHeadsUpText;
       }
     }
@@ -344,13 +378,13 @@ function SignalSearchScreen() {
     if (isDark) {
       switch (category) {
         case 'best_for': return theme.signalGoodBg;
-        case 'vibe': return theme.signalVibeBg;
+        case "vibe": return theme.signalVibeBg;
         case 'heads_up': return theme.signalHeadsUpBg;
       }
     }
     switch (category) {
       case 'best_for': return 'rgba(0, 194, 203, 0.10)';
-      case 'vibe': return 'rgba(138, 5, 190, 0.08)';
+      case "vibe": return 'rgba(138, 5, 190, 0.08)';
       case 'heads_up': return 'rgba(245, 166, 35, 0.10)';
     }
   };
@@ -359,13 +393,13 @@ function SignalSearchScreen() {
     if (isDark) {
       switch (category) {
         case 'best_for': return theme.signalGoodText;
-        case 'vibe': return theme.signalVibeText;
+        case "vibe": return theme.signalVibeText;
         case 'heads_up': return theme.signalHeadsUpText;
       }
     }
     switch (category) {
       case 'best_for': return '#00C2CB';
-      case 'vibe': return '#8A05BE';
+      case "vibe": return '#8A05BE';
       case 'heads_up': return '#F5A623';
     }
   };
@@ -466,13 +500,15 @@ function SignalSearchScreen() {
               </Text>
             ) : null}
           </View>
-          <View style={styles.tapBadge}>
+          {!diningNeed && <View style={styles.tapBadge}>
             <Ionicons name="pulse-outline" size={14} color={theme.signalGood} />
             <Text style={[styles.tapBadgeText, { color: theme.signalGood }]}>
               {item.total_taps}
             </Text>
-          </View>
+          </View>}
         </View>
+
+        {item.match_reason ? <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 7 }}>{item.match_reason}</Text> : null}
 
         <View style={styles.matchingSignalsRow}>
           {item.matching_signals.map((ms) => (
@@ -525,8 +561,7 @@ function SignalSearchScreen() {
           color={theme.textTertiary}
         />
         <Text style={[styles.emptyTitle, { color: theme.text }]}>
-          No places found
-        </Text>
+          {copy("No places found")}</Text>
         <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
           No places match all selected signals yet. Try selecting fewer signals or different combinations.
         </Text>
@@ -553,8 +588,7 @@ function SignalSearchScreen() {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: theme.text }]}>
-            Signal Search
-          </Text>
+            {copy("Signal Search")}</Text>
           <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
             Find places by what people love
           </Text>
@@ -566,8 +600,7 @@ function SignalSearchScreen() {
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Text style={[styles.clearButtonText, { color: theme.signalHeadsUp }]}>
-              Clear
-            </Text>
+              {copy("Clear")}</Text>
           </TouchableOpacity>
         ) : (
           <View style={styles.headerRight} />
@@ -575,9 +608,15 @@ function SignalSearchScreen() {
       </View>
 
       {/* Selected Count Bar */}
+      <View style={{ paddingHorizontal: 20, paddingVertical: 12, backgroundColor: theme.background }}>
+        <Text style={{ color: theme.text, fontSize: 17, fontWeight: '700', marginBottom: 8 }}>{copy("What matters for this meal?")}</Text>
+        <TextInput value={cityQuery} onChangeText={setCityQuery} placeholder={copy("City")} placeholderTextColor={theme.textSecondary} accessibilityLabel="City for restaurant search" style={{ borderWidth: 1, borderColor: theme.border, borderRadius: 10, color: theme.text, padding: 10, marginBottom: 8 }} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>{DINING_NEEDS.map(need => <TouchableOpacity key={need.id} onPress={() => findDiningMatches(need.id)} style={{ borderWidth: 1, borderColor: '#00C2CB', backgroundColor: diningNeed === need.id ? '#00C2CB' : theme.surface, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, marginRight: 7 }}><Text style={{ color: diningNeed === need.id ? '#17013A' : theme.text }}>{need.label}</Text></TouchableOpacity>)}</ScrollView>
+        {diningError ? <Text style={{ color: '#B45309', marginTop: 6 }}>{diningError}</Text> : null}
+      </View>
       {selectedCount > 0 && (
         <View style={[styles.selectedBar, { backgroundColor: isDark ? theme.surfaceElevated : '#F0F0F5' }]}>
-          <Ionicons name="filter" size={16} color={theme.primary} />
+          <Ionicons name={"filter"} size={16} color={theme.primary} />
           <Text style={[styles.selectedBarText, { color: theme.text }]}>
             {selectedCount} signal{selectedCount !== 1 ? 's' : ''} selected
           </Text>
@@ -602,7 +641,7 @@ function SignalSearchScreen() {
           ListHeaderComponent={
             <View style={styles.signalsSection}>
               {renderCategorySection('best_for')}
-              {renderCategorySection('vibe')}
+              {renderCategorySection("vibe")}
               {renderCategorySection('heads_up')}
             </View>
           }

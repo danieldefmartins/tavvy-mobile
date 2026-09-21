@@ -38,27 +38,27 @@ export function useProjectRequests() {
     setLoading(true);
     setError(null);
     try {
-      let query = supabase
-        .from('project_requests')
-        .select('*')
-        .eq('status', 'pending')
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!auth.user) throw new Error('Sign in to view your leads.');
+      const { data: provider, error: providerError } = await supabase.from('pro_providers')
+        .select('id').eq('user_id', auth.user.id).maybeSingle();
+      if (providerError) throw providerError;
+      if (!provider) { setRequests([]); return []; }
+      const { data, error: fetchError } = await supabase.from('pro_request_matches')
+        .select('*, project_request:project_requests(*)').eq('pro_id', provider.id)
         .order('created_at', { ascending: false });
-
-      if (categoryId) {
-        query = query.eq('category_id', categoryId);
-      }
-
-      if (city) {
-        query = query.eq('city', city);
-      }
-
-      const { data, error: fetchError } = await query;
-
       if (fetchError) throw fetchError;
-      setRequests(data || []);
-      return data || [];
+      const matchedRequests = (data || []).filter((match: any) => match.project_request).map((match: any) => ({
+        ...match.project_request,
+        status: match.pro_status,
+        match_id: match.id,
+      })).filter((request: ProjectRequest) => (!categoryId || request.category_id === categoryId) && (!city || request.city === city));
+      setRequests(matchedRequests);
+      return matchedRequests;
     } catch (err: any) {
       console.error('Error fetching project requests:', err);
+      setRequests([]);
       setError(err.message);
       return [];
     } finally {

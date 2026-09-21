@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "supabase/functions",
+    "lib/__tests__",
+    "dist-audit"
+  ]
+}

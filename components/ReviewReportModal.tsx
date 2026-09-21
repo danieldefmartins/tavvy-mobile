@@ -14,7 +14,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../lib/supabaseClient';
+import { reportContent } from '../lib/contentSafety';
 import { useAuth } from '../contexts/AuthContext';
 import { Colors } from '../constants/Colors';
 
@@ -119,43 +119,7 @@ export const ReviewReportModal: React.FC<ReviewReportModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Check if user already reported this review
-      const { data: existingReport } = await supabase
-        .from('review_reports')
-        .select('id')
-        .eq('review_id', reviewId)
-        .eq('reporter_id', user.id)
-        .single();
-
-      if (existingReport) {
-        Alert.alert('Already Reported', 'You have already reported this review. Our team is reviewing it.');
-        onClose();
-        return;
-      }
-
-      // Submit the report
-      const { error: reportError } = await supabase
-        .from('review_reports')
-        .insert({
-          review_id: reviewId,
-          place_id: placeId,
-          reporter_id: user.id,
-          reason: selectedReason,
-          status: 'pending',
-        });
-
-      if (reportError) {
-        // If table doesn't exist yet, show a friendly message
-        if (reportError.code === '42P01') {
-          Alert.alert(
-            'Report Received',
-            'Thank you for your report. Our team will review this content.',
-            [{ text: 'OK', onPress: onClose }]
-          );
-          return;
-        }
-        throw reportError;
-      }
+      await reportContent('place_review',reviewId,selectedReason);
 
       Alert.alert(
         'Report Submitted',
@@ -165,13 +129,12 @@ export const ReviewReportModal: React.FC<ReviewReportModalProps> = ({
     } catch (error) {
       console.error('Failed to submit report:', error);
       Alert.alert(
-        'Report Received',
-        'Thank you for your report. Our team will review this content.',
-        [{ text: 'OK', onPress: onClose }]
+        'Report Not Sent',
+        'Your report could not be saved. Please try again or contact support@tavvy.com.',
+        [{ text: 'OK' }]
       );
     } finally {
       setIsSubmitting(false);
-      setSelectedReason(null);
     }
   };
 

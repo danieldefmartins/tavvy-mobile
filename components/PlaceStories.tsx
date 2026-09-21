@@ -63,8 +63,8 @@ interface PlaceStoriesProps {
 const COLORS = {
   primary: '#1B2B5B',
   accent: '#0F8A8A',
-  storyRingActive: ['#FF6B6B', '#FFE66D', '#4ECDC4', '#45B7D1'],
-  storyRingViewed: ['#C4C4C4', '#A0A0A0'],
+  storyRingActive: ['#FF6B6B', '#FFE66D', '#4ECDC4', '#45B7D1'] as [string, string, ...string[]],
+  storyRingViewed: ['#C4C4C4', '#A0A0A0'] as [string, string],
   background: '#FFFFFF',
   backgroundDark: '#1A1A2E',
   text: '#1B2B5B',
@@ -247,7 +247,7 @@ export default function PlaceStories({
 
   // Render single story avatar
   const renderStoryAvatar = (place: PlaceWithStories) => {
-    const ringColors = place.hasUnviewedStories
+    const ringColors: [string, string, ...string[]] = place.hasUnviewedStories
       ? COLORS.storyRingActive
       : COLORS.storyRingViewed;
 

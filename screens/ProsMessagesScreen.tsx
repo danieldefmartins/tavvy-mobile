@@ -20,17 +20,15 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   StatusBar,
-  Modal,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { blockConversation } from '../lib/tavvyChat';
 import { useTavvyChat } from '../hooks/useTavvyChat';
-import { supabase } from '../lib/supabaseClient';
 import { useTranslation } from 'react-i18next';
 
 // Design System Colors
@@ -58,10 +56,6 @@ export default function ProsMessagesScreen() {
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(initialId || null);
   const [messageText, setMessageText] = useState('');
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [userType, setUserType] = useState<'customer' | 'pro'>('customer');
-  const [showOptionsModal, setShowOptionsModal] = useState(false);
-  const [isBlocking, setIsBlocking] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const flatListRef = useRef<FlatList>(null);
 
@@ -72,116 +66,35 @@ export default function ProsMessagesScreen() {
     fetchConversations, 
     fetchMessages, 
     sendMessage,
-    startConversation 
+    error, sending, authLoading, currentUserId 
   } = useTavvyChat(activeConversationId || undefined);
 
+  useEffect(() => { setActiveConversationId(initialId || null); setMessageText(''); }, [currentUserId, initialId]);
   useEffect(() => {
-    const setup = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
-        setUserType('pro'); 
-      }
-    };
-    setup();
-    fetchConversations();
-  }, [fetchConversations]);
-
-  useEffect(() => {
-    if (activeConversationId) {
-      fetchMessages(activeConversationId);
-    }
-  }, [activeConversationId, fetchMessages]);
-
-  useEffect(() => {
-    if (leadId && !activeConversationId && currentUserId) {
-      handleStartNewChat();
-    }
-  }, [leadId, currentUserId]);
-
-  const handleStartNewChat = async () => {
-    try {
-      const { data: request } = await supabase
-        .from('project_requests')
-        .select('customer_email')
-        .eq('id', leadId)
-        .single();
-      
-      if (request?.customer_email) {
-        const { data: userData } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', request.customer_email)
-          .maybeSingle();
-        
-        if (userData?.id) {
-          const id = await startConversation(currentUserId!, userData.id, leadId);
-          setActiveConversationId(id);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to start conversation:', error);
-    }
-  };
+    if (!leadId || initialId || activeConversationId || loading) return;
+    const matches = conversations.filter(c => c.project_request_id === leadId);
+    if (matches.length === 1) setActiveConversationId(matches[0].id);
+  }, [leadId, initialId, activeConversationId, conversations, loading]);
+  const handleBlock = () => Alert.alert('Block participant', 'Block messaging with this participant?', [
+    { text: 'Cancel', style: 'cancel' },
+    { text: 'Block', style: 'destructive', onPress: async () => {
+      if (!activeConversationId || !currentUserId) return;
+      try { await blockConversation(activeConversationId, currentUserId); Alert.alert('Blocked', 'Messaging with this participant is blocked.'); }
+      catch { Alert.alert('Unable to block', 'Please try again.'); }
+    } }
+  ]);
 
   const handleSend = async () => {
-    if (!messageText.trim() || !activeConversationId) return;
+    if (!messageText.trim() || !activeConversationId || sending) return;
     
     const text = messageText.trim();
-    setMessageText('');
-    
     try {
-      await sendMessage(activeConversationId, text, userType);
+      await sendMessage(activeConversationId, text);
+      setMessageText(current => current.trim() === text ? '' : current);
       flatListRef.current?.scrollToEnd({ animated: true });
     } catch (error) {
       console.error('Failed to send message:', error);
     }
-  };
-
-  const handleBlockUser = async () => {
-    Alert.alert(
-      'Block User',
-      'Are you sure you want to block this user? You will no longer receive messages from them.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Block',
-          style: 'destructive',
-          onPress: async () => {
-            setIsBlocking(true);
-            try {
-              const conversation = conversations.find(c => c.id === activeConversationId);
-              const otherUserId = conversation?.customer_id === currentUserId 
-                ? conversation?.pro_id 
-                : conversation?.customer_id;
-
-              if (otherUserId && currentUserId) {
-                await supabase.from('blocked_users').insert({
-                  blocker_id: currentUserId,
-                  blocked_id: otherUserId,
-                  conversation_id: activeConversationId,
-                });
-
-                await supabase
-                  .from('conversations')
-                  .update({ status: 'blocked' })
-                  .eq('id', activeConversationId);
-
-                Alert.alert('User Blocked', 'You will no longer receive messages from this user.');
-                setShowOptionsModal(false);
-                setActiveConversationId(null);
-                fetchConversations();
-              }
-            } catch (error) {
-              console.error('Failed to block user:', error);
-              Alert.alert('Error', 'Failed to block user. Please try again.');
-            } finally {
-              setIsBlocking(false);
-            }
-          },
-        },
-      ]
-    );
   };
 
   const backgroundColor = theme.background;
@@ -208,7 +121,7 @@ export default function ProsMessagesScreen() {
 
   // Conversation List View
   const renderConversationItem = ({ item }: { item: any }) => {
-    const otherParty = item.project_request?.customer_name || 'Customer';
+    const otherParty = item.pro_id === currentUserId ? (item.customer_name || 'Customer conversation') : (item.provider_name || 'Professional conversation');
     const lastMessage = item.last_message || 'Start a conversation...';
     const isUnread = item.unread_count > 0;
     const initial = otherParty.charAt(0).toUpperCase();
@@ -325,13 +238,18 @@ export default function ProsMessagesScreen() {
         {/* Conversations List */}
         <View style={styles.listSection}>
           <Text style={[styles.sectionTitle, { color: textColor }]}>Recent</Text>
+          {authLoading || loading ? <Text style={{ color: textColor }}>Loading…</Text> : null}
+          {!authLoading && !currentUserId ? <TouchableOpacity onPress={() => (navigation as any).navigate('Login')}><Text style={{ color: COLORS.accent }}>Sign in to view messages</Text></TouchableOpacity> : null}
+          {error ? <TouchableOpacity onPress={fetchConversations}><Text accessibilityRole="alert" style={{ color: '#EF4444' }}>{error} Tap to retry.</Text></TouchableOpacity> : null}
           <FlatList
-            data={conversations}
+            data={conversations.filter(c => `${c.pro_id === currentUserId ? 'Customer' : 'Professional'} conversation ${c.id}`.toLowerCase().includes(searchQuery.toLowerCase()))}
+            refreshing={loading}
+            onRefresh={fetchConversations}
             renderItem={renderConversationItem}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
+            ListEmptyComponent={!loading && !error && !!currentUserId ?
               <View style={styles.emptyState}>
                 <View style={[
                   styles.emptyIcon, 
@@ -345,18 +263,11 @@ export default function ProsMessagesScreen() {
                 <Text style={[styles.emptySubText, { color: secondaryTextColor }]}>
                   Leads you respond to will appear here.
                 </Text>
-              </View>
+              </View> : null
             }
           />
         </View>
 
-        {/* Floating New Message Button */}
-        <TouchableOpacity 
-          style={styles.fab}
-          activeOpacity={0.9}
-        >
-          <Ionicons name="add" size={28} color="#FFFFFF" />
-        </TouchableOpacity>
       </SafeAreaView>
     );
   }
@@ -382,52 +293,17 @@ export default function ProsMessagesScreen() {
           <View style={styles.chatHeaderInfo}>
             <Text style={[styles.chatTitle, { color: textColor }]}>{customerName || 'Chat'}</Text>
           </View>
-          <TouchableOpacity 
-            onPress={() => setShowOptionsModal(true)}
-            style={styles.optionsButton}
-          >
-            <Ionicons name="ellipsis-vertical" size={22} color={textColor} />
-          </TouchableOpacity>
+          <TouchableOpacity onPress={handleBlock}><Text style={{ color: '#EF4444' }}>Block</Text></TouchableOpacity>
         </View>
-
-        {/* Options Modal */}
-        <Modal
-          visible={showOptionsModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowOptionsModal(false)}
-        >
-          <TouchableOpacity 
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setShowOptionsModal(false)}
-          >
-            <View style={[styles.optionsModal, { backgroundColor: surfaceColor }]}>
-              <TouchableOpacity 
-                style={styles.optionItem}
-                onPress={handleBlockUser}
-                disabled={isBlocking}
-              >
-                <Ionicons name="ban-outline" size={22} color="#EF4444" />
-                <Text style={styles.optionTextDanger}>
-                  {isBlocking ? 'Blocking...' : 'Block User'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.optionItem}
-                onPress={() => setShowOptionsModal(false)}
-              >
-                <Ionicons name="close-outline" size={22} color={secondaryTextColor} />
-                <Text style={[styles.optionText, { color: textColor }]}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </Modal>
+        {loading ? <Text style={{ color: textColor, padding: 12 }}>Loading…</Text> : null}
+        {error ? <TouchableOpacity onPress={() => fetchMessages(activeConversationId)}><Text accessibilityRole="alert" style={{ color: '#EF4444', padding: 12 }}>{error} Tap to refresh.</Text></TouchableOpacity> : null}
 
         {/* Messages List */}
         <FlatList
           ref={flatListRef}
           data={messages}
+          refreshing={loading}
+          onRefresh={() => fetchMessages(activeConversationId)}
           renderItem={renderMessageItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.messagesContent}
@@ -444,6 +320,7 @@ export default function ProsMessagesScreen() {
             value={messageText}
             onChangeText={setMessageText}
             multiline
+            maxLength={5000}
           />
           <TouchableOpacity 
             style={[
@@ -451,7 +328,7 @@ export default function ProsMessagesScreen() {
               { backgroundColor: messageText.trim() ? COLORS.accent : glassyColor }
             ]}
             onPress={handleSend}
-            disabled={!messageText.trim()}
+            disabled={!messageText.trim() || sending || !currentUserId}
           >
             <Ionicons 
               name="send" 

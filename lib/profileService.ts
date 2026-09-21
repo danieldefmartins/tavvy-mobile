@@ -22,10 +22,10 @@ export interface UserProfile {
 }
 
 export interface UpdateProfileData {
-  username?: string;
-  display_name?: string;
-  bio?: string;
-  avatar_url?: string;
+  username?: string | null;
+  display_name?: string | null;
+  bio?: string | null;
+  avatar_url?: string | null;
   instagram_url?: string | null;
   tiktok_url?: string | null;
   youtube_url?: string | null;
@@ -268,25 +268,21 @@ export async function getUserStats(userId: string): Promise<{
   savedPlaces: number;
 }> {
   try {
-    // Fetch reviews count from place_reviews
-    const { count: reviewsCount } = await supabase
-      .from('place_reviews')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId);
-
-    // Fetch saved places count from user_favorites
-    const { count: savedCount } = await supabase
-      .from('user_favorites')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId);
+    const { data: identity, error: identityError } = await supabase.auth.getUser();
+    if (identityError || identity.user?.id !== userId) throw new Error('Sign in to load your review activity.');
+    // Server resolves new Auth actors and historical authors with verified write provenance.
+    const { data: reviewsCount, error: reviewError } = await supabase.rpc('get_my_place_review_count');
+    if (reviewError || !Number.isInteger(reviewsCount) || reviewsCount < 0) throw new Error('Review activity is temporarily unavailable.');
+    const { count: savedCount, error: savedError } = await supabase
+      .from('user_favorites').select('id', { count: 'exact', head: true }).eq('user_id', userId);
+    if (savedError || typeof savedCount !== 'number') throw new Error('Saved activity is temporarily unavailable.');
 
     return {
       reviews: reviewsCount || 0,
       savedPlaces: savedCount || 0,
     };
   } catch (error) {
-    console.error('Error fetching user stats:', error);
-    return { reviews: 0, savedPlaces: 0 };
+    throw error instanceof Error ? error : new Error('Your activity is temporarily unavailable.');
   }
 }
 

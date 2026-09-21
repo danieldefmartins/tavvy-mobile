@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, Image, StyleSheet } from 'react-native';
 
-const TrendingRidesCarousel = ({ rides }) => {
+const TrendingRidesCarousel = ({ rides }: { rides: { image: string; name: string; description: string; thrillLevel: string; waitTime: string | number }[] }) => {
   return (
     <View style={styles.carouselContainer}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>

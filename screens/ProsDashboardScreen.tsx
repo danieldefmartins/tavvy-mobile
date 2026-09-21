@@ -13,7 +13,6 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +23,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ProsColors } from '../constants/ProsConfig';
 import { useProDashboard, useProsSubscription, useProsLeads, useProsConversations } from '../hooks/usePros';
 import { ProsSubscriptionStatusBanner } from '../components/ProsSubscriptionBanner';
+import { useProjectRequests } from '../hooks/useProjectRequests';
 import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -33,7 +33,7 @@ export default function ProsDashboardScreen() {
   const { user } = useAuth();
   const { profile, loading: profileLoading, fetchProfile } = useProDashboard();
   const { subscription, loading: subscriptionLoading, fetchSubscription } = useProsSubscription();
-  const { leads, loading: leadsLoading, fetchLeads } = useProsLeads();
+  const { requests: leads, loading: leadsLoading, error: leadsError, fetchProjectRequests: fetchLeads } = useProjectRequests();
   const { conversations, fetchConversations } = useProsConversations();
   const [refreshing, setRefreshing] = useState(false);
   // Calculate stats
@@ -118,7 +118,7 @@ export default function ProsDashboardScreen() {
         {/* Profile Card */}
         <TouchableOpacity
           style={styles.profileCard}
-          onPress={() => Alert.alert('Coming Soon', 'Edit Profile will be available in a future update.')}
+          onPress={() => navigation.navigate('ProsManageProfile' as any)}
         >
           <View style={styles.profileHeader}>
             {(profile.profilePhotoUrl) ? (
@@ -150,8 +150,9 @@ export default function ProsDashboardScreen() {
           tier={subscription?.tier || null}
           status={subscription?.status === 'cancelled' ? 'expired' : (subscription?.status as any) || null}
           expiresAt={subscription?.endDate}
-          onUpgrade={() => Alert.alert('Coming Soon', 'Subscription upgrades will be available in a future update.')}
+          onUpgrade={() => navigation.navigate('ProsPaywall' as any)}
         />
+        {leadsError && <Text accessibilityRole="alert" style={{ color: '#DC2626', padding: 16 }}>Unable to load leads: {leadsError}</Text>}
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
           <TouchableOpacity
@@ -161,12 +162,12 @@ export default function ProsDashboardScreen() {
             <View style={[styles.statIcon, { backgroundColor: `${ProsColors.primary}15` }]}>
               <Ionicons name="document-text" size={24} color={ProsColors.primary} />
             </View>
-            <Text style={styles.statValue}>{newLeadsCount}</Text>
+            <Text style={styles.statValue}>{leadsError ? '—' : newLeadsCount}</Text>
             <Text style={styles.statLabel}>New Leads</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.statCard}
-            onPress={() => navigation.navigate('ProsMessages')}
+            onPress={() => navigation.navigate('ProsMessages', {})}
           >
             <View style={[styles.statIcon, { backgroundColor: `${ProsColors.secondary}15` }]}>
               <Ionicons name="chatbubbles" size={24} color={ProsColors.secondary} />
@@ -209,28 +210,28 @@ export default function ProsDashboardScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickAction}
-              onPress={() => Alert.alert('Coming Soon', 'Edit Profile will be available in a future update.')}
+              onPress={() => navigation.navigate('ProsManageProfile' as any)}
             >
               <Ionicons name="person-outline" size={22} color={ProsColors.primary} />
               <Text style={styles.quickActionText}>Edit Profile</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.quickAction}
-              onPress={() => Alert.alert('Coming Soon', 'Photo management will be available in a future update.')}
+              style={[styles.quickAction, { opacity: 0.5 }]}
+              disabled accessibilityState={{ disabled: true }}
             >
               <Ionicons name="images-outline" size={22} color={ProsColors.primary} />
-              <Text style={styles.quickActionText}>Manage Photos</Text>
+              <Text style={styles.quickActionText}>Photos — unavailable</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.quickAction}
-              onPress={() => Alert.alert('Coming Soon', 'Availability settings will be available in a future update.')}
+              style={[styles.quickAction, { opacity: 0.5 }]}
+              disabled accessibilityState={{ disabled: true }}
             >
               <Ionicons name="calendar-outline" size={22} color={ProsColors.primary} />
-              <Text style={styles.quickActionText}>Set Availability</Text>
+              <Text style={styles.quickActionText}>Availability — unavailable</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickAction}
-              onPress={() => Alert.alert('Coming Soon', 'Service management will be available in a future update.')}
+              onPress={() => navigation.navigate('ProsManageProfile' as any)}
             >
               <Ionicons name="construct-outline" size={22} color={ProsColors.primary} />
               <Text style={styles.quickActionText}>Services</Text>

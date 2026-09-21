@@ -1,3 +1,4 @@
+import ToolHeader from '../components/ToolHeader';
 /**
  * UniverseDiscoveryScreen.tsx
  * Explore themed universes (theme parks, airports, campuses, etc.)
@@ -11,6 +12,7 @@
  * - Working search functionality
  */
 
+import CruiseDirectory from '../components/cruises/CruiseDirectory';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -57,8 +59,10 @@ export default function UniverseDiscoveryScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { theme, isDark } = useThemeContext();
+  const readableAccent = isDark ? '#BFAAFF' : '#5843A8';
   const [activeCategory, setActiveCategory] = useState('All');
   const [loading, setLoading] = useState(true);
+  const [showCruiseShips, setShowCruiseShips] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
 
@@ -131,6 +135,7 @@ export default function UniverseDiscoveryScreen() {
         .from('atlas_universes')
         .select('*')
         .eq('status', 'published')
+        .or('universe_kind.is.null,universe_kind.neq.cruise_ship')
         .eq('is_featured', true)
         .order('created_at', { ascending: false })
         .limit(1);
@@ -140,6 +145,7 @@ export default function UniverseDiscoveryScreen() {
         .from('atlas_universes')
         .select('*')
         .eq('status', 'published')
+        .or('universe_kind.is.null,universe_kind.neq.cruise_ship')
         .order('created_at', { ascending: false });
 
       if (activeCategory !== 'All') {
@@ -191,6 +197,7 @@ export default function UniverseDiscoveryScreen() {
         .from('atlas_universes')
         .select('*')
         .eq('status', 'published')
+        .or('universe_kind.is.null,universe_kind.neq.cruise_ship')
         .or(`name.ilike.%${query}%,location.ilike.%${query}%,description.ilike.%${query}%`)
         .order('name', { ascending: true })
         .limit(20);
@@ -247,35 +254,36 @@ export default function UniverseDiscoveryScreen() {
   const isShowingSearchResults = searchQuery.trim().length > 0;
   const displayUniverses = isShowingSearchResults ? searchResults : popularUniverses;
 
+  if (showCruiseShips) return <CruiseDirectory onBack={() => setShowCruiseShips(false)}/>;
+
   if (loading) {
     return (
-      <View style={[styles.container, styles.loadingContainer, { backgroundColor }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
+        <ToolHeader title="Universes" subtitle="Explore curated worlds." />
+        <View style={[styles.container, styles.loadingContainer]}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <ActivityIndicator size="large" color={COLORS.accent} />
         <Text style={[styles.loadingText, { color: secondaryTextColor }]}>
           Loading universes...
         </Text>
-      </View>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <ToolHeader title="Universes" subtitle="Explore curated worlds." />
       
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: textColor }]}>Universes</Text>
-          <Text style={[styles.tagline, { color: COLORS.accent }]}>
-            Explore curated worlds.
-          </Text>
-        </View>
 
+
+        <TouchableOpacity accessibilityRole="button" onPress={() => setShowCruiseShips(true)} style={{marginHorizontal:20,marginBottom:18,padding:16,borderRadius:14,borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface}}><Text style={{color:readableAccent,fontWeight:'600'}}>Explore cruise ships →</Text></TouchableOpacity>
         {/* Search Bar */}
         <View style={styles.searchSection}>
           <View style={[
@@ -425,10 +433,10 @@ export default function UniverseDiscoveryScreen() {
                       onPress={() => setActiveCategory(isActive ? 'All' : config.label)}
                       activeOpacity={0.7}
                     >
-                      {renderCategoryIcon(config, 32, isActive ? COLORS.accent : (isDark ? '#9CA3AF' : '#6B7280'))}
+                      {renderCategoryIcon(config, 32, isActive ? readableAccent : (isDark ? '#9CA3AF' : '#6B7280'))}
                       <Text style={[
                         styles.filterLabel,
-                        { color: isActive ? COLORS.accent : (isDark ? '#9CA3AF' : '#6B7280') }
+                        { color: isActive ? readableAccent : (isDark ? '#9CA3AF' : '#6B7280') }
                       ]}>
                         {config.label.split(' ')[0]}
                       </Text>

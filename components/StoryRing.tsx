@@ -1,3 +1,4 @@
+import { useThemeContext } from '../contexts/ThemeContext';
 // =============================================
 // STORY RING COMPONENT
 // =============================================
@@ -30,13 +31,14 @@ export const StoryRing: React.FC<StoryRingProps> = ({
   showLabel = false,
   categoryIcon,
 }) => {
+  const { theme } = useThemeContext();
   const ringWidth = 3;
   const innerSize = size - ringWidth * 2 - 4; // Account for ring and gap
   
   // Gradient colors for unseen stories (purple to orange like Instagram)
-  const unseenGradient = ['#833AB4', '#FD1D1D', '#F77737'];
+  const unseenGradient = ['#833AB4', '#FD1D1D', '#F77737'] as const;
   // Gray for seen stories
-  const seenGradient = ['#C4C4C4', '#A0A0A0', '#C4C4C4'];
+  const seenGradient = ['#C4C4C4', '#A0A0A0', '#C4C4C4'] as const;
   
   const renderAvatar = () => {
     if (imageUrl) {
@@ -96,7 +98,7 @@ export const StoryRing: React.FC<StoryRingProps> = ({
         <View style={styles.wrapper}>
           {content}
           {showLabel && placeName && (
-            <Text style={styles.label} numberOfLines={1}>
+            <Text style={[styles.label, { color: theme.text }]} numberOfLines={1}>
               {placeName}
             </Text>
           )}
@@ -109,7 +111,7 @@ export const StoryRing: React.FC<StoryRingProps> = ({
     <View style={styles.wrapper}>
       {content}
       {showLabel && placeName && (
-        <Text style={styles.label} numberOfLines={1}>
+        <Text style={[styles.label, { color: theme.text }]} numberOfLines={1}>
           {placeName}
         </Text>
       )}

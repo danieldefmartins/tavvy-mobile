@@ -1,42 +1,19 @@
-/**
- * CardStudioLayout -- Apple-style eCard editor with dark canvas,
- * scaled live preview, bottom-sheet inspector, and 5-tab bottom bar.
- *
- * Replaces the old EditorLayout (scroll + accordion + dot navigator).
- * Matches the web CardStudio redesign.
- */
-
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  Platform,
-  ActivityIndicator,
-  Modal,
-  Share,
-  Dimensions,
-  Keyboard,
-} from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useReleaseCopy } from '../../../hooks/useReleaseCopy';
+/** Native eCard studio. Editor theme is independent of the card's chosen design. */
+import React, { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation, usePreventRemove } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
+import { supabase } from '../../../lib/supabaseClient';
 import { saveQRCodeToCameraRoll } from '../../../lib/ecard/saveQRCode';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  withSequence,
-  Easing,
-  interpolate,
-} from 'react-native-reanimated';
-import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useEditor } from '../../../lib/ecard/EditorContext';
 import { useAutoSave } from '../../../lib/ecard/useAutoSave';
+import { saveBeforePublishing, nativeECardRequiresPro } from '../../../lib/ecard/editorActions';
+import { getTemplateById } from '../../../config/eCardTemplates';
 import LivePreviewCard from './LivePreviewCard';
+import StudioPreview from './StudioPreview';
 import ProfileSection from './sections/ProfileSection';
 import ContactSection from './sections/ContactSection';
 import SocialSection from './sections/SocialSection';
@@ -49,691 +26,90 @@ import CivicSection from './sections/CivicSection';
 import MobileBusinessSection from './sections/MobileBusinessSection';
 import AdvancedSection from './sections/AdvancedSection';
 
-// ── Colors ──────────────────────────────────────────────────────────────────
-
-const AMBER = '#FF9F0A';
-const CANVAS_BG = '#1C1C1E';
-const SHEET_BG = 'rgba(44,44,46,0.98)';
-const TAB_BAR_BG = 'rgba(28,28,30,0.98)';
-const ACCENT = '#00C853';
-const TEXT_PRIMARY = '#FFFFFF';
-const TEXT_SECONDARY = '#98989F';
-const BORDER_COLOR = 'rgba(255,255,255,0.08)';
-
-// ── Tab definitions ─────────────────────────────────────────────────────────
-
-type TabId = 'profile' | 'contact' | 'style' | 'media' | 'more';
-
-interface TabDef {
-  id: TabId;
-  label: string;
-  icon: string;
-}
-
-const TABS: TabDef[] = [
-  { id: 'profile', label: 'Profile', icon: 'person-circle' },
-  { id: 'contact', label: 'Contact', icon: 'call' },
-  { id: 'style', label: 'Style', icon: 'color-palette' },
-  { id: 'media', label: 'Media', icon: 'images' },
-  { id: 'more', label: 'More', icon: 'settings-outline' },
+type StudioTab = 'content' | 'design' | 'more';
+const tabs: { id: StudioTab; label: string; icon: any }[] = [
+  { id: 'content', label: 'Content', icon: 'create-outline' },
+  { id: 'design', label: 'Design', icon: 'color-palette-outline' },
+  { id: 'more', label: 'More features', icon: 'options-outline' },
 ];
-
-const TAB_BAR_HEIGHT = 56;
-
-// ── Types ───────────────────────────────────────────────────────────────────
-
-interface CardStudioLayoutProps {
-  isDark: boolean;
-  isPro: boolean;
-  userId?: string;
-  onBack: () => void;
-  onPreview: () => void;
-}
-
-// ── Component ───────────────────────────────────────────────────────────────
-
-export default function CardStudioLayout({
-  isDark: _isDark,
-  isPro,
-  userId,
-  onBack,
-  onPreview,
-}: CardStudioLayoutProps) {
-  // Always dark in CardStudio
-  const isDark = true;
-  const insets = useSafeAreaInsets();
-
-  const bottomSheetRef = useRef<BottomSheet>(null);
-  const [activeTab, setActiveTab] = useState<TabId | null>(null);
-  const [showQR, setShowQR] = useState(false);
-  const qrRef = useRef<any>(null);
-
-  const { state } = useEditor();
-  const { isSaving, isDirty, lastSaved, saveNow } = useAutoSave({ userId, isPro });
-
+interface Props { isDark: boolean; isPro: boolean; userId?: string; onBack: () => void; onPreview: () => void }
+export default function CardStudioLayout({ isDark, isPro, userId, onBack, onPreview }: Props) {
+  const copy = useReleaseCopy();
+  const insets = useSafeAreaInsets(), navigation = useNavigation<any>();
+  const { state, dispatch } = useEditor();
+  const { isSaving, isDirty, lastSaved, saveError, saveNow } = useAutoSave({ userId, isPro });
+  const [tab, setTab] = useState<StudioTab>("content"), [mode, setMode] = useState<'edit' | 'preview'>("edit");
+  const [compact, setCompact] = useState(false), [showQR, setShowQR] = useState(false);
+  const [publishing, setPublishing] = useState(false), [actionError, setActionError] = useState('');
+  const qrRef = useRef<any>(null), publishingRef = useRef(false);
   const card = state.card;
-  const cardId = card?.id;
+  const bg = isDark ? '#111827' : '#F4F6F8', panel = isDark ? '#1F2937' : '#FFFFFF';
+  const text = isDark ? '#F8FAFC' : '#111827', muted = isDark ? '#CBD5E1' : '#475569', border = isDark ? '#374151' : '#D1D5DB';
+  const template = getTemplateById(card?.template_id || 'basic');
   const templateId = card?.template_id || 'basic';
-  const cardUrl = `https://tavvy.com/${card?.slug || 'preview'}`;
-
-  // Conditional sections
   const isCivic = templateId.startsWith('civic-') || templateId === 'politician-generic';
-  const isMobileBiz = templateId === 'mobile-business';
-  const isProTemplate =
-    templateId.startsWith('pro-') ||
-    templateId === 'business-card' ||
-    templateId === 'cover-card';
+  const hasAdvanced = templateId.startsWith('pro-') || templateId === 'business-card' || templateId === 'cover-card';
+  const cardUrl = card?.slug ? `https://tavvy.com/${encodeURIComponent(card.slug)}` : '';
+  const busy = isSaving || publishing;
+  const status = saveError ? "Could not save" : isSaving ? "Saving…" : isDirty ? "Unsaved changes" : lastSaved ? "Saved" : "Saved";
+  const save = useCallback(async () => { setActionError(''); return saveNow(); }, [saveNow]);
 
-  // ── Bottom sheet snap points ────────────────────────────────────────────
-
-  const snapPoints = useMemo(() => ['45%', '85%'], []);
-
-  // Animated position for preview scaling
-  const sheetPosition = useSharedValue(0); // 0 = closed, 1 = 45%, 2 = 85%
-
-  const previewScale = useAnimatedStyle(() => {
-    const scale = interpolate(sheetPosition.value, [0, 1], [1, 0.85], 'clamp');
-    return {
-      transform: [{ scale }],
-    };
+  // Back gestures and the phone's Back button must not silently discard typed work.
+  usePreventRemove(isDirty, ({ data }) => {
+    Alert.alert('Save your changes?', 'Your latest edits have not been saved.', [
+      { text: copy('Keep editing'), style: "cancel" },
+      { text: 'Discard changes', style: 'destructive', onPress: () => navigation.dispatch(data.action) },
+      { text: 'Save and leave', onPress: async () => { if (await save()) navigation.dispatch(data.action); } },
+    ]);
   });
-
-  // ── Tab press handler ─────────────────────────────────────────────────
-
-  const handleTabPress = useCallback(
-    (tabId: TabId) => {
-      if (activeTab === tabId) {
-        // Close sheet
-        bottomSheetRef.current?.close();
-        setActiveTab(null);
-      } else {
-        setActiveTab(tabId);
-        if (activeTab === null) {
-          // Sheet was closed, open to first snap point
-          bottomSheetRef.current?.snapToIndex(0);
-        }
-        // If sheet already open, just switch content (activeTab change re-renders)
-      }
-    },
-    [activeTab],
-  );
-
-  const handleSheetChange = useCallback(
-    (index: number) => {
-      if (index === -1) {
-        // Sheet fully closed
-        setActiveTab(null);
-        sheetPosition.value = withTiming(0, { duration: 250 });
-      } else {
-        sheetPosition.value = withTiming(index + 1, { duration: 250 });
-      }
-    },
-    [sheetPosition],
-  );
-
-  // ── Share handler ─────────────────────────────────────────────────────
-
-  const handleShare = useCallback(async () => {
+  const requirePublished = (action: () => void) => {
+    if (!card?.is_published || !cardUrl) { Alert.alert('This card is a draft', 'Publish after saving to make your card and QR code available to other people.'); return; }
+    if (isDirty || saveError) { Alert.alert('Share the published version?', 'Your unsaved changes are not included in the link yet.', [{ text: copy('Keep editing'), style: "cancel" }, { text: 'Share published version', onPress: action }]); return; }
+    action();
+  };
+  const share = () => requirePublished(() => { void Share.share(Platform.OS === 'ios' ? { url: cardUrl } : { message: cardUrl }).catch(() => undefined); });
+  const publish = async () => {
+    if (!card || !userId || publishingRef.current) return;
+    if (!isPro && nativeECardRequiresPro(card, state.links, !!template?.isPremium)) { Alert.alert(copy('Pro features'), copy('Gallery photos, embedded videos, contact forms and professional credentials are Pro extras.'), [{ text: copy('Keep editing'), style: "cancel" }, { text: copy('View Pro plan'), onPress: () => navigation.navigate('ECardPremiumUpsell') }]); return; }
+    publishingRef.current = true; setPublishing(true); setActionError('');
     try {
-      if (Platform.OS === 'ios') {
-        await Share.share({ url: cardUrl });
-      } else {
-        await Share.share({ message: cardUrl });
-      }
-    } catch {
-      // User cancelled
-    }
-  }, [cardUrl]);
-
-  // ── Save animation ────────────────────────────────────────────────────
-
-  const saveScale = useSharedValue(1);
-  const saveFlashOpacity = useSharedValue(0);
-  const prevLastSavedRef = useRef<Date | null>(null);
-
-  useEffect(() => {
-    if (lastSaved && lastSaved !== prevLastSavedRef.current) {
-      saveScale.value = withSequence(
-        withTiming(0.7, { duration: 50 }),
-        withSpring(1, { damping: 10, stiffness: 200 }),
-      );
-      saveFlashOpacity.value = withSequence(
-        withTiming(0.3, { duration: 100 }),
-        withTiming(0, { duration: 400 }),
-      );
-      prevLastSavedRef.current = lastSaved;
-    }
-  }, [lastSaved, saveScale, saveFlashOpacity]);
-
-  const saveAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: saveScale.value }],
-  }));
-
-  const flashStyle = useAnimatedStyle(() => ({
-    position: 'absolute' as const,
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: ACCENT,
-    borderRadius: 8,
-    opacity: saveFlashOpacity.value,
-  }));
-
-  // ── Save status text/colors ───────────────────────────────────────────
-
-  const saveStatusText = isSaving
-    ? 'Saving...'
-    : isDirty
-      ? 'Save'
-      : lastSaved
-        ? 'Saved'
-        : 'Save';
-
-  const saveButtonBg = isDirty ? AMBER : 'rgba(255,255,255,0.06)';
-  const saveButtonTextColor = isDirty ? '#FFFFFF' : lastSaved ? ACCENT : TEXT_SECONDARY;
-
-  // ── Tab content renderer ──────────────────────────────────────────────
-
-  const renderTabContent = useCallback(() => {
-    switch (activeTab) {
-      case 'profile':
-        return <ProfileSection isDark={isDark} isPro={isPro} />;
-      case 'contact':
-        return (
-          <>
-            <ContactSection isDark={isDark} isPro={isPro} />
-            <SocialSection isDark={isDark} isPro={isPro} />
-            <LinksSection isDark={isDark} isPro={isPro} />
-          </>
-        );
-      case 'style':
-        return (
-          <>
-            <TemplateColorSection isDark={isDark} isPro={isPro} />
-            <TypographySection isDark={isDark} isPro={isPro} />
-          </>
-        );
-      case 'media':
-        return (
-          <>
-            <MediaSection isDark={isDark} isPro={isPro} />
-            <ImagesLayoutSection isDark={isDark} isPro={isPro} />
-          </>
-        );
-      case 'more':
-        return (
-          <>
-            {isCivic && <CivicSection isDark={isDark} isPro={isPro} />}
-            {isMobileBiz && <MobileBusinessSection isDark={isDark} isPro={isPro} />}
-            {isProTemplate && <AdvancedSection isDark={isDark} isPro={isPro} />}
-            {/* Publish / Save button */}
-            <View style={styles.publishContainer}>
-              <TouchableOpacity
-                onPress={saveNow}
-                disabled={isSaving || !isDirty}
-                activeOpacity={0.7}
-                style={[
-                  styles.publishButton,
-                  {
-                    backgroundColor: isDirty ? ACCENT : 'rgba(255,255,255,0.08)',
-                    opacity: isSaving || !isDirty ? 0.6 : 1,
-                  },
-                ]}
-              >
-                {isSaving ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
-                ) : (
-                  <Ionicons
-                    name="cloud-upload-outline"
-                    size={18}
-                    color="#FFFFFF"
-                    style={{ marginRight: 8 }}
-                  />
-                )}
-                <Text style={styles.publishText}>
-                  {isSaving ? 'Publishing...' : isDirty ? 'Publish Changes' : 'Up to Date'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        );
-      default:
-        return null;
-    }
-  }, [activeTab, isDark, isPro, isCivic, isMobileBiz, isProTemplate, isSaving, isDirty, saveNow]);
-
-  // ── Render ────────────────────────────────────────────────────────────
-
-  return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      {/* ── Header ───────────────────────────────────────────────────── */}
-      <View style={styles.header}>
-        {/* Back */}
-        <TouchableOpacity
-          onPress={onBack}
-          style={styles.headerButton}
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="chevron-back" size={24} color={TEXT_PRIMARY} />
-        </TouchableOpacity>
-
-        {/* Card name + unsaved dot */}
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {card?.card_name || card?.full_name || 'Edit Card'}
-          </Text>
-          {isDirty && <View style={styles.unsavedDot} />}
-        </View>
-
-        {/* Action buttons */}
-        <View style={styles.headerRight}>
-          {/* Save */}
-          <Animated.View style={saveAnimStyle}>
-            <TouchableOpacity
-              onPress={saveNow}
-              disabled={isSaving || !isDirty}
-              activeOpacity={isDirty ? 0.7 : 1}
-              style={[styles.saveButton, { backgroundColor: saveButtonBg, overflow: 'hidden' }]}
-              accessibilityLabel={saveStatusText}
-              accessibilityRole="button"
-            >
-              <Animated.View style={flashStyle} />
-              {isSaving && (
-                <ActivityIndicator
-                  size="small"
-                  color={saveButtonTextColor}
-                  style={{ marginRight: 4 }}
-                />
-              )}
-              {!isDirty && lastSaved && !isSaving && (
-                <Ionicons name="checkmark" size={14} color={ACCENT} style={{ marginRight: 4 }} />
-              )}
-              <Text style={[styles.saveText, { color: saveButtonTextColor }]}>
-                {saveStatusText}
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* QR */}
-          {!!cardId && (
-            <TouchableOpacity
-              onPress={() => setShowQR(true)}
-              style={styles.headerButton}
-              accessibilityLabel="QR Code"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="qr-code-outline" size={20} color={TEXT_SECONDARY} />
-            </TouchableOpacity>
-          )}
-
-          {/* Share */}
-          {!!cardId && (
-            <TouchableOpacity
-              onPress={handleShare}
-              style={styles.headerButton}
-              accessibilityLabel="Share card"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="share-outline" size={20} color={TEXT_SECONDARY} />
-            </TouchableOpacity>
-          )}
-
-          {/* Preview */}
-          {!!cardId && (
-            <TouchableOpacity
-              onPress={onPreview}
-              style={styles.headerButton}
-              accessibilityLabel="Preview card"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="eye-outline" size={20} color={TEXT_SECONDARY} />
-            </TouchableOpacity>
-          )}
-        </View>
+      const saved = await saveBeforePublishing(saveNow, async () => {
+        const { error, data } = await supabase.from('digital_cards').update({ is_published: true }).eq('id', card.id).eq('user_id', userId).select('id,is_published').single();
+        if (error || !data?.is_published) throw new Error(error?.message || 'Your card could not be published. Your saved work is still available.');
+        dispatch({ type: 'PUBLICATION_UPDATED', published: true });
+      });
+      if (!saved) setActionError('Your latest changes have not saved. Retry Save before publishing.');
+      else Alert.alert('Card published', 'Your card is now available at its public link.');
+    } catch (error) { setActionError((error as Error).message); }
+    finally { publishingRef.current = false; setPublishing(false); }
+  };
+  const common = { isDark, isPro };
+  return <View style={[styles.root, { backgroundColor: bg, paddingTop: insets.top }]}>
+    <View style={[styles.header, { backgroundColor: panel, borderBottomColor: border }]}>
+      <View style={styles.headingRow}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={copy("Back to cards")} onPress={onBack} style={styles.iconButton}><Ionicons name="chevron-back" size={24} color={text} /></TouchableOpacity>
+        <View style={{ flex: 1 }}><Text style={[styles.title, { color: text }]} numberOfLines={1}>{card?.card_name || card?.full_name || "Edit card"}</Text><Text style={{ color: muted, fontSize: 12 }}>{card?.is_published ? copy("Published") : copy("Draft")} · {isPro ? copy("Pro plan") : copy("Free plan")}</Text></View>
       </View>
-
-      {/* ── Canvas with live preview ─────────────────────────────────── */}
-      <View style={styles.canvas}>
-        <ScrollView
-          contentContainerStyle={styles.canvasScroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Animated.View style={[styles.previewWrapper, previewScale]}>
-            <LivePreviewCard isDark={isDark} onExpandPreview={onPreview} />
-          </Animated.View>
-        </ScrollView>
+      <View style={styles.toolbar}>
+        <View style={[styles.segment, { borderColor: border }]}>{(["edit", "preview"] as const).map(value => <TouchableOpacity key={value} accessibilityRole="tab" accessibilityState={{ selected: mode === value }} style={[styles.modeButton, { backgroundColor: mode === value ? (isDark ? '#374151' : '#E2E8F0') : 'transparent' }]} onPress={() => setMode(value)}><Text style={{ color: text, fontWeight: '600' }}>{value === 'edit' ? copy("Edit") : copy("Preview")}</Text></TouchableOpacity>)}</View>
+        <TouchableOpacity accessibilityRole="button" disabled={busy || (!isDirty && !saveError)} onPress={() => void save()} style={[styles.action, { borderColor: border, opacity: busy ? 0.6 : 1 }]}>{isSaving && <ActivityIndicator size="small" color={text} />}<Text style={{ color: text, fontWeight: '600' }}>{saveError ? "Retry save" : isSaving ? copy("Saving…") : copy("Save")}</Text></TouchableOpacity>
+        {!card?.is_published && <TouchableOpacity accessibilityRole="button" disabled={busy} onPress={() => void publish()} style={[styles.action, styles.primary, { opacity: busy ? 0.6 : 1 }]}><Text style={styles.primaryText}>{publishing ? copy("Publishing…") : copy("Publish")}</Text></TouchableOpacity>}
+        {!!card?.is_published && <TouchableOpacity accessibilityRole="button" onPress={share} style={[styles.action, styles.primary]}><Text style={styles.primaryText}>{copy("Share")}</Text></TouchableOpacity>}
       </View>
-
-      {/* ── Bottom Sheet ─────────────────────────────────────────────── */}
-      <BottomSheet
-        ref={bottomSheetRef}
-        index={-1}
-        snapPoints={snapPoints}
-        onChange={handleSheetChange}
-        enablePanDownToClose
-        backgroundStyle={styles.sheetBackground}
-        handleIndicatorStyle={styles.sheetHandle}
-        style={styles.sheet}
-        keyboardBehavior="interactive"
-        keyboardBlurBehavior="restore"
-        android_keyboardInputMode="adjustResize"
-      >
-        {/* Tab label inside sheet */}
-        {activeTab && (
-          <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>
-              {TABS.find((t) => t.id === activeTab)?.label}
-            </Text>
-          </View>
-        )}
-        <BottomSheetScrollView
-          contentContainerStyle={[styles.sheetContent, { paddingBottom: TAB_BAR_HEIGHT + insets.bottom + 16 }]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {renderTabContent()}
-        </BottomSheetScrollView>
-      </BottomSheet>
-
-      {/* ── Tab bar ──────────────────────────────────────────────────── */}
-      <View style={[styles.tabBar, { paddingBottom: insets.bottom || 8 }]}>
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <TouchableOpacity
-              key={tab.id}
-              onPress={() => handleTabPress(tab.id)}
-              style={styles.tabButton}
-              activeOpacity={0.7}
-              accessibilityLabel={tab.label}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isActive }}
-            >
-              <Ionicons
-                name={tab.icon as any}
-                size={22}
-                color={isActive ? AMBER : TEXT_SECONDARY}
-              />
-              <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* ── QR Code Modal ────────────────────────────────────────────── */}
-      <Modal
-        visible={showQR}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowQR(false)}
-      >
-        <View style={styles.qrOverlay}>
-          <View style={styles.qrModal}>
-            <TouchableOpacity
-              style={styles.qrCloseBtn}
-              onPress={() => setShowQR(false)}
-            >
-              <Ionicons name="close" size={22} color={TEXT_SECONDARY} />
-            </TouchableOpacity>
-
-            <Text style={styles.qrTitle}>QR Code</Text>
-            <Text style={styles.qrSubtitle}>Scan to view your card</Text>
-
-            <View style={styles.qrContainer}>
-              <QRCode
-                value={cardUrl}
-                size={200}
-                backgroundColor="#FFFFFF"
-                color="#000000"
-                getRef={(ref: any) => (qrRef.current = ref)}
-              />
-            </View>
-
-            <Text style={styles.qrUrl} numberOfLines={1}>
-              {cardUrl}
-            </Text>
-
-            <View style={styles.qrActions}>
-              <TouchableOpacity
-                style={[styles.qrActionBtn, { backgroundColor: '#3A3A3C' }]}
-                onPress={() => saveQRCodeToCameraRoll(qrRef.current)}
-              >
-                <Ionicons name="download-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.qrActionText}>Save PNG</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.qrActionBtn, { backgroundColor: ACCENT }]}
-                onPress={() => {
-                  setShowQR(false);
-                  handleShare();
-                }}
-              >
-                <Ionicons name="share-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.qrActionText}>Share</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <Text accessibilityLiveRegion="polite" style={{ color: saveError ? '#DC2626' : muted, fontSize: 12, paddingVertical: 5 }}>{copy(status)}{card?.is_published && isDirty ? ' · Published card updates when changes save' : ''}</Text>
+      {!!(saveError || actionError) && <Text accessibilityRole="alert" style={{ color: isDark ? '#FCA5A5' : '#B91C1C', paddingBottom: 8 }}>{copy(saveError || actionError)} Your edits remain in this editor.</Text>}
     </View>
-  );
+    {mode === 'preview' ? <><StudioPreview isDark={isDark} /><TouchableOpacity accessibilityRole="button" onPress={onPreview} style={[styles.fullPreview, { backgroundColor: panel, paddingBottom: Math.max(insets.bottom, 12) }]}><Text style={{ color: text, fontWeight: '600' }}>{copy("Open full preview")}</Text></TouchableOpacity></> : <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+        {tab === 'content' && <><Text style={[styles.intro, { color: muted }]}>Add the links and actions people need first. Profile, contact information, and social icons are below.</Text><LinksSection {...common} /><ProfileSection {...common} /><ContactSection {...common} /><SocialSection {...common} /><TouchableOpacity accessibilityRole="button" onPress={() => setCompact(value => !value)} style={styles.fullPreview}><Text style={{ color: muted }}>{compact ? 'Hide compact preview' : 'Show compact preview'}</Text></TouchableOpacity>{compact && <LivePreviewCard isDark={isDark} onExpandPreview={() => setMode("preview")} />}</>}
+        {tab === 'design' && <><Text style={[styles.intro, { color: muted }]}>Keep your current design or choose another. {template?.name || 'This design'} · {template?.isPremium ? 'Pro design' : 'Free design'}</Text><TemplateColorSection {...common} /><TypographySection {...common} /><ImagesLayoutSection {...common} /></>}
+        {tab === 'more' && <><Text style={[styles.intro, { color: muted }]}>{copy('Gallery photos, embedded videos, contact forms and professional credentials are Pro extras.')} {copy('Your existing content stays on your card.')}</Text><MediaSection {...common} />{isCivic && <CivicSection {...common} />}{templateId === 'mobile-business' && <MobileBusinessSection {...common} />}{hasAdvanced && <AdvancedSection {...common} />}<View style={[styles.sharing, { backgroundColor: panel, borderColor: border }]}><Text style={{ color: text, fontWeight: '700' }}>{copy("Share your card")}</Text><Text style={{ color: muted, marginTop: 8 }}>{card?.is_published ? 'Share the published card or save its QR code.' : 'Publish your saved draft before sharing.'}</Text><View style={styles.toolbar}><TouchableOpacity style={[styles.action, { borderColor: border }]} onPress={share} accessibilityRole="button"><Text style={{ color: text }}>{copy("Share link")}</Text></TouchableOpacity><TouchableOpacity style={[styles.action, { borderColor: border }]} onPress={() => requirePublished(() => setShowQR(true))} accessibilityRole="button"><Text style={{ color: text }}>{copy("QR code")}</Text></TouchableOpacity></View></View></>}
+      </ScrollView>
+      <View style={[styles.tabs, { backgroundColor: panel, borderTopColor: border, paddingBottom: Math.max(insets.bottom, 8) }]}>{tabs.map(item => <TouchableOpacity key={item.id} style={styles.tab} onPress={() => setTab(item.id)} accessibilityRole="tab" accessibilityState={{ selected: tab === item.id }}><Ionicons name={item.icon} size={21} color={tab === item.id ? '#16A34A' : muted} /><Text style={{ color: tab === item.id ? '#16A34A' : muted, fontSize: 12, fontWeight: '600', textAlign: 'center' }}>{copy(item.label)}</Text></TouchableOpacity>)}</View>
+    </KeyboardAvoidingView>}
+    <Modal visible={showQR} transparent animationType="fade" onRequestClose={() => setShowQR(false)}><View style={styles.overlay}><View style={[styles.qrPanel, { backgroundColor: panel }]}><Text style={[styles.title, { color: text }]}>{copy("QR code")}</Text><Text style={{ color: muted, marginVertical: 12 }}>Scan to view your published card</Text><View style={{ padding: 16, backgroundColor: '#FFFFFF', borderRadius: 12 }}><QRCode value={cardUrl || 'https://tavvy.com'} size={200} backgroundColor="#FFFFFF" color="#000000" getRef={(value: any) => { qrRef.current = value; }} /></View><Text numberOfLines={1} style={{ color: muted, marginVertical: 12 }}>{cardUrl}</Text><View style={styles.toolbar}><TouchableOpacity style={[styles.action, styles.primary]} onPress={() => saveQRCodeToCameraRoll(qrRef.current)}><Text style={styles.primaryText}>{copy("Save PNG")}</Text></TouchableOpacity><TouchableOpacity style={[styles.action, { borderColor: border }]} onPress={share}><Text style={{ color: text }}>{copy("Share")}</Text></TouchableOpacity><TouchableOpacity style={[styles.action, { borderColor: border }]} onPress={() => setShowQR(false)}><Text style={{ color: text }}>{copy("Close")}</Text></TouchableOpacity></View></View></View></Modal>
+  </View>;
 }
-
-// ── Styles ──────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: CANVAS_BG,
-  },
-
-  // ── Header ──────────────────────────────────────────────────────────
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: BORDER_COLOR,
-    backgroundColor: CANVAS_BG,
-    zIndex: 10,
-  },
-  headerButton: {
-    padding: 6,
-    borderRadius: 8,
-  },
-  headerCenter: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 4,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: TEXT_PRIMARY,
-  },
-  unsavedDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: AMBER,
-    marginLeft: 6,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  saveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  saveText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-
-  // ── Canvas ──────────────────────────────────────────────────────────
-  canvas: {
-    flex: 1,
-    zIndex: 0,
-  },
-  canvasScroll: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  previewWrapper: {
-    width: '100%',
-    maxWidth: 380,
-  },
-
-  // ── Bottom sheet ────────────────────────────────────────────────────
-  sheet: {
-    zIndex: 5,
-  },
-  sheetBackground: {
-    backgroundColor: SHEET_BG,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  sheetHandle: {
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    width: 36,
-    height: 5,
-  },
-  sheetHeader: {
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: BORDER_COLOR,
-  },
-  sheetTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: TEXT_PRIMARY,
-  },
-  sheetContent: {
-    padding: 16,
-  },
-
-  // ── Tab bar ─────────────────────────────────────────────────────────
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: TAB_BAR_BG,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: BORDER_COLOR,
-    paddingTop: 6,
-    zIndex: 10,
-  },
-  tabButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 4,
-  },
-  tabLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: TEXT_SECONDARY,
-    marginTop: 2,
-  },
-  tabLabelActive: {
-    color: AMBER,
-  },
-
-  // ── Publish button ──────────────────────────────────────────────────
-  publishContainer: {
-    marginTop: 24,
-    paddingHorizontal: 4,
-  },
-  publishButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  publishText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-
-  // ── QR Modal ────────────────────────────────────────────────────────
-  qrOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  qrModal: {
-    width: '100%',
-    maxWidth: 340,
-    borderRadius: 24,
-    padding: 28,
-    alignItems: 'center',
-    backgroundColor: '#2C2C2E',
-  },
-  qrCloseBtn: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    padding: 6,
-    borderRadius: 8,
-  },
-  qrTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 4,
-    color: TEXT_PRIMARY,
-  },
-  qrSubtitle: {
-    fontSize: 14,
-    marginBottom: 24,
-    color: TEXT_SECONDARY,
-  },
-  qrContainer: {
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    marginBottom: 16,
-  },
-  qrUrl: {
-    fontSize: 13,
-    marginBottom: 20,
-    color: TEXT_SECONDARY,
-  },
-  qrActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  qrActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-  },
-  qrActionText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
+  root: { flex: 1 }, header: { paddingHorizontal: 12, borderBottomWidth: 1 }, headingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 8 }, title: { fontSize: 17, fontWeight: '700' }, iconButton: { minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' }, toolbar: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, paddingVertical: 6 }, segment: { flexDirection: 'row', borderWidth: 1, borderRadius: 10, overflow: 'hidden' }, modeButton: { paddingHorizontal: 12, minHeight: 44, justifyContent: 'center' }, action: { minHeight: 44, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 5 }, primary: { backgroundColor: '#15803D', borderColor: '#15803D' }, primaryText: { color: '#FFFFFF', fontWeight: '700' }, content: { padding: 16, paddingBottom: 30 }, intro: { fontSize: 14, lineHeight: 21, marginBottom: 16 }, fullPreview: { minHeight: 44, alignItems: 'center', justifyContent: 'center', padding: 12 }, tabs: { flexDirection: 'row', borderTopWidth: 1, paddingTop: 8 }, tab: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 4 }, sharing: { borderRadius: 14, borderWidth: 1, padding: 16, marginTop: 12 }, overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: 20 }, qrPanel: { width: '100%', maxWidth: 360, borderRadius: 20, padding: 20, alignItems: 'center' },
 });

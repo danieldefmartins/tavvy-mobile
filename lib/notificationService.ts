@@ -12,6 +12,8 @@ import { supabase } from './supabaseClient';
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),
@@ -239,7 +241,7 @@ export async function scheduleLocalNotification(
 ): Promise<string | null> {
   try {
     const trigger = triggerSeconds 
-      ? { seconds: triggerSeconds }
+      ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL as const, seconds: triggerSeconds }
       : null;
 
     const notificationId = await Notifications.scheduleNotificationAsync({

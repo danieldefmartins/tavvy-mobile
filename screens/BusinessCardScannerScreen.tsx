@@ -15,14 +15,8 @@ const SCAN_AREA_HEIGHT = SCAN_AREA_WIDTH / CARD_ASPECT_RATIO;
 const OCR_API_KEY = process.env.EXPO_PUBLIC_OCR_API_KEY || '';
 const OCR_API_URL = 'https://api.ocr.space/parse/image';
 
-interface BusinessCardScannerScreenProps {
-  navigation: any;
-  route: {
-    params: {
-      onScanComplete: (data: ScannedBusinessCard) => void;
-    };
-  };
-}
+type BusinessCardScannerScreenProps = import('@react-navigation/native-stack').NativeStackScreenProps<import('@react-navigation/native').ParamListBase>;
+
 
 export interface ScannedBusinessCard {
   name: string;
@@ -381,8 +375,8 @@ export default function BusinessCardScannerScreen({ navigation, route }: Busines
             { 
               text: 'Use Anyway', 
               onPress: () => {
-                if (route.params?.onScanComplete) {
-                  route.params.onScanComplete(businessCardData);
+                if ((route.params as { onScanComplete?: (data: ScannedBusinessCard) => void } | undefined)?.onScanComplete) {
+                  (route.params as { onScanComplete: (data: ScannedBusinessCard) => void }).onScanComplete(businessCardData);
                   navigation.goBack();
                 }
               }
@@ -392,8 +386,8 @@ export default function BusinessCardScannerScreen({ navigation, route }: Busines
         return;
       }
       
-      if (route.params?.onScanComplete) {
-        route.params.onScanComplete(businessCardData);
+      if ((route.params as { onScanComplete?: (data: ScannedBusinessCard) => void } | undefined)?.onScanComplete) {
+        (route.params as { onScanComplete: (data: ScannedBusinessCard) => void }).onScanComplete(businessCardData);
         navigation.goBack();
       } else {
         Alert.alert(

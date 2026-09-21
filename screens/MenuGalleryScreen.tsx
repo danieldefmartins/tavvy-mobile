@@ -1,18 +1,9 @@
-/**
- * Menu Gallery Screen - Full-Screen Image-First Experience
- * Path: screens/MenuGalleryScreen.tsx
- *
- * Features:
- * - Full-screen horizontal scroll (Instagram Stories style)
- * - Big food images on black background
- * - FlatList with pagingEnabled for one-card-at-a-time swiping
- * - Category filter pills, meal period toggle
- * - Counter for position
- * - Dark, minimal, premium feel
- */
+import { menuAppearance } from '../lib/menuAppearance';
+/** Responsive photo-led menu gallery with full, scrollable dish details. */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
+  Platform,
   View,
   Text,
   StyleSheet,
@@ -20,7 +11,7 @@ import {
   TouchableOpacity,
   FlatList,
   ScrollView,
-  Dimensions,
+  useWindowDimensions,
   ActivityIndicator,
   StatusBar,
   Share,
@@ -30,11 +21,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useThemeContext } from '../contexts/ThemeContext';
+import {dietaryMatch,DIETARY_FILTERS,DietaryFilter} from '../lib/placePresentation';
+import design from '../config/design.json';
 import { supabase } from '../lib/supabaseClient';
 import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 
 // ===== TYPES =====
 
@@ -68,6 +61,7 @@ interface Menu {
   place_id: string;
   name: string;
   style: string | null;
+  photo_gallery_enabled?: boolean;
   cover_image_url: string | null;
 }
 
@@ -77,6 +71,8 @@ type RouteParams = {
   MenuGallery: {
     placeId: string;
     placeName?: string;
+    dishId?: string;
+    view?: 'list' | 'photos';
   };
 };
 
@@ -88,7 +84,7 @@ const DIETARY_LABELS: Record<string, { icon: string; label: string }> = {
   gf: { icon: '🌾', label: 'GF' },
   dairy_free: { icon: '🥛', label: 'DF' },
   nut_free: { icon: '🌰', label: 'NF' },
-  spicy: { icon: '🌶️', label: 'Mild' },
+  spicy: { icon: '🌶️', label: 'Spicy' },
   'spicy-2': { icon: '🌶️🌶️', label: 'Spicy' },
   'spicy-3': { icon: '🌶️🌶️🌶️', label: 'Hot' },
 };
@@ -101,16 +97,11 @@ const PERIOD_LABELS: Record<MealPeriod, string> = {
   all_day: 'All Day',
 };
 
-const ALLERGEN_FILTERS = [
-  { id: 'nut-free', label: 'Nut-Free', tag: 'nut_free' },
-  { id: 'gluten-free', label: 'Gluten-Free', tag: 'gluten_free' },
-  { id: 'dairy-free', label: 'Dairy-Free', tag: 'dairy_free' },
-  { id: 'vegan', label: 'Vegan', tag: 'vegan' },
-  { id: 'vegetarian', label: 'Vegetarian', tag: 'vegetarian' },
-];
-
 function MenuGalleryScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
+  const { width: SCREEN_WIDTH, height, fontScale } = useWindowDimensions();
+  const { isDark } = useThemeContext();
+  const imageHeight = Math.max(160, Math.min(height * 0.4, SCREEN_WIDTH * 0.75));
   const route = useRoute<RouteProp<RouteParams, 'MenuGallery'>>();
   const { placeId, placeName: initialPlaceName } = route.params;
 
@@ -121,14 +112,25 @@ function MenuGalleryScreen() {
   const [placeSlug, setPlaceSlug] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [noMenu, setNoMenu] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   // Filters
   const [activePeriod, setActivePeriod] = useState<MealPeriod>('all');
+  const [activeFilters,setActiveFilters]=useState<DietaryFilter[]>([]);
+  const [showOtherDishes,setShowOtherDishes]=useState(false);
+  const [viewMode,setViewMode]=useState<'list'|'photos'>('list');
+  const appearance = menuAppearance(menu);
+  const textMenu = viewMode === 'list' && !appearance.inlinePhotos;
+  const palette = textMenu ? { ...design.light, background: appearance.background, surface: appearance.background, text: appearance.text, textSecondary: appearance.secondary, border: appearance.border } : isDark ? design.dark : design.light;
+  const menuFont = appearance.serif ? (Platform.OS === 'ios' ? 'Georgia' : 'serif') : undefined;
+  const styles = makeStyles(palette, SCREEN_WIDTH);
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
   // Scroll position
   const [activeIndex, setActiveIndex] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlatList<MenuItem>>(null);
+  const menuListRef = useRef<FlatList<MenuItem>>(null);
+  const pendingDishScroll = useRef(true);
 
   useEffect(() => {
     if (placeId) {
@@ -137,7 +139,7 @@ function MenuGalleryScreen() {
   }, [placeId]);
 
   const loadMenu = async (pid: string) => {
-    setLoading(true);
+    setLoading(true); setLoadError(''); setNoMenu(false); setCategories([]); setAllItems([]); pendingDishScroll.current = true;
     try {
       // Fetch place name and slug
       const { data: placeData } = await supabase
@@ -150,12 +152,14 @@ function MenuGalleryScreen() {
         setPlaceSlug(placeData.slug || '');
       }
 
-      const { data: menuData } = await supabase
+      const { data: menuData, error: menuError } = await supabase
         .from('menus')
         .select('*')
         .eq('place_id', pid)
+        .eq('is_active', true)
         .maybeSingle();
 
+      if (menuError) throw menuError;
       if (!menuData) {
         setNoMenu(true);
         setLoading(false);
@@ -163,23 +167,27 @@ function MenuGalleryScreen() {
       }
 
       setMenu(menuData);
+      setViewMode(menuAppearance(menuData).galleryEnabled && route.params.view === 'photos' ? 'photos' : 'list');
 
-      const { data: categoriesData } = await supabase
+      const { data: categoriesData, error: categoriesError } = await supabase
         .from('menu_categories')
         .select('*')
         .eq('menu_id', menuData.id)
         .order('sort_order', { ascending: true });
 
+      if (categoriesError) throw categoriesError;
       if (categoriesData && categoriesData.length > 0) {
         setCategories(categoriesData);
 
         const categoryIds = categoriesData.map((c: MenuCategory) => c.id);
-        const { data: itemsData } = await supabase
+        const { data: itemsData, error: itemsError } = await supabase
           .from('menu_items')
           .select('*')
           .in('category_id', categoryIds)
+          .eq('is_available', true)
           .order('sort_order', { ascending: true });
 
+        if (itemsError) throw itemsError;
         if (itemsData) {
           const catMap: Record<string, MenuCategory> = {};
           categoriesData.forEach((c: MenuCategory) => { catMap[c.id] = c; });
@@ -190,19 +198,19 @@ function MenuGalleryScreen() {
             meal_period: catMap[item.category_id]?.meal_period || null,
           }));
 
+          enrichedItems.sort((a, b) => (catMap[a.category_id]?.sort_order ?? 0) - (catMap[b.category_id]?.sort_order ?? 0) || a.category_id.localeCompare(b.category_id) || (a.sort_order ?? 0) - (b.sort_order ?? 0));
           setAllItems(enrichedItems);
         }
       }
     } catch (error) {
-      console.error('[MenuGallery] Error loading menu:', error);
-      setNoMenu(true);
+      setLoadError('This menu could not be loaded. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   // Filtered items
-  const filteredItems = allItems.filter(item => {
+  const periodItems = allItems.filter(item => {
     if (activePeriod !== 'all') {
       if (item.meal_period !== activePeriod && item.meal_period !== 'all_day' && item.meal_period !== null) {
         return false;
@@ -214,6 +222,8 @@ function MenuGalleryScreen() {
     return true;
   });
 
+  const matchingCount=periodItems.filter(i=>dietaryMatch(i.dietary_tags,activeFilters)==='match').length;
+  const filteredItems=periodItems.filter(i=>showOtherDishes||dietaryMatch(i.dietary_tags,activeFilters)==='match');
   // Available periods
   const availablePeriods: MealPeriod[] = ['all'];
   const periodsInData = new Set(categories.map(c => c.meal_period).filter(Boolean));
@@ -228,8 +238,9 @@ function MenuGalleryScreen() {
     if (flatListRef.current && filteredItems.length > 0) {
       flatListRef.current.scrollToOffset({ offset: 0, animated: false });
     }
-  }, [activePeriod, activeCategory]);
+  }, [activePeriod, activeCategory,activeFilters,showOtherDishes]);
 
+  useEffect(()=>{if(loading||!route.params.dishId)return;const index=filteredItems.findIndex(item=>item.id===route.params.dishId);if(index>=0){setActiveIndex(index);requestAnimationFrame(()=>flatListRef.current?.scrollToIndex({index,animated:false}));}},[loading,route.params.dishId]);
   const formatPrice = (price: number | null, priceLabel: string | null): string => {
     if (priceLabel) return priceLabel;
     if (price === null || price === undefined) return '';
@@ -239,10 +250,9 @@ function MenuGalleryScreen() {
   const onScrollEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
     setActiveIndex(index);
-  }, []);
+  }, [SCREEN_WIDTH]);
 
   const handleShareDish = async (item: MenuItem) => {
-    const slug = placeSlug || placeId;
     const shareUrl = `https://tavvy.com/place/${placeId}/menu-gallery?dish=${item.id}`;
     const priceStr = formatPrice(item.price, item.price_label);
     const shareText = `${item.name} at ${placeName}${priceStr ? ` — ${priceStr}` : ''}`;
@@ -255,120 +265,56 @@ function MenuGalleryScreen() {
     } catch {}
   };
 
-  const renderCard = useCallback(({ item, index }: { item: MenuItem; index: number }) => {
+  const renderCard = ({ item, index }: { item: MenuItem; index: number }) => {
     const priceStr = formatPrice(item.price, item.price_label);
     const imageUrl = item.image_url || menu?.cover_image_url || null;
-
-    return (
-      <View style={styles.card}>
-        {/* Full-screen image */}
-        <View style={styles.cardImageContainer}>
-          {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={styles.cardImage} resizeMode="cover" />
-          ) : (
-            <View style={styles.cardPlaceholder}>
-              <Text style={styles.cardPlaceholderText}>{item.category_name}</Text>
-            </View>
-          )}
-
-          {/* Gradient overlay for text readability */}
-          <LinearGradient
-            colors={['rgba(0,0,0,0.2)', 'transparent', 'transparent', 'rgba(0,0,0,0.85)', 'rgba(0,0,0,0.95)']}
-            locations={[0, 0.15, 0.6, 0.9, 1]}
-            style={styles.cardGradient}
-            pointerEvents="none"
-          />
-
-          {/* Price badge + share (top right) */}
-          <View style={styles.topRightGroup}>
-            {priceStr ? (
-              <View style={styles.priceBadge}>
-                <Text style={styles.priceBadgeText}>{priceStr}</Text>
-              </View>
-            ) : null}
-            <TouchableOpacity
-              style={styles.shareBtn}
-              onPress={() => handleShareDish(item)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="share-outline" size={16} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Badges (top left) */}
-          <View style={styles.badgesTopLeft}>
-            {item.is_popular && (
-              <View style={[styles.badge, styles.badgeFire]}>
-                <Text style={styles.badgeText}>{'\u{1F525}'} Popular</Text>
-              </View>
-            )}
-            {item.is_new && (
-              <View style={[styles.badge, styles.badgeNew]}>
-                <Text style={styles.badgeText}>{'\u2728'} New</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Counter */}
-          {filteredItems.length > 1 && (
-            <View style={styles.counter}>
-              <Text style={styles.counterText}>
-                {activeIndex + 1} / {filteredItems.length}
-              </Text>
-            </View>
-          )}
-
-          {/* Dish name */}
-          <Text style={styles.dishName}>{item.name}</Text>
-
-          {/* Description + dietary tags */}
-          <View style={styles.infoBlock}>
-            {item.description ? (
-              <Text style={styles.dishDescription} numberOfLines={2}>
-                {item.description}
-              </Text>
-            ) : null}
-            {item.dietary_tags && item.dietary_tags.length > 0 && (
-              <View style={styles.dietaryRow}>
-                {item.dietary_tags.map(tag => {
-                  const info = DIETARY_LABELS[tag.toLowerCase()];
-                  if (!info) return null;
-                  return (
-                    <View key={tag} style={styles.dietaryPill}>
-                      <Text style={styles.dietaryPillText}>
-                        {info.icon} {info.label}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-          </View>
+    return <ScrollView style={styles.card} contentContainerStyle={styles.cardContent} nestedScrollEnabled showsVerticalScrollIndicator>
+      {imageUrl ? <Image source={{ uri: imageUrl }} style={{ width: '100%', height: imageHeight }} resizeMode="cover" accessibilityLabel={item.name} /> : null}
+      <View style={styles.details}>
+        <Text style={styles.categoryName}>{item.category_name}</Text>
+        <Text style={styles.dishName} accessibilityRole="header">{item.name}</Text>
+        <View style={styles.priceRow}>
+          <Text style={styles.priceText}>{priceStr || 'Price not listed'}</Text>
+          <TouchableOpacity style={styles.shareBtn} onPress={() => handleShareDish(item)} accessibilityRole="button" accessibilityLabel={`Share ${item.name}`}>
+            <Ionicons name="share-outline" size={20} color={palette.link} /><Text style={styles.shareText}>Share</Text>
+          </TouchableOpacity>
         </View>
+        {(item.is_popular || item.is_new) && <View style={styles.dietaryRow}>
+          {item.is_popular && <Text style={styles.badge}>Popular</Text>}{item.is_new && <Text style={styles.badge}>New</Text>}
+        </View>}
+        {activeFilters.length>0&&dietaryMatch(item.dietary_tags,activeFilters)!=='match'&&<Text style={styles.counterText}>{dietaryMatch(item.dietary_tags,activeFilters)==='unknown'?'Dietary information not confirmed for these filters':'Other dish — does not match selected filters'}</Text>}
+        {!!item.description && <Text style={styles.dishDescription}>{item.description}</Text>}
+        <View style={styles.dietaryRow}>{(item.dietary_tags || []).map(tag => {
+          const info = DIETARY_LABELS[tag.toLowerCase()];
+          return info ? <Text key={tag} style={styles.badge}>{info.icon} {info.label}</Text> : null;
+        })}</View>
+        <Text style={styles.counterText}>{index + 1} of {filteredItems.length} dishes{filteredItems.length > 1 ? ' · Swipe for more' : ''}</Text>
       </View>
-    );
-  }, [menu, filteredItems.length, activeIndex]);
+    </ScrollView>;
+  };
+
+  const menuDestinations=<TouchableOpacity style={styles.destinationButton} accessibilityRole="button" onPress={()=>navigation.navigate('PlaceDetails',{placeId})}><Text style={styles.destinationText}>← Back to restaurant</Text></TouchableOpacity>;
 
   // Loading state
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <StatusBar barStyle="light-content" />
+        <StatusBar barStyle={isDark && !textMenu ? 'light-content' : 'dark-content'} />
         <ActivityIndicator size="large" color="#8A05BE" />
       </View>
     );
   }
 
   // No menu state
-  if (noMenu) {
+  if (noMenu || loadError) {
     return (
       <View style={styles.shell}>
-        <StatusBar barStyle="light-content" />
+        <StatusBar barStyle={isDark && !textMenu ? 'light-content' : 'dark-content'} />
         <SafeAreaView style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No menu available yet.</Text>
-          <TouchableOpacity style={styles.goBackButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.goBackButtonText}>Go Back</Text>
-          </TouchableOpacity>
+          <Text style={styles.emptyText} accessibilityRole={loadError ? 'alert' : undefined}>{loadError || 'No menu available yet.'}</Text>
+          {!!loadError && <TouchableOpacity style={styles.goBackButton} onPress={() => loadMenu(placeId)} accessibilityRole="button"><Text style={styles.goBackButtonText}>Try again</Text></TouchableOpacity>}
+
+          {menuDestinations}
         </SafeAreaView>
       </View>
     );
@@ -376,25 +322,22 @@ function MenuGalleryScreen() {
 
   return (
     <View style={styles.shell}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={isDark && !textMenu ? 'light-content' : 'dark-content'} />
 
       {/* Top Navigation */}
       <SafeAreaView edges={['top']} style={styles.navSafeArea}>
-        <View style={styles.nav}>
-          <TouchableOpacity style={styles.navBack} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+        <ScrollView style={{ maxHeight: height * 0.26, flexGrow: 0 }} contentContainerStyle={styles.nav}>
+          <TouchableOpacity style={styles.navBack} onPress={() => navigation.navigate('PlaceDetails',{placeId})} accessibilityRole="button" accessibilityLabel="Back to restaurant">
+            <Ionicons name="arrow-back" size={24} color={palette.text} />
           </TouchableOpacity>
-          <Text style={styles.navTitle} numberOfLines={1}>{placeName}</Text>
-          <TouchableOpacity style={styles.navClassic} onPress={() => navigation.goBack()}>
-            <Text style={styles.navClassicText}>Classic</Text>
-          </TouchableOpacity>
-        </View>
+          <Text style={styles.navTitle}>{placeName}</Text>{(['list','photos'] as const).filter(mode => mode === 'list' || appearance.galleryEnabled).map(mode=><TouchableOpacity key={mode} accessibilityRole="button" accessibilityState={{selected:viewMode===mode}} onPress={()=>setViewMode(mode)} style={{padding:10,minHeight:44}}><Text style={{color:palette.link,fontWeight:viewMode===mode?'800':'400'}}>{mode==='list'?'List':'Photos'}</Text></TouchableOpacity>)}
+        </ScrollView>
       </SafeAreaView>
 
-      {/* Filter Bar */}
-      <View style={styles.filters}>
+      {/* Scrollable filters remain reachable when text is enlarged. */}
+      <ScrollView style={{ maxHeight: height * 0.32, flexGrow: 0 }} contentContainerStyle={styles.filters} nestedScrollEnabled>
         {/* Meal period toggle */}
-        {availablePeriods.length > 2 && (
+        {availablePeriods.length > 1 && (
           <View style={styles.periods}>
             {availablePeriods.map(period => (
               <TouchableOpacity
@@ -442,13 +385,23 @@ function MenuGalleryScreen() {
               </TouchableOpacity>
             ))}
         </ScrollView>
-      </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingVertical:8}}>{DIETARY_FILTERS.map(filter=><TouchableOpacity key={filter.key} accessibilityRole="button" accessibilityState={{selected:activeFilters.includes(filter.key)}} style={[styles.catPill,activeFilters.includes(filter.key)&&styles.catPillActive]} onPress={()=>{setShowOtherDishes(false);setActiveFilters(old=>old.includes(filter.key)?old.filter(f=>f!==filter.key):[...old,filter.key])}}><Text style={[styles.catPillText,activeFilters.includes(filter.key)&&styles.catPillTextActive]}>{filter.label}</Text></TouchableOpacity>)}</ScrollView>
+        {activeFilters.length>0&&<View><View style={{flexDirection:'row',flexWrap:'wrap',alignItems:'center',gap:14}}><Text style={{color:palette.text}}>{matchingCount} dishes match</Text><TouchableOpacity accessibilityRole="button" onPress={()=>{setActiveFilters([]);setShowOtherDishes(false)}} style={{paddingVertical:12}}><Text style={{color:palette.link}}>Clear</Text></TouchableOpacity><TouchableOpacity accessibilityRole="button" onPress={()=>setShowOtherDishes(!showOtherDishes)} style={{paddingVertical:12}}><Text style={{color:palette.link}}>{showOtherDishes?'Matches only':'Other dishes'}</Text></TouchableOpacity></View><Text style={{color:palette.textSecondary,fontSize:13}}>Missing tags mean unknown. Ask the restaurant about allergies.</Text></View>}
+      </ScrollView>
 
       {/* Gallery Cards - Horizontal FlatList */}
-      {filteredItems.length > 0 ? (
+      {viewMode==='list'?<FlatList ref={menuListRef} onContentSizeChange={() => { if (!pendingDishScroll.current || !route.params.dishId) return; const index = filteredItems.findIndex(item => item.id === route.params.dishId); if (index >= 0) { pendingDishScroll.current = false; menuListRef.current?.scrollToIndex({index,animated:false}); } }} onScrollToIndexFailed={info => { menuListRef.current?.scrollToOffset({offset:info.averageItemLength*info.index,animated:false}); }} data={filteredItems} keyExtractor={i=>i.id} ListHeaderComponent={<View style={{padding:24,paddingBottom:10}}><Text style={{color:palette.text,fontSize:32,fontFamily:menuFont}}>{menu?.name || 'Menu'}</Text></View>} ListEmptyComponent={<Text style={styles.emptyItemsText}>No matching dishes. Clear filters or show other dishes.</Text>} renderItem={({item,index})=><View style={{padding:20,borderBottomWidth:1,borderColor:palette.border}}>
+        {(index === 0 || filteredItems[index-1]?.category_id !== item.category_id) && <Text style={{color:palette.text,fontSize:25,fontFamily:menuFont,marginVertical:12}}>{item.category_name}</Text>}
+        <TouchableOpacity disabled={!appearance.galleryEnabled} accessibilityRole={appearance.galleryEnabled ? 'button' : undefined} accessibilityLabel={appearance.galleryEnabled ? `View ${item.name} photos` : undefined} onPress={()=>{setActiveIndex(index);setViewMode('photos')}} style={{flexDirection:'row',gap:14, borderLeftWidth: route.params.dishId === item.id ? 3 : 0, borderLeftColor: palette.link, paddingLeft: route.params.dishId === item.id ? 12 : 0}}>
+          {appearance.inlinePhotos && item.image_url && <Image source={{uri:item.image_url}} style={{width:72,height:72,borderRadius:12}}/>}
+          <View style={{flex:1}}><Text style={{color:palette.text,fontSize:21,fontWeight:appearance.serif?'400':'600',fontFamily:menuFont}}>{item.name}</Text>{item.description && <Text style={{color:palette.textSecondary,lineHeight:24,marginTop:6,fontFamily:menuFont,fontSize:16}}>{item.description}</Text>}<Text style={{color:palette.text,marginTop:8,fontFamily:menuFont,fontSize:16}}>{formatPrice(item.price,item.price_label)}</Text>{!!item.dietary_tags?.length && <Text style={{color:palette.textSecondary,marginTop:8,fontSize:13}}>{item.dietary_tags.map(tag=>DIETARY_LABELS[tag]?.label || tag.replace(/_/g,' ')).join(' · ')}</Text>}</View>
+        </TouchableOpacity></View>}/>
+:filteredItems.length > 0 ? (
         <FlatList
+          key={SCREEN_WIDTH}
           ref={flatListRef}
           data={filteredItems}
+          initialScrollIndex={Math.min(activeIndex,Math.max(0,filteredItems.length-1))}
           renderItem={renderCard}
           keyExtractor={item => item.id}
           horizontal
@@ -461,333 +414,63 @@ function MenuGalleryScreen() {
             index,
           })}
           style={styles.gallery}
+          extraData={{ activeIndex, isDark, fontScale }}
           decelerationRate="fast"
           snapToInterval={SCREEN_WIDTH}
           snapToAlignment="start"
         />
       ) : (
         <View style={styles.emptyItems}>
-          <Text style={styles.emptyItemsText}>No dishes in this category.</Text>
+          <Text style={styles.emptyItemsText}>No matching dishes. Clear filters or show other dishes.</Text>
         </View>
       )}
 
-      {/* Tavvy logo footer */}
-      <SafeAreaView edges={['bottom']} style={styles.footer}>
-        <Image
-          source={require('../assets/brand/tavvy-logo-white.png')}
-          style={styles.footerLogo}
-          resizeMode="contain"
-        />
-      </SafeAreaView>
+      {viewMode==='photos'&&<SafeAreaView edges={['bottom']} style={[styles.footer,{flexDirection:'row',justifyContent:'space-around'}]}><TouchableOpacity accessibilityRole="button" disabled={activeIndex===0} onPress={()=>{const next=activeIndex-1;flatListRef.current?.scrollToIndex({index:next});setActiveIndex(next)}} style={{padding:14,opacity:activeIndex===0?.5:1}}><Text style={{color:palette.link}}>Previous</Text></TouchableOpacity><Text accessibilityLiveRegion="polite" style={{color:palette.text}}>{filteredItems.length?`${activeIndex+1} / ${filteredItems.length}`:'0 dishes'}</Text><TouchableOpacity accessibilityRole="button" disabled={activeIndex>=filteredItems.length-1} onPress={()=>{const next=activeIndex+1;flatListRef.current?.scrollToIndex({index:next});setActiveIndex(next)}} style={{padding:14,opacity:activeIndex>=filteredItems.length-1?.5:1}}><Text style={{color:palette.link}}>Next</Text></TouchableOpacity></SafeAreaView>}
     </View>
   );
 }
 
 // ===== STYLES =====
-const styles = StyleSheet.create({
-  shell: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-  },
-  emptyText: {
-    color: '#888',
-    fontSize: 16,
-  },
-  goBackButton: {
-    borderWidth: 1,
-    borderColor: '#333',
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 24,
-  },
-  goBackButtonText: {
-    color: '#fff',
-    fontSize: 14,
-  },
-
-  // Navigation
-  navSafeArea: {
-    backgroundColor: '#000',
-  },
-  nav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  navBack: {
-    padding: 4,
-  },
-  navTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
-    paddingHorizontal: 8,
-  },
-  navClassic: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(138, 5, 190, 0.4)',
-    borderRadius: 16,
-  },
-  navClassicText: {
-    fontSize: 12,
-    color: '#8A05BE',
-    fontWeight: '500',
-  },
-
-  // Filters
-  filters: {
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-  },
-  periods: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 8,
-  },
-  periodBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    backgroundColor: '#1a1a1a',
-  },
-  periodBtnActive: {
-    backgroundColor: '#8A05BE',
-  },
-  periodBtnText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#888',
-  },
-  periodBtnTextActive: {
-    color: '#fff',
-  },
-  categoriesScroll: {
-    flexGrow: 0,
-  },
-  categoriesContent: {
-    gap: 6,
-    paddingBottom: 2,
-  },
-  catPill: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: '#333',
-    borderRadius: 20,
-  },
-  catPillActive: {
-    backgroundColor: '#8A05BE',
-    borderColor: '#8A05BE',
-  },
-  catPillText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#aaa',
-  },
-  catPillTextActive: {
-    color: '#fff',
-  },
-
-  // Gallery
-  gallery: {
-    flex: 1,
-  },
-
-  // Card
-  card: {
-    width: SCREEN_WIDTH,
-    flex: 1,
-  },
-  cardImageContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  cardImage: {
-    width: '100%',
-    height: '100%',
-  },
-  cardPlaceholder: {
-    flex: 1,
-    backgroundColor: '#1a1a1a',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardPlaceholderText: {
-    fontSize: 18,
-    color: '#333',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-  cardGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-
-  // Top right group (price + share)
-  topRightGroup: {
-    position: 'absolute',
-    top: 12,
-    right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    zIndex: 2,
-  },
-  priceBadge: {
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-  },
-  priceBadgeText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  shareBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Badges top left
-  badgesTopLeft: {
-    position: 'absolute',
-    top: 12,
-    left: 16,
-    flexDirection: 'row',
-    gap: 6,
-  },
-  badge: {
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-  },
-  badgeFire: {
-    backgroundColor: 'rgba(255, 80, 0, 0.7)',
-  },
-  badgeNew: {
-    backgroundColor: 'rgba(138, 5, 190, 0.7)',
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
-
-  // Counter - bottom right corner
-  counter: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    alignItems: 'flex-end',
-  },
-  counterText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-
-  // Dish name - close to description
-  dishName: {
-    position: 'absolute',
-    bottom: 52,
-    left: 20,
-    right: 70,
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#fff',
-    lineHeight: 29,
-    letterSpacing: -0.5,
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 16,
-  },
-
-  // Info block at bottom
-  infoBlock: {
-    position: 'absolute',
-    bottom: 16,
-    left: 20,
-    right: 20,
-    gap: 8,
-  },
-  dishDescription: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
-    lineHeight: 18,
-  },
-  dietaryRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  dietaryPill: {
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  dietaryPillText: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.8)',
-  },
-
-  // Empty items
-  emptyItems: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyItemsText: {
-    color: '#555',
-    fontSize: 15,
-  },
-
-  // Footer
-  footer: {
-    backgroundColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-  },
-  footerLogo: {
-    height: 18,
-    width: 80,
-    opacity: 0.5,
-  },
+const makeStyles = (palette: typeof design.light, width: number) => StyleSheet.create({
+  shell: { flex: 1, backgroundColor: palette.background },
+  loadingContainer: { flex: 1, backgroundColor: palette.background, alignItems: 'center', justifyContent: 'center' },
+  emptyContainer: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center', gap: 16 },
+  emptyText: { color: palette.textSecondary, fontSize: 16, textAlign: 'center' },
+  goBackButton: { minHeight: 44, padding: 12, borderWidth: 1, borderColor: palette.border, borderRadius: 16 },
+  goBackButtonText: { color: palette.link, fontSize: 16 },
+  navSafeArea: { backgroundColor: palette.background },
+  nav: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 8 },
+  navBack: { width: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
+  navTitle: { flex: 1, minWidth: 0, flexShrink: 1, fontSize: 17, fontWeight: '600', color: palette.text, textAlign: 'center' },
+  destinations: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12, maxWidth: '100%' },
+  destinationButton: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, maxWidth: '100%', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.surface },
+  destinationText: { color: palette.link, fontSize: 14, flexShrink: 1 },
+  filters: { paddingHorizontal: 16, paddingBottom: 12 },
+  periods: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  periodBtn: { minHeight: 44, maxWidth: width - 32, justifyContent: 'center', padding: 12, borderRadius: 20, backgroundColor: palette.surfaceElevated },
+  periodBtnActive: { backgroundColor: design.primary },
+  periodBtnText: { fontSize: 14, color: palette.textSecondary, flexShrink: 1 },
+  periodBtnTextActive: { color: '#fff' },
+  categoriesScroll: { flexGrow: 0 }, categoriesContent: { gap: 8, paddingBottom: 2, alignItems: 'flex-start' },
+  catPill: { maxWidth: width - 48, minHeight: 44, justifyContent: 'center', padding: 12, borderWidth: 1, borderColor: palette.border, borderRadius: 20 },
+  catPillActive: { backgroundColor: design.primary, borderColor: design.primary },
+  catPillText: { fontSize: 14, color: palette.textSecondary, flexShrink: 1 }, catPillTextActive: { color: '#fff' },
+  gallery: { flex: 1, minHeight: 0 }, card: { width, flex: 1 }, cardContent: { flexGrow: 1, paddingBottom: 24 },
+  details: { padding: 20, gap: 12, backgroundColor: palette.surface, minWidth: 0 },
+  categoryName: { color: palette.textSecondary, fontSize: 14, flexShrink: 1 },
+  dishName: { fontSize: 26, fontWeight: '800', color: palette.text, flexShrink: 1 },
+  dishDescription: { fontSize: 16, color: palette.textSecondary, flexShrink: 1 },
+  priceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'flex-start' },
+  priceText: { color: palette.text, fontSize: 18, fontWeight: '700', flexGrow: 1, flexShrink: 1, flexBasis: 160 },
+  shareBtn: { minHeight: 44, flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingVertical: 8, alignItems: 'center', maxWidth: '100%' },
+  shareText: { color: palette.link, fontSize: 16, flexShrink: 1 },
+  dietaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  badge: { maxWidth: '100%', flexShrink: 1, color: palette.textSecondary, backgroundColor: palette.surfaceElevated, padding: 8, borderRadius: 12, fontSize: 13 },
+  counterText: { color: palette.textSecondary, fontSize: 13, marginTop: 8 },
+  emptyItems: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center' },
+  emptyItemsText: { color: palette.textSecondary, fontSize: 16, textAlign: 'center' },
+  footer: { backgroundColor: palette.background, alignItems: 'center', paddingVertical: 8 },
+  footerLogo: { height: 22, width: 94 },
 });
 
 export default withScreenErrorBoundary(MenuGalleryScreen, 'MenuGalleryScreen');

@@ -1,21 +1,22 @@
 /**
  * WalletScreen.tsx
- * Tavvy Wallet - Apple Wallet style stacked cards
+ * Tavvy Wallet - account-scoped saved Pro cards
  * Path: screens/WalletScreen.tsx
  *
  * FEATURES:
- * - Stacked cards like Apple Wallet (overlapping)
+ * - Accessible card list with expandable contact actions
  * - Each card shows Pro's gradient colors
  * - Tap card to expand to full Pro Card view
- * - Menu for Edit, Remove, Reorder
+ * - Menu for contact export, removal and refresh
  * - Save contact to phone functionality
  * - Fetches data from Supabase
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
@@ -30,35 +31,27 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useThemeContext } from '../contexts/ThemeContext';
 import * as Contacts from 'expo-contacts';
 import { supabase } from '../lib/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { UnifiedHeader } from '../components/UnifiedHeader';
+import ToolHeader from '../components/ToolHeader';
 import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_HEIGHT = 80;
-const CARD_OVERLAP = 60;
-const WALLET_STORAGE_KEY = '@tavvy_wallet_cards';
 
-interface ProCard {
-  id: string;
-  slug: string;
-  companyName: string;
-  category: string;
-  city: string;
-  state: string;
-  phone: string;
-  email: string;
-  gradientColors: [string, string];
-  profilePhoto?: string;
-  verified: boolean;
-  savedAt: string;
-}
+
+import { useAuth } from '../contexts/AuthContext';
+import { readWallet, removeWalletCard, filterWallet, WalletCard as ProCard } from '../lib/wallet';
 
 export default function WalletScreen() {
+  const { user, loading } = useAuth();
+  if (loading) return <ActivityIndicator accessibilityLabel="Loading account" />;
+  return <AccountWallet key={user?.id || 'guest'} userId={user?.id || null} />;
+}
+function AccountWallet({ userId }: { userId: string | null }) {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { theme, isDark } = useThemeContext();
@@ -69,83 +62,27 @@ export default function WalletScreen() {
   const [selectedCard, setSelectedCard] = useState<ProCard | null>(null);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
-  // Load saved cards from local storage and sync with database
-  useEffect(() => {
-    loadSavedCards();
-  }, []);
-
-  const loadSavedCards = async () => {
+  const [search, setSearch] = useState('');
+  const [error, setError] = useState('');
+  const [removing, setRemoving] = useState(false);
+  const active = useRef(true);
+  const request = useRef(0);
+  useEffect(() => { active.current = true; return () => { active.current = false; request.current++; }; }, []);
+  const loadSavedCards = useCallback(async () => {
+    const version = ++request.current;
+    setError('');
     try {
-      // First, load from local storage for instant display
-      const localCards = await AsyncStorage.getItem(WALLET_STORAGE_KEY);
-      if (localCards) {
-        setSavedCards(JSON.parse(localCards));
-      }
-
-      // Then sync with database if user is logged in
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: walletData, error } = await supabase
-          .from('user_wallet')
-          .select(`
-            id,
-            saved_at,
-            pro_cards (
-              id,
-              slug,
-              company_name,
-              category,
-              city,
-              state,
-              phone,
-              email,
-              gradient_color_1,
-              gradient_color_2,
-              profile_photo_url,
-              verified
-            )
-          `)
-          .eq('user_id', user.id)
-          .order('saved_at', { ascending: false });
-
-        if (!error && walletData) {
-          const cards: ProCard[] = walletData
-            .filter((item: any) => item.pro_cards)
-            .map((item: any) => ({
-              id: item.pro_cards.id,
-              slug: item.pro_cards.slug,
-              companyName: item.pro_cards.company_name,
-              category: item.pro_cards.category || '',
-              city: item.pro_cards.city || '',
-              state: item.pro_cards.state || '',
-              phone: item.pro_cards.phone || '',
-              email: item.pro_cards.email || '',
-              gradientColors: [
-                item.pro_cards.gradient_color_1 || '#8A05BE',
-                item.pro_cards.gradient_color_2 || '#6366F1',
-              ] as [string, string],
-              profilePhoto: item.pro_cards.profile_photo_url,
-              verified: item.pro_cards.verified || false,
-              savedAt: item.saved_at,
-            }));
-
-          setSavedCards(cards);
-          // Update local storage
-          await AsyncStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(cards));
-        }
-      }
-    } catch (error) {
-      console.error('Error loading wallet cards:', error);
+      const cards = await readWallet(supabase, userId, AsyncStorage);
+      if (active.current && version === request.current) setSavedCards(cards);
+    } catch {
+      if (active.current && version === request.current) setError('Unable to load your wallet. Please retry.');
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      if (active.current && version === request.current) { setIsLoading(false); setIsRefreshing(false); }
     }
-  };
-
-  const onRefresh = () => {
-    setIsRefreshing(true);
-    loadSavedCards();
-  };
+  }, [userId]);
+  useFocusEffect(useCallback(() => { void loadSavedCards(); }, [loadSavedCards]));
+  const onRefresh = () => { setIsRefreshing(true); void loadSavedCards(); };
+  const visibleCards = filterWallet(savedCards, search);
 
   // Handle card tap
   const handleCardPress = (card: ProCard) => {
@@ -161,39 +98,26 @@ export default function WalletScreen() {
     }
   };
 
-  // Remove card from wallet
   const removeCard = async (card: ProCard) => {
+    if (removing) return;
+    setRemoving(true);
+    request.current++;
     try {
-      // Remove from local state
-      const updatedCards = savedCards.filter(c => c.id !== card.id);
-      setSavedCards(updatedCards);
-      
-      // Update local storage
-      await AsyncStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(updatedCards));
-
-      // Remove from database if user is logged in
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase
-          .from('user_wallet')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('card_id', card.id);
-      }
-
+      await removeWalletCard(supabase, userId, card.id, AsyncStorage);
+      if (!active.current) return;
+      setSavedCards(cards => cards.filter(c => c.id !== card.id));
       setSelectedCard(null);
-    } catch (error) {
-      console.error('Error removing card:', error);
-      Alert.alert('Error', 'Failed to remove card. Please try again.');
-    }
+    } catch {
+      if (active.current) Alert.alert('Error', 'Failed to remove card. Please refresh and try again.');
+    } finally { if (active.current) setRemoving(false); }
   };
 
   // Handle menu actions
   const handleMenuAction = (action: string) => {
     setMenuVisible(false);
     switch (action) {
-      case 'edit':
-        Alert.alert('Reorder Cards', 'Drag cards to reorder them');
+      case 'refresh':
+        onRefresh();
         break;
       case 'remove':
         if (selectedCard) {
@@ -224,6 +148,8 @@ export default function WalletScreen() {
       }
 
       const contact: Contacts.Contact = {
+        contactType: Contacts.ContactTypes.Company,
+        name: card.companyName,
         [Contacts.Fields.FirstName]: card.companyName,
         [Contacts.Fields.Company]: card.companyName,
         [Contacts.Fields.JobTitle]: card.category,
@@ -259,14 +185,14 @@ export default function WalletScreen() {
   // Call Pro
   const callPro = (phone: string) => {
     if (phone) {
-      Linking.openURL(`tel:${phone}`);
+      Linking.openURL(`tel:${phone}`).catch(() => Alert.alert('Unable to call', 'No phone app is available.'));
     }
   };
 
   // Text Pro
   const textPro = (phone: string) => {
     if (phone) {
-      Linking.openURL(`sms:${phone}`);
+      Linking.openURL(`sms:${phone}`).catch(() => Alert.alert('Unable to text', 'No messaging app is available.'));
     }
   };
 
@@ -297,18 +223,16 @@ export default function WalletScreen() {
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
-      <StatusBar barStyle="light-content" />
+      <ToolHeader title="Wallet" subtitle="Your saved cards and contact details." safeAreaTop>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TextInput accessibilityLabel="Search your cards" placeholder="Search your cards..." placeholderTextColor={theme.textSecondary} value={search} onChangeText={setSearch} style={{ flex: 1, minWidth: 0, minHeight: 48, borderRadius: 12, paddingHorizontal: 12, backgroundColor: theme.surface, color: theme.text }} />
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Wallet options" onPress={() => { setSelectedCard(null); setMenuVisible(true); }} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}><Ionicons name="ellipsis-horizontal-circle" size={26} color={theme.text} /></TouchableOpacity>
+        </View>
+      </ToolHeader>
 
-      {/* Unified Header */}
-      <UnifiedHeader
-        screenKey="wallet"
-        title="Wallet"
-        searchPlaceholder="Search your cards..."
-        showBackButton={false}
-        rightIcon="ellipsis-horizontal-circle"
-        onRightIconPress={() => setMenuVisible(true)}
-      />
-
+      {!userId && <Text style={{ padding: 16, color: dynamicStyles.subtitle.color }}>Guest cards stay on this device and are separate from account wallets.</Text>}
+      {!!error && <TouchableOpacity accessibilityRole="button" onPress={onRefresh} style={{ padding: 16 }}><Text style={{ color: '#DC2626' }}>{error} Tap to retry.</Text></TouchableOpacity>}
+      {removing && <ActivityIndicator accessibilityLabel="Removing card" />}
       {/* Cards Stack */}
       <ScrollView
         style={styles.scrollView}
@@ -322,10 +246,10 @@ export default function WalletScreen() {
           />
         }
       >
-        {savedCards.length === 0 ? (
+        {visibleCards.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="wallet-outline" size={64} color="#9CA3AF" />
-            <Text style={styles.emptyTitle}>No Cards Yet</Text>
+            <Text style={styles.emptyTitle}>{search ? 'No matching cards' : 'No Cards Yet'}</Text>
             <Text style={styles.emptySubtitle}>
               Save Pro cards to your wallet for quick access to your favorite contractors
             </Text>
@@ -337,10 +261,9 @@ export default function WalletScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={[styles.cardsContainer, { height: savedCards.length * (CARD_HEIGHT - CARD_OVERLAP) + CARD_OVERLAP + 100 }]}>
-            {savedCards.map((card, index) => {
+          <View style={styles.cardsContainer}>
+            {visibleCards.map((card, index) => {
               const isExpanded = expandedCardId === card.id;
-              const cardTop = index * (CARD_HEIGHT - CARD_OVERLAP);
 
               return (
                 <TouchableOpacity
@@ -354,7 +277,7 @@ export default function WalletScreen() {
                   style={[
                     styles.cardWrapper,
                     {
-                      top: cardTop,
+                      marginBottom: 14,
                       zIndex: savedCards.length - index,
                     },
                   ]}
@@ -478,10 +401,10 @@ export default function WalletScreen() {
               <>
                 <TouchableOpacity
                   style={styles.menuItem}
-                  onPress={() => handleMenuAction('edit')}
+                  onPress={() => handleMenuAction('refresh')}
                 >
                   <Ionicons name="reorder-four-outline" size={22} color="#374151" />
-                  <Text style={styles.menuItemText}>Reorder Cards</Text>
+                  <Text style={styles.menuItemText}>Refresh Cards</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -545,9 +468,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   cardWrapper: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
+    position: 'relative',
   },
   card: {
     height: CARD_HEIGHT,

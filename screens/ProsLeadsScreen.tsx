@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { ProsColors } from '../constants/ProsConfig';
@@ -33,11 +33,11 @@ export default function ProsLeadsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('all');
 
-  const { requests, loading, fetchProjectRequests } = useProjectRequests();
+  const { requests, loading, error, fetchProjectRequests } = useProjectRequests();
 
-  useEffect(() => {
+  useFocusEffect(React.useCallback(() => {
     fetchProjectRequests();
-  }, [fetchProjectRequests]);
+  }, [fetchProjectRequests]));
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -147,6 +147,8 @@ export default function ProsLeadsScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={ProsColors.primary} />
         </View>
+      ) : error ? (
+        <View style={styles.emptyContainer}><Text accessibilityRole="alert" style={styles.emptyTitle}>Unable to load leads</Text><Text style={styles.emptyText}>{error}</Text><TouchableOpacity onPress={handleRefresh}><Text>Retry</Text></TouchableOpacity></View>
       ) : filteredRequests.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="document-text-outline" size={64} color={ProsColors.textMuted} />

@@ -1,3 +1,4 @@
+import { useReleaseCopy } from '../../../../hooks/useReleaseCopy';
 /**
  * EditorSection -- collapsible section wrapper for the card editor.
  * Each section has a title, Ionicons icon, and collapse/expand toggle.
@@ -40,6 +41,7 @@ export default function EditorSection({
   children,
   isDark,
 }: EditorSectionProps) {
+  const copy = useReleaseCopy();
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   const toggle = useCallback(() => {
@@ -73,12 +75,13 @@ export default function EditorSection({
         activeOpacity={0.7}
         style={styles.header}
         accessibilityRole="button"
-        accessibilityLabel={`${title} section, ${isOpen ? 'expanded' : 'collapsed'}`}
+        accessibilityState={{ expanded: isOpen }}
+        accessibilityLabel={`${copy(title)} section, ${isOpen ? 'expanded' : 'collapsed'}`}
       >
         <View style={styles.iconContainer}>
           <Ionicons name={icon as any} size={20} color={ACCENT} />
         </View>
-        <Text style={[styles.title, { color: textPrimary }]}>{title}</Text>
+        <Text style={[styles.title, { color: textPrimary }]}>{copy(title)}</Text>
         <Ionicons
           name={isOpen ? 'chevron-up' : 'chevron-down'}
           size={18}

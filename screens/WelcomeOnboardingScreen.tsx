@@ -31,7 +31,7 @@ interface OnboardingSlide {
   chips?: string[];
   trustBadges?: string[];
   icon: keyof typeof Ionicons.glyphMap;
-  gradientColors: string[];
+  gradientColors: [string, string, ...string[]];
   accentColor: string;
 }
 

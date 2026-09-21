@@ -68,6 +68,8 @@ interface LinkEditorProps {
   onChange: (index: number, field: string, value: string) => void;
   onRemove: (index: number) => void;
   isDark: boolean;
+  total?: number;
+  onMove?: (fromIndex: number, toIndex: number) => void;
 }
 
 export default function LinkEditor({
@@ -76,6 +78,8 @@ export default function LinkEditor({
   onChange,
   onRemove,
   isDark,
+  total = 1,
+  onMove,
 }: LinkEditorProps) {
   const inputBg = isDark ? '#1E293B' : '#FFFFFF';
   const inputColor = isDark ? '#FFFFFF' : '#333333';
@@ -109,6 +113,7 @@ export default function LinkEditor({
 
       {/* Input fields */}
       <View style={styles.fields}>
+        <Text style={{ color: inputColor, fontSize: 12 }}>{platformName}{link.is_active === false ? ' · Hidden link' : ''}</Text>
         <TextInput
           style={[
             styles.input,
@@ -119,6 +124,7 @@ export default function LinkEditor({
               borderColor: borderColor,
             },
           ]}
+          accessibilityLabel={`Link ${index + 1} label`}
           value={link.title || ''}
           onChangeText={(text) => onChange(index, 'title', text)}
           placeholder={`${platformName} title`}
@@ -135,6 +141,7 @@ export default function LinkEditor({
               borderColor: borderColor,
             },
           ]}
+          accessibilityLabel={`Link ${index + 1} destination`}
           value={link.url || ''}
           onChangeText={(text) => onChange(index, 'url', text)}
           placeholder="URL or value"
@@ -151,6 +158,10 @@ export default function LinkEditor({
         />
       </View>
 
+      {!!onMove && <View style={{ alignItems: 'center' }}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Move link ${index + 1} up`} disabled={index === 0} onPress={() => onMove(index, index - 1)} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', opacity: index === 0 ? 0.3 : 1 }}><Ionicons name="arrow-up" size={19} color={inputColor} /></TouchableOpacity>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Move link ${index + 1} down`} disabled={index >= total - 1} onPress={() => onMove(index, index + 1)} style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', opacity: index >= total - 1 ? 0.3 : 1 }}><Ionicons name="arrow-down" size={19} color={inputColor} /></TouchableOpacity>
+      </View>}
       {/* Remove button */}
       <TouchableOpacity
         style={styles.removeButton}
@@ -167,7 +178,8 @@ export default function LinkEditor({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    gap: 10,
+    flexWrap: 'wrap',
+    gap: 8,
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
@@ -188,6 +200,7 @@ const styles = StyleSheet.create({
   },
   fields: {
     flex: 1,
+    minWidth: 160,
     gap: 8,
   },
   input: {
@@ -202,7 +215,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   removeButton: {
-    padding: 6,
+    padding: 10,
+    minHeight: 44,
+    minWidth: 44,
     borderRadius: 6,
     flexShrink: 0,
     marginTop: 4,

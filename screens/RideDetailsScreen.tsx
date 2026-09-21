@@ -1,3 +1,5 @@
+import type { ParamListBase as DynamicStackParams } from '@react-navigation/native';
+import type { NativeStackNavigationProp as DynamicStackNavigation } from '@react-navigation/native-stack';
 // ============================================================================
 // RIDE DETAILS SCREEN
 // ============================================================================
@@ -218,7 +220,7 @@ const SAMPLE_RIDES: Record<string, RideData> = {
 
 export default function RideDetailsScreen() {
   const { t } = useTranslation();
-  const navigation = useNavigation();
+  const navigation = useNavigation<DynamicStackNavigation<DynamicStackParams>>();
   const route = useRoute();
   const params = route.params as RouteParams;
   
@@ -378,11 +380,11 @@ export default function RideDetailsScreen() {
   // Navigate to the universal AddReview screen
   const handleAddReview = () => {
     if (!ride) return;
-    navigation.navigate('AddReview' as never, { 
+    navigation.navigate('AddReview', {
       placeId: ride.id, 
       placeName: ride.name, 
       placeCategory: 'ride' 
-    } as never);
+    });
   };
 
   // Render signal bar (matching PlaceDetailsScreen/CityDetailsScreen exactly)

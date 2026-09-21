@@ -1,3 +1,4 @@
+import ToolHeader from '../components/ToolHeader';
 /**
  * ATLAS HOME SCREEN
  * 
@@ -41,7 +42,7 @@ const COLORS = {
   surface: '#111827',
   surfaceLight: '#FFFFFF',
   glassy: '#1E0A3C',
-  accent: '#667EEA',
+  accent: '#8A05BE',
   textPrimary: '#FFFFFF',
   textSecondary: '#9CA3AF',
   textMuted: '#6B7280',
@@ -171,13 +172,16 @@ export default function AtlasHomeScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.loadingContainer, { backgroundColor }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
+        <ToolHeader title="Atlas" subtitle="Your guide to the exceptional." />
+        <View style={[styles.container, styles.loadingContainer]}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <ActivityIndicator size="large" color={COLORS.accent} />
         <Text style={[styles.loadingText, { color: secondaryTextColor }]}>
           Loading articles...
         </Text>
-      </View>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -188,6 +192,7 @@ export default function AtlasHomeScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <ToolHeader title="Atlas" subtitle="Your guide to the exceptional." />
       
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -200,13 +205,7 @@ export default function AtlasHomeScreen() {
           />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: textColor }]}>Atlas</Text>
-          <Text style={[styles.tagline, { color: COLORS.accent }]}>
-            Your guide to the exceptional.
-          </Text>
-        </View>
+
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>

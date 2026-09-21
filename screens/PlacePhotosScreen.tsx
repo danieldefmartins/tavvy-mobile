@@ -11,9 +11,12 @@ import {
   StatusBar,
   Animated,
   ActivityIndicator,
+  DeviceEventEmitter,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabaseClient';
+import ContentSafetyActions,{CONTENT_SAFETY_CHANGED} from '../components/ContentSafetyActions';
+import {useAuth} from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get('window');
@@ -47,27 +50,27 @@ export default function PlacePhotosScreen({ route, navigation }: PlacePhotosScre
   const { t } = useTranslation();
   const { placeId, placeName, photos: initialPhotos } = route.params;
   
-  const [photos, setPhotos] = useState<PlacePhoto[]>(initialPhotos || []);
-  const [loading, setLoading] = useState(!initialPhotos);
+  const {user}=useAuth();
+  const [photos, setPhotos] = useState<PlacePhoto[]>([]);
+  const [loadError,setLoadError]=useState('');
+  const [refresh,setRefresh]=useState(0);
+  const readGeneration=useRef(0);
+  const [loading, setLoading] = useState(true);
   const [selectedPhoto, setSelectedPhoto] = useState<PlacePhoto | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const fullscreenListRef = useRef<FlatList>(null);
 
-  // Fetch photos if not provided
-  useEffect(() => {
-    if (!initialPhotos) {
-      fetchPhotos();
-    }
-  }, [placeId]);
+  useEffect(()=>{void fetchPhotos();const listener=DeviceEventEmitter.addListener(CONTENT_SAFETY_CHANGED,()=>{setSelectedPhoto(null);setPhotos([]);setRefresh(v=>v+1)});return()=>{++readGeneration.current;listener.remove()}},[placeId,user?.id,refresh]);
 
   const fetchPhotos = async () => {
+    const generation=++readGeneration.current;setPhotos([]);setSelectedPhoto(null);setLoadError('');
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('place_photos')
-        .select('id, url, user_id, caption, created_at, is_cover, users(display_name, avatar_url)')
-        .eq('place_id', placeId)
+        .select('id, url, user_id, caption, created_at, is_cover')
+        .eq('place_id', placeId).eq('status','live')
         .order('is_cover', { ascending: false })
         .order('created_at', { ascending: false });
 
@@ -84,12 +87,12 @@ export default function PlacePhotosScreen({ route, navigation }: PlacePhotosScre
           created_at: photo.created_at,
           is_cover: photo.is_cover,
         }));
-        setPhotos(mappedPhotos);
+        if(generation===readGeneration.current)setPhotos(mappedPhotos);
       }
     } catch (error) {
-      console.error('Error fetching photos:', error);
+      if(generation===readGeneration.current)setLoadError('Photos could not be loaded. Please try again.');
     } finally {
-      setLoading(false);
+      if(generation===readGeneration.current)setLoading(false);
     }
   };
 
@@ -200,8 +203,9 @@ export default function PlacePhotosScreen({ route, navigation }: PlacePhotosScre
         </TouchableOpacity>
       </View>
 
+      {loadError&&<View style={{padding:20}}><Text accessibilityRole="alert">{loadError}</Text><TouchableOpacity accessibilityRole="button" style={{minHeight:44,padding:12}} onPress={()=>setRefresh(v=>v+1)}><Text>Try again</Text></TouchableOpacity></View>}
       {/* Photo Grid */}
-      {photos.length > 0 ? (
+      {loadError ? null : photos.length > 0 ? (
         <FlatList
           data={photos}
           renderItem={renderGridItem}
@@ -268,6 +272,7 @@ export default function PlacePhotosScreen({ route, navigation }: PlacePhotosScre
           {/* Fullscreen Footer with Photo Info */}
           {selectedPhoto && (
             <View style={styles.fullscreenFooter}>
+              <ContentSafetyActions kind="place_photo" contentId={selectedPhoto.id} onSignIn={()=>{setSelectedPhoto(null);navigation.navigate('Login')}}/>
               <View style={styles.photoInfo}>
                 <View style={styles.userInfo}>
                   {selectedPhoto.user_avatar ? (

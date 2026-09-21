@@ -1,3 +1,5 @@
+import { deleteCurrentAccount } from '../lib/accountDeletion';
+import * as WebBrowser from 'expo-web-browser';
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Session, User } from '@supabase/supabase-js';
@@ -21,8 +23,8 @@ interface AuthContextType {
   maxCards: number;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName?: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
-  signInWithApple: () => Promise<void>;
+  signInWithGoogle: () => Promise<boolean>;
+  signInWithApple: () => Promise<boolean>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -218,25 +220,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   if (error) throw error;
 };
 
-  const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: 'tavvy://auth/callback',
-      },
+  const signInWithProvider = async (provider: 'google' | 'apple') => {
+    const redirectTo = 'tavvy://auth/callback';
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo, skipBrowserRedirect: true },
     });
     if (error) throw error;
+    if (!data.url) throw new Error('Sign-in is temporarily unavailable.');
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    if (result.type !== 'success') return false;
+    const callback = new URL(result.url);
+    if (callback.protocol !== 'tavvy:' || callback.hostname !== 'auth' || callback.pathname !== '/callback') {
+      throw new Error('Invalid sign-in callback.');
+    }
+    const params = new URLSearchParams(callback.hash.slice(1));
+    const providerError = params.get('error_description') || callback.searchParams.get('error_description');
+    if (providerError) throw new Error(providerError);
+    const code = callback.searchParams.get('code');
+    if (code) {
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (exchangeError) throw exchangeError;
+      return true;
+    }
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    if (!access_token || !refresh_token) throw new Error('Sign-in did not return a session. Please try again.');
+    const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
+    if (sessionError) throw sessionError;
+    return true;
   };
 
-  const signInWithApple = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'apple',
-      options: {
-        redirectTo: 'tavvy://auth/callback',
-      },
-    });
-    if (error) throw error;
-  };
+  const signInWithGoogle = () => signInWithProvider('google');
+  const signInWithApple = () => signInWithProvider('apple');
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -252,70 +268,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAccount = async () => {
     if (!user) throw new Error('No user logged in');
-    
-    try {
-      // Step 1: Delete user's profile data
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', user.id);
-      
-      if (profileError) {
-        console.error('Error deleting profile:', profileError);
-        // Continue even if profile deletion fails (profile might not exist)
-      }
-
-      // Step 2: Delete user's reviews
-      const { error: reviewsError } = await supabase
-        .from('place_reviews')
-        .delete()
-        .eq('user_id', user.id);
-      
-      if (reviewsError) {
-        console.error('Error deleting reviews:', reviewsError);
-      }
-
-      // Step 3: Delete user's favorites
-      const { error: favoritesError } = await supabase
-        .from('favorites')
-        .delete()
-        .eq('user_id', user.id);
-      
-      if (favoritesError) {
-        console.error('Error deleting favorites:', favoritesError);
-      }
-
-      // Step 4: Delete user's digital cards
-      const { error: cardsError } = await supabase
-        .from('digital_cards')
-        .delete()
-        .eq('user_id', user.id);
-      
-      if (cardsError) {
-        console.error('Error deleting digital cards:', cardsError);
-      }
-
-      // Step 5: Call the delete_user RPC function to delete the auth user
-      // This requires a Supabase Edge Function or database function
-      const { error: deleteError } = await supabase.rpc('delete_user_account');
-      
-      if (deleteError) {
-        // If RPC doesn't exist, sign out the user and they can contact support
-        // This still satisfies Apple's requirement as the user initiated deletion
-        console.error('Error calling delete_user_account:', deleteError);
-        // Sign out the user regardless
-        await supabase.auth.signOut();
-        return;
-      }
-
-      // Sign out after successful deletion
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error('Error during account deletion:', error);
-      // Even if there's an error, sign out the user
-      await supabase.auth.signOut();
-      throw error;
-    }
+    await deleteCurrentAccount();
+    setUser(null);
+    setSession(null);
+    setProfile(null);
   };
 
   return (

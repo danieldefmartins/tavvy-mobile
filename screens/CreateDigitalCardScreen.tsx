@@ -47,7 +47,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MY_CARD_STORAGE_KEY = '@tavvy_my_digital_card';
 
 // Card Templates
-const CARD_TEMPLATES = [
+const CARD_TEMPLATES: { id: string; name: string; description: string; icon: string; gradient: [string, string] }[] = [
   {
     id: 'professional',
     name: 'Professional',
@@ -86,7 +86,7 @@ const CARD_TEMPLATES = [
 ];
 
 // Gradient presets
-const GRADIENT_PRESETS = [
+const GRADIENT_PRESETS: { id: string; name: string; colors: [string, string] }[] = [
   { id: 'purple-indigo', colors: ['#8A05BE', '#4F46E5'], name: 'Purple' },
   { id: 'blue-cyan', colors: ['#8A05BE', '#06B6D4'], name: 'Ocean' },
   { id: 'orange-red', colors: ['#00C2CB', '#EF4444'], name: 'Sunset' },

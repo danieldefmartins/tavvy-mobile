@@ -1,4 +1,8 @@
+import { submitReview, updateReview, fetchUserReview } from './reviewPersistence';
+export { submitReview, updateReview, fetchUserReview };
 import { supabase } from './supabaseClient';
+import { getSignalPrefixesForCategory, signalMatchesCategory, loadActiveSignalCatalog, loadPlaceSignalCategory } from './signalCatalog';
+export { CATEGORY_SIGNAL_PREFIXES, SUBCATEGORY_SIGNAL_OVERRIDES, getSignalPrefixesForCategory } from './signalCatalog';
 
 // Canonical place ids are uuids; fsq ids are not.
 export const SIGNAL_UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -61,6 +65,8 @@ export interface SignalsByCategory {
 // ============================================
 
 interface CachedSignal {
+  is_universal?: boolean;
+  category?: string | null;
   id: string;
   slug: string;
   label: string;
@@ -76,42 +82,14 @@ let cacheLoaded = false;
 // Load signals into cache
 async function loadSignalCache(): Promise<void> {
   if (cacheLoaded) return;
-
-  try {
-    const { data, error } = await supabase
-      .from('review_items')
-      .select('id, slug, label, icon_emoji, signal_type, color')
-      .eq('is_active', true);
-
-    if (error) {
-      console.error('Error loading signal cache:', error);
-      return;
-    }
-
-    signalCache = new Map();
-    signalsBySlug = new Map();
-    
-    (data || []).forEach((item: any) => {
-      // Only cache the 3 main signal types (not pro_endorsement)
-      if (!['best_for', 'vibe', 'heads_up'].includes(item.signal_type)) return;
-
-      const signal: CachedSignal = {
-        id: item.id,
-        slug: item.slug,
-        label: item.label,
-        icon_emoji: item.icon_emoji,
-        signal_type: item.signal_type as ReviewCategory,
-        color: item.color,
-      };
-      signalCache.set(item.id, signal);
-      signalsBySlug.set(item.slug, signal);
-    });
-
-    cacheLoaded = true;
-    console.log(`✅ Signal cache loaded: ${signalCache.size} signals`);
-  } catch (err) {
-    console.error('Error loading signal cache:', err);
-  }
+  const data = await loadActiveSignalCatalog(supabase);
+  signalCache = new Map();
+  signalsBySlug = new Map();
+  data.forEach((item: any) => {
+    signalCache.set(item.id, item);
+    signalsBySlug.set(item.slug, item);
+  });
+  cacheLoaded = true;
 }
 
 // ============================================
@@ -123,167 +101,6 @@ async function loadSignalCache(): Promise<void> {
  * Signals are filtered based on these prefixes when displaying
  * category-specific review options.
  */
-export const CATEGORY_SIGNAL_PREFIXES: Record<string, string[]> = {
-  // Core Categories
-  restaurants: ['restaurant_', 'generic_'],
-  cafes: ['cafe_', 'generic_'],
-  nightlife: ['bar_', 'generic_'],
-  lodging: ['hotel_', 'generic_'],
-  
-  // RV & Camping (fully implemented)
-  rv_camping: ['rv_', 'dump_', 'water_', 'wifi_', 'restroom_', 'laundry_', 'generic_'],
-  
-  // Shopping & Services
-  shopping: ['shop_', 'laundry_', 'generic_'],
-  beauty: ['beauty_', 'generic_'],
-  health: ['health_', 'generic_'],
-  fitness: ['fitness_', 'generic_'],
-  
-  // Automotive
-  automotive: ['fuel_', 'auto_', 'dump_', 'generic_'],
-  
-  // Professional & Business
-  home_services: ['service_', 'generic_'],
-  professional: ['pro_', 'generic_'],
-  financial: ['bank_', 'generic_'],
-  
-  // Other Services
-  pets: ['pet_', 'generic_'],
-  education: ['edu_', 'generic_'],
-  arts: ['arts_', 'generic_'],
-  
-  // Entertainment (theme parks, etc.)
-  entertainment: ['tp_', 'ent_', 'generic_'],
-  
-  // Attractions (rides, shows, etc.)
-  attraction: ['tp_', 'ent_', 'generic_'],
-  
-  // Outdoors & Parks
-  outdoors: ['outdoor_', 'restroom_', 'generic_'],
-  
-  // Transportation
-  transportation: ['transit_', 'restroom_', 'generic_'],
-  
-  // Government
-  government: ['border_', 'gov_', 'generic_'],
-  
-  // Religious & Events
-  religious: ['religious_', 'generic_'],
-  events: ['venue_', 'generic_'],
-  
-  // Other/Generic
-  other: ['generic_'],
-  
-  // Cities (metropolitan areas)
-  city: ['city_', 'generic_'],
-};
-
-/**
- * Subcategory-specific signal overrides.
- * Some subcategories need different signals than their parent category.
- */
-export const SUBCATEGORY_SIGNAL_OVERRIDES: Record<string, string[]> = {
-  // RV & Camping subcategories
-  dump_station: ['dump_', 'generic_'],
-  propane_station: ['fuel_', 'generic_'],
-  water_fill_station: ['water_', 'generic_'],
-  public_showers: ['restroom_', 'generic_'],
-  laundromat: ['laundry_', 'generic_'],
-  wifi_hotspot: ['wifi_', 'generic_'],
-  restroom: ['restroom_', 'generic_'],
-  
-  // Theme Park subcategories
-  theme_park_ride: ['tp_', 'generic_'],
-  theme_park_attraction: ['tp_', 'generic_'],
-  theme_park_food: ['restaurant_', 'tp_', 'generic_'],
-  theme_park_restroom: ['restroom_', 'generic_'],
-  
-  // Attraction subcategories (from places table)
-  show: ['tp_', 'generic_'],
-  dark_ride: ['tp_', 'generic_'],
-  boat_ride: ['tp_', 'generic_'],
-  roller_coaster: ['tp_', 'generic_'],
-  thrill_ride: ['tp_', 'generic_'],
-  water_ride: ['tp_', 'generic_'],
-  spinner: ['tp_', 'generic_'],
-  simulator: ['tp_', 'generic_'],
-  carousel: ['tp_', 'generic_'],
-  train: ['tp_', 'generic_'],
-  tour: ['tp_', 'generic_'],
-  meet_greet: ['tp_', 'generic_'],
-  playground: ['tp_', 'generic_'],
-  
-  // Restaurant cuisine subcategories (categoryConfig slugs)
-  italian: ['italian_', 'pizza_', 'restaurant_', 'generic_'],
-  mexican: ['mexican_', 'restaurant_', 'generic_'],
-  chinese: ['asian_', 'restaurant_', 'generic_'],
-  japanese: ['sushi_', 'restaurant_', 'generic_'],
-  thai: ['thai_', 'restaurant_', 'generic_'],
-  indian: ['indian_', 'restaurant_', 'generic_'],
-  seafood: ['seafood_', 'restaurant_', 'generic_'],
-  steakhouse: ['steak_', 'restaurant_', 'generic_'],
-  bbq: ['bbq_', 'restaurant_', 'generic_'],
-  pizza: ['pizza_', 'italian_', 'restaurant_', 'generic_'],
-  burgers: ['burger_', 'restaurant_', 'generic_'],
-  food_truck: ['foodtruck_', 'restaurant_', 'generic_'],
-  brazilian: ['brazilian_', 'restaurant_', 'generic_'],
-  korean: ['korean_', 'restaurant_', 'generic_'],
-  vietnamese: ['viet_', 'restaurant_', 'generic_'],
-  mediterranean: ['med_', 'restaurant_', 'generic_'],
-  greek: ['med_', 'restaurant_', 'generic_'],
-  french: ['french_', 'restaurant_', 'generic_'],
-
-  // FSQ raw subcategory names (extracted from category labels)
-  Pizzeria: ['pizza_', 'italian_', 'restaurant_', 'generic_'],
-  'Pizza Place': ['pizza_', 'italian_', 'restaurant_', 'generic_'],
-  'Sushi Restaurant': ['sushi_', 'restaurant_', 'generic_'],
-  'Japanese Restaurant': ['sushi_', 'restaurant_', 'generic_'],
-  'Ramen Restaurant': ['sushi_', 'restaurant_', 'generic_'],
-  'BBQ Joint': ['bbq_', 'restaurant_', 'generic_'],
-  'Barbecue Restaurant': ['bbq_', 'restaurant_', 'generic_'],
-  'Mexican Restaurant': ['mexican_', 'restaurant_', 'generic_'],
-  Taqueria: ['mexican_', 'restaurant_', 'generic_'],
-  'Italian Restaurant': ['italian_', 'pizza_', 'restaurant_', 'generic_'],
-  'Chinese Restaurant': ['asian_', 'restaurant_', 'generic_'],
-  'Asian Restaurant': ['asian_', 'restaurant_', 'generic_'],
-  'Dim Sum Restaurant': ['asian_', 'restaurant_', 'generic_'],
-  'Noodle House': ['asian_', 'restaurant_', 'generic_'],
-  'Indian Restaurant': ['indian_', 'restaurant_', 'generic_'],
-  'Thai Restaurant': ['thai_', 'restaurant_', 'generic_'],
-  'Seafood Restaurant': ['seafood_', 'restaurant_', 'generic_'],
-  'Fish Market': ['seafood_', 'restaurant_', 'generic_'],
-  Steakhouse: ['steak_', 'restaurant_', 'generic_'],
-  'Burger Joint': ['burger_', 'restaurant_', 'generic_'],
-  'Burger Restaurant': ['burger_', 'restaurant_', 'generic_'],
-  'Fast Food Restaurant': ['burger_', 'restaurant_', 'generic_'],
-  'Brazilian Restaurant': ['brazilian_', 'restaurant_', 'generic_'],
-  Churrascaria: ['brazilian_', 'restaurant_', 'generic_'],
-  'Korean Restaurant': ['korean_', 'restaurant_', 'generic_'],
-  'Korean BBQ Restaurant': ['korean_', 'restaurant_', 'generic_'],
-  'Vietnamese Restaurant': ['viet_', 'restaurant_', 'generic_'],
-  'Pho Restaurant': ['viet_', 'restaurant_', 'generic_'],
-  'Mediterranean Restaurant': ['med_', 'restaurant_', 'generic_'],
-  'Greek Restaurant': ['med_', 'restaurant_', 'generic_'],
-  'French Restaurant': ['french_', 'restaurant_', 'generic_'],
-  Bistro: ['french_', 'restaurant_', 'generic_'],
-  Brasserie: ['french_', 'restaurant_', 'generic_'],
-  'Food Truck': ['foodtruck_', 'restaurant_', 'generic_'],
-  'Food Stand': ['foodtruck_', 'restaurant_', 'generic_'],
-  'Food Court': ['restaurant_', 'generic_'],
-  
-  // Automotive subcategories
-  gas_station: ['fuel_', 'generic_'],
-  ev_charging: ['fuel_', 'generic_'],
-  car_wash: ['auto_', 'generic_'],
-  auto_repair: ['auto_', 'generic_'],
-  
-  // Government subcategories
-  border_crossing: ['border_', 'generic_'],
-  checkpoint: ['border_', 'generic_'],
-  dmv_gov: ['gov_', 'generic_'],
-  post_office: ['gov_', 'generic_'],
-};
-
 // ============================================
 // SIGNAL LOOKUP FUNCTIONS
 // ============================================
@@ -323,20 +140,6 @@ export const getCategoryFromTag = getCategoryFromSignal;
 /**
  * Get the signal prefixes for a given category/subcategory.
  */
-export function getSignalPrefixesForCategory(
-  primaryCategory: string,
-  subcategory?: string
-): string[] {
-  if (subcategory && SUBCATEGORY_SIGNAL_OVERRIDES[subcategory]) {
-    return SUBCATEGORY_SIGNAL_OVERRIDES[subcategory];
-  }
-  return CATEGORY_SIGNAL_PREFIXES[primaryCategory] || ['generic_'];
-}
-
-/**
- * Get all signals available for a specific category.
- * Returns signals grouped by signal_type (best_for, vibe, heads_up).
- */
 export async function getSignalsForCategory(
   primaryCategory: string,
   subcategory?: string
@@ -352,7 +155,7 @@ export async function getSignalsForCategory(
   };
   
   signalsBySlug.forEach((signal) => {
-    const matchesPrefix = prefixes.some(prefix => signal.slug.startsWith(prefix));
+    const matchesPrefix = signalMatchesCategory(signal, primaryCategory, subcategory);
     
     if (matchesPrefix) {
       const signalForUI: Signal = {
@@ -380,60 +183,8 @@ export async function getSignalsForCategory(
  * This is the main function used by AddReviewScreen.
  */
 export async function fetchSignalsForPlace(placeId: string): Promise<SignalsByCategory> {
-  await loadSignalCache();
-  
-  try {
-    // Try to get the place's category from places_unified or tavvy_places
-    const { data: place, error } = await supabase
-      .from('places_unified')
-      .select('tavvy_primary_category, tavvy_subcategory')
-      .eq('id', placeId)
-      .maybeSingle();
-    
-    if (place && place.tavvy_primary_category) {
-      return await getSignalsForCategory(
-        place.tavvy_primary_category,
-        place.tavvy_subcategory
-      );
-    }
-    
-    // Fallback: Try tavvy_places table
-    const { data: tavvyPlace } = await supabase
-      .from('tavvy_places')
-      .select('primary_category, subcategory')
-      .eq('id', placeId)
-      .maybeSingle();
-    
-    if (tavvyPlace && tavvyPlace.primary_category) {
-      return await getSignalsForCategory(
-        tavvyPlace.primary_category,
-        tavvyPlace.subcategory
-      );
-    }
-    
-    // Fallback: Try places table (for cities and other entities)
-    const { data: simplePlace } = await supabase
-      .from('places')
-      .select('tavvy_category, tavvy_subcategory')
-      .eq('id', placeId)
-      .maybeSingle();
-    
-    if (simplePlace) {
-      const category = simplePlace.tavvy_category;
-      const subcategory = simplePlace.tavvy_subcategory;
-      if (category) {
-        return await getSignalsForCategory(category, subcategory);
-      }
-    }
-    
-    // Default: Return generic signals for all categories
-    return await getSignalsForCategory('other');
-    
-  } catch (error) {
-    console.error('Error fetching place category:', error);
-    // Return generic signals on error
-    return await getSignalsForCategory('other');
-  }
+  const category = await loadPlaceSignalCategory(supabase, placeId);
+  return getSignalsForCategory(category.primary, category.subcategory);
 }
 
 /**
@@ -455,8 +206,8 @@ export function isSignalApplicableToCategory(
   primaryCategory: string,
   subcategory?: string
 ): boolean {
-  const prefixes = getSignalPrefixesForCategory(primaryCategory, subcategory);
-  return prefixes.some(prefix => signalSlug.startsWith(prefix));
+  const signal = signalsBySlug.get(signalSlug);
+  return signalMatchesCategory(signal || { id: '', slug: signalSlug, label: '', signal_type: 'best_for' }, primaryCategory, subcategory);
 }
 
 // ============================================
@@ -490,178 +241,7 @@ export const SIGNAL_LABELS = {
 // PLACE RESOLUTION
 // ============================================
 
-async function resolvePlaceId(placeIdentifier: string, placeName: string): Promise<string | null> {
-  try {
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(placeIdentifier);
-    
-    // If it's already a UUID, verify it exists in the places table
-    if (isUUID) {
-      const { data } = await supabase
-        .from('places')
-        .select('id')
-        .eq('id', placeIdentifier)
-        .maybeSingle();
-      if (data) return data.id;
-    }
 
-    // 1. Check canonical places table by source_id (handles FSQ IDs stored there)
-    const { data: bySourceId } = await supabase
-      .from('places')
-      .select('id')
-      .eq('source_id', placeIdentifier)
-      .maybeSingle();
-    if (bySourceId) return bySourceId.id;
-
-    // 2. Check by google_place_id (handles Google Place IDs)
-    const { data: byGoogleId } = await supabase
-      .from('places')
-      .select('id')
-      .eq('google_place_id', placeIdentifier)
-      .maybeSingle();
-    if (byGoogleId) return byGoogleId.id;
-
-    // 3. Check fsq_places_raw table and auto-promote to canonical places
-    const { data: fsqPlace } = await supabase
-      .from('fsq_places_raw')
-      .select('fsq_place_id, name, latitude, longitude, address, locality, region, country, postcode, tel, website, email')
-      .eq('fsq_place_id', placeIdentifier)
-      .maybeSingle();
-
-    if (fsqPlace) {
-      // Promote FSQ place to canonical places table
-      console.log('Promoting FSQ place to canonical:', placeIdentifier);
-      const { data: newPlace, error: createError } = await supabase
-        .from('places')
-        .insert({
-          name: fsqPlace.name || placeName,
-          source_type: 'fsq',
-          source_id: fsqPlace.fsq_place_id,
-          latitude: fsqPlace.latitude,
-          longitude: fsqPlace.longitude,
-          address: fsqPlace.address,
-          city: fsqPlace.locality,
-          region: fsqPlace.region,
-          country: fsqPlace.country,
-          postcode: fsqPlace.postcode,
-          phone: fsqPlace.tel,
-          website: fsqPlace.website,
-          email: fsqPlace.email,
-        })
-        .select('id')
-        .single();
-
-      if (createError) {
-        console.error('Error promoting FSQ place:', createError);
-        return null;
-      }
-      return newPlace.id;
-    }
-
-    // 4. Last resort: create a minimal place entry
-    console.log('Place not found anywhere, creating new place for:', placeIdentifier);
-    const { data: newPlace, error: createError } = await supabase
-      .from('places')
-      .insert({
-        google_place_id: placeIdentifier,
-        name: placeName,
-      })
-      .select('id')
-      .single();
-
-    if (createError) {
-      console.error('Error creating place:', createError);
-      return null;
-    }
-
-    return newPlace.id;
-  } catch (error) {
-    console.error('Error in resolvePlaceId:', error);
-    return null;
-  }
-}
-
-// ============================================
-// REVIEW SUBMISSION
-// ============================================
-
-export async function submitReview(
-  googlePlaceId: string,
-  placeName: string,
-  signals: ReviewSignalTap[],
-  publicNote?: string,
-  privateNote?: string
-): Promise<{ success: boolean; error?: any; reviewId?: string }> {
-  try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !user) {
-      console.log('No authenticated user, submitting as anonymous');
-    }
-
-    const userId = user?.id || null;
-
-    // RESOLVE PLACE ID — handles UUIDs, FSQ IDs, and Google Place IDs
-    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(googlePlaceId);
-    let targetPlaceId = googlePlaceId;
-    
-    if (!isValidUUID) {
-      const resolvedId = await resolvePlaceId(googlePlaceId, placeName);
-      if (!resolvedId) {
-        return { success: false, error: 'Failed to resolve Place UUID' };
-      }
-      targetPlaceId = resolvedId;
-    } else {
-      // Even if it looks like a UUID, verify it exists
-      const resolvedId = await resolvePlaceId(googlePlaceId, placeName);
-      if (resolvedId) {
-        targetPlaceId = resolvedId;
-      }
-    }
-
-    const { data: review, error: reviewError } = await supabase
-      .from('place_reviews')
-      .insert({
-        place_id: targetPlaceId,
-        user_id: userId,
-        public_note: publicNote || null,
-        private_note_owner: privateNote || null,
-        source: 'mobile_app',
-        status: 'live',
-      })
-      .select()
-      .single();
-
-    if (reviewError) {
-      console.error('Error creating review:', reviewError);
-      return { success: false, error: reviewError };
-    }
-
-    if (signals.length > 0) {
-      const signalTaps = signals.map(signal => ({
-        review_id: review.id,
-        place_id: targetPlaceId,
-        signal_id: signal.signalId,
-        intensity: signal.intensity,
-      }));
-
-      const { error: tapsError } = await supabase
-        .from('place_review_signal_taps')
-        .insert(signalTaps);
-
-      if (tapsError) {
-        console.error('Error saving signal taps:', tapsError);
-        return { success: false, error: tapsError };
-      }
-    }
-
-    console.log('✅ Review submitted successfully!', review.id);
-    return { success: true, reviewId: review.id };
-
-  } catch (error) {
-    console.error('Error submitting review:', error);
-    return { success: false, error };
-  }
-}
 
 // ============================================
 // THE TAVVY ENGINE: Time Decay Calculation
@@ -814,112 +394,8 @@ export async function fetchPlaceSignals(placeId: string): Promise<{
 // USER REVIEW MANAGEMENT
 // ============================================
 
-export async function fetchUserReview(placeId: string): Promise<{
-  review: PlaceReview | null;
-  signals: ReviewSignalTap[];
-}> {
-  try {
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !authData?.user) {
-      return { review: null, signals: [] };
-    }
 
-    const user = authData.user;
 
-    const { data: review, error: reviewError } = await supabase
-      .from('place_reviews')
-      .select('*')
-      .eq('place_id', placeId)
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (reviewError) {
-      console.error('Error fetching user review:', reviewError);
-      return { review: null, signals: [] };
-    }
-
-    if (!review) {
-      return { review: null, signals: [] };
-    }
-
-    const { data: taps, error: tapsError } = await supabase
-      .from('place_review_signal_taps')
-      .select('signal_id, intensity')
-      .eq('review_id', review.id);
-
-    if (tapsError) {
-      return { review: review as PlaceReview, signals: [] };
-    }
-
-    const signals: ReviewSignalTap[] = (taps || []).map(tap => ({
-      signalId: tap.signal_id,
-      intensity: tap.intensity,
-    }));
-
-    return { review: review as PlaceReview, signals };
-
-  } catch (error) {
-    console.error('Error fetching user review:', error);
-    return { review: null, signals: [] };
-  }
-}
-
-export async function updateReview(
-  reviewId: string,
-  placeId: string,
-  signals: ReviewSignalTap[],
-  publicNote?: string,
-  privateNote?: string
-): Promise<{ success: boolean; error?: any }> {
-  try {
-    const { error: reviewError } = await supabase
-      .from('place_reviews')
-      .update({
-        public_note: publicNote || null,
-        private_note_owner: privateNote || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', reviewId);
-
-    if (reviewError) {
-      return { success: false, error: reviewError };
-    }
-
-    const { error: deleteError } = await supabase
-      .from('place_review_signal_taps')
-      .delete()
-      .eq('review_id', reviewId);
-
-    if (deleteError) {
-      console.error('Error deleting old signal taps:', deleteError);
-    }
-
-    if (signals.length > 0) {
-      const signalTaps = signals.map(signal => ({
-        review_id: reviewId,
-        place_id: placeId,
-        signal_id: signal.signalId,
-        intensity: signal.intensity,
-      }));
-
-      const { error: tapsError } = await supabase
-        .from('place_review_signal_taps')
-        .insert(signalTaps);
-
-      if (tapsError) {
-        return { success: false, error: tapsError };
-      }
-    }
-
-    console.log('✅ Review updated successfully!');
-    return { success: true };
-
-  } catch (error) {
-    console.error('Error updating review:', error);
-    return { success: false, error };
-  }
-}
 
 // ============================================
 // UTILITY FUNCTIONS
@@ -929,7 +405,7 @@ export async function getPlaceReviewCount(placeId: string): Promise<number> {
   try {
     const { count, error } = await supabase
       .from('place_reviews')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('place_id', placeId)
       .eq('status', 'live');
 

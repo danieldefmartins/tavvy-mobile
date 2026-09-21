@@ -1,137 +1,27 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
+import RestaurantCreateForm from '../components/RestaurantCreateForm';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { Colors } from '../constants/Colors';
-import { useTranslation } from 'react-i18next';
+import { useAuth } from '../contexts/AuthContext';
+import { useThemeContext } from '../contexts/ThemeContext';
+import { supabase } from '../lib/supabaseClient';
+import { claimStatusLabel, getRestaurantWorkspace, isPlaceId, OWNER_CLAIM_COLUMNS, OwnerClaim, OwnerPlace, submitRestaurantClaim } from '../lib/restaurantOwner';
 
-export default function ClaimBusinessScreen() {
-  const { t } = useTranslation();
-  const navigation = useNavigation();
-
-  const handleClaim = () => {
-    Alert.alert(
-      "Claim Request Sent",
-      "Thanks for claiming this business! Our team will verify your details and get back to you shortly.",
-      [{ text: "OK", onPress: () => navigation.goBack() }]
-    );
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={Colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Claim Business</Text>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="business" size={64} color={Colors.primary} />
-        </View>
-        
-        <Text style={styles.title}>Manage Your Presence</Text>
-        <Text style={styles.subtitle}>
-          Claiming your business allows you to update details, respond to reviews, and see analytics.
-        </Text>
-
-        <View style={styles.form}>
-          <Text style={styles.label}>Business Name</Text>
-          <TextInput style={styles.input} placeholder="e.g. Joe's Coffee" />
-
-          <Text style={styles.label}>Your Role</Text>
-          <TextInput style={styles.input} placeholder="e.g. Owner, Manager" />
-
-          <Text style={styles.label}>Business Email</Text>
-          <TextInput style={styles.input} placeholder="you@business.com" keyboardType="email-address" />
-
-          <Text style={styles.label}>Phone Number</Text>
-          <TextInput style={styles.input} placeholder="(555) 123-4567" keyboardType="phone-pad" />
-        </View>
-
-        <TouchableOpacity style={styles.submitButton} onPress={handleClaim}>
-          <Text style={styles.submitButtonText}>Submit Claim</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
-  );
+export default function ClaimBusinessScreen({ navigation, route }: any) {
+ const {user}=useAuth(),{theme}=useThemeContext();
+ const placeId=typeof route?.params?.placeId==='string'?route.params.placeId:'';
+ const [place,setPlace]=useState<OwnerPlace|null>(null),[claimsData,setClaims]=useState<OwnerClaim[]>([]),[results,setResults]=useState<OwnerPlace[]>([]);
+ const [claimsFor,setClaimsFor]=useState('');const claims=user?.id===claimsFor?claimsData:[];
+ const [query,setQuery]=useState(route?.params?.restaurantName||''),[name,setName]=useState(''),[role,setRole]=useState(''),[email,setEmail]=useState(''),[phone,setPhone]=useState('');
+ const [accepted,setAccepted]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[searched,setSearched]=useState(false);
+ const text={color:theme.text},muted={color:theme.textSecondary,lineHeight:23 as const};
+ const input={borderWidth:1,borderColor:theme.border,backgroundColor:theme.surface,color:theme.text,borderRadius:10,padding:14,fontSize:16,marginTop:8,marginBottom:18};
+ const button=(title:string,onPress:()=>void,disabled=false)=><TouchableOpacity accessibilityRole="button" disabled={disabled} onPress={onPress} style={{padding:16,borderRadius:10,backgroundColor:'#215e50',marginVertical:8,opacity:disabled ? 0.5 : 1}}><Text style={{color:'#fff',fontSize:16,fontWeight:'700'}}>{title}</Text></TouchableOpacity>;
+ useEffect(()=>{let live=true;setPlace(null);setError('');if(!isPlaceId(placeId))return;supabase.from('places').select('id,name,street,city,region').eq('id',placeId).maybeSingle().then(({data,error})=>{if(live){if(error||!data)setError('This place could not be loaded. Try again from restaurant lookup.');else setPlace(data);}});return()=>{live=false;};},[placeId]);
+ useEffect(()=>{let live=true;if(!user)return;setEmail(user.email||'');if(isPlaceId(placeId)){getRestaurantWorkspace(supabase,placeId).then(w=>{if(live&&w.claim)navigation.replace('RestaurantWorkspace',{placeId});}).catch(()=>{if(live)setError('Your saved claim status could not be checked. Please try again.');});}else{supabase.from('pro_business_claims').select(OWNER_CLAIM_COLUMNS).eq('user_id',user.id).eq('claim_kind','restaurant').order('created_at',{ascending:false}).then(({data,error})=>{if(live){if(error)setError('Your saved requests could not be loaded.');else {setClaims((data||[]) as OwnerClaim[]);setClaimsFor(user.id);}}});}return()=>{live=false;};},[user?.id,placeId]);
+ const search=async()=>{if(query.trim().length<2)return;setBusy(true);setError('');setSearched(false);try{const {data,error}=await supabase.from('places').select('id,name,street,city,region').ilike('name',`%${query.trim().replace(/[\\%_]/g,'\\$&')}%`).order('name').limit(30);if(error)throw error;setResults(data||[]);setSearched(true);}catch{setError('Restaurant lookup is unavailable. Please try again.');}finally{setBusy(false);}};
+ const submit=async()=>{setBusy(true);setError('');try{await submitRestaurantClaim(supabase,{placeId,name,role,email,phone,accepted});navigation.replace('RestaurantWorkspace',{placeId});}catch(error){setError((error as Error).message);}finally{setBusy(false);}};
+ const authParams={returnTo:'ClaimBusiness',returnParams:{placeId},context:'restaurant'};
+ if(route?.params?.createRestaurant)return <SafeAreaView style={{flex:1,backgroundColor:theme.background}}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{padding:22,paddingBottom:70}}><RestaurantCreateForm initialName={route.params.restaurantName||query} navigation={navigation} onCancel={()=>navigation.setParams({createRestaurant:false})}/></ScrollView></SafeAreaView>;
+ return <SafeAreaView style={{flex:1,backgroundColor:theme.background}}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{padding:22,paddingBottom:70}}>{button('← Back',()=>navigation.goBack())}<Text accessibilityRole="header" style={{...text,fontSize:28,fontWeight:'800',marginVertical:20}}>{place?`Claim ${place.name}`:'Bring your restaurant to Tavvy'}</Text>{error?<Text accessibilityRole="alert" style={{...text,borderLeftWidth:4,borderLeftColor:'#b42318',padding:12,marginBottom:12}}>{error}</Text>:null}{!isPlaceId(placeId)?<><Text style={muted}>Find your restaurant, request ownership, and continue setup after verification.</Text>{claims.map(c=><TouchableOpacity accessibilityRole="button" key={c.id} onPress={()=>navigation.navigate('RestaurantWorkspace',{placeId:c.place_id})} style={{paddingVertical:18,borderBottomWidth:1,borderColor:theme.border}}><Text style={{...text,fontWeight:'700'}}>{c.business_name}</Text><Text style={muted}>{claimStatusLabel(c)} · Continue setup</Text></TouchableOpacity>)}<Text style={{...text,marginTop:22}}>Restaurant name</Text><TextInput accessibilityLabel="Restaurant name" style={input} value={query} onChangeText={setQuery} maxLength={120} onSubmitEditing={search} placeholder="Your restaurant’s name" placeholderTextColor={theme.textSecondary}/>{button(busy?'Searching…':'Find my restaurant',search,busy||query.trim().length<2)}{results.map(p=><TouchableOpacity accessibilityRole="button" key={p.id} onPress={()=>navigation.push('ClaimBusiness',{placeId:p.id,placeName:p.name})} style={{paddingVertical:18,borderBottomWidth:1,borderColor:theme.border}}><Text style={{...text,fontWeight:'700'}}>{p.name}</Text><Text style={muted}>{[p.street,p.city,p.region].filter(Boolean).join(', ')}</Text></TouchableOpacity>)}{searched?<><Text style={muted}>{results.length?'Can’t see your restaurant at the right address?':'No matching place yet. Add it here and continue your ownership request.'}</Text>{button('Add my restaurant',()=>navigation.setParams({createRestaurant:true,restaurantName:query.trim()}))}</>:null}</>:!place?<ActivityIndicator color={theme.text}/>:!user?<><Text style={muted}>Create an account or sign in. We’ll bring you back to {place.name} to finish your request.</Text>{button('Create a restaurant account',()=>navigation.navigate('SignUp',authParams))}{button('Sign in',()=>navigation.navigate('Login',authParams))}</>:<><Text style={muted}>{[place.street,place.city,place.region].filter(Boolean).join(', ')}</Text><Text style={{...muted,marginVertical:18}}>Your contact details are private and used for ownership verification. Submitting a request does not grant editing access.</Text>{([{label:'Your full name',value:name,set:setName,max:120},{label:'Your role',value:role,set:setRole,max:80},{label:'Business email',value:email,set:setEmail,max:254},{label:'Contact phone',value:phone,set:setPhone,max:32}] as const).map(f=><View key={f.label}><Text style={text}>{f.label}</Text><TextInput accessibilityLabel={f.label} style={input} value={f.value} onChangeText={f.set} maxLength={f.max} autoCapitalize={f.label==='Business email'?'none':'sentences'} keyboardType={f.label==='Business email'?'email-address':f.label==='Contact phone'?'phone-pad':'default'}/></View>)}<View style={{flexDirection:'row',alignItems:'center',gap:12}}><Switch accessibilityLabel="I am authorized to represent this restaurant" value={accepted} onValueChange={setAccepted}/><Text style={{...muted,flex:1}}>I am authorized to represent this restaurant and the details are accurate.</Text></View>{button(busy?'Saving request…':'Submit ownership request',submit,busy)}</>}</ScrollView></SafeAreaView>;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'white',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.text,
-  },
-  content: {
-    padding: 24,
-  },
-  iconContainer: {
-    alignSelf: 'center',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: `${Colors.primary}10`,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.text,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 24,
-  },
-  form: {
-    gap: 16,
-    marginBottom: 32,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 4,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-  },
-  submitButton: {
-    backgroundColor: Colors.primary,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  submitButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-});

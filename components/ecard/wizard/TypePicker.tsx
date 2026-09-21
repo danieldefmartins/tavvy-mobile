@@ -1,3 +1,4 @@
+import { useReleaseCopy } from '../../../hooks/useReleaseCopy';
 /**
  * TypePicker -- Step 1 of creation wizard: choose card type.
  * Business, Personal, or Politician (with inline country picker).
@@ -71,6 +72,7 @@ interface TypePickerProps {
 }
 
 export default function TypePicker({ onSelect, isDark }: TypePickerProps) {
+  const copy = useReleaseCopy();
   const [showCountries, setShowCountries] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
 
@@ -84,11 +86,11 @@ export default function TypePicker({ onSelect, isDark }: TypePickerProps) {
     if (!q) return COUNTRIES;
     return COUNTRIES.filter(
       (c) =>
-        c.name.toLowerCase().includes(q) ||
+        c.name.toLowerCase().includes(q) || copy(c.name).toLowerCase().includes(q) ||
         c.nameLocal.toLowerCase().includes(q) ||
         c.code.toLowerCase().includes(q),
     );
-  }, [countrySearch]);
+  }, [countrySearch, copy]);
 
   // ── Country picker view ───────────────────────────────────
   if (showCountries) {
@@ -105,10 +107,10 @@ export default function TypePicker({ onSelect, isDark }: TypePickerProps) {
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={[styles.countryHeaderTitle, { color: textPrimary }]}>
-              Select your country
+              {copy("Select your country")}
             </Text>
             <Text style={[styles.countryHeaderSubtitle, { color: textSecondary }]}>
-              Choose where the politician operates
+              {copy("Choose where the politician operates")}
             </Text>
           </View>
         </View>
@@ -126,7 +128,7 @@ export default function TypePicker({ onSelect, isDark }: TypePickerProps) {
           <Ionicons name="search" size={18} color={textSecondary} />
           <TextInput
             style={[styles.searchInput, { color: textPrimary }]}
-            placeholder="Search country..."
+            placeholder={copy("Search country...")}
             placeholderTextColor={textSecondary}
             value={countrySearch}
             onChangeText={setCountrySearch}
@@ -177,9 +179,9 @@ export default function TypePicker({ onSelect, isDark }: TypePickerProps) {
                     },
                   ]}
                 >
-                  {country.name}
+                  {copy(country.name)}
                 </Text>
-                {country.nameLocal !== country.name && (
+                {country.nameLocal !== copy(country.name) && (
                   <Text style={[styles.countryLocalName, { color: textSecondary }]}>
                     {country.nameLocal}
                   </Text>
@@ -201,9 +203,9 @@ export default function TypePicker({ onSelect, isDark }: TypePickerProps) {
   // ── Type selection view ───────────────────────────────────
   return (
     <View style={styles.container}>
-      <Text style={[styles.title, { color: textPrimary }]}>What kind of card?</Text>
+      <Text style={[styles.title, { color: textPrimary }]}>{copy("What kind of card?")}</Text>
       <Text style={[styles.subtitle, { color: textSecondary }]}>
-        Select the type that best fits your needs
+        {copy("Select the type that best fits your needs")}
       </Text>
 
       <View style={styles.optionsContainer}>
@@ -235,8 +237,8 @@ export default function TypePicker({ onSelect, isDark }: TypePickerProps) {
                 <Ionicons name={icon} size={26} color="#FFFFFF" />
               </LinearGradient>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.typeName, { color: textPrimary }]}>{name}</Text>
-                <Text style={[styles.typeDesc, { color: textSecondary }]}>{desc}</Text>
+                <Text style={[styles.typeName, { color: textPrimary }]}>{copy(name)}</Text>
+                <Text style={[styles.typeDesc, { color: textSecondary }]}>{copy(desc)}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={textSecondary} />
             </TouchableOpacity>

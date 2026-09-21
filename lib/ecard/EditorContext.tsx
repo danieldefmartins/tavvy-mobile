@@ -23,7 +23,7 @@ import { resolveTemplateId } from '../../config/eCardTemplates';
 interface EditorContextValue {
   state: EditorState;
   dispatch: React.Dispatch<EditorAction>;
-  loadCard: (cardId: string) => Promise<void>;
+  loadCard: (cardId: string, userId: string) => Promise<void>;
 }
 
 const EditorContext = createContext<EditorContextValue | null>(null);
@@ -33,7 +33,7 @@ const EditorContext = createContext<EditorContextValue | null>(null);
 export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(editorReducer, initialEditorState);
 
-  const loadCard = useCallback(async (cardId: string) => {
+  const loadCard = useCallback(async (cardId: string, userId: string) => {
     try {
       // Fetch card and links in parallel
       const [cardResult, linksResult] = await Promise.all([
@@ -41,12 +41,12 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
           .from('digital_cards')
           .select('*')
           .eq('id', cardId)
+          .eq('user_id', userId)
           .single(),
         supabase
           .from('digital_card_links')
           .select('*')
           .eq('card_id', cardId)
-          .eq('is_active', true)
           .order('sort_order'),
       ]);
 
@@ -58,6 +58,10 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      if (linksResult.error) {
+        dispatch({ type: 'SET_LOAD_ERROR', error: 'Your links could not be loaded. Retry before editing to keep existing links safe.' });
+        return;
+      }
       const card = cardResult.data;
       const links = linksResult.data || [];
 
@@ -86,10 +90,10 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         card_id: l.card_id,
         platform: l.icon || l.platform || 'other',
         title: l.title,
-        url: l.url,
+        url: l.url ?? l.value ?? '',
         icon: l.icon,
         sort_order: l.sort_order,
-        is_active: l.is_active,
+        is_active: l.is_active === true,
         clicks: l.clicks,
       }));
 

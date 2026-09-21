@@ -70,7 +70,7 @@ interface CardData {
   socialWhatsapp: string;
   featuredSocials: ({ platform: string; url: string } | string)[];
   galleryImages: { id: string; url: string; caption?: string }[];
-  videos: { type: string; url: string }[];
+  videos: { type: string; url: string; thumbnail_url?: string }[];
   links: { id: string; title: string; url: string; icon: string }[];
   viewCount: number;
   showContactInfo: boolean;
@@ -380,11 +380,11 @@ export default function PublicCardViewScreen() {
 
   // Resolve template
   const template = getTemplateByIdWithMigration(cardData.templateId);
-  const templateLayout: TemplateLayout = (template?.layout || 'classic') as TemplateLayout;
-  const isBannerLayout = templateLayout === 'banner' || templateLayout === 'modern' || templateLayout === 'executive';
-  const isBoldLayout = templateLayout === 'bold';
-  const isMinimalLayout = templateLayout === 'minimal';
-  const isNeonLayout = templateLayout === 'neon';
+  const templateLayout: TemplateLayout = template?.layout || 'basic';
+  const isBannerLayout = template?.layoutConfig.hasBannerImage === true;
+  const isBoldLayout = templateLayout === 'pro-creative';
+  const isMinimalLayout = templateLayout === 'biz-minimalist';
+  const isNeonLayout = templateLayout === 'full-width';
   const isCivicCard = templateLayout.startsWith('civic-card');
 
   // For civic cards, render the full web experience in a WebView

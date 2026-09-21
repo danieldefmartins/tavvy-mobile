@@ -1,12 +1,13 @@
+import { Picker } from '@react-native-picker/picker';
 import React, { useState } from 'react';
-import { View, Text, Picker, Button, StyleSheet } from 'react-native';
+import { View, Text, Button, StyleSheet } from 'react-native';
 import { useEditorField } from '../../lib/ecard/useEditorField';
-import Colors from '../../constants/Colors';
+import { Colors } from '../../constants/Colors';
 
 const CustomizationOptions = () => {
-  const [font, setFont] = useEditorField('font', 'Arial');
-  const [backgroundColor, setBackgroundColor] = useEditorField('backgroundColor', Colors.white);
-  const [buttonStyle, setButtonStyle] = useEditorField('buttonStyle', 'default');
+  const [font, setFont] = useEditorField('font_style');
+  const [backgroundColor, setBackgroundColor] = useEditorField('gradient_color_1');
+  const [buttonStyle, setButtonStyle] = useEditorField('button_style');
 
   return (
     <View style={styles.container}>
@@ -28,9 +29,9 @@ const CustomizationOptions = () => {
         onValueChange={(itemValue) => setBackgroundColor(itemValue)}
       >
         <Picker.Item label="White" value={Colors.white} />
-        <Picker.Item label="Purple" value={Colors.purple} />
-        <Picker.Item label="Teal" value={Colors.teal} />
-        <Picker.Item label="Amber" value={Colors.amber} />
+        <Picker.Item label="Purple" value={Colors.primary} />
+        <Picker.Item label="Teal" value={Colors.secondary} />
+        <Picker.Item label="Amber" value={Colors.warning} />
       </Picker>
 
       <Text style={styles.label}>Button Style</Text>
@@ -44,7 +45,7 @@ const CustomizationOptions = () => {
         <Picker.Item label="Outline" value="outline" />
       </Picker>
 
-      <Button title="Apply" onPress={() => console.log('Customization applied')} color={Colors.purple} />
+      <Button title="Apply" onPress={() => console.log('Customization applied')} color={Colors.primary} />
     </View>
   );
 };
@@ -52,7 +53,7 @@ const CustomizationOptions = () => {
 const styles = StyleSheet.create({
   container: {
     padding: 20,
-    backgroundColor: Colors.dark,
+    backgroundColor: Colors.background,
   },
   label: {
     fontSize: 16,
@@ -64,7 +65,7 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 20,
     color: Colors.white,
-    backgroundColor: Colors.dark,
+    backgroundColor: Colors.background,
   },
 });
 

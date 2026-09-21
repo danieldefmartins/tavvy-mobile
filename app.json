@@ -5,7 +5,7 @@
     "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "splash": {
       "image": "./assets/logo-full.png",
@@ -57,6 +57,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.360.tavvy",
       "infoPlist": {
+        "CFBundleLocalizations": ["en", "es", "pt", "fr", "de", "it", "nl", "ru", "ar", "tr", "hi", "id", "th", "vi", "ja", "ko", "zh"],
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "Tavvy uses your location to show nearby places and let you review locations around you.",
         "NSCameraUsageDescription": "Tavvy uses the camera so you can add photos to reviews and places.",
@@ -87,6 +88,7 @@
       "eas": {
         "projectId": "2ef919c9-1f62-4e75-9b4d-485e74b7c676"
       }
-    }
+    },
+    "scheme": "tavvy"
   }
 }
