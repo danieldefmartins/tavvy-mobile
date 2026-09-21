@@ -1,4 +1,5 @@
 import { normalizePlaceShareId } from './placeShare';
+import {loadCruiseVenueContext} from './cruises/venueContext';
 
 export const isCanonicalPlaceId = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
@@ -20,8 +21,13 @@ export async function lookupPlaceDetails(identifier: unknown, client: any, getIn
   if (!row && !provider) row = await read(client.from('places').select('*').eq('source_id', raw));
   if (row) {
     if (row.is_active === false || (row.status && row.status !== 'active')) return null;
-    return { ...row,
-      primary_category: row.tavvy_subcategory || row.tavvy_category || row.primary_category || row.category,
+    const cruiseVenue = await loadCruiseVenueContext(client, row);
+    return { ...row, cruiseVenue,
+      name: cruiseVenue?.venue_name || row.name,
+      tavvy_category: cruiseVenue?.review_category || row.tavvy_category,
+      tavvy_subcategory: cruiseVenue ? null : row.tavvy_subcategory,
+      description: cruiseVenue ? cruiseVenue.description : row.description,
+      primary_category: cruiseVenue?.review_category || row.tavvy_subcategory || row.tavvy_category || row.primary_category || row.category,
       address_line_1: row.street || row.address_line_1 || row.address_line1 || row.address,
       state: row.region || row.state, zip_code: row.postcode || row.zip_code,
     };

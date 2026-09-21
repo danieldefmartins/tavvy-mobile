@@ -1,3 +1,4 @@
+import {useReleaseCopy} from '../hooks/useReleaseCopy';
 import { placeShareUrl, normalizePlaceShareId } from '../lib/placeShare';
 import { lookupPlaceDetails, isCanonicalPlaceId } from '../lib/placeDetailsLookup';
 import { getPlaceById } from '../lib/typesenseService';
@@ -59,6 +60,8 @@ import { fetchPlaceEvidence } from '../lib/placeEvidenceService';
 import { PlaceEvidence, buildPlaceEvidence, coreForCategory, secondaryGoodSignals } from '../lib/placeEvidence';
 import { buildPlaceReviewSummary } from '../lib/placeReviewSummary';
 import OnTheGoStatus from '../components/OnTheGoStatus';
+import CruiseVenueInfo from '../components/cruises/CruiseVenueInfo';
+import {CruiseVenueReadError,CruiseVenueContext,CRUISE_VENUE_STORY_NOTICE,CRUISE_VENUE_REVIEW_NOTICE} from '../lib/cruises/venueContext';
 
 const { width } = Dimensions.get('window');
 
@@ -100,6 +103,8 @@ interface PlacePhoto {
 
 interface Place {
   id: string;
+  sourceType?: string;
+  cruiseVenue?: CruiseVenueContext | null;
   name: string;
   latitude: number;
   longitude: number;
@@ -297,9 +302,11 @@ const getDriveTime = (distanceMiles: number): string => {
 
 function PlaceDetailScreen({ route, navigation }: any) {
   const { t } = useTranslation();
+  const copy = useReleaseCopy();
   // ===== STATE DECLARATIONS =====
   const requestedPlaceId = route?.params?.placeId;
   const [place, setPlace] = useState<Place | null>(null);
+  const [placeRetry,setPlaceRetry] = useState(0);
   const placeId = place?.id || normalizePlaceShareId(requestedPlaceId) || '';
   const canonicalPlaceId = isCanonicalPlaceId(place?.id) ? place.id : null;
   const showMobileStatus = isCanonicalPlaceId(route?.params?.mobileBusinessId)
@@ -374,7 +381,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
 
   // Creating a canonical provider record is reserved for an explicit signed-in action.
   const openCanonicalPlaceAction = async (screen: 'StoryUpload' | 'ClaimBusiness') => {
-    if (!place) return;
+    if (!place || place.cruiseVenue) return;
     if (!user) { navigation.navigate('Login', { returnTo: 'PlaceDetails', returnParams: { placeId } }); return; }
     try {
       const resolved = canonicalPlaceId || await resolvePhotoPlace(placeId);
@@ -453,8 +460,11 @@ function PlaceDetailScreen({ route, navigation }: any) {
   const { hasTapped, userSignals } = useHasUserTapped(canonicalPlaceId || '');
   const { quickTap } = useTap();
 
-  // Fetch user location on mount
+  // Onboard places have no fixed geography and do not require device location.
+  const locationRequested = useRef(false);
   useEffect(() => {
+    if (!place || place.cruiseVenue || locationRequested.current) return;
+    locationRequested.current = true;
     const getUserLocation = async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
@@ -472,7 +482,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
       }
     };
     getUserLocation();
-  }, []);
+  }, [place?.id, place?.sourceType]);
 
   // Resolve canonical and provider IDs without creating records or fabricating data.
   useEffect(() => {
@@ -484,10 +494,12 @@ function PlaceDetailScreen({ route, navigation }: any) {
       try {
         const placeData = await lookupPlaceDetails(requestedPlaceId, supabase, getPlaceById);
         if (!active) return;
-        if (!placeData) { setError('Place not found'); setLoading(false); return; }
+        if (!placeData) { setError('Place not found.'); setLoading(false); return; }
           // Map database fields to Place interface
         const mappedPlace: Place = {
           id: placeData.id,
+          sourceType: placeData.source_type,
+          cruiseVenue: placeData.cruiseVenue,
           name: placeData.name,
           latitude: placeData.latitude,
           longitude: placeData.longitude,
@@ -564,14 +576,14 @@ function PlaceDetailScreen({ route, navigation }: any) {
         if (active) setLoading(false);
       } catch (err: any) {
         if (!active) return;
-        setError(err.message || 'Failed to load place');
+        setError(err instanceof CruiseVenueReadError ? err.message : 'Place information could not be loaded. Please try again.');
         setLoading(false);
       }
     };
 
     fetchPlaceData();
     return () => { active = false; };
-  }, [requestedPlaceId, userLocation, safetyVersion, user?.id]);
+  }, [requestedPlaceId, userLocation, safetyVersion, user?.id, placeRetry]);
 
   useEffect(() => {
     if (!canonicalPlaceId || !place?.primaryCategory) return;
@@ -712,12 +724,13 @@ function PlaceDetailScreen({ route, navigation }: any) {
 
   // Handle navigation to entrance
   const handleNavigate = (lat: number, lng: number, name: string) => {
+    if (place?.cruiseVenue || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
     setNavDestination({ lat, lng, name });
     setShowNavModal(true);
   };
 
   const openMapsApp = (app: 'apple' | 'google' | 'waze') => {
-    if (!navDestination) return;
+    if (!navDestination || place?.cruiseVenue) return;
     const { lat, lng, name } = navDestination;
     
     let url = '';
@@ -965,7 +978,8 @@ function PlaceDetailScreen({ route, navigation }: any) {
     return (
       <View style={styles.centerContainer}>
         <Ionicons name="alert-circle" size={64} color="#999" />
-        <Text style={styles.errorText}>{error || 'Place not found'}</Text>
+        <Text style={styles.errorText}>{copy(error || 'Place not found.')}</Text>
+        <TouchableOpacity accessibilityRole="button" style={styles.errorButton} onPress={()=>setPlaceRetry(value=>value+1)}><Text style={styles.errorButtonText}>{copy('Try again')}</Text></TouchableOpacity>
         <TouchableOpacity 
           style={styles.errorButton}
           onPress={() => navigation.goBack()}
@@ -999,6 +1013,15 @@ function PlaceDetailScreen({ route, navigation }: any) {
   const categoryEmoji = getCategoryEmoji(place.primaryCategory);
 
   const hasMenuTab = hasActiveMenu;
+  const cruiseVenue = place.cruiseVenue;
+  const reviewDisabled = !!cruiseVenue && !cruiseVenue.accepts_reviews;
+  const openParentShip = () => {
+    if (!cruiseVenue) return;
+    const state = navigation.getState();
+    const previous = state.routes[state.index - 1];
+    if (previous?.name === 'UniverseDetail' && previous.params?.universeId === cruiseVenue.universe_id) navigation.goBack();
+    else navigation.navigate('UniverseDetail', {universeId:cruiseVenue.universe_id});
+  };
   const placeTabs = [
     { key: 'overview', label: 'Overview' },
     { key: 'media', label: 'Photos & Stories' },
@@ -1067,14 +1090,15 @@ function PlaceDetailScreen({ route, navigation }: any) {
           </View>}
         </View>
 
-        {activePlaceTab === 'overview' && canonicalPlaceId && showMobileStatus && <View style={{ marginHorizontal: 20 }}><OnTheGoStatus canonicalPlaceId={canonicalPlaceId} /></View>}
+        {activePlaceTab === 'overview' && cruiseVenue && <View style={{marginHorizontal:20}}><CruiseVenueInfo context={cruiseVenue} onShip={openParentShip}/></View>}
+        {activePlaceTab === 'overview' && !cruiseVenue && canonicalPlaceId && showMobileStatus && <View style={{ marginHorizontal: 20 }}><OnTheGoStatus canonicalPlaceId={canonicalPlaceId} /></View>}
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginTop: 16, borderBottomWidth: 1, borderBottomColor: theme.border }} contentContainerStyle={{ paddingHorizontal: 20, gap: 20 }}>
           {placeTabs.map(tab => <TouchableOpacity key={tab.key} accessibilityRole="tab" accessibilityState={{ selected: activePlaceTab === tab.key }} onPress={() => setActivePlaceTab(tab.key)} style={{ paddingVertical: 13, borderBottomWidth: 3, borderBottomColor: activePlaceTab === tab.key ? '#8A05BE' : 'transparent' }}><Text style={{ fontSize: 14, fontWeight: '700', color: activePlaceTab === tab.key ? theme.text : theme.textSecondary }}>{tab.label}</Text></TouchableOpacity>)}
         </ScrollView>
 
         {activePlaceTab === 'media' && <View style={{ paddingHorizontal: 20, paddingTop: 22 }}>
-          <Text style={{ color: theme.text, fontSize: 20, fontWeight: '800', marginBottom: 10 }}>Stories</Text>{stories.length===0&&<Text style={{color:theme.textSecondary}}>No stories yet. Share a look at the food or atmosphere.</Text>}<TouchableOpacity accessibilityRole="button" onPress={()=>void openCanonicalPlaceAction('StoryUpload')} style={{paddingVertical:14}}><Text style={{color:theme.primary,fontWeight:'700'}}>{stories.length?'Add a story':'Add the first story'}</Text></TouchableOpacity>
+          <Text style={{ color: theme.text, fontSize: 20, fontWeight: '800', marginBottom: 10 }}>Stories</Text>{stories.length===0&&<Text style={{color:theme.textSecondary}}>{cruiseVenue?copy('No stories from this place yet.'):'No stories yet. Share a look at the food or atmosphere.'}</Text>}{cruiseVenue?<Text style={{color:theme.textSecondary,lineHeight:22,marginVertical:12}}>{copy(CRUISE_VENUE_STORY_NOTICE)}</Text>:<TouchableOpacity accessibilityRole="button" onPress={()=>void openCanonicalPlaceAction('StoryUpload')} style={{paddingVertical:14}}><Text style={{color:theme.primary,fontWeight:'700'}}>{stories.length?'Add a story':'Add the first story'}</Text></TouchableOpacity>}
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {stories.slice(0, 8).map((story, i) => <TouchableOpacity key={story.id || i} onPress={() => setShowStoryViewer(true)} style={{ marginRight: 10, width: 138 }}>
               <Image source={{ uri: story.thumbnail_url || story.media_url }} style={{ width: 138, height: 112, borderRadius: 12 }} />
@@ -1172,9 +1196,10 @@ function PlaceDetailScreen({ route, navigation }: any) {
         {/* ===== 7. INFO SECTION (collapsed/expandable) ===== */}
         {activePlaceTab === 'details' && <View style={styles.sectionPadding}>
           <View style={styles.cardContainer}>
-            <Text style={styles.cardTitle}>Visit & contact</Text>
+            <Text style={styles.cardTitle}>{cruiseVenue ? copy('Onboard place information') : 'Visit & contact'}</Text>
+            {!!cruiseVenue?.description && <Text style={{color:theme.text,lineHeight:22,marginVertical:10}}>{cruiseVenue.description}</Text>}
               <View style={styles.infoContent}>
-                {fullAddress ? (
+                {!cruiseVenue && fullAddress ? (
                   <TouchableOpacity
                     style={styles.contactItem}
                     onPress={() => setShowAddressModal(true)}
@@ -1206,24 +1231,24 @@ function PlaceDetailScreen({ route, navigation }: any) {
 
                 {confirmedLinks.map(link=><TouchableOpacity key={link.label} accessibilityRole="link" style={styles.contactItem} onPress={()=>Linking.openURL(link.url)}><Text style={styles.infoLink}>{link.label} ↗</Text></TouchableOpacity>)}
                 {ecardSlug&&<TouchableOpacity accessibilityRole="link" style={styles.contactItem} onPress={()=>Linking.openURL(`https://tavvy.com/${encodeURIComponent(ecardSlug)}`)}><Text style={styles.infoLink}>Restaurant eCard ↗</Text></TouchableOpacity>}
-                <Text style={[styles.cardTitle,{marginTop:20}]}>Hours</Text>
-                {parseHours(place.opening_hours).hoursList.map(row=><View key={row.day} style={{flexDirection:'row',justifyContent:'space-between',gap:12,paddingVertical:7}}><Text style={{color:theme.text}}>{row.day}</Text><Text style={{color:theme.textSecondary,flexShrink:1}}>{row.range}</Text></View>)}
-                <TouchableOpacity
+                {(!cruiseVenue || place.opening_hours) && <><Text style={[styles.cardTitle,{marginTop:20}]}>Hours</Text>
+                {parseHours(place.opening_hours).hoursList.map(row=><View key={row.day} style={{flexDirection:'row',justifyContent:'space-between',gap:12,paddingVertical:7}}><Text style={{color:theme.text}}>{row.day}</Text><Text style={{color:theme.textSecondary,flexShrink:1}}>{row.range}</Text></View>)}</>}
+                {!cruiseVenue && <TouchableOpacity
                   style={styles.directionsBtn}
                   onPress={() => handleNavigate(place.latitude, place.longitude, place.name)}
                 >
                   <Text style={styles.directionsBtnText}>
                     Get directions
                   </Text>
-                </TouchableOpacity>
+                </TouchableOpacity>}
 
-                <View style={styles.claimDivider} />
+                {!cruiseVenue && <><View style={styles.claimDivider} />
                 <TouchableOpacity
                   style={styles.claimButton}
                   onPress={() => void openCanonicalPlaceAction('ClaimBusiness')}
                 >
                   <Text style={styles.claimText}>Manage or claim this place</Text>
-                </TouchableOpacity>
+                </TouchableOpacity></>}
 
               </View>
           </View>
@@ -1233,7 +1258,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      <View style={{flexDirection:'row',gap:12,padding:14,borderTopWidth:1,borderColor:theme.border,backgroundColor:theme.background}}>{hasMenuTab&&<TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('MenuGallery',{placeId:place.id,placeName:place.name})} style={{flex:1,padding:14,borderRadius:14,borderWidth:1,borderColor:theme.border,alignItems:'center'}}><Text style={{color:theme.text,fontWeight:'700'}}>Tavvy Menu</Text></TouchableOpacity>}<TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('AddReview',{placeId:place.id,placeName:place.name,primaryCategory:place.primaryCategory,subcategory:place.subcategory})} style={{flex:1,padding:14,borderRadius:14,backgroundColor:'#00C2CB',alignItems:'center'}}><Text style={{color:'#07383A',fontWeight:'700'}}>Add a review</Text></TouchableOpacity></View>
+      <View style={{flexDirection:'row',gap:12,padding:14,borderTopWidth:1,borderColor:theme.border,backgroundColor:theme.background}}>{hasMenuTab&&<TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('MenuGallery',{placeId:place.id,placeName:place.name})} style={{flex:1,padding:14,borderRadius:14,borderWidth:1,borderColor:theme.border,alignItems:'center'}}><Text style={{color:theme.text,fontWeight:'700'}}>Tavvy Menu</Text></TouchableOpacity>}<TouchableOpacity accessibilityRole="button" disabled={reviewDisabled} accessibilityState={{disabled:reviewDisabled}} onPress={()=>{if(!reviewDisabled)navigation.navigate('AddReview',{placeId:place.id,placeName:place.name,primaryCategory:place.primaryCategory,subcategory:place.subcategory})}} style={{flex:1,padding:14,borderRadius:14,backgroundColor:reviewDisabled?theme.surface:'#00C2CB',alignItems:'center'}}><Text style={{color:reviewDisabled?theme.textSecondary:'#07383A',fontWeight:'700'}}>Add a review</Text>{reviewDisabled&&<Text style={{color:theme.textSecondary,marginTop:5,textAlign:'center',fontSize:12}}>{copy(CRUISE_VENUE_REVIEW_NOTICE)}</Text>}</TouchableOpacity></View>
       {/* Hours Modal */}
       <Modal
         visible={showHoursModal}
@@ -1286,7 +1311,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
 
       {/* Navigation App Selection Modal */}
       <Modal
-        visible={showNavModal}
+        visible={showNavModal && !cruiseVenue}
         transparent={true}
         animationType="slide"
         onRequestClose={() => setShowNavModal(false)}
@@ -1333,8 +1358,8 @@ function PlaceDetailScreen({ route, navigation }: any) {
         </TouchableOpacity>
       </Modal>
 
-      {/* Address Map Popup Modal */}
-      <Modal
+      {/* Address Map Popup Modal — onboard places have no fixed map position. */}
+      {!cruiseVenue && <Modal
         visible={showAddressModal}
         transparent={true}
         animationType="slide"
@@ -1429,7 +1454,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
             </View>
           </View>
         </View>
-      </Modal>
+      </Modal>}
 
       {/* Review Report Modal (Apple Compliance) */}
       <Modal visible={historyOpen} animationType="slide" onRequestClose={() => setHistoryOpen(false)}>
