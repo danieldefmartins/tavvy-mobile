@@ -2606,6 +2606,13 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   // Get user's first name for greeting
   const firstName = profile?.display_name?.split(' ')[0] || 'there';
+  const surpriseMe = () => {
+    if (trendingItems.length === 0) return;
+    const randomItem = trendingItems[Math.floor(Math.random() * trendingItems.length)];
+    if (randomItem.type === 'place' || randomItem.place) {
+      navigation.navigate('PlaceDetails', { placeId: randomItem.id || randomItem.place?.id });
+    }
+  };
   
   const renderStandardMode = () => (
     <SafeAreaView style={[styles.safe, { backgroundColor: isDark ? discovery.darkBackground : discovery.background }]}>
@@ -2681,6 +2688,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
                 <Ionicons name="close-circle" size={20} color={isDark ? '#888' : '#8E8E93'} />
               </TouchableOpacity>
             )}
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Surprise me" onPress={surpriseMe} style={{ padding: 5, marginLeft: 4 }}>
+              <Ionicons name="dice-outline" size={22} color={isDark ? '#D4A0FF' : '#7905A8'} />
+            </TouchableOpacity>
           </View>
           
           {renderSearchControls()}
@@ -2712,13 +2722,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
           {!isSearchFocused && (
           <View style={styles.quickActionsRow}>
             <TouchableOpacity 
-              style={[
-                styles.quickAction, 
-                { 
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F9FAFB',
-                  borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB',
-                }
-              ]}
+              style={styles.quickAction}
               onPress={switchToMapMode}
             >
               <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(0, 194, 203, 0.12)' }]}><Ionicons name="location" size={20} color={isDark ? '#5EEAEF' : '#007F86'} /></View>
@@ -2726,69 +2730,23 @@ function HomeScreen({ navigation }: { navigation: any }) {
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[
-                styles.quickAction, 
-                { 
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F9FAFB',
-                  borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB',
-                }
-              ]}
+              style={styles.quickAction}
               onPress={switchToMapMode}
             >
               <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(138, 5, 190, 0.12)' }]}><Ionicons name="map-outline" size={20} color={isDark ? '#D4A0FF' : '#7905A8'} /></View>
               <Text style={[styles.quickActionText, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{copy("Map")}</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity 
-              style={[
-                styles.quickAction, 
-                { 
-                  backgroundColor: isDark 
-                    ? 'rgba(17, 24, 39, 0.3)' 
-                    : 'rgba(17, 24, 39, 0.1)',
-                  borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(17, 24, 39, 0.2)',
-                }
-              ]}
-              onPress={() => {
-                // Surprise me - navigate to a random trending place
-                if (trendingItems.length > 0) {
-                  const randomItem = trendingItems[Math.floor(Math.random() * trendingItems.length)];
-                  if (randomItem.type === 'place' || randomItem.place) {
-                    navigation.navigate('PlaceDetails', { placeId: randomItem.id || randomItem.place?.id });
-                  }
-                }
-              }}
-            >
-              <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(0, 194, 203, 0.12)' }]}><Ionicons name="dice-outline" size={20} color={isDark ? '#5EEAEF' : '#007F86'} /></View>
-              <Text style={[styles.quickActionText, { color: isDark ? '#fff' : '#111827' }]}>{copy("Surprise")}</Text>
-              <Text style={[styles.quickActionSubtext, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{copy("Let Tavvy decide")}</Text>
-            </TouchableOpacity>
-            
             <TouchableOpacity
-              style={[
-                styles.quickAction,
-                {
-                  backgroundColor: isDark
-                    ? 'rgba(138, 5, 190, 0.12)'
-                    : 'rgba(138, 5, 190, 0.06)',
-                  borderColor: isDark ? 'rgba(138, 5, 190, 0.25)' : 'rgba(138, 5, 190, 0.15)',
-                }
-              ]}
+              style={styles.quickAction}
               onPress={() => navigation.navigate('SignalSearch')}
             >
               <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(0, 194, 203, 0.12)' }]}><Ionicons name="radio-outline" size={20} color={isDark ? '#5EEAEF' : '#007F86'} /></View>
               <Text style={[styles.quickActionText, { color: isDark ? '#C77DFF' : '#8A05BE' }]}>{copy("Signals")}</Text>
-              <Text style={[styles.quickActionSubtext, { color: isDark ? '#BDB6CA' : '#56576B' }]}>{copy("Search by vibe")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[
-                styles.quickAction,
-                {
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F9FAFB',
-                  borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E5E7EB',
-                }
-              ]}
+              style={styles.quickAction}
               onPress={() => navigation.navigate("Apps", { screen: 'SavedMain' })}
             >
               <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(138, 5, 190, 0.12)' }]}><Ionicons name="heart-outline" size={20} color={isDark ? '#D4A0FF' : '#7905A8'} /></View>
@@ -6430,22 +6388,21 @@ const styles = StyleSheet.create({
   quickAction: {
     flex: 1,
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingHorizontal: 4,
     alignItems: 'center',
-    borderWidth: 1,
   },
   quickActionIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
   },
   quickActionText: {
-    fontSize: 10,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '600',
     textAlign: 'center',
   },
   quickActionSubtext: {
