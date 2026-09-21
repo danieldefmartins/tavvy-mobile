@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { useReleaseCopy } from '../hooks/useReleaseCopy';
-import { getAccountDeletionAvailability, createDeletionViewGuard } from '../lib/accountDeletion';
+import { getAccountDeletionAvailability, createDeletionViewGuard, deleteCurrentAccount, AccountDeletionUnavailableError, AccountDeletionFailedError } from '../lib/accountDeletion';
 import { accountDeletionCopy } from '../lib/accountDeletionCopy';
 import {
   AppSettings,
@@ -113,6 +113,26 @@ export default function SettingsScreen() {
     }
   };
 
+  const performDeletion = async (ticket: number) => {
+    try {
+      await deleteCurrentAccount();
+      if (!deletionGuard.current(ticket)) return;
+      Alert.alert(deletionCopy.successTitle, deletionCopy.successMessage, [
+        { text: deletionCopy.close, onPress: () => { signOut().catch(() => {}); navigation.navigate('AppsMain' as never); } },
+      ]);
+    } catch (error) {
+      if (!deletionGuard.current(ticket)) return;
+      if (error instanceof AccountDeletionUnavailableError) {
+        Alert.alert(deletionCopy.title, deletionCopy.unavailable + '\n\n' + deletionCopy.unchanged, [{ text: deletionCopy.close }]);
+      } else {
+        const message = error instanceof AccountDeletionFailedError ? error.message : deletionCopy.unchanged;
+        Alert.alert(deletionCopy.failureTitle, message, [{ text: deletionCopy.close }]);
+      }
+    } finally {
+      if (deletionGuard.current(ticket)) setIsCheckingDeletion(false);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     const ticket = deletionGuard.begin();
     setIsCheckingDeletion(true);
@@ -120,13 +140,37 @@ export default function SettingsScreen() {
       const availability = await getAccountDeletionAvailability();
       if (!deletionGuard.current(ticket)) return;
       if (availability.status === 'unavailable') {
+        setIsCheckingDeletion(false);
         Alert.alert(
           t('auth.deleteAccount', { defaultValue: deletionCopy.title }),
           deletionCopy.unavailable + '\n\n' + deletionCopy.unchanged,
           [{ text: deletionCopy.close }],
         );
+        return;
       }
-    } finally {
+      setIsCheckingDeletion(false);
+      Alert.alert(deletionCopy.confirmFirstTitle, deletionCopy.confirmFirstMessage, [
+        { text: deletionCopy.cancel, style: 'cancel' },
+        {
+          text: deletionCopy.confirmFirstContinue,
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(deletionCopy.confirmSecondTitle, deletionCopy.confirmSecondMessage, [
+              { text: deletionCopy.cancel, style: 'cancel' },
+              {
+                text: deletionCopy.confirmSecondDelete,
+                style: 'destructive',
+                onPress: () => {
+                  if (!deletionGuard.current(ticket)) return;
+                  setIsCheckingDeletion(true);
+                  performDeletion(ticket);
+                },
+              },
+            ]);
+          },
+        },
+      ]);
+    } catch {
       if (deletionGuard.current(ticket)) setIsCheckingDeletion(false);
     }
   };
