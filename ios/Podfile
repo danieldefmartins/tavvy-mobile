@@ -49,5 +49,24 @@ target 'Tavvy' do
         end
       end
     end
+
+    # fmt 11.0.2 (pinned by React Native 0.79's third-party podspecs) fails
+    # to compile its own format-inl.h under Xcode 26's Clang: several
+    # `consteval` FMT_COMPILE_STRING constructors it assumes are constant
+    # expressions no longer are, under C++20. fmt/include/fmt/base.h only
+    # disables its consteval path for Apple Clang < 14 or C++ < 17 — it
+    # does NOT respect a pre-defined FMT_USE_CONSTEVAL (its own detection
+    # block unconditionally #defines it, silently discarding any `-D`
+    # override), so the fix has to change what fmt actually keys off:
+    # the language standard. fmt's own runtime-formatting implementation
+    # (format.cc) needs nothing from C++20, so building just this one pod
+    # at C++17 takes fmt's own intended fallback path instead of fighting
+    # its macros. Scoped only to the fmt pod target.
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'fmt'
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+      end
+    end
   end
 end
