@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { useReleaseCopy } from '../hooks/useReleaseCopy';
 import { getAccountDeletionAvailability, createDeletionViewGuard, deleteCurrentAccount, AccountDeletionUnavailableError, AccountDeletionFailedError } from '../lib/accountDeletion';
+import { IAP_ENABLED } from '../lib/iapConfig';
 import { accountDeletionCopy } from '../lib/accountDeletionCopy';
 import {
   AppSettings,
@@ -27,6 +28,7 @@ import {
   Switch,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,6 +49,7 @@ export default function SettingsScreen() {
   const { theme } = useThemeContext();
   const [autoTranslate, setAutoTranslate] = useState(false);
   const [isCheckingDeletion, setIsCheckingDeletion] = useState(false);
+  const [isRestoringPurchases, setIsRestoringPurchases] = useState(false);
   const deletionGuard = useRef(createDeletionViewGuard()).current;
   deletionGuard.setSession(user?.id ?? null, session?.access_token ?? null);
   useEffect(() => {
@@ -110,6 +113,29 @@ export default function SettingsScreen() {
       navigation.navigate('AppsMain' as never);
     } catch (error) {
       console.error('Error signing out:', error);
+    }
+  };
+
+  const handleRestorePurchases = async () => {
+    if (!IAP_ENABLED) {
+      Alert.alert(copy('Restore Purchases'), copy('Purchases through Apple are not available in this version yet.'), [{ text: deletionCopy.close }]);
+      return;
+    }
+    setIsRestoringPurchases(true);
+    try {
+      // Lazy import: keeps the react-native-iap native module out of this
+      // screen's load path until someone actually taps Restore.
+      const { restorePurchases: restore } = await import('../lib/iap');
+      const { restored } = await restore();
+      Alert.alert(
+        copy('Restore Purchases'),
+        restored > 0 ? copy('Your purchases have been restored.') : copy('No previous purchases were found for this Apple ID.'),
+        [{ text: deletionCopy.close }],
+      );
+    } catch (error) {
+      Alert.alert(copy('Restore Purchases'), copy('Could not restore purchases. Please try again.'), [{ text: deletionCopy.close }]);
+    } finally {
+      setIsRestoringPurchases(false);
     }
   };
 
@@ -424,7 +450,7 @@ export default function SettingsScreen() {
               <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.settingRow}>
+            <TouchableOpacity style={Platform.OS === 'ios' ? [styles.settingRow, styles.settingRowBorder] : styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="shield-checkmark" size={22} color={theme.signalUniverse} />
                 <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
@@ -433,6 +459,21 @@ export default function SettingsScreen() {
               </View>
               <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
             </TouchableOpacity>
+
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity style={styles.settingRow} onPress={handleRestorePurchases} disabled={isRestoringPurchases}>
+                <View style={styles.settingLeft}>
+                  {isRestoringPurchases ? (
+                    <ActivityIndicator size="small" color={theme.primary} />
+                  ) : (
+                    <Ionicons name="refresh" size={22} color={theme.primary} />
+                  )}
+                  <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
+                    {copy('Restore Purchases')}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
