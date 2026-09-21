@@ -1,30 +1,31 @@
 # Tavvy current engineering status
 
-As of September 21, 2026, 04:15 America/New_York (08:15 UTC).
+As of September 21, 2026, 04:58 America/New_York (08:58 UTC).
 Read [PROJECT_MEMORY.md](PROJECT_MEMORY.md) for product decisions and architecture.
 This checkpoint distinguishes live features, local verification and remaining work.
 The full requested release is not complete.
 
 ## Source and release warning
 
-The active main workspaces contain unrelated unfinished work. Reviewed application
-source is now separated on `release/verified-web-20260921` and
-`release/native-preview-20260921`, with relative-file SHA-256 manifests under
-`docs/release-manifests/`. The web branch contains the reviewed search/account and
-owner/menu batches; the mobile branch is a preview candidate, not an uploaded build.
-Historical marketing captures are preserved separately and are not final Store assets.
-Do not deploy a mixed working directory or replay a migration based on its filename.
-Use the live/prepared status below and the maintainer's exact private release receipts.
+The active main workspaces contain unrelated unfinished work. Reviewed web and native
+source branches are published at `release/verified-web-20260921` and
+`release/native-preview-20260921`; neither is merged to main. Exact source manifests
+and private release receipts record the snapshots used.
+Obtain the current source snapshot and private release receipts from the maintainer.
+Historical marketing captures are not final Store assets. Do not deploy a mixed working
+directory or replay migrations based on filenames. Source preparation, Simulator tests,
+web deployment and EAS upload are separate states.
 
 ## Live releases
 
-The current verified web build is `9vk2EoKB74_bQtxf_R9m0`. It includes the earlier
+The current verified web build is `IVHbScomfjHi21Ag4dQ6o`. It includes the earlier
 appearance, place-sharing, eCard gallery, tools, cruise, community-safety, On The Go,
 Atlas audio and English/Portuguese/Spanish creation-copy batches. The current admin
-release includes verified review-author resolution. Both deployments succeeded. Search/account copy is now live and passed 23 deployed
+release includes verified review-author resolution. Both deployments succeeded. Search/account copy is live and passed 23 deployed
 browser checks using controlled provider fixtures. Read-only live batches cover all
 342 cruise detail pages and sharing metadata, public tools and anonymous admin denial.
-The latest catalog batch passed 141 HTTP checks with no customer writes.
+The latest catalog batch passed 141 HTTP checks with no customer writes. The owner/menu
+release additionally passed 13 deployed fixture browser checks and 11 live route checks.
 
 | Area | Delivered and verified | Remaining limits |
 | --- | --- | --- |
@@ -123,7 +124,7 @@ distinct from Chromium touch emulation.
   and local-demo workflows. The reviewed web batch fixes false save/delete success,
   missing meal-period persistence, stale account responses, login return and theme-aware
   editor chrome; 46 focused tests, production build and 13 integrated browser checks
-  passed. Deployment is in progress at this checkpoint. Real customer records were not
+  passed. The web update is deployed and passed the same 13 checks against production. Real customer records were not
   used for write testing; operational ownership verification remains separate.
 - Keep reviews prominent without duplicate complete sections; validate ordinary-issue
   aging against independent later evidence. Do not turn silence into proof of a fix.
