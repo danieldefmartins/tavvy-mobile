@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, FlatList, ActivityIndicator, Keyboard } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import * as Location from 'expo-location';
 
 export default function ProsRequestStep4Screen({ navigation, route }: any) {
   const { t } = useTranslation();
@@ -19,6 +20,26 @@ export default function ProsRequestStep4Screen({ navigation, route }: any) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+  const requestId = useRef(0);
+  const [nearbyPosition, setNearbyPosition] = useState<{ lat: number; lon: number } | null>(null);
+
+  useEffect(() => {
+    Location.getForegroundPermissionsAsync().then(async permission => {
+      if (permission.granted) {
+        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setNearbyPosition({ lat: position.coords.latitude, lon: position.coords.longitude });
+      }
+    }).catch(() => {});
+  }, []);
+
+  const useMyLocation = async () => {
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (!permission.granted) return;
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setNearbyPosition({ lat: position.coords.latitude, lon: position.coords.longitude });
+    } catch { Alert.alert('Location unavailable', 'You can still enter your address manually.'); }
+  };
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -29,7 +50,7 @@ export default function ProsRequestStep4Screen({ navigation, route }: any) {
     };
   }, []);
 
-  // Free Address Search using OpenStreetMap (Nominatim)
+  // Photon provides search-as-you-type with nearby ranking.
   const searchAddress = async (text: string) => {
     if (text.length < 3) {
       setSuggestions([]);
@@ -39,17 +60,19 @@ export default function ProsRequestStep4Screen({ navigation, route }: any) {
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&addressdetails=1&limit=5&countrycodes=us`,
-        {
-          headers: {
-            'User-Agent': 'Tavvy-Mobile-App'
-          }
-        }
-      );
+      const currentRequest = ++requestId.current;
+      const params = new URLSearchParams({ q: text, limit: '8', lang: 'en' });
+      if (nearbyPosition) {
+        params.set('lat', String(nearbyPosition.lat));
+        params.set('lon', String(nearbyPosition.lon));
+      }
+      const response = await fetch(`https://photon.komoot.io/api/?${params}`);
+      if (!response.ok) return;
       const data = await response.json();
-      setSuggestions(data);
-      setShowSuggestions(true);
+      if (currentRequest !== requestId.current) return;
+      const matches = (data.features || []).filter((item: any) => item.properties?.countrycode?.toUpperCase() === 'US' && item.properties?.street);
+      setSuggestions(matches);
+      setShowSuggestions(matches.length > 0);
     } catch (error) {
       console.error('Search error:', error);
     } finally {
@@ -58,19 +81,21 @@ export default function ProsRequestStep4Screen({ navigation, route }: any) {
   };
 
   const handleTextChange = (text: string) => {
+    requestId.current++;
     setAddress(text);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => {
       searchAddress(text);
-    }, 500);
+    }, 700);
   };
 
   const handleSelectAddress = (item: any) => {
-    const addr = item.address;
+    requestId.current++;
+    const addr = item.properties || {};
     
-    const streetNumber = addr.house_number || '';
-    const road = addr.road || '';
-    const streetAddress = `${streetNumber} ${road}`.trim() || item.display_name.split(',')[0];
+    const streetNumber = addr.housenumber || '';
+    const road = addr.street || '';
+    const streetAddress = `${streetNumber} ${road}`.trim();
     
     setAddress(streetAddress);
     setCity(addr.city || addr.town || addr.village || addr.suburb || '');
@@ -108,6 +133,7 @@ export default function ProsRequestStep4Screen({ navigation, route }: any) {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.title}>Where is the project located?</Text>
+        <TouchableOpacity onPress={useMyLocation} style={{ paddingVertical: 10 }}><Text style={{ color: '#2563eb' }}>{nearbyPosition ? 'Using your location for nearby addresses' : 'Use my location for nearby addresses'}</Text></TouchableOpacity>
         
         <Text style={styles.label}>Street Address</Text>
         <View style={styles.inputWrapper}>
@@ -132,10 +158,10 @@ export default function ProsRequestStep4Screen({ navigation, route }: any) {
                 <Ionicons name="location-sharp" size={20} color="#00875A" style={{ marginRight: 12 }} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.suggestionMainText} numberOfLines={1}>
-                    {item.display_name.split(',')[0]}
+                    {`${item.properties.housenumber || ''} ${item.properties.street || ''}`.trim()}
                   </Text>
                   <Text style={styles.suggestionSubText} numberOfLines={1}>
-                    {item.display_name.split(',').slice(1).join(',').trim()}
+                    {[item.properties.city || item.properties.town, item.properties.state, item.properties.postcode].filter(Boolean).join(', ')}
                   </Text>
                 </View>
               </TouchableOpacity>
