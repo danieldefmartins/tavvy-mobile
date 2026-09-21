@@ -11,7 +11,7 @@ import type { NativeStackNavigationProp as DynamicStackNavigation } from '@react
 
 import {CONTENT_SAFETY_CHANGED} from './ContentSafetyActions';
 import {DeviceEventEmitter} from 'react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -63,11 +63,21 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
   const [selectedStories, setSelectedStories] = useState<PlaceStory[]>([]);
   const [isViewerVisible, setIsViewerVisible] = useState(false);
 
+  const scopeKey = JSON.stringify([universeId || null, currentUserId || null, userLocation || null, maxDistance, safetyVersion]);
+  const scopeRef = useRef(scopeKey), loadGeneration = useRef(0);
+  const [loadedScope, setLoadedScope] = useState<string | null>(null);
+  if (scopeRef.current !== scopeKey) { scopeRef.current = scopeKey; loadGeneration.current += 1; }
   useEffect(() => {
-    loadNearbyPlaces();
-  }, [userLocation, currentUserId, universeId, safetyVersion]);
+    setIsViewerVisible(false); setSelectedPlace(null); setSelectedStories([]);
+    void loadNearbyPlaces();
+    return () => { loadGeneration.current += 1; };
+  }, [scopeKey]);
 
   const loadNearbyPlaces = async () => {
+    if (scopeRef.current !== scopeKey) return;
+    const generation = ++loadGeneration.current;
+    const isCurrent = () => generation === loadGeneration.current && scopeRef.current === scopeKey;
+    const commitPlaces = (next: PlaceWithStories[]) => { if (isCurrent()) { setPlaces(next); setLoadedScope(scopeKey); } };
     setIsLoading(true);
     try {
       // First, get places that have active stories
@@ -101,7 +111,8 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
         const { data: links, error: linksError } = await supabase
           .from('atlas_universe_places').select('place_id').eq('universe_id', universeId);
         if (linksError) throw linksError;
-        if (!links?.length) { setPlaces([]); return; }
+        if (!isCurrent()) return;
+        if (!links?.length) { commitPlaces([]); return; }
         placesQuery = placesQuery.in('id', links.map(link => link.place_id));
       }
 
@@ -126,7 +137,10 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
         throw error;
       }
 
+      if (!isCurrent()) return;
       if (!nearbyPlaces || nearbyPlaces.length === 0) {
+        // An empty Universe stays empty; the discovery fallback is unscoped only.
+        if (universeId) { commitPlaces([]); return; }
         // Fallback: fetch any places if no nearby ones found
         const { data: fallbackPlaces } = await supabase
           .from('places')
@@ -137,9 +151,9 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
 
         if (fallbackPlaces && fallbackPlaces.length > 0) {
           const placesWithStories = buildPlacesList(fallbackPlaces, storyCountMap, placeIdsWithStories, new Map());
-          setPlaces(placesWithStories);
+          commitPlaces(placesWithStories);
         } else {
-          setPlaces([]);
+          commitPlaces([]);
         }
         return;
       }
@@ -153,7 +167,7 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
       let filteredPlaces = nearbyPlaces;
       if (userLocation) {
         filteredPlaces = nearbyPlaces.filter(place => {
-          if (!place.latitude || !place.longitude) return false;
+          if (!Number.isFinite(place.latitude) || !Number.isFinite(place.longitude)) return false;
           const distance = calculateDistance(
             userLocation[1], userLocation[0],
             place.latitude, place.longitude
@@ -163,13 +177,13 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
       }
 
       const placesWithStories = buildPlacesList(filteredPlaces, storyCountMap, placeIdsWithStories, ringStates);
-      setPlaces(placesWithStories);
+      commitPlaces(placesWithStories);
 
     } catch (error) {
       console.error('[StoriesRow] Error loading places:', error);
-      setPlaces([]);
+      commitPlaces([]);
     } finally {
-      setIsLoading(false);
+      if (isCurrent()) setIsLoading(false);
     }
   };
 
@@ -225,9 +239,13 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
   };
 
   const handlePlacePress = async (place: PlaceWithStories) => {
+    const generation = loadGeneration.current;
+    const isCurrent = () => generation === loadGeneration.current && scopeRef.current === scopeKey;
+    if (!isCurrent()) return;
     if (place.has_stories && place.story_count > 0) {
       // Load and show stories
       const stories = await getPlaceStories(place.place_id, currentUserId);
+      if (!isCurrent()) return;
       if (stories.length > 0) {
         setSelectedPlace(place);
         setSelectedStories(stories);
@@ -241,6 +259,7 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
   };
 
   const handleStoryViewed = (storyId: string) => {
+    if (scopeRef.current !== scopeKey) return;
     // Update the ring state for the place
     setPlaces(prev => prev.map(p => {
       if (p.place_id === selectedPlace?.place_id) {
@@ -253,6 +272,7 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
   };
 
   const handleViewerClose = () => {
+    if (scopeRef.current !== scopeKey) return;
     setIsViewerVisible(false);
     setSelectedPlace(null);
     setSelectedStories([]);
@@ -260,7 +280,7 @@ export const StoriesRow: React.FC<StoriesRowProps> = ({
     loadNearbyPlaces();
   };
 
-  if (isLoading) {
+  if (isLoading || loadedScope !== scopeKey) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="small" color="#3B82F6" />
