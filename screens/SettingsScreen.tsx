@@ -29,7 +29,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { InlineLanguageSelector } from '../components/LanguageSelector';
 import { AutoTranslateToggle } from '../components/ReviewTranslation';
 import BlockedAuthors from '../components/BlockedAuthors';
-import AppearanceSelector from '../components/AppearanceSelector';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -147,7 +146,6 @@ export default function SettingsScreen() {
 
         {/* ========== APPEARANCE SECTION ========== */}
         <View style={[styles.section, { paddingHorizontal: 16 }]}>
-          <AppearanceSelector />
         </View>
 
         {/* ========== REVIEWS SECTION ========== */}
