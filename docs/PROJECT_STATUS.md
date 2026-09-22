@@ -336,7 +336,13 @@ row; search cards open with `Reviews · {{count}} people · Last 6 months` and s
 expandable row per section. The search card (`CardHero` in `screens/HomeScreen.tsx`)
 sets the name, category, distance and address on a 172-pt swipeable photo header
 with a `1 / N` counter and step buttons, and ends with the place-screen icon
-shortcuts (Call, Directions, Website, Details). The place screen title is Reviews and Heads Up chips carry the `!`
+shortcuts (Call, Directions, Website, Details). The place screen follows the same
+concept: the hero swipes through real photos with a counter and a View all photos
+chip, the pill reads category · subcategory, tabs under the action icons are
+Overview (with the four-row review teaser and reported payment details), Reviews
+(rows whose chevron opens the other words; a tapped word shows matching
+experiences), Photos & Stories and Tavvy Menu (only with a menu); Details folded into
+Overview. Accent is the logo teal. The place screen title is Reviews and Heads Up chips carry the `!`
 marker. Four locale keys (`reviewExperience82`–`85`) were added to en/es/pt/ar.
 Application TypeScript and 16 focused unit tests passed. This has not been rendered
 in the Simulator or included in any EAS build; native visual verification remains open.

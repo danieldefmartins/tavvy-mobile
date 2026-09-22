@@ -324,7 +324,10 @@ function PlaceDetailScreen({ route, navigation }: any) {
   const [photosUnavailable,setPhotosUnavailable]=useState(false);
   const [hasActiveMenu, setHasActiveMenu] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
-  const [activePlaceTab, setActivePlaceTab] = useState<'overview' | 'media' | 'menu' | 'details'>('overview');
+  const [activePlaceTab, setActivePlaceTab] = useState<'overview' | 'reviews' | 'media' | 'menu'>('overview');
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [heroWidth, setHeroWidth] = useState(Dimensions.get('window').width);
+  const heroScrollRef = useRef<ScrollView>(null);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [selectedSummary, setSelectedSummary] = useState<'main' | 'good' | 'vibe' | 'headsup' | null>(null);
   useEffect(() => { setSelectedTopic(null); setSelectedSummary(null); }, [placeId]);
@@ -1035,20 +1038,30 @@ function PlaceDetailScreen({ route, navigation }: any) {
     if (previous?.name === 'UniverseDetail' && previous.params?.universeId === cruiseVenue.universe_id) navigation.goBack();
     else navigation.navigate('UniverseDetail', {universeId:cruiseVenue.universe_id});
   };
+  // Every place shares these tabs; only the menu tab depends on the category/data.
   const placeTabs = [
     { key: 'overview', label: 'Overview' },
+    { key: 'reviews', label: copy('Reviews') },
     { key: 'media', label: 'Photos & Stories' },
-
-    { key: 'details', label: 'Details' },
-  ] as const;
+    ...(hasMenuTab ? [{ key: 'menu', label: place.primaryCategory === 'Hotel' ? 'Rooms' : 'Tavvy Menu' }] : []),
+  ] as { key: 'overview' | 'reviews' | 'media' | 'menu'; label: string }[];
+  const heroPhotos = realHeroPhoto ? [realHeroPhoto, ...realPlacePhotos(heroPlace).filter(url => url !== realHeroPhoto && !failedHeroPhotos.includes(url))].slice(0, 6) : [heroPhoto];
+  const heroCurrent = Math.min(heroIndex, heroPhotos.length - 1);
+  const stepHero = (direction: number) => { const next = Math.max(0, Math.min(heroPhotos.length - 1, heroCurrent + direction)); heroScrollRef.current?.scrollTo({ x: next * heroWidth, animated: true }); setHeroIndex(next); };
+  const subcategoryRaw = (place.subcategory || '').replace(/_/g, ' ').trim();
+  const subcategoryLabel = subcategoryRaw && subcategoryRaw.toLowerCase() !== (place.primaryCategory || '').toLowerCase() ? subcategoryRaw : '';
+  const openReviews = (topic?: string | null, section?: 'main' | 'good' | 'vibe' | 'headsup' | null) => { setActivePlaceTab('reviews'); setSelectedSummary(section ?? null); setSelectedTopic(topic ?? null); };
+  const paymentFacts = (reviewSummary.practical || []).filter(item => /cash|card|pay/i.test(item.label));
   const quickAction=(key:string,label:string,icon:React.ComponentProps<typeof Ionicons>['name'],onPress:()=>void,selected=false)=><TouchableOpacity key={key} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{selected}} onPress={onPress} style={{width:68,alignItems:'center',gap:7}}><View style={{width:50,height:50,borderRadius:25,backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border,alignItems:'center',justifyContent:'center'}}><Ionicons name={icon} size={23} color={selected?'#E24A72':theme.text}/></View><Text style={{color:theme.textSecondary,fontSize:11,fontWeight:'600',textAlign:'center'}}>{label}</Text></TouchableOpacity>;
 
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* ===== 1. HERO (40% screen) ===== */}
-        <View style={styles.heroContainer}>
-          <Image source={{uri:heroPhoto}} style={styles.carouselImage} resizeMode="cover" accessibilityLabel={realHeroPhoto?place.name:copy('Category illustration')} onError={()=>{if(realHeroPhoto)setFailedHeroPhotos(previous=>[...previous,realHeroPhoto]);}}/>
+        <View style={styles.heroContainer} onLayout={event => setHeroWidth(Math.round(event.nativeEvent.layout.width) || heroWidth)}>
+          <ScrollView ref={heroScrollRef} horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={StyleSheet.absoluteFill} onMomentumScrollEnd={event => setHeroIndex(Math.min(heroPhotos.length - 1, Math.max(0, Math.round(event.nativeEvent.contentOffset.x / heroWidth))))} accessibilityLabel={realHeroPhoto ? copy('Photos') : copy('Category illustration')}>
+            {heroPhotos.map((uri, i) => <Image key={uri + i} source={{uri}} style={[styles.carouselImage, { width: heroWidth }]} resizeMode="cover" accessibilityLabel={realHeroPhoto ? `${place.name} · ${i + 1} / ${heroPhotos.length}` : copy('Category illustration')} onError={()=>{if(realHeroPhoto)setFailedHeroPhotos(previous=>[...previous,uri]);}}/>)}
+          </ScrollView>
 
           {/* Gradient Overlay */}
           <LinearGradient
@@ -1068,10 +1081,16 @@ function PlaceDetailScreen({ route, navigation }: any) {
           </TouchableOpacity>
 
           {/* Hero Text at bottom */}
+          {heroPhotos.length > 1 && <View style={{ position: 'absolute', right: 14, bottom: 96, flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: 'rgba(0,0,0,.55)', borderRadius: 20, padding: 2 }}>
+            <TouchableOpacity disabled={heroCurrent === 0} onPress={() => stepHero(-1)} accessibilityRole="button" accessibilityLabel="Previous photo" style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', opacity: heroCurrent === 0 ? 0.35 : 1 }}><Ionicons name="chevron-back" size={16} color="#fff" /></TouchableOpacity>
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', paddingHorizontal: 4, fontVariant: ['tabular-nums'] }} accessibilityLiveRegion="polite">{heroCurrent + 1} / {heroPhotos.length}</Text>
+            <TouchableOpacity disabled={heroCurrent === heroPhotos.length - 1} onPress={() => stepHero(1)} accessibilityRole="button" accessibilityLabel="Next photo" style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', opacity: heroCurrent === heroPhotos.length - 1 ? 0.35 : 1 }}><Ionicons name="chevron-forward" size={16} color="#fff" /></TouchableOpacity>
+          </View>}
+          {(photos.length > 0 || stories.length > 0) && <TouchableOpacity onPress={() => setActivePlaceTab('media')} accessibilityRole="button" style={{ position: 'absolute', left: 20, bottom: 100, backgroundColor: 'rgba(0,0,0,.55)', borderRadius: 20, paddingHorizontal: 11, paddingVertical: 6 }}><Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{copy('View all photos')} →</Text></TouchableOpacity>}
           <View style={styles.heroTextContainer}>
             <Text style={styles.placeName}>{place.name}</Text>
             <Text style={styles.heroSubtitleText}>
-              {categoryEmoji} {place.primaryCategory}
+              {categoryEmoji} {place.primaryCategory}{subcategoryLabel ? ` · ${subcategoryLabel}` : ''}
             </Text>
           </View>
         </View>
@@ -1087,23 +1106,33 @@ function PlaceDetailScreen({ route, navigation }: any) {
           {quickAction('save',saved?'Saved':'Save',saved?'heart':'heart-outline',()=>void savePlace(),saved)}
         </ScrollView>
 
-        <View style={{ marginHorizontal: 20, marginTop: 18 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginTop: 2, borderBottomWidth: 1, borderBottomColor: theme.border }} contentContainerStyle={{ paddingHorizontal: 20, gap: 18 }} accessibilityRole="tablist">
+          {placeTabs.map(tab => <TouchableOpacity key={tab.key} accessibilityRole="tab" accessibilityState={{ selected: activePlaceTab === tab.key }} onPress={() => tab.key === 'menu' ? navigation.navigate('MenuGallery',{placeId:place.id,placeName:place.name}) : setActivePlaceTab(tab.key)} style={{ paddingVertical: 13, borderBottomWidth: 3, borderBottomColor: activePlaceTab === tab.key ? '#8A05BE' : 'transparent' }}><Text style={{ fontSize: 14, fontWeight: '700', color: activePlaceTab === tab.key ? theme.text : theme.textSecondary }}>{tab.label}</Text></TouchableOpacity>)}
+        </ScrollView>
+
+        {activePlaceTab === 'overview' && <View style={{ marginHorizontal: 20, marginTop: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+            <Text style={{ color: theme.text, fontSize: 20, fontWeight: '800' }}>{copy('Reviews')}</Text>
+            <TouchableOpacity accessibilityRole="button" onPress={() => openReviews()} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: isDark ? '#58D9DE' : '#067A80', fontSize: 13, fontWeight: '700' }}>{copy('See experiences')} →</Text></TouchableOpacity>
+          </View>
+          <PlaceReviewGrid mode="compact" summary={reviewSummary} onOpen={(section, topic) => openReviews(topic.label, section)} />
+          {paymentFacts.length > 0 && <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 12 }}><Text style={{ color: theme.textSecondary, fontSize: 12, fontWeight: '700' }}>{copy('Good to know')}</Text>{paymentFacts.map(item => <View key={item.label} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border }}><Text style={{ color: theme.text, fontSize: 13, fontWeight: '600' }}>{item.label} · {item.count}</Text></View>)}</View>}
+        </View>}
+
+        {activePlaceTab === 'reviews' && <View style={{ marginHorizontal: 20, marginTop: 18 }}>
           <Text style={{ color: theme.text, fontSize: 20, fontWeight: '800', marginBottom: 11 }}>{copy('Reviews')}</Text>
-          <PlaceReviewGrid mode="full" summary={reviewSummary} selectedTopic={selectedTopic} onSelect={(section, topic) => { setSelectedSummary(section); setSelectedTopic(topic.label); }} />
+          <PlaceReviewGrid mode="full" summary={reviewSummary} selectedTopic={selectedTopic} onSelect={(section, topic) => { setSelectedSummary(section); setSelectedTopic(selectedTopic === topic.label ? null : topic.label); }} />
           {selectedSummary && evidence && evidence.dataStatus!=='unavailable' && <View style={{ marginTop: 10, padding: 15, backgroundColor: theme.background, borderColor: theme.border, borderWidth: 1, borderRadius: 14 }}>
             <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:12}}><Text style={{color:theme.text,fontWeight:'700',flex:1}}>{selectedTopic}</Text><TouchableOpacity accessibilityRole="button" onPress={()=>{setSelectedSummary(null);setSelectedTopic(null);}} style={{minHeight:44,justifyContent:'center'}}><Text style={{color:isDark?'#D9B6FF':theme.primary}}>{copy('All experiences')}</Text></TouchableOpacity></View>
             {!supportingReviews.length && <Text style={{color:theme.textSecondary,lineHeight:20}}>{copy('No matching experiences in the recent preview. Open all reviews to explore the history.')}</Text>}
             {supportingReviews.map(review=><View key={review.reviewId} style={{marginTop:14,paddingTop:12,borderTopWidth:1,borderTopColor:theme.border}}><Text style={{color:theme.text,fontWeight:'700'}}>{review.name} · {reviewDateLabel(review.createdAt,review.dateSource)}</Text><ContentSafetyActions kind="place_review" contentId={review.reviewId} />
                   {review.text&&<Text style={{color:theme.text,lineHeight:22,marginTop:5}}>{review.text}</Text>}<Text style={{color:theme.textSecondary,marginTop:5}}>{review.signals.filter(sig=>supportLabels.has(sig.label)).map(sig=>sig.label).join(' · ')}</Text></View>)}
           </View>}
-        </View>
+        </View>}
 
         {activePlaceTab === 'overview' && cruiseVenue && <View style={{marginHorizontal:20}}><CruiseVenueInfo context={cruiseVenue} onShip={openParentShip}/></View>}
         {activePlaceTab === 'overview' && !cruiseVenue && canonicalPlaceId && showMobileStatus && <View style={{ marginHorizontal: 20 }}><OnTheGoStatus canonicalPlaceId={canonicalPlaceId} /></View>}
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, marginTop: 16, borderBottomWidth: 1, borderBottomColor: theme.border }} contentContainerStyle={{ paddingHorizontal: 20, gap: 20 }}>
-          {placeTabs.map(tab => <TouchableOpacity key={tab.key} accessibilityRole="tab" accessibilityState={{ selected: activePlaceTab === tab.key }} onPress={() => setActivePlaceTab(tab.key)} style={{ paddingVertical: 13, borderBottomWidth: 3, borderBottomColor: activePlaceTab === tab.key ? '#8A05BE' : 'transparent' }}><Text style={{ fontSize: 14, fontWeight: '700', color: activePlaceTab === tab.key ? theme.text : theme.textSecondary }}>{tab.label}</Text></TouchableOpacity>)}
-        </ScrollView>
 
         {activePlaceTab === 'media' && <View style={{ paddingHorizontal: 20, paddingTop: 22 }}>
           <Text style={{ color: theme.text, fontSize: 20, fontWeight: '800', marginBottom: 10 }}>Stories</Text>{stories.length===0&&<Text style={{color:theme.textSecondary}}>{cruiseVenue?copy('No stories from this place yet.'):'No stories yet. Share a look at the food or atmosphere.'}</Text>}{cruiseVenue?<Text style={{color:theme.textSecondary,lineHeight:22,marginVertical:12}}>{copy(CRUISE_VENUE_STORY_NOTICE)}</Text>:<TouchableOpacity accessibilityRole="button" onPress={()=>void openCanonicalPlaceAction('StoryUpload')} style={{paddingVertical:14}}><Text style={{color:theme.primary,fontWeight:'700'}}>{stories.length?'Add a story':'Add the first story'}</Text></TouchableOpacity>}
@@ -1116,7 +1145,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
         </View>}
 
         {/* ===== RECENT REVIEWS (parity with web place page) ===== */}
-        {activePlaceTab === 'overview' && recentReviews.length > 0 && (
+        {activePlaceTab === 'reviews' && recentReviews.length > 0 && (
           <View style={styles.sectionPadding}>
             <Text style={styles.recentReviewsTitle}>Recent Reviews</Text>
             {recentReviews.slice(0, 2).map((review) => (
@@ -1165,8 +1194,8 @@ function PlaceDetailScreen({ route, navigation }: any) {
             ))}
           </View>
         )}
-        {activePlaceTab === 'overview' && recentReviews.length === 0 && <Text style={{ marginHorizontal: 20, marginTop: 16, color: theme.textSecondary }}>{reviewsUnavailable?'Reviews could not be loaded. Please try again later.':'No reviews yet. Be the first to share what you experienced.'}</Text>}
-        {activePlaceTab === 'overview' && <TouchableOpacity onPress={() => { setHistoryPage(0); setHistoryOpen(true); }} style={{ marginHorizontal: 20, marginBottom: 12, padding: 13, borderRadius: 12, backgroundColor: theme.surface }}>
+        {activePlaceTab === 'reviews' && recentReviews.length === 0 && <Text style={{ marginHorizontal: 20, marginTop: 16, color: theme.textSecondary }}>{reviewsUnavailable?'Reviews could not be loaded. Please try again later.':'No reviews yet. Be the first to share what you experienced.'}</Text>}
+        {activePlaceTab === 'reviews' && <TouchableOpacity onPress={() => { setHistoryPage(0); setHistoryOpen(true); }} style={{ marginHorizontal: 20, marginBottom: 12, padding: 13, borderRadius: 12, backgroundColor: theme.surface }}>
           <Text style={{ color: '#067A80', textAlign: 'center', fontWeight: '700' }}>See all reviews →</Text>
         </TouchableOpacity>}
 
@@ -1202,7 +1231,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
         </View>}
 
         {/* ===== 7. INFO SECTION (collapsed/expandable) ===== */}
-        {activePlaceTab === 'details' && <View style={styles.sectionPadding}>
+        {activePlaceTab === 'overview' && <View style={styles.sectionPadding}>
           <View style={styles.cardContainer}>
             <Text style={styles.cardTitle}>{cruiseVenue ? copy('Onboard place information') : 'Visit & contact'}</Text>
             {!!cruiseVenue?.description && <Text style={{color:theme.text,lineHeight:22,marginVertical:10}}>{cruiseVenue.description}</Text>}
