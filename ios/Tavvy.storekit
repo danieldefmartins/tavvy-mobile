@@ -1,0 +1,180 @@
+{
+  "identifier" : "9C3E0D7A-2F5B-4E21-9A1C-TAVVYSTOREKIT",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6757459028",
+    "_developerTeamID" : "PK9P2J9ZJ8",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 780000000,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "22405023",
+      "localizations" : [
+        {
+          "description" : "Premium eCard designs, galleries, video, forms and credentials.",
+          "displayName" : "Tavvy eCard Pro",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "Tavvy eCard Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "4.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6814897486",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Premium card designs, photo galleries, video, contact forms, and professional credentials.",
+              "displayName" : "eCard Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.360.tavvy.ecard.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "eCard Pro Monthly",
+          "subscriptionGroupID" : "22405023",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "39.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6814899973",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "The same eCard Pro features with annual billing.",
+              "displayName" : "eCard Pro Annual",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.360.tavvy.ecard.pro.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "eCard Pro Annual",
+          "subscriptionGroupID" : "22405023",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    },
+    {
+      "id" : "22405130",
+      "localizations" : [
+        {
+          "description" : "Professional profile, lead access, direct messages and provider tools.",
+          "displayName" : "Tavvy Pros",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "Tavvy Pros",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "199.00",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6814902186",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Professional profile, lead access, direct messages, and provider tools.",
+              "displayName" : "Tavvy Pros Founding",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.360.tavvy.pros.founding.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Pros Founding Annual",
+          "subscriptionGroupID" : "22405130",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}
