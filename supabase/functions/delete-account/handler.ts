@@ -152,7 +152,11 @@ export async function checkAccountDeletionAvailability(): Promise<DeletionResult
     .eq("id", true)
     .maybeSingle();
   const dbApproved = policyRow?.approved === true;
-  const envApproved = Deno.env.get("ACCOUNT_DELETION_RETENTION_POLICY_APPROVED") === "true";
+  // The database policy row is the approval of record. The environment flag is
+  // an optional veto: when it is set to anything other than "true", deletion
+  // stays unavailable even if the row is approved.
+  const envFlag = Deno.env.get("ACCOUNT_DELETION_RETENTION_POLICY_APPROVED");
+  const envApproved = envFlag === undefined || envFlag === "" || envFlag === "true";
   if (!dbApproved || !envApproved) {
     return { status: "unavailable", code: "ACCOUNT_DELETION_UNAVAILABLE" };
   }
@@ -185,7 +189,11 @@ export async function handleDeleteAccount(req: Request): Promise<DeletionResult>
     .eq("id", true)
     .maybeSingle();
   const dbApproved = policyRow?.approved === true;
-  const envApproved = Deno.env.get("ACCOUNT_DELETION_RETENTION_POLICY_APPROVED") === "true";
+  // The database policy row is the approval of record. The environment flag is
+  // an optional veto: when it is set to anything other than "true", deletion
+  // stays unavailable even if the row is approved.
+  const envFlag = Deno.env.get("ACCOUNT_DELETION_RETENTION_POLICY_APPROVED");
+  const envApproved = envFlag === undefined || envFlag === "" || envFlag === "true";
   if (!dbApproved || !envApproved) {
     return { status: "unavailable", code: "ACCOUNT_DELETION_UNAVAILABLE" };
   }

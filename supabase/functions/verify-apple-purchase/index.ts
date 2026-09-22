@@ -80,13 +80,20 @@ serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const sharedSecret = Deno.env.get("APPLE_SHARED_SECRET");
 
   const callerClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
   const admin = createClient(supabaseUrl, serviceKey);
 
   const { data: { user }, error: userError } = await callerClient.auth.getUser();
   if (userError || !user) return json({ status: "error", code: "NOT_AUTHENTICATED", message: "Could not verify the calling session." }, 401);
+
+  // The shared secret comes from the function environment when set, otherwise
+  // from the service-role-only private_app_config table (key APPLE_SHARED_SECRET).
+  let sharedSecret = Deno.env.get("APPLE_SHARED_SECRET") || null;
+  if (!sharedSecret) {
+    const { data: row } = await admin.from("private_app_config").select("value").eq("key", "APPLE_SHARED_SECRET").maybeSingle();
+    sharedSecret = row?.value || null;
+  }
 
   if (!sharedSecret) {
     console.error("[verify-apple-purchase] APPLE_SHARED_SECRET not configured.");
