@@ -1,3 +1,4 @@
+import { reviewChoiceCount } from '../lib/reviewComposer';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, ScrollView, Pressable, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,7 +27,7 @@ function AddReviewScreen() {
   const [previous, setPrevious] = useState<SavedReview | null>(null), [editing, setEditing] = useState(false), [note, setNote] = useState(''), [date, setDate] = useState(todayVisitDate);
   const [visitOpen, setVisitOpen] = useState(false), [loading, setLoading] = useState(true), [loadError, setLoadError] = useState(''), [error, setError] = useState(''), [saving, setSaving] = useState(false), [success, setSuccess] = useState(false);
   const generation = useRef(0), busy = useRef(false), allowLeave = useRef(false);
-  const total = Object.keys(selected).length;
+  const total = reviewChoiceCount(Object.values(signals).flat(), selected);
   const load = useCallback(async () => {
     const request = ++generation.current;
     busy.current = false; setSaving(false); setLoading(true); setLoadError(''); setError(''); setSelected({}); setNote(''); setEditing(false); setPrevious(null); setDate(todayVisitDate()); setSuccess(false); allowLeave.current = false;

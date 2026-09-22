@@ -1,3 +1,4 @@
+import { categoryImageForPlace, realPlacePhotos } from '../lib/placePreviewImage';
 import {useReleaseCopy} from '../hooks/useReleaseCopy';
 import { placeShareUrl, normalizePlaceShareId } from '../lib/placeShare';
 import { lookupPlaceDetails, isCanonicalPlaceId } from '../lib/placeDetailsLookup';
@@ -319,6 +320,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
     medals: string[];
   }>({ best_for: [], vibe: [], heads_up: [], medals: [] });
   const [photos, setPhotos] = useState<PlacePhoto[]>([]);
+  const [failedHeroPhotos, setFailedHeroPhotos] = useState<string[]>([]);
   const [photosUnavailable,setPhotosUnavailable]=useState(false);
   const [hasActiveMenu, setHasActiveMenu] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
@@ -495,7 +497,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
   // Resolve canonical and provider IDs without creating records or fabricating data.
   useEffect(() => {
     let active = true;
-    setPlace(null); setError(null); setLoading(true); setPhotos([]);
+    setPlace(null); setError(null); setLoading(true); setPhotos([]); setFailedHeroPhotos([]);
     setSignals({ best_for: [], vibe: [], heads_up: [], medals: [] });
     setRecentReviews([]); setEvidence(null); setStories([]); setReviewsUnavailable(false);
     const fetchPlaceData = async () => {
@@ -1017,6 +1019,9 @@ function PlaceDetailScreen({ route, navigation }: any) {
   const supportLabels=new Set(selectedTopic ? [selectedTopic] : (selectedSummary==='main'?[...(evidence?.coreSignals||[]),...(evidence?.coreConcerns||[])]:selectedSummary==='good'?otherGood:selectedSummary==='vibe'?evidence?.vibeSignals||[]:currentWarnings).map(s=>s.label));
   const supportingReviews=recentReviews.filter(r=>r.signals.some(sig=>supportLabels.has(sig.label))).slice(0,2);
   const priceDisplay = getPriceDisplay(place);
+  const heroPlace = { id: place.id, category: place.primaryCategory, subcategory: place.subcategory, cover_image_url: place.coverImageUrl, photos };
+  const realHeroPhoto = realPlacePhotos(heroPlace).find(url => !failedHeroPhotos.includes(url));
+  const heroPhoto = realHeroPhoto || 'https://tavvy.com' + categoryImageForPlace(heroPlace);
   const driveTime = getDriveTime(place.distance);
   const categoryEmoji = getCategoryEmoji(place.primaryCategory);
 
@@ -1043,7 +1048,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* ===== 1. HERO (40% screen) ===== */}
         <View style={styles.heroContainer}>
-          {photos[0]?.url||place.coverImageUrl?<Image source={{uri:photos[0]?.url||place.coverImageUrl!}} style={styles.carouselImage} resizeMode="cover"/>:<View style={[styles.carouselImage,{alignItems:'center',justifyContent:'center',backgroundColor:theme.surface}]}><Text style={{fontSize:60}}>{categoryEmoji}</Text></View>}
+          <Image source={{uri:heroPhoto}} style={styles.carouselImage} resizeMode="cover" accessibilityLabel={realHeroPhoto?place.name:copy('Category illustration')} onError={()=>{if(realHeroPhoto)setFailedHeroPhotos(previous=>[...previous,realHeroPhoto]);}}/>
 
           {/* Gradient Overlay */}
           <LinearGradient
@@ -1051,6 +1056,8 @@ function PlaceDetailScreen({ route, navigation }: any) {
             locations={[0.4, 0.6, 1]}
             style={styles.heroGradientOverlay}
           />
+
+          {!realHeroPhoto && <Text style={{position:'absolute',top:60,right:16,maxWidth:'65%',paddingHorizontal:8,paddingVertical:5,borderRadius:7,backgroundColor:'rgba(0,0,0,.65)',color:'#fff',fontSize:11}}>{copy('Category illustration')}</Text>}
 
           {/* Back Button (top-left) */}
           <TouchableOpacity

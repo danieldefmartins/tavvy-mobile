@@ -2560,8 +2560,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
             <Text style={{color:theme.textSecondary,fontSize:12,lineHeight:18}}>{((place as any).subcategory || place.category || place.primary_category || '').replace(/_/g,' ')}{distance ? ' · '+distance : ''}</Text>
             {!!fullAddress && <Text style={{color:theme.textSecondary,fontSize:12,lineHeight:17}}>{fullAddress}</Text>}
           </View>
-          <View style={{width:76,height:76,borderRadius:12,overflow:'hidden',backgroundColor:theme.surface}}>
-            <Image source={{uri:image.src.startsWith('/')?'https://tavvy.com'+image.src:image.src}} style={{width:76,height:76}} resizeMode="cover" accessibilityLabel={image.isCategory?copy('Category illustration'):place.name}/>
+          <View style={{width:112,height:104,borderRadius:14,overflow:'hidden',backgroundColor:theme.surface}}>
+            <Image source={{uri:image.src.startsWith('/')?'https://tavvy.com'+image.src:image.src}} style={{width:112,height:104}} resizeMode="cover" accessibilityLabel={image.isCategory?copy('Category illustration'):place.name}/>
             {(image.isCategory || photos.length>1) && <Text style={{position:'absolute',right:3,bottom:3,color:'#fff',backgroundColor:'rgba(0,0,0,.72)',borderRadius:4,paddingHorizontal:4,paddingVertical:2,fontSize:9}}>{image.isCategory?copy('Illustration'):'+'+(photos.length-1)}</Text>}
           </View>
         </View>
