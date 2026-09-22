@@ -13,6 +13,12 @@ behavior is unchanged. No new binary has been built or distributed from this
 integration branch, and `IAP_ENABLED` remains false pending App Store Connect
 products and physical-device sandbox verification. Account deletion remains
 server-gated; the existing deployment is unchanged by this source commit.
+The prepared deletion handler now traverses nested user storage folders,
+paginates beyond 1,000 files, checks removal errors, and tolerates a Stripe
+subscription that was already removed on retry. This source fix has not been
+deployed or tested against a disposable account. Apple sign-in token capture,
+retention-policy activation, billing checks, and end-to-end deletion remain
+release gates.
 
 ## Review entry and place imagery — September 22, web released; mobile source published
 

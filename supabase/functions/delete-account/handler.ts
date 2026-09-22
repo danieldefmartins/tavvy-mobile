@@ -24,7 +24,8 @@ async function cancelStripeSubscription(stripe: Stripe, subscriptionId: string |
       await stripe.subscriptions.cancel(subscriptionId);
     }
   } catch (error) {
-    // Already canceled / not found is fine; anything else is surfaced by the caller's try/catch.
+    // A retry may find that the subscription was removed after an earlier attempt.
+    if (error && typeof error === "object" && "statusCode" in error && error.statusCode === 404) return;
     console.error("[delete-account] Stripe cancel failed for", subscriptionId, error);
     throw error;
   }
@@ -112,11 +113,26 @@ async function buildAppleClientSecret(teamId: string, keyId: string, privateKeyP
 
 async function removeOwnedStorage(admin: SupabaseClient, userId: string) {
   for (const bucket of STORAGE_BUCKETS) {
+    const paths: string[] = [];
+    const collect = async (folder: string): Promise<void> => {
+      let offset = 0;
+      while (true) {
+        const { data: entries, error } = await admin.storage.from(bucket).list(folder, { limit: 1000, offset });
+        if (error) throw error;
+        for (const entry of entries ?? []) {
+          const path = `${folder}/${entry.name}`;
+          if (entry.id) paths.push(path);
+          else await collect(path);
+        }
+        if (!entries || entries.length < 1000) break;
+        offset += entries.length;
+      }
+    };
     try {
-      const { data: files } = await admin.storage.from(bucket).list(userId, { limit: 1000 });
-      if (files && files.length > 0) {
-        const paths = files.map((f) => `${userId}/${f.name}`);
-        await admin.storage.from(bucket).remove(paths);
+      await collect(userId);
+      for (let start = 0; start < paths.length; start += 1000) {
+        const { error } = await admin.storage.from(bucket).remove(paths.slice(start, start + 1000));
+        if (error) throw error;
       }
     } catch (error) {
       console.error(`[delete-account] Storage cleanup failed for bucket ${bucket}:`, error);
