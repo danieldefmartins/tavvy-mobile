@@ -138,7 +138,7 @@ function ProfileScreen({ navigation }: any) {
           <View style={styles.guestContent}>
             <View style={styles.guestHeader}>
               <Image 
-                source={require('../assets/brand/logo-full.png')} 
+                source={isDark ? require('../assets/brand/tavvy-logo-horizontal-white.png') : require('../assets/brand/tavvy-logo-horizontal-dark.png')}
                 style={styles.guestLogo}
                 resizeMode="contain"
               />

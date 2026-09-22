@@ -21,7 +21,7 @@ import { supabase } from '../lib/supabaseClient';
 export default function SignUpScreen({ navigation, route }: any) {
   const { t } = useTranslation();
   const { signUp } = useAuth();
-  const { theme } = useThemeContext();
+  const { theme, isDark } = useThemeContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -101,7 +101,7 @@ export default function SignUpScreen({ navigation, route }: any) {
         {/* Logo/Title */}
         <View style={styles.titleContainer}>
           <Image 
-            source={require('../assets/brand/logo-full.png')} 
+            source={isDark ? require('../assets/brand/tavvy-logo-horizontal-white.png') : require('../assets/brand/tavvy-logo-horizontal-dark.png')}
             style={styles.fullLogoImage}
             resizeMode="contain"
           />

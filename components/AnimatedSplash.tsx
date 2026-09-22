@@ -12,7 +12,7 @@ import * as SplashScreen from 'expo-splash-screen';
 const { width, height } = Dimensions.get('window');
 
 // Tavvy Navy background color
-const BACKGROUND_COLOR = '#000000';
+const BACKGROUND_COLOR = '#17013A';
 
 interface AnimatedSplashProps {
   onAnimationComplete: () => void;
@@ -72,7 +72,7 @@ const AnimatedSplash: React.FC<AnimatedSplashProps> = ({ onAnimationComplete }) 
         ]}
       >
         <Image
-          source={require('../assets/logo-full.png')}
+          source={require('../assets/brand/tavvy-logo-stacked-white.png')}
           style={styles.logo}
           resizeMode="contain"
         />

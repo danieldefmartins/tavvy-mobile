@@ -107,7 +107,7 @@ function SavedScreen({ navigation }: any) {
       <SafeAreaView style={styles.container}>
         <View style={styles.emptyState}>
           <Image 
-            source={require('../assets/brand/logo-icon.png')} 
+            source={require('../assets/brand/tavvy-mark.png')} 
             style={styles.emptyLogo}
             resizeMode="contain"
           />
@@ -150,7 +150,7 @@ function SavedScreen({ navigation }: any) {
       ) : (
         <View style={styles.emptyState}>
           <Image 
-            source={require('../assets/brand/logo-icon.png')} 
+            source={require('../assets/brand/tavvy-mark.png')} 
             style={styles.emptyLogo}
             resizeMode="contain"
           />

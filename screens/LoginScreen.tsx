@@ -140,7 +140,7 @@ export default function LoginScreen({ navigation, route }: any) {
       {logoPatterns.map((pattern, index) => (
         <Image
           key={index}
-          source={require('../assets/brand/tavvy-logo-white.png')}
+          source={require('../assets/brand/tavvy-mark.png')}
           style={[
             styles.patternLogo,
             {
@@ -184,7 +184,7 @@ export default function LoginScreen({ navigation, route }: any) {
           {/* Logo Section */}
           <View style={styles.logoSection}>
             <Image 
-              source={require('../assets/brand/logo-horizontal-mobile.png')} 
+              source={require('../assets/brand/tavvy-logo-horizontal-white.png')} 
               style={styles.logoImage}
               resizeMode="contain"
             />

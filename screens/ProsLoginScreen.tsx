@@ -138,7 +138,7 @@ export default function ProsLoginScreen({ navigation }: any) {
       {logoPatterns.map((pattern, index) => (
         <Image
           key={index}
-          source={require('../assets/brand/tavvy-logo-white.png')}
+          source={require('../assets/brand/tavvy-mark.png')}
           style={[
             styles.patternLogo,
             {
@@ -183,7 +183,7 @@ export default function ProsLoginScreen({ navigation }: any) {
           <View style={styles.logoSection}>
             {/* Tavvy Logo */}
             <Image
-              source={require('../assets/brand/logo-horizontal-mobile.png')}
+              source={require('../assets/brand/tavvy-logo-horizontal-white.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />

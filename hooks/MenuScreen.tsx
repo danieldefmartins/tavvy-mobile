@@ -143,7 +143,7 @@ export default function MenuScreen() {
         {/* Logo Section */}
         <View style={styles.logoSection}>
           <Image 
-            source={require('../assets/brand/logo-icon.png')} 
+            source={require('../assets/brand/tavvy-mark.png')} 
             style={styles.logoImage}
             resizeMode="contain"
           />

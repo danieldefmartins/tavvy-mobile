@@ -8,9 +8,9 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "splash": {
-      "image": "./assets/logo-full.png",
+      "image": "./assets/brand/tavvy-logo-stacked-white.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#17013A"
     },
     "plugins": [
       [

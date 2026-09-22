@@ -715,7 +715,7 @@ function LegacyECardPreview({ navigation, route }: Props) {
             <View style={styles.endorseHeader}>
               <View style={styles.endorseHeaderLeft}>
                 <Image
-                  source={require('../../assets/brand/tavvy-logo-horizontal-light.png')}
+                  source={require('../../assets/brand/tavvy-logo-horizontal-white.png')}
                   style={styles.endorseLogo}
                   resizeMode="contain"
                 />

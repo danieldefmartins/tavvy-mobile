@@ -37,7 +37,7 @@ export default function Logo({
 
   const renderIcon = () => (
     <Image
-      source={require('../assets/brand/logo-icon.png')}
+      source={require('../assets/brand/tavvy-mark.png')}
       style={[
         styles.iconImage,
         { width: sizeConfig.icon, height: sizeConfig.icon },
@@ -90,7 +90,7 @@ export default function Logo({
       return (
         <View style={[styles.container, styles.horizontalContainer, style]}>
           <Image
-            source={require('../assets/brand/logo-icon.png')}
+            source={require('../assets/brand/tavvy-mark.png')}
             style={[
               styles.iconImage,
               { width: sizeConfig.icon * 0.75, height: sizeConfig.icon * 0.75 },
@@ -119,7 +119,7 @@ export function LogoCircle({ size = 'medium', style }: { size?: LogoSize; style?
   return (
     <View style={[styles.circleContainer, style]}>
       <Image
-        source={require('../assets/brand/logo-icon-circle.png')}
+        source={require('../assets/brand/tavvy-mark-circle.png')}
         style={[
           styles.circleImage,
           { width: sizeConfig.icon, height: sizeConfig.icon },
