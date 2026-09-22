@@ -1,6 +1,6 @@
 import { useReleaseCopy } from '../../hooks/useReleaseCopy';
 import { fetchMyECardEntitlement } from '../../lib/ecardEntitlement';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -45,6 +45,26 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
   const [isLoading, setIsLoading] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [applePrices, setApplePrices] = useState<Record<string, string>>({});
+  const [applePriceError, setApplePriceError] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios' || !IAP_ENABLED) return;
+    let active = true;
+    void import('../../lib/iap').then(({ fetchIapSubscriptions }) => fetchIapSubscriptions())
+      .then(products => {
+        if (!active) return;
+        setApplePrices(Object.fromEntries(products.flatMap(product =>
+          'localizedPrice' in product ? [[product.productId, product.localizedPrice]] : [],
+        )));
+      })
+      .catch(() => { if (active) setApplePriceError(true); });
+    return () => { active = false; };
+  }, []);
+
+  const selectedAppleProduct = selectedPlan === 'yearly' ? ECARD_PRO_ANNUAL : ECARD_PRO_MONTHLY;
+  const applePriceReady = Boolean(applePrices[selectedAppleProduct]);
+  const iosPurchaseDisabled = Platform.OS === 'ios' && (!IAP_ENABLED || !applePriceReady);
 
   const handleSubscribe = async () => {
     if (!user) {
@@ -57,10 +77,14 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
         Alert.alert('Not available yet', 'Purchases through Apple are not available in this version yet.');
         return;
       }
+      if (!applePriceReady) {
+        Alert.alert('Prices unavailable', 'Could not load Apple subscription prices. Please try again later.');
+        return;
+      }
       setIsLoading(true);
       try {
         const { purchaseIapSubscription } = await import('../../lib/iap');
-        await purchaseIapSubscription(selectedPlan === 'yearly' ? ECARD_PRO_ANNUAL : ECARD_PRO_MONTHLY, user.id);
+        await purchaseIapSubscription(selectedAppleProduct, user.id);
       } catch (error) {
         console.error('Apple purchase error:', error);
         Alert.alert('Purchase Error', 'Could not start your purchase. Please try again.');
@@ -207,7 +231,7 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
               onPress={() => setSelectedPlan('yearly')}
               activeOpacity={0.8}
             >
-              {selectedPlan === 'yearly' && (
+              {selectedPlan === 'yearly' && Platform.OS !== 'ios' && (
                 <View style={styles.bestValueBadge}>
                   <Text style={styles.bestValueText}>BEST VALUE</Text>
                 </View>
@@ -223,14 +247,14 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
                 </View>
                 <View style={styles.planInfo}>
                   <Text style={styles.planName}>Yearly</Text>
-                  <Text style={styles.planSavings}>Save 33%</Text>
+                  {Platform.OS !== 'ios' && <Text style={styles.planSavings}>Save 33%</Text>}
                 </View>
                 <View style={styles.planPrice}>
-                  <Text style={styles.priceAmount}>$3.33</Text>
-                  <Text style={styles.pricePeriod}>/month</Text>
+                  <Text style={styles.priceAmount}>{Platform.OS === 'ios' ? (IAP_ENABLED ? applePrices[ECARD_PRO_ANNUAL] || '…' : 'Coming soon') : '$3.33'}</Text>
+                  <Text style={styles.pricePeriod}>{Platform.OS === 'ios' ? '/year' : '/month'}</Text>
                 </View>
               </View>
-              <Text style={styles.billedText}>Billed $39.99/year</Text>
+              {Platform.OS !== 'ios' && <Text style={styles.billedText}>Billed $39.99/year</Text>}
             </TouchableOpacity>
 
             {/* Monthly Plan */}
@@ -255,7 +279,7 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
                   <Text style={styles.planName}>Monthly</Text>
                 </View>
                 <View style={styles.planPrice}>
-                  <Text style={styles.priceAmount}>$4.99</Text>
+                  <Text style={styles.priceAmount}>{Platform.OS === 'ios' ? (IAP_ENABLED ? applePrices[ECARD_PRO_MONTHLY] || '…' : 'Coming soon') : '$4.99'}</Text>
                   <Text style={styles.pricePeriod}>/month</Text>
                 </View>
               </View>
@@ -267,7 +291,7 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
             <View style={styles.platformNotice}>
               <Ionicons name="information-circle-outline" size={16} color="rgba(255,255,255,0.5)" />
               <Text style={styles.platformNoticeText}>
-                {IAP_ENABLED ? 'Purchases are completed securely through Apple.' : 'Purchases through Apple are coming soon.'}
+                {IAP_ENABLED ? (applePriceError ? 'Apple prices could not be loaded. Please reopen this page.' : 'Purchases are completed securely through Apple.') : 'Purchases through Apple are coming soon.'}
               </Text>
             </View>
           )}
@@ -276,10 +300,10 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
         {/* Bottom CTA */}
         <View style={styles.bottomContainer}>
           <TouchableOpacity
-            style={[styles.subscribeButton, isLoading && styles.subscribeButtonDisabled]}
+            style={[styles.subscribeButton, (isLoading || iosPurchaseDisabled) && styles.subscribeButtonDisabled]}
             onPress={handleSubscribe}
             activeOpacity={0.9}
-            disabled={isLoading}
+            disabled={isLoading || iosPurchaseDisabled}
           >
             <LinearGradient
               colors={['#FFD700', '#FFA500']}
@@ -290,7 +314,7 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
               {isLoading ? (
                 <ActivityIndicator color="#1E0A3C" size="small" />
               ) : (
-                <Text style={styles.subscribeText}>Subscribe Now</Text>
+                <Text style={styles.subscribeText}>{Platform.OS === 'ios' && !IAP_ENABLED ? 'Coming soon' : Platform.OS === 'ios' && !applePriceReady ? 'Loading Apple prices…' : 'Subscribe Now'}</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>

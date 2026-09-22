@@ -16,6 +16,7 @@ const APPLE_VERIFY_SANDBOX = "https://sandbox.itunes.apple.com/verifyReceipt";
 
 interface AppleVerifyResponse {
   status: number;
+  receipt?: { bundle_id?: string };
   latest_receipt_info?: Array<{
     product_id: string;
     original_transaction_id: string;
@@ -75,8 +76,14 @@ serve(async (req) => {
 
   try {
     const { productId, transactionReceipt } = await req.json();
-    if (!productId || !transactionReceipt) {
+    if (typeof productId !== "string" || typeof transactionReceipt !== "string" || !productId || !transactionReceipt) {
       return new Response(JSON.stringify({ status: "error", message: "Missing productId or transactionReceipt." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (![...ECARD_PRODUCT_IDS, ...PROS_PRODUCT_IDS].includes(productId)) {
+      return new Response(JSON.stringify({ status: "error", message: "Unknown product ID." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -94,9 +101,17 @@ serve(async (req) => {
       });
     }
 
-    const entry = result.latest_receipt_info?.find((e) => e.product_id === productId);
+    if (result.receipt?.bundle_id !== "com.360.tavvy") {
+      return new Response(JSON.stringify({ status: "error", message: "Receipt is for a different app." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const entry = result.latest_receipt_info
+      ?.filter((e) => e.product_id === productId && e.original_transaction_id && Number.isFinite(Number(e.expires_date_ms)))
+      .sort((a, b) => Number(b.expires_date_ms) - Number(a.expires_date_ms))[0];
     if (!entry) {
-      return new Response(JSON.stringify({ status: "error", message: "Receipt does not contain this product." }), {
+      return new Response(JSON.stringify({ status: "error", message: "Receipt does not contain this subscription." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -104,43 +119,75 @@ serve(async (req) => {
 
     const expiresAt = new Date(Number(entry.expires_date_ms)).toISOString();
     const isActive = new Date(expiresAt).getTime() > Date.now();
+    if (!isActive) {
+      return new Response(JSON.stringify({ status: "error", message: "This subscription has expired." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Never move an existing Apple transaction from one Tavvy account to
+    // another. The unique transaction indexes also reject a concurrent claim.
+    const [{ data: ecardOwner, error: ecardOwnerError }, { data: prosOwner, error: prosOwnerError }] = await Promise.all([
+      admin.from("user_subscriptions").select("user_id").eq("apple_original_transaction_id", entry.original_transaction_id).maybeSingle(),
+      admin.from("pro_providers").select("user_id").eq("apple_original_transaction_id", entry.original_transaction_id).maybeSingle(),
+    ]);
+    if (ecardOwnerError || prosOwnerError) throw ecardOwnerError ?? prosOwnerError;
+    if ((ecardOwner && ecardOwner.user_id !== user.id) || (prosOwner && prosOwner.user_id !== user.id)) {
+      return new Response(JSON.stringify({ status: "error", message: "This Apple subscription is linked to another Tavvy account." }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (ECARD_PRODUCT_IDS.includes(productId)) {
-      const planType = productId.endsWith(".annual") ? "annual" : "monthly";
-      const { error } = await admin.from("user_subscriptions").upsert(
-        {
+      const planType = productId.endsWith(".annual") ? "ecard_premium_annual" : "ecard_premium_monthly";
+      const subscription = {
           user_id: user.id,
           plan_type: planType,
-          status: isActive ? "active" : "expired",
+          status: "active",
           current_period_end: expiresAt,
           source: "apple",
           apple_original_transaction_id: entry.original_transaction_id,
           apple_product_id: productId,
           updated_at: new Date().toISOString(),
-        },
-        { onConflict: "apple_original_transaction_id" },
-      );
-      if (error) throw error;
-      await admin.from("profiles").update({
-        subscription_status: isActive ? "active" : "expired",
-        subscription_plan: "pro",
+      };
+      const { data: existing, error: existingError } = await admin.from("user_subscriptions")
+        .select("id").eq("user_id", user.id).like("plan_type", "ecard_premium%").maybeSingle();
+      if (existingError) throw existingError;
+      if (existing) {
+        const { data, error } = await admin.from("user_subscriptions").update(subscription)
+          .eq("id", existing.id).select("id");
+        if (error || !data?.length) throw error ?? new Error("Subscription row was not updated.");
+      } else {
+        const { error } = await admin.from("user_subscriptions").insert(subscription);
+        if (error) throw error;
+      }
+      const { data: profileRows, error: profileError } = await admin.from("profiles").update({
+        is_pro: true,
+        pro_since: new Date().toISOString(),
+        subscription_status: "active",
+        subscription_plan: planType,
         subscription_expires_at: expiresAt,
-      }).eq("user_id", user.id);
+      }).eq("user_id", user.id).select("user_id");
+      if (profileError || !profileRows?.length) throw profileError ?? new Error("Profile row was not updated.");
+      const { error: roleError } = await admin.from("user_roles").upsert({
+        user_id: user.id,
+        role: "pro",
+        notes: `eCard Premium Apple subscription: ${entry.original_transaction_id}`,
+        granted_at: new Date().toISOString(),
+      }, { onConflict: "user_id,role" });
+      if (roleError) throw roleError;
     } else if (PROS_PRODUCT_IDS.includes(productId)) {
-      const { error } = await admin.from("pro_providers").update({
-        subscription_status: isActive ? "active" : "expired",
+      const { data, error } = await admin.from("pro_providers").update({
+        subscription_status: "active",
         subscription_plan: "founding",
         subscription_expires_at: expiresAt,
         subscription_source: "apple",
         apple_original_transaction_id: entry.original_transaction_id,
-        is_active: isActive,
-      }).eq("user_id", user.id);
-      if (error) throw error;
-    } else {
-      return new Response(JSON.stringify({ status: "error", message: "Unknown product ID." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+        is_active: true,
+      }).eq("user_id", user.id).select("user_id");
+      if (error || !data?.length) throw error ?? new Error("Pros account was not updated.");
     }
 
     return new Response(JSON.stringify({ status: "ok", expiresAt, isActive }), {

@@ -20,6 +20,16 @@ deployed or tested against a disposable account. Apple sign-in token capture,
 retention-policy activation, billing checks, and end-to-end deletion remain
 release gates.
 
+The owner confirmed the three Apple subscription products are not configured.
+`docs/APPLE_IAP_SETUP.md` now defines two separate groups, the exact existing
+product IDs and prices, Account Holder prerequisites, and sandbox acceptance.
+The source-only verification draft checks bundle identity, expiry and prior
+transaction ownership, and aligns eCard entitlement fields with the existing
+Stripe webhook. The eCard iOS paywall loads Apple-localized prices when enabled;
+the current disabled build remains unaffected. Receipt-to-account binding,
+Pros price display, subscription switching, server notification handling and
+end-to-end tests are still open; do not enable `IAP_ENABLED` yet.
+
 ## Review entry and place imagery — September 22, web released; mobile source published
 
 The standard place Add a review sheet had a styled-jsx scope bug: its outer overlay
