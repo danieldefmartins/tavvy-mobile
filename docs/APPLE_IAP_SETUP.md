@@ -1,9 +1,33 @@
 # Tavvy iOS subscription setup
 
-Status: **three App Store Connect products created; purchases not enabled**. The app contains three product IDs, but
-`lib/iapConfig.ts` keeps `IAP_ENABLED = false`. The Apple integration branch is
-source only; it is not the distributed app. These products are distinct from
-the separate restaurant membership offer.
+Status: **products created; server side deployed; purchases enabled only in the
+TestFlight verification build**. `lib/iapConfig.ts` reads
+`EXPO_PUBLIC_IAP_ENABLED` and defaults to off; the EAS profile `production-iap`
+sets it to `true` for the sandbox test build (build 29). Verification returns
+`NOT_CONFIGURED` until `APPLE_SHARED_SECRET` is set. These products are distinct
+from the separate restaurant membership offer.
+
+## 0. What is deployed (September 22, 2026)
+
+| Piece | Where | State |
+| --- | --- | --- |
+| `verify-apple-purchase` | Supabase Edge Function | v2 deployed: bundle check, newest matching transaction, `appAccountToken` must equal the caller, original transaction bound to the first Tavvy account (409 otherwise), expired → `EXPIRED`, entitlement written through `_shared/appleEntitlements.ts` |
+| `apple-server-notifications` | Supabase Edge Function (no JWT) | deployed: verifies the ES256 JWS chain against the pinned Apple Root CA - G3, stores every notification in `apple_server_notifications` (idempotent on `notificationUUID`), applies renewals, billing retry/grace, expiry, cancellation, refund and plan switches |
+| `store-apple-credential` | Supabase Edge Function | deployed: stores the Sign in with Apple refresh token for later revocation |
+| `delete-account` | Supabase Edge Function | v3 deployed (paginated storage cleanup); still gated by the policy row and env flag |
+| Client | `lib/iap.ts`, paywalls, Settings | purchase/restore results surfaced, renewal terms + Terms/Privacy links, Restore in Settings |
+
+Secrets the maintainer must set in the Supabase dashboard (Edge Function secrets):
+`APPLE_SHARED_SECRET` (App Store Connect → App Information → App-Specific Shared
+Secret), `ACCOUNT_DELETION_RETENTION_POLICY_APPROVED=true` (with
+`update account_deletion_policy set approved=true, approved_by=…, approved_at=now()`),
+and for Sign in with Apple revocation `APPLE_TEAM_ID`, `APPLE_KEY_ID`,
+`APPLE_PRIVATE_KEY`, `APPLE_CLIENT_ID` (only once Apple is enabled as a Supabase
+Auth provider; today only email is enabled, so the app hides the Apple button).
+
+Register the notifications URL in App Store Connect → App Information → App Store
+Server Notifications, Version 2, for both Production and Sandbox:
+`https://scasgwrikoqdwlwlwcff.supabase.co/functions/v1/apple-server-notifications`.
 
 ## 1. Account Holder: commerce prerequisites
 

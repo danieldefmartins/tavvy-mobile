@@ -1,5 +1,64 @@
 # Tavvy current engineering status
 
+## Apple release completion — September 22 (branch `feature/apple-release-completion-20260922`)
+
+Source published on the feature branch from `release/apple-final-20260922` (`1abd8e1`).
+Not merged. EAS store build 29 (`bce12481`, profile `production-iap`, version 1.0.1)
+was built from `ca13af7` and submitted to App Store Connect / TestFlight the same day.
+The committed `IAP_ENABLED` default stays off; only the `production-iap` profile sets
+`EXPO_PUBLIC_IAP_ENABLED=true` so the TestFlight build can run sandbox purchase tests.
+
+**Live changes made during this batch (verified):**
+- Supabase Auth has only the email provider enabled, so the Apple and Google buttons on
+  both login screens were dead controls. They now render only when the public auth
+  settings list the provider (Google never without Apple, Guideline 4.8). The Pros login
+  Forgot Password control had no handler and now sends the reset email.
+- `verify-apple-purchase` v2, `apple-server-notifications` (new), `store-apple-credential`
+  (new) and `delete-account` v3 are deployed. `apple_server_notifications` table and the
+  `places.rv_group` generated column + index are applied. The notifications endpoint
+  verifies Apple's ES256 JWS chain against the pinned Apple Root CA - G3 (nine local
+  positive/negative tests) and logs every notification idempotently.
+- `verify-apple-purchase` returns 503 `NOT_CONFIGURED` until `APPLE_SHARED_SECRET` is set;
+  `delete-account` returns `unavailable` until the DB policy row and
+  `ACCOUNT_DELETION_RETENTION_POLICY_APPROVED=true` are both set. Neither secret could be
+  set from this session; the maintainer sets them in the Supabase dashboard.
+- All 16 non-English catalogs now cover every English key (about 5,500 strings added,
+  including new login/paywall keys). RTL relies on the existing Arabic `forceRTL` restart.
+- Brand: every in-app logo, the App Store icon, Android adaptive icon, Expo splash and the
+  native launch image are regenerated from the designer's mark (`scripts/generate-brand-assets.py`,
+  source `assets/brand/tavvy-mark-source.png`). Old logo files were removed.
+- On The Go crashed on open (stray text node); fixed. RV & Camping "All" tab hit the
+  statement timeout; the catalog now filters on `rv_group`. Both screens have a List / Map
+  toggle with My location / Standard / Dark / Satellite icon controls on the map; the RV
+  map mode is a full-screen map with a floating search field and filter icon. The same
+  RV/On The Go changes are on tavvy-web branch `feature/rv-map-toggle-20260922` (`76e2e87`),
+  ready to fast-forward into `release/verified-web-20260921` for the Railway deploy.
+- Favorites: the app called RPCs that do not exist; it reads `user_favorites` directly.
+- Appearance follows the device until Light/Dark is chosen; Settings has a Match device switch.
+- Paywalls show Apple's renewal terms with Terms of Use and Privacy Policy links; purchase
+  and restore results are surfaced to the user; the Stripe money-back promise is iOS-hidden.
+- Dev-only QA deep links (`tavvy://qa/nav|signin|signout`, `lib/devQaNavigation.ts`) drive
+  the simulator; they are compiled out of release builds.
+
+**App Store Connect (done via the maintainer's signed-in browser):** eight framed iPhone
+6.5" and eight iPad 13" screenshots replaced the January set (both ordered Home, Place,
+Signals, Pros, eCard, Universes, RV map, Tools); App Review notes rewritten with the
+sign-in locations, subscription paths, deletion path and iPad note; version set to 1.0.1;
+demo account `review@tavvy.com` verified to sign in and given a fictional eCard.
+
+**Simulator evidence:** iPhone 17, iPhone 17 Pro Max and iPad Pro 13" development
+builds through Metro: login, Tools, Settings, place, Signal Search, Pros, eCard hub and
+preview, Universes, RV list/map, On The Go list/map, launch screen. No physical-device
+run and no purchase test yet.
+
+**Still open before submission:** set the Supabase secrets above; run the sandbox
+purchase / restore / account-binding test on a physical iPhone with TestFlight build 29
+(then enable purchases for the store build); run one real account deletion with a
+disposable account after the policy flags are on; attach build 29 to version 1.0.1 and
+add subscription review screenshots; register the App Store Server Notifications URL
+(`/functions/v1/apple-server-notifications`, production and sandbox) in App Store
+Connect; deploy the web branch; submit.
+
 ## Apple integration — September 22, source branch only
 
 The App Store Connect version 1.0 currently displays the icon from rejected build 21.
