@@ -2,6 +2,15 @@
 
 ## Apple integration — September 22, source branch only
 
+The App Store Connect version 1.0 currently displays the icon from rejected build 21.
+On September 22, the iOS asset catalog and Expo `assets/icon.png` were aligned to
+Tavvy's current purple/teal web icon. Both are opaque 1024 × 1024 RGB PNGs and
+byte-identical. This is source preparation only: Apple takes the displayed icon
+from a newly uploaded build, so the App Store Connect icon has not changed yet.
+The Tavvy eCard Pro and Tavvy Pros subscription groups now have English (U.S.)
+display names in App Store Connect. Apple is blocking creation of their products
+until the Account Holder accepts its updated Developer Program License Agreement.
+
 `release/apple-final-20260922` starts from the latest deployed-design mobile
 preview (`ccdd815`) and merges Claude's Apple-readiness branch (`92e330d`).
 The combined source passed `npm run typecheck`. The eCard iOS paywall no longer
