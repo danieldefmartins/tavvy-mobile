@@ -1088,7 +1088,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
         </ScrollView>
 
         <View style={{ marginHorizontal: 20, marginTop: 18 }}>
-          <Text style={{ color: theme.text, fontSize: 20, fontWeight: '800', marginBottom: 11 }}>What people experienced</Text>
+          <Text style={{ color: theme.text, fontSize: 20, fontWeight: '800', marginBottom: 11 }}>{copy('Reviews')}</Text>
           <PlaceReviewGrid mode="full" summary={reviewSummary} selectedTopic={selectedTopic} onSelect={(section, topic) => { setSelectedSummary(section); setSelectedTopic(topic.label); }} />
           {selectedSummary && evidence && evidence.dataStatus!=='unavailable' && <View style={{ marginTop: 10, padding: 15, backgroundColor: theme.background, borderColor: theme.border, borderWidth: 1, borderRadius: 14 }}>
             <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:12}}><Text style={{color:theme.text,fontWeight:'700',flex:1}}>{selectedTopic}</Text><TouchableOpacity accessibilityRole="button" onPress={()=>{setSelectedSummary(null);setSelectedTopic(null);}} style={{minHeight:44,justifyContent:'center'}}><Text style={{color:isDark?'#D9B6FF':theme.primary}}>{copy('All experiences')}</Text></TouchableOpacity></View>
@@ -1155,7 +1155,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
                           ]}
                           numberOfLines={1}
                         >
-                          {sig.label}
+                          {sig.category === 'heads_up' ? '! ' : ''}{sig.label}
                         </Text>
                       </View>
                     ))}

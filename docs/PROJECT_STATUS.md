@@ -322,3 +322,16 @@ temporary native fixture was removed. Native component visual/interaction checks
 and the live read-only Boston search ran in the existing iPhone Simulator app.
 A new distributed binary, full iPad release QA and remaining-language translation
 are still outstanding. Claude's separate Apple readiness branch was not modified.
+
+## Review presentation redesign — September 22, source only
+
+Mirrors the approved web presentation: `lib/placeReviewSummary.ts` is copied from
+web (adds `practical` and `searchReviewSections()`), and `components/PlaceReviewGrid.tsx`
+renders every topic as word + people count + a thin frequency bar on one scale per
+place (teal/purple/amber; bars hidden below five recent reviewers), with the core
+experience panel, three-topic supporting sections with Show all, an About these
+numbers control and a Good to know row. Search cards show at most three highlight
+lines. The place screen title is Reviews and Heads Up chips carry the `!` marker.
+Four locale keys (`reviewExperience82`–`85`) were added to en/es/pt/ar. Application
+TypeScript and 16 focused unit tests passed. This has not been rendered in the
+Simulator or included in any EAS build; native visual verification remains open.
