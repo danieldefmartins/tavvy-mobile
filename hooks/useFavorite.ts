@@ -120,17 +120,21 @@ export function useIsFavorite(placeId: string) {
     queryFn: async (): Promise<boolean> => {
       if (!user || !placeId) return false;
 
-      const { data, error } = await supabase.rpc('is_place_favorited', {
-        p_user_id: user.id,
-        p_place_id: placeId,
-      });
+      // Direct table read: the is_place_favorited RPC does not exist in the
+      // database and every place screen logged a PGRST202 error for it.
+      const { data, error } = await supabase
+        .from('user_favorites')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('place_id', placeId)
+        .limit(1);
 
       if (error) {
         console.error('Error checking if place is favorited:', error);
         return false;
       }
 
-      return Boolean(data);
+      return Array.isArray(data) && data.length > 0;
     },
     enabled: !!user && !!placeId,
   });
@@ -143,16 +147,18 @@ export function usePlaceFavoriteCount(placeId: string) {
   return useQuery({
     queryKey: ['place-favorite-count', placeId],
     queryFn: async (): Promise<number> => {
-      const { data, error } = await supabase.rpc('get_place_favorite_count', {
-        p_place_id: placeId,
-      });
+      // Direct count: the get_place_favorite_count RPC does not exist in the database.
+      const { count, error } = await supabase
+        .from('user_favorites')
+        .select('id', { count: 'exact', head: true })
+        .eq('place_id', placeId);
 
       if (error) {
         console.error('Error fetching favorite count:', error);
         return 0;
       }
 
-      return Number(data) || 0;
+      return count ?? 0;
     },
     enabled: !!placeId,
   });
