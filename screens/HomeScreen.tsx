@@ -2576,24 +2576,24 @@ function HomeScreen({ navigation }: { navigation: any }) {
         </View>
         
         {/* Quick Actions */}
-        <View style={[styles.quickActions, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-          {!!place.phone && <TouchableOpacity style={styles.actionButton} onPress={() => handleCall(place.phone)} accessibilityLabel="Call business" accessibilityRole="button">
-            <Ionicons name="call-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
-            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>{copy("Call")}</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickActions}>
+          {!!place.phone && <TouchableOpacity style={[styles.actionButton, {backgroundColor:theme.primary}]} onPress={() => handleCall(place.phone)} accessibilityLabel="Call business" accessibilityRole="button">
+            <Ionicons name="call-outline" size={20} color="#FFFFFF" />
+            <Text style={[styles.actionText, { color: '#FFFFFF' }]}>{copy("Call")}</Text>
           </TouchableOpacity>}
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleDirections(place)} accessibilityLabel={"Get directions"} accessibilityRole="button">
-            <Ionicons name="navigate-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
-            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>{copy("Directions")}</Text>
+          <TouchableOpacity style={[styles.actionButton, {backgroundColor:theme.primary}]} onPress={() => handleDirections(place)} accessibilityLabel={"Get directions"} accessibilityRole="button">
+            <Ionicons name="navigate-outline" size={20} color="#FFFFFF" />
+            <Text style={[styles.actionText, { color: '#FFFFFF' }]}>{copy("Directions")}</Text>
           </TouchableOpacity>
-          {!!place.instagram_url && <TouchableOpacity style={styles.actionButton} onPress={() => handleSocial(place.instagram_url)} accessibilityLabel="View Instagram" accessibilityRole="button">
-            <Ionicons name="chatbubble-ellipses-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
-            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>{copy("Social")}</Text>
+          {!!place.instagram_url && <TouchableOpacity style={[styles.actionButton, {backgroundColor:theme.primary}]} onPress={() => handleSocial(place.instagram_url)} accessibilityLabel="View Instagram" accessibilityRole="button">
+            <Ionicons name="chatbubble-ellipses-outline" size={20} color="#FFFFFF" />
+            <Text style={[styles.actionText, { color: '#FFFFFF' }]}>{copy("Social")}</Text>
           </TouchableOpacity>}
-          {!!place.website && <TouchableOpacity style={styles.actionButton} onPress={() => handleWebsite(place.website)} accessibilityLabel={"Visit website"} accessibilityRole="button">
-            <Ionicons name="globe-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
-            <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>{copy("Website")}</Text>
+          {!!place.website && <TouchableOpacity style={[styles.actionButton, {backgroundColor:theme.primary}]} onPress={() => handleWebsite(place.website)} accessibilityLabel={"Visit website"} accessibilityRole="button">
+            <Ionicons name="globe-outline" size={20} color="#FFFFFF" />
+            <Text style={[styles.actionText, { color: '#FFFFFF' }]}>{copy("Website")}</Text>
           </TouchableOpacity>}
-        </View>
+        </ScrollView>
       </TouchableOpacity>
     );
   };
@@ -5246,19 +5246,22 @@ const styles = StyleSheet.create({
   // Quick Actions (for bottom sheet cards)
   quickActions: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F2F2F7',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   actionButton: {
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    minHeight: 44,
+    borderRadius: 24,
     paddingHorizontal: 12,
   },
   actionText: {
-    fontSize: 11,
-    marginTop: 4,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '600',
   },
 
   // Map Markers
