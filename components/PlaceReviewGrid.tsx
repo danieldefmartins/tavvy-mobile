@@ -44,16 +44,13 @@ export default function PlaceReviewGrid({ summary, mode = 'compact', selectedTop
     const tone: Tone = topic.tone === 'concern' ? 'concern' : SECTION_TONE[section] === 'neutral' && section !== 'main' ? 'neutral' : 'positive';
     const wordColor = topic.tone === 'concern' ? toneColor.concern : theme.text;
     const olderDate = topic.lastReportedAt ? topic.lastReportedAt.slice(0, 10) : '';
-    const older = topic.older ? ` · ${copy('Older report')}${!compact && olderDate ? ` · ${olderDate}` : ''}` : '';
+    const older = topic.older ? ` · ${compact ? copy('Older') : copy('Older report')}${!compact && olderDate ? ` · ${olderDate}` : ''}` : '';
     const selected = selectedTopic === topic.label;
-    if (compact) return <View key={topic.slug || topic.label} style={styles.cTopic}>
-      <View style={styles.cLine}>
-        {first && <Text numberOfLines={1} style={[styles.cLabel, { color: toneColor[SECTION_TONE[section]] }]}>{copy(title).toUpperCase()}</Text>}
-        {topic.tone === 'concern' && mark}
-        <Text numberOfLines={1} style={[styles.cWordText, { color: wordColor }]}>{topic.label}<Text style={styles.older}>{older}</Text></Text>
-        <Text style={[styles.cCount, { color: toneColor[tone] }]}>{topic.count}</Text>
-      </View>
-      {bar(topic, tone)}
+    // Search cards: quiet label · word · short bar beside the count, one row per topic.
+    if (compact) return <View key={topic.slug || topic.label} style={styles.cRow}>
+      <Text numberOfLines={1} style={[styles.cLabel, muted]}>{first ? copy(title) : ''}</Text>
+      <View style={styles.cWord}>{topic.tone === 'concern' && mark}<Text numberOfLines={2} style={[styles.cWordText, { color: wordColor }]}>{topic.label}<Text style={styles.older}>{older}</Text></Text></View>
+      <View style={styles.cSide}>{bar(topic, tone)}<Text style={[styles.cCount, { color: toneColor[tone] }]}>{topic.count}</Text></View>
     </View>;
     const inner = <>
       <View style={styles.top}>
@@ -82,9 +79,9 @@ export default function PlaceReviewGrid({ summary, mode = 'compact', selectedTop
       const main = section.key === 'main';
       const ordered = main && !compact ? [...section.topics.filter(topic => topic.tone !== 'concern'), ...section.topics.filter(topic => topic.tone === 'concern')] : section.topics;
       const topics = !compact && !main && !open ? ordered.slice(0, FULL_INITIAL_TOPICS) : ordered;
-      if (compact) return <View key={section.key} testID={`review-section-${section.key}`} style={{ gap: 4 }}>
+      if (compact) return <View key={section.key} testID={`review-section-${section.key}`} style={{ gap: 3 }}>
         {topics.map((topic, index) => topicRow(section.key, topic, index === 0, section.title))}
-        {!topics.length && <View style={styles.cLine}><Text numberOfLines={1} style={[styles.cLabel, { color: toneColor[SECTION_TONE[section.key]] }]}>{copy(section.title).toUpperCase()}</Text><Text style={[styles.note, muted, { flex: 1 }]}>{emptyText(section.key)}</Text></View>}
+        {!topics.length && <View style={styles.cRow}><Text numberOfLines={1} style={[styles.cLabel, muted]}>{copy(section.title)}</Text><Text style={[styles.note, muted, { flex: 1 }]}>{emptyText(section.key)}</Text></View>}
       </View>;
       return <View key={section.key} testID={`review-section-${section.key}`} style={main
         ? [styles.mainPanel, { borderColor: theme.border, backgroundColor: isDark ? 'rgba(138,5,190,.16)' : 'rgba(138,5,190,.06)' }]
@@ -126,16 +123,17 @@ const styles = StyleSheet.create({
   older: { fontSize: 11, fontWeight: '600' },
   count: { fontSize: 15, lineHeight: 20, fontWeight: '800', fontVariant: ['tabular-nums'] },
   track: { height: 6, borderRadius: 3, overflow: 'hidden' },
-  trackCompact: { height: 3 },
+  trackCompact: { height: 5, width: 36 },
   mark: { width: 15, height: 15, borderRadius: 8, backgroundColor: '#F5A623', alignItems: 'center', justifyContent: 'center', marginRight: 5 },
   markCompact: { width: 13, height: 13, marginRight: 4 },
   markText: { color: '#17013A', fontSize: 10.5, fontWeight: '900', lineHeight: 13 },
   markTextCompact: { fontSize: 9, lineHeight: 11 },
-  cTopic: { gap: 3, minWidth: 0 },
-  cLine: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 18 },
-  cLabel: { maxWidth: '38%', fontSize: 10, lineHeight: 16, fontWeight: '800', letterSpacing: 0.4 },
-  cWordText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '700' },
-  cCount: { fontSize: 13, lineHeight: 18, fontWeight: '800', minWidth: 18, textAlign: 'right', fontVariant: ['tabular-nums'] },
+  cRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 20 },
+  cLabel: { width: '21%', fontSize: 11, lineHeight: 16, fontWeight: '600' },
+  cWord: { flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 0 },
+  cWordText: { fontSize: 13, lineHeight: 17, fontWeight: '700', flexShrink: 1 },
+  cSide: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  cCount: { fontSize: 13, lineHeight: 18, fontWeight: '800', minWidth: 16, textAlign: 'right', fontVariant: ['tabular-nums'] },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, paddingVertical: 4 },
   chip: { paddingVertical: 6, paddingHorizontal: 11, borderWidth: 1, borderRadius: 20 },
   chipText: { fontSize: 12.5, fontWeight: '600' },

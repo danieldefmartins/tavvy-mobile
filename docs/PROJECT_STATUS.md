@@ -332,11 +332,11 @@ place (teal/purple/amber; bars hidden below five recent reviewers), with the cor
 experience panel, three-topic supporting sections with Show all, an About these
 numbers control and a Good to know row. Search cards show at most three highlight
 lines that open with a `Reviews · {{count}} people · Last 6 months` line, each line a
-small-caps section label, the word, the count and a full-width bar. The search card
-replaces the 112 × 104 side thumbnail with a horizontal strip of square thumbnails
-under the identity text (`CardGallery` in `screens/HomeScreen.tsx`: three visible,
-scrollable to five real photos; a category illustration stays a single labeled
-thumbnail). The place screen title is Reviews and Heads Up chips carry the `!`
+muted section label, the experience word and a short bar beside the count. The
+search card keeps the name and facts first with a substantial square photo beside
+them (38% of the width, `+N` badge for more photos) and one Directions shortcut;
+phone, website and social stay on the place page. Hero galleries and thumbnail
+strips were tried and rejected for height. The place screen title is Reviews and Heads Up chips carry the `!`
 marker. Four locale keys (`reviewExperience82`–`85`) were added to en/es/pt/ar.
 Application TypeScript and 16 focused unit tests passed. This has not been rendered
 in the Simulator or included in any EAS build; native visual verification remains open.
