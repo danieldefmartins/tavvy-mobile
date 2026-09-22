@@ -35,7 +35,9 @@
     "optional": "Opcional",
     "required": "Obrigatório",
     "version": "Versão {{version}}",
-    "tagline": "Tavvy"
+    "tagline": "Tavvy",
+    "continue": "Continuar",
+    "comingSoon": "Em breve"
   },
   "navigation": {
     "home": "Início",
@@ -84,7 +86,14 @@
     "username": "Nome de usuário",
     "signOut": "Sair",
     "deleteAccount": "Excluir Conta",
-    "signInRequired": "Entrar"
+    "signInRequired": "Entrar",
+    "tavvyMember": "Membro do Tavvy",
+    "deleteAccountFinal": "Excluir conta?",
+    "deleteAccountFinalWarning": "Confirme que você deseja excluir sua conta. Esta ação não pode ser desfeita.",
+    "deleteAccountConfirm": "Excluir conta",
+    "accountDeleted": "Conta excluída",
+    "accountDeletedMessage": "Sua conta foi excluída.",
+    "deleteAccountError": "Não foi possível excluir sua conta. Tente novamente."
   },
   "home": {
     "greeting": {
@@ -383,7 +392,8 @@
     "sendMessage": "Enviar mensagem",
     "callNow": "Ligar agora",
     "bookNow": "Reservar agora",
-    "manageProfile": "Editar perfil"
+    "manageProfile": "Editar perfil",
+    "proDashboard": "Painel profissional"
   },
   "add": {
     "addNew": "Adicionar novo",
@@ -951,7 +961,7 @@
     "electric": "Elétrica",
     "water": "Água",
     "sewer": "Esgoto",
-    "wifi": "WiFi",
+    "wifi": "Wi-Fi",
     "showers": "Chuveiros",
     "restrooms": "Banheiros",
     "laundry": "Lavanderia",
@@ -1762,5 +1772,40 @@
     "reviewExperience94": "Mostrar mais avaliações",
     "reviewExperience95": "Filtros",
     "reviewExperience96": "carregadas"
+  },
+  "timeclock": {
+    "title": "Registro de Ponto",
+    "hi": "Olá, {{name}}",
+    "onTheClock": "Em expediente",
+    "clockedOut": "Você está fora do expediente",
+    "since": "Desde {{time}}",
+    "selectJob": "Selecione o trabalho",
+    "noJobs": "Nenhum trabalho ativo atribuído",
+    "clockIn": "Registrar Entrada",
+    "clockOut": "Registrar Saída",
+    "gettingLocation": "Obtendo sua localização…",
+    "onSite": "No local",
+    "offSite": "Fora do local",
+    "offSiteWarn": "Você registrou a entrada longe do local de trabalho. Seu supervisor verá isso.",
+    "notCrew": "Você ainda não está cadastrado como membro da equipe. Peça ao seu empregador para enviar um convite.",
+    "loginNeeded": "Faça login para usar o registro de ponto.",
+    "pendingSync": "Salvo offline — será sincronizado quando você voltar a ficar online"
+  },
+  "timesheet": {
+    "title": "Minhas Horas",
+    "period": "Período de pagamento",
+    "totalHours": "Total de horas",
+    "regular": "Horas normais",
+    "overtime": "Horas extras",
+    "gross": "Valor bruto",
+    "approved": "Aprovado",
+    "pending": "Aguardando aprovação",
+    "notBuilt": "Ainda não resumido — suas horas ao vivo aparecem abaixo.",
+    "shifts": "Turnos",
+    "noEntries": "Nenhuma hora registrada neste período.",
+    "open": "Em aberto",
+    "offSite": "Fora do local",
+    "loginNeeded": "Faça login para ver suas horas.",
+    "notCrew": "Você ainda não está cadastrado como membro da equipe."
   }
 }

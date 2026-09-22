@@ -93,7 +93,14 @@
     "deleteAccountConfirm": "Delete account",
     "accountDeleted": "Account deleted",
     "accountDeletedMessage": "Your account has been deleted.",
-    "deleteAccountError": "Your account could not be deleted. Please try again."
+    "deleteAccountError": "Your account could not be deleted. Please try again.",
+    "signInWithApple": "Sign in with Apple",
+    "signInWithGoogle": "Sign in with Google",
+    "enterYourEmail": "Enter your email",
+    "enterEmailFirst": "Please enter your email address first, then tap Forgot Password.",
+    "resetEmailTitle": "Check your email",
+    "resetLinkSent": "If an account exists for this email, a password reset link has been sent.",
+    "resetFailed": "Could not send the reset email. Please try again."
   },
   "home": {
     "greeting": {
@@ -393,7 +400,12 @@
     "callNow": "Call Now",
     "bookNow": "Book Now",
     "manageProfile": "Edit Profile",
-    "proDashboard": "Professional dashboard"
+    "proDashboard": "Professional dashboard",
+    "subscribed": "You are now subscribed to Tavvy Pros!",
+    "purchaseStartFailed": "Could not start the purchase.",
+    "appleRenewalTerms": "Payment is charged to your Apple ID account at confirmation. The subscription renews automatically each year at the same price unless it is cancelled at least 24 hours before the end of the current period. Manage or cancel it in your App Store account settings.",
+    "renewalTerms": "The subscription renews automatically each year until cancelled. You can manage or cancel it at any time.",
+    "cancelAnytimeApple": "Cancel anytime in your App Store settings."
   },
   "add": {
     "addNew": "Add New",
@@ -760,7 +772,8 @@
     "enforcement": "Enforcement",
     "beHonest": "Be Honest",
     "beRespectful": "Be Respectful",
-    "trustVerification": "Trust & Verification"
+    "trustVerification": "Trust & Verification",
+    "termsOfUse": "Terms of Use"
   },
   "onboarding": {
     "welcome": "Welcome",
@@ -1806,6 +1819,25 @@
     "reviewExperience93": "{{shown}} of {{total}} reviews",
     "reviewExperience94": "Show more reviews",
     "reviewExperience95": "Filters",
-    "reviewExperience96": "loaded"
+    "reviewExperience96": "loaded",
+    "purchase1": "Pro access active",
+    "purchase2": "Plan not active",
+    "purchase3": "Purchase Error",
+    "purchase4": "Terms of Use",
+    "purchase5": "Privacy Policy",
+    "purchase6": "Thank you! Your eCard Pro subscription is active.",
+    "purchase7": "Could not start your purchase. Please try again.",
+    "purchase8": "No previous purchases were found for this Apple ID.",
+    "purchase9": "Purchases are completed securely through Apple.",
+    "purchase10": "Apple prices could not be loaded. Please reopen this page.",
+    "purchase11": "Purchases through Apple are coming soon.",
+    "purchase12": "Restore Purchases",
+    "purchase13": "Payment is charged to your Apple ID account at confirmation. The subscription renews automatically at the same price unless it is cancelled at least 24 hours before the end of the current period. Manage or cancel it in your App Store account settings.",
+    "purchase14": "The subscription renews automatically until cancelled. You can manage or cancel it at any time.",
+    "purchase15": "Your verified Pro access is available. Reopen your card to refresh its features.",
+    "purchase16": "If you just checked out, wait a moment and try again.",
+    "purchase17": "Purchases through Apple are not available in this version yet.",
+    "purchase18": "Your purchases have been restored.",
+    "purchase19": "Could not restore purchases. Please try again."
   }
 }

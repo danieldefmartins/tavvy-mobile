@@ -35,7 +35,9 @@
     "optional": "Opcional",
     "required": "Requerido",
     "version": "Versión {{version}}",
-    "tagline": "Tavvy"
+    "tagline": "Tavvy",
+    "continue": "Continuar",
+    "comingSoon": "Próximamente"
   },
   "navigation": {
     "home": "Inicio",
@@ -84,7 +86,14 @@
     "username": "Nombre de usuario",
     "signOut": "Cerrar Sesión",
     "deleteAccount": "Eliminar Cuenta",
-    "signInRequired": "Iniciar sesión"
+    "signInRequired": "Iniciar sesión",
+    "tavvyMember": "Miembro de Tavvy",
+    "deleteAccountFinal": "¿Eliminar cuenta?",
+    "deleteAccountFinalWarning": "Confirma que quieres eliminar tu cuenta. Esta acción no se puede deshacer.",
+    "deleteAccountConfirm": "Eliminar cuenta",
+    "accountDeleted": "Cuenta eliminada",
+    "accountDeletedMessage": "Tu cuenta ha sido eliminada.",
+    "deleteAccountError": "No se pudo eliminar tu cuenta. Intenta de nuevo."
   },
   "home": {
     "greeting": {
@@ -383,7 +392,8 @@
     "sendMessage": "Enviar mensaje",
     "callNow": "Llamar ahora",
     "bookNow": "Reservar ahora",
-    "manageProfile": "Editar perfil"
+    "manageProfile": "Editar perfil",
+    "proDashboard": "Panel profesional"
   },
   "add": {
     "addNew": "Agregar nuevo",
