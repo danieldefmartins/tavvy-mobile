@@ -381,6 +381,42 @@ interface GeocodingResult {
 // MAIN COMPONENT
 // ============================================
 
+// Search-card photo header (mirrors web SignalCard): real photos swipe with a counter and
+// step buttons, the name and facts sit on a dark shade; an illustration is a single labeled image.
+function CardHero({ photos, isCategory, name, meta, address, onPress, surface, copy }: {
+  photos: string[]; isCategory: boolean; name: string; meta: string; address: string; onPress: () => void; surface: string; copy: (message: string) => string;
+}) {
+  const [index, setIndex] = useState(0);
+  const [width, setWidth] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+  const uris = photos.map(src => src.startsWith('/') ? 'https://tavvy.com' + src : src);
+  const current = Math.min(index, uris.length - 1);
+  const step = (direction: number) => { const next = Math.max(0, Math.min(uris.length - 1, current + direction)); scrollRef.current?.scrollTo({ x: next * width, animated: true }); setIndex(next); };
+  const badge = { color: '#fff', fontSize: 12, fontWeight: '600' as const };
+  return (
+    <View onLayout={event => setWidth(Math.round(event.nativeEvent.layout.width))} style={{ width: '100%', height: 172, backgroundColor: surface, overflow: 'hidden' }}>
+      {width > 0 && <ScrollView ref={scrollRef} horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={event => setIndex(Math.min(uris.length - 1, Math.max(0, Math.round(event.nativeEvent.contentOffset.x / width))))} accessibilityLabel={`${name} · ${copy(isCategory ? 'Category illustration' : 'Photos')}`}>
+        {uris.map((uri, i) => <Image key={uri + i} source={{ uri }} style={{ width, height: 172 }} resizeMode="cover" accessibilityLabel={isCategory ? copy('Category illustration') : `${name} · ${i + 1} / ${uris.length}`} />)}
+      </ScrollView>}
+      <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 92, backgroundColor: 'rgba(0,0,0,.42)' }} />
+      <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 92, bottom: 0, backgroundColor: 'rgba(0,0,0,.14)' }} />
+      <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={{ position: 'absolute', left: 14, top: 12, right: 14 }} accessibilityRole="button" accessibilityLabel={name}>
+        <Text style={{ color: '#fff', fontSize: 21, lineHeight: 25, fontWeight: '700', letterSpacing: -0.3 }}>{name}</Text>
+        <Text style={{ color: 'rgba(255,255,255,.94)', fontSize: 13, lineHeight: 18, marginTop: 3 }}>{meta}</Text>
+        {!!address && <Text style={{ color: 'rgba(255,255,255,.88)', fontSize: 12, lineHeight: 17, marginTop: 1 }}>{address}</Text>}
+      </TouchableOpacity>
+      {isCategory ? <Text style={[badge, { position: 'absolute', left: 12, bottom: 12, backgroundColor: 'rgba(0,0,0,.55)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, overflow: 'hidden' }]}>{copy('Illustration')}</Text>
+        : uris.length > 1 && (
+        <View style={{ position: 'absolute', right: 10, bottom: 10, flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: 'rgba(0,0,0,.55)', borderRadius: 20, padding: 2 }}>
+          <TouchableOpacity disabled={current === 0} onPress={() => step(-1)} accessibilityRole="button" accessibilityLabel="Previous photo" style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', opacity: current === 0 ? 0.35 : 1 }}><Ionicons name="chevron-back" size={16} color="#fff" /></TouchableOpacity>
+          <Text style={[badge, { paddingHorizontal: 4, fontVariant: ['tabular-nums'] }]} accessibilityLiveRegion="polite">{current + 1} / {uris.length}</Text>
+          <TouchableOpacity disabled={current === uris.length - 1} onPress={() => step(1)} accessibilityRole="button" accessibilityLabel="Next photo" style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', opacity: current === uris.length - 1 ? 0.35 : 1 }}><Ionicons name="chevron-forward" size={16} color="#fff" /></TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+}
+
 function HomeScreen({ navigation }: { navigation: any }) {
   const copy = useReleaseCopy();
   const { t } = useTranslation();
@@ -2554,31 +2590,28 @@ function HomeScreen({ navigation }: { navigation: any }) {
         onPress={() => handlePlacePress(place)}
         activeOpacity={0.95}
       >
-        {/* Name and facts first, a substantial square photo beside them (mirrors web SignalCard). */}
-        <View style={{paddingLeft:14,paddingRight:12,paddingTop:12,paddingBottom:4,flexDirection:'row',gap:12,alignItems:'flex-start'}}>
-          <View style={{flex:1,minWidth:0,gap:4,paddingTop:2}}>
-            <Text style={{fontSize:17,lineHeight:22,fontWeight:'700',color:theme.text}}>{place.name}</Text>
-            <Text style={{color:theme.textSecondary,fontSize:13,lineHeight:18}}>{((place as any).subcategory || place.category || place.primary_category || '').replace(/_/g,' ')}{distance ? ' · '+distance : ''}</Text>
-            {!!fullAddress && <Text style={{color:theme.textSecondary,fontSize:12,lineHeight:17}}>{fullAddress}</Text>}
-          </View>
-          <View style={{width:'38%',maxWidth:136,aspectRatio:1,borderRadius:14,overflow:'hidden',backgroundColor:theme.surface}}>
-            <Image source={{uri:image.src.startsWith('/')?'https://tavvy.com'+image.src:image.src}} style={{width:'100%',height:'100%'}} resizeMode="cover" accessibilityLabel={image.isCategory?copy('Category illustration'):place.name}/>
-            {(image.isCategory || photos.length>1) && <Text style={{position:'absolute',right:6,bottom:6,color:'#fff',backgroundColor:'rgba(0,0,0,.66)',borderRadius:5,paddingHorizontal:6,paddingVertical:2,fontSize:10,fontWeight:'700',overflow:'hidden'}}>{image.isCategory?copy('Illustration'):'+'+(photos.length-1)}</Text>}
-          </View>
-        </View>
-        {/* Up to three review highlight lines keep the card comparable. */}
-        <View style={{paddingHorizontal:14,paddingTop:6,paddingBottom:4}}>
+        {/* Photo header with the identity on top (mirrors web SignalCard). */}
+        <CardHero photos={photos.length ? photos.slice(0, 5) : [image.src]} isCategory={image.isCategory} name={place.name} meta={`${((place as any).subcategory || place.category || place.primary_category || '').replace(/_/g,' ')}${distance ? ' · '+distance : ''}`} address={fullAddress} onPress={() => handlePlacePress(place)} surface={theme.surface} copy={copy} />
+        {/* One expandable review row per section keeps the card comparable. */}
+        <View style={{paddingHorizontal:14,paddingTop:10,paddingBottom:2}}>
           <PlaceReviewGrid explain summary={(place as any).reviewSummary || previewSummaries[place.id] || buildPlaceReviewSummary(null, { category: (place as any).tavvy_category || place.primary_category || place.category, subcategory: (place as any).subcategory }, (place as any).evidenceStatus || 'unavailable')} />
         </View>
         
         {/* Quick Actions */}
-        {/* One shortcut on the card; phone, website and social stay on the place page. */}
-        <View style={{flexDirection:'row',paddingHorizontal:8,paddingBottom:4}}>
-          <TouchableOpacity style={[styles.actionButton, {backgroundColor:'transparent',paddingHorizontal:8,paddingVertical:6,minHeight:40}]} onPress={() => handleDirections(place)} accessibilityLabel={"Get directions"} accessibilityRole="button">
-            <Ionicons name="navigate-outline" size={18} color={isDark?'#D9B6FF':theme.primary} />
-            <Text style={[styles.actionText, { color: isDark?'#D9B6FF':theme.primary }]}>{copy("Directions")}</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Icon shortcuts, the same set as the place screen's action row. */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{paddingHorizontal:8,paddingTop:6,paddingBottom:10,gap:4}}>
+          {([
+            ...(place.phone ? [['call','call-outline',copy('Call'),() => handleCall(place.phone)]] : []),
+            ['directions','navigate-outline',copy('Directions'),() => handleDirections(place)],
+            ...(place.website ? [['website','globe-outline',copy('Website'),() => handleWebsite(place.website)]] : []),
+            ['details','open-outline',copy('Details'),() => handlePlacePress(place)],
+          ] as [string, any, string, () => void][]).map(([key, icon, label, onPress]) => (
+            <TouchableOpacity key={key} style={{width:66,alignItems:'center',gap:5,paddingVertical:2}} onPress={onPress} accessibilityLabel={label} accessibilityRole="button">
+              <View style={{width:40,height:40,borderRadius:20,backgroundColor:theme.surface,alignItems:'center',justifyContent:'center'}}><Ionicons name={icon} size={18} color={theme.text} /></View>
+              <Text style={{fontSize:11,fontWeight:'600',color:theme.textSecondary}} numberOfLines={1}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </TouchableOpacity>
     );
   };

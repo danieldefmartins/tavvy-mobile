@@ -326,17 +326,17 @@ are still outstanding. Claude's separate Apple readiness branch was not modified
 ## Review presentation redesign — September 22, source only
 
 Mirrors the approved web presentation: `lib/placeReviewSummary.ts` is copied from
-web (adds `practical` and `searchReviewSections()`), and `components/PlaceReviewGrid.tsx`
-renders every topic as word + people count + a thin frequency bar on one scale per
-place (teal/purple/amber; bars hidden below five recent reviewers), with the core
-experience panel, three-topic supporting sections with Show all, an About these
-numbers control and a Good to know row. Search cards show at most three highlight
-lines that open with a `Reviews · {{count}} people · Last 6 months` line, each line a
-muted section label, the experience word and a short bar beside the count. The
-search card keeps the name and facts first with a substantial square photo beside
-them (38% of the width, `+N` badge for more photos) and one Directions shortcut;
-phone, website and social stay on the place page. Hero galleries and thumbnail
-strips were tried and rejected for height. The place screen title is Reviews and Heads Up chips carry the `!`
+web (adds `practical`, `searchReviewSections()` and `cardReviewRows()`), and
+`components/PlaceReviewGrid.tsx` renders every topic as a row whose background is
+its frequency bar on one scale per place (teal/purple/amber; bars hidden below five
+recent reviewers) with the word and people count on top: the place screen shows the
+core experience first, three-row supporting sections with Show all, tappable rows
+that show matching experiences, an About these numbers control and a Good to know
+row; search cards open with `Reviews · {{count}} people · Last 6 months` and show one
+expandable row per section. The search card (`CardHero` in `screens/HomeScreen.tsx`)
+sets the name, category, distance and address on a 172-pt swipeable photo header
+with a `1 / N` counter and step buttons, and ends with the place-screen icon
+shortcuts (Call, Directions, Website, Details). The place screen title is Reviews and Heads Up chips carry the `!`
 marker. Four locale keys (`reviewExperience82`–`85`) were added to en/es/pt/ar.
 Application TypeScript and 16 focused unit tests passed. This has not been rendered
 in the Simulator or included in any EAS build; native visual verification remains open.
