@@ -46,11 +46,14 @@ export default function PlaceReviewGrid({ summary, mode = 'compact', selectedTop
     const olderDate = topic.lastReportedAt ? topic.lastReportedAt.slice(0, 10) : '';
     const older = topic.older ? ` · ${copy('Older report')}${!compact && olderDate ? ` · ${olderDate}` : ''}` : '';
     const selected = selectedTopic === topic.label;
-    if (compact) return <View key={topic.slug || topic.label} style={styles.cRow}>
-      <Text numberOfLines={1} style={[styles.cLabel, { color: toneColor[SECTION_TONE[section]] }]}>{first ? copy(title) : ''}</Text>
-      <View style={styles.cWord}>{topic.tone === 'concern' && mark}<Text numberOfLines={1} style={[styles.cWordText, { color: wordColor }]}>{topic.label}<Text style={styles.older}>{older}</Text></Text></View>
-      <View style={styles.cBarSlot}>{bar(topic, tone)}</View>
-      <Text style={[styles.cCount, { color: toneColor[tone] }]}>{topic.count}</Text>
+    if (compact) return <View key={topic.slug || topic.label} style={styles.cTopic}>
+      <View style={styles.cLine}>
+        {first && <Text numberOfLines={1} style={[styles.cLabel, { color: toneColor[SECTION_TONE[section]] }]}>{copy(title).toUpperCase()}</Text>}
+        {topic.tone === 'concern' && mark}
+        <Text numberOfLines={1} style={[styles.cWordText, { color: wordColor }]}>{topic.label}<Text style={styles.older}>{older}</Text></Text>
+        <Text style={[styles.cCount, { color: toneColor[tone] }]}>{topic.count}</Text>
+      </View>
+      {bar(topic, tone)}
     </View>;
     const inner = <>
       <View style={styles.top}>
@@ -65,6 +68,7 @@ export default function PlaceReviewGrid({ summary, mode = 'compact', selectedTop
   };
 
   return <View accessibilityLabel={copy('Recent reviews')}>
+    {compact && <Text style={[styles.note, muted, { marginBottom: 5, fontSize: 11.5 }]}><Text style={{ color: theme.text, fontWeight: '800' }}>{copy('Reviews')}</Text> · {evidenceLine}</Text>}
     {!compact && <View style={styles.evidenceLine}>
       <Text style={[styles.evidenceFull, { color: theme.text }]}>{evidenceLine}</Text>
       <Pressable accessibilityRole="button" accessibilityState={{ expanded: about }} onPress={() => setAbout(value => !value)} style={styles.about}>
@@ -78,9 +82,9 @@ export default function PlaceReviewGrid({ summary, mode = 'compact', selectedTop
       const main = section.key === 'main';
       const ordered = main && !compact ? [...section.topics.filter(topic => topic.tone !== 'concern'), ...section.topics.filter(topic => topic.tone === 'concern')] : section.topics;
       const topics = !compact && !main && !open ? ordered.slice(0, FULL_INITIAL_TOPICS) : ordered;
-      if (compact) return <View key={section.key} testID={`review-section-${section.key}`} style={{ gap: 3 }}>
+      if (compact) return <View key={section.key} testID={`review-section-${section.key}`} style={{ gap: 4 }}>
         {topics.map((topic, index) => topicRow(section.key, topic, index === 0, section.title))}
-        {!topics.length && <View style={styles.cRow}><Text numberOfLines={1} style={[styles.cLabel, { color: toneColor[SECTION_TONE[section.key]] }]}>{copy(section.title)}</Text><Text style={[styles.note, muted, { flex: 3 }]}>{emptyText(section.key)}</Text></View>}
+        {!topics.length && <View style={styles.cLine}><Text numberOfLines={1} style={[styles.cLabel, { color: toneColor[SECTION_TONE[section.key]] }]}>{copy(section.title).toUpperCase()}</Text><Text style={[styles.note, muted, { flex: 1 }]}>{emptyText(section.key)}</Text></View>}
       </View>;
       return <View key={section.key} testID={`review-section-${section.key}`} style={main
         ? [styles.mainPanel, { borderColor: theme.border, backgroundColor: isDark ? 'rgba(138,5,190,.16)' : 'rgba(138,5,190,.06)' }]
@@ -98,7 +102,6 @@ export default function PlaceReviewGrid({ summary, mode = 'compact', selectedTop
       <View style={styles.labelRow}><View style={[styles.dot, { backgroundColor: theme.textSecondary }]} /><Text style={[styles.label, muted]}>{copy('Good to know')}</Text></View>
       <View style={styles.chips}>{summary.practical.map(item => <View key={item.label} style={[styles.chip, { backgroundColor: theme.surface, borderColor: theme.border }]}><Text style={[styles.chipText, muted]}>{item.label} <Text style={{ fontWeight: '800' }}>{item.count}</Text></Text></View>)}</View>
     </View>}
-    {compact && <Text style={[styles.note, muted, { marginTop: 6 }]}>{evidenceLine}</Text>}
   </View>;
 }
 
@@ -123,16 +126,15 @@ const styles = StyleSheet.create({
   older: { fontSize: 11, fontWeight: '600' },
   count: { fontSize: 15, lineHeight: 20, fontWeight: '800', fontVariant: ['tabular-nums'] },
   track: { height: 6, borderRadius: 3, overflow: 'hidden' },
-  trackCompact: { height: 4, width: 30 },
+  trackCompact: { height: 3 },
   mark: { width: 15, height: 15, borderRadius: 8, backgroundColor: '#F5A623', alignItems: 'center', justifyContent: 'center', marginRight: 5 },
   markCompact: { width: 13, height: 13, marginRight: 4 },
   markText: { color: '#17013A', fontSize: 10.5, fontWeight: '900', lineHeight: 13 },
   markTextCompact: { fontSize: 9, lineHeight: 11 },
-  cRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 22 },
-  cLabel: { width: '24%', fontSize: 11, lineHeight: 16, fontWeight: '700' },
-  cWord: { flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 0 },
-  cWordText: { fontSize: 13, lineHeight: 18, fontWeight: '700', flexShrink: 1 },
-  cBarSlot: { width: 30 },
+  cTopic: { gap: 3, minWidth: 0 },
+  cLine: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 18 },
+  cLabel: { maxWidth: '38%', fontSize: 10, lineHeight: 16, fontWeight: '800', letterSpacing: 0.4 },
+  cWordText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: '700' },
   cCount: { fontSize: 13, lineHeight: 18, fontWeight: '800', minWidth: 18, textAlign: 'right', fontVariant: ['tabular-nums'] },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, paddingVertical: 4 },
   chip: { paddingVertical: 6, paddingHorizontal: 11, borderWidth: 1, borderRadius: 20 },

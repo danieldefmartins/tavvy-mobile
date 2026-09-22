@@ -331,7 +331,12 @@ renders every topic as word + people count + a thin frequency bar on one scale p
 place (teal/purple/amber; bars hidden below five recent reviewers), with the core
 experience panel, three-topic supporting sections with Show all, an About these
 numbers control and a Good to know row. Search cards show at most three highlight
-lines. The place screen title is Reviews and Heads Up chips carry the `!` marker.
-Four locale keys (`reviewExperience82`–`85`) were added to en/es/pt/ar. Application
-TypeScript and 16 focused unit tests passed. This has not been rendered in the
-Simulator or included in any EAS build; native visual verification remains open.
+lines that open with a `Reviews · {{count}} people · Last 6 months` line, each line a
+small-caps section label, the word, the count and a full-width bar. The search card
+replaces the 112 × 104 side thumbnail with a full-width 16:9 swipeable photo gallery
+(`CardGallery` in `screens/HomeScreen.tsx`: up to five real photos, a `1/N` counter
+and dots; a category illustration stays a single labeled image) with the identity
+text below it. The place screen title is Reviews and Heads Up chips carry the `!`
+marker. Four locale keys (`reviewExperience82`–`85`) were added to en/es/pt/ar.
+Application TypeScript and 16 focused unit tests passed. This has not been rendered
+in the Simulator or included in any EAS build; native visual verification remains open.

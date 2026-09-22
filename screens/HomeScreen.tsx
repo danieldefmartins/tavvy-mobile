@@ -381,6 +381,36 @@ interface GeocodingResult {
 // MAIN COMPONENT
 // ============================================
 
+// Search-card photo gallery (mirrors web SignalCard): real photos swipe with a position
+// counter and dots; a category illustration is a single labeled image, never a gallery.
+function CardGallery({ photos, isCategory, name, onPress, surface, copy }: {
+  photos: string[]; isCategory: boolean; name: string; onPress: () => void; surface: string; copy: (message: string) => string;
+}) {
+  const [index, setIndex] = useState(0);
+  const [width, setWidth] = useState(0);
+  const uris = photos.map(src => src.startsWith('/') ? 'https://tavvy.com' + src : src);
+  const badge = { position: 'absolute' as const, right: 10, bottom: 10, color: '#fff', backgroundColor: 'rgba(0,0,0,.66)', borderRadius: 7, paddingHorizontal: 8, paddingVertical: 3, fontSize: 11, fontWeight: '700' as const, overflow: 'hidden' as const };
+  return (
+    <View onLayout={event => setWidth(Math.round(event.nativeEvent.layout.width))} style={{ width: '100%', aspectRatio: 16 / 9, maxHeight: 212, backgroundColor: surface, overflow: 'hidden' }}>
+      {width > 0 && <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={event => setIndex(Math.min(uris.length - 1, Math.max(0, Math.round(event.nativeEvent.contentOffset.x / width))))} accessibilityLabel={`${name} · ${copy(isCategory ? 'Category illustration' : 'Photos')}`}>
+        {uris.map((uri, i) => (
+          <TouchableOpacity key={uri + i} activeOpacity={0.95} onPress={onPress} style={{ width, height: '100%' }} accessibilityRole="imagebutton" accessibilityLabel={isCategory ? copy('Category illustration') : `${name} · ${i + 1}/${uris.length}`}>
+            <Image source={{ uri }} style={{ width, height: '100%' }} resizeMode="cover" />
+          </TouchableOpacity>
+        ))}
+      </ScrollView>}
+      {isCategory ? <Text style={badge}>{copy('Illustration')}</Text> : uris.length > 1 && (
+        <>
+          <Text style={badge} accessibilityLiveRegion="polite">{index + 1}/{uris.length}</Text>
+          <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: 12, flexDirection: 'row', justifyContent: 'center', gap: 5 }}>
+            {uris.map((_, i) => <View key={i} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: i === index ? '#fff' : 'rgba(255,255,255,.55)' }} />)}
+          </View>
+        </>
+      )}
+    </View>
+  );
+}
+
 function HomeScreen({ navigation }: { navigation: any }) {
   const copy = useReleaseCopy();
   const { t } = useTranslation();
@@ -2554,19 +2584,14 @@ function HomeScreen({ navigation }: { navigation: any }) {
         onPress={() => handlePlacePress(place)}
         activeOpacity={0.95}
       >
-        <View style={{paddingHorizontal:14,paddingTop:14,paddingBottom:8,flexDirection:'row',gap:12,alignItems:'flex-start'}}>
-          <View style={{flex:1,minWidth:0,gap:4}}>
-            <Text style={{fontSize:17,lineHeight:22,fontWeight:'700',color:theme.text}}>{place.name}</Text>
-            <Text style={{color:theme.textSecondary,fontSize:12,lineHeight:18}}>{((place as any).subcategory || place.category || place.primary_category || '').replace(/_/g,' ')}{distance ? ' · '+distance : ''}</Text>
-            {!!fullAddress && <Text style={{color:theme.textSecondary,fontSize:12,lineHeight:17}}>{fullAddress}</Text>}
-          </View>
-          <View style={{width:112,height:104,borderRadius:14,overflow:'hidden',backgroundColor:theme.surface}}>
-            <Image source={{uri:image.src.startsWith('/')?'https://tavvy.com'+image.src:image.src}} style={{width:112,height:104}} resizeMode="cover" accessibilityLabel={image.isCategory?copy('Category illustration'):place.name}/>
-            {(image.isCategory || photos.length>1) && <Text style={{position:'absolute',right:3,bottom:3,color:'#fff',backgroundColor:'rgba(0,0,0,.72)',borderRadius:4,paddingHorizontal:4,paddingVertical:2,fontSize:9}}>{image.isCategory?copy('Illustration'):'+'+(photos.length-1)}</Text>}
-          </View>
+        <CardGallery photos={photos.length ? photos.slice(0, 5) : [image.src]} isCategory={image.isCategory} name={place.name} onPress={() => handlePlacePress(place)} surface={theme.surface} copy={copy} />
+        <View style={{paddingHorizontal:14,paddingTop:12,paddingBottom:4,gap:3}}>
+          <Text style={{fontSize:17,lineHeight:22,fontWeight:'700',color:theme.text}}>{place.name}</Text>
+          <Text style={{color:theme.textSecondary,fontSize:12,lineHeight:18}}>{((place as any).subcategory || place.category || place.primary_category || '').replace(/_/g,' ')}{distance ? ' · '+distance : ''}</Text>
+          {!!fullAddress && <Text style={{color:theme.textSecondary,fontSize:12,lineHeight:17}}>{fullAddress}</Text>}
         </View>
-        {/* Two evidence rows preserve space for comparison. */}
-        <View style={{paddingHorizontal:14,paddingTop:3,paddingBottom:8}}>
+        {/* Up to three review highlight lines keep the card comparable. */}
+        <View style={{paddingHorizontal:14,paddingTop:8,paddingBottom:8,marginTop:8,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:theme.border}}>
           <PlaceReviewGrid explain summary={(place as any).reviewSummary || previewSummaries[place.id] || buildPlaceReviewSummary(null, { category: (place as any).tavvy_category || place.primary_category || place.category, subcategory: (place as any).subcategory }, (place as any).evidenceStatus || 'unavailable')} />
         </View>
         
