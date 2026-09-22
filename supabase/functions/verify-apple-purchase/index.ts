@@ -1,27 +1,63 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  applyAppleEntitlement,
+  ECARD_PRODUCT_IDS,
+  PROS_PRODUCT_IDS,
+  TAVVY_BUNDLE_ID,
+} from "../_shared/appleEntitlements.ts";
 
+/**
+ * Verifies an iOS StoreKit receipt with Apple and binds the subscription to
+ * the calling Tavvy account (the JWT's user, never a user id from the body).
+ *
+ * Guarantees:
+ *  - the receipt must belong to Tavvy's bundle and contain the requested product;
+ *  - an Apple original transaction stays with the first Tavvy account that
+ *    claimed it (409 for any other caller; the unique index backs this up);
+ *  - an expired subscription is recorded as expired (status EXPIRED, 400) so the
+ *    client can finish the transaction instead of retrying forever;
+ *  - entitlement rows and profile flags are written through the same helper
+ *    App Store Server Notifications use, so both paths agree.
+ */
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Must match lib/iapConfig.ts on the client. Duplicated here because Edge
-// Functions run in a separate Deno isolate and cannot import RN app code.
-const ECARD_PRODUCT_IDS = ["com.360.tavvy.ecard.pro.monthly", "com.360.tavvy.ecard.pro.annual"];
-const PROS_PRODUCT_IDS = ["com.360.tavvy.pros.founding.annual"];
-
 const APPLE_VERIFY_PROD = "https://buy.itunes.apple.com/verifyReceipt";
 const APPLE_VERIFY_SANDBOX = "https://sandbox.itunes.apple.com/verifyReceipt";
 
+interface AppleReceiptEntry {
+  product_id: string;
+  original_transaction_id: string;
+  transaction_id?: string;
+  expires_date_ms: string;
+  purchase_date_ms?: string;
+  cancellation_date_ms?: string;
+  is_trial_period?: string;
+  is_in_intro_offer_period?: string;
+  app_account_token?: string;
+}
+
 interface AppleVerifyResponse {
   status: number;
-  receipt?: { bundle_id?: string };
-  latest_receipt_info?: Array<{
-    product_id: string;
-    original_transaction_id: string;
-    expires_date_ms: string;
+  environment?: string;
+  receipt?: { bundle_id?: string; in_app?: AppleReceiptEntry[] };
+  latest_receipt_info?: AppleReceiptEntry[];
+  pending_renewal_info?: Array<{
+    product_id?: string;
+    auto_renew_product_id?: string;
+    auto_renew_status?: string;
+    original_transaction_id?: string;
+    expiration_intent?: string;
+    is_in_billing_retry_period?: string;
+    grace_period_expires_date_ms?: string;
   }>;
+}
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
 async function callAppleVerify(url: string, receiptData: string, sharedSecret: string): Promise<AppleVerifyResponse> {
@@ -30,25 +66,16 @@ async function callAppleVerify(url: string, receiptData: string, sharedSecret: s
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ "receipt-data": receiptData, password: sharedSecret, "exclude-old-transactions": true }),
   });
+  if (!res.ok) throw new Error(`Apple verifyReceipt responded ${res.status}`);
   return res.json();
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ status: "error", message: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (req.method !== "POST") return json({ status: "error", code: "METHOD", message: "Method not allowed" }, 405);
 
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader) {
-    return new Response(JSON.stringify({ status: "error", message: "Missing Authorization header." }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (!authHeader) return json({ status: "error", code: "NO_AUTH", message: "Missing Authorization header." }, 401);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
@@ -59,146 +86,90 @@ serve(async (req) => {
   const admin = createClient(supabaseUrl, serviceKey);
 
   const { data: { user }, error: userError } = await callerClient.auth.getUser();
-  if (userError || !user) {
-    return new Response(JSON.stringify({ status: "error", message: "Could not verify the calling session." }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (userError || !user) return json({ status: "error", code: "NOT_AUTHENTICATED", message: "Could not verify the calling session." }, 401);
 
   if (!sharedSecret) {
     console.error("[verify-apple-purchase] APPLE_SHARED_SECRET not configured.");
-    return new Response(JSON.stringify({ status: "error", message: "Purchase verification is not configured yet." }), {
-      status: 503,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ status: "error", code: "NOT_CONFIGURED", message: "Purchase verification is not configured yet." }, 503);
   }
 
   try {
-    const { productId, transactionReceipt } = await req.json();
+    let body: { productId?: unknown; transactionReceipt?: unknown };
+    try {
+      body = await req.json();
+    } catch {
+      return json({ status: "error", code: "BAD_JSON", message: "Invalid JSON body." }, 400);
+    }
+    const { productId, transactionReceipt } = body;
     if (typeof productId !== "string" || typeof transactionReceipt !== "string" || !productId || !transactionReceipt) {
-      return new Response(JSON.stringify({ status: "error", message: "Missing productId or transactionReceipt." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ status: "error", code: "BAD_REQUEST", message: "Missing productId or transactionReceipt." }, 400);
+    }
+    if (transactionReceipt.length > 2_000_000) {
+      return json({ status: "error", code: "BAD_REQUEST", message: "Receipt is too large." }, 400);
     }
     if (![...ECARD_PRODUCT_IDS, ...PROS_PRODUCT_IDS].includes(productId)) {
-      return new Response(JSON.stringify({ status: "error", message: "Unknown product ID." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ status: "error", code: "UNKNOWN_PRODUCT", message: "Unknown product ID." }, 400);
     }
 
     let result = await callAppleVerify(APPLE_VERIFY_PROD, transactionReceipt, sharedSecret);
     if (result.status === 21007) {
-      // Sandbox receipt sent to the production endpoint — standard Apple pattern.
+      // Sandbox receipt sent to the production endpoint — Apple's documented pattern.
       result = await callAppleVerify(APPLE_VERIFY_SANDBOX, transactionReceipt, sharedSecret);
     }
     if (result.status !== 0) {
-      return new Response(JSON.stringify({ status: "error", message: `Apple verification failed (status ${result.status}).` }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const retryable = result.status === 21005 || result.status >= 21100;
+      return json({ status: "error", code: retryable ? "APPLE_UNAVAILABLE" : "APPLE_REJECTED", message: `Apple verification failed (status ${result.status}).` }, retryable ? 503 : 400);
     }
 
-    if (result.receipt?.bundle_id !== "com.360.tavvy") {
-      return new Response(JSON.stringify({ status: "error", message: "Receipt is for a different app." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (result.receipt?.bundle_id !== TAVVY_BUNDLE_ID) {
+      return json({ status: "error", code: "WRONG_APP", message: "Receipt is for a different app." }, 400);
     }
-    const entry = result.latest_receipt_info
-      ?.filter((e) => e.product_id === productId && e.original_transaction_id && Number.isFinite(Number(e.expires_date_ms)))
+    const entries = result.latest_receipt_info ?? result.receipt?.in_app ?? [];
+    const entry = entries
+      .filter((e) => e.product_id === productId && e.original_transaction_id && Number.isFinite(Number(e.expires_date_ms)))
       .sort((a, b) => Number(b.expires_date_ms) - Number(a.expires_date_ms))[0];
     if (!entry) {
-      return new Response(JSON.stringify({ status: "error", message: "Receipt does not contain this subscription." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ status: "error", code: "PRODUCT_NOT_IN_RECEIPT", message: "Receipt does not contain this subscription." }, 400);
+    }
+    // Apple stamps the appAccountToken the app supplied at purchase time (the
+    // Tavvy user id). When present it must match the caller.
+    if (entry.app_account_token && entry.app_account_token.toLowerCase() !== user.id.toLowerCase()) {
+      return json({ status: "error", code: "ACCOUNT_MISMATCH", message: "This Apple subscription was purchased for a different Tavvy account." }, 409);
     }
 
-    const expiresAt = new Date(Number(entry.expires_date_ms)).toISOString();
-    const isActive = new Date(expiresAt).getTime() > Date.now();
-    if (!isActive) {
-      return new Response(JSON.stringify({ status: "error", message: "This subscription has expired." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Never move an existing Apple transaction from one Tavvy account to
-    // another. The unique transaction indexes also reject a concurrent claim.
-    const [{ data: ecardOwner, error: ecardOwnerError }, { data: prosOwner, error: prosOwnerError }] = await Promise.all([
-      admin.from("user_subscriptions").select("user_id").eq("apple_original_transaction_id", entry.original_transaction_id).maybeSingle(),
-      admin.from("pro_providers").select("user_id").eq("apple_original_transaction_id", entry.original_transaction_id).maybeSingle(),
-    ]);
-    if (ecardOwnerError || prosOwnerError) throw ecardOwnerError ?? prosOwnerError;
-    if ((ecardOwner && ecardOwner.user_id !== user.id) || (prosOwner && prosOwner.user_id !== user.id)) {
-      return new Response(JSON.stringify({ status: "error", message: "This Apple subscription is linked to another Tavvy account." }), {
-        status: 409,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (ECARD_PRODUCT_IDS.includes(productId)) {
-      const planType = productId.endsWith(".annual") ? "ecard_premium_annual" : "ecard_premium_monthly";
-      const subscription = {
-          user_id: user.id,
-          plan_type: planType,
-          status: "active",
-          current_period_end: expiresAt,
-          source: "apple",
-          apple_original_transaction_id: entry.original_transaction_id,
-          apple_product_id: productId,
-          updated_at: new Date().toISOString(),
-      };
-      const { data: existing, error: existingError } = await admin.from("user_subscriptions")
-        .select("id").eq("user_id", user.id).like("plan_type", "ecard_premium%").maybeSingle();
-      if (existingError) throw existingError;
-      if (existing) {
-        const { data, error } = await admin.from("user_subscriptions").update(subscription)
-          .eq("id", existing.id).select("id");
-        if (error || !data?.length) throw error ?? new Error("Subscription row was not updated.");
-      } else {
-        const { error } = await admin.from("user_subscriptions").insert(subscription);
-        if (error) throw error;
-      }
-      const { data: profileRows, error: profileError } = await admin.from("profiles").update({
-        is_pro: true,
-        pro_since: new Date().toISOString(),
-        subscription_status: "active",
-        subscription_plan: planType,
-        subscription_expires_at: expiresAt,
-      }).eq("user_id", user.id).select("user_id");
-      if (profileError || !profileRows?.length) throw profileError ?? new Error("Profile row was not updated.");
-      const { error: roleError } = await admin.from("user_roles").upsert({
-        user_id: user.id,
-        role: "pro",
-        notes: `eCard Premium Apple subscription: ${entry.original_transaction_id}`,
-        granted_at: new Date().toISOString(),
-      }, { onConflict: "user_id,role" });
-      if (roleError) throw roleError;
-    } else if (PROS_PRODUCT_IDS.includes(productId)) {
-      const { data, error } = await admin.from("pro_providers").update({
-        subscription_status: "active",
-        subscription_plan: "founding",
-        subscription_expires_at: expiresAt,
-        subscription_source: "apple",
-        apple_original_transaction_id: entry.original_transaction_id,
-        is_active: true,
-      }).eq("user_id", user.id).select("user_id");
-      if (error || !data?.length) throw error ?? new Error("Pros account was not updated.");
-    }
-
-    return new Response(JSON.stringify({ status: "ok", expiresAt, isActive }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const revokedAt = entry.cancellation_date_ms ? new Date(Number(entry.cancellation_date_ms)) : null;
+    const expiresAt = new Date(Number(entry.expires_date_ms));
+    const renewal = result.pending_renewal_info?.find((r) => r.original_transaction_id === entry.original_transaction_id);
+    const graceUntil = renewal?.grace_period_expires_date_ms ? new Date(Number(renewal.grace_period_expires_date_ms)) : null;
+    const outcome = await applyAppleEntitlement(admin, {
+      userId: user.id,
+      productId,
+      originalTransactionId: entry.original_transaction_id,
+      expiresAt,
+      revokedAt,
+      graceUntil,
+      autoRenew: renewal?.auto_renew_status === "1",
+      environment: result.environment ?? "Production",
+      source: "receipt",
     });
+
+    if (outcome.status === "conflict") {
+      return json({ status: "error", code: "OWNED_BY_OTHER_ACCOUNT", message: "This Apple subscription is linked to another Tavvy account." }, 409);
+    }
+    if (outcome.status === "expired") {
+      return json({ status: "error", code: "EXPIRED", message: "This subscription has expired.", expiresAt: expiresAt.toISOString() }, 400);
+    }
+    if (outcome.status === "no_pros_profile") {
+      return json({ status: "error", code: "NO_PROS_PROFILE", message: "Create your Tavvy Pros profile first, then restore this purchase." }, 409);
+    }
+    if (outcome.status !== "active") {
+      // Unreachable with a caller-bound userId; kept for exhaustiveness.
+      return json({ status: "error", code: "INTERNAL", message: "Verification failed." }, 500);
+    }
+
+    return json({ status: "ok", expiresAt: expiresAt.toISOString(), isActive: true, plan: outcome.plan, environment: result.environment ?? null });
   } catch (error) {
     console.error("[verify-apple-purchase] Failed:", error);
-    return new Response(JSON.stringify({ status: "error", message: "Verification failed." }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ status: "error", code: "INTERNAL", message: "Verification failed." }, 500);
   }
 });
