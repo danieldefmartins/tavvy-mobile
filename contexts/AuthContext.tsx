@@ -239,16 +239,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (providerError) throw new Error(providerError);
     const code = callback.searchParams.get('code');
     if (code) {
-      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
       if (exchangeError) throw exchangeError;
+      if (provider === 'apple') void storeAppleRefreshToken(exchanged?.session?.provider_refresh_token ?? null);
       return true;
     }
     const access_token = params.get('access_token');
     const refresh_token = params.get('refresh_token');
     if (!access_token || !refresh_token) throw new Error('Sign-in did not return a session. Please try again.');
-    const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
+    const { data: established, error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
     if (sessionError) throw sessionError;
+    if (provider === 'apple') {
+      // Implicit-flow callbacks carry the provider token in the fragment.
+      void storeAppleRefreshToken(params.get('provider_refresh_token') ?? established?.session?.provider_refresh_token ?? null);
+    }
     return true;
+  };
+
+  /**
+   * Apple Guideline 5.1.1(v): an account created with Sign in with Apple must
+   * have its Apple token revoked when the account is deleted. Supabase only
+   * exposes the provider refresh token at sign-in time, so it is handed to a
+   * service-role-only store immediately (see supabase/functions/store-apple-credential).
+   * Best effort: a failure never blocks sign-in.
+   */
+  const storeAppleRefreshToken = async (providerRefreshToken: string | null) => {
+    if (!providerRefreshToken) return;
+    try {
+      await supabase.functions.invoke('store-apple-credential', {
+        method: 'POST',
+        body: { providerRefreshToken },
+      });
+    } catch (error) {
+      console.warn('[auth] Could not store the Apple credential for later revocation:', error);
+    }
   };
 
   const signInWithGoogle = () => signInWithProvider('google');

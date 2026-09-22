@@ -14,8 +14,14 @@
  * Flipping it before all three pass ships a purchase button that cannot
  * complete a transaction. See docs/APPLE_IAP_SETUP.md for the exact
  * App Store Connect steps this requires from the account holder.
+ *
+ * The committed default is OFF. A build may turn it on only through the
+ * build-time environment variable EXPO_PUBLIC_IAP_ENABLED=true (set on the
+ * EAS build profile or in .env for a local test build), so a sandbox /
+ * TestFlight verification build can exercise StoreKit without changing the
+ * source that ships. Any other value, or no value, keeps purchases off.
  */
-export const IAP_ENABLED = false;
+export const IAP_ENABLED: boolean = process.env.EXPO_PUBLIC_IAP_ENABLED === 'true';
 
 export type IapProductId =
   | 'com.360.tavvy.ecard.pro.monthly'

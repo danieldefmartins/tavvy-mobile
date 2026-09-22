@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Platform, Linking } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,14 +22,28 @@ export default function ProsPaywallScreen() {
   useEffect(() => {
     if (Platform.OS !== 'ios' || !IAP_ENABLED) return;
     let active = true;
-    void import('../lib/iap').then(({ fetchIapSubscriptions }) => fetchIapSubscriptions())
-      .then(products => {
+    let unsubscribe: (() => void) | undefined;
+    void import('../lib/iap').then(async ({ fetchIapPrices, subscribeToPurchaseResults }) => {
+      if (!active) return;
+      unsubscribe = subscribeToPurchaseResults(result => {
         if (!active) return;
-        const product = products.find(item => item.productId === PROS_FOUNDING_ANNUAL);
-        setApplePrice(product && 'localizedPrice' in product ? product.localizedPrice : null);
-      })
-      .catch(error => console.error('[iap] Could not load Pros price:', error));
-    return () => { active = false; };
+        setLoading(false);
+        if (result.type === 'success' && result.productId === PROS_FOUNDING_ANNUAL) {
+          Alert.alert(t('pros.subscribed', { defaultValue: 'You are now subscribed to Tavvy Pros!' }), '', [
+            { text: t('common.ok', { defaultValue: 'OK' }), onPress: () => navigation.navigate('ProsDashboard') },
+          ]);
+        } else if (result.type === 'error' && !result.cancelled) {
+          Alert.alert(t('common.error', { defaultValue: 'Error' }), result.message);
+        }
+      });
+      try {
+        const prices = await fetchIapPrices();
+        if (active) setApplePrice(prices[PROS_FOUNDING_ANNUAL] ?? null);
+      } catch (error) {
+        console.error('[iap] Could not load Pros price:', error);
+      }
+    });
+    return () => { active = false; unsubscribe?.(); };
   }, []);
 
   const plans = [
@@ -71,13 +85,15 @@ export default function ProsPaywallScreen() {
         if (!user) throw new Error('Sign in required.');
         const { purchaseIapSubscription } = await import('../lib/iap');
         await purchaseIapSubscription(PROS_FOUNDING_ANNUAL, user.id);
-        // Result (success/failure) arrives via the purchase listener in lib/iap.ts,
-        // which verifies server-side and activates the entitlement.
+        // Result (success/failure) arrives via subscribeToPurchaseResults above,
+        // after server-side verification activates the entitlement; it clears loading.
       } catch (err) {
-        Alert.alert('Error', 'Could not start the purchase.');
-        console.error(err);
-      } finally {
         setLoading(false);
+        const { isUserCancelled } = await import('../lib/iap');
+        if (!isUserCancelled(err)) {
+          Alert.alert(t('common.error', { defaultValue: 'Error' }), t('pros.purchaseStartFailed', { defaultValue: 'Could not start the purchase.' }));
+          console.error(err);
+        }
       }
       return;
     }
@@ -158,14 +174,33 @@ export default function ProsPaywallScreen() {
             ))}
           </View>
         </View>
-        <View style={styles.guaranteeSection}>
-          <Ionicons name="shield-checkmark" size={24} color="#00C2CB" />
-          <View style={styles.guaranteeContent}><Text style={styles.guaranteeTitle}>30-Day Money-Back Guarantee</Text><Text style={styles.guaranteeText}>Try Tavvy Pros risk-free.</Text></View>
+        {/* Apple handles refunds for App Store purchases, so the Stripe money-back promise is web/Android only. */}
+        {Platform.OS !== 'ios' && (
+          <View style={styles.guaranteeSection}>
+            <Ionicons name="shield-checkmark" size={24} color="#00C2CB" />
+            <View style={styles.guaranteeContent}><Text style={styles.guaranteeTitle}>30-Day Money-Back Guarantee</Text><Text style={styles.guaranteeText}>Try Tavvy Pros risk-free.</Text></View>
+          </View>
+        )}
+        {/* Apple Guideline 3.1.2: renewal terms + Terms of Use / Privacy Policy links on the paywall */}
+        <View style={{ paddingHorizontal: 24, paddingBottom: 16 }}>
+          <Text style={{ color: '#6B7280', fontSize: 12, lineHeight: 17, textAlign: 'center' }}>
+            {Platform.OS === 'ios'
+              ? t('pros.appleRenewalTerms', { defaultValue: 'Payment is charged to your Apple ID account at confirmation. The subscription renews automatically each year at the same price unless it is cancelled at least 24 hours before the end of the current period. Manage or cancel it in your App Store account settings.' })
+              : t('pros.renewalTerms', { defaultValue: 'The subscription renews automatically each year until cancelled. You can manage or cancel it at any time.' })}
+          </Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 10 }}>
+            <TouchableOpacity onPress={() => Linking.openURL('https://tavvy.com/terms')} accessibilityRole="link">
+              <Text style={{ color: ProsColors.primary, fontSize: 12, textDecorationLine: 'underline' }}>{t('legal.termsOfUse', { defaultValue: 'Terms of Use' })}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => Linking.openURL('https://tavvy.com/privacy')} accessibilityRole="link">
+              <Text style={{ color: ProsColors.primary, fontSize: 12, textDecorationLine: 'underline' }}>{t('legal.privacyPolicy', { defaultValue: 'Privacy Policy' })}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
       <View style={styles.footer}>
         <TouchableOpacity style={styles.subscribeButton} onPress={handleSubscribe} disabled={loading || (Platform.OS === 'ios' && (!IAP_ENABLED || !applePrice))}><Text style={styles.subscribeButtonText}>{loading ? 'Processing...' : Platform.OS === 'ios' && !IAP_ENABLED ? 'Coming soon' : Platform.OS === 'ios' && !applePrice ? 'Loading Apple price…' : 'Start Growing Your Business'}</Text></TouchableOpacity>
-        <Text style={styles.footerText}>Cancel anytime. No hidden fees.</Text>
+        <Text style={styles.footerText}>{Platform.OS === 'ios' ? t('pros.cancelAnytimeApple', { defaultValue: 'Cancel anytime in your App Store settings.' }) : 'Cancel anytime. No hidden fees.'}</Text>
       </View>
     </SafeAreaView>
   );

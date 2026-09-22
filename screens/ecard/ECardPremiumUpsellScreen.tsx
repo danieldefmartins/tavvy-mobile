@@ -41,7 +41,7 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const copy = useReleaseCopy();
   const { feature, themeName } = route.params || {};
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
   const [isLoading, setIsLoading] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -51,15 +51,33 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
   useEffect(() => {
     if (Platform.OS !== 'ios' || !IAP_ENABLED) return;
     let active = true;
-    void import('../../lib/iap').then(({ fetchIapSubscriptions }) => fetchIapSubscriptions())
-      .then(products => {
+    let unsubscribe: (() => void) | undefined;
+    void import('../../lib/iap').then(async ({ fetchIapPrices, subscribeToPurchaseResults }) => {
+      if (!active) return;
+      // The StoreKit sheet reports back asynchronously; this is where the
+      // customer learns the purchase (or restore) actually unlocked Pro.
+      unsubscribe = subscribeToPurchaseResults(result => {
         if (!active) return;
-        setApplePrices(Object.fromEntries(products.flatMap(product =>
-          'localizedPrice' in product ? [[product.productId, product.localizedPrice]] : [],
-        )));
-      })
-      .catch(() => { if (active) setApplePriceError(true); });
-    return () => { active = false; };
+        setIsLoading(false);
+        if (result.type === 'success' && (result.productId === ECARD_PRO_ANNUAL || result.productId === ECARD_PRO_MONTHLY)) {
+          void refreshProfile();
+          Alert.alert(
+            copy('Pro access active'),
+            copy(result.restored ? 'Your verified Pro access is available. Reopen your card to refresh its features.' : 'Thank you! Your eCard Pro subscription is active.'),
+            [{ text: t('common.ok', { defaultValue: 'OK' }), onPress: () => navigation.goBack() }],
+          );
+        } else if (result.type === 'error' && !result.cancelled) {
+          Alert.alert(copy('Purchase Error'), result.message);
+        }
+      });
+      try {
+        const prices = await fetchIapPrices();
+        if (active) setApplePrices(prices);
+      } catch {
+        if (active) setApplePriceError(true);
+      }
+    });
+    return () => { active = false; unsubscribe?.(); };
   }, []);
 
   const selectedAppleProduct = selectedPlan === 'yearly' ? ECARD_PRO_ANNUAL : ECARD_PRO_MONTHLY;
@@ -85,11 +103,14 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
       try {
         const { purchaseIapSubscription } = await import('../../lib/iap');
         await purchaseIapSubscription(selectedAppleProduct, user.id);
+        // Outcome arrives through subscribeToPurchaseResults (above), which clears isLoading.
       } catch (error) {
-        console.error('Apple purchase error:', error);
-        Alert.alert('Purchase Error', 'Could not start your purchase. Please try again.');
-      } finally {
         setIsLoading(false);
+        const { isUserCancelled } = await import('../../lib/iap');
+        if (!isUserCancelled(error)) {
+          console.error('Apple purchase error:', error);
+          Alert.alert(copy('Purchase Error'), copy('Could not start your purchase. Please try again.'));
+        }
       }
       return;
     }
@@ -145,12 +166,20 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
     setIsRestoring(true);
 
     try {
+      let restoreProblem: string | null = null;
       if (Platform.OS === 'ios' && IAP_ENABLED) {
         const { restorePurchases } = await import('../../lib/iap');
-        await restorePurchases();
+        const outcome = await restorePurchases();
+        if (outcome.restored === 0 && outcome.failed > 0) restoreProblem = outcome.messages[0] ?? null;
       }
       const entitlement = await fetchMyECardEntitlement();
-      Alert.alert(entitlement.is_pro ? 'Pro access active' : 'Plan not active', entitlement.is_pro ? 'Your verified Pro access is available. Reopen your card to refresh its features.' : 'If you just checked out, wait a moment and try again.');
+      if (entitlement.is_pro) void refreshProfile();
+      Alert.alert(
+        entitlement.is_pro ? copy('Pro access active') : copy('Plan not active'),
+        entitlement.is_pro
+          ? copy('Your verified Pro access is available. Reopen your card to refresh its features.')
+          : restoreProblem ?? copy(Platform.OS === 'ios' && IAP_ENABLED ? 'No previous purchases were found for this Apple ID.' : 'If you just checked out, wait a moment and try again.'),
+      );
     } catch (error: any) {
       console.error('Restore error:', error);
       Alert.alert(
@@ -291,10 +320,27 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
             <View style={styles.platformNotice}>
               <Ionicons name="information-circle-outline" size={16} color="rgba(255,255,255,0.5)" />
               <Text style={styles.platformNoticeText}>
-                {IAP_ENABLED ? (applePriceError ? 'Apple prices could not be loaded. Please reopen this page.' : 'Purchases are completed securely through Apple.') : 'Purchases through Apple are coming soon.'}
+                {IAP_ENABLED ? (applePriceError ? copy('Apple prices could not be loaded. Please reopen this page.') : copy('Purchases are completed securely through Apple.')) : copy('Purchases through Apple are coming soon.')}
               </Text>
             </View>
           )}
+
+          {/* Apple Guideline 3.1.2: renewal terms + Terms of Use / Privacy Policy links on the paywall */}
+          <View style={{ paddingHorizontal: 24, paddingTop: 8 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, lineHeight: 17, textAlign: 'center' }}>
+              {copy(Platform.OS === 'ios'
+                ? 'Payment is charged to your Apple ID account at confirmation. The subscription renews automatically at the same price unless it is cancelled at least 24 hours before the end of the current period. Manage or cancel it in your App Store account settings.'
+                : 'The subscription renews automatically until cancelled. You can manage or cancel it at any time.')}
+            </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 10 }}>
+              <TouchableOpacity onPress={() => Linking.openURL('https://tavvy.com/terms')} accessibilityRole="link">
+                <Text style={{ color: '#FFD700', fontSize: 12, textDecorationLine: 'underline' }}>{copy('Terms of Use')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => Linking.openURL('https://tavvy.com/privacy')} accessibilityRole="link">
+                <Text style={{ color: '#FFD700', fontSize: 12, textDecorationLine: 'underline' }}>{copy('Privacy Policy')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </ScrollView>
 
         {/* Bottom CTA */}
