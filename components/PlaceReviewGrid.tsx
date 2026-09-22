@@ -40,7 +40,9 @@ export default function PlaceReviewGrid({ summary, mode = 'compact', selectedTop
   const width = (topic: ReviewTopic) => showBars ? `${Math.max(2, Math.round((topic.count / Math.max(count, 1)) * 100))}%` : '0%';
   const toneOf = (section: ReviewTileKey, topic: ReviewTopic): Tone => topic.tone === 'concern' ? 'concern' : SECTION_TONE[section] === 'neutral' && section !== 'main' ? 'neutral' : 'positive';
   const toggle = (key: string) => setExpanded(previous => previous.includes(key) ? previous.filter(item => item !== key) : [...previous, key]);
-  const labelColor = (section: ReviewTileKey) => section === 'main' ? toneColor.neutral : theme.textSecondary;
+  // Accent for labels and controls: the logo's teal (text-safe shades), not the purple used for atmosphere.
+  const accent = isDark ? '#58D9DE' : '#067A80';
+  const labelColor = (section: ReviewTileKey) => section === 'main' ? accent : theme.textSecondary;
   const mark = <View style={styles.mark}><Text style={styles.markText}>!</Text></View>;
   const wordOf = (topic: ReviewTopic) => {
     const olderDate = topic.lastReportedAt ? topic.lastReportedAt.slice(0, 10) : '';
@@ -92,13 +94,13 @@ export default function PlaceReviewGrid({ summary, mode = 'compact', selectedTop
       return <View key={section.key} testID={`review-section-${section.key}`} style={styles.section}>
         <View style={styles.labelRow}>
           {!main && <View style={[styles.dot, { backgroundColor: ACCENT[SECTION_TONE[section.key]] }]} />}
-          <Text style={[main ? styles.mainLabel : styles.label, { color: toneColor[SECTION_TONE[section.key]] }]}>{copy(section.title)}</Text>
+          <Text style={[main ? styles.mainLabel : styles.label, { color: main ? accent : toneColor[SECTION_TONE[section.key]] }]}>{copy(section.title)}</Text>
         </View>
         <View style={{ gap: 5 }}>
           {topics.map(topic => barRow(section.key, topic, onSelect ? { onPress: () => onSelect(section.key, topic), pressed: selectedTopic === topic.label, accessibilityLabel: `${topic.label}, ${topic.count} ${copy('people mentioned this')}. ${copy('See experiences')}` } : {}))}
           {!topics.length && <Text style={[styles.note, muted, { paddingVertical: 6 }]}>{emptyText(section.key)}</Text>}
         </View>
-        {!main && section.topics.length > FULL_INITIAL_TOPICS && <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => toggle(section.key)} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: toneColor.neutral, fontSize: 12, fontWeight: '700' }}>{copy(open ? 'Show less' : 'Show all')}</Text></Pressable>}
+        {!main && section.topics.length > FULL_INITIAL_TOPICS && <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => toggle(section.key)} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: accent, fontSize: 12, fontWeight: '700' }}>{copy(open ? 'Show less' : 'Show all')}</Text></Pressable>}
       </View>;
     })}
     {!compact && !!summary.practical?.length && <View style={styles.section}>
