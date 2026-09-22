@@ -69,13 +69,16 @@ functionality, linked, no tracking). EAS submission `474eabbf` of build 29 sat i
 Expo's queue for 40 minutes and then errored without a reason the CLI can show; a
 second `eas submit` for the same build was started and left running.
 
-**Still open before submission:** build 29 must land in TestFlight (retry `eas submit
---platform ios --id bce12481-84dd-453e-b1ca-d061de8f4843` if the second attempt also
-fails, or upload the IPA with Transporter); attach it to version 1.0.1; run the sandbox
-purchase / restore / account-binding test on a physical iPhone and capture the paywall
-with Apple prices for each subscription's review screenshot; then "Add for Review" on
-the three subscriptions and submit version 1.0.1. Sign in with Apple stays hidden until
-Apple is enabled as a Supabase Auth provider.
+**Submitted to App Review — September 22, evening.** Build 29 (1.0.1) reached App Store
+Connect (the first EAS submission delivered it although the CLI later reported
+"errored"), was attached to version 1.0.1, and one review submission with six items was
+sent: iOS App 1.0.1 (29), the three subscriptions and both subscription groups. Status:
+Waiting for Review. Subscription review screenshots are the development-build paywalls
+(purchases off, so they show "Coming soon" instead of prices); replace them from a
+TestFlight capture if App Review asks. The sandbox purchase / restore test on a physical
+iPhone has not been run; the shipped build has purchases enabled and verification live,
+so App Review's own sandbox purchase is the first real exercise of that path. Sign in
+with Apple stays hidden until Apple is enabled as a Supabase Auth provider.
 
 ## Apple integration — September 22, source branch only
 
