@@ -1,7 +1,7 @@
 import { matchesDemoRestaurantQuery, shouldOfferDemoRestaurant } from '../lib/demoPlace';
 import { useReleaseCopy } from '../hooks/useReleaseCopy';
 import { searchAcrossProviders } from '../lib/placeSearch';
-import { canonicalPlaceId, isDiningSearch, submittedSearchContext, SearchContext } from '../lib/searchIntent';
+import { canonicalPlaceId, distanceKm, validCoordinates, isDiningSearch, submittedSearchContext, SearchContext } from '../lib/searchIntent';
 import { fetchDiscoveryEvidence, DINING_NEEDS, matchNeed } from '../lib/discoveryEvidence';
 import { currentEvidenceSignals } from '../lib/placeEvidence';
 import featureCards from '../config/featureCards.json';
@@ -40,6 +40,9 @@ import { useThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchPlacesInBounds, PlaceCard, getPlaceIdForNavigation, formatDistance } from '../lib/placeService';
 import PlaceReviewGrid from '../components/PlaceReviewGrid';
+import { usePlacePreviewSummaries } from '../hooks/usePlacePreviewSummaries';
+import { placePreviewImage, realPlacePhotos } from '../lib/placePreviewImage';
+import { formatPlaceDistance } from '../lib/placeDistance';
 import { buildPlaceReviewSummary } from '../lib/placeReviewSummary';
 import { searchSuggestions as searchPlaceSuggestions, searchAddresses, prefetchNearbyPlaces, searchPrefetchedPlaces, SearchResult } from '../lib/searchService';
 import { searchPlaces as typesenseSearchPlaces } from '../lib/typesenseService';
@@ -419,6 +422,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
   // Category results view states
   const [showCategoryResults, setShowCategoryResults] = useState(false);
   const [categoryResultsPlaces, setCategoryResultsPlaces] = useState<Place[]>([]);
+  const previewSummaries = usePlacePreviewSummaries([...filteredPlaces, ...categoryResultsPlaces]);
   const [isLoadingCategoryResults, setIsLoadingCategoryResults] = useState(false);
   
   // Filter modal states
@@ -1306,7 +1310,8 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
             // Map PlaceCard to existing Place interface
             return {
-              id: canonicalPlaceId(place.id, place.source), // Use source_id for navigation (fsq_id or tavvy place id)
+              ...place,
+              id: canonicalPlaceId(place.id, place.source), // Use canonical identity for navigation
               name: place.name,
               latitude: place.latitude,
               longitude: place.longitude,
@@ -1435,6 +1440,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
               }));
 
             return {
+              ...place,
               id: canonicalPlaceId(place.id, place.source),
               name: place.name,
               latitude: place.latitude,
@@ -1585,7 +1591,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
         const searchResults = await searchPlaceSuggestions(text, 8, userLocation ? { latitude: userLocation[1], longitude: userLocation[0] } : undefined, submittedSearchContext(text, activeSearchContext.current, userLocation ? { latitude: userLocation[1], longitude: userLocation[0] } : undefined, searchLocation));
         for (const place of searchResults) suggestions.push({ id: `place-${place.id}`, type: "place", title: place.name,
           subtitle: [place.subcategory || place.category, place.city, place.region].filter(Boolean).join(' · '), icon: "location",
-          data: { ...place, id: canonicalPlaceId(place.id, place.source), address_line1: place.address || '', state_region: place.region || '', signals: [], photos: place.cover_image_url ? [place.cover_image_url] : [] } });
+          data: { ...place, id: canonicalPlaceId(place.id, place.source), address_line1: place.address || '', state_region: place.region || '', signals: [], photos: realPlacePhotos(place) } });
       } catch (error) {
         if (requestId === searchRequestId.current) setSearchError(error instanceof Error ? error.message : 'Search is temporarily unavailable.');
       }
@@ -1690,7 +1696,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
       const initialPlaces = response.places.filter(place => Number.isFinite(place.latitude) && Number.isFinite(place.longitude)).map(place => ({
         ...place, address_line1: place.address || '', state_region: place.region || '', category: place.subcategory || place.category || "Place",
         signals: [], currentSignals: [], reviewSummary: buildPlaceReviewSummary(null, { category: place.tavvy_category || place.category, subcategory: place.subcategory }, place.id.startsWith('fsq:') ? 'unavailable' : 'loading'), evidenceStatus: place.id.startsWith('fsq:') ? 'unavailable' : 'loading',
-        photos: place.cover_image_url ? [place.cover_image_url] : [],
+        photos: realPlacePhotos(place),
       }));
       activeSearchContext.current = searchContext; setSearchDining(dining); setDiningNeed(dining ? need : ''); setSearchScopeLabel(response.intent.label);
       setFilteredPlaces(initialPlaces as unknown as Place[]); setLoading(false);
@@ -1703,7 +1709,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
           signals: currentSignals.map(signal => ({ bucket: signal.label, tap_total: signal.count, category: signal.category })), currentSignals,
           reviewSummary: buildPlaceReviewSummary(current, { category: place.tavvy_category || place.category, subcategory: place.subcategory }),
           evidenceStatus: current?.dataStatus || 'unavailable', matchScore: matching?.score, matchReason: matching?.reason,
-          photos: place.cover_image_url ? [place.cover_image_url] : [] };
+          photos: realPlacePhotos(place) };
       });
       if (dining && need) ranked.sort((a,b) => (b.matchScore ?? -1) - (a.matchScore ?? -1));
       if (requestId !== submittedSearchRef.current) return;
@@ -1822,7 +1828,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
     try {
       const response = await searchAcrossProviders(category, 50, { coordinates: userLocation ? { latitude: userLocation[1], longitude: userLocation[0] } : undefined, location: searchLocation || undefined });
       setSearchScopeLabel(response.intent.label);
-      setCategoryResultsPlaces(response.places.filter(p => Number.isFinite(p.latitude) && Number.isFinite(p.longitude)).map(p => ({ ...p, address_line1: p.address || '', state_region: p.region || '', category: p.subcategory || p.category || "Place", signals: [], photos: p.cover_image_url ? [p.cover_image_url] : [] })) as unknown as Place[]);
+      setCategoryResultsPlaces(response.places.filter(p => Number.isFinite(p.latitude) && Number.isFinite(p.longitude)).map(p => ({ ...p, address_line1: p.address || '', state_region: p.region || '', category: p.subcategory || p.category || "Place", signals: [], photos: realPlacePhotos(p) })) as unknown as Place[]);
     } catch (error) { setCategoryResultsPlaces([]); setSearchError(error instanceof Error ? error.message : 'Search is temporarily unavailable.'); }
     finally { setIsLoadingCategoryResults(false); }
   };
@@ -2489,38 +2495,35 @@ function HomeScreen({ navigation }: { navigation: any }) {
 
   const PhotoCarousel = ({ photos, placeName, placeAddress, placeCategory }: { photos?: string[], placeName: string, placeAddress: string, placeCategory?: string }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [availableWidth, setAvailableWidth] = useState(width - 64);
     const displayPhotos = (photos || []).filter(Boolean);
+    const imageWidth = displayPhotos.length > 1 ? availableWidth * 0.68 : availableWidth;
 
     return (
-      <View style={styles.carouselContainer}>
+      <View style={[styles.carouselContainer, {height:154,marginHorizontal:16}]} onLayout={event=>setAvailableWidth(event.nativeEvent.layout.width)}>
         {!displayPhotos.length && <View style={[styles.photo, { width: '100%', height: '100%', backgroundColor: isDark ? '#302938' : '#e9e2ef', justifyContent: 'center', alignItems: 'center' }]}><Ionicons name="image-outline" size={48} color={isDark ? '#b8acc4' : '#766580'} /></View>}
         <ScrollView
           horizontal
-          pagingEnabled
+          snapToInterval={imageWidth + 8}
+          decelerationRate="fast"
           showsHorizontalScrollIndicator={false}
           onScroll={(event) => {
-            const index = Math.round(event.nativeEvent.contentOffset.x / (width - 48));
+            const index = Math.round(event.nativeEvent.contentOffset.x / (imageWidth + 8));
             setCurrentIndex(index);
           }}
           scrollEventThrottle={16}
         >
-          {displayPhotos.slice(0, 3).map((photo, index) => (
-            <View key={index} style={styles.carouselImage}>
+          {displayPhotos.slice(0, 5).map((photo, index) => (
+            <View key={photo} style={[styles.carouselImage,{width:imageWidth,height:154,marginRight:8,borderRadius:12,overflow:'hidden'}]}>
               <Image source={{ uri: photo }} style={styles.photo} resizeMode="cover" />
             </View>
           ))}
         </ScrollView>
         
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.85)']}
-          style={styles.photoGradientOverlay}
-        >
-          <Text style={styles.overlayPlaceName} numberOfLines={2}>{placeName}</Text>
-        </LinearGradient>
         
         {displayPhotos.length > 1 && (
           <View style={styles.dotsContainer}>
-            {displayPhotos.slice(0, 3).map((_, index) => (
+            {displayPhotos.slice(0, 5).map((_, index) => (
               <View
                 key={index}
                 style={[
@@ -2540,9 +2543,10 @@ function HomeScreen({ navigation }: { navigation: any }) {
   // ============================================
 
   const renderPlaceCard = ({ item: place }: { item: Place }) => {
-    const fullAddress = place.city && place.state_region
-      ? `${place.address_line1}, ${place.city}, ${place.state_region}`
-      : place.address_line1;
+    const fullAddress = [place.address_line1, place.city, place.state_region].filter(Boolean).join(', ');
+    const image = placePreviewImage(place);
+    const photos = realPlacePhotos(place);
+    const distance = formatPlaceDistance(userLocation && validCoordinates(place) ? distanceKm({latitude:userLocation[1],longitude:userLocation[0]},place)*1000 : place.distance);
 
     return (
       <TouchableOpacity
@@ -2550,37 +2554,45 @@ function HomeScreen({ navigation }: { navigation: any }) {
         onPress={() => handlePlacePress(place)}
         activeOpacity={0.95}
       >
+        <View style={{paddingHorizontal:16,paddingVertical:14,gap:5}}>
+          <Text style={{fontSize:19,lineHeight:25,fontWeight:'700',color:theme.text}}>{place.name}</Text>
+          <View style={{flexDirection:'row',justifyContent:'space-between',gap:12}}>
+            <Text style={{color:theme.text,fontWeight:'600',flex:1}}>{((place as any).subcategory || place.category || place.primary_category || '').replace(/_/g,' ')}</Text>
+            {!!distance && <Text accessibilityLabel={`${distance}, straight-line distance from search location`} style={{color:theme.textSecondary}}>{distance}</Text>}
+          </View>
+          {!!fullAddress && <Text style={{color:theme.textSecondary,fontSize:13,lineHeight:19}}>{fullAddress}</Text>}
+          {image.isCategory && <Text style={{color:theme.textSecondary,fontSize:11}}>{copy('Category illustration')}</Text>}
+        </View>
         <PhotoCarousel
-          photos={place.photos?.length ? place.photos : place.cover_image_url ? [place.cover_image_url] : []}
+          photos={(photos.length ? photos : [image.src]).map(url => url.startsWith('/') ? `https://tavvy.com${url}` : url)}
           placeName={place.name}
           placeAddress={fullAddress}
           placeCategory={place.category || place.primary_category}
         />
-        
         {/* Signal Matrix — compact 2x2 grid */}
         <View style={styles.signalsContainer}>
-          <PlaceReviewGrid summary={(place as any).reviewSummary || buildPlaceReviewSummary(null, { category: (place as any).tavvy_category || place.primary_category || place.category, subcategory: (place as any).subcategory }, (place as any).evidenceStatus || 'unavailable')} />
+          <PlaceReviewGrid explain summary={(place as any).reviewSummary || previewSummaries[place.id] || buildPlaceReviewSummary(null, { category: (place as any).tavvy_category || place.primary_category || place.category, subcategory: (place as any).subcategory }, (place as any).evidenceStatus || 'unavailable')} />
           {!!(place as any).matchReason && <Text style={{ color: theme.textSecondary, paddingTop: 8 }}>{(place as any).matchReason}</Text>}
         </View>
         
         {/* Quick Actions */}
         <View style={[styles.quickActions, { backgroundColor: isDark ? theme.surface : '#fff' }]}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleCall(place.phone)} accessibilityLabel="Call business" accessibilityRole="button">
+          {!!place.phone && <TouchableOpacity style={styles.actionButton} onPress={() => handleCall(place.phone)} accessibilityLabel="Call business" accessibilityRole="button">
             <Ionicons name="call-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
             <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>{copy("Call")}</Text>
-          </TouchableOpacity>
+          </TouchableOpacity>}
           <TouchableOpacity style={styles.actionButton} onPress={() => handleDirections(place)} accessibilityLabel={"Get directions"} accessibilityRole="button">
             <Ionicons name="navigate-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
             <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>{copy("Directions")}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleSocial(place.instagram_url)} accessibilityLabel="View Instagram" accessibilityRole="button">
+          {!!place.instagram_url && <TouchableOpacity style={styles.actionButton} onPress={() => handleSocial(place.instagram_url)} accessibilityLabel="View Instagram" accessibilityRole="button">
             <Ionicons name="chatbubble-ellipses-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
             <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>{copy("Social")}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleWebsite(place.website)} accessibilityLabel={"Visit website"} accessibilityRole="button">
+          </TouchableOpacity>}
+          {!!place.website && <TouchableOpacity style={styles.actionButton} onPress={() => handleWebsite(place.website)} accessibilityLabel={"Visit website"} accessibilityRole="button">
             <Ionicons name="globe-outline" size={20} color={isDark ? theme.textSecondary : '#666'} />
             <Text style={[styles.actionText, { color: isDark ? theme.textSecondary : '#666' }]}>{copy("Website")}</Text>
-          </TouchableOpacity>
+          </TouchableOpacity>}
         </View>
       </TouchableOpacity>
     );
@@ -3827,53 +3839,7 @@ function HomeScreen({ navigation }: { navigation: any }) {
                   <Text style={[styles.noResultsSubtext, { color: isDark ? theme.textSecondary : '#999' }]}>{copy("Try adjusting your filters or search in a different area")}</Text>
                 </View>
               ) : (
-                categoryResultsPlaces.map((place, catIndex) => (
-                  <TouchableOpacity
-                    key={`category-${place.id}-${catIndex}`}
-                    style={[styles.categoryResultCard, { backgroundColor: isDark ? theme.surface : '#fff' }]}
-                    onPress={() => handlePlacePress(place)}
-                    activeOpacity={0.9}
-                  >
-                    {/* Photo */}
-                    <View style={styles.categoryResultPhotoContainer}>
-                      {place.cover_image_url || place.photos?.[0] ? <Image
-                        source={{ uri: place.cover_image_url || place.photos?.[0] }}
-                        style={styles.categoryResultPhoto}
-                        resizeMode="cover"
-                      /> : <View style={[styles.categoryResultPhoto, { backgroundColor: isDark ? '#302938' : '#e9e2ef', justifyContent: 'center', alignItems: 'center' }]}><Ionicons name="image-outline" size={42} color={isDark ? '#b8acc4' : '#766580'} /></View>}
-                      <LinearGradient
-                        colors={['transparent', 'rgba(0,0,0,0.85)']}
-                        style={styles.categoryResultPhotoGradient}
-                      />
-                      <View style={styles.categoryResultPhotoOverlay}>
-                        <Text style={styles.categoryResultPhotoName} numberOfLines={1}>{place.name}</Text>
-                        <Text style={styles.categoryResultPhotoMeta} numberOfLines={1}>
-                          {place.category} • {place.city || place.address_line1 || 'Nearby'}
-                        </Text>
-                      </View>
-                    </View>
-                    
-                    {/* 2x2 Signal Grid */}
-                    <View style={styles.categoryResultSignalGrid}>
-                      {getDisplaySignals(place.signals).map((signal, idx) => (
-                        <View 
-                          key={`cat-${catIndex}-${place.id}-sig-${idx}`} 
-                          style={[styles.categoryResultSignalBadge2x2, { backgroundColor: getSignalColor(signal.bucket) }]}
-                        >
-                          <Ionicons 
-                            name={getSignalIcon(signal.bucket) as any} 
-                            size={14} 
-                            color="#FFFFFF" 
-                            style={{ marginRight: 4 }} 
-                          />
-                          <Text style={styles.categoryResultSignalText2x2} numberOfLines={1}>
-                            {signal.isEmpty ? getEmptySignalText(signal.bucket) : signal.bucket}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </TouchableOpacity>
-                ))
+                categoryResultsPlaces.map(place => <React.Fragment key={place.id}>{renderPlaceCard({ item: place })}</React.Fragment>)
               )}
             </BottomSheetScrollView>
           )}

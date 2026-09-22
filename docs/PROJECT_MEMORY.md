@@ -106,9 +106,9 @@ sheets with touch/scroll interaction, not just desktop clicks.
 
 ### Appearance and tools
 
-Follow the device's appearance by default and retain System / Light / Dark choices.
-Use understandable text controls, accessible through Tools and Profile, rather than
-depending on sun/moon symbols alone. The chosen theme applies to all app tools and
+Follow the device's appearance until the user chooses an override. The latest approved
+control is a compact Light / Dark switch on Profile only; remove appearance controls
+from Tools and Settings. The chosen theme applies to all app tools and
 owner/editor chrome; an eCard's own design remains independent of app appearance.
 
 Universes is the reference for consistent tool headers. Cities, Atlas, On The Go and

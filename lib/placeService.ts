@@ -281,7 +281,7 @@ export async function fetchPlacesInBounds(options: FetchPlacesOptions): Promise<
     }));
     
     // Sort by distance (closest first)
-    deduplicatedPlaces.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+    deduplicatedPlaces.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
 
     console.log(`[placeService] Sorted ${deduplicatedPlaces.length} places by distance from user`);
   }
