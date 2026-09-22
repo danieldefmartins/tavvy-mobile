@@ -93,7 +93,14 @@
     "deleteAccountConfirm": "Eliminar cuenta",
     "accountDeleted": "Cuenta eliminada",
     "accountDeletedMessage": "Tu cuenta ha sido eliminada.",
-    "deleteAccountError": "No se pudo eliminar tu cuenta. Intenta de nuevo."
+    "deleteAccountError": "No se pudo eliminar tu cuenta. Intenta de nuevo.",
+    "signInWithApple": "Iniciar sesión con Apple",
+    "signInWithGoogle": "Iniciar sesión con Google",
+    "enterYourEmail": "Ingresa tu correo",
+    "enterEmailFirst": "Por favor ingresa primero tu correo electrónico y luego toca “¿Olvidaste tu contraseña?”.",
+    "resetEmailTitle": "Revisa tu correo",
+    "resetLinkSent": "Si existe una cuenta con este correo, se envió un enlace para restablecer la contraseña.",
+    "resetFailed": "No se pudo enviar el correo de restablecimiento. Intenta de nuevo."
   },
   "home": {
     "greeting": {
@@ -393,7 +400,12 @@
     "callNow": "Llamar ahora",
     "bookNow": "Reservar ahora",
     "manageProfile": "Editar perfil",
-    "proDashboard": "Panel profesional"
+    "proDashboard": "Panel profesional",
+    "subscribed": "¡Ahora estás suscrito a Tavvy Pros!",
+    "purchaseStartFailed": "No se pudo iniciar la compra.",
+    "appleRenewalTerms": "El pago se cargará a tu cuenta de Apple ID al confirmar. La suscripción se renueva automáticamente cada año al mismo precio, a menos que se cancele al menos 24 horas antes del final del período actual. Puedes administrarla o cancelarla en los ajustes de tu cuenta del App Store.",
+    "renewalTerms": "La suscripción se renueva automáticamente cada año hasta que se cancele. Puedes administrarla o cancelarla en cualquier momento.",
+    "cancelAnytimeApple": "Cancela cuando quieras en los ajustes del App Store."
   },
   "add": {
     "addNew": "Agregar nuevo",
@@ -760,7 +772,8 @@
     "enforcement": "Aplicación",
     "beHonest": "Sé honesto",
     "beRespectful": "Sé respetuoso",
-    "trustVerification": "Confianza y verificación"
+    "trustVerification": "Confianza y verificación",
+    "termsOfUse": "Términos de uso"
   },
   "onboarding": {
     "welcome": "Bienvenido",
@@ -1806,6 +1819,25 @@
     "reviewExperience93": "{{shown}} de {{total}} reseñas",
     "reviewExperience94": "Mostrar más reseñas",
     "reviewExperience95": "Filtros",
-    "reviewExperience96": "cargadas"
+    "reviewExperience96": "cargadas",
+    "purchase1": "Acceso Pro activo",
+    "purchase2": "Plan no activo",
+    "purchase3": "Error de compra",
+    "purchase4": "Términos de uso",
+    "purchase5": "Política de privacidad",
+    "purchase6": "¡Gracias! Tu suscripción a eCard Pro está activa.",
+    "purchase7": "No se pudo iniciar tu compra. Intenta de nuevo.",
+    "purchase8": "No se encontraron compras anteriores para este Apple ID.",
+    "purchase9": "Las compras se completan de forma segura a través de Apple.",
+    "purchase10": "No se pudieron cargar los precios de Apple. Vuelve a abrir esta página.",
+    "purchase11": "Las compras a través de Apple estarán disponibles pronto.",
+    "purchase12": "Restaurar compras",
+    "purchase13": "El pago se cargará a tu cuenta de Apple ID al confirmar. La suscripción se renueva automáticamente al mismo precio, a menos que se cancele al menos 24 horas antes del final del período actual. Puedes administrarla o cancelarla en los ajustes de tu cuenta del App Store.",
+    "purchase14": "La suscripción se renueva automáticamente hasta que se cancele. Puedes administrarla o cancelarla en cualquier momento.",
+    "purchase15": "Tu acceso Pro verificado está disponible. Vuelve a abrir tu tarjeta para actualizar sus funciones.",
+    "purchase16": "Si acabas de pagar, espera un momento e intenta de nuevo.",
+    "purchase17": "Las compras a través de Apple aún no están disponibles en esta versión.",
+    "purchase18": "Tus compras se han restaurado.",
+    "purchase19": "No se pudieron restaurar las compras. Intenta de nuevo."
   }
 }

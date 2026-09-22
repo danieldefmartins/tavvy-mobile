@@ -93,7 +93,14 @@
     "deleteAccountConfirm": "Account verwijderen",
     "accountDeleted": "Account verwijderd",
     "accountDeletedMessage": "Je account is verwijderd.",
-    "deleteAccountError": "Je account kon niet worden verwijderd. Probeer het opnieuw."
+    "deleteAccountError": "Je account kon niet worden verwijderd. Probeer het opnieuw.",
+    "signInWithApple": "Inloggen met Apple",
+    "signInWithGoogle": "Inloggen met Google",
+    "enterYourEmail": "Voer je e-mailadres in",
+    "enterEmailFirst": "Voer eerst je e-mailadres in en tik daarna op ‘Wachtwoord vergeten’.",
+    "resetEmailTitle": "Controleer je e-mail",
+    "resetLinkSent": "Als er een account bestaat voor dit e-mailadres, is er een link verzonden om je wachtwoord opnieuw in te stellen.",
+    "resetFailed": "De reset-e-mail kon niet worden verzonden. Probeer het opnieuw."
   },
   "home": {
     "greeting": {
@@ -393,7 +400,12 @@
     "callNow": "Nu bellen",
     "bookNow": "Nu boeken",
     "manageProfile": "Profiel bewerken",
-    "proDashboard": "Professioneel dashboard"
+    "proDashboard": "Professioneel dashboard",
+    "subscribed": "Je bent nu geabonneerd op Tavvy Pros!",
+    "purchaseStartFailed": "De aankoop kon niet worden gestart.",
+    "appleRenewalTerms": "De betaling wordt bij bevestiging in rekening gebracht op je Apple ID-account. Het abonnement wordt elk jaar automatisch verlengd tegen dezelfde prijs, tenzij het minstens 24 uur voor het einde van de huidige periode wordt opgezegd. Beheer of annuleer het in de accountinstellingen van de App Store.",
+    "renewalTerms": "Het abonnement wordt elk jaar automatisch verlengd totdat het wordt opgezegd. Je kunt het op elk moment beheren of annuleren.",
+    "cancelAnytimeApple": "Zeg op elk moment op in je App Store-instellingen."
   },
   "add": {
     "addNew": "Nieuw toevoegen",
@@ -760,7 +772,8 @@
     "enforcement": "Handhaving",
     "beHonest": "Wees eerlijk",
     "beRespectful": "Wees respectvol",
-    "trustVerification": "Vertrouwen & Verificatie"
+    "trustVerification": "Vertrouwen & Verificatie",
+    "termsOfUse": "Gebruiksvoorwaarden"
   },
   "onboarding": {
     "welcome": "Welkom",
@@ -1771,7 +1784,26 @@
     "reviewExperience93": "{{shown}} van {{total}} beoordelingen",
     "reviewExperience94": "Meer beoordelingen tonen",
     "reviewExperience95": "Filters",
-    "reviewExperience96": "geladen"
+    "reviewExperience96": "geladen",
+    "purchase1": "Pro-toegang actief",
+    "purchase2": "Abonnement niet actief",
+    "purchase3": "Aankoopfout",
+    "purchase4": "Gebruiksvoorwaarden",
+    "purchase5": "Privacybeleid",
+    "purchase6": "Bedankt! Je eCard Pro-abonnement is actief.",
+    "purchase7": "Je aankoop kon niet worden gestart. Probeer het opnieuw.",
+    "purchase8": "Er zijn geen eerdere aankopen gevonden voor deze Apple ID.",
+    "purchase9": "Aankopen worden veilig afgehandeld via Apple.",
+    "purchase10": "De Apple-prijzen konden niet worden geladen. Open deze pagina opnieuw.",
+    "purchase11": "Aankopen via Apple zijn binnenkort beschikbaar.",
+    "purchase12": "Aankopen herstellen",
+    "purchase13": "De betaling wordt bij bevestiging in rekening gebracht op je Apple ID-account. Het abonnement wordt automatisch verlengd tegen dezelfde prijs, tenzij het minstens 24 uur voor het einde van de huidige periode wordt opgezegd. Beheer of annuleer het in de accountinstellingen van de App Store.",
+    "purchase14": "Het abonnement wordt automatisch verlengd totdat het wordt opgezegd. Je kunt het op elk moment beheren of annuleren.",
+    "purchase15": "Je geverifieerde Pro-toegang is beschikbaar. Open je kaart opnieuw om de functies te vernieuwen.",
+    "purchase16": "Als je zojuist hebt afgerekend, wacht dan even en probeer het opnieuw.",
+    "purchase17": "Aankopen via Apple zijn in deze versie nog niet beschikbaar.",
+    "purchase18": "Je aankopen zijn hersteld.",
+    "purchase19": "De aankopen konden niet worden hersteld. Probeer het opnieuw."
   },
   "timeclock": {
     "title": "Prikklok",

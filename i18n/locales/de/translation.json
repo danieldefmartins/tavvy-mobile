@@ -93,7 +93,14 @@
     "deleteAccountConfirm": "Konto löschen",
     "accountDeleted": "Konto gelöscht",
     "accountDeletedMessage": "Ihr Konto wurde gelöscht.",
-    "deleteAccountError": "Ihr Konto konnte nicht gelöscht werden. Bitte versuchen Sie es erneut."
+    "deleteAccountError": "Ihr Konto konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",
+    "signInWithApple": "Mit Apple anmelden",
+    "signInWithGoogle": "Über Google anmelden",
+    "enterYourEmail": "E-Mail eingeben",
+    "enterEmailFirst": "Bitte geben Sie zuerst Ihre E-Mail-Adresse ein und tippen Sie dann auf „Passwort vergessen“.",
+    "resetEmailTitle": "Überprüfen Sie Ihre E-Mails",
+    "resetLinkSent": "Falls ein Konto für diese E-Mail-Adresse existiert, wurde ein Link zum Zurücksetzen des Passworts gesendet.",
+    "resetFailed": "Die E-Mail zum Zurücksetzen konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
   },
   "home": {
     "greeting": {
@@ -393,7 +400,12 @@
     "callNow": "Jetzt anrufen",
     "bookNow": "Jetzt buchen",
     "manageProfile": "Profil bearbeiten",
-    "proDashboard": "Profi-Dashboard"
+    "proDashboard": "Profi-Dashboard",
+    "subscribed": "Sie sind jetzt bei Tavvy Pros abonniert!",
+    "purchaseStartFailed": "Der Kauf konnte nicht gestartet werden.",
+    "appleRenewalTerms": "Die Zahlung wird bei Bestätigung über Ihr Apple ID-Konto abgebucht. Das Abonnement verlängert sich automatisch jedes Jahr zum gleichen Preis, sofern es nicht mindestens 24 Stunden vor Ablauf des aktuellen Zeitraums gekündigt wird. Verwalten oder kündigen Sie es in den Kontoeinstellungen Ihres App Store.",
+    "renewalTerms": "Das Abonnement verlängert sich automatisch jedes Jahr, bis es gekündigt wird. Sie können es jederzeit verwalten oder kündigen.",
+    "cancelAnytimeApple": "Jederzeit in Ihren App Store-Einstellungen kündbar."
   },
   "add": {
     "addNew": "Neu hinzufügen",
@@ -760,7 +772,8 @@
     "enforcement": "Durchsetzung",
     "beHonest": "Seien Sie ehrlich",
     "beRespectful": "Seien Sie respektvoll",
-    "trustVerification": "Vertrauen & Verifizierung"
+    "trustVerification": "Vertrauen & Verifizierung",
+    "termsOfUse": "Nutzungsbedingungen"
   },
   "onboarding": {
     "welcome": "Willkommen",
@@ -1771,7 +1784,26 @@
     "reviewExperience93": "{{shown}} von {{total}} Bewertungen",
     "reviewExperience94": "Weitere Bewertungen anzeigen",
     "reviewExperience95": "Filter",
-    "reviewExperience96": "geladen"
+    "reviewExperience96": "geladen",
+    "purchase1": "Pro-Zugang aktiv",
+    "purchase2": "Tarif nicht aktiv",
+    "purchase3": "Fehler beim Kauf",
+    "purchase4": "Nutzungsbedingungen",
+    "purchase5": "Datenschutzrichtlinie",
+    "purchase6": "Vielen Dank! Ihr eCard Pro-Abonnement ist aktiv.",
+    "purchase7": "Ihr Kauf konnte nicht gestartet werden. Bitte versuchen Sie es erneut.",
+    "purchase8": "Für diese Apple ID wurden keine früheren Käufe gefunden.",
+    "purchase9": "Käufe werden sicher über Apple abgewickelt.",
+    "purchase10": "Die Apple-Preise konnten nicht geladen werden. Bitte öffnen Sie diese Seite erneut.",
+    "purchase11": "Käufe über Apple sind bald verfügbar.",
+    "purchase12": "Käufe wiederherstellen",
+    "purchase13": "Die Zahlung wird bei Bestätigung über Ihr Apple ID-Konto abgebucht. Das Abonnement verlängert sich automatisch zum gleichen Preis, sofern es nicht mindestens 24 Stunden vor Ablauf des aktuellen Zeitraums gekündigt wird. Verwalten oder kündigen Sie es in den Kontoeinstellungen Ihres App Store.",
+    "purchase14": "Das Abonnement verlängert sich automatisch, bis es gekündigt wird. Sie können es jederzeit verwalten oder kündigen.",
+    "purchase15": "Ihr verifizierter Pro-Zugang ist verfügbar. Öffnen Sie Ihre Karte erneut, um die Funktionen zu aktualisieren.",
+    "purchase16": "Wenn Sie gerade bezahlt haben, warten Sie einen Moment und versuchen Sie es erneut.",
+    "purchase17": "Käufe über Apple sind in dieser Version noch nicht verfügbar.",
+    "purchase18": "Ihre Käufe wurden wiederhergestellt.",
+    "purchase19": "Die Käufe konnten nicht wiederhergestellt werden. Bitte versuchen Sie es erneut."
   },
   "timeclock": {
     "title": "Stempeluhr",

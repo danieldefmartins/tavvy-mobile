@@ -93,7 +93,14 @@
     "deleteAccountConfirm": "Xóa tài khoản",
     "accountDeleted": "Đã xóa tài khoản",
     "accountDeletedMessage": "Tài khoản của bạn đã được xóa.",
-    "deleteAccountError": "Không thể xóa tài khoản của bạn. Vui lòng thử lại."
+    "deleteAccountError": "Không thể xóa tài khoản của bạn. Vui lòng thử lại.",
+    "signInWithApple": "Đăng nhập bằng Apple",
+    "signInWithGoogle": "Đăng nhập bằng Google",
+    "enterYourEmail": "Nhập email của bạn",
+    "enterEmailFirst": "Vui lòng nhập địa chỉ email trước, sau đó nhấn “Quên mật khẩu?”.",
+    "resetEmailTitle": "Kiểm tra email của bạn",
+    "resetLinkSent": "Nếu có tài khoản với email này, liên kết đặt lại mật khẩu đã được gửi.",
+    "resetFailed": "Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại."
   },
   "home": {
     "greeting": {
@@ -393,7 +400,12 @@
     "callNow": "Gọi ngay",
     "bookNow": "Đặt ngay",
     "manageProfile": "Chỉnh sửa hồ sơ",
-    "proDashboard": "Bảng điều khiển chuyên gia"
+    "proDashboard": "Bảng điều khiển chuyên gia",
+    "subscribed": "Bạn đã đăng ký Tavvy Pros!",
+    "purchaseStartFailed": "Không thể bắt đầu giao dịch mua.",
+    "appleRenewalTerms": "Thanh toán sẽ được tính vào tài khoản Apple ID của bạn khi xác nhận. Gói đăng ký tự động gia hạn hằng năm với cùng mức giá trừ khi bị hủy ít nhất 24 giờ trước khi kết thúc chu kỳ hiện tại. Quản lý hoặc hủy trong cài đặt tài khoản App Store của bạn.",
+    "renewalTerms": "Gói đăng ký tự động gia hạn hằng năm cho đến khi bị hủy. Bạn có thể quản lý hoặc hủy bất cứ lúc nào.",
+    "cancelAnytimeApple": "Hủy bất cứ lúc nào trong cài đặt App Store của bạn."
   },
   "add": {
     "addNew": "Thêm mới",
@@ -760,7 +772,8 @@
     "enforcement": "Thực thi",
     "beHonest": "Hãy trung thực",
     "beRespectful": "Hãy tôn trọng",
-    "trustVerification": "Tin cậy & Xác minh"
+    "trustVerification": "Tin cậy & Xác minh",
+    "termsOfUse": "Điều khoản sử dụng"
   },
   "onboarding": {
     "welcome": "Chào mừng",
@@ -1771,7 +1784,26 @@
     "reviewExperience93": "{{shown}} trên {{total}} đánh giá",
     "reviewExperience94": "Hiển thị thêm đánh giá",
     "reviewExperience95": "Bộ lọc",
-    "reviewExperience96": "đã tải"
+    "reviewExperience96": "đã tải",
+    "purchase1": "Quyền truy cập Pro đang hoạt động",
+    "purchase2": "Gói chưa kích hoạt",
+    "purchase3": "Lỗi mua hàng",
+    "purchase4": "Điều khoản sử dụng",
+    "purchase5": "Chính sách bảo mật",
+    "purchase6": "Cảm ơn bạn! Gói đăng ký eCard Pro của bạn đã được kích hoạt.",
+    "purchase7": "Không thể bắt đầu giao dịch mua của bạn. Vui lòng thử lại.",
+    "purchase8": "Không tìm thấy giao dịch mua trước đây cho Apple ID này.",
+    "purchase9": "Giao dịch mua được hoàn tất an toàn qua Apple.",
+    "purchase10": "Không thể tải giá từ Apple. Vui lòng mở lại trang này.",
+    "purchase11": "Mua hàng qua Apple sắp ra mắt.",
+    "purchase12": "Khôi phục giao dịch mua",
+    "purchase13": "Thanh toán sẽ được tính vào tài khoản Apple ID của bạn khi xác nhận. Gói đăng ký tự động gia hạn với cùng mức giá trừ khi bị hủy ít nhất 24 giờ trước khi kết thúc chu kỳ hiện tại. Quản lý hoặc hủy trong cài đặt tài khoản App Store của bạn.",
+    "purchase14": "Gói đăng ký tự động gia hạn cho đến khi bị hủy. Bạn có thể quản lý hoặc hủy bất cứ lúc nào.",
+    "purchase15": "Quyền truy cập Pro đã xác minh của bạn đã sẵn sàng. Mở lại thẻ của bạn để làm mới các tính năng.",
+    "purchase16": "Nếu bạn vừa thanh toán, hãy đợi một lát rồi thử lại.",
+    "purchase17": "Mua hàng qua Apple chưa khả dụng trong phiên bản này.",
+    "purchase18": "Giao dịch mua của bạn đã được khôi phục.",
+    "purchase19": "Không thể khôi phục giao dịch mua. Vui lòng thử lại."
   },
   "timeclock": {
     "title": "Chấm công",

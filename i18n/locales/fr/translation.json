@@ -93,7 +93,14 @@
     "deleteAccountConfirm": "Supprimer le compte",
     "accountDeleted": "Compte supprimé",
     "accountDeletedMessage": "Votre compte a été supprimé.",
-    "deleteAccountError": "Votre compte n'a pas pu être supprimé. Veuillez réessayer."
+    "deleteAccountError": "Votre compte n'a pas pu être supprimé. Veuillez réessayer.",
+    "signInWithApple": "Se connecter avec Apple",
+    "signInWithGoogle": "Se connecter avec Google",
+    "enterYourEmail": "Saisissez votre e-mail",
+    "enterEmailFirst": "Veuillez d'abord saisir votre adresse e-mail, puis appuyez sur « Mot de passe oublié ».",
+    "resetEmailTitle": "Vérifiez votre e-mail",
+    "resetLinkSent": "Si un compte existe pour cet e-mail, un lien de réinitialisation du mot de passe a été envoyé.",
+    "resetFailed": "Impossible d'envoyer l'e-mail de réinitialisation. Veuillez réessayer."
   },
   "home": {
     "greeting": {
@@ -393,7 +400,12 @@
     "callNow": "Appeler maintenant",
     "bookNow": "Réserver maintenant",
     "manageProfile": "Modifier le profil",
-    "proDashboard": "Tableau de bord professionnel"
+    "proDashboard": "Tableau de bord professionnel",
+    "subscribed": "Vous êtes maintenant abonné à Tavvy Pros !",
+    "purchaseStartFailed": "Impossible de démarrer l'achat.",
+    "appleRenewalTerms": "Le paiement est débité de votre compte Apple ID à la confirmation. L'abonnement se renouvelle automatiquement chaque année au même prix, sauf s'il est annulé au moins 24 heures avant la fin de la période en cours. Gérez-le ou annulez-le dans les réglages de votre compte App Store.",
+    "renewalTerms": "L'abonnement se renouvelle automatiquement chaque année jusqu'à son annulation. Vous pouvez le gérer ou l'annuler à tout moment.",
+    "cancelAnytimeApple": "Annulez à tout moment dans vos réglages App Store."
   },
   "add": {
     "addNew": "Ajouter nouveau",
@@ -760,7 +772,8 @@
     "enforcement": "Application",
     "beHonest": "Soyez honnête",
     "beRespectful": "Soyez respectueux",
-    "trustVerification": "Confiance et vérification"
+    "trustVerification": "Confiance et vérification",
+    "termsOfUse": "Conditions d'utilisation"
   },
   "onboarding": {
     "welcome": "Bienvenue",
@@ -1771,7 +1784,26 @@
     "reviewExperience93": "{{shown}} sur {{total}} avis",
     "reviewExperience94": "Afficher plus d’avis",
     "reviewExperience95": "Filtres",
-    "reviewExperience96": "chargés"
+    "reviewExperience96": "chargés",
+    "purchase1": "Accès Pro actif",
+    "purchase2": "Offre non active",
+    "purchase3": "Erreur d'achat",
+    "purchase4": "Conditions d'utilisation",
+    "purchase5": "Politique de confidentialité",
+    "purchase6": "Merci ! Votre abonnement eCard Pro est actif.",
+    "purchase7": "Impossible de démarrer votre achat. Veuillez réessayer.",
+    "purchase8": "Aucun achat précédent n'a été trouvé pour cet Apple ID.",
+    "purchase9": "Les achats sont effectués en toute sécurité via Apple.",
+    "purchase10": "Impossible de charger les prix Apple. Veuillez rouvrir cette page.",
+    "purchase11": "Les achats via Apple arrivent bientôt.",
+    "purchase12": "Restaurer les achats",
+    "purchase13": "Le paiement est débité de votre compte Apple ID à la confirmation. L'abonnement se renouvelle automatiquement au même prix, sauf s'il est annulé au moins 24 heures avant la fin de la période en cours. Gérez-le ou annulez-le dans les réglages de votre compte App Store.",
+    "purchase14": "L'abonnement se renouvelle automatiquement jusqu'à son annulation. Vous pouvez le gérer ou l'annuler à tout moment.",
+    "purchase15": "Votre accès Pro vérifié est disponible. Rouvrez votre carte pour actualiser ses fonctions.",
+    "purchase16": "Si vous venez de payer, patientez un instant et réessayez.",
+    "purchase17": "Les achats via Apple ne sont pas encore disponibles dans cette version.",
+    "purchase18": "Vos achats ont été restaurés.",
+    "purchase19": "Impossible de restaurer les achats. Veuillez réessayer."
   },
   "timeclock": {
     "title": "Pointeuse",

@@ -93,7 +93,14 @@
     "deleteAccountConfirm": "删除账户",
     "accountDeleted": "账户已删除",
     "accountDeletedMessage": "您的账户已被删除。",
-    "deleteAccountError": "无法删除您的账户。请重试。"
+    "deleteAccountError": "无法删除您的账户。请重试。",
+    "signInWithApple": "通过 Apple 登录",
+    "signInWithGoogle": "使用 Google 登录",
+    "enterYourEmail": "请输入您的电子邮件",
+    "enterEmailFirst": "请先输入您的电子邮件地址，然后点按“忘记密码？”。",
+    "resetEmailTitle": "请查收电子邮件",
+    "resetLinkSent": "如果该电子邮件对应的账户存在，密码重置链接已发送。",
+    "resetFailed": "无法发送重置邮件。请重试。"
   },
   "home": {
     "greeting": {
@@ -393,7 +400,12 @@
     "callNow": "立即拨打",
     "bookNow": "立即预订",
     "manageProfile": "编辑资料",
-    "proDashboard": "专业人士控制台"
+    "proDashboard": "专业人士控制台",
+    "subscribed": "您已订阅 Tavvy Pros！",
+    "purchaseStartFailed": "无法开始购买。",
+    "appleRenewalTerms": "确认后将通过您的 Apple ID 账户扣款。除非在当前周期结束前至少 24 小时取消，否则订阅将每年以相同价格自动续订。您可以在 App Store 账户设置中管理或取消订阅。",
+    "renewalTerms": "订阅将每年自动续订，直至取消。您可以随时管理或取消。",
+    "cancelAnytimeApple": "可随时在 App Store 设置中取消。"
   },
   "add": {
     "addNew": "新增",
@@ -760,7 +772,8 @@
     "enforcement": "执行",
     "beHonest": "诚实",
     "beRespectful": "尊重",
-    "trustVerification": "信任与验证"
+    "trustVerification": "信任与验证",
+    "termsOfUse": "使用条款"
   },
   "onboarding": {
     "welcome": "欢迎",
@@ -1771,7 +1784,26 @@
     "reviewExperience93": "{{shown}} / {{total}} 条评价",
     "reviewExperience94": "显示更多评价",
     "reviewExperience95": "筛选",
-    "reviewExperience96": "已加载"
+    "reviewExperience96": "已加载",
+    "purchase1": "Pro 权限已激活",
+    "purchase2": "方案未激活",
+    "purchase3": "购买错误",
+    "purchase4": "使用条款",
+    "purchase5": "隐私政策",
+    "purchase6": "感谢您！您的 eCard Pro 订阅已激活。",
+    "purchase7": "无法开始您的购买。请重试。",
+    "purchase8": "未找到此 Apple ID 的历史购买记录。",
+    "purchase9": "购买通过 Apple 安全完成。",
+    "purchase10": "无法加载 Apple 价格。请重新打开此页面。",
+    "purchase11": "通过 Apple 购买即将推出。",
+    "purchase12": "恢复购买",
+    "purchase13": "确认后将通过您的 Apple ID 账户扣款。除非在当前周期结束前至少 24 小时取消，否则订阅将以相同价格自动续订。您可以在 App Store 账户设置中管理或取消订阅。",
+    "purchase14": "订阅将自动续订，直至取消。您可以随时管理或取消。",
+    "purchase15": "您已验证的 Pro 权限可用。请重新打开您的名片以刷新功能。",
+    "purchase16": "如果您刚刚完成结账，请稍候片刻再试。",
+    "purchase17": "此版本暂不支持通过 Apple 购买。",
+    "purchase18": "您的购买已恢复。",
+    "purchase19": "无法恢复购买。请重试。"
   },
   "timeclock": {
     "title": "打卡",

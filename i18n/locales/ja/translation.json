@@ -93,7 +93,14 @@
     "deleteAccountConfirm": "アカウントを削除",
     "accountDeleted": "アカウントを削除しました",
     "accountDeletedMessage": "アカウントが削除されました。",
-    "deleteAccountError": "アカウントを削除できませんでした。もう一度お試しください。"
+    "deleteAccountError": "アカウントを削除できませんでした。もう一度お試しください。",
+    "signInWithApple": "Appleでサインイン",
+    "signInWithGoogle": "Googleでログイン",
+    "enterYourEmail": "メールアドレスを入力",
+    "enterEmailFirst": "先にメールアドレスを入力してから、「パスワードをお忘れですか？」をタップしてください。",
+    "resetEmailTitle": "メールをご確認ください",
+    "resetLinkSent": "このメールアドレスのアカウントが存在する場合、パスワードリセット用のリンクを送信しました。",
+    "resetFailed": "リセットメールを送信できませんでした。もう一度お試しください。"
   },
   "home": {
     "greeting": {
@@ -393,7 +400,12 @@
     "callNow": "今すぐ電話",
     "bookNow": "今すぐ予約",
     "manageProfile": "プロフィールを編集",
-    "proDashboard": "プロ用ダッシュボード"
+    "proDashboard": "プロ用ダッシュボード",
+    "subscribed": "Tavvy Prosに登録しました！",
+    "purchaseStartFailed": "購入を開始できませんでした。",
+    "appleRenewalTerms": "お支払いは確認時にApple IDアカウントに請求されます。サブスクリプションは、現在の期間が終了する24時間前までに解約されない限り、毎年同じ価格で自動更新されます。管理や解約はApp Storeのアカウント設定から行えます。",
+    "renewalTerms": "サブスクリプションは解約されるまで毎年自動更新されます。いつでも管理または解約できます。",
+    "cancelAnytimeApple": "App Storeの設定からいつでも解約できます。"
   },
   "add": {
     "addNew": "新規追加",
@@ -760,7 +772,8 @@
     "enforcement": "執行",
     "beHonest": "正直に",
     "beRespectful": "敬意を持って",
-    "trustVerification": "信頼と検証"
+    "trustVerification": "信頼と検証",
+    "termsOfUse": "利用規約"
   },
   "onboarding": {
     "welcome": "ようこそ",
@@ -1771,7 +1784,26 @@
     "reviewExperience93": "{{total}}件中{{shown}}件のレビュー",
     "reviewExperience94": "レビューをもっと見る",
     "reviewExperience95": "フィルター",
-    "reviewExperience96": "読み込み済み"
+    "reviewExperience96": "読み込み済み",
+    "purchase1": "Proアクセス有効",
+    "purchase2": "プランは無効です",
+    "purchase3": "購入エラー",
+    "purchase4": "利用規約",
+    "purchase5": "プライバシーポリシー",
+    "purchase6": "ありがとうございます！eCard Proのサブスクリプションが有効になりました。",
+    "purchase7": "購入を開始できませんでした。もう一度お試しください。",
+    "purchase8": "このApple IDでは以前の購入が見つかりませんでした。",
+    "purchase9": "購入はAppleを通じて安全に完了します。",
+    "purchase10": "Appleの価格を読み込めませんでした。このページを開き直してください。",
+    "purchase11": "Appleでの購入は近日対応予定です。",
+    "purchase12": "購入を復元",
+    "purchase13": "お支払いは確認時にApple IDアカウントに請求されます。サブスクリプションは、現在の期間が終了する24時間前までに解約されない限り、同じ価格で自動更新されます。管理や解約はApp Storeのアカウント設定から行えます。",
+    "purchase14": "サブスクリプションは解約されるまで自動更新されます。いつでも管理または解約できます。",
+    "purchase15": "認証済みのProアクセスが利用可能です。カードを開き直して機能を更新してください。",
+    "purchase16": "購入手続きを済ませたばかりの場合は、少し待ってからもう一度お試しください。",
+    "purchase17": "Appleでの購入はこのバージョンではまだご利用いただけません。",
+    "purchase18": "購入を復元しました。",
+    "purchase19": "購入を復元できませんでした。もう一度お試しください。"
   },
   "timeclock": {
     "title": "タイムクロック",

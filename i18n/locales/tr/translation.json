@@ -93,7 +93,14 @@
     "deleteAccountConfirm": "Hesabı sil",
     "accountDeleted": "Hesap silindi",
     "accountDeletedMessage": "Hesabın silindi.",
-    "deleteAccountError": "Hesabın silinemedi. Lütfen tekrar dene."
+    "deleteAccountError": "Hesabın silinemedi. Lütfen tekrar dene.",
+    "signInWithApple": "Apple ile giriş yap",
+    "signInWithGoogle": "Google ile giriş yap",
+    "enterYourEmail": "E-postanızı girin",
+    "enterEmailFirst": "Lütfen önce e-posta adresinizi girin, ardından “Şifreni mi unuttun?” seçeneğine dokunun.",
+    "resetEmailTitle": "E-postanızı kontrol edin",
+    "resetLinkSent": "Bu e-posta için bir hesap varsa, şifre sıfırlama bağlantısı gönderildi.",
+    "resetFailed": "Sıfırlama e-postası gönderilemedi. Lütfen tekrar deneyin."
   },
   "home": {
     "greeting": {
@@ -393,7 +400,12 @@
     "callNow": "Şimdi ara",
     "bookNow": "Şimdi rezerve et",
     "manageProfile": "Profili düzenle",
-    "proDashboard": "Profesyonel paneli"
+    "proDashboard": "Profesyonel paneli",
+    "subscribed": "Artık Tavvy Pros'a abone oldunuz!",
+    "purchaseStartFailed": "Satın alma başlatılamadı.",
+    "appleRenewalTerms": "Ödeme, onay sırasında Apple ID hesabınızdan tahsil edilir. Abonelik, geçerli dönemin bitiminden en az 24 saat önce iptal edilmediği sürece her yıl aynı fiyattan otomatik olarak yenilenir. App Store hesap ayarlarınızdan yönetebilir veya iptal edebilirsiniz.",
+    "renewalTerms": "Abonelik iptal edilene kadar her yıl otomatik olarak yenilenir. İstediğiniz zaman yönetebilir veya iptal edebilirsiniz.",
+    "cancelAnytimeApple": "App Store ayarlarınızdan istediğiniz zaman iptal edebilirsiniz."
   },
   "add": {
     "addNew": "Yeni ekle",
@@ -755,12 +767,13 @@
   "legal": {
     "copyright": "© {{year}} Tavvy, Inc. Tüm hakları saklıdır.",
     "termsOfService": "Hizmet şartları",
-    "privacyPolicy": "Gizlilik politikası",
+    "privacyPolicy": "Gizlilik Politikası",
     "communityGuidelines": "Topluluk kuralları",
     "enforcement": "Uygulama",
     "beHonest": "Dürüst olun",
     "beRespectful": "Saygılı olun",
-    "trustVerification": "Güven ve doğrulama"
+    "trustVerification": "Güven ve doğrulama",
+    "termsOfUse": "Kullanım Koşulları"
   },
   "onboarding": {
     "welcome": "Hoş geldiniz",
@@ -1771,7 +1784,26 @@
     "reviewExperience93": "{{total}} yorumdan {{shown}} tanesi",
     "reviewExperience94": "Daha fazla yorum göster",
     "reviewExperience95": "Filtreler",
-    "reviewExperience96": "yüklendi"
+    "reviewExperience96": "yüklendi",
+    "purchase1": "Pro erişimi aktif",
+    "purchase2": "Plan aktif değil",
+    "purchase3": "Satın Alma Hatası",
+    "purchase4": "Kullanım Koşulları",
+    "purchase5": "Gizlilik Politikası",
+    "purchase6": "Teşekkürler! eCard Pro aboneliğiniz aktif.",
+    "purchase7": "Satın alma işleminiz başlatılamadı. Lütfen tekrar deneyin.",
+    "purchase8": "Bu Apple ID için önceki satın alma bulunamadı.",
+    "purchase9": "Satın alma işlemleri Apple üzerinden güvenli bir şekilde tamamlanır.",
+    "purchase10": "Apple fiyatları yüklenemedi. Lütfen bu sayfayı yeniden açın.",
+    "purchase11": "Apple üzerinden satın alma yakında geliyor.",
+    "purchase12": "Satın Alımları Geri Yükle",
+    "purchase13": "Ödeme, onay sırasında Apple ID hesabınızdan tahsil edilir. Abonelik, geçerli dönemin bitiminden en az 24 saat önce iptal edilmediği sürece aynı fiyattan otomatik olarak yenilenir. App Store hesap ayarlarınızdan yönetebilir veya iptal edebilirsiniz.",
+    "purchase14": "Abonelik iptal edilene kadar otomatik olarak yenilenir. İstediğiniz zaman yönetebilir veya iptal edebilirsiniz.",
+    "purchase15": "Doğrulanmış Pro erişiminiz kullanılabilir. Özelliklerini yenilemek için kartınızı yeniden açın.",
+    "purchase16": "Ödemeyi az önce tamamladıysanız, biraz bekleyip tekrar deneyin.",
+    "purchase17": "Apple üzerinden satın alma bu sürümde henüz kullanılamıyor.",
+    "purchase18": "Satın alımlarınız geri yüklendi.",
+    "purchase19": "Satın alımlar geri yüklenemedi. Lütfen tekrar deneyin."
   },
   "timeclock": {
     "title": "Mesai Saati",

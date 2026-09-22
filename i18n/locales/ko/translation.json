@@ -93,7 +93,14 @@
     "deleteAccountConfirm": "계정 삭제",
     "accountDeleted": "계정이 삭제되었습니다",
     "accountDeletedMessage": "계정이 삭제되었습니다.",
-    "deleteAccountError": "계정을 삭제할 수 없습니다. 다시 시도해 주세요."
+    "deleteAccountError": "계정을 삭제할 수 없습니다. 다시 시도해 주세요.",
+    "signInWithApple": "Apple로 로그인",
+    "signInWithGoogle": "Google로 로그인",
+    "enterYourEmail": "이메일을 입력하세요",
+    "enterEmailFirst": "먼저 이메일 주소를 입력한 다음 ‘비밀번호를 잊으셨나요?’를 탭하세요.",
+    "resetEmailTitle": "이메일을 확인하세요",
+    "resetLinkSent": "이 이메일로 등록된 계정이 있으면 비밀번호 재설정 링크가 전송되었습니다.",
+    "resetFailed": "재설정 이메일을 보낼 수 없습니다. 다시 시도해 주세요."
   },
   "home": {
     "greeting": {
@@ -393,7 +400,12 @@
     "callNow": "지금 전화",
     "bookNow": "지금 예약",
     "manageProfile": "프로필 편집",
-    "proDashboard": "전문가 대시보드"
+    "proDashboard": "전문가 대시보드",
+    "subscribed": "Tavvy Pros에 가입되었습니다!",
+    "purchaseStartFailed": "구매를 시작할 수 없습니다.",
+    "appleRenewalTerms": "결제는 확인 시 Apple ID 계정으로 청구됩니다. 구독은 현재 기간 종료 최소 24시간 전에 취소하지 않으면 매년 동일한 가격으로 자동 갱신됩니다. App Store 계정 설정에서 관리하거나 취소할 수 있습니다.",
+    "renewalTerms": "구독은 취소할 때까지 매년 자동 갱신됩니다. 언제든지 관리하거나 취소할 수 있습니다.",
+    "cancelAnytimeApple": "App Store 설정에서 언제든지 취소할 수 있습니다."
   },
   "add": {
     "addNew": "새로 추가",
@@ -755,12 +767,13 @@
   "legal": {
     "copyright": "© {{year}} Tavvy, Inc. 모든 권리 보유.",
     "termsOfService": "서비스 약관",
-    "privacyPolicy": "개인정보 보호정책",
+    "privacyPolicy": "개인정보 처리방침",
     "communityGuidelines": "커뮤니티 가이드라인",
     "enforcement": "시행",
     "beHonest": "정직하게",
     "beRespectful": "존중하며",
-    "trustVerification": "신뢰 및 인증"
+    "trustVerification": "신뢰 및 인증",
+    "termsOfUse": "이용 약관"
   },
   "onboarding": {
     "welcome": "환영합니다",
@@ -1771,7 +1784,26 @@
     "reviewExperience93": "리뷰 {{total}}개 중 {{shown}}개",
     "reviewExperience94": "리뷰 더 보기",
     "reviewExperience95": "필터",
-    "reviewExperience96": "불러옴"
+    "reviewExperience96": "불러옴",
+    "purchase1": "Pro 이용 권한 활성화됨",
+    "purchase2": "요금제가 활성화되지 않음",
+    "purchase3": "구매 오류",
+    "purchase4": "이용 약관",
+    "purchase5": "개인정보 처리방침",
+    "purchase6": "감사합니다! eCard Pro 구독이 활성화되었습니다.",
+    "purchase7": "구매를 시작할 수 없습니다. 다시 시도해 주세요.",
+    "purchase8": "이 Apple ID로 이전 구매 내역을 찾을 수 없습니다.",
+    "purchase9": "구매는 Apple을 통해 안전하게 완료됩니다.",
+    "purchase10": "Apple 가격을 불러올 수 없습니다. 이 페이지를 다시 열어 주세요.",
+    "purchase11": "Apple을 통한 구매가 곧 지원됩니다.",
+    "purchase12": "구매 복원",
+    "purchase13": "결제는 확인 시 Apple ID 계정으로 청구됩니다. 구독은 현재 기간 종료 최소 24시간 전에 취소하지 않으면 동일한 가격으로 자동 갱신됩니다. App Store 계정 설정에서 관리하거나 취소할 수 있습니다.",
+    "purchase14": "구독은 취소할 때까지 자동 갱신됩니다. 언제든지 관리하거나 취소할 수 있습니다.",
+    "purchase15": "인증된 Pro 이용 권한을 사용할 수 있습니다. 카드를 다시 열어 기능을 새로고침하세요.",
+    "purchase16": "방금 결제하셨다면 잠시 기다린 후 다시 시도해 주세요.",
+    "purchase17": "Apple을 통한 구매는 이 버전에서 아직 지원되지 않습니다.",
+    "purchase18": "구매가 복원되었습니다.",
+    "purchase19": "구매를 복원할 수 없습니다. 다시 시도해 주세요."
   },
   "timeclock": {
     "title": "출퇴근 기록",

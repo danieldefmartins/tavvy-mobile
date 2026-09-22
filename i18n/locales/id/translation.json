@@ -93,7 +93,14 @@
     "deleteAccountConfirm": "Hapus akun",
     "accountDeleted": "Akun dihapus",
     "accountDeletedMessage": "Akun Anda telah dihapus.",
-    "deleteAccountError": "Akun Anda tidak dapat dihapus. Silakan coba lagi."
+    "deleteAccountError": "Akun Anda tidak dapat dihapus. Silakan coba lagi.",
+    "signInWithApple": "Masuk dengan Apple",
+    "signInWithGoogle": "Masuk dengan Google",
+    "enterYourEmail": "Masukkan email Anda",
+    "enterEmailFirst": "Masukkan alamat email Anda terlebih dahulu, lalu ketuk “Lupa kata sandi?”.",
+    "resetEmailTitle": "Periksa email Anda",
+    "resetLinkSent": "Jika ada akun untuk email ini, tautan reset kata sandi telah dikirim.",
+    "resetFailed": "Tidak dapat mengirim email reset. Silakan coba lagi."
   },
   "home": {
     "greeting": {
@@ -393,7 +400,12 @@
     "callNow": "Telepon sekarang",
     "bookNow": "Pesan sekarang",
     "manageProfile": "Edit profil",
-    "proDashboard": "Dasbor profesional"
+    "proDashboard": "Dasbor profesional",
+    "subscribed": "Anda sekarang berlangganan Tavvy Pros!",
+    "purchaseStartFailed": "Tidak dapat memulai pembelian.",
+    "appleRenewalTerms": "Pembayaran akan ditagihkan ke akun Apple ID Anda saat konfirmasi. Langganan diperpanjang secara otomatis setiap tahun dengan harga yang sama kecuali dibatalkan setidaknya 24 jam sebelum akhir periode berjalan. Kelola atau batalkan di pengaturan akun App Store Anda.",
+    "renewalTerms": "Langganan diperpanjang secara otomatis setiap tahun hingga dibatalkan. Anda dapat mengelola atau membatalkannya kapan saja.",
+    "cancelAnytimeApple": "Batalkan kapan saja di pengaturan App Store Anda."
   },
   "add": {
     "addNew": "Tambah baru",
@@ -755,12 +767,13 @@
   "legal": {
     "copyright": "© {{year}} Tavvy, Inc. Semua hak dilindungi.",
     "termsOfService": "Ketentuan layanan",
-    "privacyPolicy": "Kebijakan privasi",
+    "privacyPolicy": "Kebijakan Privasi",
     "communityGuidelines": "Pedoman komunitas",
     "enforcement": "Penegakan",
     "beHonest": "Jujurlah",
     "beRespectful": "Hormati orang lain",
-    "trustVerification": "Kepercayaan & Verifikasi"
+    "trustVerification": "Kepercayaan & Verifikasi",
+    "termsOfUse": "Ketentuan Penggunaan"
   },
   "onboarding": {
     "welcome": "Selamat datang",
@@ -1771,7 +1784,26 @@
     "reviewExperience93": "{{shown}} dari {{total}} ulasan",
     "reviewExperience94": "Tampilkan lebih banyak ulasan",
     "reviewExperience95": "Filter",
-    "reviewExperience96": "dimuat"
+    "reviewExperience96": "dimuat",
+    "purchase1": "Akses Pro aktif",
+    "purchase2": "Paket tidak aktif",
+    "purchase3": "Kesalahan Pembelian",
+    "purchase4": "Ketentuan Penggunaan",
+    "purchase5": "Kebijakan Privasi",
+    "purchase6": "Terima kasih! Langganan eCard Pro Anda sudah aktif.",
+    "purchase7": "Tidak dapat memulai pembelian Anda. Silakan coba lagi.",
+    "purchase8": "Tidak ditemukan pembelian sebelumnya untuk Apple ID ini.",
+    "purchase9": "Pembelian diselesaikan dengan aman melalui Apple.",
+    "purchase10": "Harga Apple tidak dapat dimuat. Silakan buka kembali halaman ini.",
+    "purchase11": "Pembelian melalui Apple segera hadir.",
+    "purchase12": "Pulihkan Pembelian",
+    "purchase13": "Pembayaran akan ditagihkan ke akun Apple ID Anda saat konfirmasi. Langganan diperpanjang secara otomatis dengan harga yang sama kecuali dibatalkan setidaknya 24 jam sebelum akhir periode berjalan. Kelola atau batalkan di pengaturan akun App Store Anda.",
+    "purchase14": "Langganan diperpanjang secara otomatis hingga dibatalkan. Anda dapat mengelola atau membatalkannya kapan saja.",
+    "purchase15": "Akses Pro terverifikasi Anda sudah tersedia. Buka kembali kartu Anda untuk memperbarui fiturnya.",
+    "purchase16": "Jika Anda baru saja menyelesaikan pembayaran, tunggu sebentar lalu coba lagi.",
+    "purchase17": "Pembelian melalui Apple belum tersedia di versi ini.",
+    "purchase18": "Pembelian Anda telah dipulihkan.",
+    "purchase19": "Tidak dapat memulihkan pembelian. Silakan coba lagi."
   },
   "timeclock": {
     "title": "Jam Kerja",
