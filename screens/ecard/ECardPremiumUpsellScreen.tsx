@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { ECARD_PRO_ANNUAL, ECARD_PRO_MONTHLY, IAP_ENABLED } from '../../lib/iapConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -46,14 +47,26 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
   const [isRestoring, setIsRestoring] = useState(false);
 
   const handleSubscribe = async () => {
-    // iOS requires purchases through Apple IAP — redirect to web
-    if (Platform.OS === 'ios') {
-      Linking.openURL('https://tavvy.com/app/ecard/premium');
+    if (!user) {
+      Alert.alert('Sign In Required', 'Please sign in to subscribe to Pro.');
       return;
     }
 
-    if (!user) {
-      Alert.alert('Sign In Required', 'Please sign in to subscribe to Pro.');
+    if (Platform.OS === 'ios') {
+      if (!IAP_ENABLED) {
+        Alert.alert('Not available yet', 'Purchases through Apple are not available in this version yet.');
+        return;
+      }
+      setIsLoading(true);
+      try {
+        const { purchaseIapSubscription } = await import('../../lib/iap');
+        await purchaseIapSubscription(selectedPlan === 'yearly' ? ECARD_PRO_ANNUAL : ECARD_PRO_MONTHLY, user.id);
+      } catch (error) {
+        console.error('Apple purchase error:', error);
+        Alert.alert('Purchase Error', 'Could not start your purchase. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
       return;
     }
 
@@ -108,6 +121,10 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
     setIsRestoring(true);
 
     try {
+      if (Platform.OS === 'ios' && IAP_ENABLED) {
+        const { restorePurchases } = await import('../../lib/iap');
+        await restorePurchases();
+      }
       const entitlement = await fetchMyECardEntitlement();
       Alert.alert(entitlement.is_pro ? 'Pro access active' : 'Plan not active', entitlement.is_pro ? 'Your verified Pro access is available. Reopen your card to refresh its features.' : 'If you just checked out, wait a moment and try again.');
     } catch (error: any) {
@@ -250,7 +267,7 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
             <View style={styles.platformNotice}>
               <Ionicons name="information-circle-outline" size={16} color="rgba(255,255,255,0.5)" />
               <Text style={styles.platformNoticeText}>
-                You'll be redirected to complete payment securely via Stripe
+                {IAP_ENABLED ? 'Purchases are completed securely through Apple.' : 'Purchases through Apple are coming soon.'}
               </Text>
             </View>
           )}

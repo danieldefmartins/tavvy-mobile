@@ -31,6 +31,7 @@ import { NetworkProvider } from './contexts/NetworkContext';
 import { preloadSignalLabels } from './hooks/useSignalLabels';
 import { preloadSignalCache } from './lib/reviews';
 import { loadAppSettings } from './lib/settingsPreferences';
+import { IAP_ENABLED } from './lib/iapConfig';
 
 // Screens
 import HomeScreen from './screens/HomeScreen';
@@ -692,6 +693,24 @@ const TavvyLightTheme = {
 // --------------------
 function AppContent() {
   const { isDark } = useThemeContext();
+
+  useEffect(() => {
+    if (!IAP_ENABLED) return;
+    let active = true;
+    let initialized = false;
+    let close: (() => Promise<void>) | undefined;
+    void import('./lib/iap').then(async ({ initIap, endIap }) => {
+      close = endIap;
+      if (!active) return;
+      await initIap();
+      initialized = true;
+      if (!active) await endIap();
+    }).catch(error => console.error('[iap] Could not initialize purchases:', error));
+    return () => {
+      active = false;
+      if (initialized) void close?.();
+    };
+  }, []);
   
   // Preload signal caches and load saved language on app start
   useEffect(() => {

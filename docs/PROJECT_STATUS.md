@@ -1,5 +1,19 @@
 # Tavvy current engineering status
 
+## Apple integration — September 22, source branch only
+
+`release/apple-final-20260922` starts from the latest deployed-design mobile
+preview (`ccdd815`) and merges Claude's Apple-readiness branch (`92e330d`).
+The combined source passed `npm run typecheck`. The eCard iOS paywall no longer
+opens a Stripe website; it uses the gated Apple purchase flow when enabled,
+and its Restore action invokes Apple restoration before checking entitlement.
+The app now initializes the purchase listener when IAP is enabled, and Restore
+counts only purchases whose server verification succeeds. Android/web checkout
+behavior is unchanged. No new binary has been built or distributed from this
+integration branch, and `IAP_ENABLED` remains false pending App Store Connect
+products and physical-device sandbox verification. Account deletion remains
+server-gated; the existing deployment is unchanged by this source commit.
+
 ## Review entry and place imagery — September 22, web released; mobile source published
 
 The standard place Add a review sheet had a styled-jsx scope bug: its outer overlay

@@ -63,11 +63,11 @@ export async function purchaseIapSubscription(sku: IapProductId, userId: string)
  * transaction only if the server confirms it activated the entitlement —
  * never finish (acknowledge) a transaction StoreKit still has pending
  * verification for, or a failed payment could look "done" to the user. */
-async function verifyAndFinish(purchase: Purchase): Promise<void> {
+async function verifyAndFinish(purchase: Purchase): Promise<boolean> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
     console.error('[iap] Purchase received with no signed-in session; cannot verify.');
-    return;
+    return false;
   }
   const { data, error } = await supabase.functions.invoke('verify-apple-purchase', {
     method: 'POST',
@@ -78,9 +78,10 @@ async function verifyAndFinish(purchase: Purchase): Promise<void> {
   });
   if (error || data?.status !== 'ok') {
     console.error('[iap] Server verification failed; leaving transaction unfinished for retry:', error || data);
-    return;
+    return false;
   }
   await finishTransaction({ purchase, isConsumable: false });
+  return true;
 }
 
 /** Apple requires a reachable Restore Purchases action for non-consumable
@@ -91,8 +92,7 @@ export async function restorePurchases(): Promise<{ restored: number }> {
   let restored = 0;
   for (const purchase of purchases) {
     try {
-      await verifyAndFinish(purchase);
-      restored += 1;
+      if (await verifyAndFinish(purchase)) restored += 1;
     } catch (error) {
       console.error('[iap] Failed to restore purchase:', purchase.productId, error);
     }
