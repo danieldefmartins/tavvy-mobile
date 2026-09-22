@@ -32,6 +32,7 @@ import { preloadSignalLabels } from './hooks/useSignalLabels';
 import { preloadSignalCache } from './lib/reviews';
 import { loadAppSettings } from './lib/settingsPreferences';
 import { IAP_ENABLED } from './lib/iapConfig';
+import { navigationRef, useDevQaDeepLinks } from './lib/devQaNavigation';
 
 // Screens
 import HomeScreen from './screens/HomeScreen';
@@ -693,6 +694,7 @@ const TavvyLightTheme = {
 // --------------------
 function AppContent() {
   const { isDark } = useThemeContext();
+  useDevQaDeepLinks();
 
   useEffect(() => {
     if (!IAP_ENABLED) return;
@@ -735,7 +737,7 @@ function AppContent() {
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <NavigationContainer theme={isDark ? TavvyDarkTheme : TavvyLightTheme}>
+      <NavigationContainer ref={navigationRef} theme={isDark ? TavvyDarkTheme : TavvyLightTheme}>
         <TabNavigator />
       </NavigationContainer>
     </>
