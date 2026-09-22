@@ -51,13 +51,24 @@ builds through Metro: login, Tools, Settings, place, Signal Search, Pros, eCard 
 preview, Universes, RV list/map, On The Go list/map, launch screen. No physical-device
 run and no purchase test yet.
 
-**Still open before submission:** set the Supabase secrets above; run the sandbox
-purchase / restore / account-binding test on a physical iPhone with TestFlight build 29
-(then enable purchases for the store build); run one real account deletion with a
-disposable account after the policy flags are on; attach build 29 to version 1.0.1 and
-add subscription review screenshots; register the App Store Server Notifications URL
-(`/functions/v1/apple-server-notifications`, production and sandbox) in App Store
-Connect; deploy the web branch; submit.
+**Verified later the same evening:** the App Store Connect app-specific shared secret is
+generated and stored in the service-role-only `private_app_config` table (env still wins
+when set); `verify-apple-purchase` now reaches Apple (status 21002 for a dummy receipt
+instead of `NOT_CONFIGURED`). App Store Server Notifications V2 URLs (production and
+sandbox) are registered in App Store Connect. The deletion policy row is approved and
+the env flag is only a veto; a real deletion of the disposable QA account returned
+`deleted`, sign-in was refused afterwards and no `auth.users`, `profiles`,
+`digital_cards` or `user_favorites` rows remained. The web branch was fast-forwarded into
+`release/verified-web-20260921`; Railway deployment of `76e2e87` succeeded and
+tavvy.com/app/rv-camping?view=map renders the full-screen map.
+
+**Still open before submission:** wait for EAS submission `474eabbf` to deliver build 29
+to TestFlight (it was still queued at the end of the session), then attach build 29 to
+version 1.0.1; run the sandbox purchase / restore / account-binding test on a physical
+iPhone with TestFlight build 29 and capture the paywall screenshots for each
+subscription's review information; submit version 1.0.1 with the three subscriptions.
+Sign in with Apple stays hidden until Apple is enabled as a Supabase Auth provider
+(revocation keys then go into the function secrets).
 
 ## Apple integration — September 22, source branch only
 
