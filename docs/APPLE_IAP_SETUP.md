@@ -1,11 +1,16 @@
 # Tavvy iOS subscription setup
 
-Status: **not configured or enabled**. The app contains three product IDs, but
+Status: **groups created; products not configured or enabled**. The app contains three product IDs, but
 `lib/iapConfig.ts` keeps `IAP_ENABLED = false`. The Apple integration branch is
 source only; it is not the distributed app. These products are distinct from
 the separate restaurant membership offer.
 
 ## 1. Account Holder: commerce prerequisites
+
+App Store Connect showed an updated Apple Developer Program License Agreement
+on September 22, 2026. Its Account Holder acceptance is required before Apple
+allows the subscription product forms to open. The owner has been asked to
+review and accept it directly; this agent has not accepted legal terms.
 
 In App Store Connect, open **Business → Agreements** and check that the Paid
 Apps Agreement is active. Complete the required tax and banking information.
@@ -25,6 +30,10 @@ Pros at the same time. Apple allows one active subscription per group.
 | --- | --- | --- |
 | Tavvy eCard Pro | Tavvy eCard Pro | Monthly and Annual, same service level |
 | Tavvy Pros | Tavvy Pros | Founding Annual |
+
+Created in App Store Connect on September 22, 2026: eCard group ID `22405023`
+and Pros group ID `22405130`. Both have English (U.S.) display names and no
+subscription products yet.
 
 Within **Tavvy eCard Pro**, put Monthly and Annual at the same subscription
 level so customers can change billing period without gaining or losing features.
