@@ -62,13 +62,20 @@ the env flag is only a veto; a real deletion of the disposable QA account return
 `release/verified-web-20260921`; Railway deployment of `76e2e87` succeeded and
 tavvy.com/app/rv-camping?view=map renders the full-screen map.
 
-**Still open before submission:** wait for EAS submission `474eabbf` to deliver build 29
-to TestFlight (it was still queued at the end of the session), then attach build 29 to
-version 1.0.1; run the sandbox purchase / restore / account-binding test on a physical
-iPhone with TestFlight build 29 and capture the paywall screenshots for each
-subscription's review information; submit version 1.0.1 with the three subscriptions.
-Sign in with Apple stays hidden until Apple is enabled as a Supabase Auth provider
-(revocation keys then go into the function secrets).
+**App Store Connect additions the same evening:** review notes saved on all three
+subscription products (eCard Monthly 6814897486, eCard Annual 6814899973, Pros
+Founding 6814902186); App Privacy republished with the Purchases data type (app
+functionality, linked, no tracking). EAS submission `474eabbf` of build 29 sat in
+Expo's queue for 40 minutes and then errored without a reason the CLI can show; a
+second `eas submit` for the same build was started and left running.
+
+**Still open before submission:** build 29 must land in TestFlight (retry `eas submit
+--platform ios --id bce12481-84dd-453e-b1ca-d061de8f4843` if the second attempt also
+fails, or upload the IPA with Transporter); attach it to version 1.0.1; run the sandbox
+purchase / restore / account-binding test on a physical iPhone and capture the paywall
+with Apple prices for each subscription's review screenshot; then "Add for Review" on
+the three subscriptions and submit version 1.0.1. Sign in with Apple stays hidden until
+Apple is enabled as a Supabase Auth provider.
 
 ## Apple integration — September 22, source branch only
 
