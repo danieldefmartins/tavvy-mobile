@@ -236,3 +236,35 @@ Matching native source at `5bde784` adds ship-length, build-year, official famil
 ## Home visual parity — September 21
 
 The native home quick actions now use colored vector icon badges in place of emoji, and the featured image carousel uses screen-width slides. The first EAS simulator screenshot showed five bordered actions were still cramped, so Surprise moved to an accessible dice button in the search field; four unbordered action icons now match the web layout. Native app TypeScript passes. Local Xcode simulator compilation hit an existing `fmt` Pod/toolchain consteval error before app compilation; a reproducible EAS simulator preview profile is available for actual visual QA. A second simulator build/screenshot and device preview remain pending at this checkpoint. The web homepage now exposes an explicit Where field and the live Boston route check passes without overriding it with current GPS.
+
+
+## Review experience redesign — September 21 evening
+
+Implemented in this release branch: compact search cards, full topic summaries on
+place/cruise details, shared neutral review choices, optional emphasis, preserved
+edit history/private notes, and domain-specific provider wording. The web direct
+review route now uses the same sheet as the place page. No production schema changes
+or synthetic customer reviews were made for this batch.
+
+Verification: web production build and both application TypeScript checks passed.
+The focused suite includes distinct-person counts, sparse/older concerns, domain
+classification, single-tap removal, category images/distances, RV/On The Go summary
+lifecycle and local PostgreSQL review-history tests. Intercepted browser tests cover
+place cards, a concern-only submission, failed-save retry with the same request key,
+editing with the original date/private note/emphasis, hotel vocabulary, PT/AR,
+light/dark mode, provider submission and cruise save/moderation/late-response guards.
+The older atomic-review script additionally depends on a private admin migration
+absent from this public release checkout; its complete legacy gate was not rerun.
+The review-history SQL gate passed using private schema-only fixtures kept outside Git.
+
+The existing iPhone 17 development app loaded this branch's JavaScript through local
+Metro. Boston search/results were checked against live read-only services. Native
+summary and selection components were also rendered with isolated in-memory fixtures
+in light/dark mode; selection/removal worked. The temporary fixture entry was removed
+and the normal application entry restored. No EAS upload or native compilation was
+started, honoring the user's build hold. This is not final iPad/App Store screenshot
+or on-device release-build certification. No real production review was posted.
+
+At this checkpoint source publication and the web deployment receipt are recorded
+in the follow-up release entry. The mobile changes need the next consolidated binary;
+the 13 remaining locale fallbacks remain part of the Apple language-completion gate.

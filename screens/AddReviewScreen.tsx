@@ -1,710 +1,95 @@
-import { todayVisitDate, visitDateToIso } from '../lib/reviewPersistence';
-import { StatusBar } from 'expo-status-bar';
-import { 
-  StyleSheet, 
-  Text,
-  TextInput, 
-  View, 
-  ScrollView, 
-  TouchableOpacity, 
-  Alert,
-  ActivityIndicator,
-  SafeAreaView,
-  Platform,
-  Dimensions,
-  useColorScheme
-} from 'react-native';
-import { useState, useEffect, useMemo } from 'react';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
-import { submitReview, updateReview, fetchUserReview, ReviewSignalTap } from '../lib/reviews';
-import { 
-  fetchSignalsForPlace, 
-  SignalsByCategory, 
-  Signal,
-  SIGNAL_COLORS,
-  SIGNAL_LABELS 
-} from '../lib/signalService';
-import { matchesSignalSearch } from '../lib/signalTapSelection';
-import PulseCard from '../components/PulseCard';
-import { Colors } from '../constants/Colors';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, TextInput, ScrollView, Pressable, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
+import { useAuth } from '../contexts/AuthContext';
+import { useThemeContext } from '../contexts/ThemeContext';
+import { useReleaseCopy } from '../hooks/useReleaseCopy';
 import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
-import { coreForCategory, isCoreSignal } from '../lib/placeEvidence';
+import ReviewChoices from '../components/ReviewChoices';
+import { fetchUserReview, submitReview, updateReview, todayVisitDate, visitDateToIso } from '../lib/reviewPersistence';
+import { getSignalsForCategory, SignalsByCategory } from '../lib/signalService';
+import { loadPlaceSignalCategory } from '../lib/signalCatalog';
+import { supabase } from '../lib/supabaseClient';
+import { restoreSignalTaps, selectedSignalTaps } from '../lib/signalTapSelection';
 
-const { width } = Dimensions.get('window');
-
-type RootStackParamList = {
-  AddReview: { 
-    placeId?: string; 
-    placeName?: string;
-    primaryCategory?: string;
-    subcategory?: string;
-    // Event support
-    eventId?: string;
-    eventName?: string;
-    isEvent?: boolean;
-  };
-};
-
-type AddReviewRouteProp = RouteProp<RootStackParamList, 'AddReview'>;
-
-// ============================================
-// DARK MODE THEME
-// ============================================
-const darkTheme = {
-  background: '#000000',
-  surface: '#1C1C1E',
-  surfaceElevated: '#2C2C2E',
-  text: '#FFFFFF',
-  textSecondary: '#C2BDCD',
-  textTertiary: '#AAA3B7',
-  border: '#38383A',
-  // Step-specific backgrounds (dark mode)
-  stepBackgrounds: {
-    best_for: '#0A1628',
-    vibe: '#1A1A2E',
-    heads_up: '#1F1410',
-  },
-};
-
-const lightTheme = {
-  background: '#FFFFFF',
-  surface: '#FFFFFF',
-  surfaceElevated: '#F2F2F7',
-  text: '#111827',
-  textSecondary: '#62546F',
-  textTertiary: '#62546F',
-  border: '#E5E5EA',
-  // Step-specific backgrounds (light mode)
-  stepBackgrounds: {
-    best_for: '#E0F2FE',
-    vibe: '#F3E8FF',
-    heads_up: '#FEE2E2',
-  },
-};
-
-// ============================================
-// WIZARD STEPS CONFIGURATION
-// ============================================
-const STEPS = [
-  {
-    id: 'best_for' as const,
-    title: 'The Good',
-    subtitle: 'What did you like? Tap the highlights.',
-    theme: 'positive',
-    limit: 5,
-    accent: '#00C2CB', // Teal
-    icon: 'thumbs-up',
-  },
-  {
-    id: 'vibe' as const,
-    title: 'The Vibe',
-    subtitle: "How's the atmosphere? Set the scene.",
-    theme: 'vibe',
-    limit: 5,
-    accent: '#8A05BE', // Brand Purple
-    icon: 'sparkles',
-  },
-  {
-    id: 'heads_up' as const,
-    title: 'Heads Up',
-    subtitle: 'Any warnings? Help others prepare.',
-    theme: 'negative',
-    limit: 2,
-    accent: '#F5A623', // Amber
-    icon: 'warning',
-  }
-] as const;
-
-type StepId = typeof STEPS[number]['id'];
-
+type Params = { placeId?: string; placeName?: string; primaryCategory?: string; subcategory?: string; eventId?: string; eventName?: string; isEvent?: boolean };
+type SavedReview = { review: { id: string; public_note?: string | null; private_note_owner?: string | null } | null; signals: { signalId: string; intensity: number }[] };
+const EMPTY: SignalsByCategory = { best_for: [], vibe: [], heads_up: [] };
 function AddReviewScreen() {
-  const { t } = useTranslation();
-  const route = useRoute<AddReviewRouteProp>();
-  const navigation = useNavigation();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const theme = isDark ? darkTheme : lightTheme;
-  
-  const placeId = route.params?.placeId;
-  const placeName = route.params?.placeName || 'this place';
-  const primaryCategory = route.params?.primaryCategory;
-  const subcategory = route.params?.subcategory;
-  
-  // Event support
-  const eventId = route.params?.eventId;
-  const eventName = route.params?.eventName || 'this event';
-  const isEvent = route.params?.isEvent || false;
-  
-  const targetId = isEvent ? eventId : placeId;
-  const targetName = isEvent ? eventName : placeName;
-
-  // State
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [signalSearch, setSignalSearch] = useState('');
-  const [publicNote, setPublicNote] = useState('');
-  const [tapCounts, setTapCounts] = useState<{ [key: string]: number }>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [editingPrevious, setEditingPrevious] = useState(false);
-  const [previousTaps, setPreviousTaps] = useState<Record<string, number>>({});
-  const [previousNote, setPreviousNote] = useState('');
-  const [previousPrivateNote, setPreviousPrivateNote] = useState('');
-  const [visitDate, setVisitDate] = useState(todayVisitDate);
-  const [existingReviewId, setExistingReviewId] = useState<string | null>(null);
-  
-  // Dynamic signals from database
-  const [signals, setSignals] = useState<SignalsByCategory>({
-    best_for: [],
-    vibe: [],
-    heads_up: [],
-  });
-
-  const currentStep = STEPS[currentStepIndex];
-  const isLastStep = currentStepIndex === STEPS.length - 1;
-
-  // Dynamic styles based on theme
-  const dynamicStyles = useMemo(() => StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.stepBackgrounds[currentStep.id],
-    },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: theme.background,
-    },
-    loadingText: {
-      marginTop: 12,
-      fontSize: 16,
-      color: theme.textSecondary,
-    },
-    backButton: {
-      padding: 8,
-      borderRadius: 20,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-    },
-    stepIndicator: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: theme.textSecondary,
-    },
-    stepTitle: {
-      fontSize: 34,
-      fontWeight: '800',
-      color: theme.text,
-      letterSpacing: -0.5,
-      marginBottom: 8,
-    },
-    stepSubtitle: {
-      fontSize: 18,
-      color: theme.textSecondary,
-      fontWeight: '500',
-    },
-    cardSurface: {
-      backgroundColor: theme.surface,
-      borderRadius: 24,
-      padding: 16,
-      minHeight: 200,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: isDark ? 0.3 : 0.05,
-      shadowRadius: 20,
-      elevation: 5,
-      borderWidth: isDark ? 1 : 0,
-      borderColor: theme.border,
-    },
-    emptyStateText: {
-      marginTop: 16,
-      fontSize: 16,
-      color: theme.textSecondary,
-      textAlign: 'center',
-    },
-    emptyStateSubtext: {
-      marginTop: 8,
-      fontSize: 14,
-      color: theme.textTertiary,
-      textAlign: 'center',
-    },
-    warningBox: {
-      flexDirection: 'row',
-      backgroundColor: isDark ? 'rgba(244, 63, 94, 0.15)' : '#FFF1F2',
-      borderColor: '#F43F5E',
-      borderWidth: 2,
-      borderRadius: 16,
-      padding: 16,
-      marginBottom: 24,
-      alignItems: 'center',
-    },
-    warningText: {
-      flex: 1,
-      marginLeft: 12,
-      color: isDark ? '#FCA5A5' : '#991B1B',
-      fontSize: 14,
-      fontWeight: '500',
-      lineHeight: 20,
-    },
-    placeName: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.textSecondary,
-      marginBottom: 4,
-    },
-    categoryBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
-      alignSelf: 'flex-start',
-      marginBottom: 16,
-    },
-    categoryBadgeText: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: theme.textSecondary,
-      marginLeft: 6,
-    },
-    signalCount: {
-      fontSize: 12,
-      color: theme.textTertiary,
-      marginTop: 8,
-    },
-    progressBar: {
-      height: 4,
-      width: '100%',
-      backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-      borderRadius: 2,
-      marginBottom: 4,
-      overflow: 'hidden',
-    },
-  }), [theme, currentStep.id, isDark]);
-
-  // Load signals and existing review
-  useEffect(() => {
-    loadData();
-  }, [placeId, eventId, isEvent]);
-
-  const loadData = async () => {
-    setIsLoading(true); setLoadError(null); setExistingReviewId(null); setEditingPrevious(false); setPreviousTaps({}); setPreviousNote(''); setPreviousPrivateNote(''); setPublicNote(''); setTapCounts({}); setVisitDate(todayVisitDate());
-    if (!targetId) {
-      setIsLoading(false);
-      return;
-    }
-
+  const params = useRoute().params as Params | undefined;
+  const navigation = useNavigation<any>(); const { user } = useAuth(); const { theme, isDark } = useThemeContext(); const copy = useReleaseCopy();
+  const isEvent = !!params?.isEvent, id = (isEvent ? params?.eventId : params?.placeId) || '', name = (isEvent ? params?.eventName : params?.placeName) || '';
+  const [signals, setSignals] = useState<SignalsByCategory>(EMPTY), [selected, setSelected] = useState<Record<string, number>>({});
+  const [subject, setSubject] = useState({ category: params?.primaryCategory || 'other', subcategory: params?.subcategory });
+  const [previous, setPrevious] = useState<SavedReview | null>(null), [editing, setEditing] = useState(false), [note, setNote] = useState(''), [date, setDate] = useState(todayVisitDate);
+  const [visitOpen, setVisitOpen] = useState(false), [loading, setLoading] = useState(true), [loadError, setLoadError] = useState(''), [error, setError] = useState(''), [saving, setSaving] = useState(false), [success, setSuccess] = useState(false);
+  const generation = useRef(0), busy = useRef(false), allowLeave = useRef(false);
+  const total = Object.keys(selected).length;
+  const load = useCallback(async () => {
+    const request = ++generation.current;
+    busy.current = false; setSaving(false); setLoading(true); setLoadError(''); setError(''); setSelected({}); setNote(''); setEditing(false); setPrevious(null); setDate(todayVisitDate()); setSuccess(false); allowLeave.current = false;
     try {
+      if (!id) throw new Error('This place could not be found.');
+      if (!user) return;
       if (isEvent) {
-        // Load event signals
-        const { fetchSignalsForEvent, fetchUserEventReview } = await import('../lib/eventReviews');
-        const eventSignals = await fetchSignalsForEvent(targetId);
-        setSignals(eventSignals);
-
-        // Load existing event review if any
-        const { review, signals: existingSignals } = await fetchUserEventReview(targetId);
-        
-        if (review) {
-          setExistingReviewId(review.id);
-          const counts: { [key: string]: number } = {};
-          existingSignals.forEach(signal => {
-            counts[signal.signalId] = signal.intensity;
-          });
-          setTapCounts(counts);
-        }
+        const api = await import('../lib/eventReviews');
+        const [catalog, saved] = await Promise.all([api.fetchSignalsForEvent(id), api.fetchUserEventReview(id)]);
+        if (request !== generation.current) return;
+        setSubject({ category: 'events', subcategory: undefined }); setSignals(catalog); setPrevious(saved);
+        if (saved.review) { setEditing(true); setSelected(restoreSignalTaps(saved.signals)); setNote(saved.review.public_note || ''); }
       } else {
-        // Load place signals
-        const placeSignals = await fetchSignalsForPlace(targetId);
-        setSignals(placeSignals);
-
-        // Load existing place review if any
-        const { review, signals: existingSignals } = await fetchUserReview(targetId);
-        
-        if (review) {
-          setExistingReviewId(review.id);
-          setPreviousNote(review.public_note || '');
-          setPreviousPrivateNote(review.private_note_owner || '');
-          const counts: { [key: string]: number } = {};
-          existingSignals.forEach(signal => {
-            counts[signal.signalId] = signal.intensity;
-          });
-          setPreviousTaps(counts);
-        }
+        const category = params?.primaryCategory ? { primary: params.primaryCategory, subcategory: params.subcategory } : await loadPlaceSignalCategory(supabase, id);
+        const [catalog, saved] = await Promise.all([getSignalsForCategory(category.primary, category.subcategory), fetchUserReview(id)]);
+        if (request !== generation.current) return;
+        setSubject({ category: category.primary, subcategory: category.subcategory }); setSignals(catalog); setPrevious(saved);
       }
-    } catch (error) {
-      console.error('Error loading data:', error);
-      setLoadError(error instanceof Error ? error.message : 'Unable to load your review.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleTap = (signalId: string) => {
-    const currentCount = tapCounts[signalId] || 0;
-    
-    // Get current step's signals
-    const currentSignals = signals[currentStep.id];
-    const currentSignalIds = currentSignals.map(s => s.id);
-    
-    // Calculate how many items are currently selected in this category
-    const currentCategorySelectionCount = Object.keys(tapCounts).filter(
-      key => currentSignalIds.includes(key) && tapCounts[key] > 0
-    ).length;
-
-    // Logic:
-    // 1. If tapping a new item (currentCount === 0) AND we hit the limit -> Block it
-    if (currentCount === 0 && currentCategorySelectionCount >= currentStep.limit) {
-      Alert.alert('Limit Reached', `You can only select ${currentStep.limit} items for this section.`);
-      return;
-    }
-
-    // 2. Cycle: 0 -> 1 -> 2 -> 3 -> 0
-    const newCount = currentCount < 3 ? currentCount + 1 : 0;
-    
-    if (newCount === 0) {
-      const { [signalId]: _, ...rest } = tapCounts;
-      setTapCounts(rest);
-    } else {
-      setTapCounts({ ...tapCounts, [signalId]: newCount });
-    }
-  };
-
-  const handleNext = () => {
-    if (isLastStep) {
-      handleSubmit();
-    } else {
-      setCurrentStepIndex(prev => prev + 1);
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex(prev => prev - 1);
-    } else {
-      navigation.goBack();
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (isSubmitting || loadError) return;
-    if (!targetId) return;
-
-    const selectedCount = Object.keys(tapCounts).length;
-    if (selectedCount === 0) {
-      Alert.alert('Empty Review', 'Please select at least one signal before submitting.');
-      return;
-    }
-
-    if (!isEvent && !editingPrevious) { try { visitDateToIso(visitDate); } catch (error) { Alert.alert('Visit date', error instanceof Error ? error.message : 'Choose a visit date.'); return; } }
-    setIsSubmitting(true);
-
-    const reviewSignals: ReviewSignalTap[] = Object.entries(tapCounts).map(([signalId, intensity]) => ({
-      signalId,
-      intensity,
-    }));
-
-    let result;
-    
-    if (isEvent) {
-      // Submit event review
-      const { submitEventReview, updateEventReview } = await import('../lib/eventReviews');
-      if (existingReviewId) {
-        result = await updateEventReview(existingReviewId, targetId, reviewSignals, '', '');
-      } else {
-        result = await submitEventReview(targetId, targetName, reviewSignals, '', '');
-      }
-    } else {
-      // Submit place review
-      if (editingPrevious && existingReviewId) {
-        result = await updateReview(existingReviewId, targetId, reviewSignals, publicNote.trim(), previousPrivateNote);
-      } else {
-        result = await submitReview(targetId, targetName, reviewSignals, publicNote.trim(), '', { visitedAt: visitDateToIso(visitDate) });
-      }
-    }
-
-    setIsSubmitting(false);
-
-    if (result.success) {
-      Alert.alert(
-        'Success! 🎉',
-        `You reviewed ${targetName}!`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
-    } else {
-      Alert.alert('Unable to save review', typeof result.error === 'string' ? result.error : 'Please try again.');
-    }
-  };
-
-  // Calculate selection counts for current step
-  const currentSignals: Signal[] = signals[currentStep.id] || [];
-  const currentSignalIds = currentSignals.map(s => s.id);
-  const currentSelectionCount = Object.keys(tapCounts).filter(
-    key => currentSignalIds.includes(key) && tapCounts[key] > 0
-  ).length;
-
-  // Total selections across all steps
-  const totalSelections = Object.keys(tapCounts).filter(key => tapCounts[key] > 0).length;
-
-  if (loadError) return <View style={dynamicStyles.loadingContainer}><Text>{loadError}</Text><TouchableOpacity onPress={loadData}><Text>Retry</Text></TouchableOpacity><TouchableOpacity onPress={() => navigation.goBack()}><Text>Go back</Text></TouchableOpacity></View>;
-
-  if (isLoading) {
-    return (
-      <View style={dynamicStyles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={dynamicStyles.loadingText}>Loading signals...</Text>
-      </View>
-    );
+    } catch (cause) { if (request === generation.current) setLoadError(cause instanceof Error ? cause.message : 'Your review could not be loaded. Please try again.'); }
+    finally { if (request === generation.current) setLoading(false); }
+  }, [id, isEvent, user?.id, params?.primaryCategory, params?.subcategory]);
+  useEffect(() => { void load(); return () => { generation.current++; }; }, [load]);
+  useEffect(() => navigation.addListener('beforeRemove', (event: any) => {
+    if (allowLeave.current || (!busy.current && !total && !note.trim())) return;
+    event.preventDefault(); if (busy.current) return;
+    Alert.alert(copy('Leave this review?'), copy('Your unsaved selections will be discarded.'), [{ text: copy('Keep editing'), style: 'cancel' }, { text: copy('Discard'), style: 'destructive', onPress: () => { allowLeave.current = true; navigation.dispatch(event.data.action); } }]);
+  }), [navigation, total, note]);
+  async function post() {
+    if (busy.current || loading || loadError || !total || success || !user) return;
+    busy.current = true; setSaving(true); setError(''); const request = generation.current;
+    try {
+      const taps = selectedSignalTaps(selected); let result;
+      if (isEvent) {
+        const api = await import('../lib/eventReviews');
+        result = previous?.review ? await api.updateEventReview(previous.review.id, id, taps, note.trim(), previous.review.private_note_owner || '') : await api.submitEventReview(id, name, taps, note.trim(), '');
+      } else result = editing && previous?.review ? await updateReview(previous.review.id, id, taps, note.trim(), previous.review.private_note_owner || undefined) : await submitReview(id, name, taps, note.trim() || undefined, undefined, { visitedAt: visitDateToIso(date) });
+      if (!result.success) throw new Error(typeof result.error === 'string' ? result.error : 'Your review could not be saved. Please try again.');
+      if (request !== generation.current) return;
+      allowLeave.current = true; setSuccess(true);
+    } catch (cause) { if (request === generation.current) setError(cause instanceof Error ? cause.message : 'Your review could not be saved. Please try again.'); }
+    finally { if (request === generation.current) { busy.current = false; setSaving(false); } }
   }
-
-  const reviewSubject = { category: primaryCategory, subcategory };
-  const core = coreForCategory(reviewSubject);
-  const visibleSignals = currentSignals.filter(signal => matchesSignalSearch(signal, signalSearch))
-    .sort((a, b) => currentStep.id === 'best_for'
-      ? Number(isCoreSignal(reviewSubject, b)) - Number(isCoreSignal(reviewSubject, a)) : 0);
-  const hasSignals = visibleSignals.length > 0;
-
-  return (
-    <View style={dynamicStyles.container}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-
-      <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={dynamicStyles.backButton}>
-            <Ionicons name="arrow-back" size={28} color={theme.text} />
-          </TouchableOpacity>
-          
-          <View style={styles.progressContainer}>
-            <View style={dynamicStyles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { 
-                    width: `${((currentStepIndex + 1) / STEPS.length) * 100}%`,
-                    backgroundColor: currentStep.accent 
-                  }
-                ]} 
-              />
-            </View>
-            <Text style={dynamicStyles.stepIndicator}>
-              Step {currentStepIndex + 1} of {STEPS.length}
-            </Text>
-          </View>
-          
-          <View style={{ width: 40 }} /> 
-        </View>
-
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Place Name Badge */}
-          <View style={dynamicStyles.categoryBadge}>
-            <Ionicons name="location" size={14} color={theme.textSecondary} />
-            <Text style={dynamicStyles.categoryBadgeText} numberOfLines={1}>
-              {targetName}
-            </Text>
-          </View>
-
-          {!isEvent && <View style={{ gap: 10, marginVertical: 14 }}>
-            <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
-              <TouchableOpacity accessibilityRole="radio" accessibilityState={{ checked: !editingPrevious }} onPress={() => { setEditingPrevious(false); setTapCounts({}); setPublicNote(''); }} style={{ padding: 10, borderWidth: 1, borderColor: !editingPrevious ? '#00AEB8' : theme.border, borderRadius: 10 }}><Text style={{ color: theme.text }}>A new visit</Text></TouchableOpacity>
-              {existingReviewId && <TouchableOpacity accessibilityRole="radio" accessibilityState={{ checked: editingPrevious }} onPress={() => { setEditingPrevious(true); setTapCounts(previousTaps); setPublicNote(previousNote); }} style={{ padding: 10, borderWidth: 1, borderColor: editingPrevious ? '#00AEB8' : theme.border, borderRadius: 10 }}><Text style={{ color: theme.text }}>Edit previous review</Text></TouchableOpacity>}
-            </View>
-            {!editingPrevious ? <><Text style={{ color: theme.text }}>Visit date (YYYY-MM-DD)</Text><TextInput value={visitDate} onChangeText={setVisitDate} accessibilityLabel="Visit date, year month day" maxLength={10} placeholder="YYYY-MM-DD" style={{ color: theme.text, borderColor: theme.border, borderWidth: 1, borderRadius: 10, padding: 10 }} /></> : <Text style={{ color: theme.textSecondary }}>Your original visit date is kept. This edit is recorded in history.</Text>}
-          </View>}
-
-          <View style={styles.titleContainer}>
-            <View style={styles.titleRow}>
-              <View style={[styles.stepIconContainer, { backgroundColor: currentStep.accent }]}>
-                <Ionicons name={currentStep.icon as any} size={20} color={currentStep.id === 'vibe' ? '#FFFFFF' : '#17013A'} />
-              </View>
-              <Text style={dynamicStyles.stepTitle}>
-                {currentStep.id === 'vibe' ? core.vibeLabel || currentStep.title : currentStep.title}
-              </Text>
-            </View>
-            <Text style={dynamicStyles.stepSubtitle}>{currentStep.subtitle}</Text>
-            
-            {/* Selection Counter */}
-            <Text style={dynamicStyles.signalCount}>
-              {currentSelectionCount} of {currentStep.limit} selected · Tap again for 2 or 3
-            </Text>
-          </View>
-          
-          {/* Warning Box for Negative Step */}
-          {currentStep.theme === 'negative' && (
-            <View style={dynamicStyles.warningBox}>
-              <Ionicons name="alert-circle" size={24} color={isDark ? '#FCA5A5' : '#991B1B'} />
-              <Text style={dynamicStyles.warningText}>
-                Note: Selecting these will lower the {isEvent ? 'event' : 'place'}’s Vibe Score.
-              </Text>
-            </View>
-          )}
-
-          <TextInput accessibilityLabel="Search signals" value={signalSearch} onChangeText={setSignalSearch} placeholder="Search signals by label or keyword" placeholderTextColor={theme.textSecondary} style={{ color: theme.text, backgroundColor: theme.surface, borderColor: theme.textSecondary, borderWidth: 1, borderRadius: 12, padding: 12, minHeight: 48, marginBottom: 16 }} />
-          {currentStep.id === 'best_for' && !isEvent && <Text style={{ color: theme.text, fontSize: 14, fontWeight: '700', marginBottom: 10 }}>Start with {core.label.toLowerCase()}. What was true about the main reason you came?</Text>}
-          {/* White Card Surface */}
-          <View style={dynamicStyles.cardSurface}>
-            {hasSignals ? (
-              <View style={styles.grid}>
-                {visibleSignals.map(signal => (
-                  <PulseCard
-                    key={signal.id}
-                    isDark={isDark}
-                    label={signal.label}
-                    icon={signal.icon_emoji}
-                    intensity={tapCounts[signal.id] || 0}
-                    onTap={() => handleTap(signal.id)}
-                    theme={currentStep.theme as any}
-                    disabled={false}
-                  />
-                ))}
-              </View>
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="information-circle-outline" size={48} color={theme.textTertiary} />
-                <Text style={dynamicStyles.emptyStateText}>
-                  {signalSearch.trim() ? 'No matching signals in this category.' : 'No signals available for this category yet.'}
-                </Text>
-                <Text style={dynamicStyles.emptyStateSubtext}>
-                  {signalSearch.trim() ? `Try another search. Your ${totalSelections} selected signals are kept.` : 'Tap "Next" to continue.'}
-                </Text>
-              </View>
-            )}
-          </View>
-          {isLastStep && !isEvent && <View style={{ marginTop: 18 }}>
-            <Text style={{ color: theme.text, fontWeight: '700', marginBottom: 7 }}>Add context (optional)</Text>
-            <TextInput multiline value={publicNote} onChangeText={setPublicNote} maxLength={4000} placeholder="What did you order? What made this visit stand out? This note is public." placeholderTextColor={theme.textSecondary} style={{ color: theme.text, backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1, borderRadius: 12, padding: 12, minHeight: 90, textAlignVertical: 'top' }} />
-          </View>}
+  const text = { color: theme.text }, muted = { color: theme.textSecondary }, field = [styles.input, text, { backgroundColor: theme.surface, borderColor: theme.border }];
+  const action = (label: string, onPress: () => void, disabled = false) => <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={[styles.primary, { backgroundColor: theme.primary, opacity: disabled ? .45 : 1 }]}><Text style={styles.primaryText}>{copy(label)}</Text></Pressable>;
+  return <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={[styles.header, { borderColor: theme.border }]}><View style={{ flex: 1 }}><Text accessibilityRole="header" style={[styles.title, text]}>{copy(success ? 'Experience shared' : 'What stood out?')}</Text><Text style={[styles.subtitle, muted]}>{name}</Text></View><Pressable accessibilityRole="button" accessibilityLabel={copy('Close')} disabled={saving} onPress={() => navigation.goBack()} style={[styles.close, { backgroundColor: theme.surface }]}><Ionicons name="close" size={23} color={theme.text}/></Pressable></View>
+      {!user ? <View style={styles.body}><Text style={[styles.help, muted]}>{copy('Sign in to share your experience.')}</Text>{action('Sign in', () => navigation.navigate('Login'))}</View> : success ? <View style={[styles.body, { alignItems: 'center', gap: 18 }]}><Ionicons name="checkmark-circle-outline" size={54} color={theme.primary}/><Text style={[styles.heading, text]}>{copy('Thank you for sharing your experience.')}</Text><Text style={[styles.help, muted]}>{copy('Your words help someone choose their next place.')}</Text>{action('Done', () => navigation.goBack())}</View> : <>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.body}>
+          {loading ? <ActivityIndicator color={theme.primary}/> : loadError ? <><Text accessibilityRole="alert" style={text}>{copy(loadError)}</Text>{action('Try again', () => void load())}</> : <>
+            <ReviewChoices signals={Object.values(signals).flat()} subject={subject} selected={selected} onChange={setSelected} disabled={saving}/>
+            <Text style={[styles.heading, text]}>{copy('Add context (optional)')}</Text><TextInput accessibilityLabel={copy('Add context (optional)')} multiline editable={!saving} value={note} onChangeText={setNote} maxLength={4000} placeholder={copy('What would help someone decide? Your note will be public.')} placeholderTextColor={theme.textSecondary} style={[field, { minHeight: 100, textAlignVertical: 'top', marginTop: 9 }]}/>
+            {!isEvent && <><Pressable accessibilityRole="button" accessibilityState={{ expanded: visitOpen }} onPress={() => setVisitOpen(value => !value)} style={styles.visit}><Text style={muted}>{copy(editing ? 'Editing your previous review' : 'Visit date')} · {editing ? copy('Original date kept') : date} {visitOpen ? '−' : '+'}</Text></Pressable>{visitOpen && <View style={{ gap: 12 }}>
+              {previous?.review && <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: editing }} disabled={saving} onPress={() => { setEditing(!editing); setSelected(editing ? {} : restoreSignalTaps(previous.signals)); setNote(editing ? '' : previous.review?.public_note || ''); }} style={styles.visit}><Text style={text}>{editing ? '☑' : '□'} {copy('Edit my previous review')}</Text></Pressable>}
+              {!editing && <TextInput accessibilityLabel={copy('Visit date')} editable={!saving} value={date} onChangeText={setDate} maxLength={10} placeholder="YYYY-MM-DD" keyboardType="numbers-and-punctuation" style={field}/>}
+              <Text style={[styles.help, muted]}>{copy('A new visit adds an experience. Editing keeps the original visit and its history.')}</Text>
+            </View>}</>}
+          </>}
         </ScrollView>
-
-        {/* Floating Footer */}
-        <View style={styles.footer}>
-          {/* Skip Button (optional for non-required steps) */}
-          {!isLastStep && (
-            <TouchableOpacity 
-              style={styles.skipButton}
-              onPress={handleNext}
-            >
-              <Text style={[styles.skipButtonText, { color: theme.textSecondary }]}>
-                Skip
-              </Text>
-            </TouchableOpacity>
-          )}
-          
-          <TouchableOpacity 
-            style={[styles.actionButton, { backgroundColor: currentStep.accent }]}
-            onPress={handleNext}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color={currentStep.id === 'vibe' ? '#FFFFFF' : '#17013A'} />
-            ) : (
-              <>
-                <Text style={[styles.actionButtonText, { color: currentStep.id === 'vibe' ? '#FFFFFF' : '#17013A' }]}> 
-                  {isLastStep ? 'Submit Review' : 'Next'}
-                </Text>
-                {!isLastStep && (
-                  <Ionicons name="arrow-forward" size={20} color={currentStep.id === 'vibe' ? '#FFFFFF' : '#17013A'} style={{ marginLeft: 8 }} />
-                )}
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    </View>
-  );
+        <View style={[styles.footer, { borderColor: theme.border }]}>{!!error && <Text accessibilityRole="alert" style={{ color: isDark ? '#FFB3B3' : '#A32131', marginBottom: 10 }}>{copy(error)}</Text>}{action(saving ? 'Saving…' : `${copy(editing ? 'Update review' : 'Post review')}${total ? ' · ' + total : ''}`, () => void post(), saving || loading || !!loadError || !total)}<Text style={[styles.footerNote, muted]}>{copy('Choose at least one word. A written review is optional.')}</Text></View>
+      </>}
+    </KeyboardAvoidingView>
+  </SafeAreaView>;
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  progressContainer: {
-    flex: 1,
-    alignItems: 'center',
-    marginHorizontal: 20,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingBottom: 140,
-  },
-  titleContainer: {
-    marginBottom: 24,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  stepIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 30,
-    left: 20,
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  skipButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  skipButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  actionButton: {
-    flex: 1,
-    height: 56,
-    borderRadius: 28,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  actionButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-});
-
+const styles = StyleSheet.create({ header: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 20, borderBottomWidth: StyleSheet.hairlineWidth }, title: { fontSize: 25, fontWeight: '700', letterSpacing: -.5 }, subtitle: { fontSize: 14, marginTop: 5 }, close: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }, body: { padding: 20, paddingBottom: 30 }, heading: { fontSize: 14, fontWeight: '600', marginTop: 12 }, help: { fontSize: 13, lineHeight: 20, marginBottom: 12 }, input: { padding: 12, borderWidth: 1, borderRadius: 12, fontSize: 14 }, primary: { minHeight: 48, borderRadius: 14, paddingHorizontal: 22, alignItems: 'center', justifyContent: 'center' }, primaryText: { color: '#fff', fontSize: 15, fontWeight: '600' }, footer: { borderTopWidth: StyleSheet.hairlineWidth, padding: 14, paddingHorizontal: 20 }, footerNote: { fontSize: 11, lineHeight: 17, textAlign: 'center', marginTop: 8 }, visit: { minHeight: 44, paddingVertical: 12, marginTop: 6 } });
 export default withScreenErrorBoundary(AddReviewScreen, 'AddReviewScreen');

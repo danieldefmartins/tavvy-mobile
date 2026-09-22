@@ -59,6 +59,7 @@ import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
 import { fetchPlaceEvidence } from '../lib/placeEvidenceService';
 import { PlaceEvidence, buildPlaceEvidence, coreForCategory, secondaryGoodSignals } from '../lib/placeEvidence';
 import { buildPlaceReviewSummary } from '../lib/placeReviewSummary';
+import PlaceReviewGrid from '../components/PlaceReviewGrid';
 import OnTheGoStatus from '../components/OnTheGoStatus';
 import CruiseVenueInfo from '../components/cruises/CruiseVenueInfo';
 import {CruiseVenueReadError,CruiseVenueContext,CRUISE_VENUE_STORY_NOTICE,CRUISE_VENUE_REVIEW_NOTICE} from '../lib/cruises/venueContext';
@@ -322,7 +323,9 @@ function PlaceDetailScreen({ route, navigation }: any) {
   const [hasActiveMenu, setHasActiveMenu] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [activePlaceTab, setActivePlaceTab] = useState<'overview' | 'media' | 'menu' | 'details'>('overview');
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [selectedSummary, setSelectedSummary] = useState<'main' | 'good' | 'vibe' | 'headsup' | null>(null);
+  useEffect(() => { setSelectedTopic(null); setSelectedSummary(null); }, [placeId]);
   const [reviewsUnavailable,setReviewsUnavailable]=useState(false);
   const [confirmedLinks,setConfirmedLinks]=useState<{label:string;url:string}[]>([]);
   const [ecardSlug,setEcardSlug]=useState<string|null>(null);
@@ -1011,7 +1014,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
   const reviewIcons = { main: /hotel/i.test(place.primaryCategory) ? '🛏️' : /restaurant|cafe|bar/i.test(place.primaryCategory) ? '🍽️' : '⭐', good: '✨', vibe: '🕯️', headsup: '⚠️' };
   const otherGood = evidence ? secondaryGoodSignals(evidence, reviewSubject) : [];
   const currentWarnings = evidence?.warnings.filter(w => w.status === 'current' || w.status === 'unconfirmed') || [];
-  const supportLabels=new Set((selectedSummary==='main'?[...(evidence?.coreSignals||[]),...(evidence?.coreConcerns||[])]:selectedSummary==='good'?otherGood:selectedSummary==='vibe'?evidence?.vibeSignals||[]:currentWarnings).map(s=>s.label));
+  const supportLabels=new Set(selectedTopic ? [selectedTopic] : (selectedSummary==='main'?[...(evidence?.coreSignals||[]),...(evidence?.coreConcerns||[])]:selectedSummary==='good'?otherGood:selectedSummary==='vibe'?evidence?.vibeSignals||[]:currentWarnings).map(s=>s.label));
   const supportingReviews=recentReviews.filter(r=>r.signals.some(sig=>supportLabels.has(sig.label))).slice(0,2);
   const priceDisplay = getPriceDisplay(place);
   const driveTime = getDriveTime(place.distance);
@@ -1079,20 +1082,11 @@ function PlaceDetailScreen({ route, navigation }: any) {
 
         <View style={{ marginHorizontal: 20, marginTop: 18 }}>
           <Text style={{ color: theme.text, fontSize: 20, fontWeight: '800', marginBottom: 11 }}>What people experienced</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 }}>
-            {reviewSummary.tiles.map(tile => <TouchableOpacity key={tile.key} accessibilityRole="button" accessibilityState={{ expanded: selectedSummary === tile.key }} onPress={() => setSelectedSummary(selectedSummary === tile.key ? null : tile.key)} style={{ width: '48.5%', minHeight: 122, padding: 13, borderRadius: 16, borderWidth: selectedSummary === tile.key ? 2 : 1, borderColor: tile.key === 'main' ? '#70D4D8' : tile.key === 'headsup' ? '#E8BB70' : '#E7E4EE', backgroundColor: theme.surface }}>
-              <Text style={{ color: theme.textSecondary, fontSize: 12, fontWeight: '800' }}>{reviewIcons[tile.key]} {tile.title}</Text>
-              <Text style={{ color: theme.text, fontSize: 15, fontWeight: '700', marginTop: 7 }}>{tile.detail}</Text>
-              {tile.count != null && tile.count > 0 && <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 6 }}>{tile.count} {tile.count === 1 ? 'person' : 'people'} mentioned this</Text>}
-              {!!tile.note && <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 6 }}>{tile.note}</Text>}
-            </TouchableOpacity>)}
-          </View>
+          <PlaceReviewGrid mode="full" summary={reviewSummary} selectedTopic={selectedTopic} onSelect={(section, topic) => { setSelectedSummary(section); setSelectedTopic(topic.label); }} />
           {selectedSummary && evidence && evidence.dataStatus!=='unavailable' && <View style={{ marginTop: 10, padding: 15, backgroundColor: theme.background, borderColor: theme.border, borderWidth: 1, borderRadius: 14 }}>
-            {selectedSummary === 'main' && <Text style={{ color: theme.text }}>{evidence?.coreSignals.length ? evidence.coreSignals.map(s => `${s.label} (${s.reports})`).join(' · ') : 'Not enough recent firsthand reports yet.'}{evidence?.coreConcerns.length ? `\nCore concerns: ${evidence.coreConcerns.map(s => s.label).join(' · ')}` : ''}</Text>}
-            {selectedSummary === 'good' && <Text style={{ color: theme.text }}>{otherGood.length ? otherGood.slice(0, 4).map(s => `${s.label} (${s.reports})`).join(' · ') : 'More reports are needed about other strengths.'}</Text>}
-            {selectedSummary === 'vibe' && <Text style={{ color: theme.text }}>{evidence?.vibeSignals.length ? evidence.vibeSignals.map(s => `${s.label} (${s.reports})`).join(' · ') : 'More atmosphere reports are needed.'}</Text>}
-            {selectedSummary === 'headsup' && <Text style={{ color: theme.text }}>{currentWarnings.length ? currentWarnings.map(w => `${w.label} (${w.status === 'current' ? 'repeated' : 'one report'})`).join(' · ') : 'No current Heads Up reports in Tavvy.'}{evidence?.warnings.filter(w => w.status === 'faded' || w.status === 'improved').length ? `\nOlder concerns: ${evidence.warnings.filter(w => w.status === 'faded' || w.status === 'improved').map(w => `${w.label} · ${w.laterVisits} later visits without a repeat`).join(' · ')}` : ''}</Text>}
-            <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 8 }}>{evidence?.recentReviewers || 0} recent reviewers · {evidence?.confidence || 'limited'} evidence</Text>{supportingReviews.map(review=><View key={review.reviewId} style={{marginTop:14,paddingTop:12,borderTopWidth:1,borderTopColor:theme.border}}><Text style={{color:theme.text,fontWeight:'700'}}>{review.name} · {reviewDateLabel(review.createdAt,review.dateSource)}</Text><ContentSafetyActions kind="place_review" contentId={review.reviewId} />
+            <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:12}}><Text style={{color:theme.text,fontWeight:'700',flex:1}}>{selectedTopic}</Text><TouchableOpacity accessibilityRole="button" onPress={()=>{setSelectedSummary(null);setSelectedTopic(null);}} style={{minHeight:44,justifyContent:'center'}}><Text style={{color:isDark?'#D9B6FF':theme.primary}}>{copy('All experiences')}</Text></TouchableOpacity></View>
+            {!supportingReviews.length && <Text style={{color:theme.textSecondary,lineHeight:20}}>{copy('No matching experiences in the recent preview. Open all reviews to explore the history.')}</Text>}
+            {supportingReviews.map(review=><View key={review.reviewId} style={{marginTop:14,paddingTop:12,borderTopWidth:1,borderTopColor:theme.border}}><Text style={{color:theme.text,fontWeight:'700'}}>{review.name} · {reviewDateLabel(review.createdAt,review.dateSource)}</Text><ContentSafetyActions kind="place_review" contentId={review.reviewId} />
                   {review.text&&<Text style={{color:theme.text,lineHeight:22,marginTop:5}}>{review.text}</Text>}<Text style={{color:theme.textSecondary,marginTop:5}}>{review.signals.filter(sig=>supportLabels.has(sig.label)).map(sig=>sig.label).join(' · ')}</Text></View>)}
           </View>}
         </View>
@@ -1265,7 +1259,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      <View style={{flexDirection:'row',gap:12,padding:14,borderTopWidth:1,borderColor:theme.border,backgroundColor:theme.background}}>{hasMenuTab&&<TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('MenuGallery',{placeId:place.id,placeName:place.name})} style={{flex:1,padding:14,borderRadius:14,borderWidth:1,borderColor:theme.border,alignItems:'center'}}><Text style={{color:theme.text,fontWeight:'700'}}>Tavvy Menu</Text></TouchableOpacity>}<TouchableOpacity accessibilityRole="button" disabled={reviewDisabled} accessibilityState={{disabled:reviewDisabled}} onPress={()=>{if(!reviewDisabled)navigation.navigate('AddReview',{placeId:place.id,placeName:place.name,primaryCategory:place.primaryCategory,subcategory:place.subcategory})}} style={{flex:1,padding:14,borderRadius:14,backgroundColor:reviewDisabled?theme.surface:'#00C2CB',alignItems:'center'}}><Text style={{color:reviewDisabled?theme.textSecondary:'#07383A',fontWeight:'700'}}>Add a review</Text>{reviewDisabled&&<Text style={{color:theme.textSecondary,marginTop:5,textAlign:'center',fontSize:12}}>{copy(CRUISE_VENUE_REVIEW_NOTICE)}</Text>}</TouchableOpacity></View>
+      <View style={{flexDirection:'row',gap:12,padding:14,borderTopWidth:1,borderColor:theme.border,backgroundColor:theme.background}}>{hasMenuTab&&<TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('MenuGallery',{placeId:place.id,placeName:place.name})} style={{flex:1,padding:14,borderRadius:14,borderWidth:1,borderColor:theme.border,alignItems:'center'}}><Text style={{color:theme.text,fontWeight:'700'}}>Tavvy Menu</Text></TouchableOpacity>}<TouchableOpacity accessibilityRole="button" disabled={reviewDisabled} accessibilityState={{disabled:reviewDisabled}} onPress={()=>{if(!reviewDisabled)navigation.navigate('AddReview',{placeId:place.id,placeName:place.name,primaryCategory:place.primaryCategory,subcategory:place.subcategory})}} style={{flex:1,padding:14,borderRadius:14,backgroundColor:reviewDisabled?theme.surface:theme.primary,alignItems:'center'}}><Text style={{color:reviewDisabled?theme.textSecondary:'#FFFFFF',fontWeight:'700'}}>Add a review</Text>{reviewDisabled&&<Text style={{color:theme.textSecondary,marginTop:5,textAlign:'center',fontSize:12}}>{copy(CRUISE_VENUE_REVIEW_NOTICE)}</Text>}</TouchableOpacity></View>
       {/* Hours Modal */}
       <Modal
         visible={showHoursModal}

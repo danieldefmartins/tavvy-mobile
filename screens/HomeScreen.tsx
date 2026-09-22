@@ -2554,44 +2554,39 @@ function HomeScreen({ navigation }: { navigation: any }) {
         onPress={() => handlePlacePress(place)}
         activeOpacity={0.95}
       >
-        <View style={{paddingHorizontal:16,paddingVertical:14,gap:5}}>
-          <Text style={{fontSize:19,lineHeight:25,fontWeight:'700',color:theme.text}}>{place.name}</Text>
-          <View style={{flexDirection:'row',justifyContent:'space-between',gap:12}}>
-            <Text style={{color:theme.text,fontWeight:'600',flex:1}}>{((place as any).subcategory || place.category || place.primary_category || '').replace(/_/g,' ')}</Text>
-            {!!distance && <Text accessibilityLabel={`${distance}, straight-line distance from search location`} style={{color:theme.textSecondary}}>{distance}</Text>}
+        <View style={{paddingHorizontal:14,paddingTop:14,paddingBottom:8,flexDirection:'row',gap:12,alignItems:'flex-start'}}>
+          <View style={{flex:1,minWidth:0,gap:4}}>
+            <Text style={{fontSize:17,lineHeight:22,fontWeight:'700',color:theme.text}}>{place.name}</Text>
+            <Text style={{color:theme.textSecondary,fontSize:12,lineHeight:18}}>{((place as any).subcategory || place.category || place.primary_category || '').replace(/_/g,' ')}{distance ? ' · '+distance : ''}</Text>
+            {!!fullAddress && <Text style={{color:theme.textSecondary,fontSize:12,lineHeight:17}}>{fullAddress}</Text>}
           </View>
-          {!!fullAddress && <Text style={{color:theme.textSecondary,fontSize:13,lineHeight:19}}>{fullAddress}</Text>}
-          {image.isCategory && <Text style={{color:theme.textSecondary,fontSize:11}}>{copy('Category illustration')}</Text>}
+          <View style={{width:76,height:76,borderRadius:12,overflow:'hidden',backgroundColor:theme.surface}}>
+            <Image source={{uri:image.src.startsWith('/')?'https://tavvy.com'+image.src:image.src}} style={{width:76,height:76}} resizeMode="cover" accessibilityLabel={image.isCategory?copy('Category illustration'):place.name}/>
+            {(image.isCategory || photos.length>1) && <Text style={{position:'absolute',right:3,bottom:3,color:'#fff',backgroundColor:'rgba(0,0,0,.72)',borderRadius:4,paddingHorizontal:4,paddingVertical:2,fontSize:9}}>{image.isCategory?copy('Illustration'):'+'+(photos.length-1)}</Text>}
+          </View>
         </View>
-        <PhotoCarousel
-          photos={(photos.length ? photos : [image.src]).map(url => url.startsWith('/') ? `https://tavvy.com${url}` : url)}
-          placeName={place.name}
-          placeAddress={fullAddress}
-          placeCategory={place.category || place.primary_category}
-        />
-        {/* Signal Matrix — compact 2x2 grid */}
-        <View style={styles.signalsContainer}>
+        {/* Two evidence rows preserve space for comparison. */}
+        <View style={{paddingHorizontal:14,paddingTop:3,paddingBottom:8}}>
           <PlaceReviewGrid explain summary={(place as any).reviewSummary || previewSummaries[place.id] || buildPlaceReviewSummary(null, { category: (place as any).tavvy_category || place.primary_category || place.category, subcategory: (place as any).subcategory }, (place as any).evidenceStatus || 'unavailable')} />
-          {!!(place as any).matchReason && <Text style={{ color: theme.textSecondary, paddingTop: 8 }}>{(place as any).matchReason}</Text>}
         </View>
         
         {/* Quick Actions */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickActions}>
-          {!!place.phone && <TouchableOpacity style={[styles.actionButton, {backgroundColor:theme.primary}]} onPress={() => handleCall(place.phone)} accessibilityLabel="Call business" accessibilityRole="button">
-            <Ionicons name="call-outline" size={20} color="#FFFFFF" />
-            <Text style={[styles.actionText, { color: '#FFFFFF' }]}>{copy("Call")}</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{paddingHorizontal:10,paddingBottom:7,gap:5}}>
+          {!!place.phone && <TouchableOpacity style={[styles.actionButton, {backgroundColor:'transparent',paddingHorizontal:8,paddingVertical:8,minHeight:44}]} onPress={() => handleCall(place.phone)} accessibilityLabel="Call business" accessibilityRole="button">
+            <Ionicons name="call-outline" size={20} color={isDark?'#D9B6FF':theme.primary} />
+            <Text style={[styles.actionText, { color: isDark?'#D9B6FF':theme.primary }]}>{copy("Call")}</Text>
           </TouchableOpacity>}
-          <TouchableOpacity style={[styles.actionButton, {backgroundColor:theme.primary}]} onPress={() => handleDirections(place)} accessibilityLabel={"Get directions"} accessibilityRole="button">
-            <Ionicons name="navigate-outline" size={20} color="#FFFFFF" />
-            <Text style={[styles.actionText, { color: '#FFFFFF' }]}>{copy("Directions")}</Text>
+          <TouchableOpacity style={[styles.actionButton, {backgroundColor:'transparent',paddingHorizontal:8,paddingVertical:8,minHeight:44}]} onPress={() => handleDirections(place)} accessibilityLabel={"Get directions"} accessibilityRole="button">
+            <Ionicons name="navigate-outline" size={20} color={isDark?'#D9B6FF':theme.primary} />
+            <Text style={[styles.actionText, { color: isDark?'#D9B6FF':theme.primary }]}>{copy("Directions")}</Text>
           </TouchableOpacity>
-          {!!place.instagram_url && <TouchableOpacity style={[styles.actionButton, {backgroundColor:theme.primary}]} onPress={() => handleSocial(place.instagram_url)} accessibilityLabel="View Instagram" accessibilityRole="button">
-            <Ionicons name="chatbubble-ellipses-outline" size={20} color="#FFFFFF" />
-            <Text style={[styles.actionText, { color: '#FFFFFF' }]}>{copy("Social")}</Text>
+          {!!place.instagram_url && <TouchableOpacity style={[styles.actionButton, {backgroundColor:'transparent',paddingHorizontal:8,paddingVertical:8,minHeight:44}]} onPress={() => handleSocial(place.instagram_url)} accessibilityLabel="View Instagram" accessibilityRole="button">
+            <Ionicons name="chatbubble-ellipses-outline" size={20} color={isDark?'#D9B6FF':theme.primary} />
+            <Text style={[styles.actionText, { color: isDark?'#D9B6FF':theme.primary }]}>{copy("Social")}</Text>
           </TouchableOpacity>}
-          {!!place.website && <TouchableOpacity style={[styles.actionButton, {backgroundColor:theme.primary}]} onPress={() => handleWebsite(place.website)} accessibilityLabel={"Visit website"} accessibilityRole="button">
-            <Ionicons name="globe-outline" size={20} color="#FFFFFF" />
-            <Text style={[styles.actionText, { color: '#FFFFFF' }]}>{copy("Website")}</Text>
+          {!!place.website && <TouchableOpacity style={[styles.actionButton, {backgroundColor:'transparent',paddingHorizontal:8,paddingVertical:8,minHeight:44}]} onPress={() => handleWebsite(place.website)} accessibilityLabel={"Visit website"} accessibilityRole="button">
+            <Ionicons name="globe-outline" size={20} color={isDark?'#D9B6FF':theme.primary} />
+            <Text style={[styles.actionText, { color: isDark?'#D9B6FF':theme.primary }]}>{copy("Website")}</Text>
           </TouchableOpacity>}
         </ScrollView>
       </TouchableOpacity>
