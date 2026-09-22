@@ -325,6 +325,10 @@ function PlaceDetailScreen({ route, navigation }: any) {
   const [hasActiveMenu, setHasActiveMenu] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [activePlaceTab, setActivePlaceTab] = useState<'overview' | 'reviews' | 'media' | 'menu'>('overview');
+  const [reviewPeriod, setReviewPeriod] = useState<'recent' | 'all'>('recent');
+  const [withNotes, setWithNotes] = useState(false);
+  const [sortOldest, setSortOldest] = useState(false);
+  const [reviewsShown, setReviewsShown] = useState(10);
   const [heroIndex, setHeroIndex] = useState(0);
   const [heroWidth, setHeroWidth] = useState(Dimensions.get('window').width);
   const heroScrollRef = useRef<ScrollView>(null);
@@ -1052,6 +1056,15 @@ function PlaceDetailScreen({ route, navigation }: any) {
   const subcategoryLabel = subcategoryRaw && subcategoryRaw.toLowerCase() !== (place.primaryCategory || '').toLowerCase() ? subcategoryRaw : '';
   const openReviews = (topic?: string | null, section?: 'main' | 'good' | 'vibe' | 'headsup' | null) => { setActivePlaceTab('reviews'); setSelectedSummary(section ?? null); setSelectedTopic(topic ?? null); };
   const paymentFacts = (reviewSummary.practical || []).filter(item => /cash|card|pay/i.test(item.label));
+  // Reviews tab filters: a selected word, the evidence period, comments only, and order.
+  const hasReviewDates = recentReviews.some(review => !!review.createdAt);
+  const reviewCutoff = Date.now() - 180 * 86400000;
+  const filteredReviews = recentReviews
+    .filter(review => !selectedTopic || review.signals.some(sig => sig.label === selectedTopic))
+    .filter(review => !withNotes || !!review.text)
+    .filter(review => reviewPeriod === 'all' || !review.createdAt || Date.parse(review.createdAt) >= reviewCutoff)
+    .sort((a, b) => !a.createdAt || !b.createdAt ? 0 : (sortOldest ? 1 : -1) * (Date.parse(a.createdAt) - Date.parse(b.createdAt)));
+  const filterChip = (label: string, on: boolean, onPress: () => void) => <TouchableOpacity key={label} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={onPress} style={{ minHeight: 40, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: on ? 'rgba(0,194,203,.45)' : theme.border, backgroundColor: on ? 'rgba(0,194,203,.14)' : theme.surface }}><Text style={{ color: on ? (isDark ? '#58D9DE' : '#067A80') : theme.text, fontSize: 13, fontWeight: '600' }}>{label}</Text></TouchableOpacity>;
   const quickAction=(key:string,label:string,icon:React.ComponentProps<typeof Ionicons>['name'],onPress:()=>void,selected=false)=><TouchableOpacity key={key} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{selected}} onPress={onPress} style={{width:68,alignItems:'center',gap:7}}><View style={{width:50,height:50,borderRadius:25,backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border,alignItems:'center',justifyContent:'center'}}><Ionicons name={icon} size={23} color={selected?'#E24A72':theme.text}/></View><Text style={{color:theme.textSecondary,fontSize:11,fontWeight:'600',textAlign:'center'}}>{label}</Text></TouchableOpacity>;
 
   return (
@@ -1111,11 +1124,8 @@ function PlaceDetailScreen({ route, navigation }: any) {
         </ScrollView>
 
         {activePlaceTab === 'overview' && <View style={{ marginHorizontal: 20, marginTop: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
-            <Text style={{ color: theme.text, fontSize: 20, fontWeight: '800' }}>{copy('Reviews')}</Text>
-            <TouchableOpacity accessibilityRole="button" onPress={() => openReviews()} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: isDark ? '#58D9DE' : '#067A80', fontSize: 13, fontWeight: '700' }}>{copy('See experiences')} →</Text></TouchableOpacity>
-          </View>
-          <PlaceReviewGrid mode="compact" summary={reviewSummary} onOpen={(section, topic) => openReviews(topic.label, section)} />
+          {/* The grid's own "Reviews · N people" line is the heading here; no second title above it. */}
+          <PlaceReviewGrid mode="compact" summary={reviewSummary} onOpen={(section, topic) => openReviews(topic.label, section)} action={<TouchableOpacity accessibilityRole="button" onPress={() => openReviews()} style={{ minHeight: 32, justifyContent: 'center' }}><Text style={{ color: isDark ? '#58D9DE' : '#067A80', fontSize: 13, fontWeight: '700' }}>{copy('See experiences')} →</Text></TouchableOpacity>} />
           {paymentFacts.length > 0 && <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 12 }}><Text style={{ color: theme.textSecondary, fontSize: 12, fontWeight: '700' }}>{copy('Good to know')}</Text>{paymentFacts.map(item => <View key={item.label} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border }}><Text style={{ color: theme.text, fontSize: 13, fontWeight: '600' }}>{item.label} · {item.count}</Text></View>)}</View>}
         </View>}
 
@@ -1148,7 +1158,16 @@ function PlaceDetailScreen({ route, navigation }: any) {
         {activePlaceTab === 'reviews' && recentReviews.length > 0 && (
           <View style={styles.sectionPadding}>
             <Text style={styles.recentReviewsTitle}>Recent Reviews</Text>
-            {recentReviews.slice(0, 2).map((review) => (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }} accessibilityLabel={copy('Filters')}>
+              {selectedTopic ? filterChip(`${selectedTopic} ✕`, true, () => { setSelectedSummary(null); setSelectedTopic(null); }) : null}
+              {hasReviewDates && filterChip(copy('Last 6 months'), reviewPeriod === 'recent', () => setReviewPeriod('recent'))}
+              {hasReviewDates && filterChip(copy('All time'), reviewPeriod === 'all', () => setReviewPeriod('all'))}
+              {filterChip(copy('With comments'), withNotes, () => setWithNotes(value => !value))}
+              {hasReviewDates && filterChip(`${copy(sortOldest ? 'Oldest first' : 'Newest first')} ⇅`, false, () => setSortOldest(value => !value))}
+            </View>
+            <Text style={{ color: theme.textSecondary, fontSize: 11, lineHeight: 17, marginBottom: 6 }} accessibilityLiveRegion="polite">{copy('{{shown}} of {{total}} reviews').replace('{{shown}}', String(Math.min(reviewsShown, filteredReviews.length))).replace('{{total}}', String(filteredReviews.length))}</Text>
+            {filteredReviews.length === 0 && <Text style={{ color: theme.textSecondary, lineHeight: 20, marginBottom: 8 }}>{copy('No matching experiences in the recent preview. Open all reviews to explore the history.')}</Text>}
+            {filteredReviews.slice(0, reviewsShown).map((review) => (
               <View key={review.reviewId} style={styles.recentReviewRow}>
                 <View style={styles.recentReviewAvatar}>
                   <Text style={styles.recentReviewInitial}>{review.initial}</Text>
@@ -1194,6 +1213,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
             ))}
           </View>
         )}
+        {activePlaceTab === 'reviews' && filteredReviews.length > reviewsShown && <TouchableOpacity accessibilityRole="button" onPress={() => setReviewsShown(value => value + 10)} style={{ marginHorizontal: 20, marginBottom: 8, padding: 13, borderRadius: 12, backgroundColor: theme.surface }}><Text style={{ color: theme.text, textAlign: 'center', fontWeight: '700' }}>{copy('Show more reviews')}</Text></TouchableOpacity>}
         {activePlaceTab === 'reviews' && recentReviews.length === 0 && <Text style={{ marginHorizontal: 20, marginTop: 16, color: theme.textSecondary }}>{reviewsUnavailable?'Reviews could not be loaded. Please try again later.':'No reviews yet. Be the first to share what you experienced.'}</Text>}
         {activePlaceTab === 'reviews' && <TouchableOpacity onPress={() => { setHistoryPage(0); setHistoryOpen(true); }} style={{ marginHorizontal: 20, marginBottom: 12, padding: 13, borderRadius: 12, backgroundColor: theme.surface }}>
           <Text style={{ color: '#067A80', textAlign: 'center', fontWeight: '700' }}>See all reviews →</Text>
@@ -1233,7 +1253,7 @@ function PlaceDetailScreen({ route, navigation }: any) {
         {/* ===== 7. INFO SECTION (collapsed/expandable) ===== */}
         {activePlaceTab === 'overview' && <View style={styles.sectionPadding}>
           <View style={styles.cardContainer}>
-            <Text style={styles.cardTitle}>{cruiseVenue ? copy('Onboard place information') : 'Visit & contact'}</Text>
+            <Text style={styles.cardTitle}>{cruiseVenue ? copy('Onboard place information') : 'Location & hours'}</Text>
             {!!cruiseVenue?.description && <Text style={{color:theme.text,lineHeight:22,marginVertical:10}}>{cruiseVenue.description}</Text>}
               <View style={styles.infoContent}>
                 {!cruiseVenue && fullAddress ? (
@@ -1246,38 +1266,10 @@ function PlaceDetailScreen({ route, navigation }: any) {
                   </TouchableOpacity>
                 ) : null}
 
-                {place.phone ? (
-                  <TouchableOpacity
-                    style={styles.contactItem}
-                    onPress={() => handleCall(place.phone!)}
-                  >
-                    <Text style={styles.infoIcon}>📞</Text>
-                    <Text style={styles.infoLink}>{place.phone}</Text>
-                  </TouchableOpacity>
-                ) : null}
-
-                {place.website ? (
-                  <TouchableOpacity
-                    style={styles.contactItem}
-                    onPress={() => handleWebsite(place.website!)}
-                  >
-                    <Text style={styles.infoIcon}>🌐</Text>
-                    <Text style={styles.infoLink}>{place.website.replace(/^https?:\/\//, '')}</Text>
-                  </TouchableOpacity>
-                ) : null}
-
+                {/* Phone, website, directions and eCard are already the icon row above; only the address, links and hours live here. */}
                 {confirmedLinks.map(link=><TouchableOpacity key={link.label} accessibilityRole="link" style={styles.contactItem} onPress={()=>Linking.openURL(link.url)}><Text style={styles.infoLink}>{link.label} ↗</Text></TouchableOpacity>)}
-                {ecardSlug&&<TouchableOpacity accessibilityRole="link" style={styles.contactItem} onPress={()=>Linking.openURL(`https://tavvy.com/${encodeURIComponent(ecardSlug)}`)}><Text style={styles.infoLink}>Restaurant eCard ↗</Text></TouchableOpacity>}
                 {(!cruiseVenue || place.opening_hours) && <><Text style={[styles.cardTitle,{marginTop:20}]}>Hours</Text>
                 {parseHours(place.opening_hours).hoursList.map(row=><View key={row.day} style={{flexDirection:'row',justifyContent:'space-between',gap:12,paddingVertical:7}}><Text style={{color:theme.text}}>{row.day}</Text><Text style={{color:theme.textSecondary,flexShrink:1}}>{row.range}</Text></View>)}</>}
-                {!cruiseVenue && <TouchableOpacity
-                  style={styles.directionsBtn}
-                  onPress={() => handleNavigate(place.latitude, place.longitude, place.name)}
-                >
-                  <Text style={styles.directionsBtnText}>
-                    Get directions
-                  </Text>
-                </TouchableOpacity>}
 
                 {!cruiseVenue && <><View style={styles.claimDivider} />
                 <TouchableOpacity

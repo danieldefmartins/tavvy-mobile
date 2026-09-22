@@ -346,3 +346,19 @@ Overview. Accent is the logo teal. The place screen title is Reviews and Heads U
 marker. Four locale keys (`reviewExperience82`–`85`) were added to en/es/pt/ar.
 Application TypeScript and 16 focused unit tests passed. This has not been rendered
 in the Simulator or included in any EAS build; native visual verification remains open.
+
+Later the same day (source only, mirroring web): the Overview no longer repeats what the
+icon row already offers — the review teaser's own `Reviews · {{count}} people` line is the
+heading (See experiences beside it, `action` prop on `PlaceReviewGrid`), and the info card
+(now Location & hours) keeps the address, confirmed links and hours but drops the phone,
+website, eCard and Get directions rows. The Reviews tab keeps the summary rows plus filters
+(selected word, Last 6 months / All time, With comments, Newest/Oldest first) and Show more.
+`screens/MenuGalleryScreen.tsx` mirrors the web menu: `lib/menuAppearance.ts` (copied from
+web) exposes `entryView`, so the owner's Menu design decides whether the screen opens as
+the text list (Elegant Ivory, Clean White) or the full-screen photo menu (Visual, the
+default); an explicit `view` route param wins. Photo mode is the whole screen: full-bleed
+photo pages (`expo-linear-gradient` shade, details over the lower part, long text scrolls),
+a floating bar (back, `n / N`, list icon) and floating filters (All, periods, categories,
+dietary funnel); the Previous/Next footer is gone. The list keeps one photo icon to switch
+back. Application TypeScript is clean; the repository's Deno functions and a jest-style test
+file report pre-existing environment errors; no device run in this batch.

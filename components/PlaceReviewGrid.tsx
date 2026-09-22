@@ -19,10 +19,12 @@ const BAR_MIN_PEOPLE = 5;
  * keep their "!" marker. Compact mode is the search card and the Overview teaser; full mode is the
  * Reviews tab, where every word can be selected to show matching experiences.
  */
-export default function PlaceReviewGrid({ summary, mode = 'compact', selectedTopic, onSelect, onOpen }: {
+export default function PlaceReviewGrid({ summary, mode = 'compact', selectedTopic, onSelect, onOpen, action }: {
   summary: PlaceReviewSummary; explain?: boolean; mode?: 'compact' | 'full'; selectedTopic?: string | null;
   onSelect?: (section: ReviewTileKey, topic: ReviewTopic) => void;
   onOpen?: (section: ReviewTileKey, topic: ReviewTopic) => void;
+  /** Compact only: a control shown at the right of the "Reviews · N people" line (e.g. See experiences). */
+  action?: React.ReactNode;
 }) {
   const { theme, isDark } = useThemeContext(); const copy = useReleaseCopy();
   const [expanded, setExpanded] = useState<string[]>([]);
@@ -82,7 +84,7 @@ export default function PlaceReviewGrid({ summary, mode = 'compact', selectedTop
   };
 
   return <View accessibilityLabel={copy('Recent reviews')}>
-    {compact && <Text style={[styles.note, muted, { marginBottom: 8, fontSize: 12 }]}><Text style={{ color: theme.text, fontWeight: '800' }}>{copy('Reviews')}</Text> · {evidenceLine}</Text>}
+    {compact && <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}><Text style={[styles.note, muted, { fontSize: 12, flexShrink: 1 }]}><Text style={{ color: theme.text, fontWeight: '800' }}>{copy('Reviews')}</Text> · {evidenceLine}</Text>{action}</View>}
     {!compact && <View style={styles.evidenceLine}>
       <Text style={[styles.evidenceFull, { color: theme.text }]}>{evidenceLine}</Text>
       <Pressable accessibilityRole="button" accessibilityState={{ expanded: about }} onPress={() => setAbout(value => !value)} style={styles.about}>

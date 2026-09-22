@@ -1,5 +1,11 @@
 import { menuAppearance } from '../lib/menuAppearance';
-/** Responsive photo-led menu gallery with full, scrollable dish details. */
+/**
+ * Restaurant menu: a text list (the owner's Elegant Ivory / Clean White designs) or the full-screen
+ * photo menu (Visual, the default), mirroring tavvy-web /place/[id]/menu and /menu-gallery.
+ * In photo mode the whole screen is the menu: one full-bleed photo page per dish with the details
+ * over its lower part, a floating bar (back, position, switch to text) and floating filters; no
+ * place details on top and no arrows underneath. One small icon switches between the two views.
+ */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
@@ -21,6 +27,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeContext } from '../contexts/ThemeContext';
 import {dietaryMatch,DIETARY_FILTERS,DietaryFilter} from '../lib/placePresentation';
 import design from '../config/design.json';
@@ -101,7 +108,7 @@ function MenuGalleryScreen() {
   const navigation = useNavigation<any>();
   const { width: SCREEN_WIDTH, height, fontScale } = useWindowDimensions();
   const { isDark } = useThemeContext();
-  const imageHeight = Math.max(160, Math.min(height * 0.4, SCREEN_WIDTH * 0.75));
+  const [stageHeight, setStageHeight] = useState(height);
   const route = useRoute<RouteProp<RouteParams, 'MenuGallery'>>();
   const { placeId, placeName: initialPlaceName } = route.params;
 
@@ -118,6 +125,7 @@ function MenuGalleryScreen() {
   const [activePeriod, setActivePeriod] = useState<MealPeriod>('all');
   const [activeFilters,setActiveFilters]=useState<DietaryFilter[]>([]);
   const [showOtherDishes,setShowOtherDishes]=useState(false);
+  const [showDietary, setShowDietary] = useState(false);
   const [viewMode,setViewMode]=useState<'list'|'photos'>('list');
   const appearance = menuAppearance(menu);
   const textMenu = viewMode === 'list' && !appearance.inlinePhotos;
@@ -167,7 +175,9 @@ function MenuGalleryScreen() {
       }
 
       setMenu(menuData);
-      setViewMode(menuAppearance(menuData).galleryEnabled && route.params.view === 'photos' ? 'photos' : 'list');
+      // The owner's Menu design decides what opens first (photo menu by default); an explicit view param wins.
+      const loaded = menuAppearance(menuData);
+      setViewMode(route.params.view === 'list' ? 'list' : route.params.view === 'photos' && loaded.galleryEnabled ? 'photos' : loaded.entryView);
 
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('menu_categories')
@@ -265,32 +275,32 @@ function MenuGalleryScreen() {
     } catch {}
   };
 
-  const renderCard = ({ item, index }: { item: MenuItem; index: number }) => {
+  const renderPhotoCard = ({ item }: { item: MenuItem }) => {
     const priceStr = formatPrice(item.price, item.price_label);
     const imageUrl = item.image_url || menu?.cover_image_url || null;
-    return <ScrollView style={styles.card} contentContainerStyle={styles.cardContent} nestedScrollEnabled showsVerticalScrollIndicator>
-      {imageUrl ? <Image source={{ uri: imageUrl }} style={{ width: '100%', height: imageHeight }} resizeMode="cover" accessibilityLabel={item.name} /> : null}
-      <View style={styles.details}>
-        <Text style={styles.categoryName}>{item.category_name}</Text>
-        <Text style={styles.dishName} accessibilityRole="header">{item.name}</Text>
-        <View style={styles.priceRow}>
-          <Text style={styles.priceText}>{priceStr || 'Price not listed'}</Text>
-          <TouchableOpacity style={styles.shareBtn} onPress={() => handleShareDish(item)} accessibilityRole="button" accessibilityLabel={`Share ${item.name}`}>
-            <Ionicons name="share-outline" size={20} color={palette.link} /><Text style={styles.shareText}>Share</Text>
-          </TouchableOpacity>
+    const match = dietaryMatch(item.dietary_tags, activeFilters);
+    const dimmed = activeFilters.length > 0 && match !== 'match';
+    return <View style={{ width: SCREEN_WIDTH, height: stageHeight, backgroundColor: '#0b0b0e' }} accessibilityLabel={item.name}>
+      {imageUrl ? <Image source={{ uri: imageUrl }} style={[StyleSheet.absoluteFill, dimmed && { opacity: 0.45 }]} resizeMode="cover" accessibilityIgnoresInvertColors />
+        : <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}><Text style={styles.photoCategory}>{item.category_name}</Text></View>}
+      <LinearGradient colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.92)']} locations={[0, 0.24, 0.42, 0.66, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      {/* Details over the lower part of the photo; long text scrolls over the still image. */}
+      <ScrollView style={StyleSheet.absoluteFill} contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+        <View style={{ height: Math.min(stageHeight * 0.44, 420) }} />
+        <View style={styles.photoText}>
+          {dimmed && <Text style={styles.photoNote}>{match === 'unknown' ? 'Dietary information not confirmed for these filters' : 'Other dish — does not match selected filters'}</Text>}
+          {(item.is_popular || item.is_new) && <View style={styles.dietaryRow}>{item.is_popular && <Text style={[styles.photoBadge, styles.photoBadgeFire]}>🔥 Popular</Text>}{item.is_new && <Text style={[styles.photoBadge, styles.photoBadgeNew]}>✨ New</Text>}</View>}
+          {!!item.category_name && <Text style={styles.photoCategory}>{item.category_name}</Text>}
+          <Text style={styles.photoName} accessibilityRole="header">{item.name}</Text>
+          {!!item.description && <Text style={styles.photoDesc}>{item.description}</Text>}
+          {!!item.dietary_tags?.length && <View style={styles.dietaryRow}>{item.dietary_tags.map(tag => { const info = DIETARY_LABELS[tag.toLowerCase()]; return <Text key={tag} style={styles.photoDietPill}>{info ? `${info.icon} ${info.label}` : tag.replace(/[_-]/g, ' ')}</Text>; })}</View>}
+          <View style={styles.photoActions}>
+            <Text style={styles.photoPrice}>{priceStr || 'Price not listed'}</Text>
+            <TouchableOpacity style={styles.glassBtnLg} onPress={() => handleShareDish(item)} accessibilityRole="button" accessibilityLabel={`Share ${item.name}`}><Ionicons name="share-outline" size={20} color="#fff" /></TouchableOpacity>
+          </View>
         </View>
-        {(item.is_popular || item.is_new) && <View style={styles.dietaryRow}>
-          {item.is_popular && <Text style={styles.badge}>Popular</Text>}{item.is_new && <Text style={styles.badge}>New</Text>}
-        </View>}
-        {activeFilters.length>0&&dietaryMatch(item.dietary_tags,activeFilters)!=='match'&&<Text style={styles.counterText}>{dietaryMatch(item.dietary_tags,activeFilters)==='unknown'?'Dietary information not confirmed for these filters':'Other dish — does not match selected filters'}</Text>}
-        {!!item.description && <Text style={styles.dishDescription}>{item.description}</Text>}
-        <View style={styles.dietaryRow}>{(item.dietary_tags || []).map(tag => {
-          const info = DIETARY_LABELS[tag.toLowerCase()];
-          return info ? <Text key={tag} style={styles.badge}>{info.icon} {info.label}</Text> : null;
-        })}</View>
-        <Text style={styles.counterText}>{index + 1} of {filteredItems.length} dishes{filteredItems.length > 1 ? ' · Swipe for more' : ''}</Text>
-      </View>
-    </ScrollView>;
+      </ScrollView>
+    </View>;
   };
 
   const menuDestinations=<TouchableOpacity style={styles.destinationButton} accessibilityRole="button" onPress={()=>navigation.navigate('PlaceDetails',{placeId})}><Text style={styles.destinationText}>← Back to restaurant</Text></TouchableOpacity>;
@@ -320,112 +330,104 @@ function MenuGalleryScreen() {
     );
   }
 
+  const total = filteredItems.length;
+  const categoryPills = categories.filter(cat => activePeriod === 'all' || cat.meal_period === activePeriod || cat.meal_period === 'all_day' || !cat.meal_period);
+  const photoMode = viewMode === 'photos';
+  const pill = (key: string, label: string, active: boolean, onPress: () => void, diet = false) => (
+    <TouchableOpacity key={key} accessibilityRole="button" accessibilityState={{ selected: active }} onPress={onPress}
+      style={[photoMode ? styles.glassPill : styles.catPill, active && (diet ? styles.dietPillActive : photoMode ? styles.glassPillActive : styles.catPillActive)]}>
+      <Text style={[photoMode ? styles.glassPillText : styles.catPillText, active && (diet ? styles.dietPillTextActive : photoMode ? styles.glassPillTextActive : styles.catPillTextActive)]}>{label}</Text>
+    </TouchableOpacity>
+  );
+  const menuPills = <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 1 }} contentContainerStyle={{ gap: 6, paddingRight: 8 }} accessibilityLabel="Menu filters">
+    {pill('all', 'All', activePeriod === 'all' && activeCategory === 'all', () => { setActivePeriod('all'); setActiveCategory('all'); })}
+    {availablePeriods.filter(period => period !== 'all').map(period => pill(`period-${period}`, PERIOD_LABELS[period], activePeriod === period, () => setActivePeriod(activePeriod === period ? 'all' : period)))}
+    {categoryPills.map(cat => pill(`cat-${cat.id}`, cat.name, activeCategory === cat.id, () => setActiveCategory(activeCategory === cat.id ? 'all' : cat.id)))}
+  </ScrollView>;
+  const dietaryPills = <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>{DIETARY_FILTERS.map(filter => pill(`diet-${filter.key}`, filter.label, activeFilters.includes(filter.key), () => { setShowOtherDishes(false); setActiveFilters(old => old.includes(filter.key) ? old.filter(f => f !== filter.key) : [...old, filter.key]); }, true))}</View>;
+  const dietaryResult = activeFilters.length > 0 && <View style={photoMode ? styles.photoPanel : { marginTop: 8 }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 14 }}>
+      <Text style={{ color: photoMode ? '#fff' : palette.text, fontWeight: '700' }}>{matchingCount} dishes match</Text>
+      <TouchableOpacity accessibilityRole="button" onPress={() => { setActiveFilters([]); setShowOtherDishes(false); }} style={{ paddingVertical: 8 }}><Text style={{ color: photoMode ? '#fff' : palette.link, textDecorationLine: 'underline' }}>Clear</Text></TouchableOpacity>
+      <TouchableOpacity accessibilityRole="button" onPress={() => setShowOtherDishes(!showOtherDishes)} style={{ paddingVertical: 8 }}><Text style={{ color: photoMode ? '#fff' : palette.link, textDecorationLine: 'underline' }}>{showOtherDishes ? 'Matches only' : 'Other dishes'}</Text></TouchableOpacity>
+    </View>
+    <Text style={{ color: photoMode ? 'rgba(255,255,255,0.7)' : palette.textSecondary, fontSize: 13 }}>Missing tags mean unknown. Ask the restaurant about allergies.</Text>
+  </View>;
+
+  if (photoMode) {
+    return (
+      <View style={styles.photoShell} onLayout={e => setStageHeight(e.nativeEvent.layout.height)}>
+        <StatusBar barStyle="light-content" />
+        {filteredItems.length > 0 ? (
+          <FlatList
+            key={`${SCREEN_WIDTH}x${stageHeight}`}
+            ref={flatListRef}
+            data={filteredItems}
+            initialScrollIndex={Math.min(activeIndex, Math.max(0, filteredItems.length - 1))}
+            renderItem={renderPhotoCard}
+            keyExtractor={item => item.id}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={onScrollEnd}
+            getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })}
+            style={StyleSheet.absoluteFill}
+            extraData={{ activeIndex, stageHeight, fontScale, activeFilters }}
+            decelerationRate="fast"
+            snapToInterval={SCREEN_WIDTH}
+            snapToAlignment="start"
+          />
+        ) : (
+          <View style={styles.emptyItems}><Text style={styles.emptyItemsTextDark}>No matching dishes. Clear filters or show other dishes.</Text></View>
+        )}
+
+        {/* Floating bar and filters over the photo */}
+        <SafeAreaView edges={['top']} style={styles.photoTop} pointerEvents="box-none">
+          <LinearGradient colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0)']} style={StyleSheet.absoluteFill} pointerEvents="none" />
+          <View style={styles.photoTopRow}>
+            <TouchableOpacity style={styles.glassBtn} onPress={() => navigation.navigate('PlaceDetails', { placeId })} accessibilityRole="button" accessibilityLabel="Back to restaurant"><Ionicons name="chevron-back" size={22} color="#fff" /></TouchableOpacity>
+            <Text style={styles.photoPosition} accessibilityLiveRegion="polite">{filteredItems.length ? `${activeIndex + 1} / ${total}` : '0 dishes'}</Text>
+            <TouchableOpacity style={styles.glassBtn} onPress={() => setViewMode('list')} accessibilityRole="button" accessibilityLabel="Text menu"><Ionicons name="list-outline" size={22} color="#fff" /></TouchableOpacity>
+          </View>
+          <View style={styles.photoFilterRow}>
+            {menuPills}
+            <TouchableOpacity style={[styles.glassBtn, activeFilters.length > 0 && styles.glassBtnOn]} onPress={() => setShowDietary(open => !open)} accessibilityRole="button" accessibilityLabel="Dietary filters" accessibilityState={{ expanded: showDietary }}><Ionicons name="funnel-outline" size={18} color={activeFilters.length ? '#111' : '#fff'} /></TouchableOpacity>
+          </View>
+          {showDietary && <View style={styles.photoPanel}>{dietaryPills}</View>}
+          {dietaryResult}
+        </SafeAreaView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.shell}>
       <StatusBar barStyle={isDark && !textMenu ? 'light-content' : 'dark-content'} />
 
       {/* Top Navigation */}
       <SafeAreaView edges={['top']} style={styles.navSafeArea}>
-        <ScrollView style={{ maxHeight: height * 0.26, flexGrow: 0 }} contentContainerStyle={styles.nav}>
+        <View style={styles.nav}>
           <TouchableOpacity style={styles.navBack} onPress={() => navigation.navigate('PlaceDetails',{placeId})} accessibilityRole="button" accessibilityLabel="Back to restaurant">
             <Ionicons name="arrow-back" size={24} color={palette.text} />
           </TouchableOpacity>
-          <Text style={styles.navTitle}>{placeName}</Text>{(['list','photos'] as const).filter(mode => mode === 'list' || appearance.galleryEnabled).map(mode=><TouchableOpacity key={mode} accessibilityRole="button" accessibilityState={{selected:viewMode===mode}} onPress={()=>setViewMode(mode)} style={{padding:10,minHeight:44}}><Text style={{color:palette.link,fontWeight:viewMode===mode?'800':'400'}}>{mode==='list'?'List':'Photos'}</Text></TouchableOpacity>)}
-        </ScrollView>
+          <Text style={styles.navTitle} numberOfLines={2}>{placeName}</Text>
+          {appearance.galleryEnabled ? <TouchableOpacity style={styles.navBack} accessibilityRole="button" accessibilityLabel="Photo menu" onPress={() => setViewMode('photos')}><Ionicons name="images-outline" size={22} color={palette.link} /></TouchableOpacity> : <View style={styles.navBack} />}
+        </View>
       </SafeAreaView>
 
       {/* Scrollable filters remain reachable when text is enlarged. */}
       <ScrollView style={{ maxHeight: height * 0.32, flexGrow: 0 }} contentContainerStyle={styles.filters} nestedScrollEnabled>
-        {/* Meal period toggle */}
-        {availablePeriods.length > 1 && (
-          <View style={styles.periods}>
-            {availablePeriods.map(period => (
-              <TouchableOpacity
-                key={period}
-                style={[styles.periodBtn, activePeriod === period && styles.periodBtnActive]}
-                onPress={() => setActivePeriod(period)}
-              >
-                <Text style={[styles.periodBtnText, activePeriod === period && styles.periodBtnTextActive]}>
-                  {PERIOD_LABELS[period]}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        {/* Category pills */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.categoriesScroll}
-          contentContainerStyle={styles.categoriesContent}
-        >
-          <TouchableOpacity
-            style={[styles.catPill, activeCategory === 'all' && styles.catPillActive]}
-            onPress={() => setActiveCategory('all')}
-          >
-            <Text style={[styles.catPillText, activeCategory === 'all' && styles.catPillTextActive]}>
-              All
-            </Text>
-          </TouchableOpacity>
-          {categories
-            .filter(cat => {
-              if (activePeriod === 'all') return true;
-              return cat.meal_period === activePeriod || cat.meal_period === 'all_day' || !cat.meal_period;
-            })
-            .map(cat => (
-              <TouchableOpacity
-                key={cat.id}
-                style={[styles.catPill, activeCategory === cat.id && styles.catPillActive]}
-                onPress={() => setActiveCategory(cat.id)}
-              >
-                <Text style={[styles.catPillText, activeCategory === cat.id && styles.catPillTextActive]}>
-                  {cat.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-        </ScrollView>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingVertical:8}}>{DIETARY_FILTERS.map(filter=><TouchableOpacity key={filter.key} accessibilityRole="button" accessibilityState={{selected:activeFilters.includes(filter.key)}} style={[styles.catPill,activeFilters.includes(filter.key)&&styles.catPillActive]} onPress={()=>{setShowOtherDishes(false);setActiveFilters(old=>old.includes(filter.key)?old.filter(f=>f!==filter.key):[...old,filter.key])}}><Text style={[styles.catPillText,activeFilters.includes(filter.key)&&styles.catPillTextActive]}>{filter.label}</Text></TouchableOpacity>)}</ScrollView>
-        {activeFilters.length>0&&<View><View style={{flexDirection:'row',flexWrap:'wrap',alignItems:'center',gap:14}}><Text style={{color:palette.text}}>{matchingCount} dishes match</Text><TouchableOpacity accessibilityRole="button" onPress={()=>{setActiveFilters([]);setShowOtherDishes(false)}} style={{paddingVertical:12}}><Text style={{color:palette.link}}>Clear</Text></TouchableOpacity><TouchableOpacity accessibilityRole="button" onPress={()=>setShowOtherDishes(!showOtherDishes)} style={{paddingVertical:12}}><Text style={{color:palette.link}}>{showOtherDishes?'Matches only':'Other dishes'}</Text></TouchableOpacity></View><Text style={{color:palette.textSecondary,fontSize:13}}>Missing tags mean unknown. Ask the restaurant about allergies.</Text></View>}
+        {menuPills}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 8 }}>{DIETARY_FILTERS.map(filter => pill(`diet-${filter.key}`, filter.label, activeFilters.includes(filter.key), () => { setShowOtherDishes(false); setActiveFilters(old => old.includes(filter.key) ? old.filter(f => f !== filter.key) : [...old, filter.key]); }, true))}</ScrollView>
+        {dietaryResult}
       </ScrollView>
 
-      {/* Gallery Cards - Horizontal FlatList */}
-      {viewMode==='list'?<FlatList ref={menuListRef} onContentSizeChange={() => { if (!pendingDishScroll.current || !route.params.dishId) return; const index = filteredItems.findIndex(item => item.id === route.params.dishId); if (index >= 0) { pendingDishScroll.current = false; menuListRef.current?.scrollToIndex({index,animated:false}); } }} onScrollToIndexFailed={info => { menuListRef.current?.scrollToOffset({offset:info.averageItemLength*info.index,animated:false}); }} data={filteredItems} keyExtractor={i=>i.id} ListHeaderComponent={<View style={{padding:24,paddingBottom:10}}><Text style={{color:palette.text,fontSize:32,fontFamily:menuFont}}>{menu?.name || 'Menu'}</Text></View>} ListEmptyComponent={<Text style={styles.emptyItemsText}>No matching dishes. Clear filters or show other dishes.</Text>} renderItem={({item,index})=><View style={{padding:20,borderBottomWidth:1,borderColor:palette.border}}>
+      <FlatList ref={menuListRef} onContentSizeChange={() => { if (!pendingDishScroll.current || !route.params.dishId) return; const index = filteredItems.findIndex(item => item.id === route.params.dishId); if (index >= 0) { pendingDishScroll.current = false; menuListRef.current?.scrollToIndex({index,animated:false}); } }} onScrollToIndexFailed={info => { menuListRef.current?.scrollToOffset({offset:info.averageItemLength*info.index,animated:false}); }} data={filteredItems} keyExtractor={i=>i.id} ListHeaderComponent={<View style={{padding:24,paddingBottom:10}}><Text style={{color:palette.text,fontSize:32,fontFamily:menuFont}}>{menu?.name || 'Menu'}</Text></View>} ListEmptyComponent={<Text style={styles.emptyItemsText}>No matching dishes. Clear filters or show other dishes.</Text>} renderItem={({item,index})=><View style={{padding:20,borderBottomWidth:1,borderColor:palette.border}}>
         {(index === 0 || filteredItems[index-1]?.category_id !== item.category_id) && <Text style={{color:palette.text,fontSize:25,fontFamily:menuFont,marginVertical:12}}>{item.category_name}</Text>}
         <TouchableOpacity disabled={!appearance.galleryEnabled} accessibilityRole={appearance.galleryEnabled ? 'button' : undefined} accessibilityLabel={appearance.galleryEnabled ? `View ${item.name} photos` : undefined} onPress={()=>{setActiveIndex(index);setViewMode('photos')}} style={{flexDirection:'row',gap:14, borderLeftWidth: route.params.dishId === item.id ? 3 : 0, borderLeftColor: palette.link, paddingLeft: route.params.dishId === item.id ? 12 : 0}}>
           {appearance.inlinePhotos && item.image_url && <Image source={{uri:item.image_url}} style={{width:72,height:72,borderRadius:12}}/>}
           <View style={{flex:1}}><Text style={{color:palette.text,fontSize:21,fontWeight:appearance.serif?'400':'600',fontFamily:menuFont}}>{item.name}</Text>{item.description && <Text style={{color:palette.textSecondary,lineHeight:24,marginTop:6,fontFamily:menuFont,fontSize:16}}>{item.description}</Text>}<Text style={{color:palette.text,marginTop:8,fontFamily:menuFont,fontSize:16}}>{formatPrice(item.price,item.price_label)}</Text>{!!item.dietary_tags?.length && <Text style={{color:palette.textSecondary,marginTop:8,fontSize:13}}>{item.dietary_tags.map(tag=>DIETARY_LABELS[tag]?.label || tag.replace(/_/g,' ')).join(' · ')}</Text>}</View>
         </TouchableOpacity></View>}/>
-:filteredItems.length > 0 ? (
-        <FlatList
-          key={SCREEN_WIDTH}
-          ref={flatListRef}
-          data={filteredItems}
-          initialScrollIndex={Math.min(activeIndex,Math.max(0,filteredItems.length-1))}
-          renderItem={renderCard}
-          keyExtractor={item => item.id}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={onScrollEnd}
-          getItemLayout={(_, index) => ({
-            length: SCREEN_WIDTH,
-            offset: SCREEN_WIDTH * index,
-            index,
-          })}
-          style={styles.gallery}
-          extraData={{ activeIndex, isDark, fontScale }}
-          decelerationRate="fast"
-          snapToInterval={SCREEN_WIDTH}
-          snapToAlignment="start"
-        />
-      ) : (
-        <View style={styles.emptyItems}>
-          <Text style={styles.emptyItemsText}>No matching dishes. Clear filters or show other dishes.</Text>
-        </View>
-      )}
-
-      {viewMode==='photos'&&<SafeAreaView edges={['bottom']} style={[styles.footer,{flexDirection:'row',justifyContent:'space-around'}]}><TouchableOpacity accessibilityRole="button" disabled={activeIndex===0} onPress={()=>{const next=activeIndex-1;flatListRef.current?.scrollToIndex({index:next});setActiveIndex(next)}} style={{padding:14,opacity:activeIndex===0?.5:1}}><Text style={{color:palette.link}}>Previous</Text></TouchableOpacity><Text accessibilityLiveRegion="polite" style={{color:palette.text}}>{filteredItems.length?`${activeIndex+1} / ${filteredItems.length}`:'0 dishes'}</Text><TouchableOpacity accessibilityRole="button" disabled={activeIndex>=filteredItems.length-1} onPress={()=>{const next=activeIndex+1;flatListRef.current?.scrollToIndex({index:next});setActiveIndex(next)}} style={{padding:14,opacity:activeIndex>=filteredItems.length-1?.5:1}}><Text style={{color:palette.link}}>Next</Text></TouchableOpacity></SafeAreaView>}
     </View>
   );
 }
@@ -469,6 +471,34 @@ const makeStyles = (palette: typeof design.light, width: number) => StyleSheet.c
   counterText: { color: palette.textSecondary, fontSize: 13, marginTop: 8 },
   emptyItems: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center' },
   emptyItemsText: { color: palette.textSecondary, fontSize: 16, textAlign: 'center' },
+  // Full-screen photo menu (always dark, over the photo)
+  photoShell: { flex: 1, backgroundColor: '#000' },
+  photoTop: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 12, paddingBottom: 16 },
+  photoTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingTop: 10 },
+  photoFilterRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
+  glassBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
+  glassBtnOn: { backgroundColor: '#fff', borderColor: '#fff' },
+  glassBtnLg: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
+  photoPosition: { color: 'rgba(255,255,255,0.9)', fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  glassPill: { minHeight: 34, justifyContent: 'center', paddingVertical: 7, paddingHorizontal: 14, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.42)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', maxWidth: width - 80 },
+  glassPillActive: { backgroundColor: '#fff', borderColor: '#fff' },
+  glassPillText: { color: '#fff', fontSize: 13, fontWeight: '600', flexShrink: 1 },
+  glassPillTextActive: { color: '#111' },
+  dietPillActive: { backgroundColor: '#34d399', borderColor: '#34d399' },
+  dietPillTextActive: { color: '#062b1f' },
+  photoPanel: { marginTop: 10, padding: 12, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.6)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', gap: 6 },
+  photoText: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 34, gap: 10 },
+  photoNote: { padding: 10, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.65)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.9)', fontSize: 13 },
+  photoBadge: { paddingVertical: 5, paddingHorizontal: 10, borderRadius: 16, fontSize: 12, fontWeight: '700', color: '#fff', backgroundColor: 'rgba(255,255,255,0.16)', overflow: 'hidden' },
+  photoBadgeFire: { backgroundColor: 'rgba(255,80,0,0.75)' },
+  photoBadgeNew: { backgroundColor: 'rgba(138,5,190,0.75)' },
+  photoCategory: { color: 'rgba(255,255,255,0.72)', fontSize: 12, fontWeight: '700', letterSpacing: 1.4, textTransform: 'uppercase' },
+  photoName: { color: '#fff', fontSize: 30, fontWeight: '800', lineHeight: 35, letterSpacing: -0.3, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 12, textShadowOffset: { width: 0, height: 2 } },
+  photoDesc: { color: 'rgba(255,255,255,0.88)', fontSize: 15.5, lineHeight: 24, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 } },
+  photoDietPill: { paddingVertical: 4, paddingHorizontal: 9, borderRadius: 10, fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.85)', backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
+  photoActions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
+  photoPrice: { flex: 1, color: '#fff', fontSize: 22, fontWeight: '800', fontVariant: ['tabular-nums'], textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 10, textShadowOffset: { width: 0, height: 2 } },
+  emptyItemsTextDark: { color: '#aaa', fontSize: 16, textAlign: 'center' },
   footer: { backgroundColor: palette.background, alignItems: 'center', paddingVertical: 8 },
   footerLogo: { height: 22, width: 94 },
 });
