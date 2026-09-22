@@ -54,6 +54,7 @@ import {
 import { getPlaceStories, PlaceStory, getStoryRingState, StoryRingState, calculateDistanceMeters } from '../lib/storyService';
 import { StoryViewer } from '../components/StoryViewer';
 import { LinearGradient } from 'expo-linear-gradient';
+import StoryActionRing from '../components/StoryActionRing';
 import { useTranslation } from 'react-i18next';
 import * as Location from 'expo-location';
 import { withScreenErrorBoundary } from '../components/ScreenErrorBoundary';
@@ -1112,6 +1113,8 @@ function PlaceDetailScreen({ route, navigation }: any) {
           {place.phone&&quickAction('phone','Phone','call-outline',()=>handleCall(place.phone!))}
           {!cruiseVenue&&!!fullAddress&&quickAction('address','Address','location-outline',()=>setShowAddressModal(true))}
           {place.website&&quickAction('website','Website','globe-outline',()=>handleWebsite(place.website!))}
+          {/* Stories next to Website; the rotating ring in the logo colours says a story is waiting. */}
+          {stories.length>0&&<TouchableOpacity key="stories" accessibilityRole="button" accessibilityLabel="Stories" onPress={()=>setShowStoryViewer(true)} style={{width:68,alignItems:'center',gap:7}}><StoryActionRing background={theme.background}><View style={{width:50,height:50,borderRadius:25,backgroundColor:theme.surface,borderWidth:1,borderColor:theme.border,alignItems:'center',justifyContent:'center'}}><Ionicons name="albums-outline" size={23} color={theme.text}/></View></StoryActionRing><Text style={{color:theme.textSecondary,fontSize:11,fontWeight:'600',textAlign:'center'}}>Stories</Text></TouchableOpacity>}
           {!cruiseVenue&&!!(fullAddress||(Number.isFinite(place.latitude)&&Number.isFinite(place.longitude)))&&quickAction('directions','Directions','navigate-outline',()=>{if(Number.isFinite(place.latitude)&&Number.isFinite(place.longitude))handleNavigate(place.latitude,place.longitude,place.name);else void Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`);})}
           {hasMenuTab&&quickAction('menu','Menu','restaurant-outline',()=>navigation.navigate('MenuGallery',{placeId:place.id,placeName:place.name}))}
           {ecardSlug&&quickAction('ecard','eCard','card-outline',()=>void Linking.openURL(`https://tavvy.com/${encodeURIComponent(ecardSlug)}`))}

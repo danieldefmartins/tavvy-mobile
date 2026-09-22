@@ -362,3 +362,9 @@ a floating bar (back, `n / N`, list icon) and floating filters (All, periods, ca
 dietary funnel); the Previous/Next footer is gone. The list keeps one photo icon to switch
 back. Application TypeScript is clean; the repository's Deno functions and a jest-style test
 file report pre-existing environment errors; no device run in this batch.
+
+Third follow-up (source only): the place action row shows Stories next to Website when the
+place has stories, wrapped in `components/StoryActionRing.tsx` — a slowly rotating
+`expo-linear-gradient` ring in the logo colours (#00AAB4 → #8A05BE → #58D9DE) that mirrors the
+web `.story-ring`; tapping opens the story viewer. (`StoryRing` for avatars in the stories row
+is unchanged.) TypeScript clean; no device run in this batch.
