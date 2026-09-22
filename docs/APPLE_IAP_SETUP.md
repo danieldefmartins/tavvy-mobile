@@ -1,6 +1,6 @@
 # Tavvy iOS subscription setup
 
-Status: **groups created; products not configured or enabled**. The app contains three product IDs, but
+Status: **three App Store Connect products created; purchases not enabled**. The app contains three product IDs, but
 `lib/iapConfig.ts` keeps `IAP_ENABLED = false`. The Apple integration branch is
 source only; it is not the distributed app. These products are distinct from
 the separate restaurant membership offer.
@@ -8,9 +8,8 @@ the separate restaurant membership offer.
 ## 1. Account Holder: commerce prerequisites
 
 App Store Connect showed an updated Apple Developer Program License Agreement
-on September 22, 2026. Its Account Holder acceptance is required before Apple
-allows the subscription product forms to open. The owner has been asked to
-review and accept it directly; this agent has not accepted legal terms.
+on September 22, 2026. The Account Holder accepted it, after which Apple allowed
+the subscription product forms to open. This agent did not accept legal terms.
 
 In App Store Connect, open **Business → Agreements** and check that the Paid
 Apps Agreement is active. Complete the required tax and banking information.
@@ -32,8 +31,8 @@ Pros at the same time. Apple allows one active subscription per group.
 | Tavvy Pros | Tavvy Pros | Founding Annual |
 
 Created in App Store Connect on September 22, 2026: eCard group ID `22405023`
-and Pros group ID `22405130`. Both have English (U.S.) display names and no
-subscription products yet.
+and Pros group ID `22405130`. Both have English (U.S.) display names. eCard
+Monthly and Annual are at the same service level (level 1).
 
 Within **Tavvy eCard Pro**, put Monthly and Annual at the same subscription
 level so customers can change billing period without gaining or losing features.
@@ -53,6 +52,15 @@ Do not change their spelling or reuse an ID for a different offer.
 | Tavvy eCard Pro | eCard Pro Monthly | `com.360.tavvy.ecard.pro.monthly` | 1 month | $4.99 | eCard Pro Monthly | Premium card designs, photo galleries, video, contact forms, and professional credentials. |
 | Tavvy eCard Pro | eCard Pro Annual | `com.360.tavvy.ecard.pro.annual` | 1 year | $39.99 | eCard Pro Annual | The same eCard Pro features with annual billing. |
 | Tavvy Pros | Pros Founding Annual | `com.360.tavvy.pros.founding.annual` | 1 year | $199 | Tavvy Pros Founding | Professional profile, lead access, direct messages, and provider tools. |
+
+Apple product records: eCard Monthly `6814897486`, eCard Annual `6814899973`,
+Pros Founding Annual `6814902186`. Their US base prices are $4.99, $39.99 and
+$199.00 respectively. English (U.S.) names and concise descriptions are saved.
+All 175 current App Store regions are selected for each product; automatic
+availability in future regions is off. Annual products use **1 Year Upfront**,
+not Apple's separate 12-month monthly-commitment option.
+Product status remains **Prepare for Submission**. Final paywall screenshots,
+review metadata, other localizations and submission with the release build remain.
 
 These prices reflect the existing mobile paywalls. Confirm storefront prices
 and availability in App Store Connect before enabling them. No introductory
