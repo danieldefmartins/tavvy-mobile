@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useTranslation } from 'react-i18next';
+import { useEnabledAuthProviders } from '../lib/authProviders';
 
 const { width, height } = Dimensions.get('window');
 
@@ -28,12 +29,36 @@ const PROS_GREEN_LIGHT = '#34D399';
 
 export default function ProsLoginScreen({ navigation }: any) {
   const { t } = useTranslation();
-  const { signIn, signInWithGoogle, signInWithApple } = useAuth();
+  const { signIn, signInWithGoogle, signInWithApple, resetPassword } = useAuth();
+  // Only offer Apple/Google when the auth project has them configured (see lib/authProviders.ts).
+  const providers = useEnabledAuthProviders();
   const { theme, isDark } = useThemeContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert(
+        t('auth.enterYourEmail', { defaultValue: 'Enter Your Email' }),
+        t('auth.enterEmailFirst', { defaultValue: 'Please enter your email address first, then tap Forgot Password.' }),
+      );
+      return;
+    }
+    try {
+      setLoading(true);
+      await resetPassword(email.trim());
+      Alert.alert(
+        t('auth.resetEmailTitle', { defaultValue: 'Check your email' }),
+        t('auth.resetLinkSent', { defaultValue: 'If an account exists for this email, a password reset link has been sent.' }),
+      );
+    } catch (error: any) {
+      Alert.alert(t('common.error', { defaultValue: 'Error' }), error.message || t('auth.resetFailed', { defaultValue: 'Could not send the reset email. Please try again.' }));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -247,35 +272,47 @@ export default function ProsLoginScreen({ navigation }: any) {
             </TouchableOpacity>
 
             {/* Forgot Password */}
-            <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            <TouchableOpacity style={styles.forgotPassword} onPress={handleForgotPassword} disabled={loading}>
+              <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword', { defaultValue: 'Forgot Password?' })}</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Social Login Divider */}
-          <View style={styles.socialDividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.dividerLine} />
-          </View>
+          {(providers.apple || providers.google) && (
+            <>
+              {/* Social Login Divider */}
+              <View style={styles.socialDividerContainer}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>{t('auth.orContinueWith', { defaultValue: 'or continue with' })}</Text>
+                <View style={styles.dividerLine} />
+              </View>
 
-          {/* Social Login Options */}
-          <View style={styles.socialContainer}>
-            <TouchableOpacity 
-              style={styles.socialButton}
-              onPress={handleAppleSignIn}
-              disabled={loading}
-            >
-              <Ionicons name="logo-apple" size={24} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.socialButton}
-              onPress={handleGoogleSignIn}
-              disabled={loading}
-            >
-              <Ionicons name="logo-google" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
+              {/* Social Login Options */}
+              <View style={styles.socialContainer}>
+                {providers.apple && (
+                  <TouchableOpacity
+                    style={styles.socialButton}
+                    onPress={handleAppleSignIn}
+                    disabled={loading}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('auth.signInWithApple', { defaultValue: 'Sign in with Apple' })}
+                  >
+                    <Ionicons name="logo-apple" size={24} color="#fff" />
+                  </TouchableOpacity>
+                )}
+                {providers.google && (
+                  <TouchableOpacity
+                    style={styles.socialButton}
+                    onPress={handleGoogleSignIn}
+                    disabled={loading}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('auth.signInWithGoogle', { defaultValue: 'Sign in with Google' })}
+                  >
+                    <Ionicons name="logo-google" size={24} color="#fff" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </>
+          )}
 
           {/* Create Account Section */}
           <View style={styles.createAccountSection}>

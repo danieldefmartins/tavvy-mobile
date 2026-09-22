@@ -18,12 +18,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useTranslation } from 'react-i18next';
+import { useEnabledAuthProviders } from '../lib/authProviders';
 
 const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen({ navigation, route }: any) {
   const { t } = useTranslation();
   const { signIn, signInWithGoogle, signInWithApple, resetPassword } = useAuth();
+  // Only offer Apple/Google when the auth project has them configured; a
+  // button that opens a failing browser flow is a review-blocking dead control.
+  const providers = useEnabledAuthProviders();
   const { theme, isDark } = useThemeContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -265,30 +269,42 @@ export default function LoginScreen({ navigation, route }: any) {
             </TouchableOpacity>
           </View>
 
-          {/* Divider */}
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.dividerLine} />
-          </View>
+          {(providers.apple || providers.google) && (
+            <>
+              {/* Divider */}
+              <View style={styles.dividerContainer}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>{t('auth.orContinueWith', { defaultValue: 'or continue with' })}</Text>
+                <View style={styles.dividerLine} />
+              </View>
 
-          {/* Social Login Options */}
-          <View style={styles.socialContainer}>
-            <TouchableOpacity 
-              style={styles.socialButton}
-              onPress={handleAppleSignIn}
-              disabled={loading}
-            >
-              <Ionicons name="logo-apple" size={24} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.socialButton}
-              onPress={handleGoogleSignIn}
-              disabled={loading}
-            >
-              <Ionicons name="logo-google" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
+              {/* Social Login Options */}
+              <View style={styles.socialContainer}>
+                {providers.apple && (
+                  <TouchableOpacity
+                    style={styles.socialButton}
+                    onPress={handleAppleSignIn}
+                    disabled={loading}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('auth.signInWithApple', { defaultValue: 'Sign in with Apple' })}
+                  >
+                    <Ionicons name="logo-apple" size={24} color="#fff" />
+                  </TouchableOpacity>
+                )}
+                {providers.google && (
+                  <TouchableOpacity
+                    style={styles.socialButton}
+                    onPress={handleGoogleSignIn}
+                    disabled={loading}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('auth.signInWithGoogle', { defaultValue: 'Sign in with Google' })}
+                  >
+                    <Ionicons name="logo-google" size={24} color="#fff" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </>
+          )}
 
           {/* Sign Up Link */}
           <View style={styles.footer}>
