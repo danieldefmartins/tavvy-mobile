@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -17,9 +17,23 @@ export default function ProsPaywallScreen() {
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('founding');
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [loading, setLoading] = useState(false);
+  const [applePrice, setApplePrice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios' || !IAP_ENABLED) return;
+    let active = true;
+    void import('../lib/iap').then(({ fetchIapSubscriptions }) => fetchIapSubscriptions())
+      .then(products => {
+        if (!active) return;
+        const product = products.find(item => item.productId === PROS_FOUNDING_ANNUAL);
+        setApplePrice(product && 'localizedPrice' in product ? product.localizedPrice : null);
+      })
+      .catch(error => console.error('[iap] Could not load Pros price:', error));
+    return () => { active = false; };
+  }, []);
 
   const plans = [
-    { id: 'founding' as PlanType, name: 'Founding Member', price: '$199', period: '/year', description: 'Limited to first 1,000 pros', savings: 'Save $400', badge: 'BEST DEAL' },
+    { id: 'founding' as PlanType, name: 'Founding Member', price: Platform.OS === 'ios' ? (IAP_ENABLED ? applePrice || '…' : 'Coming soon') : '$199', period: '/year', description: 'Limited to first 1,000 pros', savings: 'Save $400', badge: 'BEST DEAL' },
   ];
 
   const features = [
@@ -45,6 +59,10 @@ export default function ProsPaywallScreen() {
           'Not available yet',
           'Subscribing from the iOS app is not available in this version. Please check back soon.',
         );
+        return;
+      }
+      if (!applePrice) {
+        Alert.alert('Price unavailable', 'Could not load the Apple subscription price. Please try again later.');
         return;
       }
       setLoading(true);
@@ -119,13 +137,13 @@ export default function ProsPaywallScreen() {
         <View style={styles.plansSection}>
           {plans.map((plan) => (
             <TouchableOpacity key={plan.id} style={[styles.planCard, selectedPlan === plan.id && styles.planCardSelected]} onPress={() => setSelectedPlan(plan.id)}>
-              {plan.badge && <View style={styles.planBadge}><Text style={styles.planBadgeText}>{plan.badge}</Text></View>}
+              {plan.badge && Platform.OS !== 'ios' && <View style={styles.planBadge}><Text style={styles.planBadgeText}>{plan.badge}</Text></View>}
               <View style={styles.planHeader}>
                 <View style={[styles.radioButton, selectedPlan === plan.id && styles.radioButtonSelected]}>{selectedPlan === plan.id && <View style={styles.radioButtonInner} />}</View>
                 <View style={styles.planInfo}><Text style={styles.planName}>{plan.name}</Text><Text style={styles.planDescription}>{plan.description}</Text></View>
                 <View style={styles.planPricing}><Text style={styles.planPrice}>{plan.price}</Text><Text style={styles.planPeriod}>{plan.period}</Text></View>
               </View>
-              {plan.savings ? <View style={styles.savingsBadge}><Text style={styles.savingsText}>{plan.savings}</Text></View> : null}
+              {plan.savings && Platform.OS !== 'ios' ? <View style={styles.savingsBadge}><Text style={styles.savingsText}>{plan.savings}</Text></View> : null}
             </TouchableOpacity>
           ))}
         </View>
@@ -146,7 +164,7 @@ export default function ProsPaywallScreen() {
         </View>
       </ScrollView>
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.subscribeButton} onPress={handleSubscribe} disabled={loading}><Text style={styles.subscribeButtonText}>{loading ? 'Processing...' : 'Start Growing Your Business'}</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.subscribeButton} onPress={handleSubscribe} disabled={loading || (Platform.OS === 'ios' && (!IAP_ENABLED || !applePrice))}><Text style={styles.subscribeButtonText}>{loading ? 'Processing...' : Platform.OS === 'ios' && !IAP_ENABLED ? 'Coming soon' : Platform.OS === 'ios' && !applePrice ? 'Loading Apple price…' : 'Start Growing Your Business'}</Text></TouchableOpacity>
         <Text style={styles.footerText}>Cancel anytime. No hidden fees.</Text>
       </View>
     </SafeAreaView>
