@@ -1,112 +1,96 @@
 #!/usr/bin/env python3
 """Regenerates Tavvy's mobile brand assets from two sources of truth:
 
-  * the mark geometry measured from assets/icon.png (the App Store icon that
-    matches tavvy.com's purple/teal identity), drawn as vector shapes so every
-    output is crisp at any size;
-  * assets/brand/tavvy-wordmark-dark.png, the high-resolution wordmark, whose
+  * assets/brand/tavvy-mark-source.png — the mark (purple leg, teal capsule,
+    white dot) rasterized at 1276 px from the designer's vector file
+    (tavvy-new-Logo.ai) and flattened to the brand colors #8A05BE / #00C2CB;
+  * assets/brand/tavvy-wordmark-dark.png — the high-resolution wordmark, whose
     alpha is recolored to brand navy (#17013A) or white.
 
-Outputs (all RGBA PNG):
-  assets/brand/tavvy-logo-horizontal-{dark,white}.png   2448x716, same layout as web tavvy-logo-{dark,white}.png
-  assets/brand/tavvy-logo-stacked-{dark,white}.png      1024x1024 mark above wordmark (splash, guest headers)
-  assets/brand/tavvy-mark.png                           1024x1024 mark only, transparent
+Layouts follow the designer's 300 ppi exports (horizontal 838x292: mark in
+x 113-325 / y 57-222, wordmark x 366-723 / y 122-234; stacked 496x496: mark
+x 129-366 / y 84-270, wordmark x 69-427 / y 300-412; icon: mark 74% wide,
+centered on navy).
+
+Outputs (RGBA PNG):
+  assets/brand/tavvy-logo-horizontal-{dark,white}.png   2514x876
+  assets/brand/tavvy-logo-stacked-{dark,white}.png      1024x1024
+  assets/brand/tavvy-mark.png                           1024x1024 transparent
   assets/brand/tavvy-mark-circle.png                    1024x1024 mark on a navy circle
-  assets/adaptive-icon.png                              Android adaptive foreground (mark on navy, safe padding)
+  assets/icon.png                                       App Store icon (opaque navy)
+  assets/adaptive-icon.png                              Android adaptive foreground
   assets/splash-mark.png, assets/favicon.png
+  ios/Tavvy/Images.xcassets/SplashScreenLogo.imageset/image*.png (from stacked white)
 
 Run from the repository root: python3 scripts/generate-brand-assets.py
 """
-from PIL import Image, ImageDraw
+from PIL import Image
 import os
 
-PURPLE = (138, 5, 190, 255)
-TEAL = (0, 194, 203, 255)
-WHITE = (255, 255, 255, 255)
 NAVY = (23, 1, 58, 255)
-SS = 4  # supersampling factor for anti-aliased edges
-MARK_W, MARK_H = 761, 597  # mark bounding box in icon.png space (x 130..891, y 213..810)
+WHITE = (255, 255, 255, 255)
+MARK = Image.open('assets/brand/tavvy-mark-source.png').convert('RGBA')
+WORD = Image.open('assets/brand/tavvy-wordmark-dark.png').convert('RGBA')
 
 
-def draw_mark(scale, ox, oy, canvas):
-    """Draw the mark (icon.png coordinates scaled by `scale`, offset by ox/oy) onto an RGBA canvas."""
-    W, H = canvas.size
-    big = Image.new('RGBA', (W * SS, H * SS), (0, 0, 0, 0))
-    d = ImageDraw.Draw(big)
-
-    def P(x, y):
-        return ((ox + x * scale) * SS, (oy + y * scale) * SS)
-
-    r = 163 * scale * SS
-    cx, cy = P(293, 484)
-    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=PURPLE)
-    a, b = P(467, 638), P(741, 364)
-    for (x, y) in (a, b):
-        d.ellipse([x - r, y - r, x + r, y + r], fill=TEAL)
-    dx, dy = b[0] - a[0], b[1] - a[1]
-    L = (dx * dx + dy * dy) ** 0.5
-    nx, ny = -dy / L * r, dx / L * r
-    d.polygon([(a[0] + nx, a[1] + ny), (b[0] + nx, b[1] + ny), (b[0] - nx, b[1] - ny), (a[0] - nx, a[1] - ny)], fill=TEAL)
-    wx, wy = P(457, 645)
-    wr = 65 * scale * SS
-    d.ellipse([wx - wr, wy - wr, wx + wr, wy + wr], fill=WHITE)
-    canvas.alpha_composite(big.resize((W, H), Image.LANCZOS))
-    return canvas
+def fit(img, width):
+    return img.resize((int(round(width)), int(round(width * img.height / img.width))), Image.LANCZOS)
 
 
 def wordmark(width, color):
-    w = Image.open('assets/brand/tavvy-wordmark-dark.png').convert('RGBA')
-    h = round(width * w.height / w.width)
-    w = w.resize((width, h), Image.LANCZOS)
+    w = fit(WORD, width)
     out = Image.new('RGBA', w.size, color[:3] + (0,))
     out.putalpha(w.getchannel('A'))
     return out
 
 
-def horizontal(color, S=4):
-    """Same layout as the 612x179 web logo: mark in x 1..212, wordmark from x 246 to the right edge."""
-    W, H = 612 * S, 179 * S
-    c = Image.new('RGBA', (W, H), (0, 0, 0, 0))
-    scale = (212 * S) / MARK_W
-    draw_mark(scale, 1 * S - 130 * scale, 1 * S - 213 * scale, c)
-    wm = wordmark(365 * S, color)
-    c.alpha_composite(wm, (246 * S, (177 * S) - wm.height))
+def place(canvas, img, x, y):
+    canvas.alpha_composite(img, (int(round(x)), int(round(y))))
+
+
+def horizontal(color, S=3):
+    c = Image.new('RGBA', (838 * S, 292 * S), (0, 0, 0, 0))
+    place(c, fit(MARK, 212 * S), 113 * S, 57 * S)
+    wm = wordmark(357 * S, color)
+    place(c, wm, 366 * S, 234 * S - wm.height)
     return c
 
 
-def mark_only(px, pad=0.0, bg=None, circle=False):
+def stacked(px, color):
+    c = Image.new('RGBA', (px, px), (0, 0, 0, 0))
+    s = px / 496
+    place(c, fit(MARK, 237 * s), 129 * s, 84 * s)
+    wm = wordmark(358 * s, color)
+    place(c, wm, 69 * s, 412 * s - wm.height)
+    return c
+
+
+def mark_on(px, frac, bg=None, circle=False):
     c = Image.new('RGBA', (px, px), (0, 0, 0, 0))
     if bg:
+        from PIL import ImageDraw
         d = ImageDraw.Draw(c)
         if circle:
             d.ellipse([0, 0, px - 1, px - 1], fill=bg)
         else:
             d.rectangle([0, 0, px, px], fill=bg)
-    scale = px * (1 - 2 * pad) / MARK_W
-    ox = (px - MARK_W * scale) / 2 - 130 * scale
-    oy = (px - MARK_H * scale) / 2 - 213 * scale
-    return draw_mark(scale, ox, oy, c)
-
-
-def stacked(px, color):
-    c = Image.new('RGBA', (px, px), (0, 0, 0, 0))
-    mw = px * 0.56
-    scale = mw / MARK_W
-    draw_mark(scale, (px - mw) / 2 - 130 * scale, px * 0.10 - 213 * scale, c)
-    wm = wordmark(round(px * 0.72), color)
-    c.alpha_composite(wm, ((px - wm.width) // 2, round(px * 0.10 + MARK_H * scale + px * 0.06)))
+    m = fit(MARK, px * frac)
+    place(c, m, (px - m.width) / 2, (px - m.height) / 2)
     return c
 
 
 if __name__ == '__main__':
-    os.makedirs('assets/brand', exist_ok=True)
     horizontal(NAVY).save('assets/brand/tavvy-logo-horizontal-dark.png', optimize=True)
     horizontal(WHITE).save('assets/brand/tavvy-logo-horizontal-white.png', optimize=True)
-    mark_only(1024).save('assets/brand/tavvy-mark.png', optimize=True)
-    mark_only(1024, pad=0.16, bg=NAVY, circle=True).save('assets/brand/tavvy-mark-circle.png', optimize=True)
     stacked(1024, NAVY).save('assets/brand/tavvy-logo-stacked-dark.png', optimize=True)
-    stacked(1024, WHITE).save('assets/brand/tavvy-logo-stacked-white.png', optimize=True)
-    mark_only(1024, pad=0.20, bg=NAVY).save('assets/adaptive-icon.png', optimize=True)
-    mark_only(1024, pad=0.12).save('assets/splash-mark.png', optimize=True)
-    mark_only(256).resize((64, 64), Image.LANCZOS).save('assets/favicon.png', optimize=True)
+    white = stacked(1024, WHITE)
+    white.save('assets/brand/tavvy-logo-stacked-white.png', optimize=True)
+    mark_on(1024, 1.0).save('assets/brand/tavvy-mark.png', optimize=True)
+    mark_on(1024, 0.62, bg=NAVY, circle=True).save('assets/brand/tavvy-mark-circle.png', optimize=True)
+    mark_on(1024, 0.74, bg=NAVY).convert('RGB').save('assets/icon.png', optimize=True)
+    mark_on(1024, 0.56, bg=NAVY).save('assets/adaptive-icon.png', optimize=True)
+    mark_on(1024, 0.76).save('assets/splash-mark.png', optimize=True)
+    mark_on(256, 1.0).resize((64, 64), Image.LANCZOS).save('assets/favicon.png', optimize=True)
+    for name, px in [('image.png', 400), ('image@2x.png', 800), ('image@3x.png', 1200)]:
+        white.resize((px, px), Image.LANCZOS).save(f'ios/Tavvy/Images.xcassets/SplashScreenLogo.imageset/{name}', optimize=True)
     print('brand assets regenerated')
