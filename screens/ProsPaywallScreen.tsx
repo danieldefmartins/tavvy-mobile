@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Alert, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { useStripe } from '@stripe/stripe-react-native';
 import { supabase } from '../lib/supabaseClient';
 import { ProsColors } from '../constants/ProsConfig';
 import { useTranslation } from 'react-i18next';
+import { IAP_ENABLED, PROS_FOUNDING_ANNUAL } from '../lib/iapConfig';
 
 type PlanType = 'monthly' | 'annual' | 'founding';
 
@@ -33,9 +34,33 @@ export default function ProsPaywallScreen() {
   const handleBack = () => navigation.goBack();
 
   const handleSubscribe = async () => {
-    // iOS requires purchases through Apple IAP — redirect to web
+    // Apple Guideline 3.1.1: a digital subscription unlocked inside the app
+    // must go through StoreKit, not an external checkout redirect. Until
+    // IAP_ENABLED is verified end-to-end (docs/APPLE_IAP_SETUP.md), iOS
+    // honestly reports purchase as unavailable rather than sending users
+    // to a website to pay outside the app.
     if (Platform.OS === 'ios') {
-      Linking.openURL('https://tavvy.com/app/pros');
+      if (!IAP_ENABLED) {
+        Alert.alert(
+          'Not available yet',
+          'Subscribing from the iOS app is not available in this version. Please check back soon.',
+        );
+        return;
+      }
+      setLoading(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Sign in required.');
+        const { purchaseIapSubscription } = await import('../lib/iap');
+        await purchaseIapSubscription(PROS_FOUNDING_ANNUAL, user.id);
+        // Result (success/failure) arrives via the purchase listener in lib/iap.ts,
+        // which verifies server-side and activates the entitlement.
+      } catch (err) {
+        Alert.alert('Error', 'Could not start the purchase.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 

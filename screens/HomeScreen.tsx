@@ -39,6 +39,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchPlacesInBounds, PlaceCard, getPlaceIdForNavigation, formatDistance } from '../lib/placeService';
+import { getCachedAppSettings, setAppSetting } from '../lib/settingsPreferences';
 import PlaceReviewGrid from '../components/PlaceReviewGrid';
 import { usePlacePreviewSummaries } from '../hooks/usePlacePreviewSummaries';
 import { placePreviewImage, realPlacePhotos } from '../lib/placePreviewImage';
@@ -131,6 +132,14 @@ const MAP_STYLES = {
     icon: 'image',
   },
 };
+
+function mapLayerSettingToStyleKey(layer: 'standard' | 'dark' | 'satellite'): keyof typeof MAP_STYLES {
+  return layer === 'standard' ? 'osm' : layer;
+}
+
+function styleKeyToMapLayerSetting(key: keyof typeof MAP_STYLES): 'standard' | 'dark' | 'satellite' {
+  return key === 'osm' ? 'standard' : key;
+}
 
 // Categories for filtering - Filter icon first, then category chips
 // 'Filter' is a special category that opens the advanced filter modal
@@ -489,9 +498,15 @@ function HomeScreen({ navigation }: { navigation: any }) {
   // User location pulse animation
   const pulseAnim = useRef(new Animated.Value(1)).current;
   
-  // Map states - ALWAYS use standard (OSM) style regardless of device theme
-  // Per user requirement: map should be standard (non-dark) regardless of device theme
-  const [mapStyle, setMapStyle] = useState<keyof typeof MAP_STYLES>('osm');
+  // Map states - style follows the user's explicit Settings > Default Map Layer choice,
+  // never the device's light/dark theme (osm/standard unless the user picked otherwise).
+  const [mapStyle, setMapStyleState] = useState<keyof typeof MAP_STYLES>(
+    mapLayerSettingToStyleKey(getCachedAppSettings().defaultMapLayer)
+  );
+  const setMapStyle = (key: keyof typeof MAP_STYLES) => {
+    setMapStyleState(key);
+    setAppSetting('defaultMapLayer', styleKeyToMapLayerSetting(key));
+  };
   const [currentMapBounds, setCurrentMapBounds] = useState<{
     minLat: number;
     maxLat: number;
@@ -1219,6 +1234,11 @@ function HomeScreen({ navigation }: { navigation: any }) {
   // ============================================
 
   const requestLocationPermission = async () => {
+    if (!getCachedAppSettings().locationSharing) {
+      setSearchError('Location sharing is off in Settings. Enter a city to find places.');
+      setLoading(false);
+      return;
+    }
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {

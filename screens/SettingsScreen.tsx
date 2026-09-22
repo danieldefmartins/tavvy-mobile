@@ -1,7 +1,15 @@
 import Constants from 'expo-constants';
 import { useReleaseCopy } from '../hooks/useReleaseCopy';
-import { getAccountDeletionAvailability, createDeletionViewGuard } from '../lib/accountDeletion';
+import { getAccountDeletionAvailability, createDeletionViewGuard, deleteCurrentAccount, AccountDeletionUnavailableError, AccountDeletionFailedError } from '../lib/accountDeletion';
+import { IAP_ENABLED } from '../lib/iapConfig';
 import { accountDeletionCopy } from '../lib/accountDeletionCopy';
+import {
+  AppSettings,
+  getCachedAppSettings,
+  loadAppSettings,
+  setAppSetting,
+  subscribeAppSettings,
+} from '../lib/settingsPreferences';
 // ============================================================================
 // SETTINGS SCREEN
 // ============================================================================
@@ -20,6 +28,7 @@ import {
   Switch,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,6 +48,7 @@ export default function SettingsScreen() {
   const { theme } = useThemeContext();
   const [autoTranslate, setAutoTranslate] = useState(false);
   const [isCheckingDeletion, setIsCheckingDeletion] = useState(false);
+  const [isRestoringPurchases, setIsRestoringPurchases] = useState(false);
   const deletionGuard = useRef(createDeletionViewGuard()).current;
   deletionGuard.setSession(user?.id ?? null, session?.access_token ?? null);
   useEffect(() => {
@@ -47,18 +57,25 @@ export default function SettingsScreen() {
     return () => deletionGuard.dispose();
   }, [deletionGuard, user?.id, session?.access_token]);
   
-  // Notification preferences
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [liveBusinessAlerts, setLiveBusinessAlerts] = useState(true);
-  
-  // Privacy preferences
-  const [locationSharing, setLocationSharing] = useState(true);
-  const [dataSharing, setDataSharing] = useState(false);
-  
-  // App preferences
-  const [distanceUnit, setDistanceUnit] = useState('miles'); // 'miles' or 'km'
-  const [defaultMapLayer, setDefaultMapLayer] = useState('standard'); // 'standard', 'dark', 'satellite'
+  // Persisted app settings (notifications, privacy, display defaults) — see lib/settingsPreferences.ts
+  const [appSettings, setAppSettingsState] = useState<AppSettings>(getCachedAppSettings());
+  useEffect(() => {
+    loadAppSettings().then(setAppSettingsState);
+    return subscribeAppSettings(setAppSettingsState);
+  }, []);
+  const {
+    pushNotifications,
+    emailNotifications,
+    liveBusinessAlerts,
+    locationSharing,
+    dataSharing,
+    distanceUnit,
+    defaultMapLayer,
+  } = appSettings;
+  const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+    setAppSettingsState(prev => ({ ...prev, [key]: value }));
+    setAppSetting(key, value);
+  };
 
   // Dynamic styles based on theme
   const dynamicStyles = {
@@ -98,6 +115,49 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleRestorePurchases = async () => {
+    if (!IAP_ENABLED) {
+      Alert.alert(copy('Restore Purchases'), copy('Purchases through Apple are not available in this version yet.'), [{ text: deletionCopy.close }]);
+      return;
+    }
+    setIsRestoringPurchases(true);
+    try {
+      // Lazy import: keeps the react-native-iap native module out of this
+      // screen's load path until someone actually taps Restore.
+      const { restorePurchases: restore } = await import('../lib/iap');
+      const { restored } = await restore();
+      Alert.alert(
+        copy('Restore Purchases'),
+        restored > 0 ? copy('Your purchases have been restored.') : copy('No previous purchases were found for this Apple ID.'),
+        [{ text: deletionCopy.close }],
+      );
+    } catch (error) {
+      Alert.alert(copy('Restore Purchases'), copy('Could not restore purchases. Please try again.'), [{ text: deletionCopy.close }]);
+    } finally {
+      setIsRestoringPurchases(false);
+    }
+  };
+
+  const performDeletion = async (ticket: number) => {
+    try {
+      await deleteCurrentAccount();
+      if (!deletionGuard.current(ticket)) return;
+      Alert.alert(deletionCopy.successTitle, deletionCopy.successMessage, [
+        { text: deletionCopy.close, onPress: () => { signOut().catch(() => {}); navigation.navigate('AppsMain' as never); } },
+      ]);
+    } catch (error) {
+      if (!deletionGuard.current(ticket)) return;
+      if (error instanceof AccountDeletionUnavailableError) {
+        Alert.alert(deletionCopy.title, deletionCopy.unavailable + '\n\n' + deletionCopy.unchanged, [{ text: deletionCopy.close }]);
+      } else {
+        const message = error instanceof AccountDeletionFailedError ? error.message : deletionCopy.unchanged;
+        Alert.alert(deletionCopy.failureTitle, message, [{ text: deletionCopy.close }]);
+      }
+    } finally {
+      if (deletionGuard.current(ticket)) setIsCheckingDeletion(false);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     const ticket = deletionGuard.begin();
     setIsCheckingDeletion(true);
@@ -105,13 +165,37 @@ export default function SettingsScreen() {
       const availability = await getAccountDeletionAvailability();
       if (!deletionGuard.current(ticket)) return;
       if (availability.status === 'unavailable') {
+        setIsCheckingDeletion(false);
         Alert.alert(
           t('auth.deleteAccount', { defaultValue: deletionCopy.title }),
           deletionCopy.unavailable + '\n\n' + deletionCopy.unchanged,
           [{ text: deletionCopy.close }],
         );
+        return;
       }
-    } finally {
+      setIsCheckingDeletion(false);
+      Alert.alert(deletionCopy.confirmFirstTitle, deletionCopy.confirmFirstMessage, [
+        { text: deletionCopy.cancel, style: 'cancel' },
+        {
+          text: deletionCopy.confirmFirstContinue,
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(deletionCopy.confirmSecondTitle, deletionCopy.confirmSecondMessage, [
+              { text: deletionCopy.cancel, style: 'cancel' },
+              {
+                text: deletionCopy.confirmSecondDelete,
+                style: 'destructive',
+                onPress: () => {
+                  if (!deletionGuard.current(ticket)) return;
+                  setIsCheckingDeletion(true);
+                  performDeletion(ticket);
+                },
+              },
+            ]);
+          },
+        },
+      ]);
+    } catch {
       if (deletionGuard.current(ticket)) setIsCheckingDeletion(false);
     }
   };
@@ -176,7 +260,7 @@ export default function SettingsScreen() {
               </View>
               <Switch
                 value={pushNotifications}
-                onValueChange={setPushNotifications}
+                onValueChange={(value) => updateSetting('pushNotifications', value)}
                 trackColor={{ false: '#E5E5EA', true: theme.primary }}
                 thumbColor="#FFFFFF"
               />
@@ -191,7 +275,7 @@ export default function SettingsScreen() {
               </View>
               <Switch
                 value={emailNotifications}
-                onValueChange={setEmailNotifications}
+                onValueChange={(value) => updateSetting('emailNotifications', value)}
                 trackColor={{ false: '#E5E5EA', true: theme.primary }}
                 thumbColor="#FFFFFF"
               />
@@ -206,7 +290,7 @@ export default function SettingsScreen() {
               </View>
               <Switch
                 value={liveBusinessAlerts}
-                onValueChange={setLiveBusinessAlerts}
+                onValueChange={(value) => updateSetting('liveBusinessAlerts', value)}
                 trackColor={{ false: '#E5E5EA', true: theme.primary }}
                 thumbColor="#FFFFFF"
               />
@@ -229,7 +313,7 @@ export default function SettingsScreen() {
               </View>
               <Switch
                 value={locationSharing}
-                onValueChange={setLocationSharing}
+                onValueChange={(value) => updateSetting('locationSharing', value)}
                 trackColor={{ false: '#E5E5EA', true: theme.primary }}
                 thumbColor="#FFFFFF"
               />
@@ -244,7 +328,7 @@ export default function SettingsScreen() {
               </View>
               <Switch
                 value={dataSharing}
-                onValueChange={setDataSharing}
+                onValueChange={(value) => updateSetting('dataSharing', value)}
                 trackColor={{ false: '#E5E5EA', true: theme.primary }}
                 thumbColor="#FFFFFF"
               />
@@ -267,11 +351,11 @@ export default function SettingsScreen() {
                   [
                     {
                       text: copy("Miles"),
-                      onPress: () => setDistanceUnit('miles'),
+                      onPress: () => updateSetting('distanceUnit', 'miles'),
                     },
                     {
                       text: copy("Kilometers"),
-                      onPress: () => setDistanceUnit('km'),
+                      onPress: () => updateSetting('distanceUnit', 'km'),
                     },
                     { text: copy("Cancel"), style: 'cancel' },
                   ]
@@ -301,15 +385,15 @@ export default function SettingsScreen() {
                   [
                     {
                       text: copy("Standard"),
-                      onPress: () => setDefaultMapLayer('standard'),
+                      onPress: () => updateSetting('defaultMapLayer', 'standard'),
                     },
                     {
                       text: copy("Dark"),
-                      onPress: () => setDefaultMapLayer('dark'),
+                      onPress: () => updateSetting('defaultMapLayer', 'dark'),
                     },
                     {
                       text: copy("Satellite"),
-                      onPress: () => setDefaultMapLayer('satellite'),
+                      onPress: () => updateSetting('defaultMapLayer', 'satellite'),
                     },
                     { text: copy("Cancel"), style: 'cancel' },
                   ]
@@ -364,7 +448,7 @@ export default function SettingsScreen() {
               <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.settingRow}>
+            <TouchableOpacity style={Platform.OS === 'ios' ? [styles.settingRow, styles.settingRowBorder] : styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Ionicons name="shield-checkmark" size={22} color={theme.signalUniverse} />
                 <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
@@ -373,6 +457,21 @@ export default function SettingsScreen() {
               </View>
               <Ionicons name="chevron-forward" size={20} color={theme.textTertiary} />
             </TouchableOpacity>
+
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity style={styles.settingRow} onPress={handleRestorePurchases} disabled={isRestoringPurchases}>
+                <View style={styles.settingLeft}>
+                  {isRestoringPurchases ? (
+                    <ActivityIndicator size="small" color={theme.primary} />
+                  ) : (
+                    <Ionicons name="refresh" size={22} color={theme.primary} />
+                  )}
+                  <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>
+                    {copy('Restore Purchases')}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 

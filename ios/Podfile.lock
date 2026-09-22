@@ -2061,6 +2061,8 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - RNIap (12.16.4):
+    - React-Core
   - RNReanimated (3.17.5):
     - DoubleConversion
     - glog
@@ -2368,6 +2370,7 @@ DEPENDENCIES:
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - "RNCPicker (from `../node_modules/@react-native-picker/picker`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
+  - RNIap (from `../node_modules/react-native-iap`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
@@ -2607,6 +2610,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-picker/picker"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
+  RNIap:
+    :path: "../node_modules/react-native-iap"
   RNReanimated:
     :path: "../node_modules/react-native-reanimated"
   RNScreens:
@@ -2728,6 +2733,7 @@ SPEC CHECKSUMS:
   RNCAsyncStorage: b9f5f78da5d16a853fe3dc22e8268d932fc45a83
   RNCPicker: da0f1c9411208c1ca52bc98383db54a06e0a3862
   RNGestureHandler: ce4a87dba81030b374d7f1993c4376f5c230da2e
+  RNIap: 65051c94a29a17bd8356bcf16a878821862eecd0
   RNReanimated: efe63b33e23e1b5b06e5e087779eceeee742452b
   RNScreens: 9f2cb400dfae289ca8eacd6e65b5505d0430ce75
   RNSVG: ab84f2de7dd4f2c86d01825b8a65e0ef712fc36b
@@ -2744,6 +2750,6 @@ SPEC CHECKSUMS:
   Yoga: dc7c21200195acacb62fa920c588e7c2106de45e
   ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 
-PODFILE CHECKSUM: 9e0e3e00f2a6b9b99da2776df0451fed32327b22
+PODFILE CHECKSUM: 5b06f49f8cb12b737f2e44c31a26175c4d5da200
 
 COCOAPODS: 1.16.2

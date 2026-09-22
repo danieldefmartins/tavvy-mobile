@@ -30,6 +30,7 @@ import { NetworkProvider } from './contexts/NetworkContext';
 // Signal System - Preload cache on app start
 import { preloadSignalLabels } from './hooks/useSignalLabels';
 import { preloadSignalCache } from './lib/reviews';
+import { loadAppSettings } from './lib/settingsPreferences';
 
 // Screens
 import HomeScreen from './screens/HomeScreen';
@@ -701,6 +702,7 @@ function AppContent() {
           loadSavedLanguage(),
           preloadSignalLabels(),
           preloadSignalCache(),
+          loadAppSettings(),
         ]);
         console.log('✅ App initialized (language + signal system)');
       } catch (error) {
