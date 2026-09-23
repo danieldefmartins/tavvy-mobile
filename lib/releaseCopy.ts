@@ -1499,3 +1499,6 @@ Object.assign(RELEASE_COPY_KEYS, {
 
 // Map results header + add-a-place prompt.
 Object.assign(RELEASE_COPY_KEYS, {"Add a place": "addPlace", "Missing something?": "missingSomething", "Anything that can get a review is a place: a restaurant, a ride, even a public bathroom.": "addPlaceHint", "Nearby places": "nearbyPlaces", "places": "placesWord", "Near you": "nearYou"});
+
+// Tools screen: add-a-place block + review wishlist survey.
+Object.assign(RELEASE_COPY_KEYS, {"REVIEW ANYTHING": "reviewAnythingEyebrow", "What places are you missing?": "missingPlacesTitle", "On Tavvy you can review anything that can get a review: a restaurant, a ride, a park, even a public bathroom. If it is not here yet, add it.": "reviewAnythingBody", "Thanks! We read every answer.": "wishlistThanks", "Help us decide what comes next": "wishlistOpen", "Would you also review general products?": "wishlistProductsQ", "What are you missing on Tavvy?": "wishlistMissingQ", "Places, products, anything you would love to review": "wishlistMissingPh", "Which products?": "wishlistWhichProducts", "Send": "send", "Not now": "notNow", "Electronics": "catElectronics", "Cars": "catCars", "Handbags & fashion": "catHandbags", "Home & appliances": "catHome", "Beauty & skincare": "catBeauty", "Something else": "catOther"});

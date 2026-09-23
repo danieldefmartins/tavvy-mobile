@@ -1844,6 +1844,23 @@
     "addPlaceHint": "Anything that can get a review is a place: a restaurant, a ride, even a public bathroom.",
     "nearbyPlaces": "Nearby places",
     "placesWord": "places",
-    "nearYou": "Near you"
+    "nearYou": "Near you",
+    "reviewAnythingEyebrow": "REVIEW ANYTHING",
+    "missingPlacesTitle": "What places are you missing?",
+    "reviewAnythingBody": "On Tavvy you can review anything that can get a review: a restaurant, a ride, a park, even a public bathroom. If it is not here yet, add it.",
+    "wishlistThanks": "Thanks! We read every answer.",
+    "wishlistOpen": "Help us decide what comes next",
+    "wishlistProductsQ": "Would you also review general products?",
+    "wishlistMissingQ": "What are you missing on Tavvy?",
+    "wishlistMissingPh": "Places, products, anything you would love to review",
+    "wishlistWhichProducts": "Which products?",
+    "send": "Send",
+    "notNow": "Not now",
+    "catElectronics": "Electronics",
+    "catCars": "Cars",
+    "catHandbags": "Handbags & fashion",
+    "catHome": "Home & appliances",
+    "catBeauty": "Beauty & skincare",
+    "catOther": "Something else"
   }
 }
