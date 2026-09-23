@@ -17,21 +17,41 @@
  */
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView,
-  Alert, KeyboardAvoidingView, Platform, ActivityIndicator, Modal,
-  TextInput, Dimensions, Image, FlatList, ActionSheetIOS,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  Modal,
+  TextInput,
+  Dimensions,
+  Image,
+  FlatList,
+  ActionSheetIOS,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useDrafts, ContentType, ContentSubtype, ContentDraft } from '../hooks/useDrafts';
 import { useLocation, LocationData } from '../hooks/useLocation';
 import ECardAddressAutocomplete, { AddressData } from '../components/ecard/AddressAutocomplete';
+import { useAuth } from '../contexts/AuthContext';
+import { EDITABLE_PLACE_FIELDS, findPlacesAtAddress, PlaceAtAddress, submitEditSuggestion } from '../lib/addPlaceFlow';
+
+// Address typed before signing in; restored after login so nobody has to start over.
+const PENDING_ADDRESS_KEY = '@tavvy_add_pending_address';
+const EMPTY_ADDRESS: AddressData = { address1: '', address2: '', city: '', state: '', zipCode: '', country: 'USA', formattedAddress: '' };
 import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type Step = 'location' | 'business_type' | 'service_location' | 'content_type' | 'details' | 'photos' | 'review';
+type Step = 'location' | 'existing_places' | 'suggest_changes' | 'business_type' | 'service_location' | 'content_type' | 'details' | 'photos' | 'review';
 
 interface BusinessType {
   id: ContentSubtype;
@@ -117,6 +137,27 @@ export default function UniversalAddScreenV3() {
   // Track if we've already initialized to prevent race conditions
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
+  const { user } = useAuth();
+  // Duplicate check + "suggest changes" for a place that already exists at the address.
+  const [existingMatches, setExistingMatches] = useState<PlaceAtAddress[]>([]);
+  const [selectedExisting, setSelectedExisting] = useState<PlaceAtAddress | null>(null);
+  const [suggestForm, setSuggestForm] = useState<Record<string, string>>({});
+  const [suggestReason, setSuggestReason] = useState('');
+  const [suggestSending, setSuggestSending] = useState(false);
+  const [checkingExisting, setCheckingExisting] = useState(false);
+  // undefined = not read yet; null = nothing pending.
+  const [pendingAddress, setPendingAddress] = useState<AddressData | null | undefined>(undefined);
+  useEffect(() => {
+    AsyncStorage.getItem(PENDING_ADDRESS_KEY).then(raw => { try { setPendingAddress(raw ? JSON.parse(raw) : null); } catch { setPendingAddress(null); } }).catch(() => setPendingAddress(null));
+  }, []);
+  // Back from login with a saved address: continue exactly where the person left off.
+  useEffect(() => {
+    if (!pendingAddress || isLoading) return;
+    if (!user) { setManualAddressData(pendingAddress); setShowManualAddress(true); return; }
+    AsyncStorage.removeItem(PENDING_ADDRESS_KEY).catch(() => {});
+    const saved = pendingAddress; setPendingAddress(null);
+    void continueWithAddress(saved);
+  }, [pendingAddress, user, isLoading]);
   
   // Show resume modal when there's a pending draft
   useEffect(() => {
@@ -133,6 +174,8 @@ export default function UniversalAddScreenV3() {
     if (isLoading) return;
     if (hasInitialized) return;
     if (isResuming) return; // Don't request location while resuming
+    if (pendingAddress === undefined) return; // still reading the saved address
+    if (pendingAddress) { setHasInitialized(true); return; }
     
     // If there's a pending draft, the resume modal will handle it
     if (pendingDraft) {
@@ -149,7 +192,7 @@ export default function UniversalAddScreenV3() {
     // Only request new location if there's truly no draft
     handleRequestLocation();
     setHasInitialized(true);
-  }, [isLoading, currentDraft, pendingDraft, hasInitialized, isResuming]);
+  }, [isLoading, currentDraft, pendingDraft, hasInitialized, isResuming, pendingAddress]);
 
   useEffect(() => {
     if (currentDraft) {
@@ -261,7 +304,7 @@ export default function UniversalAddScreenV3() {
     
     if (confirmed) {
       await updateDraft({ status: 'draft_type_selected', current_step: 2 }, true);
-      setCurrentStep('business_type');
+      await goAfterAddress({ latitude: currentDraft.latitude, longitude: currentDraft.longitude, street: currentDraft.address_line1, city: currentDraft.city });
     } else {
       // Show manual address entry form
       setShowManualAddress(true);
@@ -276,60 +319,83 @@ export default function UniversalAddScreenV3() {
   // Save manual address and continue to next step
   const handleSaveManualAddress = async () => {
     const { address1, city, state } = manualAddressData;
-    
     if (!address1.trim() || !city.trim() || !state.trim()) {
       Alert.alert('Required', 'Please enter at least Address, City, and State.');
       return;
     }
-    
-    // Build formatted address
-    const formattedParts = [
-      manualAddressData.address1,
-      manualAddressData.address2,
-      manualAddressData.city,
-      manualAddressData.state,
-      manualAddressData.zipCode,
-      manualAddressData.country,
-    ].filter(Boolean);
-    const formatted = formattedParts.join(', ');
-    
+    await continueWithAddress(manualAddressData);
+  };
+
+  // Saves the address to the draft (or parks it and opens login), then checks for places already at that address.
+  const continueWithAddress = async (data: AddressData) => {
+    const formatted = [data.address1, data.address2, data.city, data.state, data.zipCode, data.country].filter(Boolean).join(', ');
     if (!currentDraft) {
+      if (!user) {
+        // Always offer a way forward: keep the address and come straight back here after signing in.
+        await AsyncStorage.setItem(PENDING_ADDRESS_KEY, JSON.stringify(data)).catch(() => {});
+        Alert.alert('Sign in to continue', 'Your address is saved. Sign in and we will pick up right where you left off.', [
+          { text: 'Sign in', onPress: () => navigation.navigate('Login', { returnTo: 'UniversalAdd', returnParams: route.params }) },
+          { text: 'Not now', style: 'cancel' },
+        ]);
+        return;
+      }
       const draft = await createDraft({
-        latitude: manualAddressData.latitude ?? null, longitude: manualAddressData.longitude ?? null,
-        address_line1: manualAddressData.address1, address_line2: manualAddressData.address2,
-        city: manualAddressData.city, region: manualAddressData.state,
-        postal_code: manualAddressData.zipCode, country: manualAddressData.country,
+        latitude: data.latitude ?? null, longitude: data.longitude ?? null,
+        address_line1: data.address1, address_line2: data.address2,
+        city: data.city, region: data.state,
+        postal_code: data.zipCode, country: data.country,
         formatted_address: formatted,
       });
-      if (!draft) { Alert.alert('Draft not saved', 'Please sign in and try again.'); return; }
+      if (!draft) { Alert.alert('Draft not saved', 'Please try again.'); return; }
     }
     // Use geocoded coordinates from the selected address, NOT user's current location
-    // manualAddressData.latitude/longitude come from Nominatim when user selects from autocomplete
     await updateDraft({
-      address_line1: manualAddressData.address1,
-      address_line2: manualAddressData.address2 || null,
-      city: manualAddressData.city,
-      region: manualAddressData.state || null,
-      postal_code: manualAddressData.zipCode || null,
-      country: manualAddressData.country || 'USA',
+      address_line1: data.address1,
+      address_line2: data.address2 || null,
+      city: data.city,
+      region: data.state || null,
+      postal_code: data.zipCode || null,
+      country: data.country || 'USA',
       formatted_address: formatted,
-      latitude: manualAddressData.latitude ?? null,
-      longitude: manualAddressData.longitude ?? null,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
       status: 'draft_type_selected',
       current_step: 2,
     }, true);
-    
     setShowManualAddress(false);
-    setManualAddressData({
-      address1: '',
-      address2: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      country: 'USA',
-      formattedAddress: '',
-    });
-    setCurrentStep('business_type');
+    setManualAddressData(EMPTY_ADDRESS);
+    await goAfterAddress({ latitude: data.latitude, longitude: data.longitude, street: data.address1, city: data.city });
+  };
+
+  // Next step after an address: "is it one of these?" when places already exist there, otherwise the business type.
+  const goAfterAddress = async (addr: { latitude?: number | null; longitude?: number | null; street?: string | null; city?: string | null }) => {
+    setCheckingExisting(true);
+    const matches = await findPlacesAtAddress(addr);
+    setCheckingExisting(false);
+    if (matches.length > 0) { setExistingMatches(matches); setCurrentStep('existing_places'); }
+    else setCurrentStep('business_type');
+  };
+
+  const chooseExisting = (place: PlaceAtAddress) => {
+    setSelectedExisting(place);
+    setSuggestForm(Object.fromEntries(EDITABLE_PLACE_FIELDS.map(f => [f.key, ((place[f.key] as string | null) || '')])));
+    setSuggestReason('');
+    setCurrentStep('suggest_changes');
+  };
+
+  const handleSubmitSuggestion = async () => {
+    if (!selectedExisting) return;
+    if (!user) { navigation.navigate('Login', { returnTo: 'UniversalAdd', returnParams: route.params }); return; }
+    setSuggestSending(true);
+    try {
+      await submitEditSuggestion({ placeId: selectedExisting.id, userId: user.id, current: selectedExisting, proposed: suggestForm, reason: suggestReason });
+      if (currentDraft) await deleteDraft();
+      const placeId = selectedExisting.id;
+      Alert.alert('Thanks!', 'Your suggested changes were sent. They will show on Tavvy after an admin approves them.', [
+        { text: 'View place', onPress: () => navigation.navigate('PlaceDetails', { placeId }) },
+      ]);
+    } catch (e) { Alert.alert('Not sent', (e as Error).message); }
+    finally { setSuggestSending(false); }
   };
 
   const handleCancelManualAddress = () => {
@@ -573,6 +639,8 @@ export default function UniversalAddScreenV3() {
   }, [selectedBusinessType]);
 
   const handleBack = () => {
+    if (currentStep === 'suggest_changes') { setCurrentStep('existing_places'); return; }
+    if (currentStep === 'existing_places') { setCurrentStep('location'); return; }
     const steps = getActiveSteps();
     const stepIndex = steps.indexOf(currentStep);
     if (stepIndex > 0) {
@@ -596,10 +664,12 @@ export default function UniversalAddScreenV3() {
     return STEPS_WITHOUT_SERVICE_LOCATION;
   }, [selectedBusinessType]);
 
-  const progress = useMemo(() => ((activeSteps.indexOf(currentStep) + 1) / activeSteps.length) * 100, [currentStep, activeSteps]);
+  const progress = useMemo(() => ((Math.max(0, activeSteps.indexOf(currentStep)) + 1) / activeSteps.length) * 100, [currentStep, activeSteps]);
   const stepTitle = useMemo(() => {
     switch (currentStep) {
       case 'location': return 'Confirm Location';
+      case 'existing_places': return 'Already on Tavvy?';
+      case 'suggest_changes': return 'Suggest changes';
       case 'business_type': return 'Business Type';
       case 'service_location': return 'Physical Location';
       case 'content_type': return 'What are you adding?';
@@ -672,10 +742,10 @@ export default function UniversalAddScreenV3() {
             </TouchableOpacity>
           </View>
         </View>
-      ) : isLoadingLocation ? (
+      ) : isLoadingLocation || checkingExisting ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#00C2CB" />
-          <Text style={styles.loadingText}>Getting your location...</Text>
+          <Text style={styles.loadingText}>{checkingExisting ? 'Checking this address on Tavvy...' : 'Getting your location...'}</Text>
         </View>
       ) : currentDraft?.formatted_address ? (
         <>
@@ -886,9 +956,51 @@ export default function UniversalAddScreenV3() {
     </View>
   );
 
+  const renderExistingPlacesStep = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepDescription}>We already have {existingMatches.length === 1 ? 'a place' : 'places'} at this address. Is yours one of these?</Text>
+      {existingMatches.map(place => (
+        <TouchableOpacity key={place.id} accessibilityRole="button" onPress={() => chooseExisting(place)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#E5E5EA', backgroundColor: '#fff', marginBottom: 10 }}>
+          {place.cover_image_url ? <Image source={{ uri: place.cover_image_url }} style={{ width: 52, height: 52, borderRadius: 10 }} /> : <View style={{ width: 52, height: 52, borderRadius: 10, backgroundColor: '#F0E7F8', alignItems: 'center', justifyContent: 'center' }}><Ionicons name="storefront-outline" size={22} color="#8A05BE" /></View>}
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111' }} numberOfLines={1}>{place.name}</Text>
+            <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }} numberOfLines={1}>{[place.tavvy_category, place.street].filter(Boolean).join(' · ')}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#999" />
+        </TouchableOpacity>
+      ))}
+      <Text style={{ fontSize: 13, color: '#666', marginTop: 4, marginBottom: 12 }}>Pick one to suggest changes to its details (an admin approves them), or continue with a new place.</Text>
+      <TouchableOpacity style={styles.saveAddressButton} onPress={() => setCurrentStep('business_type')} accessibilityRole="button">
+        <Text style={styles.saveAddressButtonText}>No, this is a new place</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderSuggestChangesStep = () => selectedExisting && (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepDescription}>Update what is wrong or missing for {selectedExisting.name}. Changes go live after an admin approves them.</Text>
+      {EDITABLE_PLACE_FIELDS.map(field => (
+        <View key={field.key} style={{ marginBottom: 12 }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: '#333', marginBottom: 6 }}>{field.label}</Text>
+          <TextInput value={suggestForm[field.key] || ''} onChangeText={v => setSuggestForm(old => ({ ...old, [field.key]: v }))} placeholder={field.label} placeholderTextColor="#999" autoCapitalize={field.key === 'website' ? 'none' : 'words'} keyboardType={field.key === 'phone' ? 'phone-pad' : field.key === 'website' ? 'url' : 'default'} style={{ borderWidth: 1, borderColor: '#E5E5EA', borderRadius: 10, padding: 12, fontSize: 15, color: '#111', backgroundColor: '#fff' }} accessibilityLabel={field.label} />
+        </View>
+      ))}
+      <Text style={{ fontSize: 13, fontWeight: '600', color: '#333', marginBottom: 6 }}>Anything the admin should know? (optional)</Text>
+      <TextInput value={suggestReason} onChangeText={setSuggestReason} placeholder="e.g. They moved, new phone number, closed on Mondays" placeholderTextColor="#999" multiline maxLength={500} style={{ minHeight: 70, borderWidth: 1, borderColor: '#E5E5EA', borderRadius: 10, padding: 12, fontSize: 15, color: '#111', backgroundColor: '#fff', textAlignVertical: 'top' }} accessibilityLabel="Reason" />
+      <View style={[styles.manualAddressButtons, { marginTop: 18 }]}>
+        <TouchableOpacity style={styles.cancelButton} onPress={() => setCurrentStep('existing_places')} accessibilityRole="button"><Text style={styles.cancelButtonText}>Back</Text></TouchableOpacity>
+        <TouchableOpacity style={[styles.saveAddressButton, suggestSending && styles.saveAddressButtonDisabled]} onPress={handleSubmitSuggestion} disabled={suggestSending} accessibilityRole="button">
+          {suggestSending ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveAddressButtonText}>Send suggestion</Text>}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   const renderCurrentStep = () => {
     switch (currentStep) {
       case 'location': return renderLocationStep();
+      case 'existing_places': return renderExistingPlacesStep();
+      case 'suggest_changes': return renderSuggestChangesStep();
       case 'business_type': return renderBusinessTypeStep();
       case 'service_location': return renderServiceLocationStep();
       case 'content_type': return renderContentTypeStep();

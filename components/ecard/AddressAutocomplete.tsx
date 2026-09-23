@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { cleanAddressLabel } from '../../lib/addPlaceFlow';
+
 // Address interface
 export interface AddressData {
   address1: string;
@@ -97,7 +99,7 @@ export default function AddressAutocomplete({ value, onChange }: Props) {
     setLoading(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&countrycodes=us&limit=5`,
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&countrycodes=us&limit=8&layer=address`,
         {
           headers: {
             'User-Agent': 'TavvyApp/1.0',
@@ -132,13 +134,15 @@ export default function AddressAutocomplete({ value, onChange }: Props) {
       
       // Transform Nominatim results to match our prediction format
       // Include lat/lon from Nominatim for geocoding
+      // Addresses only: a clean "number street, city, state zip" label, never a business name.
+      const seen = new Set<string>();
       const predictions = data.map((item: any) => ({
         place_id: item.place_id.toString(),
-        description: item.display_name,
+        description: cleanAddressLabel(item.address) || '',
         address: item.address,
         lat: item.lat,
         lon: item.lon,
-      }));
+      })).filter((item: any) => { if (!item.description || seen.has(item.description)) return false; seen.add(item.description); return true; });
       
       setPredictions(predictions);
     } catch (error) {
