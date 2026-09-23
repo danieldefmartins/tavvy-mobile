@@ -1,18 +1,33 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const HEADS_UP_ACK_KEY = '@tavvy_headsup_ack';
 import * as Haptics from 'expo-haptics';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useReleaseCopy } from '../hooks/useReleaseCopy';
 import { EvidenceSubject } from '../lib/placeEvidence';
 import { SignalTapSelection } from '../lib/signalTapSelection';
-import { ComposerSignal, reviewComposerSections, reviewChoiceIntensity, toggleComposerChoice, emphasizeComposerChoice, selectedReviewChoices, visibleReviewChoices } from '../lib/reviewComposer';
+import { ComposerSignal, reviewComposerSections, reviewChoiceIntensity, toggleComposerChoice, emphasizeComposerChoice, selectedReviewChoices, visibleReviewChoices, ComposerChoice } from '../lib/reviewComposer';
 export default function ReviewChoices({ signals, subject, selected, onChange, disabled = false, maxSelections = 100 }: {
   signals: ComposerSignal[]; subject?: EvidenceSubject; selected: SignalTapSelection; onChange: (next: SignalTapSelection) => void; disabled?: boolean; maxSelections?: number;
 }) {
   const { theme, isDark } = useThemeContext(); const copy = useReleaseCopy();
   const [query, setQuery] = useState(''), [expanded, setExpanded] = useState<string[]>([]), [emphasis, setEmphasis] = useState(false);
   const [active, setActive] = useState<string | null>(null);
+  // First Heads Up in a review gets a one-time explanation: it counts against the place. Remembered per device.
+  const pick = async (choice: ComposerChoice) => {
+    const apply = () => { onChange(toggleComposerChoice(selected, choice)); void Haptics.selectionAsync().catch(() => {}); };
+    if (choice.signal_type !== 'heads_up' || reviewChoiceIntensity(selected, choice)) return apply();
+    let seen = false;
+    try { seen = !!(await AsyncStorage.getItem(HEADS_UP_ACK_KEY)); } catch {}
+    if (seen) return apply();
+    Alert.alert(copy('A quick note on Heads Up'), copy('Heads Up tells other people what to watch out for, and it counts against this place. Add it when it would genuinely help someone decide.'), [
+      { text: copy('Not now'), style: 'cancel' },
+      { text: copy('Add it'), onPress: () => { AsyncStorage.setItem(HEADS_UP_ACK_KEY, new Date().toISOString()).catch(() => {}); apply(); } },
+    ]);
+  };
   const sections = reviewComposerSections(signals, subject, query).filter(section => section.signals.length);
   const choices = selectedReviewChoices(signals, selected), searching = !!query.trim();
   const activeKey = active ?? sections[0]?.key;
@@ -33,7 +48,7 @@ export default function ReviewChoices({ signals, subject, selected, onChange, di
         {open && <View style={{paddingBottom:16}}>
           <View style={styles.choices}>{visibleReviewChoices(section, selected, all, 8).map(choice => {
             const intensity = reviewChoiceIntensity(selected, choice), unavailable = disabled || (atLimit && !intensity);
-            return <Pressable key={choice.id} accessibilityRole="button" accessibilityState={{ selected: !!intensity, disabled: unavailable }} disabled={unavailable} onPress={() => { onChange(toggleComposerChoice(selected, choice)); void Haptics.selectionAsync().catch(() => {}); }} style={[styles.choice, { opacity: unavailable ? .6 : 1, borderColor: intensity ? accent : theme.border, backgroundColor: intensity ? isDark ? '#33213F' : '#F4EAF9' : theme.background }]}>
+            return <Pressable key={choice.id} accessibilityRole="button" accessibilityState={{ selected: !!intensity, disabled: unavailable }} disabled={unavailable} onPress={() => { void pick(choice); }} style={[styles.choice, { opacity: unavailable ? .6 : 1, borderColor: intensity ? accent : theme.border, backgroundColor: intensity ? isDark ? '#33213F' : '#F4EAF9' : theme.background }]}>
               {!!intensity && <Ionicons name="checkmark" size={15} color={theme.text}/>}<Text style={[styles.choiceText, text, intensity ? { fontWeight: '600' } : {}]}>{choice.label}{intensity > 1 ? ' ×'+intensity : ''}</Text>
             </Pressable>;
           })}</View>

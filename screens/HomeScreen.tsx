@@ -2648,7 +2648,7 @@ function HomeScreen({ navigation, route }: { navigation: any; route?: any }) {
         <CardHero photos={photos.length ? photos.slice(0, 5) : [image.src]} isCategory={image.isCategory} name={place.name} meta={`${((place as any).subcategory || place.category || place.primary_category || '').replace(/_/g,' ')}${distance ? ' · '+distance : ''}`} address={fullAddress} onPress={() => handlePlacePress(place)} surface={theme.surface} copy={copy} />
         {/* One expandable review row per section keeps the card comparable. */}
         <View style={{paddingHorizontal:14,paddingTop:10,paddingBottom:2}}>
-          <PlaceReviewGrid explain summary={(place as any).reviewSummary || previewSummaries[place.id] || buildPlaceReviewSummary(null, { category: (place as any).tavvy_category || place.primary_category || place.category, subcategory: (place as any).subcategory }, (place as any).evidenceStatus || 'unavailable')} />
+          <PlaceReviewGrid explain summary={(place as any).reviewSummary || previewSummaries[place.id] || buildPlaceReviewSummary(null, { category: (place as any).tavvy_category || place.primary_category || place.category, subcategory: (place as any).subcategory }, (place as any).evidenceStatus || 'unavailable')} onOpen={() => handlePlacePress(place)} />
         </View>
         
         {/* Quick Actions */}

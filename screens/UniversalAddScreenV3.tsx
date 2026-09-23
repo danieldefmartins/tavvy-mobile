@@ -43,6 +43,7 @@ import { useLocation, LocationData } from '../hooks/useLocation';
 import ECardAddressAutocomplete, { AddressData } from '../components/ecard/AddressAutocomplete';
 import { useAuth } from '../contexts/AuthContext';
 import { EDITABLE_PLACE_FIELDS, findPlacesAtAddress, PlaceAtAddress, submitEditSuggestion } from '../lib/addPlaceFlow';
+import { searchBusinessCategories } from '../lib/businessCategories';
 
 // Address typed before signing in; restored after login so nobody has to start over.
 const PENDING_ADDRESS_KEY = '@tavvy_add_pending_address';
@@ -144,6 +145,8 @@ export default function UniversalAddScreenV3() {
   const [suggestForm, setSuggestForm] = useState<Record<string, string>>({});
   const [suggestReason, setSuggestReason] = useState('');
   const [suggestSending, setSuggestSending] = useState(false);
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
+  const [categoryQuery, setCategoryQuery] = useState('');
   const [checkingExisting, setCheckingExisting] = useState(false);
   // undefined = not read yet; null = nothing pending.
   const [pendingAddress, setPendingAddress] = useState<AddressData | null | undefined>(undefined);
@@ -877,6 +880,24 @@ export default function UniversalAddScreenV3() {
         <TextInput style={styles.input} value={formData.name || ''} onChangeText={(text) => handleUpdateFormData('name', text)}
           placeholder="Enter name" placeholderTextColor="#999" />
       </View>
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>Category *</Text>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Category" onPress={() => { setCategoryQuery(''); setCategoryPickerOpen(true); }} style={[styles.input, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+          <Text style={{ fontSize: 16, color: formData.tavvy_category ? '#333' : '#999', textTransform: formData.tavvy_category ? 'capitalize' : 'none' }}>{formData.tavvy_category || 'Choose a category'}</Text>
+          <Ionicons name="chevron-down" size={18} color="#999" />
+        </TouchableOpacity>
+      </View>
+      <Modal visible={categoryPickerOpen} animationType="slide" onRequestClose={() => setCategoryPickerOpen(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 }}>
+            <TextInput autoFocus value={categoryQuery} onChangeText={setCategoryQuery} placeholder="Search categories (e.g. construction, bakery, public restroom)" placeholderTextColor="#999" style={[styles.input, { flex: 1 }]} accessibilityLabel="Search categories" />
+            <TouchableOpacity accessibilityRole="button" onPress={() => setCategoryPickerOpen(false)} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 6 }}><Text style={{ color: '#00A3AB', fontWeight: '700' }}>Close</Text></TouchableOpacity>
+          </View>
+          <FlatList data={searchBusinessCategories(categoryQuery)} keyExtractor={item => item} keyboardShouldPersistTaps="handled" initialNumToRender={30}
+            renderItem={({ item }) => <TouchableOpacity accessibilityRole="button" onPress={() => { handleUpdateFormData('tavvy_category', item.toLowerCase()); setCategoryPickerOpen(false); }} style={{ paddingVertical: 14, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#eee', backgroundColor: formData.tavvy_category === item.toLowerCase() ? '#EFF6FF' : '#fff' }}><Text style={{ fontSize: 16, color: '#111' }}>{item}</Text></TouchableOpacity>}
+            ListEmptyComponent={<Text style={{ padding: 20, color: '#666' }}>No match. Try another word, or pick "Other" and describe it in the details.</Text>} />
+        </SafeAreaView>
+      </Modal>
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Description</Text>
         <TextInput style={[styles.input, styles.inputMultiline]} value={formData.description || ''}
