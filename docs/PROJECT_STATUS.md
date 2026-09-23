@@ -2,6 +2,14 @@
 
 ## Apple release completion — September 22 (branch `feature/apple-release-completion-20260922`)
 
+### Fix round after TestFlight build 29 (September 23) — pushed, NOT built yet
+- Home category tiles (Hotels etc.) slow/empty: production builds had no `EXPO_PUBLIC_TYPESENSE_API_KEY`, so the index returned 401 and search fell back to the database; plural words ("Hotels") matched nothing. Fixed by `singularizeQuery` in `lib/searchIntent.ts` (shared with web) and the public search-only key as fallback in `lib/typesenseService.ts`.
+- Discover tab tapped while the map / category sheet is open now returns to the home page.
+- Food Menu tool: Dishes | Restaurants toggle (route param `mode`); Restaurants lists places with a published menu via RPC `search_food_menu_places` (migration `202609230100_search_food_menu_places.sql`, applied live).
+- Menu screen: cover page (hero, tagline, See Full Menu, chef's pick / dish of the day / specials tiles) and text menu restyled to match tavvy.com; dietary filters behind a funnel icon; the tab bar is hidden in the photo menu (`lib/tabBarStyle.ts` shared with `App.tsx`) so the price row is never covered; back returns to the previous screen.
+- Dev QA link `tavvy://qa/theme?mode=dark|light|system`.
+- Web (`a975ec8` on `release/verified-web-20260921`): same Food Menu modes, brand-colored map controls with a thermometer icon, photo-menu back button returns to the previous page.
+
 Source published on the feature branch from `release/apple-final-20260922` (`1abd8e1`).
 Not merged. EAS store build 29 (`bce12481`, profile `production-iap`, version 1.0.1)
 was built from `ca13af7` and submitted to App Store Connect / TestFlight the same day.
