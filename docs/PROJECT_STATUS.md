@@ -11,6 +11,7 @@
 - Map results header: one compact row (title, "N places · scope", Add a place) instead of three stacked lines; "Missing something?" prompt when results are empty and at the end of the list. `HomeMain` accepts `view: 'map'`.
 - Tools screen: "Review anything" card (`components/ReviewWishlistCard.tsx`) with Add a place and a what-to-review-next survey stored in `review_wishlist_responses` (migration `202609230200`, RLS insert-only for the API).
 - Add a place: address-only autocomplete labels; duplicate check via RPC `places_at_address` (migration `202609230300`) with an "Is yours one of these?" step; suggest-changes form writes pending rows to `edit_suggestions` (admin approves in admin.tavvy.com → Moderation → Feedback); typed address is kept on the device while the person signs in and the flow resumes after login.
+- Chain covers: `lib/chainCovers.ts` + `realPlacePhotos` fallback give national chains (Domino's, Starbucks, McDonald's, …) a storefront cover served from tavvy.com/chain-covers; `chain_covers` table + trigger on `places` (migration `202609230400`).
 - Web (`a975ec8` on `release/verified-web-20260921`): same Food Menu modes, brand-colored map controls with a thermometer icon, photo-menu back button returns to the previous page.
 
 Source published on the feature branch from `release/apple-final-20260922` (`1abd8e1`).
