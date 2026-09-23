@@ -12,6 +12,7 @@ import { useEffect } from 'react';
 import { Linking } from 'react-native';
 import { createNavigationContainerRef } from '@react-navigation/native';
 import { supabase } from './supabaseClient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const navigationRef = createNavigationContainerRef<any>();
 
@@ -36,6 +37,12 @@ function handleQaUrl(url: string | null): void {
   }
   if (parsed.pathname === '/signout') {
     void supabase.auth.signOut();
+    return;
+  }
+  if (parsed.pathname === '/theme') {
+    // Dev-only: persist the appearance choice (light | dark | system); takes effect on the next launch.
+    const mode = parsed.searchParams.get('mode');
+    if (mode === 'light' || mode === 'dark' || mode === 'system') void AsyncStorage.setItem('@tavvy_theme_mode', mode);
     return;
   }
   if (parsed.pathname !== '/nav') return;

@@ -1938,6 +1938,20 @@ function HomeScreen({ navigation }: { navigation: any }) {
     setTargetLocation(null);
   };
 
+  // Tapping the Discover tab while the map or a category sheet is open returns to the home page.
+  const homeTabResetRef = useRef({ viewMode, showCategoryResults });
+  homeTabResetRef.current = { viewMode, showCategoryResults };
+  useEffect(() => {
+    const tabs = navigation?.getParent?.();
+    if (!tabs?.addListener) return;
+    return tabs.addListener('tabPress', () => {
+      if (!navigation.isFocused?.()) return;
+      const { viewMode: mode, showCategoryResults: sheetOpen } = homeTabResetRef.current;
+      if (mode === 'map') switchToStandardMode();
+      if (sheetOpen) closeCategoryResults();
+    });
+  }, [navigation]);
+
   // ============================================
   // PLACE HANDLING
   // ============================================

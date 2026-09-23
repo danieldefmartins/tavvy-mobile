@@ -20,7 +20,8 @@ import { logSearchAnalytics } from './searchAnalytics';
 const TYPESENSE_HOST = process.env.EXPO_PUBLIC_TYPESENSE_HOST || 'tavvy-typesense-production.up.railway.app';
 const TYPESENSE_PORT = process.env.EXPO_PUBLIC_TYPESENSE_PORT || '443';
 const TYPESENSE_PROTOCOL = process.env.EXPO_PUBLIC_TYPESENSE_PROTOCOL || 'https';
-const TYPESENSE_API_KEY = process.env.EXPO_PUBLIC_TYPESENSE_API_KEY || '';
+// Search-only key (the same one tavvy.com ships in its browser bundle). Production builds have no EXPO_PUBLIC_TYPESENSE_API_KEY, so without this fallback every index request was a 401 and search fell back to the slower database path.
+const TYPESENSE_API_KEY = process.env.EXPO_PUBLIC_TYPESENSE_API_KEY || '1RCiJLedjuTvcPBq2kfL9VNpm6iw4wbf';
 
 export interface TypesensePlace {
   fsq_place_id: string;

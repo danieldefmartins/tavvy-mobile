@@ -33,6 +33,7 @@ import { preloadSignalCache } from './lib/reviews';
 import { loadAppSettings } from './lib/settingsPreferences';
 import { IAP_ENABLED } from './lib/iapConfig';
 import { navigationRef, useDevQaDeepLinks } from './lib/devQaNavigation';
+import { tabBarStyle } from './lib/tabBarStyle';
 
 // Screens
 import HomeScreen from './screens/HomeScreen';
@@ -596,14 +597,7 @@ function TabNavigator() {
         headerShown: false,
         tabBarActiveTintColor: isDark ? '#FFFFFF' : '#111827',
         tabBarInactiveTintColor: theme.textSecondary,
-        tabBarStyle: {
-          backgroundColor: isDark ? '#0F0F0F' : '#FAFAFA',
-          borderTopColor: 'transparent',
-          borderTopWidth: 0,
-          height: 85,
-          paddingBottom: 20,
-          paddingTop: 8,
-        },
+        tabBarStyle: tabBarStyle(isDark),
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
 
