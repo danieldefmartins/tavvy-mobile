@@ -8,6 +8,8 @@
 - Food Menu tool: Dishes | Restaurants toggle (route param `mode`); Restaurants lists places with a published menu via RPC `search_food_menu_places` (migration `202609230100_search_food_menu_places.sql`, applied live).
 - Menu screen: cover page (hero, tagline, See Full Menu, chef's pick / dish of the day / specials tiles) and text menu restyled to match tavvy.com; dietary filters behind a funnel icon; the tab bar is hidden in the photo menu (`lib/tabBarStyle.ts` shared with `App.tsx`) so the price row is never covered; back returns to the previous screen.
 - Dev QA link `tavvy://qa/theme?mode=dark|light|system`.
+- Map results header: one compact row (title, "N places · scope", Add a place) instead of three stacked lines; "Missing something?" prompt when results are empty and at the end of the list. `HomeMain` accepts `view: 'map'`.
+- Tools screen: "Review anything" card (`components/ReviewWishlistCard.tsx`) with Add a place and a what-to-review-next survey stored in `review_wishlist_responses` (migration `202609230200`, RLS insert-only for the API).
 - Web (`a975ec8` on `release/verified-web-20260921`): same Food Menu modes, brand-colored map controls with a thermometer icon, photo-menu back button returns to the previous page.
 
 Source published on the feature branch from `release/apple-final-20260922` (`1abd8e1`).
