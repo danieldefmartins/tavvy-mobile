@@ -1838,6 +1838,12 @@
     "purchase16": "If you just checked out, wait a moment and try again.",
     "purchase17": "Purchases through Apple are not available in this version yet.",
     "purchase18": "Your purchases have been restored.",
-    "purchase19": "Could not restore purchases. Please try again."
+    "purchase19": "Could not restore purchases. Please try again.",
+    "addPlace": "Add a place",
+    "missingSomething": "Missing something?",
+    "addPlaceHint": "Anything that can get a review is a place: a restaurant, a ride, even a public bathroom.",
+    "nearbyPlaces": "Nearby places",
+    "placesWord": "places",
+    "nearYou": "Near you"
   }
 }

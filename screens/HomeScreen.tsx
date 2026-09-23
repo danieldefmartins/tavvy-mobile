@@ -426,7 +426,7 @@ function CardHero({ photos, isCategory, name, meta, address, onPress, surface, c
   );
 }
 
-function HomeScreen({ navigation }: { navigation: any }) {
+function HomeScreen({ navigation, route }: { navigation: any; route?: any }) {
   const copy = useReleaseCopy();
   const { t } = useTranslation();
   // Theme context for dark mode support
@@ -1778,8 +1778,25 @@ function HomeScreen({ navigation }: { navigation: any }) {
     } finally { if (requestId === submittedSearchRef.current) setLoading(false); }
   };
 
-  const renderSearchControls = () => <View style={{ paddingVertical: 8, gap: 8 }}>
-    <Text accessibilityLiveRegion="polite" style={{ color: theme.textSecondary }}>{searchScopeLabel === 'Any location' ? copy('Any location') : searchScopeLabel}</Text>
+  const openAddPlace = () => navigation.navigate('Apps', { screen: 'UniversalAdd' });
+  // The initial map load is a nearby fetch, not a search, so the scope reads "Near you" once the location is known.
+  const scopeText = searchScopeLabel === 'Any location' ? (userLocation ? copy('Near you') : copy('Any location')) : searchScopeLabel;
+  // One compact header instead of three stacked lines: title, "N places · scope", and the Add a place button.
+  const addPlaceButton = <TouchableOpacity accessibilityRole="button" accessibilityLabel={copy('Add a place')} onPress={openAddPlace} style={[styles.addPlaceBtn, { borderColor: theme.primary }]}><Ionicons name="add" size={16} color={theme.primary} /><Text style={[styles.addPlaceBtnText, { color: theme.primary }]}>{copy('Add a place')}</Text></TouchableOpacity>;
+  const renderResultsHeader = (title: string, count: number) => <View style={styles.resultsHeader}>
+    <View style={{ flex: 1, minWidth: 0 }}>
+      <Text style={[styles.resultsTitle, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>{title}</Text>
+      <Text accessibilityLiveRegion="polite" style={[styles.resultsMeta, { color: isDark ? theme.textSecondary : '#666' }]} numberOfLines={1}>{count} {copy('places')} · {scopeText}</Text>
+    </View>
+    {addPlaceButton}
+  </View>;
+  // Anything that can get a review is a place, so an empty (or thin) result always offers to add one.
+  const renderAddPlacePrompt = () => <TouchableOpacity accessibilityRole="button" onPress={openAddPlace} style={[styles.addPlacePrompt, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+    <View style={[styles.addPlacePromptIcon, { backgroundColor: `${theme.primary}20` }]}><Ionicons name="add-circle" size={22} color={theme.primary} /></View>
+    <View style={{ flex: 1 }}><Text style={{ color: theme.text, fontWeight: '700' }}>{copy('Missing something?')}</Text><Text style={{ color: theme.textSecondary, fontSize: 13, lineHeight: 18, marginTop: 2 }}>{copy('Anything that can get a review is a place: a restaurant, a ride, even a public bathroom.')}</Text></View>
+    <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+  </TouchableOpacity>;
+  const renderSearchControls = () => <View style={{ paddingVertical: 4, gap: 8 }}>
     {(searchDining || isDiningSearch(searchQuery)) && <ScrollView horizontal showsHorizontalScrollIndicator={false}>{DINING_NEEDS.map(need => <TouchableOpacity key={need.id} accessibilityRole="button" accessibilityState={{ selected: diningNeed === need.id }} onPress={() => { const next = diningNeed === need.id ? '' : need.id; setDiningNeed(next); void handleSearchSubmit(searchQuery || "restaurants", next); }} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginRight: 7, borderRadius: 22, backgroundColor: diningNeed === need.id ? theme.primary : theme.surface }}><Text style={{ color: diningNeed === need.id ? '#fff' : theme.text }}>{copy(need.label)}</Text></TouchableOpacity>)}</ScrollView>}
     {showDemoFallback && <TouchableOpacity accessibilityRole="button" accessibilityLabel={copy('View demo') + ' · Trattoria Tavvy'} onPress={() => navigation.navigate('DemoRestaurant' as never)} style={{ padding: 16, gap: 6, borderWidth: 1, borderColor: theme.border, borderRadius: 12, backgroundColor: theme.surface }}><Text style={{ color: theme.text, fontWeight: '700' }}>Trattoria Tavvy</Text><Text style={{ color: theme.textSecondary }}>{copy('Illustrative demo')}</Text><Text style={{ color: theme.primary }}>{copy('View demo')} →</Text></TouchableOpacity>}
     {!!searchError && <Text accessibilityRole="alert" style={{ color: theme.text }}>{copy(searchError)}</Text>}
@@ -1937,6 +1954,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
     setSearchedAddress(null);
     setTargetLocation(null);
   };
+
+  // `view: 'map'` opens the map directly (deep links and other screens).
+  useEffect(() => { if (route?.params?.view === 'map') switchToMapMode(); }, [route?.params?.view]);
 
   // Tapping the Discover tab while the map or a category sheet is open returns to the home page.
   const homeTabResetRef = useRef({ viewMode, showCategoryResults });
@@ -3718,11 +3738,9 @@ function HomeScreen({ navigation }: { navigation: any }) {
                   });
                 }, 100);
               }}
-              ListHeaderComponent={
-                <View>{renderSearchControls()}<Text style={[styles.bottomSheetResultsCount, { color: isDark ? theme.textSecondary : '#666' }]}>
-                  {filteredPlaces.length} places · {searchScopeLabel}
-                </Text></View>
-              }
+              ListHeaderComponent={<View>{renderResultsHeader(searchQuery.trim() ? `"${searchQuery.trim()}"` : copy('Nearby places'), filteredPlaces.length)}{renderSearchControls()}</View>}
+              ListEmptyComponent={renderAddPlacePrompt()}
+              ListFooterComponent={filteredPlaces.length > 0 ? <View style={{ marginTop: 12 }}>{renderAddPlacePrompt()}</View> : null}
             />
           )}
         </BottomSheet>
@@ -3744,7 +3762,11 @@ function HomeScreen({ navigation }: { navigation: any }) {
           <View style={[styles.categorySheetHeader, { backgroundColor: isDark ? theme.background : '#fff' }]}>
             {/* Title Row with Close Button */}
             <View style={styles.categoryResultsTitleRow}>
-              <Text style={[styles.categoryResultsTitle, { color: isDark ? theme.text : '#000' }]}>{selectedCategory}</Text>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[styles.categoryResultsTitle, { color: isDark ? theme.text : '#000' }]} numberOfLines={1}>{selectedCategory}</Text>
+                <Text style={[styles.resultsMeta, { color: isDark ? theme.textSecondary : '#666' }]} numberOfLines={1}>{isLoadingCategoryResults ? copy('Searching…') : `${categoryResultsPlaces.length} ${copy('places')} · ${scopeText}`}</Text>
+              </View>
+              {addPlaceButton}
               <TouchableOpacity 
                 onPress={closeCategoryResults} 
                 style={[styles.categoryResultsCloseBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#f0f0f0' }]}
@@ -5151,6 +5173,13 @@ const styles = StyleSheet.create({
   bottomSheetCategoryChipTextActive: {
     color: '#fff',
   },
+  resultsHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4, paddingTop: 2, paddingBottom: 6 },
+  resultsTitle: { fontSize: 18, fontWeight: '700' },
+  resultsMeta: { fontSize: 13, marginTop: 2 },
+  addPlaceBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36, paddingLeft: 8, paddingRight: 12, borderRadius: 18, borderWidth: 1.5, marginRight: 6 },
+  addPlaceBtnText: { fontSize: 13, fontWeight: '700' },
+  addPlacePrompt: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1, marginVertical: 6 },
+  addPlacePromptIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   bottomSheetResultsCount: {
     fontSize: 13,
     marginBottom: 8,

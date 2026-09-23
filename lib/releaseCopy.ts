@@ -1496,3 +1496,6 @@ Object.assign(RELEASE_COPY_KEYS, {
   "Place not found.": "onboardPlace14",
   "Link unavailable": "onboardPlace15"
 });
+
+// Map results header + add-a-place prompt.
+Object.assign(RELEASE_COPY_KEYS, {"Add a place": "addPlace", "Missing something?": "missingSomething", "Anything that can get a review is a place: a restaurant, a ride, even a public bathroom.": "addPlaceHint", "Nearby places": "nearbyPlaces", "places": "placesWord", "Near you": "nearYou"});
