@@ -9,15 +9,17 @@
 
 Layouts follow the designer's 300 ppi exports (horizontal 838x292: mark in
 x 113-325 / y 57-222, wordmark x 366-723 / y 122-234; stacked 496x496: mark
-x 129-366 / y 84-270, wordmark x 69-427 / y 300-412; icon: mark 74% wide,
-centered on navy).
+x 129-366 / y 84-270, wordmark x 69-427 / y 300-412). App icon: mark 64% wide,
+centered on a light lavender gradient (#FCF9FF top -> #E2D4FA bottom); the
+navy background made the purple leg disappear.
 
 Outputs (RGBA PNG):
   assets/brand/tavvy-logo-horizontal-{dark,white}.png   2514x876
   assets/brand/tavvy-logo-stacked-{dark,white}.png      1024x1024
   assets/brand/tavvy-mark.png                           1024x1024 transparent
   assets/brand/tavvy-mark-circle.png                    1024x1024 mark on a navy circle
-  assets/icon.png                                       App Store icon (opaque navy)
+  assets/icon.png                                       App Store icon (opaque lavender gradient)
+  ios/Tavvy/Images.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png (same)
   assets/adaptive-icon.png                              Android adaptive foreground
   assets/splash-mark.png, assets/favicon.png
   ios/Tavvy/Images.xcassets/SplashScreenLogo.imageset/image*.png (from stacked white)
@@ -29,6 +31,8 @@ import os
 
 NAVY = (23, 1, 58, 255)
 WHITE = (255, 255, 255, 255)
+ICON_TOP = (252, 249, 255)
+ICON_BOTTOM = (226, 212, 250)
 MARK = Image.open('assets/brand/tavvy-mark-source.png').convert('RGBA')
 WORD = Image.open('assets/brand/tavvy-wordmark-dark.png').convert('RGBA')
 
@@ -79,6 +83,18 @@ def mark_on(px, frac, bg=None, circle=False):
     return c
 
 
+def app_icon(px=1024, frac=0.64):
+    from PIL import ImageDraw
+    c = Image.new('RGBA', (px, px))
+    d = ImageDraw.Draw(c)
+    for y in range(px):
+        t = y / (px - 1)
+        d.line([(0, y), (px, y)], fill=tuple(round(a + (b - a) * t) for a, b in zip(ICON_TOP, ICON_BOTTOM)) + (255,))
+    m = fit(MARK, px * frac)
+    place(c, m, (px - m.width) / 2, (px - m.height) / 2)
+    return c.convert('RGB')
+
+
 if __name__ == '__main__':
     horizontal(NAVY).save('assets/brand/tavvy-logo-horizontal-dark.png', optimize=True)
     horizontal(WHITE).save('assets/brand/tavvy-logo-horizontal-white.png', optimize=True)
@@ -87,7 +103,9 @@ if __name__ == '__main__':
     white.save('assets/brand/tavvy-logo-stacked-white.png', optimize=True)
     mark_on(1024, 1.0).save('assets/brand/tavvy-mark.png', optimize=True)
     mark_on(1024, 0.62, bg=NAVY, circle=True).save('assets/brand/tavvy-mark-circle.png', optimize=True)
-    mark_on(1024, 0.74, bg=NAVY).convert('RGB').save('assets/icon.png', optimize=True)
+    icon = app_icon()
+    icon.save('assets/icon.png', optimize=True)
+    icon.save('ios/Tavvy/Images.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png', optimize=True)
     mark_on(1024, 0.56, bg=NAVY).save('assets/adaptive-icon.png', optimize=True)
     mark_on(1024, 0.76).save('assets/splash-mark.png', optimize=True)
     mark_on(256, 1.0).resize((64, 64), Image.LANCZOS).save('assets/favicon.png', optimize=True)
