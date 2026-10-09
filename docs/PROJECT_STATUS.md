@@ -1,5 +1,42 @@
 # Tavvy current engineering status
 
+## App Review recovery — October 9, 2026 (local, not released)
+
+Branch `fix/apple-review-20261009`, based on `da4b194`. This is a local candidate;
+no replacement App Store build or backend deployment has been made.
+
+- Added a direct eCard Pro plans entry and replaced obsolete `ProSubscription`
+  navigation. The hub now reads the same canonical eCard entitlement as the editor.
+  The old card-limit sheet contained the invalid route but was not reproduced as
+  a reachable sheet in the current UI; do not call it the proven rejection cause.
+- iOS Pros registration now creates a profile and opens `ProsPaywall`, avoiding
+  the legacy subscription-grant endpoint and its non-StoreKit pricing step.
+  Corrected the non-iOS dashboard route name.
+- Prepared registration backend corrections: caller-specific required slug,
+  validated PostGIS coordinates instead of city text, explicitly unpaid/inactive
+  new profiles, and reuse of an existing caller-owned profile on retry.
+  These corrections are NOT deployed; CLI authentication was unavailable.
+- Corrected EN/PT/ES account-deletion notices: Apple billing must be cancelled
+  separately in App Store account settings.
+
+Validation: app TypeScript check, Deno registration-function check, and 14 targeted
+navigation/registration/content-safety tests passed. iPhone 17 Pro Max/iOS 26.5
+native development-app checks verified sign-in, eCard editor-to-paywall navigation,
+the new direct eCard plans button, Pros dashboard-to-paywall navigation, the first
+deletion warning (cancelled without deleting), Saved, RV & Camping, Universes,
+and Realtors entry screens. The simulator build keeps IAP disabled; its “Coming
+soon” text is NOT evidence about App Store build 30's compiled setting.
+
+Two older baseline suites have stale mocks: account-deletion-settings fails on
+an unmocked supabaseClient dependency, and tools-footer-navigation fails on an
+unmocked tabBarStyle symbol. No full-suite pass or iPad QA is claimed.
+
+Release gates remain: deploy and exercise the backend registration fix, establish
+exact submitted-build provenance, create genuine expired sandbox subscriptions,
+and verify all three products plus restore on a physical TestFlight device. Update
+review notes with tested paths and replace disabled-purchase review screenshots
+with captures from the final IAP-enabled build. Store messaging remains a draft.
+
 ## Apple release completion — September 22 (branch `feature/apple-release-completion-20260922`)
 
 ### Fix round after TestFlight build 29 (September 23) — pushed, NOT built yet

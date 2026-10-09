@@ -1,3 +1,4 @@
+import { useECardEntitlement } from '../../hooks/useECardEntitlement';
 import { readECardLinks, replaceECardLinks } from '../../lib/ecard/linkPersistence';
 import { useReleaseCopy } from '../../hooks/useReleaseCopy';
 import FocusedStatusBar from '../../components/FocusedStatusBar';
@@ -77,9 +78,7 @@ export default function ECardHubScreen() {
 
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Role-based card limits
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [isPro, setIsPro] = useState(false);
+  const { isPro, refresh: refreshEntitlement } = useECardEntitlement();
 
   // Filtered cards based on search query
   const filteredCards = useMemo(() => {
@@ -114,39 +113,11 @@ export default function ECardHubScreen() {
     }
   };
 
-  const fetchRoles = async () => {
-    if (!user) return;
-    try {
-      // Check super_admin from user_roles table
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'super_admin')
-        .maybeSingle();
-      if (roleData) {
-        setIsSuperAdmin(true);
-        setIsPro(true);
-        return;
-      }
-      // Check pro subscription
-      const { data: sub } = await supabase
-        .from('pro_subscriptions')
-        .select('id, status')
-        .eq('user_id', user.id)
-        .in('status', ['active', 'trialing'])
-        .limit(1);
-      setIsPro(!!(sub && sub.length > 0));
-    } catch (err) {
-      console.error('Error fetching roles:', err);
-    }
-  };
-
   useFocusEffect(
-    React.useCallback(() => { fetchCards(); fetchRoles(); }, [user])
+    React.useCallback(() => { fetchCards(); void refreshEntitlement(); }, [user, refreshEntitlement])
   );
 
-  const onRefresh = () => { setRefreshing(true); fetchCards(); };
+  const onRefresh = () => { setRefreshing(true); fetchCards(); void refreshEntitlement(); };
 
   // Publish limit — free users can publish 1 card, Pro unlimited
   const FREE_PUBLISH_LIMIT = 1;
@@ -322,6 +293,15 @@ export default function ECardHubScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} colors={[ACCENT]} />}
       >
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={copy('eCard Pro plans')}
+          onPress={() => navigation.navigate('ECardPremiumUpsell')}
+          style={{ marginHorizontal: 20, marginTop: 16, padding: 16, borderRadius: 12, backgroundColor: isDark ? '#1E0A3C' : '#F0FDF4' }}
+        >
+          <Text style={{ color: isDark ? '#fff' : '#111', fontWeight: '600', fontSize: 16 }}>{copy('eCard Pro plans')}</Text>
+          <Text style={{ color: isDark ? '#CBD5E1' : '#475569', marginTop: 4 }}>{copy('View monthly and yearly plans')}</Text>
+        </TouchableOpacity>
         {cards.length > 0 ? (
           /* ── Cards List ── */
           <View style={{ padding: 20, gap: 12 }}>
@@ -486,17 +466,12 @@ export default function ECardHubScreen() {
                   }}
                   onPress={() => {
                     closeSheet();
-                    if (isPro) {
-                      // Navigate to purchase additional card
-                      navigation.navigate('ProSubscription');
-                    } else {
-                      navigation.navigate('ProSubscription');
-                    }
+                    navigation.navigate('ECardPremiumUpsell');
                   }}
                   activeOpacity={0.8}
                 >
                   <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>
-                    {isPro ? 'Purchase Additional Card' : 'Upgrade to Pro'}
+                    {copy('eCard Pro plans')}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity

@@ -1,3 +1,4 @@
+import { buildRegistrationRecord } from "./record.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -28,31 +29,16 @@ serve(async (req) => {
 
     const form = await req.json();
 
-    // Map camelCase client fields to snake_case database columns
-    const dbRecord: Record<string, any> = {
-      user_id: user.id,
-      business_name: form.businessName || form.business_name,
-      description: form.description,
-      phone: form.phone,
-      email: form.email || user.email,
-      website: form.website,
-      address: form.address,
-      city: form.city,
-      state: form.state,
-      zip_code: form.zipCode || form.zip_code,
-      service_radius: form.serviceRadius || form.service_radius || 25,
-      years_in_business: form.yearsInBusiness || form.years_in_business || null,
-      license_number: form.licenseNumber || form.license_number || null,
-      location: form.location || (form.city && form.state ? `${form.city}, ${form.state}` : null),
-      is_insured: form.isInsured || form.is_insured || false,
-      trade_category: form.tradeCategory || form.trade_category || null,
-      is_active: true,
-    };
-
-    // Remove undefined/null optional fields to avoid overwriting defaults
-    Object.keys(dbRecord).forEach(key => {
-      if (dbRecord[key] === undefined) delete dbRecord[key];
-    });
+    // Retry after an interrupted registration without creating a duplicate.
+    const { data: existing, error: existingError } = await supabase
+      .from('pro_providers').select('*').eq('user_id', user.id).maybeSingle();
+    if (existingError) throw existingError;
+    if (existing) {
+      return new Response(JSON.stringify(existing), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200,
+      });
+    }
+    const dbRecord = buildRegistrationRecord(form, user.id, user.email);
 
     const { data, error } = await supabase
       .from('pro_providers')
@@ -73,7 +59,7 @@ serve(async (req) => {
     )
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Could not create the profile.' }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,

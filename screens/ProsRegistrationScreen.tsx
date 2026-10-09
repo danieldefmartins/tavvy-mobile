@@ -53,13 +53,15 @@ export default function ProsRegistrationScreen() {
   });
 
   useEffect(() => {
-    fetchEarlyAdopterCount();
+    if (Platform.OS !== 'ios') fetchEarlyAdopterCount();
   }, []);
 
   const isEarlyAdopterAvailable = earlyAdopterCount < 1000;
   const remainingSpots = Math.max(0, 1000 - earlyAdopterCount);
 
-  const steps: Step[] = ['business', 'services', 'location', 'pricing', 'review'];
+  const steps: Step[] = Platform.OS === 'ios'
+    ? ['business', 'services', 'location', 'review']
+    : ['business', 'services', 'location', 'pricing', 'review'];
   const currentStepIndex = steps.indexOf(currentStep);
 
   const updateField = (field: string, value: any) => {
@@ -148,7 +150,12 @@ export default function ProsRegistrationScreen() {
         categoryIds: formData.categoryIds,
       } as any);
 
-      // Subscribe to selected tier
+      // iOS subscriptions must be purchased and verified through StoreKit.
+      // Registration creates the profile required by the receipt verifier.
+      if (Platform.OS === 'ios') {
+        navigation.replace('ProsPaywall');
+        return;
+      }
       await subscribe(formData.selectedTier);
 
       Alert.alert(
@@ -157,7 +164,7 @@ export default function ProsRegistrationScreen() {
         [
           {
             text: 'Go to Dashboard',
-            onPress: () => navigation.replace('ProsDashboardScreen'),
+            onPress: () => navigation.replace('ProsDashboard'),
           },
         ]
       );
@@ -441,7 +448,9 @@ export default function ProsRegistrationScreen() {
         <View style={styles.reviewSection}>
           <Text style={styles.reviewLabel}>Plan</Text>
           <Text style={styles.reviewValue}>
-            {selectedPlan.label} - ${selectedPlan.price}/year
+            {Platform.OS === 'ios'
+              ? 'Choose your subscription on the next screen. Apple shows the price before purchase.'
+              : `${selectedPlan.label} - $${selectedPlan.price}/year`}
           </Text>
         </View>
       </View>
