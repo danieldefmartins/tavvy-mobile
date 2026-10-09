@@ -15,7 +15,11 @@ no replacement App Store build or backend deployment has been made.
 - Prepared registration backend corrections: caller-specific required slug,
   validated PostGIS coordinates instead of city text, explicitly unpaid/inactive
   new profiles, and reuse of an existing caller-owned profile on retry.
-  These corrections are NOT deployed; CLI authentication was unavailable.
+  These corrections are deployed to Supabase via the existing dashboard session.
+  The live registration retry returned the existing test profile without changing
+  its unpaid/inactive state. The live schema contains all supplied columns.
+  The previous deployment exposed no source files in the dashboard or ZIP, so
+  deployed-source comparison with that legacy version was unavailable.
 - Corrected EN/PT/ES account-deletion notices: Apple billing must be cancelled
   separately in App Store account settings.
 
@@ -31,7 +35,7 @@ Two older baseline suites have stale mocks: account-deletion-settings fails on
 an unmocked supabaseClient dependency, and tools-footer-navigation fails on an
 unmocked tabBarStyle symbol. No full-suite pass or iPad QA is claimed.
 
-Release gates remain: deploy and exercise the backend registration fix, establish
+Release gates remain: exercise first-time registration in the final build, establish
 exact submitted-build provenance, create genuine expired sandbox subscriptions,
 and verify all three products plus restore on a physical TestFlight device. Update
 review notes with tested paths and replace disabled-purchase review screenshots
