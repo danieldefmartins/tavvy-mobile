@@ -1,9 +1,9 @@
 # Tavvy current engineering status
 
-## App Review recovery — October 9, 2026 (local, not released)
+## App Review recovery — October 9, 2026 (backend live; app candidate local)
 
 Branch `fix/apple-review-20261009`, based on `da4b194`. This is a local candidate;
-no replacement App Store build or backend deployment has been made.
+the registration backend is deployed, but no replacement App Store build has been made.
 
 - Added a direct eCard Pro plans entry and replaced obsolete `ProSubscription`
   navigation. The hub now reads the same canonical eCard entitlement as the editor.
@@ -18,6 +18,7 @@ no replacement App Store build or backend deployment has been made.
   These corrections are deployed to Supabase via the existing dashboard session.
   The live registration retry returned the existing test profile without changing
   its unpaid/inactive state. The live schema contains all supplied columns.
+  Downloaded deployed index.ts and record.ts exactly match the tested source.
   The previous deployment exposed no source files in the dashboard or ZIP, so
   deployed-source comparison with that legacy version was unavailable.
 - Corrected EN/PT/ES account-deletion notices: Apple billing must be cancelled
@@ -35,8 +36,11 @@ Two older baseline suites have stale mocks: account-deletion-settings fails on
 an unmocked supabaseClient dependency, and tools-footer-navigation fails on an
 unmocked tabBarStyle symbol. No full-suite pass or iPad QA is claimed.
 
-Release gates remain: exercise first-time registration in the final build, establish
-exact submitted-build provenance, create genuine expired sandbox subscriptions,
+EAS identifies submitted build 30 as commit `6f99d72`, profile `production-iap`,
+version 1.0.1. The candidate base `da4b194` adds only the subsequent icon update.
+
+Release gates remain: exercise first-time registration in the final build,
+create genuine expired sandbox subscriptions,
 and verify all three products plus restore on a physical TestFlight device. Update
 review notes with tested paths and replace disabled-purchase review screenshots
 with captures from the final IAP-enabled build. Store messaging remains a draft.
