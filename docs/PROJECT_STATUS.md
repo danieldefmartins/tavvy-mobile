@@ -18,14 +18,16 @@ change only when Apple’s verified renewal information ties it to the same acti
 original transaction and subscription group. Apply the current product, preserve
 account ownership checks, and show the future effective date in EN/PT/ES. Twelve
 focused receipt-selection and purchase-result tests, app TypeScript and Deno verifier checks pass. This change
-has not yet been deployed or included in a new binary.
+is now deployed and included in build 32; device validation remains in progress.
 
-Paused at the maintainer’s request after committing the scheduled-change fix as
-`09763d3`. EAS build 32 (`ca6ad8e5-cad9-4b53-9628-48f15de9d3f1`) started from that
-commit; completion/upload is not yet verified. The receipt-verifier correction
-remains undeployed. The live verifier and entitlement helper were downloaded and
-confirmed to match the prior source (dashboard import path differs). No App Review
-response or resubmission has been sent. Resume evidence is held privately.
+Resumed: EAS build 32 (`ca6ad8e5-cad9-4b53-9628-48f15de9d3f1`, source
+`09763d3`) completed, uploaded to App Store Connect, processed, and installed via
+TestFlight. Physical purchase/expiry validation of build 32 is still in progress.
+The receipt-verifier correction is deployed. Downloaded `index.ts`,
+`receiptSelection.ts` and `appleEntitlements.ts` exactly match tested local source
+apart from the dashboard's relative import path. A live invalid-receipt check
+reached Apple and correctly returned `APPLE_REJECTED` (21002). No App Review
+response or resubmission has been sent. Private evidence is held separately.
 
 - Added a direct eCard Pro plans entry and replaced obsolete `ProSubscription`
   navigation. The hub now reads the same canonical eCard entitlement as the editor.
