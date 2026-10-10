@@ -20,6 +20,13 @@ account ownership checks, and show the future effective date in EN/PT/ES. Twelve
 focused receipt-selection and purchase-result tests, app TypeScript and Deno verifier checks pass. This change
 has not yet been deployed or included in a new binary.
 
+Paused at the maintainer’s request after committing the scheduled-change fix as
+`09763d3`. EAS build 32 (`ca6ad8e5-cad9-4b53-9628-48f15de9d3f1`) started from that
+commit; completion/upload is not yet verified. The receipt-verifier correction
+remains undeployed. The live verifier and entitlement helper were downloaded and
+confirmed to match the prior source (dashboard import path differs). No App Review
+response or resubmission has been sent. Resume evidence is held privately.
+
 - Added a direct eCard Pro plans entry and replaced obsolete `ProSubscription`
   navigation. The hub now reads the same canonical eCard entitlement as the editor.
   The old card-limit sheet contained the invalid route but was not reproduced as
