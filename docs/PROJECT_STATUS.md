@@ -1,9 +1,24 @@
 # Tavvy current engineering status
 
-## App Review recovery — October 9, 2026 (backend live; app candidate local)
+## App Review recovery — October 9, 2026 (build 31 tested; follow-up local)
 
-Branch `fix/apple-review-20261009`, based on `da4b194`. This is a local candidate;
-the registration backend is deployed, but no replacement App Store build has been made.
+Branch `fix/apple-review-20261009`, based on `da4b194`. The registration backend is
+deployed. EAS production-IAP build 31 (commit `658089e`, version 1.0.1) was uploaded,
+processed by Apple and installed through TestFlight. It has not been resubmitted.
+
+Physical-device tests: build 30 completed a sandbox monthly eCard purchase and the
+server activated its monthly entitlement. Build 31 verified the direct plans entry
+and successfully restored that purchase. Switching monthly to annual displayed
+Apple’s next-renewal start date, followed by the app error `PRODUCT_NOT_IN_RECEIPT`.
+The account remains monthly-active; annual activation and expiration are not yet
+verified. Pros purchase and iPad retest also remain open.
+
+A follow-up receipt-selection correction is local: accept a scheduled eCard plan
+change only when Apple’s verified renewal information ties it to the same active
+original transaction and subscription group. Apply the current product, preserve
+account ownership checks, and show the future effective date in EN/PT/ES. Twelve
+focused receipt-selection and purchase-result tests, app TypeScript and Deno verifier checks pass. This change
+has not yet been deployed or included in a new binary.
 
 - Added a direct eCard Pro plans entry and replaced obsolete `ProSubscription`
   navigation. The hub now reads the same canonical eCard entitlement as the editor.

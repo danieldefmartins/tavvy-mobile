@@ -62,8 +62,10 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
         if (result.type === 'success' && (result.productId === ECARD_PRO_ANNUAL || result.productId === ECARD_PRO_MONTHLY)) {
           void refreshProfile();
           Alert.alert(
-            copy('Pro access active'),
-            copy(result.restored ? 'Your verified Pro access is available. Reopen your card to refresh its features.' : 'Thank you! Your eCard Pro subscription is active.'),
+            result.scheduledChange ? t('iap.planChangeScheduled', { defaultValue: 'Plan change scheduled' }) : copy('Pro access active'),
+            result.scheduledChange
+              ? t('iap.planChangeScheduledMessage', { defaultValue: 'Apple will switch your plan on {{date}}. Your current Pro access remains active until then.', date: new Date(result.scheduledChange.effectiveAt).toLocaleDateString() })
+              : copy(result.restored ? 'Your verified Pro access is available. Reopen your card to refresh its features.' : 'Thank you! Your eCard Pro subscription is active.'),
             [{ text: t('common.ok', { defaultValue: 'OK' }), onPress: () => navigation.goBack() }],
           );
         } else if (result.type === 'error' && !result.cancelled) {

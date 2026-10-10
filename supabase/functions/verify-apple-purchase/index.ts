@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { selectReceiptEntry, type AppleReceiptEntry, type AppleRenewalInfo } from "./receiptSelection.ts";
 import {
   applyAppleEntitlement,
   ECARD_PRODUCT_IDS,
@@ -28,32 +29,12 @@ const corsHeaders = {
 const APPLE_VERIFY_PROD = "https://buy.itunes.apple.com/verifyReceipt";
 const APPLE_VERIFY_SANDBOX = "https://sandbox.itunes.apple.com/verifyReceipt";
 
-interface AppleReceiptEntry {
-  product_id: string;
-  original_transaction_id: string;
-  transaction_id?: string;
-  expires_date_ms: string;
-  purchase_date_ms?: string;
-  cancellation_date_ms?: string;
-  is_trial_period?: string;
-  is_in_intro_offer_period?: string;
-  app_account_token?: string;
-}
-
 interface AppleVerifyResponse {
   status: number;
   environment?: string;
   receipt?: { bundle_id?: string; in_app?: AppleReceiptEntry[] };
   latest_receipt_info?: AppleReceiptEntry[];
-  pending_renewal_info?: Array<{
-    product_id?: string;
-    auto_renew_product_id?: string;
-    auto_renew_status?: string;
-    original_transaction_id?: string;
-    expiration_intent?: string;
-    is_in_billing_retry_period?: string;
-    grace_period_expires_date_ms?: string;
-  }>;
+  pending_renewal_info?: AppleRenewalInfo[];
 }
 
 function json(body: unknown, status = 200): Response {
@@ -132,12 +113,11 @@ serve(async (req) => {
       return json({ status: "error", code: "WRONG_APP", message: "Receipt is for a different app." }, 400);
     }
     const entries = result.latest_receipt_info ?? result.receipt?.in_app ?? [];
-    const entry = entries
-      .filter((e) => e.product_id === productId && e.original_transaction_id && Number.isFinite(Number(e.expires_date_ms)))
-      .sort((a, b) => Number(b.expires_date_ms) - Number(a.expires_date_ms))[0];
-    if (!entry) {
+    const selection = selectReceiptEntry(entries, result.pending_renewal_info ?? [], productId, ECARD_PRODUCT_IDS);
+    if (!selection) {
       return json({ status: "error", code: "PRODUCT_NOT_IN_RECEIPT", message: "Receipt does not contain this subscription." }, 400);
     }
+    const { entry, scheduledChange } = selection;
     // Apple stamps the appAccountToken the app supplied at purchase time (the
     // Tavvy user id). When present it must match the caller.
     if (entry.app_account_token && entry.app_account_token.toLowerCase() !== user.id.toLowerCase()) {
@@ -150,7 +130,7 @@ serve(async (req) => {
     const graceUntil = renewal?.grace_period_expires_date_ms ? new Date(Number(renewal.grace_period_expires_date_ms)) : null;
     const outcome = await applyAppleEntitlement(admin, {
       userId: user.id,
-      productId,
+      productId: entry.product_id,
       originalTransactionId: entry.original_transaction_id,
       expiresAt,
       revokedAt,
@@ -174,7 +154,7 @@ serve(async (req) => {
       return json({ status: "error", code: "INTERNAL", message: "Verification failed." }, 500);
     }
 
-    return json({ status: "ok", expiresAt: expiresAt.toISOString(), isActive: true, plan: outcome.plan, environment: result.environment ?? null });
+    return json({ status: "ok", expiresAt: expiresAt.toISOString(), isActive: true, plan: outcome.plan, scheduledChange, environment: result.environment ?? null });
   } catch (error) {
     console.error("[verify-apple-purchase] Failed:", error);
     return json({ status: "error", code: "INTERNAL", message: "Verification failed." }, 500);

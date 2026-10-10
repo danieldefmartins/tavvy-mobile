@@ -1862,5 +1862,9 @@
     "catHome": "Home & appliances",
     "catBeauty": "Beauty & skincare",
     "catOther": "Something else"
+  },
+  "iap": {
+    "planChangeScheduled": "Plan change scheduled",
+    "planChangeScheduledMessage": "Apple will switch your plan on {{date}}. Your current Pro access remains active until then."
   }
 }

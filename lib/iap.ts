@@ -28,8 +28,9 @@ import {
 import { supabase } from './supabaseClient';
 import { IapProductId, IAP_PRODUCTS } from './iapConfig';
 
+export type ScheduledPlanChange = { productId: string; effectiveAt: string };
 export type PurchaseResult =
-  | { type: 'success'; productId: string; expiresAt: string | null; restored: boolean }
+  | { type: 'success'; productId: string; expiresAt: string | null; restored: boolean; scheduledChange?: ScheduledPlanChange }
   | { type: 'pending'; productId: string }
   | { type: 'error'; productId?: string; code?: string; message: string; cancelled: boolean };
 
@@ -69,7 +70,7 @@ export async function initIap(onError?: (error: PurchaseError) => void): Promise
     try {
       const verified = await verifyAndFinish(purchase);
       if (verified.ok) {
-        emit({ type: 'success', productId: purchase.productId, expiresAt: verified.expiresAt, restored: false });
+        emit({ type: 'success', productId: purchase.productId, expiresAt: verified.expiresAt, restored: false, scheduledChange: verified.scheduledChange });
       } else {
         emit({ type: 'error', productId: purchase.productId, code: verified.code, message: verified.message, cancelled: false });
       }
@@ -120,7 +121,7 @@ export async function purchaseIapSubscription(sku: IapProductId, userId: string)
   await requestSubscription({ sku, appAccountToken: userId });
 }
 
-interface VerifyOutcome { ok: boolean; expiresAt: string | null; code?: string; message: string }
+interface VerifyOutcome { ok: boolean; expiresAt: string | null; code?: string; message: string; scheduledChange?: ScheduledPlanChange }
 
 /** Sends the receipt to our server for verification, then finishes the
  * transaction only if the server confirms it activated the entitlement —
@@ -158,7 +159,7 @@ async function verifyAndFinish(purchase: Purchase): Promise<VerifyOutcome> {
     return { ok: false, expiresAt: null, code, message };
   }
   await finishTransaction({ purchase, isConsumable: false });
-  return { ok: true, expiresAt: typeof data.expiresAt === 'string' ? data.expiresAt : null, message: 'ok' };
+  return { ok: true, expiresAt: typeof data.expiresAt === 'string' ? data.expiresAt : null, message: 'ok', scheduledChange: data.scheduledChange };
 }
 
 /** Apple requires a reachable Restore Purchases action for subscriptions
@@ -184,7 +185,7 @@ export async function restorePurchases(): Promise<{ restored: number; failed: nu
       const outcome = await verifyAndFinish(purchase);
       if (outcome.ok) {
         restored += 1;
-        emit({ type: 'success', productId: purchase.productId, expiresAt: outcome.expiresAt, restored: true });
+        emit({ type: 'success', productId: purchase.productId, expiresAt: outcome.expiresAt, restored: true, scheduledChange: outcome.scheduledChange });
       } else if (outcome.code !== 'EXPIRED') {
         failed += 1;
         messages.push(outcome.message);

@@ -1839,5 +1839,9 @@
     "offSite": "Fora do local",
     "loginNeeded": "Faça login para ver suas horas.",
     "notCrew": "Você ainda não está cadastrado como membro da equipe."
+  },
+  "iap": {
+    "planChangeScheduled": "Mudança de plano agendada",
+    "planChangeScheduledMessage": "A Apple mudará seu plano em {{date}}. Seu acesso Pro atual continua ativo até lá."
   }
 }

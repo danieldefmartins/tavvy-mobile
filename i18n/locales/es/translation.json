@@ -1839,5 +1839,9 @@
     "purchase17": "Las compras a través de Apple aún no están disponibles en esta versión.",
     "purchase18": "Tus compras se han restaurado.",
     "purchase19": "No se pudieron restaurar las compras. Intenta de nuevo."
+  },
+  "iap": {
+    "planChangeScheduled": "Cambio de plan programado",
+    "planChangeScheduledMessage": "Apple cambiará tu plan el {{date}}. Tu acceso Pro actual permanece activo hasta entonces."
   }
 }
