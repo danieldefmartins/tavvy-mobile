@@ -1,6 +1,6 @@
 import "npm:reflect-metadata@0.2.2";
 import { X509CertificateGenerator } from 'npm:@peculiar/x509@2.1.0';
-import { verifyAppleJws } from '../../supabase/functions/_shared/appleJws.ts';
+import { verifyAppleJws } from './appleJws.ts';
 import { assertEquals, assertRejects } from 'https://deno.land/std@0.168.0/testing/asserts.ts';
 
 const algorithm = { name: 'ECDSA', namedCurve: 'P-256' };
