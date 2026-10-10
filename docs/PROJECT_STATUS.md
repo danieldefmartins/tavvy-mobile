@@ -26,9 +26,17 @@ now has a solid white background using the identical source logo, dimensions and
 placement; iOS/Expo and Android icon assets/configuration agree.
 
 Validation: 22 focused Apple purchase/restore/registration tests pass, six Deno
-certificate tests pass, and application TypeScript passes. No new binary or App
-Review submission is claimed by this entry. Genuine expiry, final-device build
-validation, iPad checks and reviewer metadata/screenshots remain open.
+certificate tests pass, and application TypeScript passes. The iPad Pro 13-inch
+(M5), iOS 26.5 simulator with current source verified Account/sign-in, RV & Camping
+list/map, Universes, Realtors, Saved before/after sign-in, direct eCard plans and
+Pros dashboard Settings. This development binary has IAP disabled; these are
+navigation/layout checks, not iPad purchase certification.
+
+Build 33 is now building on EAS (`e4813cf3-1e5c-4650-9725-f151382c0640`), version
+1.0.1, profile `production-iap`, source `4db09c1`. Genuine expiry and final-device
+build verification remain open. No App Review response or resubmission has been
+sent. Existing subscription review images show prices and purchase controls;
+reviewer directions will be updated in the main app review notes.
 
 ## App Review recovery — October 9, 2026 (build 31 tested; follow-up local)
 
