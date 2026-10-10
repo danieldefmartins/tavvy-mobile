@@ -147,7 +147,8 @@ async function applyPros(admin: SupabaseClient, userId: string, input: AppleEnti
     if (existingError) throw existingError;
     const record = {
       provider_id: provider.id,
-      tier: "founding",
+      // The customer-facing Founding plan uses the existing database tier.
+      tier: "early_adopter",
       status,
       price_per_year: 199,
       end_date: input.expiresAt.toISOString(),

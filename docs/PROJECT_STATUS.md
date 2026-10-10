@@ -1,5 +1,35 @@
 # Tavvy current engineering status
 
+## App Review follow-up — October 9, 2026 (backend live; next binary prepared)
+
+Build 32 physical sandbox checks now verified monthly eCard purchase, scheduled
+annual change, annual activation, Pros purchase and restore. The Pros purchase
+initially failed its secondary database write because `founding` is not an allowed
+subscription tier. The shared Apple entitlement writer now uses the existing
+`early_adopter` tier while preserving the Founding plan and $199 annual price.
+This fix is deployed in both Apple functions; a real restore then created the
+correct Pros subscription record.
+
+Apple notification logs also exposed an unsupported Node X509 API in the Edge
+runtime. The deployed notification verifier now uses pinned @peculiar/x509 2.1.0
+and WebCrypto, retaining the Apple root pin, certificate dates, issuer signatures
+and ES256 payload verification. Downloaded deployed source matches the tested
+logic (formatting/import-path differences only); its six Deno verification tests
+pass, and the live endpoint rejects a malformed signature without crashing.
+Actual cancellation/expiration notification validation remains pending.
+
+Next binary changes prepared locally: restore alerts no longer duplicate the
+purchase alert, unrelated product events do not interrupt another paywall, and
+partial restore failures remain visible. Pros Settings is registered in its own
+navigator and the Founding profile maps to the correct existing tier. The app icon
+now has a solid white background using the identical source logo, dimensions and
+placement; iOS/Expo and Android icon assets/configuration agree.
+
+Validation: 22 focused Apple purchase/restore/registration tests pass, six Deno
+certificate tests pass, and application TypeScript passes. No new binary or App
+Review submission is claimed by this entry. Genuine expiry, final-device build
+validation, iPad checks and reviewer metadata/screenshots remain open.
+
 ## App Review recovery — October 9, 2026 (build 31 tested; follow-up local)
 
 Branch `fix/apple-review-20261009`, based on `da4b194`. The registration backend is

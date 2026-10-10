@@ -125,10 +125,12 @@ export default function SettingsScreen() {
       // Lazy import: keeps the react-native-iap native module out of this
       // screen's load path until someone actually taps Restore.
       const { restorePurchases: restore } = await import('../lib/iap');
-      const { restored } = await restore();
+      const { restored, failed, messages } = await restore();
       Alert.alert(
         copy('Restore Purchases'),
-        restored > 0 ? copy('Your purchases have been restored.') : copy('No previous purchases were found for this Apple ID.'),
+        failed > 0
+          ? messages[0] || copy('Could not restore purchases. Please try again.')
+          : restored > 0 ? copy('Your purchases have been restored.') : copy('No previous purchases were found for this Apple ID.'),
         [{ text: deletionCopy.close }],
       );
     } catch (error) {

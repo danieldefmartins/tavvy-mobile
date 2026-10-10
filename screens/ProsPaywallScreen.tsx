@@ -26,7 +26,8 @@ export default function ProsPaywallScreen() {
     void import('../lib/iap').then(async ({ fetchIapPrices, subscribeToPurchaseResults }) => {
       if (!active) return;
       unsubscribe = subscribeToPurchaseResults(result => {
-        if (!active) return;
+        if (!active || (result.type === 'success' && result.restored)) return;
+        if (result.productId && result.productId !== PROS_FOUNDING_ANNUAL) return;
         setLoading(false);
         if (result.type === 'success' && result.productId === PROS_FOUNDING_ANNUAL) {
           Alert.alert(t('pros.subscribed', { defaultValue: 'You are now subscribed to Tavvy Pros!' }), '', [

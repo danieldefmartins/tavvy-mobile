@@ -494,6 +494,7 @@ function ProsStack() {
       {/* Missing screens - added for navigation fixes */}
       <ProsStackNav.Screen name="ProsManageProfile" component={ProsManageProfileScreen} />
       <ProsStackNav.Screen name="ProsPaywall" component={ProsPaywallScreen} />
+      <ProsStackNav.Screen name="Settings" component={SettingsScreen} />
     </ProsStackNav.Navigator>
   );
 }

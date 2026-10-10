@@ -304,7 +304,7 @@ export function useProsSubscription() {
       setSubscription({
         id: data.id,
         providerId: data.id,
-        tier: data.subscription_plan === 'early_adopter' ? 'early_adopter' : 'standard',
+        tier: ['early_adopter', 'founding'].includes(data.subscription_plan) ? 'early_adopter' : 'standard',
         status: (data.subscription_status as ProSubscription['status']) || 'pending',
         amount: 0,
         startDate: data.subscription_started_at || '',

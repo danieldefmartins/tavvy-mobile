@@ -83,12 +83,12 @@ serve(async (req) => {
   let transaction: TransactionInfo | null = null;
   let renewal: RenewalInfo | null = null;
   try {
-    notification = verifyAppleJws<NotificationPayload>(body.signedPayload).payload;
+    notification = (await verifyAppleJws<NotificationPayload>(body.signedPayload)).payload;
     if (notification.data?.signedTransactionInfo) {
-      transaction = verifyAppleJws<TransactionInfo>(notification.data.signedTransactionInfo).payload;
+      transaction = (await verifyAppleJws<TransactionInfo>(notification.data.signedTransactionInfo)).payload;
     }
     if (notification.data?.signedRenewalInfo) {
-      renewal = verifyAppleJws<RenewalInfo>(notification.data.signedRenewalInfo).payload;
+      renewal = (await verifyAppleJws<RenewalInfo>(notification.data.signedRenewalInfo)).payload;
     }
   } catch (error) {
     if (error instanceof AppleJwsError) {

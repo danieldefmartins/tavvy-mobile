@@ -57,7 +57,8 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
       // The StoreKit sheet reports back asynchronously; this is where the
       // customer learns the purchase (or restore) actually unlocked Pro.
       unsubscribe = subscribeToPurchaseResults(result => {
-        if (!active) return;
+        if (!active || (result.type === 'success' && result.restored)) return;
+        if (result.productId && result.productId !== ECARD_PRO_ANNUAL && result.productId !== ECARD_PRO_MONTHLY) return;
         setIsLoading(false);
         if (result.type === 'success' && (result.productId === ECARD_PRO_ANNUAL || result.productId === ECARD_PRO_MONTHLY)) {
           void refreshProfile();
@@ -65,7 +66,7 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
             result.scheduledChange ? t('iap.planChangeScheduled', { defaultValue: 'Plan change scheduled' }) : copy('Pro access active'),
             result.scheduledChange
               ? t('iap.planChangeScheduledMessage', { defaultValue: 'Apple will switch your plan on {{date}}. Your current Pro access remains active until then.', date: new Date(result.scheduledChange.effectiveAt).toLocaleDateString() })
-              : copy(result.restored ? 'Your verified Pro access is available. Reopen your card to refresh its features.' : 'Thank you! Your eCard Pro subscription is active.'),
+              : copy('Thank you! Your eCard Pro subscription is active.'),
             [{ text: t('common.ok', { defaultValue: 'OK' }), onPress: () => navigation.goBack() }],
           );
         } else if (result.type === 'error' && !result.cancelled) {
@@ -172,15 +173,15 @@ export default function ECardPremiumUpsellScreen({ navigation, route }: Props) {
       if (Platform.OS === 'ios' && IAP_ENABLED) {
         const { restorePurchases } = await import('../../lib/iap');
         const outcome = await restorePurchases();
-        if (outcome.restored === 0 && outcome.failed > 0) restoreProblem = outcome.messages[0] ?? null;
+        if (outcome.failed > 0) restoreProblem = outcome.messages[0] ?? copy('Could not restore purchases. Please try again.');
       }
       const entitlement = await fetchMyECardEntitlement();
       if (entitlement.is_pro) void refreshProfile();
       Alert.alert(
-        entitlement.is_pro ? copy('Pro access active') : copy('Plan not active'),
-        entitlement.is_pro
+        restoreProblem ? copy('Restore Purchases') : entitlement.is_pro ? copy('Pro access active') : copy('Plan not active'),
+        restoreProblem ?? (entitlement.is_pro
           ? copy('Your verified Pro access is available. Reopen your card to refresh its features.')
-          : restoreProblem ?? copy(Platform.OS === 'ios' && IAP_ENABLED ? 'No previous purchases were found for this Apple ID.' : 'If you just checked out, wait a moment and try again.'),
+          : copy(Platform.OS === 'ios' && IAP_ENABLED ? 'No previous purchases were found for this Apple ID.' : 'If you just checked out, wait a moment and try again.')),
       );
     } catch (error: any) {
       console.error('Restore error:', error);

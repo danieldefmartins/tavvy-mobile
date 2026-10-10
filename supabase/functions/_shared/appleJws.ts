@@ -1,4 +1,5 @@
-import { X509Certificate, verify as cryptoVerify } from "node:crypto";
+import "npm:reflect-metadata@0.2.2";
+import { X509Certificate } from "npm:@peculiar/x509@2.1.0";
 
 /**
  * Verifies an App Store Server Notifications V2 / App Store Server API JWS
@@ -49,7 +50,7 @@ export interface VerifiedJws<T> {
 }
 
 /** Throws AppleJwsError unless the token is a valid, Apple-signed ES256 JWS. */
-export function verifyAppleJws<T = Record<string, unknown>>(token: string, rootPem: string = APPLE_ROOT_CA_G3_PEM, now: Date = new Date()): VerifiedJws<T> {
+export async function verifyAppleJws<T = Record<string, unknown>>(token: string, rootPem: string = APPLE_ROOT_CA_G3_PEM, now: Date = new Date()): Promise<VerifiedJws<T>> {
   if (typeof token !== "string") throw new AppleJwsError("JWS is not a string.");
   const parts = token.split(".");
   if (parts.length !== 3) throw new AppleJwsError("JWS must have three segments.");
@@ -75,28 +76,28 @@ export function verifyAppleJws<T = Record<string, unknown>>(token: string, rootP
 
   const root = new X509Certificate(rootPem);
   const presentedRoot = chain[chain.length - 1];
-  if (presentedRoot.raw.toString("base64") !== root.raw.toString("base64")) {
+  if (presentedRoot.toString("base64") !== root.toString("base64")) {
     throw new AppleJwsError("Certificate chain does not end at Apple Root CA - G3.");
   }
 
   for (let i = 0; i < chain.length; i++) {
     const cert = chain[i];
-    if (now < new Date(cert.validFrom) || now > new Date(cert.validTo)) {
+    if (now < cert.notBefore || now > cert.notAfter) {
       throw new AppleJwsError(`Certificate ${i} is outside its validity period.`);
     }
     const issuer = i + 1 < chain.length ? chain[i + 1] : cert; // root is self-signed
-    if (!cert.checkIssued(issuer)) throw new AppleJwsError(`Certificate ${i} was not issued by certificate ${i + 1}.`);
-    if (!cert.verify(issuer.publicKey)) throw new AppleJwsError(`Certificate ${i} signature is invalid.`);
+    if (cert.issuer !== issuer.subject) throw new AppleJwsError(`Certificate ${i} was not issued by certificate ${i + 1}.`);
+    if (!await cert.verify({ publicKey: issuer.publicKey, date: now }, crypto)) throw new AppleJwsError(`Certificate ${i} signature is invalid.`);
   }
 
-  const leafKey = chain[0].publicKey;
+  const leafKey = await chain[0].publicKey.export({ name: "ECDSA", namedCurve: "P-256" }, ["verify"], crypto);
   const signature = b64urlToBuffer(signatureB64);
   if (signature.length !== 64) throw new AppleJwsError("ES256 signature must be 64 bytes.");
-  const ok = cryptoVerify(
-    "sha256",
+  const ok = await crypto.subtle.verify(
+    { name: "ECDSA", hash: "SHA-256" },
+    leafKey,
+    new Uint8Array(signature),
     new TextEncoder().encode(`${headerB64}.${payloadB64}`),
-    { key: leafKey, dsaEncoding: "ieee-p1363" },
-    signature,
   );
   if (!ok) throw new AppleJwsError("JWS signature does not verify.");
 
