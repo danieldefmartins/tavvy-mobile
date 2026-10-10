@@ -16,7 +16,10 @@ and WebCrypto, retaining the Apple root pin, certificate dates, issuer signature
 and ES256 payload verification. Downloaded deployed source matches the tested
 logic (formatting/import-path differences only); its six Deno verification tests
 pass, and the live endpoint rejects a malformed signature without crashing.
-Actual cancellation/expiration notification validation remains pending.
+Physical sandbox expiry validation now passes for both eCard and Pros: Apple
+EXPIRED/VOLUNTARY events with renewal disabled were verified and processed without
+errors. Canonical eCard access is false; both Pros subscription records are expired
+and the provider is inactive. No expiry timestamps or payment states were fabricated.
 
 Next binary changes prepared locally: restore alerts no longer duplicate the
 purchase alert, unrelated product events do not interrupt another paywall, and
@@ -32,10 +35,12 @@ list/map, Universes, Realtors, Saved before/after sign-in, direct eCard plans an
 Pros dashboard Settings. This development binary has IAP disabled; these are
 navigation/layout checks, not iPad purchase certification.
 
-Build 33 is now building on EAS (`e4813cf3-1e5c-4650-9725-f151382c0640`), version
-1.0.1, profile `production-iap`, source `4db09c1`. Genuine expiry and final-device
-build verification remain open. No App Review response or resubmission has been
-sent. Existing subscription review images show prices and purchase controls;
+Build 33 completed on EAS (`e4813cf3-1e5c-4650-9725-f151382c0640`), version
+1.0.1, profile `production-iap`, source `4db09c1`, and was uploaded to App Store
+Connect (submission `d9867b12-d324-4d1d-a4bc-27210e42da9d`). Apple processing and
+final-device verification remain open. TestFlight requires the user to sign back
+into their regular Apple Account for installation; sandbox purchase tests are
+finished. No App Review response or resubmission has been sent. Existing subscription review images show prices and purchase controls;
 reviewer directions will be updated in the main app review notes.
 
 ## App Review recovery — October 9, 2026 (build 31 tested; follow-up local)
